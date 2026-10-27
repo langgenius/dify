@@ -17,6 +17,10 @@ def openapi_issuer_url(request_origin: str) -> str:
 
 
 def resolve_resource(value: str | None, *, issuer: str) -> str:
-    if value is None or value == issuer:
+    """Missing means the issuer. Otherwise the value must be the issuer's origin plus an accepted path, exactly."""
+    if value is None:
         return issuer
+    origin = issuer.removesuffix(OPENAPI_PATH)
+    if value in {origin + path for path in ACCEPTED_RESOURCE_PATHS}:
+        return value
     raise InvalidResourceError(value)

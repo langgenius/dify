@@ -173,17 +173,29 @@ class AuthorizationCodeGrantHandler:
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
         if request.redirect_uri != record.redirect_uri:
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
-        try:
-            resource = resolve_resource(request.resource, issuer=openapi_issuer_url(request.request_origin))
-        except InvalidResourceError:
-            raise TokenEndpointError(TokenErrorCode.INVALID_TARGET) from None
-        if resource != record.resource:
-            raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
+        self._check_resource(request, record)
         if request.code_verifier is None:
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
         if not verify_pkce(request.code_verifier, record.code_challenge):
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
         return record
+
+    @staticmethod
+    def _check_resource(request: TokenRequest, record: AuthorizationCodeRecord) -> None:
+        """RFC 8707: a missing ``resource`` means the one bound to the code.
+
+        The browser and the client may reach Dify by different host names, so
+        the bound resource is accepted as is; only another value is checked.
+        """
+        if request.resource is None:
+            return
+        if request.resource == record.resource:
+            return
+        try:
+            resolve_resource(request.resource, issuer=openapi_issuer_url(request.request_origin))
+        except InvalidResourceError:
+            raise TokenEndpointError(TokenErrorCode.INVALID_TARGET) from None
+        raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
 
 
 class RefreshTokenGrantHandler:

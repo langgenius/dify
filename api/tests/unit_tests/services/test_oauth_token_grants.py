@@ -236,6 +236,7 @@ def _approve(
     client_id: str = CONFIDENTIAL_ID,
     redirect_uri: str = CONFIDENTIAL_REDIRECT,
     context: RequestContext | None = None,
+    issuer: str = ISSUER,
 ) -> str:
     url = world.authorize.approve(
         context or AUTH_CONTEXT,
@@ -248,7 +249,7 @@ def _approve(
             scope=None,
             state="st",
         ),
-        issuer=ISSUER,
+        issuer=issuer,
     )
     return parse_qs(urlsplit(url).query)["code"][0]
 
@@ -283,6 +284,9 @@ def _token_error(world: _AuthCodeWorld, request: TokenRequest) -> TokenEndpointE
         world.handler(request)
     return caught.value
 
+
+# The browser reached Dify by another name than the token request (IP vs DNS, an alias).
+BROWSER_ISSUER = "http://10.0.0.5/openapi/v1"
 
 AUTH_CONTEXT = RequestContext(request_id="r1", trace_id=None, account_id=ACCOUNT_ID, active_workspace_id=WORKSPACE_ID)
 
@@ -333,6 +337,30 @@ class TestAuthorizationCodeGrantCases:
         world = _auth_code_world()
 
         assert world.handler(_code_request(_approve(world), resource=ISSUER)).payload["token"]
+
+    @staticmethod
+    def test_code_approved_via_another_host_redeems_without_resource() -> None:
+        world = _auth_code_world()
+        code = _approve(world, issuer=BROWSER_ISSUER)
+
+        assert world.handler(_code_request(code)).payload["token"] == "dfoa_token-1"
+
+    @staticmethod
+    def test_resource_bound_to_the_code_is_accepted_via_another_host() -> None:
+        world = _auth_code_world()
+        code = _approve(world, issuer=BROWSER_ISSUER)
+
+        assert world.handler(_code_request(code, resource=BROWSER_ISSUER)).payload["token"] == "dfoa_token-1"
+
+    @staticmethod
+    def test_valid_resource_other_than_the_bound_one_is_invalid_grant() -> None:
+        world = _auth_code_world()
+        code = _approve(world, issuer=BROWSER_ISSUER)
+
+        error = _token_error(world, _code_request(code, resource=ISSUER))
+
+        assert error.code is TokenErrorCode.INVALID_GRANT
+        assert world.tokens.calls == []
 
     @staticmethod
     @pytest.mark.parametrize(

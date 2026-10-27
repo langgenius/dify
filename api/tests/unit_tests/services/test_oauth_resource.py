@@ -1,6 +1,7 @@
 import pytest
 
 from configs import dify_config
+from services import oauth_resource
 from services.oauth_resource import ACCEPTED_RESOURCE_PATHS, InvalidResourceError, openapi_issuer_url, resolve_resource
 
 ISSUER = "https://dify.example.com/openapi/v1"
@@ -41,3 +42,15 @@ def test_resolves_to_issuer(value: str | None) -> None:
 def test_rejects_everything_else(value: str) -> None:
     with pytest.raises(InvalidResourceError):
         resolve_resource(value, issuer=ISSUER)
+
+
+def test_every_accepted_path_on_the_issuer_origin_resolves(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(oauth_resource, "ACCEPTED_RESOURCE_PATHS", ("/openapi/v1", "/openapi/v2"))
+
+    assert (
+        resolve_resource("https://dify.example.com/openapi/v2", issuer=ISSUER) == "https://dify.example.com/openapi/v2"
+    )
+    with pytest.raises(InvalidResourceError):
+        resolve_resource("https://dify.example.com/openapi/v2/", issuer=ISSUER)
+    with pytest.raises(InvalidResourceError):
+        resolve_resource("https://dify.example.com", issuer=ISSUER)
