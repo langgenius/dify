@@ -299,6 +299,18 @@ export const zAnnotationSettingUpdatePayload = z.object({
 })
 
 /**
+ * BadRequestError
+ *
+ * annotation_ids are required if the parameter is provided.
+ */
+export const zBadRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('bad_request'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * CreateAnnotationPayload
  */
 export const zCreateAnnotationPayload = z.object({
@@ -6964,7 +6976,7 @@ export const zPostAppsByAppIdAnnotationsBatchImportPath = z.object({
 })
 
 /**
- * Batch import started successfully
+ * Import started, or CSV/subscription validation failed (error_msg)
  */
 export const zPostAppsByAppIdAnnotationsBatchImportResponse = zAnnotationBatchImportResponse
 

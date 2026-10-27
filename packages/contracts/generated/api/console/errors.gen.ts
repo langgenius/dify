@@ -20,6 +20,7 @@ export { delete3Errors as 'DELETE /datasets/{dataset_id}/documents/{document_id}
 export { delete3Errors as 'DELETE /knowledge-fs/spaces/{control_space_id}/documents/bulk' } from './knowledge-fs/errors.gen.ts'
 export { delete3Errors as 'DELETE /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}' } from './rag/errors.gen.ts'
 export { delete4Errors as 'DELETE /agent/{agent_id}/config/skills/{name}' } from './agent/errors.gen.ts'
+export { delete4Errors as 'DELETE /apps/{app_id}/annotations' } from './apps/errors.gen.ts'
 export { delete4Errors as 'DELETE /knowledge-fs/spaces/{control_space_id}/documents/{document_id}' } from './knowledge-fs/errors.gen.ts'
 export { delete4Errors as 'DELETE /rag/pipelines/{pipeline_id}/workflows/draft/variables' } from './rag/errors.gen.ts'
 export { delete4Errors as 'DELETE /workspaces/current/members/{member_id}' } from './workspaces/errors.gen.ts'
