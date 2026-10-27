@@ -18,7 +18,6 @@ from operator import itemgetter
 from typing import TYPE_CHECKING, Any, Literal, TypeGuard, override
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from sqlalchemy import select
 from werkzeug.exceptions import ServiceUnavailable
 
@@ -31,6 +30,11 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPr
 from models.provider import ProviderCredential, ProviderType
 from models.provider_ids import ModelProviderID
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from services.entities.model_billing_mapping import MappingSource as MappingSource  # noqa: PLC0414
+from services.entities.model_billing_mapping import MappingTarget as MappingTarget  # noqa: PLC0414
+from services.entities.model_billing_mapping import ModelMapping as ModelMapping  # noqa: PLC0414
+from services.entities.model_billing_mapping import ParameterAdapter as ParameterAdapter  # noqa: PLC0414
+from services.model_billing_mapping_service import hosted_migration_sources, mappings_for_revision
 
 if TYPE_CHECKING:
     from core.entities.provider_configuration import ProviderConfiguration
@@ -140,55 +144,9 @@ def migration_display_status(tenant_id: str) -> Literal["none", "preparing", "pr
     return "processing" if has_compatibility_route(state) else "preparing"
 
 
-class _StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class MappingSource(_StrictModel):
-    provider_id: str
-    model_type: ModelType
-    model: str = Field(min_length=1)
-    mode: str = Field(min_length=1)
-
-
-class MappingTarget(_StrictModel):
-    plugin_id: Literal["langgenius/tokener"]
-    provider: Literal["tokener"]
-    model_type: ModelType
-    model: str = Field(min_length=1)
-    catalog_revision: str = Field(min_length=1)
-    minimum_plugin_version: str = Field(min_length=1)
-
-
-class ParameterAdapter(_StrictModel):
-    id: Literal["identity_v1"]
-    revision: str = Field(min_length=1)
-    rules_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
-
-
-class ModelMapping(_StrictModel):
-    schema_version: Literal[1]
-    mapping_revision: str = Field(min_length=1)
-    source: MappingSource
-    source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
-    settlement_owner: Literal["shared_credit_pool"]
-    pool_types: list[Literal["paid", "trial"]] = Field(min_length=1)
-    target: MappingTarget
-    parameter_adapter: ParameterAdapter
-    operations: list[str] = Field(min_length=1)
-    conformance_fixture_ids: list[str] = Field(min_length=1)
-
-
-def model_mappings() -> dict[tuple[str, ModelType, str], ModelMapping]:
+def model_mappings(mapping_version: str) -> dict[tuple[str, ModelType, str], ModelMapping]:
     try:
-        records = TypeAdapter(list[ModelMapping]).validate_json(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON)
-        result = {}
-        for record in records:
-            key = (str(ModelProviderID(record.source.provider_id)), record.source.model_type, record.source.model)
-            if key in result or record.target.model_type != record.source.model_type:
-                raise ValueError("Duplicate source or incompatible model type")
-            result[key] = record
-        return result
+        return mappings_for_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, mapping_version)
     except Exception:
         # Validation errors can contain config values. Do not log their payload.
         raise ModelRouteUnmapped from None
@@ -353,7 +311,10 @@ def routed_credentials(
     ):
         raise ModelMigrationProcessing
     provider = str(ModelProviderID(configuration.provider.provider))
-    mapping = model_mappings().get((provider, model_type, model))
+    mapping_version = state.get("model_mapping_version")
+    if not isinstance(mapping_version, str):
+        raise ModelRouteUnmapped
+    mapping = model_mappings(mapping_version).get((provider, model_type, model))
     if mapping is None or configuration.system_configuration.current_quota_type not in mapping.pool_types:
         raise ModelRouteUnmapped
     if state.get("model_mapping_version") != mapping.mapping_revision:
@@ -512,7 +473,7 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 
-    registry = model_mappings()
+    registry = model_mappings(mapping_version)
     client = PluginModelClient()
     inventory = []
     source_ownership = {}
@@ -527,46 +488,43 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
             "current_quota_type": system.current_quota_type.value,
             "quotas": {q.quota_type.value: {"unmetered": q.quota_limit == -1} for q in system.quota_configurations},
         }
-        sources: set[tuple[ModelType, str]] = set()
-        for quota in system.quota_configurations:
-            if (
-                quota.quota_type not in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
-                or quota.quota_limit == -1
-                or quota.quota_unit not in {QuotaUnit.TIMES, QuotaUnit.CREDITS}
-            ):
-                continue
-            if quota.restrict_models:
-                sources.update((r.model_type, r.model) for r in quota.restrict_models)
-            else:
-                sources.update((m.model_type, m.model) for m in configuration.provider.models)
+        source_id = ModelProviderID(provider_name)
+
+        def lookup(
+            model_type: ModelType,
+            model: str,
+            credentials: dict[str, Any],
+            *,
+            source_id: ModelProviderID = source_id,
+        ) -> AIModelEntity | None:
+            return client.get_model_schema(
+                tenant_id,
+                None,
+                source_id.plugin_id,
+                source_id.provider_name,
+                model_type.value,
+                model,
+                credentials,
+            )
+
+        try:
+            sources = hosted_migration_sources(
+                system, configuration.provider.models, configuration.provider.supported_model_types, lookup
+            )
+        except ValueError:
+            raise ModelRouteUnmapped from None
         for model_type, model in sorted(sources, key=lambda pair: (pair[0].value, pair[1])):
             rule = registry.get((str(ModelProviderID(provider_name)), model_type, model))
             if rule is None or rule.mapping_revision != mapping_version:
                 raise ModelRouteUnmapped
-            source_schema = next(
-                (m for m in configuration.provider.models if m.model_type == model_type and m.model == model), None
-            )
-            if source_schema is None:
-                source_credentials = dict(system.credentials or {})
-                for quota in system.quota_configurations:
-                    for restricted in quota.restrict_models:
-                        if (
-                            restricted.model_type == model_type
-                            and restricted.model == model
-                            and restricted.base_model_name
-                        ):
-                            source_credentials["base_model_name"] = restricted.base_model_name
-                source_id = ModelProviderID(provider_name)
-                source_schema = client.get_model_schema(
-                    tenant_id,
-                    None,
-                    source_id.plugin_id,
-                    source_id.provider_name,
-                    model_type.value,
-                    model,
-                    source_credentials,
-                )
-            if source_schema is None:
+            source = sources[(model_type, model)]
+            source_schema = source.schema
+            if not source.pool_types <= set(rule.pool_types):
+                raise ModelRouteUnmapped
+            if (
+                model_type == ModelType.LLM
+                and source_schema.model_properties.get(ModelPropertyKey.MODE) != rule.source.mode
+            ):
                 raise ModelRouteUnmapped
             source_digest = (
                 "sha256:"
@@ -621,7 +579,7 @@ def validate_migration_readiness(tenant_id: str, mapping_version: str) -> dict[s
     from core.plugin.impl.model import PluginModelClient
 
     inventory = migration_inventory(tenant_id, mapping_version)
-    registry = model_mappings()
+    registry = model_mappings(mapping_version)
     client = PluginModelClient()
     capabilities = client._request_with_plugin_daemon_response(
         "GET", f"plugin/{tenant_id}/dispatch/redirect/v1/capabilities", dict[str, Any]

@@ -15,13 +15,27 @@ invocations retain their previous execution and settlement owners.
 3. Deploy Core API/workers/beat and matching SaaS Billing server/cron/async images.
    Configure authenticated Core↔Billing URLs and secrets on all required roles.
 4. Load an approved `TOKENER_LEGACY_MODEL_MAPPING_JSON` registry. Each record
-   follows `ModelMapping` in `core/model_invocation_routing.py`: exact canonical
+   follows `ModelMapping` in `services/entities/model_billing_mapping.py`: exact canonical
    provider/type/model and source schema digest, catalog-bound target, adapter
    revision, supported operations and conformance fixture references. Never
    guess aliases or replace an unavailable model with a newer/different one.
    The registry must cover the tenant's hosted source inventory. An empty
    provider allowlist means unrestricted models, not an empty inventory.
-5. Use the same mapping revision on Core API and workers. Enable
+   Source model types come from installed provider schemas, not the legacy
+   environment parser's LLM placeholder. Missing or ambiguous schemas fail
+   closed. Explicit deployment/base-model bindings retain their declared type.
+   Source schema digest, LLM mode, applicable paid/trial pools, type-specific
+   operations and embedding dimensions remain mandatory compatibility gates.
+5. Use the same mapping registry on Core API and workers. Multiple revisions may
+   coexist in the existing JSON array: uniqueness is scoped to
+   `(mapping_revision, canonical provider, model_type, model)`. The prepare
+   command, readiness checks and active tenant routing select the exact recorded
+   revision. There is no latest-revision fallback, even with a single revision.
+   Retain every revision referenced by prepared/claimed/active migrations; adding
+   a new revision must not edit or delete old records. A request already prepared
+   with a frozen route retains that target and credential binding. Upgrading a
+   plugin or publishing a new registry revision does not migrate existing tenants.
+   Existing single-revision arrays require no format changes. Enable
    `ENABLE_TOKENER_MIGRATION_RECOVERY_TASK` independently of admission. Start with
    both Core and Billing migration admission disabled and empty tenant allowlists.
 
