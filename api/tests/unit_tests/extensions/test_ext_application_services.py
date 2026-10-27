@@ -668,8 +668,9 @@ def test_build_application_services_wires_workflow_comment_boundary(
     )
 
     assert isinstance(services.workflow_comments, WorkflowCommentService)
-    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
-    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._threads, WorkflowCommentRepository)
+    assert services.workflow_comments._threads._session_factory is sqlite_session_factory
+    assert services.workflow_comments._queries is services.workflow_comments._threads
     assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
     assert services.workflow_comments._now is naive_utc_now
 

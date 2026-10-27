@@ -580,6 +580,7 @@ def build_application_services(
     conversation_names = ConversationNameService(conversations=conversations, generate_name=generate_conversation_name)
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
+    workflow_comment_repository = WorkflowCommentRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
         repository=messages,
@@ -816,7 +817,8 @@ def build_application_services(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
         workflow_comments=WorkflowCommentService(
-            comments=WorkflowCommentRepository(session_factory=database_client),
+            threads=workflow_comment_repository,
+            queries=workflow_comment_repository,
             notifier=CeleryWorkflowCommentMentionNotifier(),
             console_web_url=dify_config.CONSOLE_WEB_URL,
             now=naive_utc_now,

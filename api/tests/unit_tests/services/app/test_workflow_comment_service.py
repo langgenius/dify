@@ -1,13 +1,14 @@
-"""Workflow comment use cases, isolated from persistence by an in-memory store of aggregates."""
+"""Workflow comment use cases, isolated from persistence by in-memory ports that keep aggregates."""
 
+import copy
 import datetime
-from collections.abc import Callable, Sequence
-from typing import override
+from collections.abc import Callable, Generator, Sequence
+from contextlib import contextmanager
 
 import pytest
 
 from machinery.context import RequestContext
-from services.app.workflow_comment_agg import WorkflowCommentAgg
+from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentContent, WorkflowCommentMentions
 from services.app.workflow_comment_errors import (
     InvalidMentionedUserIdError,
     InvalidWorkflowCommentContentError,
@@ -25,12 +26,12 @@ from services.app.workflow_comment_service import (
     WorkflowCommentEdit,
     WorkflowCommentMentionNotification,
     WorkflowCommentMentionNotifier,
+    WorkflowCommentQueries,
     WorkflowCommentReplyDraft,
     WorkflowCommentResolved,
-    WorkflowCommentSaved,
     WorkflowCommentService,
-    WorkflowCommentStore,
     WorkflowCommentSummary,
+    WorkflowCommentThreads,
     WorkflowCommentUpdated,
     format_comment_excerpt,
 )
@@ -39,6 +40,7 @@ ACTOR = "33333333-3333-3333-3333-333333333333"
 OTHER = "33333333-3333-3333-3333-333333333334"
 USER_A = "33333333-3333-3333-3333-333333333335"
 USER_B = "33333333-3333-3333-3333-333333333336"
+OUTSIDER = "33333333-3333-3333-3333-333333333337"
 CONTEXT = RequestContext("request", None, ACTOR, "workspace-1")
 APP_ID = "app-1"
 COMMENT_ID = "comment-1"
@@ -46,25 +48,25 @@ STARTED_AT = datetime.datetime(2024, 1, 1, 12, 0, 0)
 NOW = datetime.datetime(2024, 1, 2, 12, 0, 0)
 
 
-class InMemoryStore(WorkflowCommentStore):
-    """Keeps threads by ID, asserts the owner scope of every call, and reports mentions of `members`.
+class InMemoryComments(WorkflowCommentQueries, WorkflowCommentThreads):
+    """Keeps threads by ID and asserts the owner scope of every call.
 
-    Like the repository, it keeps a stored resolution when a save would resolve a thread that was unresolved on load.
+    `members` are the workspace's members, mapped to their notification profile, or None for one without an email.
+
+    Like the repository, a change works on its own copy of the thread and keeps it only when the block succeeds.
     """
 
     def __init__(self) -> None:
         self.app_visible = True
-        self.members: dict[str, MentionRecipient] = {}
+        self.members: dict[str, MentionRecipient | None] = {}
         self.app_name: str | None = "Canvas"
         self.commenter_name: str | None = "Actor"
         self.threads: dict[str, WorkflowCommentAgg] = {}
-        self.loaded: list[WorkflowCommentAgg] = []
         self.calls: list[str] = []
-        self.notify_requests: list[tuple[str, ...]] = []
+        self.mention_requests: list[tuple[str, ...]] = []
 
-    def seed(self, comment: WorkflowCommentAgg) -> WorkflowCommentAgg:
-        self.threads[comment.id] = comment
-        return comment
+    def seed(self, comment: WorkflowCommentAgg) -> None:
+        self.threads[comment.id] = _stored(comment)
 
     def app_exists(self, *, workspace_id: str, app_id: str) -> bool:
         assert (workspace_id, app_id) == (CONTEXT.active_workspace_id, APP_ID)
@@ -81,47 +83,56 @@ class InMemoryStore(WorkflowCommentStore):
         self.calls.append("get_comment")
         raise WorkflowCommentNotFoundError
 
+    def workspace_member_ids(self, *, workspace_id: str, user_ids: Sequence[str]) -> frozenset[str]:
+        assert workspace_id == CONTEXT.active_workspace_id
+        self.calls.append("workspace_member_ids")
+        return frozenset(user_id for user_id in user_ids if user_id in self.members)
+
+    def mention_context(
+        self, *, workspace_id: str, app_id: str, actor_id: str, user_ids: Sequence[str]
+    ) -> MentionContext:
+        assert (workspace_id, app_id, actor_id) == (CONTEXT.active_workspace_id, APP_ID, CONTEXT.account_id)
+        self.mention_requests.append(tuple(user_ids))
+        recipients = tuple(recipient for user_id in user_ids if (recipient := self.members.get(user_id)) is not None)
+        return MentionContext(app_name=self.app_name, commenter_name=self.commenter_name, recipients=recipients)
+
     def load_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> WorkflowCommentAgg:
         assert (workspace_id, app_id) == (CONTEXT.active_workspace_id, APP_ID)
         self.calls.append("load_comment")
         if comment_id not in self.threads:
             raise WorkflowCommentNotFoundError
-        self.loaded.append(self.threads[comment_id])
-        return self.loaded[-1]
+        return copy.deepcopy(self.threads[comment_id])
 
-    def add_comment(self, *, comment: WorkflowCommentAgg, notify_user_ids: Sequence[str]) -> MentionContext:
+    def add_comment(self, *, comment: WorkflowCommentAgg) -> None:
         self._assert_scope(comment)
         self.calls.append("add_comment")
-        self.threads[comment.id] = comment
-        return self._mentions(comment.created_by, notify_user_ids)
+        self.threads[comment.id] = _stored(comment)
 
-    def save_comment(
-        self, *, loaded: WorkflowCommentAgg, changed: WorkflowCommentAgg, actor_id: str, notify_user_ids: Sequence[str]
-    ) -> WorkflowCommentSaved:
-        self._assert_scope(changed)
-        # The service saves the very state it loaded, so the adapter can write only the difference.
-        assert loaded is self.loaded[-1]
-        self.calls.append("save_comment")
-        stored = self.threads[changed.id]
-        if changed.resolved and not loaded.resolved and stored.resolved:
-            return WorkflowCommentSaved(comment=stored, mentions=self._mentions(actor_id, notify_user_ids))
-        self.threads[changed.id] = changed
-        return WorkflowCommentSaved(comment=changed, mentions=self._mentions(actor_id, notify_user_ids))
+    @contextmanager
+    def change_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> Generator[WorkflowCommentAgg]:
+        assert (workspace_id, app_id) == (CONTEXT.active_workspace_id, APP_ID)
+        self.calls.append("change_comment")
+        if comment_id not in self.threads:
+            raise WorkflowCommentNotFoundError
+        comment = copy.deepcopy(self.threads[comment_id])
+        yield comment
+        self.threads[comment_id] = _stored(comment)
 
     def delete_comment(self, *, comment: WorkflowCommentAgg) -> None:
         self._assert_scope(comment)
         self.calls.append("delete_comment")
         del self.threads[comment.id]
 
-    def _mentions(self, actor_id: str, notify_user_ids: Sequence[str]) -> MentionContext:
-        assert actor_id == CONTEXT.account_id
-        self.notify_requests.append(tuple(notify_user_ids))
-        recipients = tuple(self.members[user_id] for user_id in notify_user_ids if user_id in self.members)
-        return MentionContext(app_name=self.app_name, commenter_name=self.commenter_name, recipients=recipients)
-
     @staticmethod
     def _assert_scope(comment: WorkflowCommentAgg) -> None:
         assert (comment.workspace_id, comment.app_id) == (CONTEXT.active_workspace_id, APP_ID)
+
+
+def _stored(comment: WorkflowCommentAgg) -> WorkflowCommentAgg:
+    """Copy a thread as storage keeps it, without the events its changes recorded."""
+    stored = copy.deepcopy(comment)
+    stored.pull_events()
+    return stored
 
 
 class RecordingNotifier(WorkflowCommentMentionNotifier):
@@ -132,18 +143,22 @@ class RecordingNotifier(WorkflowCommentMentionNotifier):
         self.sent.extend(notifications)
 
 
-def _service(store: InMemoryStore, notifier: RecordingNotifier | None = None) -> WorkflowCommentService:
+def _service(store: InMemoryComments, notifier: RecordingNotifier | None = None) -> WorkflowCommentService:
     return WorkflowCommentService(
-        comments=store,
+        threads=store,
+        queries=store,
         notifier=notifier or RecordingNotifier(),
         console_web_url="https://console.example.com/",
         now=lambda: NOW,
     )
 
 
-def _store_with_member() -> InMemoryStore:
-    store = InMemoryStore()
-    store.members[USER_A] = MentionRecipient(email="alice@example.com", name="Alice", interface_language="ja-JP")
+def _store_with_members(*user_ids: str) -> InMemoryComments:
+    store = InMemoryComments()
+    for user_id in user_ids:
+        store.members[user_id] = MentionRecipient(
+            email=f"{user_id[-1]}@example.com", name=f"User {user_id[-1]}", interface_language="ja-JP"
+        )
     return store
 
 
@@ -153,18 +168,24 @@ def _thread(*, created_by: str = ACTOR, mentioned_user_ids: tuple[str, ...] = ()
         workspace_id=CONTEXT.active_workspace_id,
         app_id=APP_ID,
         actor_id=created_by,
-        content="hello",
+        content=WorkflowCommentContent("hello"),
         position_x=1.0,
         position_y=2.0,
-        mentioned_user_ids=mentioned_user_ids,
+        mentions=WorkflowCommentMentions(mentioned_user_ids),
         now=STARTED_AT,
     )
 
 
 def _thread_with_reply(*, replied_by: str = ACTOR, mentioned_user_ids: tuple[str, ...] = ()) -> WorkflowCommentAgg:
-    return _thread(created_by=OTHER).add_reply(
-        reply_id="reply-1", actor_id=replied_by, content="reply", mentioned_user_ids=mentioned_user_ids, now=STARTED_AT
+    comment = _thread(created_by=OTHER)
+    comment.add_reply(
+        reply_id="reply-1",
+        actor_id=replied_by,
+        content=WorkflowCommentContent("reply"),
+        mentions=WorkflowCommentMentions(mentioned_user_ids),
+        now=STARTED_AT,
     )
+    return comment
 
 
 COMMENT_DRAFT = WorkflowCommentDraft(content="hello", position_x=1.0, position_y=2.0, mentioned_user_ids=())
@@ -189,7 +210,7 @@ OPERATIONS: list[Operation] = [
 
 @pytest.mark.parametrize("operation", OPERATIONS)
 def test_every_operation_requires_an_addressable_app(operation: Operation) -> None:
-    store = InMemoryStore()
+    store = InMemoryComments()
     store.app_visible = False
 
     with pytest.raises(WorkflowCommentAppNotFoundError):
@@ -200,19 +221,21 @@ def test_every_operation_requires_an_addressable_app(operation: Operation) -> No
 
 CONTENT_WRITES: list[Callable[[WorkflowCommentService, str], object]] = [
     lambda service, content: service.create_comment(
-        CONTEXT, APP_ID, WorkflowCommentDraft(content=content, position_x=0, position_y=0, mentioned_user_ids=())
+        CONTEXT,
+        APP_ID,
+        WorkflowCommentDraft(content=content, position_x=0, position_y=0, mentioned_user_ids=(USER_A,)),
     ),
     lambda service, content: service.update_comment(
         CONTEXT,
         APP_ID,
         "missing",
-        WorkflowCommentEdit(content=content, position_x=None, position_y=None, mentioned_user_ids=None),
+        WorkflowCommentEdit(content=content, position_x=None, position_y=None, mentioned_user_ids=(USER_A,)),
     ),
     lambda service, content: service.create_reply(
-        CONTEXT, APP_ID, "missing", WorkflowCommentReplyDraft(content=content, mentioned_user_ids=())
+        CONTEXT, APP_ID, "missing", WorkflowCommentReplyDraft(content=content, mentioned_user_ids=(USER_A,))
     ),
     lambda service, content: service.update_reply(
-        CONTEXT, APP_ID, "missing", "reply-1", WorkflowCommentReplyDraft(content=content, mentioned_user_ids=())
+        CONTEXT, APP_ID, "missing", "reply-1", WorkflowCommentReplyDraft(content=content, mentioned_user_ids=(USER_A,))
     ),
 ]
 
@@ -226,10 +249,10 @@ CONTENT_WRITES: list[Callable[[WorkflowCommentService, str], object]] = [
     ],
     ids=["blank", "too-long"],
 )
-def test_invalid_content_is_rejected_before_loading_the_thread(
+def test_invalid_content_is_rejected_before_any_port_call(
     write: Callable[[WorkflowCommentService, str], object], content: str, message: str
 ) -> None:
-    store = InMemoryStore()
+    store = InMemoryComments()
 
     # The targets do not exist, so reaching the store would raise not found instead.
     with pytest.raises(InvalidWorkflowCommentContentError, match=message):
@@ -238,8 +261,8 @@ def test_invalid_content_is_rejected_before_loading_the_thread(
     assert store.calls == []
 
 
-def test_malformed_mention_id_is_rejected_before_loading_the_thread() -> None:
-    store = InMemoryStore()
+def test_malformed_mention_id_is_rejected_before_any_port_call() -> None:
+    store = InMemoryComments()
 
     with pytest.raises(InvalidMentionedUserIdError, match="not-a-uuid is not a valid uuid."):
         _service(store).create_reply(
@@ -249,15 +272,18 @@ def test_malformed_mention_id_is_rejected_before_loading_the_thread() -> None:
     assert store.calls == []
 
 
-def test_create_comment_adds_a_thread_owned_by_the_actor() -> None:
-    store = _store_with_member()
+def test_create_comment_adds_a_thread_that_mentions_only_workspace_members() -> None:
+    store = _store_with_members(USER_A, ACTOR)
     notifier = RecordingNotifier()
 
     created = _service(store, notifier).create_comment(
         CONTEXT,
         APP_ID,
         WorkflowCommentDraft(
-            content="hello", position_x=1.0, position_y=2.0, mentioned_user_ids=(USER_A, "", ACTOR, USER_A)
+            content="hello",
+            position_x=1.0,
+            position_y=2.0,
+            mentioned_user_ids=(USER_A, "", OUTSIDER, ACTOR, USER_A),
         ),
     )
 
@@ -265,12 +291,12 @@ def test_create_comment_adds_a_thread_owned_by_the_actor() -> None:
     assert created == WorkflowCommentCreated(id=comment.id, created_at=NOW)
     assert (comment.created_by, comment.content, comment.mentioned_user_ids) == (ACTOR, "hello", (USER_A, ACTOR))
     # The actor's self-mention is stored but never notified.
-    assert store.notify_requests == [(USER_A,)]
-    assert [notification.to for notification in notifier.sent] == ["alice@example.com"]
+    assert store.mention_requests == [(USER_A,)]
+    assert [notification.to for notification in notifier.sent] == ["5@example.com"]
 
 
 def test_update_comment_saves_the_edit_and_notifies_only_new_mentions() -> None:
-    store = _store_with_member()
+    store = _store_with_members(USER_A, USER_B)
     store.seed(_thread(mentioned_user_ids=(USER_B,)))
     notifier = RecordingNotifier()
 
@@ -285,40 +311,71 @@ def test_update_comment_saves_the_edit_and_notifies_only_new_mentions() -> None:
     comment = store.threads[COMMENT_ID]
     assert (comment.content, comment.position_x, comment.position_y) == ("updated", 5.0, 2.0)
     assert comment.mentioned_user_ids == (USER_B, USER_A)
-    assert store.notify_requests == [(USER_A,)]
+    assert store.mention_requests == [(USER_A,)]
     assert [notification.comment_content for notification in notifier.sent] == ["updated"]
 
 
 def test_update_comment_without_mentions_keeps_them_and_notifies_nobody() -> None:
-    store = _store_with_member()
+    store = _store_with_members(USER_A)
     store.seed(_thread(mentioned_user_ids=(USER_A,)))
     notifier = RecordingNotifier()
 
     _service(store, notifier).update_comment(CONTEXT, APP_ID, COMMENT_ID, COMMENT_EDIT)
 
     assert store.threads[COMMENT_ID].mentioned_user_ids == (USER_A,)
-    assert store.notify_requests == [()]
+    assert store.calls == ["change_comment"]
+    assert store.mention_requests == []
     assert notifier.sent == []
 
 
-def test_update_comment_by_another_account_saves_nothing() -> None:
-    store = InMemoryStore()
-    loaded = store.seed(_thread(created_by=OTHER))
+def test_update_comment_by_another_account_keeps_the_stored_thread() -> None:
+    store = InMemoryComments()
+    store.seed(_thread(created_by=OTHER))
 
     with pytest.raises(WorkflowCommentPermissionError, match="Only the comment creator can update it"):
-        _service(store).update_comment(CONTEXT, APP_ID, COMMENT_ID, COMMENT_EDIT)
+        _service(store).update_comment(
+            CONTEXT,
+            APP_ID,
+            COMMENT_ID,
+            WorkflowCommentEdit(content="changed", position_x=None, position_y=None, mentioned_user_ids=None),
+        )
 
-    assert store.calls == ["load_comment"]
-    assert store.threads[COMMENT_ID] is loaded
+    assert store.calls == ["change_comment"]
+    assert store.threads[COMMENT_ID].content == "hello"
+
+
+def test_reads_come_from_the_query_port() -> None:
+    store = InMemoryComments()
+
+    assert _service(store).list_comments(CONTEXT, APP_ID) == ()
+    with pytest.raises(WorkflowCommentNotFoundError):
+        _service(store).get_comment(CONTEXT, APP_ID, COMMENT_ID)
+
+    assert store.calls == ["list_comments", "get_comment"]
+
+
+def test_mentioning_a_member_without_an_email_sends_nothing() -> None:
+    store = InMemoryComments()
+    store.members[USER_A] = None
+    notifier = RecordingNotifier()
+
+    _service(store, notifier).create_comment(
+        CONTEXT,
+        APP_ID,
+        WorkflowCommentDraft(content="hello", position_x=0, position_y=0, mentioned_user_ids=(USER_A,)),
+    )
+
+    assert store.mention_requests == [(USER_A,)]
+    assert notifier.sent == []
 
 
 def test_missing_comment_is_reported_by_the_store() -> None:
     with pytest.raises(WorkflowCommentNotFoundError):
-        _service(InMemoryStore()).resolve_comment(CONTEXT, APP_ID, "missing")
+        _service(InMemoryComments()).resolve_comment(CONTEXT, APP_ID, "missing")
 
 
 def test_delete_comment_removes_the_thread_for_its_creator_only() -> None:
-    store = InMemoryStore()
+    store = InMemoryComments()
     store.seed(_thread(created_by=OTHER))
 
     with pytest.raises(WorkflowCommentPermissionError, match="Only the comment creator can delete it"):
@@ -328,10 +385,11 @@ def test_delete_comment_removes_the_thread_for_its_creator_only() -> None:
     store.seed(_thread())
     _service(store).delete_comment(CONTEXT, APP_ID, COMMENT_ID)
     assert store.threads == {}
+    assert store.calls == ["load_comment", "load_comment", "delete_comment"]
 
 
 def test_any_member_resolves_a_comment() -> None:
-    store = InMemoryStore()
+    store = InMemoryComments()
     store.seed(_thread(created_by=OTHER))
 
     resolved = _service(store).resolve_comment(CONTEXT, APP_ID, COMMENT_ID)
@@ -340,43 +398,26 @@ def test_any_member_resolves_a_comment() -> None:
     assert store.threads[COMMENT_ID].resolved_by == ACTOR
 
 
-class ResolvedMeanwhileStore(InMemoryStore):
-    """Another member resolves each thread right after this request loads it."""
-
-    @override
-    def load_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> WorkflowCommentAgg:
-        loaded = super().load_comment(workspace_id=workspace_id, app_id=app_id, comment_id=comment_id)
-        self.threads[comment_id] = loaded.resolve(actor_id=OTHER, now=STARTED_AT)
-        return loaded
-
-
-def test_a_resolution_that_loses_the_race_returns_the_first_one() -> None:
-    store = ResolvedMeanwhileStore()
-    store.seed(_thread())
+def test_resolving_again_returns_the_first_resolution() -> None:
+    store = InMemoryComments()
+    comment = _thread()
+    comment.resolve(actor_id=OTHER, now=STARTED_AT)
+    store.seed(comment)
 
     resolved = _service(store).resolve_comment(CONTEXT, APP_ID, COMMENT_ID)
 
     assert resolved == WorkflowCommentResolved(id=COMMENT_ID, resolved=True, resolved_at=STARTED_AT, resolved_by=OTHER)
-    assert store.threads[COMMENT_ID].resolved_by == OTHER
-
-
-def test_resolving_again_keeps_the_first_resolution() -> None:
-    store = InMemoryStore()
-    loaded = store.seed(_thread().resolve(actor_id=OTHER, now=STARTED_AT))
-
-    resolved = _service(store).resolve_comment(CONTEXT, APP_ID, COMMENT_ID)
-
-    assert resolved == WorkflowCommentResolved(id=COMMENT_ID, resolved=True, resolved_at=STARTED_AT, resolved_by=OTHER)
-    assert store.threads[COMMENT_ID] is loaded
+    stored = store.threads[COMMENT_ID]
+    assert (stored.resolved_by, stored.updated_at) == (OTHER, STARTED_AT)
 
 
 def test_create_reply_adds_a_reply_and_notifies_its_mentions() -> None:
-    store = _store_with_member()
+    store = _store_with_members(USER_A)
     store.seed(_thread(created_by=OTHER, mentioned_user_ids=(USER_A,)))
     notifier = RecordingNotifier()
 
     created = _service(store, notifier).create_reply(
-        CONTEXT, APP_ID, COMMENT_ID, WorkflowCommentReplyDraft(content="reply", mentioned_user_ids=(USER_A,))
+        CONTEXT, APP_ID, COMMENT_ID, WorkflowCommentReplyDraft(content="reply", mentioned_user_ids=(USER_A, OUTSIDER))
     )
 
     reply = store.threads[COMMENT_ID].reply(created.id)
@@ -387,7 +428,7 @@ def test_create_reply_adds_a_reply_and_notifies_its_mentions() -> None:
 
 
 def test_update_reply_saves_the_edit_and_notifies_only_new_mentions() -> None:
-    store = _store_with_member()
+    store = _store_with_members(USER_A, USER_B)
     store.seed(_thread_with_reply(mentioned_user_ids=(USER_B,)))
 
     updated = _service(store).update_reply(
@@ -401,7 +442,7 @@ def test_update_reply_saves_the_edit_and_notifies_only_new_mentions() -> None:
     assert updated == WorkflowCommentUpdated(id="reply-1", updated_at=NOW)
     reply = store.threads[COMMENT_ID].reply("reply-1")
     assert (reply.content, reply.mentioned_user_ids) == ("new", (USER_B, USER_A))
-    assert store.notify_requests == [(USER_A,)]
+    assert store.mention_requests == [(USER_A,)]
 
 
 @pytest.mark.parametrize(
@@ -417,27 +458,28 @@ def test_update_reply_saves_the_edit_and_notifies_only_new_mentions() -> None:
         ),
     ],
 )
-def test_reply_changes_by_another_account_save_nothing(operation: Operation, message: str) -> None:
-    store = InMemoryStore()
+def test_reply_changes_by_another_account_keep_the_stored_reply(operation: Operation, message: str) -> None:
+    store = InMemoryComments()
     store.seed(_thread_with_reply(replied_by=OTHER))
 
     with pytest.raises(WorkflowCommentPermissionError, match=message):
         operation(_service(store))
 
-    assert store.calls == ["load_comment"]
+    assert store.calls == ["change_comment"]
+    assert store.threads[COMMENT_ID].reply("reply-1").content == "reply"
 
 
 def test_delete_reply_removes_it_from_the_thread() -> None:
-    store = InMemoryStore()
+    store = InMemoryComments()
     store.seed(_thread_with_reply())
 
     _service(store).delete_reply(CONTEXT, APP_ID, COMMENT_ID, "reply-1")
 
-    assert store.threads[COMMENT_ID].replies == ()
+    assert store.threads[COMMENT_ID].replies == []
 
 
 def test_unknown_reply_is_not_found() -> None:
-    store = InMemoryStore()
+    store = InMemoryComments()
     store.seed(_thread())
 
     with pytest.raises(WorkflowCommentReplyNotFoundError):
@@ -445,7 +487,7 @@ def test_unknown_reply_is_not_found() -> None:
 
 
 def test_notifications_are_built_from_committed_mentions_with_fallbacks() -> None:
-    store = InMemoryStore()
+    store = InMemoryComments()
     store.members[USER_A] = MentionRecipient(email="ja@example.com", name="Hanako", interface_language="ja-JP")
     store.members[USER_B] = MentionRecipient(email="anon@example.com", name=None, interface_language=None)
     store.app_name = None
