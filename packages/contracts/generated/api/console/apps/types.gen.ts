@@ -6140,6 +6140,7 @@ export type GetAppsByAppIdChatMessagesData = {
 }
 
 export type GetAppsByAppIdChatMessagesErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -6522,6 +6523,7 @@ export type GetAppsByAppIdMessagesByMessageIdData = {
 }
 
 export type GetAppsByAppIdMessagesByMessageIdErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
