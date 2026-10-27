@@ -1210,6 +1210,52 @@ Upload a file to use as an input variable when running the app
 | 200 | Node type | **application/json**: [NodeTypeDetailResponse](#nodetypedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /oauth/authorize/approve
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthAuthorizeRequest](#oauthauthorizerequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Client redirect with a code, or with an error for a bad PKCE or resource value | **application/json**: [OAuthAuthorizeRedirectResponse](#oauthauthorizeredirectresponse)<br> |
+| 400 | Request rejected | **application/json**: [OAuthAuthorizeErrorResponse](#oauthauthorizeerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /oauth/authorize/client
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| client_id | query |  | Yes | string |
+| redirect_uri | query |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Client to show | **application/json**: [OAuthAuthorizeClientResponse](#oauthauthorizeclientresponse)<br> |
+| 400 | Unknown client, bad redirect URI or missing parameter | **application/json**: [OAuthAuthorizeErrorResponse](#oauthauthorizeerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /oauth/authorize/deny
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthAuthorizeRequest](#oauthauthorizerequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Client redirect with access_denied | **application/json**: [OAuthAuthorizeRedirectResponse](#oauthauthorizeredirectresponse)<br> |
+| 400 | Request rejected | **application/json**: [OAuthAuthorizeErrorResponse](#oauthauthorizeerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /oauth/device/approve
 #### Request Body
 
@@ -1286,6 +1332,28 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Device token | **application/json**: [DeviceTokenResponse](#devicetokenresponse)<br> |
 | 400 | Authorization pending, polling too fast, expired, or denied | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /oauth/revoke
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Token revoked, or unknown to this client |  |
+| 400 | Missing token or malformed body | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 401 | Client authentication failed | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 429 | Too many failed client authentications | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /oauth/token
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Access token | **application/json**: [OAuthTokenResponse](#oauthtokenresponse)<br> |
+| 400 | OAuth token error | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 401 | Client authentication failed | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 429 | Too many failed client authentications | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /permitted-external-apps
@@ -2364,6 +2432,12 @@ mode is a closed enum of listable app types.
 | max_active_requests | integer |  | No |
 | name | string |  | Yes |
 
+#### AuthorizeErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthorizeErrorCode | string |  |  |
+
 #### ChatAppInfo
 
 | Name | Type | Description | Required |
@@ -2531,7 +2605,7 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | client_id | string |  | Yes |
-| device_label | string |  | Yes |
+| device_label | string |  | No |
 
 #### DeviceCodeResponse
 
@@ -2542,6 +2616,7 @@ Enum representing the deployment edition of the platform.
 | interval | integer |  | Yes |
 | user_code | string |  | Yes |
 | verification_uri | string |  | Yes |
+| verification_uri_complete | string |  | Yes |
 
 #### DeviceFlowErrorResponse
 
@@ -3318,6 +3393,71 @@ Enum class for model type.
 | ---- | ---- | ----------- | -------- |
 | type | string |  | Yes |
 | version | string |  | Yes |
+
+#### OAuthAuthorizeClientQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| redirect_uri | string |  | Yes |
+
+#### OAuthAuthorizeClientResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| display_name | string |  | Yes |
+| localhost_only | boolean |  | Yes |
+| logo_uri | string |  | No |
+| redirect_host | string |  | Yes |
+
+#### OAuthAuthorizeErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [AuthorizeErrorCode](#authorizeerrorcode) |  | Yes |
+
+#### OAuthAuthorizeRedirectResponse
+
+Where the consent page navigates next; the server builds it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| redirect_to | string |  | Yes |
+
+#### OAuthAuthorizeRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| code_challenge | string |  | Yes |
+| code_challenge_method | string |  | Yes |
+| redirect_uri | string |  | Yes |
+| resource | string |  | No |
+| scope | string |  | No |
+| state | string |  | No |
+
+#### OAuthTokenErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+
+#### OAuthTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| account | [AccountPayload](#accountpayload) |  | No |
+| default_workspace_id | string |  | No |
+| expires_in | integer |  | Yes |
+| refresh_token | string |  | No |
+| subject_email | string |  | No |
+| subject_issuer | string |  | No |
+| subject_type | [SubjectType](#subjecttype) |  | Yes |
+| token_id | string |  | Yes |
+| token_type | string |  | Yes |
+| workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
 #### OpenApiErrorCode
 
