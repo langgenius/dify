@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from operator import itemgetter
 from typing import Any
@@ -276,8 +276,9 @@ def list_live_sessions(session: Session, *, account_id: str, now: datetime) -> l
     """The sessions the cap counts, newest first, each shown by its newest live access row.
 
     A session kept alive only by its refresh token is shown by its grant's newest
-    access row, expired or revoked; when that is gone too, by the refresh token
-    itself. Every id shown here is one ``revoke_session_grant`` accepts.
+    access row, expired or revoked, with the refresh token's expiry; when that row
+    is gone too, by the refresh token itself. Every id shown here is one
+    ``revoke_session_grant`` accepts.
     """
     sessions = list(_live_sessions(session, account_id=account_id, now=now).values())
     refresh_only = [live.grant for live in sessions if not live.access_rows and live.grant is not None]
@@ -285,11 +286,16 @@ def list_live_sessions(session: Session, *, account_id: str, now: datetime) -> l
     shown: list[tuple[datetime, str, OAuthDeviceSession]] = []
     for live in sessions:
         row = max(live.access_rows, key=lambda access: access.created_at, default=None)
-        if row is None and live.grant is not None:
-            row = latest.get(live.grant)
         if row is not None:
             shown.append((row.created_at, str(row.id), _access_session(row)))
-        elif live.refresh is not None:
+            continue
+        if live.refresh is None:
+            continue
+        dead = latest.get(live.grant) if live.grant is not None else None
+        if dead is not None:
+            listed = replace(_access_session(dead), expires_at=live.refresh.expires_at)
+            shown.append((dead.created_at, str(dead.id), listed))
+        else:
             shown.append((live.refresh.created_at, live.refresh.id, _refresh_session(live.refresh)))
     shown.sort(key=itemgetter(0, 1), reverse=True)
     return [item for _created_at, _id, item in shown]

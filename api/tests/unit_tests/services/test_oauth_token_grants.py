@@ -1126,6 +1126,24 @@ class TestSessionPathsKnowRefreshGrants:
         assert refresh_world.openapi_session_ids() == [login.payload["token_id"]]
 
     @staticmethod
+    @pytest.mark.parametrize("idle", list(_IdleAccess))
+    def test_idle_grant_shows_its_refresh_tokens_expiry(refresh_world: _RefreshWorld, idle: _IdleAccess) -> None:
+        login = refresh_world.login()
+        idle.apply(refresh_world, login)
+        row = refresh_world.refresh_row(login.refresh_token)
+        assert row is not None
+
+        [openapi_listed] = refresh_world.account_access.list_sessions(
+            refresh_world.account_context(), page=1, limit=10
+        ).items
+        [console_listed] = refresh_world.console_sessions.list_account_sessions(
+            account_id=ACCOUNT_ID, page=1, limit=10
+        ).items
+
+        assert openapi_listed.expires_at == row.expires_at
+        assert console_listed.expires_at == row.expires_at
+
+    @staticmethod
     @pytest.mark.parametrize("path", _REVOKE_BY_ID_PATHS)
     @pytest.mark.parametrize("idle", list(_IdleAccess))
     def test_revoking_an_idle_grant_by_its_listed_id_ends_the_refresh(
