@@ -1717,6 +1717,8 @@ export const zSystemFeatureModel = z.object({
  */
 export const zWebAppConnectionRequirement = z.object({
   allowed_credential_types: z.array(zConnectionCredentialType),
+  icon: z.string(),
+  icon_dark: z.string().nullable(),
   node_id: z.string(),
   node_ids: z.array(z.string()),
   plugin_unique_identifier: z.string(),

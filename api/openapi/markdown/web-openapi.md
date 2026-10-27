@@ -2590,6 +2590,8 @@ in form definition, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| icon | string | Plugin icon URL, using the Integrations asset endpoint. | Yes |
+| icon_dark | string | Dark plugin icon URL; null when the plugin has no dark icon. | Yes |
 | node_id | string | Independent authorization node ID to use as the selection key. | Yes |
 | node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
 | plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |

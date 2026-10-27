@@ -65,6 +65,8 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
 
 
 def test_explicit_version_and_selection_response(client: FlaskClient, harness: OAuthHarness) -> None:
+    from core.plugin.plugin_service import PluginService
+
     parameters = client.get("/api/parameters")
     assert parameters.status_code == 200
     version = parameters.get_json()["connection_revision"]
@@ -78,6 +80,8 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
             "purpose": "Read calendar",
             "provider": "vendor/calendar/calendar",
             "plugin_unique_identifier": harness.providers.controller.plugin_unique_identifier,
+            "icon": PluginService.get_plugin_icon_url(tenant_id=harness.base.context.tenant_id, filename="icon.svg"),
+            "icon_dark": None,
             "allowed_credential_types": ["api-key", "oauth2"],
         }
     ]

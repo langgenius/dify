@@ -28,6 +28,8 @@ class WebAppParameterConfig(NamedTuple):
 
 class WebAppConnectionRequirement(ToolConnectionRequirement):
     plugin_unique_identifier: str = Field(description="Exact plugin artifact recorded in connection_revision.")
+    icon: str = Field(description="Plugin icon URL, using the Integrations asset endpoint.")
+    icon_dark: str | None = Field(description="Dark plugin icon URL; null when the plugin has no dark icon.")
 
 
 class WebAppParametersDict(AppParametersDict):
@@ -149,20 +151,25 @@ class AppDefinitionQueryService:
                 if config.workflow_id is not None and config.graph is not None
                 else (None, ())
             )
-            plugin_identifiers = {provider.provider: provider.plugin_unique_identifier for provider in providers}
-            web_requirements = tuple(
-                WebAppConnectionRequirement(
-                    **requirement.model_dump(), plugin_unique_identifier=plugin_identifiers[requirement.provider]
+            providers_by_name = {provider.provider: provider for provider in providers}
+            web_requirements = []
+            for requirement in requirements:
+                metadata = providers_by_name[requirement.provider]
+                web_requirements.append(
+                    WebAppConnectionRequirement(
+                        **requirement.model_dump(),
+                        plugin_unique_identifier=metadata.plugin_unique_identifier,
+                        icon=metadata.icon,
+                        icon_dark=metadata.icon_dark,
+                    )
                 )
-                for requirement in requirements
-            )
         except (KeyError, TypeError, ValueError, ConnectionError):
             raise AppDefinitionUnavailableError() from None
         return {
             **self._map_parameters(config.parameters),
             "connection_revision": revision,
             "requires_end_user_connections": config.requires_end_user_connections,
-            "connection_requirements": web_requirements,
+            "connection_requirements": tuple(web_requirements),
         }
 
     @staticmethod

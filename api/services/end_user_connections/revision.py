@@ -4,7 +4,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import Any, Protocol
+from typing import Any, NamedTuple, Protocol
 
 from pydantic import BaseModel, ConfigDict
 
@@ -13,6 +13,13 @@ from libs.helper import UUIDStr
 from services.end_user_connections.entities import WebConnectionContext
 
 ConnectionRevision = UUIDStr
+
+
+class ConnectionProviderMetadata(NamedTuple):
+    provider: str
+    plugin_unique_identifier: str
+    icon: str
+    icon_dark: str | None
 
 
 class OAuthClientContractSnapshot(BaseModel):
@@ -93,7 +100,7 @@ class ConnectionRevisionSnapshots(Protocol):
 class ConnectionRevisions(Protocol):
     def resolve(
         self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
-    ) -> tuple[str, tuple[ProviderContractSnapshot, ...]]: ...
+    ) -> tuple[str, tuple[ConnectionProviderMetadata, ...]]: ...
 
 
 class ConnectionProviderRevisions(Protocol):

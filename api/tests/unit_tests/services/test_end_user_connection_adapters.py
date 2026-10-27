@@ -1,4 +1,5 @@
 import json
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
@@ -95,6 +96,7 @@ def test_revision_identifier_bypasses_the_request_controller_cache(monkeypatch: 
     from core.plugin.impl.tool import PluginToolManager
 
     controller = plugin_provider("tenant")
+    controller.entity.identity.icon_dark = "icon-dark.svg"
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
     identifiers = iter(["vendor/calendar:1.0@first", "vendor/calendar:1.0@rebuilt"])
     calls: list[tuple[str, str]] = []
@@ -112,5 +114,9 @@ def test_revision_identifier_bypasses_the_request_controller_cache(monkeypatch: 
     gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
     assert gateway.provider("tenant", PROVIDER) is controller
     assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@first"
-    assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@rebuilt"
+    metadata = gateway.provider_metadata("tenant", PROVIDER)
+    assert metadata.plugin_unique_identifier == "vendor/calendar:1.0@rebuilt"
+    assert parse_qs(urlsplit(metadata.icon).query) == {"tenant_id": ["tenant"], "filename": ["icon.svg"]}
+    assert metadata.icon_dark is not None
+    assert parse_qs(urlsplit(metadata.icon_dark).query) == {"tenant_id": ["tenant"], "filename": ["icon-dark.svg"]}
     assert calls == [("tenant", PROVIDER), ("tenant", PROVIDER)]

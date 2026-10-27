@@ -33,7 +33,7 @@ from services.end_user_connections.errors import (
     ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
-from services.end_user_connections.revision import ConnectionRevisionSnapshots
+from services.end_user_connections.revision import ConnectionProviderMetadata, ConnectionRevisionSnapshots
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
 
 
@@ -90,14 +90,26 @@ class PluginApiKeyCredentialGateway:
         return controller
 
     def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str:
+        return self.provider_metadata(tenant_id, provider).plugin_unique_identifier
+
+    def provider_metadata(self, tenant_id: str, provider: str) -> ConnectionProviderMetadata:
         # ToolManager caches controllers for the request. Contract revalidation
         # must observe upgrades during an external credential check.
         try:
-            return PluginToolManager().fetch_tool_provider(tenant_id, provider).plugin_unique_identifier
+            installed = PluginToolManager().fetch_tool_provider(tenant_id, provider)
         except (PluginNotFoundError, PluginDaemonNotFoundError, KeyError, ValueError):
             raise ConnectionConfigurationError() from None
         except (PluginDaemonError, httpx.HTTPError):
             raise ConnectionCheckUnavailableError() from None
+        identity = installed.declaration.identity
+        return ConnectionProviderMetadata(
+            provider=str(ToolProviderID(provider)),
+            plugin_unique_identifier=installed.plugin_unique_identifier,
+            icon=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon),
+            icon_dark=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon_dark)
+            if identity.icon_dark
+            else None,
+        )
 
     def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
         return PluginService.is_plugin_verified(tenant_id, identifier)

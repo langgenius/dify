@@ -1016,6 +1016,8 @@ export type WebAppAuthSsoModel = {
 
 export type WebAppConnectionRequirement = {
   allowed_credential_types: Array<ConnectionCredentialType>
+  icon: string
+  icon_dark: string | null
   node_id: string
   node_ids: Array<string>
   plugin_unique_identifier: string

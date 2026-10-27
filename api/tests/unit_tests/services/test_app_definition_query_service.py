@@ -13,7 +13,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppToolIconSource,
 )
-from services.end_user_connections.revision import ProviderContractSnapshot
+from services.end_user_connections.revision import ConnectionProviderMetadata
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
 
@@ -203,8 +203,11 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     )
     definitions.get_published_parameter_config.return_value = parameters
     providers = (
-        ProviderContractSnapshot(
-            provider="vendor/calendar/calendar", plugin_unique_identifier="vendor/calendar:1.0.0@" + "a" * 64
+        ConnectionProviderMetadata(
+            provider="vendor/calendar/calendar",
+            plugin_unique_identifier="vendor/calendar:1.0.0@" + "a" * 64,
+            icon="https://console.example/plugin/icon.svg",
+            icon_dark="https://console.example/plugin/icon-dark.svg",
         ),
     )
     with patch.object(service._connection_revisions, "resolve", return_value=("connection-revision", providers)):
@@ -217,6 +220,8 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     assert requirement.node_ids == ("tool-1", "tool-2")
     assert requirement.provider == "vendor/calendar/calendar"
     assert requirement.plugin_unique_identifier == providers[0].plugin_unique_identifier
+    assert requirement.icon == providers[0].icon
+    assert requirement.icon_dark == providers[0].icon_dark
     assert requirement.title == "tool-1"
     assert requirement.purpose == "Read events"
     assert result["opening_statement"] == "Hello"

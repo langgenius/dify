@@ -16,6 +16,7 @@ from services.end_user_connection_preflight_adapters import PublishedPreflightRe
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
+from services.end_user_connections.revision import ConnectionProviderMetadata
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
 
@@ -23,6 +24,10 @@ from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 class InstalledPlugins:
     identifiers: Mapping[str, str]
     calls: list[tuple[str, str]] = field(default_factory=list)
+    icon: str = "/plugin-icon.svg"
+
+    def provider_metadata(self, tenant_id: str, provider: str) -> ConnectionProviderMetadata:
+        return ConnectionProviderMetadata(provider, self.plugin_unique_identifier(tenant_id, provider), self.icon, None)
 
     def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
         assert tenant_id
@@ -206,12 +211,17 @@ def test_revision_tracks_authentication_content_and_ignores_presentation_changes
     from copy import deepcopy
 
     provider = "vendor/calendar/calendar"
+    installed = InstalledPlugins({provider: "vendor/calendar:1.0@first"})
     revisions = PluginConnectionRevisions(
-        providers=InstalledPlugins({provider: "vendor/calendar:1.0@first"}),
+        providers=installed,
         snapshots=EndUserConnectionRepository(session_factory=sqlite_session_factory),
     )
     graph = {"nodes": [tool("root", provider)]}
     before, _ = revisions.resolve("tenant", "app", graph)
+    installed.icon = "/updated-plugin-icon.svg"
+    current, metadata = revisions.resolve("tenant", "app", graph)
+    assert current == before
+    assert metadata[0].icon == installed.icon
     presentation = deepcopy(graph)
     presentation["nodes"][0]["position"] = {"x": 100, "y": 100}
     cast(dict[str, object], presentation["nodes"][0]["data"])["title"] = "Renamed tool"

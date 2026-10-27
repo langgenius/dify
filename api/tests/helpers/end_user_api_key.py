@@ -12,6 +12,7 @@ from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResul
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -35,6 +36,7 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConfigurationError
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
+from services.end_user_connections.revision import ConnectionProviderMetadata
 
 PROVIDER = "vendor/calendar/calendar"
 PLUGIN_UNIQUE_IDENTIFIER = "vendor/calendar:1.0.0@" + "a" * 64
@@ -122,6 +124,19 @@ class TestProviders(PluginApiKeyCredentialGateway):
     @override
     def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str:
         return self.provider(tenant_id, provider).plugin_unique_identifier
+
+    @override
+    def provider_metadata(self, tenant_id: str, provider: str) -> ConnectionProviderMetadata:
+        controller = self.provider(tenant_id, provider)
+        identity = controller.entity.identity
+        return ConnectionProviderMetadata(
+            provider=provider,
+            plugin_unique_identifier=controller.plugin_unique_identifier,
+            icon=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon),
+            icon_dark=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon_dark)
+            if identity.icon_dark
+            else None,
+        )
 
     @override
     def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:

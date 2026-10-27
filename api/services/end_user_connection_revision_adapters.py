@@ -8,6 +8,7 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.revision import (
     ConnectionContractSnapshot,
+    ConnectionProviderMetadata,
     ConnectionRevisionAcceptance,
     ConnectionRevisionSnapshots,
     ProviderContractSnapshot,
@@ -16,6 +17,8 @@ from services.workflow.tool_credentials import get_tool_authorization_requiremen
 
 
 class PluginIdentifiers(Protocol):
+    def provider_metadata(self, tenant_id: str, provider: str) -> ConnectionProviderMetadata: ...
+
     def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str: ...
 
     def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool: ...
@@ -26,7 +29,9 @@ class PluginConnectionRevisions:
         self._providers = providers
         self._snapshots = snapshots
 
-    def snapshot(self, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> ConnectionContractSnapshot:
+    def _snapshot(
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
+    ) -> tuple[ConnectionContractSnapshot, tuple[ConnectionProviderMetadata, ...]]:
         requirements = get_tool_authorization_requirements(graph)
         providers: dict[str, set[OAuthClientSource]] = {}
         for item in requirements:
@@ -35,33 +40,36 @@ class PluginConnectionRevisions:
                 sources.add(
                     OAuthClientSource.WORKSPACE if item.oauth_client_type == "custom" else OAuthClientSource.PLATFORM
                 )
-        return ConnectionContractSnapshot(
+        metadata = tuple(self._providers.provider_metadata(tenant_id, provider) for provider in sorted(providers))
+        snapshot = ConnectionContractSnapshot(
             tenant_id=tenant_id,
             app_id=app_id,
             providers=tuple(
                 ProviderContractSnapshot(
-                    provider=provider,
-                    plugin_unique_identifier=self._providers.plugin_unique_identifier(tenant_id, provider),
+                    provider=item.provider,
+                    plugin_unique_identifier=item.plugin_unique_identifier,
                     oauth_clients=tuple(
-                        self._snapshots.oauth_client_snapshot(tenant_id, provider, source) for source in sorted(sources)
+                        self._snapshots.oauth_client_snapshot(tenant_id, item.provider, source)
+                        for source in sorted(providers[item.provider])
                     ),
                 )
-                for provider, sources in sorted(providers.items())
+                for item in metadata
             ),
             requirements=tuple(requirements),
         )
+        return snapshot, metadata
 
     def resolve(
         self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
-    ) -> tuple[str, tuple[ProviderContractSnapshot, ...]]:
-        snapshot = self.snapshot(tenant_id, app_id, graph)
-        return self._snapshots.save_revision(snapshot), snapshot.providers
+    ) -> tuple[str, tuple[ConnectionProviderMetadata, ...]]:
+        snapshot, metadata = self._snapshot(tenant_id, app_id, graph)
+        return self._snapshots.save_revision(snapshot), metadata
 
     def require(self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str) -> str:
         previous = self._snapshots.get_revision(tenant_id, app_id, revision)
         if previous is None:
             raise ConnectionRevisionChangedError()
-        current = self.snapshot(tenant_id, app_id, graph)
+        current, _ = self._snapshot(tenant_id, app_id, graph)
         canonical = self._snapshots.save_revision(current)
         if revision == canonical:
             return canonical
