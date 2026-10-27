@@ -43,7 +43,7 @@ export function createContactRecipientOptionProvider(
   const searchPage = async (keyword: string, page: number) => {
     if (!workspaceId) return { data: [], page, hasMore: false }
     const input = { query: { keyword: keyword.trim(), page, limit: 20 } }
-    const response = await queryClient.fetchQuery(
+    const response = await queryClient.query(
       contactOptions.get.queryOptions({
         input,
         queryKey: [...contactOptions.get.queryKey({ input }), { workspaceId }],
@@ -65,7 +65,7 @@ export function createContactRecipientOptionProvider(
     async resolve({ contact_ids }) {
       if (!workspaceId || !contact_ids.length) return []
       const input = { query: { contact_ids: [...new Set(contact_ids)].sort() } }
-      const response = await queryClient.fetchQuery(
+      const response = await queryClient.query(
         contactOptions.batch.get.queryOptions({
           input,
           queryKey: [...contactOptions.batch.get.queryKey({ input }), { workspaceId }],

@@ -5751,11 +5751,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/if-else/components/condition-files-list-value.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4

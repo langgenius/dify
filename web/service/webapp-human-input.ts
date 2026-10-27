@@ -24,6 +24,7 @@ const formClient: JsonifiedClient<ContractRouterClient<typeof formContract, { si
         const path = url.pathname.slice(prefix.length)
         url.pathname = prefix + getWebAppPublicApiPath(resolveWebAppAddress(), path)
         const normalizedRequest = url.href === input.url ? input : new Request(url, input)
+        // oxlint-disable-next-line typescript/no-deprecated -- The generated public form client needs the Web App transport's passport scope and authorization recovery.
         return request<Response>(url.href, init, {
           fetchCompat: true,
           request: normalizedRequest,

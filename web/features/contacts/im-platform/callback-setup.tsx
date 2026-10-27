@@ -106,7 +106,7 @@ export function ContactImCallbackSetup({
           {t(($) => $['imPlatform.bindingDialog.viewSetupGuide'])}
           <span aria-hidden className="i-ri-external-link-line size-3" />
         </a>
-        <div className="ml-auto flex gap-2">
+        <div className="ms-auto flex gap-2">
           <Button className="min-w-18" onClick={onBack}>
             {t(($) => $['imPlatform.bindingDialog.back'])}
           </Button>

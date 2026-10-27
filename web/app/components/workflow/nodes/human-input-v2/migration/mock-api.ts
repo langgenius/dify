@@ -9,14 +9,12 @@ export function createMockHumanInputMigrationApi(
   return {
     async migrate(request) {
       const resolverSnapshot = await getResolverSnapshot()
-      const nodes = request.nodes.map(
-        ({ node_id, node_data }, index): Node => ({
-          id: node_id,
-          type: 'custom',
-          position: { x: 0, y: index },
-          data: cloneDeep(node_data),
-        }),
-      )
+      const nodes = request.nodes.map(({ node_id, node_data }, index): Node => ({
+        id: node_id,
+        type: 'custom',
+        position: { x: 0, y: index },
+        data: cloneDeep(node_data),
+      }))
       const plan = createHumanInputV2MigrationPlan({ nodes, edges: [] }, resolverSnapshot)
 
       if (plan.status === 'blocked') return plan

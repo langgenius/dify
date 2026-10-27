@@ -1,7 +1,9 @@
+// oxlint-disable-next-line no-restricted-imports -- Keep subscription handlers tied to the SSE transport's callbacks and WebApp authentication options.
+import type { IOtherOptions } from '@/service/base'
 // oxlint-disable-next-line no-restricted-imports -- Workflow continuation is an existing SSE transport, not a generated JSON API.
 import { sseGet } from '@/service/base'
 
-export type WorkflowEventsHandlers = Parameters<typeof sseGet>[2]
+export type WorkflowEventsHandlers = IOtherOptions
 
 export const createWorkflowEventsSubscription = ({ onAbort }: { onAbort?: () => void } = {}) => {
   let workflowRunId: string | null = null
@@ -112,6 +114,7 @@ export const createWorkflowEventsSubscription = ({ onAbort }: { onAbort?: () => 
         onDisconnected()
       },
     }
+    // oxlint-disable-next-line typescript/no-deprecated -- Generated events contracts return a complete string and omit the pause/snapshot query; this subscription needs incremental SSE with WebApp passport auth and abort control.
     void sseGet(
       `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`,
       {},

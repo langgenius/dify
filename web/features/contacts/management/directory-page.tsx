@@ -170,7 +170,7 @@ function DirectoryState({
       </span>
       <h2 className="mt-3 system-md-semibold text-text-secondary">{title}</h2>
       <p className="mt-1 max-w-120 system-sm-regular text-text-tertiary">{description}</p>
-      {action && <div className="mt-3">{action}</div>}
+      {Boolean(action) && <div className="mt-3">{action}</div>}
     </div>
   )
 }

@@ -41,7 +41,7 @@ export function ContactImProviderCard(props: ContactImProviderCardProps) {
     <div
       role="group"
       aria-label={provider.displayName}
-      className="flex min-h-16 w-full items-center gap-3 rounded-[15px] bg-third-party-model-bg-default py-3 pr-4 pl-3 inset-ring-[0.5px] inset-ring-components-panel-border"
+      className="flex min-h-16 w-full items-center gap-3 rounded-[15px] bg-third-party-model-bg-default py-3 ps-3 pe-4 inset-ring-[0.5px] inset-ring-components-panel-border"
     >
       <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg backdrop-blur-[4px]">
         {provider.provider === ContactImProvider.Email ? (
@@ -58,7 +58,7 @@ export function ContactImProviderCard(props: ContactImProviderCardProps) {
       </div>
       {props.mode === 'configured' ? (
         <div className="flex shrink-0 items-center gap-2">
-          <span aria-hidden="true" className="ml-1 h-3 w-px bg-divider-regular" />
+          <span aria-hidden="true" className="ms-1 h-3 w-px bg-divider-regular" />
           <div className="flex items-center gap-1">
             <IconButton
               aria-label={props.configureAriaLabel}

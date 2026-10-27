@@ -3,11 +3,13 @@
 import type { ContactImIntegrationView, ContactImProviderDefinition } from './types'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -373,18 +375,18 @@ export function ContactsImPlatformManagementSurface() {
         }}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="space-y-2 p-6">
-            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['imPlatform.replacement.title'], {
                 current: activeImProvider?.displayName ?? '',
                 next: replacementProvider?.displayName ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['imPlatform.replacement.description'])}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogFooter className="pt-0">
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -409,25 +411,27 @@ export function ContactsImPlatformManagementSurface() {
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={handleDeleteDialogOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="space-y-2 p-6">
-            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['imPlatform.delete.title'], {
                 provider: deleteTarget?.displayName ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['imPlatform.delete.description'])}
             </AlertDialogDescription>
-            {disconnectProvider.isError && (
+          </AlertDialogHeader>
+          {disconnectProvider.isError && (
+            <AlertDialogBody>
               <div role="alert" className="system-sm-regular text-text-destructive">
                 {disconnectProvider.error instanceof ContactImRepositoryError &&
                 disconnectProvider.error.code === ContactImRepositoryErrorCode.ConfigurationUpdated
                   ? t(($) => $['imPlatform.configurationUpdated'])
                   : t(($) => $['imPlatform.delete.failed'])}
               </div>
-            )}
-          </div>
-          <AlertDialogFooter className="pt-0">
+            </AlertDialogBody>
+          )}
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={disconnectProvider.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>

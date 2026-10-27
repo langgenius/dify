@@ -129,7 +129,7 @@ export function ContactImDirectorySyncSection({
         <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
           {t(($) => $['imPlatform.sync.startFailed'])}
           {activeSyncQuery.isError && (
-            <Button className="ml-3" onClick={() => activeSyncQuery.refetch()} size="small">
+            <Button className="ms-3" onClick={() => activeSyncQuery.refetch()} size="small">
               {t(($) => $['imPlatform.action.retry'])}
             </Button>
           )}

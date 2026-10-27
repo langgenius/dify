@@ -108,7 +108,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
         className={cn(
           'px-4 py-2',
           isExpandFormContent &&
-            'fixed top-61 right-1 bottom-2 z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
+            'fixed inset-e-1 top-61 bottom-2 z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
         )}
         style={{ width: isExpandFormContent ? nodePanelWidth : '100%' }}
       >

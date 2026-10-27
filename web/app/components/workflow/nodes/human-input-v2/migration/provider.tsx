@@ -187,7 +187,7 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
     <HumanInputMigrationContext value={contextValue}>
       {children}
       {policy.hasLegacyHumanInput && (
-        <div className="pointer-events-none absolute top-1 right-1 left-16 z-20">
+        <div className="pointer-events-none absolute inset-s-16 inset-e-1 top-1 z-20">
           <HumanInputMigrationBanner
             canEdit={canEdit}
             helpLink={helpLink}

@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -29,14 +30,14 @@ export function MemberInviteContactUpgradeDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['memberInviteUpgrade.title'], { count: conflictCount })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
+          <AlertDialogDescription>
             {t(($) => $['memberInviteUpgrade.description'], { count: conflictCount })}
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             {t(($) => $['action.cancel'])}

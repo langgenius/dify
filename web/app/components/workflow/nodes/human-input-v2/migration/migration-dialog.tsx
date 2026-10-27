@@ -41,23 +41,27 @@ const HumanInputMigrationDialog = ({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="w-[480px] max-w-[calc(100vw-2rem)]">
         <div className="px-6 pt-6">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogTitle>
             {t(($) => $['nodes.humanInputMigration.dialog.title'], {
               ns: 'workflow',
               count: nodeCount,
             })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="mt-3 system-sm-regular text-text-secondary">
-            <span>
-              {t(($) => $['nodes.humanInputMigration.dialog.description'], { ns: 'workflow' })}{' '}
-            </span>
-            <span className="system-sm-medium">
-              {t(($) => $['nodes.humanInputMigration.dialog.review'], { ns: 'workflow' })}
-            </span>
-            <span className="mt-3 block">
-              {t(($) => $['nodes.humanInputMigration.dialog.draftNotice'], { ns: 'workflow' })}
-            </span>
-          </AlertDialogDescription>
+          <div className="mt-3">
+            <AlertDialogDescription>
+              <span>
+                {t(($) => $['nodes.humanInputMigration.dialog.description'], {
+                  ns: 'workflow',
+                })}{' '}
+              </span>
+              <span className="font-medium">
+                {t(($) => $['nodes.humanInputMigration.dialog.review'], { ns: 'workflow' })}
+              </span>
+              <span className="mt-3 block">
+                {t(($) => $['nodes.humanInputMigration.dialog.draftNotice'], { ns: 'workflow' })}
+              </span>
+            </AlertDialogDescription>
+          </div>
           {error && (
             <div
               role="alert"

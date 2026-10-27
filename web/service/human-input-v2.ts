@@ -22,6 +22,7 @@ export const humanInputV2FormClient: JsonifiedClient<
   new OpenAPILink(humanInputV2FormContract, {
     url: () => new URL(PUBLIC_API_PREFIX, window.location.origin),
     fetch: (request, init) =>
+      // oxlint-disable-next-line no-restricted-properties -- Public token-authenticated form contracts must omit Console cookies and bypass its session recovery transport.
       globalThis.fetch(request, {
         ...init,
         credentials: 'omit',
