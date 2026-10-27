@@ -1,44 +1,41 @@
-"""Persist an account's conversations within its admitted installation."""
+"""Persist conversations within their end-user or installed-account owner chain."""
 
+from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
-from typing import cast, override
+from typing import cast
 
 from sqlalchemy import Select, exists, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.enums import ConversationFromSource, CreatorUserRole
-from models.model import App, Conversation, InstalledApp, Message
+from models.model import App, Conversation, EndUser, InstalledApp, Message
 from models.web import PinnedConversation
 from repositories.conversation_lifecycle import retire_conversation
-from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
-from services.errors.message import MessageNotExistsError
-from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_conversation_service import (
+from services.entities.conversation_entities import (
     ConversationDeletion,
     ConversationInputValue,
     ConversationNameSource,
     ConversationPage,
     ConversationRecord,
-    InstalledAppConversationStore,
+    ConversationRef,
+    InstalledAppConversationRef,
 )
+from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
+from services.errors.message import MessageNotExistsError
+from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 
 
-class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore):
+class ConversationRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
 
-    @override
-    def get(self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str) -> ConversationRecord:
+    def get(self, *, ref: ConversationRef) -> ConversationRecord:
         with self._session_factory() as session:
-            app = self._get_app(session=session, installed_app=installed_app)
-            conversation = self._get_conversation(
-                session=session, app_id=app.id, account_id=account_id, conversation_id=conversation_id
-            )
+            _, conversation = self._resolve(session=session, ref=ref)
             return self._to_record(conversation=conversation, session=session)
 
-    @override
     def get_page(
         self, *, installed_app: InstalledAppRef, account_id: str, last_id: str | None, limit: int, pinned: bool | None
     ) -> ConversationPage:
@@ -81,43 +78,24 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
                 ),
             )
 
-    @override
-    def get_name_source(
-        self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str
-    ) -> ConversationNameSource:
+    def get_name_source(self, *, ref: ConversationRef) -> ConversationNameSource:
         with self._session_factory() as session:
-            app = self._get_app(session=session, installed_app=installed_app)
-            conversation = self._get_conversation(
-                session=session, app_id=app.id, account_id=account_id, conversation_id=conversation_id
-            )
-            message = session.scalar(
-                select(Message)
+            app, conversation = self._resolve(session=session, ref=ref)
+            query = session.scalar(
+                select(Message.query)
                 .where(Message.app_id == app.id, Message.conversation_id == conversation.id)
                 .order_by(Message.created_at.asc())
                 .limit(1)
             )
-            if message is None:
-                raise MessageNotExistsError(f"Conversation {conversation_id} has no message to generate a name from.")
-            return ConversationNameSource(
-                tenant_id=app.tenant_id,
-                query=message.query,
-            )
+            if query is None:
+                raise MessageNotExistsError(
+                    f"Conversation {ref.conversation_id} has no message to generate a name from."
+                )
+            return ConversationNameSource(tenant_id=app.tenant_id, query=query)
 
-    @override
-    def rename(
-        self,
-        *,
-        installed_app: InstalledAppRef,
-        account_id: str,
-        conversation_id: str,
-        name: str,
-        updated_at: datetime | None,
-    ) -> ConversationRecord:
+    def rename(self, *, ref: ConversationRef, name: str, updated_at: datetime | None) -> ConversationRecord:
         with self._session_factory.begin() as session:
-            app = self._get_app(session=session, installed_app=installed_app)
-            conversation = self._get_conversation(
-                session=session, app_id=app.id, account_id=account_id, conversation_id=conversation_id
-            )
+            _, conversation = self._resolve(session=session, ref=ref)
             record = self._to_record(conversation=conversation, session=session)
             conversation.name = name
             if updated_at is not None:
@@ -126,7 +104,6 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
             renamed = replace(record, name=conversation.name, updated_at=conversation.updated_at)
         return renamed
 
-    @override
     def delete(self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str) -> ConversationDeletion:
         with self._session_factory.begin() as session:
             app = self._get_app(session=session, installed_app=installed_app)
@@ -140,7 +117,6 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
                 retired_workspace_ids=retired_workspace_ids,
             )
 
-    @override
     def set_pinned(
         self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str, is_pinned: bool
     ) -> None:
@@ -172,6 +148,38 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
                 )
             elif pin is not None:
                 session.delete(pin)
+
+    @classmethod
+    def _resolve(cls, *, session: Session, ref: ConversationRef) -> tuple[App, Conversation]:
+        if isinstance(ref, InstalledAppConversationRef):
+            app = cls._get_app(session=session, installed_app=ref.installed_app)
+            conversation = cls._get_conversation(
+                session=session, app_id=app.id, account_id=ref.account_id, conversation_id=ref.conversation_id
+            )
+            return app, conversation
+
+        result = session.execute(
+            select(App, Conversation)
+            .join(Conversation, Conversation.app_id == App.id)
+            .join(
+                EndUser,
+                (EndUser.id == ref.end_user_id) & (EndUser.app_id == App.id) & (EndUser.tenant_id == App.tenant_id),
+            )
+            .where(
+                App.id == ref.app_id,
+                App.tenant_id == ref.tenant_id,
+                Conversation.id == ref.conversation_id,
+                Conversation.from_source == ConversationFromSource.API,
+                Conversation.from_end_user_id == ref.end_user_id,
+                Conversation.from_account_id.is_(None),
+                Conversation.is_deleted.is_(False),
+            )
+        ).one_or_none()
+        if result is None:
+            raise ConversationNotExistsError(
+                f"Conversation {ref.conversation_id} does not belong to this end user and app."
+            )
+        return result[0], result[1]
 
     @staticmethod
     def _get_app(*, session: Session, installed_app: InstalledAppRef) -> App:
@@ -214,7 +222,7 @@ class SQLAlchemyInstalledAppConversationRepository(InstalledAppConversationStore
         return ConversationRecord(
             id=conversation.id,
             name=conversation.name,
-            inputs=cast(dict[str, ConversationInputValue], conversation.inputs_with_session(session=session)),
+            inputs=deepcopy(cast(dict[str, ConversationInputValue], conversation.inputs_with_session(session=session))),
             status=conversation.status,
             introduction=conversation.introduction,
             created_at=conversation.created_at,

@@ -35,6 +35,13 @@ class ServiceApiEndUserContext(AppRequestContext):
     end_user_id: str
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ServiceApiAccountRequestContext(AppRequestContext):
+    """App scope and its workspace owner admitted for account-backed Service APIs."""
+
+    account_id: str
+
+
 class AccountRequestContext(NamedTuple):
     """Stable identity for account-scoped use cases that do not require a workspace."""
 
