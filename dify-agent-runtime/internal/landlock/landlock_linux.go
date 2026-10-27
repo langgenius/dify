@@ -8,11 +8,11 @@ import (
 	golandlock "github.com/landlock-lsm/go-landlock/landlock"
 )
 
-// Restrict applies Landlock V1 filesystem restrictions for the current process.
+// Restrict applies Landlock V2 filesystem restrictions for the current process.
 func Restrict(cfg *Config) error {
 	rules := buildRules(cfg)
 
-	if err := golandlock.V1.RestrictPaths(rules...); err != nil {
+	if err := golandlock.V2.RestrictPaths(rules...); err != nil {
 		return err
 	}
 	return nil
@@ -25,18 +25,20 @@ func buildRules(cfg *Config) []golandlock.Rule {
 		roPaths = append(roPaths, cfg.JobDir)
 	}
 
-	// RW dirs: always include HOME and Cwd, plus configured extra paths.
 	rwDirs := []string{cfg.Home}
 	if cfg.Cwd != "" && cfg.Cwd != cfg.Home {
 		rwDirs = append(rwDirs, cfg.Cwd)
 	}
-	rwDirs = append(rwDirs, filterExisting(cfg.RWPaths)...)
+	extraRWDirs := filterExisting(cfg.RWPaths)
 
 	// Device files with RW access.
 	rwDevFiles := filterExisting(cfg.RWDevPaths)
 
 	rules := []golandlock.Rule{
-		golandlock.RWDirs(rwDirs...),
+		golandlock.RWDirs(rwDirs...).WithRefer(),
+	}
+	if len(extraRWDirs) > 0 {
+		rules = append(rules, golandlock.RWDirs(extraRWDirs...))
 	}
 	if len(roPaths) > 0 {
 		rules = append(rules, golandlock.RODirs(roPaths...))

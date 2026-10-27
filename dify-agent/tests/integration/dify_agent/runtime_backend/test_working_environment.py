@@ -21,12 +21,13 @@ from dify_agent.runtime_backend.e2b import (
     E2BHomeSnapshotBackend,
     E2BSDKControlPlane,
 )
-from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
 from dify_agent.runtime_backend.openshell import (
     OpenShellExecutionBindingBackend,
     OpenShellHomeSnapshotBackend,
     OpenShellSDKControlPlane,
 )
+from dify_agent.runtime_backend.shellctl import run_shellctl_control_command
 from dify_agent.runtime.command_runner import execute_complete_with_commands
 
 pytestmark = pytest.mark.integration
@@ -116,6 +117,141 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
                         destroy_workspace=index == len(allocations) - 1,
                     )
                 )
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        if cleanup_errors and not primary_error:
+            raise cleanup_errors[0]
+
+
+@pytest.mark.anyio
+async def test_local_home_checkpoint_preserves_cross_directory_hard_links() -> None:
+    endpoint = _required_env("DIFY_AGENT_TEST_LOCAL_SHELLCTL_ENDPOINT", "real Local shellctl")
+    token = os.environ.get("DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN", "")
+    marker = uuid.uuid4().hex
+    workspace_marker = f"workspace-only-{marker}.txt"
+    content = "hard-linked-home"
+    bindings = LocalExecutionBindingBackend(endpoint=endpoint, auth_token=token)
+    snapshots = LocalHomeSnapshotBackend(endpoint=endpoint, auth_token=token)
+    allocations = []
+    active_leases = []
+    checkpoint_ref: str | None = None
+    control_lease = None
+    inspect_home = "\n".join(
+        [
+            "set -eu",
+            f"test ! -e {shlex.quote(workspace_marker)}",
+            "stat -c '%d:%i' a/file b/file",
+            "cat a/file b/file",
+        ]
+    )
+    try:
+        source = await bindings.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="integration-tenant",
+                agent_id="integration-agent",
+                binding_id=f"source-{marker}",
+                workspace_id=f"source-{marker}",
+                existing_workspace_ref=None,
+                home_snapshot_ref=None,
+            )
+        )
+        allocations.append(source)
+        source_lease = await bindings.acquire(source.binding_ref)
+        active_leases.append(source_lease)
+        await _run(
+            source_lease,
+            f"set -eu\nmkdir -p a b\nprintf {shlex.quote(content)} > a/file\nln a/file b/file",
+            cwd=source_lease.layout.home_dir,
+        )
+        await _run(
+            source_lease,
+            f"printf workspace-only > {shlex.quote(workspace_marker)}",
+            cwd=source_lease.layout.workspace_dir,
+        )
+        source_state = (await _run(source_lease, inspect_home, cwd=source_lease.layout.home_dir)).splitlines()
+        assert len(source_state) == 3
+        assert source_state[0] == source_state[1]
+        assert source_state[2] == content * 2
+
+        checkpoint_ref = await snapshots.create_from_runtime(
+            spec=HomeSnapshotCreateSpec(
+                tenant_id="integration-tenant",
+                agent_id="integration-agent",
+                home_snapshot_id=f"checkpoint-{marker}",
+            ),
+            source=source_lease,
+        )
+        # Snapshot inspection uses the trusted control path, never the source data-plane lease.
+        control_lease = snapshots._control_lease(checkpoint_ref)
+        snapshot_dir = shlex.quote(snapshots._snapshot_dir(checkpoint_ref))
+        snapshot_result = await run_shellctl_control_command(
+            control_lease.commands,
+            f"set -eu\ncd {snapshot_dir}\n{inspect_home}",
+        )
+        assert snapshot_result.exit_code == 0, snapshot_result.output
+        assert snapshot_result.output_complete
+        snapshot_state = snapshot_result.output.splitlines()
+        assert len(snapshot_state) == 3
+        assert snapshot_state[0] == snapshot_state[1]
+        assert snapshot_state[0] != source_state[0]
+        assert snapshot_state[2] == content * 2
+        await control_lease.close()
+        control_lease = None
+        await bindings.release(source_lease)
+        active_leases.remove(source_lease)
+
+        restored = await bindings.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="integration-tenant",
+                agent_id="integration-agent",
+                binding_id=f"restored-{marker}",
+                workspace_id=f"restored-{marker}",
+                existing_workspace_ref=None,
+                home_snapshot_ref=checkpoint_ref,
+            )
+        )
+        allocations.append(restored)
+        restored_lease = await bindings.acquire(restored.binding_ref)
+        active_leases.append(restored_lease)
+        restored_state = (await _run(restored_lease, inspect_home, cwd=restored_lease.layout.home_dir)).splitlines()
+        assert len(restored_state) == 3
+        assert restored_state[0] == restored_state[1]
+        assert restored_state[0] not in (source_state[0], snapshot_state[0])
+        assert restored_state[2] == content * 2
+        await _run(
+            restored_lease,
+            f"test ! -e {shlex.quote(workspace_marker)}",
+            cwd=restored_lease.layout.workspace_dir,
+        )
+        await bindings.release(restored_lease)
+        active_leases.remove(restored_lease)
+    finally:
+        primary_error = sys.exc_info()[0] is not None
+        cleanup_errors: list[BaseException] = []
+        if control_lease is not None:
+            try:
+                await control_lease.close()
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        for lease in active_leases:
+            try:
+                await bindings.release(lease)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        for allocation in reversed(allocations):
+            try:
+                await bindings.destroy_binding(
+                    ExecutionBindingDestroySpec(
+                        binding_ref=allocation.binding_ref,
+                        workspace_ref=allocation.workspace_ref,
+                        destroy_workspace=True,
+                    )
+                )
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        if checkpoint_ref is not None:
+            try:
+                await snapshots.delete(checkpoint_ref)
             except BaseException as exc:
                 cleanup_errors.append(exc)
         if cleanup_errors and not primary_error:

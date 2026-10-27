@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import cast
+from typing import cast, override
 
+import anyio
 import pytest
 
 from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellCommandStatus, ShellExecutionMode
@@ -44,6 +45,7 @@ class _FakeCommands:
     delete_error: Exception | None = None
     delete_calls: list[tuple[str, bool]] = field(default_factory=list)
     run_modes: list[ShellExecutionMode] = field(default_factory=list)
+    run_scripts: list[str] = field(default_factory=list)
 
     async def run(
         self,
@@ -54,8 +56,9 @@ class _FakeCommands:
         timeout: float,
         mode: ShellExecutionMode = "pty",
     ) -> ShellCommandResult:
-        del script, cwd, env, timeout
+        del cwd, env, timeout
         self.run_modes.append(mode)
+        self.run_scripts.append(script)
         return self.initial
 
     async def wait(self, job_id: str, *, offset: int, timeout: float) -> ShellCommandResult:
@@ -87,6 +90,40 @@ class _FakeCommands:
         self.delete_calls.append((job_id, force))
         if self.delete_error is not None:
             raise self.delete_error
+
+
+class _SubprocessCommands(_FakeCommands):
+    """Execute the submitted script with real /bin/sh, exposing only stdout."""
+
+    @override
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        timeout: float,
+        mode: ShellExecutionMode = "pty",
+    ) -> ShellCommandResult:
+        assert mode == "stdio"
+        self.run_modes.append(mode)
+        self.run_scripts.append(script)
+        with anyio.fail_after(timeout):
+            completed = await anyio.run_process(
+                ["/bin/sh", "-c", script],
+                cwd=cwd,
+                env=env,
+                check=False,
+            )
+        return ShellCommandResult(
+            job_id="job-1",
+            status="exited",
+            done=True,
+            exit_code=completed.returncode,
+            output=completed.stdout.decode("utf-8"),
+            offset=len(completed.stdout),
+            truncated=False,
+        )
 
 
 def _result(*, done: bool = True) -> ShellCommandResult:
@@ -163,6 +200,24 @@ async def test_owned_transport_closes_when_client_construction_fails() -> None:
 
 
 @pytest.mark.anyio
+async def test_control_command_captures_real_shell_stderr_and_deletes_failed_job() -> None:
+    commands = _SubprocessCommands(initial=_result())
+    script = "set -eu\nprintf 'control command failed\\n' >&2\nexit 7"
+
+    result = await run_shellctl_control_command(commands, script)
+
+    assert result.exit_code == 7
+    assert result.output == "control command failed\n"
+    assert result.status == "exited"
+    assert result.done
+    assert result.output_complete
+    assert result.incomplete_reason is None
+    assert result.offset == len(result.output.encode("utf-8"))
+    assert commands.run_modes == ["stdio"]
+    assert commands.delete_calls == [("job-1", True)]
+
+
+@pytest.mark.anyio
 async def test_control_command_success_is_preserved_when_delete_fails(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -172,6 +227,7 @@ async def test_control_command_success_is_preserved_when_delete_fails(
         result = await run_shellctl_control_command(commands, "true")
 
     assert result.output == "ok"
+    assert commands.run_scripts == ["exec 2>&1\ntrue"]
     assert commands.run_modes == ["stdio"]
     assert commands.delete_calls == [("job-1", True)]
     assert "delete failed" in caplog.text
@@ -192,5 +248,6 @@ async def test_control_command_error_is_preserved_when_delete_also_fails(
             _ = await run_shellctl_control_command(commands, "false")
 
     assert commands.delete_calls == [("job-1", True)]
+    assert commands.run_scripts == ["exec 2>&1\nfalse"]
     assert commands.run_modes == ["stdio"]
     assert "delete failed" in caplog.text
