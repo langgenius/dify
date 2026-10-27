@@ -23,6 +23,7 @@ export type Scenario =
   | 'import-failed'
   | 'no-device-flow'
   | 'bad-verification-uri'
+  | 'device-pending'
   | 'legacy-token-route'
   | 'legacy-token-route-html-404'
 

@@ -17,6 +17,8 @@ import { ACCOUNT, APPS, DSL_YAML, SESSIONS, WORKSPACES } from './scenarios.js'
 export type DifyMockOptions = {
   scenario?: Scenario
   port?: number
+  /** Device polls answered authorization_pending before the scenario's own answer applies. */
+  pendingPolls?: number
 }
 
 export type LastRequest = Readonly<{
@@ -49,6 +51,8 @@ export type DifyMock = {
   lastDeviceCodeBody: Record<string, unknown> | null
   /** Runs before each device-token poll is answered: lets a test act while a resume waits. */
   onDeviceTokenPoll: (hook: () => void) => void
+  /** Make the next `count` device polls answer authorization_pending, on either token route. */
+  setPendingPolls: (count: number) => void
 }
 
 const TOKEN_RE = /^Bearer\s+dfo[ae]_[\w-]+$/
@@ -101,6 +105,16 @@ const LEGACY_TOKEN_ROUTE_SCENARIOS = new Set<Scenario>([
   'legacy-token-route',
   'legacy-token-route-html-404',
 ])
+
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' }
+const PENDING_CODE = 'authorization_pending'
+
+function consumePendingPoll(scenario: Scenario, state?: MockState): boolean {
+  if (scenario === 'device-pending') return true
+  if (!state || state.pendingPolls <= 0) return false
+  state.pendingPolls -= 1
+  return true
+}
 
 const DEVICE_POLL_ERRORS: Partial<Record<Scenario, { code: string; description: string }>> = {
   denied: { code: 'access_denied', description: 'user rejected' },
@@ -320,6 +334,7 @@ export type MockState = {
   sessionRevokeCount: number
   lastDeviceCodeBody: Record<string, unknown> | null
   beforeDeviceToken?: () => void
+  pendingPolls: number
 }
 
 async function readMultipartRunBody(
@@ -868,6 +883,11 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   app.post('/openapi/v1/oauth/device/token', async (c) => {
     state?.beforeDeviceToken?.()
     const scenario = getScenario()
+    if (consumePendingPoll(scenario, state))
+      return c.json(
+        { error: PENDING_CODE, error_description: 'authorization pending' },
+        { status: 400 },
+      )
     const error = DEVICE_POLL_ERRORS[scenario]
     if (error)
       return c.json({ error: error.code, error_description: error.description }, { status: 400 })
@@ -882,19 +902,24 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'legacy-token-route-html-404') return c.html(LEGACY_HTML_404, 404)
     const form = await readTokenForm(c.req)
     if (form.grant_type !== DEVICE_GRANT_TYPE)
-      return c.json({ error: 'unsupported_grant_type' }, { status: 400 })
+      return c.json({ error: 'unsupported_grant_type' }, { status: 400, headers: NO_STORE_HEADERS })
     if (form.client_id !== undefined && form.client_id !== DEVICE_CLIENT_ID) {
       return c.json(
         { error: 'invalid_client' },
-        { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="dify-openapi"' } },
+        {
+          status: 401,
+          headers: { ...NO_STORE_HEADERS, 'WWW-Authenticate': 'Basic realm="dify-openapi"' },
+        },
       )
     }
+    if (consumePendingPoll(scenario, state))
+      return c.json({ error: PENDING_CODE }, { status: 400, headers: NO_STORE_HEADERS })
     const error = DEVICE_POLL_ERRORS[scenario]
-    if (error) return c.json({ error: error.code }, { status: 400 })
+    if (error) return c.json({ error: error.code }, { status: 400, headers: NO_STORE_HEADERS })
     const { token, ...extras } = approvedDeviceGrant(scenario)
     return c.json(
       { access_token: token, token_type: 'Bearer', expires_in: TOKEN_EXPIRES_IN, ...extras },
-      { headers: { 'Cache-Control': 'no-store' } },
+      { headers: NO_STORE_HEADERS },
     )
   })
 
@@ -910,8 +935,7 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
     lastImportBody: null,
     lastRequest: null,
     requestCount: 0,
-    sessionRevokeCount: 0,
-    lastDeviceCodeBody: null,
+    pendingPolls: opts.pendingPolls ?? 0,
   }
   const app = buildApp(() => scenario, state)
   return new Promise((resolve, reject) => {
@@ -961,6 +985,9 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         },
         onDeviceTokenPoll(hook) {
           state.beforeDeviceToken = hook
+        },
+        setPendingPolls(count) {
+          state.pendingPolls = count
         },
       })
     })

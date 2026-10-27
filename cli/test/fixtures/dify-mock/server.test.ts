@@ -410,6 +410,78 @@ describe('dify-mock fixture server', () => {
       expect(body.verification_uri_complete).toBe(`${body.verification_uri}?user_code=ABCD-1234`)
     })
 
+    it('error responses carry Cache-Control: no-store', async () => {
+      mock.setScenario('denied')
+      expect((await poll()).headers.get('cache-control')).toBe('no-store')
+      expect(
+        (await poll({ device_code: 'devcode-1', client_id: 'other' })).headers.get('cache-control'),
+      ).toBe('no-store')
+    })
+
+    describe('pending polls', () => {
+      const legacyPoll = () =>
+        fetch(`${mock.url}/openapi/v1/oauth/device/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device_code: 'devcode-1' }),
+        })
+
+      it('scenario:device-pending answers 400 authorization_pending on both routes, every time', async () => {
+        mock.setScenario('device-pending')
+        for (const request of [poll, poll, legacyPoll]) {
+          const r = await request()
+          expect(r.status).toBe(400)
+          expect(await errorOf(r)).toBe('authorization_pending')
+        }
+        expect((await poll()).headers.get('cache-control')).toBe('no-store')
+      })
+
+      it('setPendingPolls answers pending N times, then approves', async () => {
+        mock.setPendingPolls(2)
+        expect(await errorOf(await poll())).toBe('authorization_pending')
+        expect(await errorOf(await poll())).toBe('authorization_pending')
+        expect((await poll()).status).toBe(200)
+      })
+
+      it('the pending count is shared by both routes', async () => {
+        mock.setPendingPolls(1)
+        expect(await errorOf(await legacyPoll())).toBe('authorization_pending')
+        expect((await legacyPoll()).status).toBe(200)
+      })
+
+      it('the pending count combines with a scenario, which applies afterwards', async () => {
+        mock.setScenario('denied')
+        mock.setPendingPolls(1)
+        expect(await errorOf(await poll())).toBe('authorization_pending')
+        expect(await errorOf(await poll())).toBe('access_denied')
+      })
+
+      it('the legacy 404 does not consume pending polls', async () => {
+        mock.setScenario('legacy-token-route')
+        mock.setPendingPolls(1)
+        expect((await poll()).status).toBe(404)
+        expect(await errorOf(await legacyPoll())).toBe('authorization_pending')
+        expect((await legacyPoll()).status).toBe(200)
+      })
+
+      it('startMock accepts pendingPolls', async () => {
+        const seeded = await startMock({ pendingPolls: 1 })
+        try {
+          const r = await fetch(`${seeded.url}/openapi/v1/oauth/token`, {
+            method: 'POST',
+            body: new URLSearchParams({
+              grant_type: GRANT,
+              device_code: 'd',
+              client_id: 'difyctl',
+            }),
+          })
+          expect(await errorOf(r)).toBe('authorization_pending')
+        } finally {
+          await seeded.stop()
+        }
+      })
+    })
+
     it('scenario:legacy-token-route answers a JSON 404 and omits verification_uri_complete', async () => {
       mock.setScenario('legacy-token-route')
       const r = await poll()
