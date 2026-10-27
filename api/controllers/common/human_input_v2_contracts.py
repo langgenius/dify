@@ -495,10 +495,6 @@ class CreateIMBindingResponse(ResponseModel):
     contact: HumanInputContact = Field(description="Contact snapshot after the IM identity is bound.")
 
 
-class DeleteIMBindingQuery(_RequestModel):
-    binding_id: IMBindingId = Field(description="IM binding to unbind.")
-
-
 class DeleteIMBindingResponse(ResponseModel):
     pass
 

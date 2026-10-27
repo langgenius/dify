@@ -112,6 +112,11 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
         return _default_binding_from_record(record) if record is not None else None
 
     @override
+    def get_default_for_contact(self, contact_id: ContactId) -> IMBinding | None:
+        record = self._get_default_for_contact(contact_id)
+        return _default_binding_from_record(record) if record is not None else None
+
+    @override
     def list_all(self) -> tuple[IMBinding, ...]:
         records = self._session.scalars(
             sa.select(HumanInputIMBinding)

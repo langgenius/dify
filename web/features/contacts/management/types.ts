@@ -45,7 +45,6 @@ export type RemoveContactIMBindingCommand = {
 
 export type UnbindContactIMBindingCommand = {
   contactId: string
-  bindingId: string
 }
 
 export type ContactView = HumanInputContact & {

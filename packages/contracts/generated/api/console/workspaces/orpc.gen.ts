@@ -35,7 +35,6 @@ import {
   zDeleteWorkspacesCurrentEndpointsByIdPath,
   zDeleteWorkspacesCurrentEndpointsByIdResponse,
   zDeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsPath,
-  zDeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsQuery,
   zDeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponse,
   zDeleteWorkspacesCurrentHumanInputContactsByContactIdImOverridePath,
   zDeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponse,
@@ -1310,33 +1309,28 @@ export const remove = {
 }
 
 /**
- * Delete an IM binding for a contact. Used for removing contact IM binding information. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
+ * Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
  */
 export const delete4 = oc
   .route({
     description:
-      'Delete an IM binding for a contact. Used for removing contact IM binding information. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.',
+      'Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteWorkspacesCurrentHumanInputContactsByContactIdImBindings',
     path: '/workspaces/current/human-input/contacts/{contact_id}/im-bindings',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      params: zDeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsPath,
-      query: zDeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsQuery,
-    }),
-  )
+  .input(z.object({ params: zDeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsPath }))
   .output(zDeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponse)
 
 /**
- * Set an IM binding for a contact, replacing the existing default binding when the identity changes. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
+ * Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
  */
 export const put2 = oc
   .route({
     description:
-      'Set an IM binding for a contact, replacing the existing default binding when the identity changes. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.',
+      'Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.',
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putWorkspacesCurrentHumanInputContactsByContactIdImBindings',

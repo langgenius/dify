@@ -24,7 +24,6 @@ from controllers.common.human_input_v2_contracts import (
     CreateIMBindingRequest,
     CreateIMBindingResponse,
     CreateIMSyncRunResponse,
-    DeleteIMBindingQuery,
     DeleteIMBindingResponse,
     ExternalContactCreateRequest,
     ExternalContactCreateResponse,
@@ -88,7 +87,6 @@ from core.human_input_v2.shared import (
     ContactId,
     DeploymentScope,
     DirectoryScope,
-    IMBindingId,
     IMIdentityId,
     TenantId,
     WorkspaceScope,
@@ -913,9 +911,9 @@ class WorkspaceContactIMBindingsApi(Resource):
     @console_ns.response(404, "IM binding not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.doc(
-        params=query_params_from_model(DeleteIMBindingQuery),
         description=(
-            "Delete an IM binding for a contact. Used for removing contact IM binding information. "
+            "Delete the current default IM binding for the contact identified by the path. "
+            "Workspace IM overrides are not modified. "
             "This endpoint is not used for resetting workspace IM override. For that purpose, use "
             "WorkspaceContactIMOverrideApi.delete instead."
         ),
@@ -928,12 +926,10 @@ class WorkspaceContactIMBindingsApi(Resource):
     def delete(self, tenant_id: str, contact_id: UUID):
         if FeatureService.is_im_binding_centrally_managed():
             raise IMBindingReadOnlyError()
-        query = query_params_from_request(DeleteIMBindingQuery)
         try:
             build_im_contact_sync_application().binding_service.delete_organization_binding(
                 organization_scope=_workspace_scope(tenant_id),
                 contact_id=ContactId(str(contact_id)),
-                binding_id=IMBindingId(query.binding_id),
             )
         except (IMBindingCommandError, IMWriteUnavailableError) as error:
             return _im_application_error_response(error)

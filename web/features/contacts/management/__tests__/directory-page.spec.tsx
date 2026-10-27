@@ -1091,7 +1091,7 @@ describe('Contact IM binding controls', () => {
     expect(picker).toHaveTextContent(identity.provider_user_id)
   })
 
-  it('unbinds the selected binding and refreshes contact details after a recoverable failure', async () => {
+  it('unbinds the contact default binding and refreshes contact details after a recoverable failure', async () => {
     const { scenario, repository, contact } = setup('organization', false)
     vi.mocked(repository.unbindIMBinding).mockRejectedValueOnce(
       new ContactIMRequestError('im_write_unavailable'),
@@ -1107,7 +1107,6 @@ describe('Contact IM binding controls', () => {
     expect(within(details).queryByText('contacts.imBinding.notBound')).not.toBeInTheDocument()
     expect(repository.unbindIMBinding).toHaveBeenCalledWith({
       contactId: contact.id,
-      bindingId: contact.im_bindings[0]!.id,
     })
     await user.click(unbind)
 
@@ -1118,7 +1117,7 @@ describe('Contact IM binding controls', () => {
     expect(repository.setIMBinding).not.toHaveBeenCalled()
   })
 
-  it('submits a legacy binding ID without resetting its override when the server rejects unbinding', async () => {
+  it('submits the contact ID without resetting a legacy override when the server rejects unbinding', async () => {
     const { scenario, repository, contact } = setup('workspace', false)
     vi.mocked(repository.unbindIMBinding).mockRejectedValue(
       new ContactIMRequestError('im_binding_not_found'),
@@ -1132,7 +1131,6 @@ describe('Contact IM binding controls', () => {
 
     expect(repository.unbindIMBinding).toHaveBeenCalledWith({
       contactId: contact.id,
-      bindingId: contact.im_bindings[0]!.id,
     })
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       'contacts.imBinding.notFound',

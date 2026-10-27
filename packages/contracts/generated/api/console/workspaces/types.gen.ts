@@ -2650,7 +2650,7 @@ export type HumanInputNodeData = {
   recipients_spec: Array<Contact | DynamicEmail | OnetimeEmail | Initiator | AllWorkspaceContacts>
   retry_config?: RetryConfig
   timeout?: number
-  timeout_unit?: TimeoutUnit525809716240StrictStrictFalse
+  timeout_unit?: TimeoutUnit515107556368StrictStrictFalse
   title?: string
   type?: 'human-input'
   user_actions?: Array<UserActionConfig>
@@ -3265,7 +3265,7 @@ export type AllWorkspaceContacts = {
   type?: 'all_workspace_contacts'
 }
 
-export type TimeoutUnit525809716240StrictStrictFalse = 'day' | 'hour'
+export type TimeoutUnit515107556368StrictStrictFalse = 'day' | 'hour'
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
@@ -4544,9 +4544,7 @@ export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsData =
   path: {
     contact_id: string
   }
-  query: {
-    binding_id: string
-  }
+  query?: never
   url: '/workspaces/current/human-input/contacts/{contact_id}/im-bindings'
 }
 

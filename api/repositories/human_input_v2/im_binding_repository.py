@@ -59,6 +59,10 @@ class IMBindingRepository(Protocol):
         """Return a default Binding current in the bound Channel, if present."""
         ...
 
+    def get_default_for_contact(self, contact_id: ContactId) -> IMBinding | None:
+        """Return the Contact's default Binding in the bound Channel, ignoring overrides."""
+        ...
+
     def list_all(self) -> tuple[IMBinding, ...]:
         """Return all default Bindings in the bound Channel."""
         ...

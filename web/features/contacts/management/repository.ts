@@ -229,7 +229,6 @@ export function createContactsApiRepository(
           await client.contacts.byContactId.imBindings.delete(
             {
               params,
-              query: { binding_id: command.binding.id },
             },
             { context: { silent: true } },
           )
@@ -241,7 +240,6 @@ export function createContactsApiRepository(
         client.contacts.byContactId.imBindings.delete(
           {
             params: { contact_id: command.contactId },
-            query: { binding_id: command.bindingId },
           },
           { context: { silent: true } },
         ),

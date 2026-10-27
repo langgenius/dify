@@ -175,10 +175,47 @@ def test_default_create_and_delete_preserve_contact_projection_and_actor_metadat
     binding_context.service.delete_organization_binding(
         organization_scope=_OWNER_SCOPE,
         contact_id=_CONTACT_ID,
-        binding_id=binding.id,
     )
     with binding_context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
+
+
+def test_delete_current_default_preserves_overrides_other_contacts_and_other_channels(
+    binding_context: _BindingContext,
+) -> None:
+    with binding_context.sessions.begin() as session:
+        repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ID)
+        repository.create(IMBindingAssignment(_CONTACT_ID, _IDENTITY_ID, _NOW), bound_by_account_id=_ACCOUNT_ID)
+        override = repository.set_workspace_override(
+            _TENANT_ID,
+            IMBindingAssignment(_CONTACT_ID, _IDENTITY_ID, _NOW),
+            bound_by_account_id=_ACCOUNT_ID,
+        )
+        current = repository.replace(
+            IMBindingAssignment(_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW),
+            bound_by_account_id=_ACCOUNT_ID,
+        )
+        other_contact = repository.create(
+            IMBindingAssignment(_OTHER_CONTACT_ID, _IDENTITY_ID, _NOW),
+            bound_by_account_id=_ACCOUNT_ID,
+        )
+        other_channel = SQLAlchemyIMBindingRepository(session, _OTHER_CHANNEL_ID).create(
+            IMBindingAssignment(_CONTACT_ID, IMIdentityId("00000000-0000-0000-0000-000000000499"), _NOW),
+            bound_by_account_id=_ACCOUNT_ID,
+        )
+
+    binding_context.service.delete_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        contact_id=_CONTACT_ID,
+    )
+
+    with binding_context.sessions() as session:
+        assert session.get(HumanInputIMBinding, str(current.id)) is None
+        assert session.get_one(HumanInputIMBinding, str(other_contact.id)).im_identity_id == str(_IDENTITY_ID)
+        assert session.get_one(HumanInputIMBinding, str(other_channel.id)).channel_id == str(_OTHER_CHANNEL_ID)
+        assert session.get_one(HumanInputIMBindingWorkspaceOverride, str(override.id)).im_identity_id == str(
+            _IDENTITY_ID
+        )
 
 
 def test_contact_details_follow_effective_binding_and_reset(binding_context: _BindingContext) -> None:
@@ -634,7 +671,10 @@ def test_missing_or_foreign_identity_maps_to_stable_error_without_partial_bindin
         assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
 
 
-def test_contact_boundary_and_exact_delete_errors_are_stable(binding_context: _BindingContext) -> None:
+@pytest.mark.parametrize("workspace_override", [False, True])
+def test_contact_boundary_and_missing_default_binding_errors_are_stable(
+    binding_context: _BindingContext, workspace_override: bool
+) -> None:
     with pytest.raises(IMBindingCommandError) as missing_contact:
         binding_context.service.set_workspace_override(
             organization_scope=_OWNER_SCOPE,
@@ -645,13 +685,26 @@ def test_contact_boundary_and_exact_delete_errors_are_stable(binding_context: _B
         )
     assert missing_contact.value.code is IMBindingCommandErrorCode.CONTACT_NOT_FOUND
 
+    override = None
+    if workspace_override:
+        override = binding_context.service.set_workspace_override(
+            organization_scope=_OWNER_SCOPE,
+            tenant_id=_TENANT_ID,
+            contact_id=_CONTACT_ID,
+            identity_id=_IDENTITY_ID,
+            bound_by_account_id=_ACCOUNT_ID,
+        ).im_bindings[0]
     with pytest.raises(IMBindingCommandError) as missing_binding:
         binding_context.service.delete_organization_binding(
             organization_scope=_OWNER_SCOPE,
             contact_id=_CONTACT_ID,
-            binding_id=IMBindingId("00000000-0000-0000-0000-000000000999"),
         )
     assert missing_binding.value.code is IMBindingCommandErrorCode.BINDING_NOT_FOUND
+    if override is not None:
+        with binding_context.sessions() as session:
+            assert session.get_one(HumanInputIMBindingWorkspaceOverride, str(override.id)).im_identity_id == str(
+                _IDENTITY_ID
+            )
 
 
 def test_missing_channel_maps_to_not_configured_before_mutation(binding_context: _BindingContext) -> None:
@@ -673,11 +726,13 @@ def test_missing_channel_maps_to_not_configured_before_mutation(binding_context:
     ("contact_id", "expected_status"),
     [(_CONTACT_ID, 200), (_OTHER_CONTACT_ID, 404)],
 )
+@pytest.mark.parametrize("workspace_override", [False, True])
 def test_delete_binding_through_uuid_route(
     binding_context: _BindingContext,
     monkeypatch: pytest.MonkeyPatch,
     contact_id: ContactId,
     expected_status: int,
+    workspace_override: bool,
 ) -> None:
     contact = binding_context.service.set_organization_binding(
         organization_scope=_OWNER_SCOPE,
@@ -687,6 +742,15 @@ def test_delete_binding_through_uuid_route(
         bound_by_account_id=_ACCOUNT_ID,
     )
     binding = contact.im_bindings[0]
+    override = None
+    if workspace_override:
+        override = binding_context.service.set_workspace_override(
+            organization_scope=_OWNER_SCOPE,
+            tenant_id=_TENANT_ID,
+            contact_id=_CONTACT_ID,
+            identity_id=_OTHER_IDENTITY_ID,
+            bound_by_account_id=_ACCOUNT_ID,
+        ).im_bindings[0]
     monkeypatch.setattr(
         human_input,
         "build_im_contact_sync_application",
@@ -703,13 +767,15 @@ def test_delete_binding_through_uuid_route(
 
     response = app.test_client().delete(
         f"/workspaces/current/human-input/contacts/{contact_id}/im-bindings",
-        query_string={"binding_id": str(binding.id)},
     )
 
     assert response.status_code == expected_status
     response_body = response.get_json()
     assert response_body is not None
     with binding_context.sessions() as session:
+        if override is not None:
+            remaining_override = session.get_one(HumanInputIMBindingWorkspaceOverride, str(override.id))
+            assert remaining_override.im_identity_id == str(_OTHER_IDENTITY_ID)
         remaining = session.get(HumanInputIMBinding, str(binding.id))
         if expected_status == 200:
             assert response_body == {}

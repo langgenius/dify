@@ -780,7 +780,7 @@ describe('contacts IM API repository', () => {
     )
   })
 
-  it('deletes default bindings by binding ID but resets workspace overrides by contact ID', async () => {
+  it('deletes default bindings and resets workspace overrides by contact ID through their own endpoints', async () => {
     vi.mocked(client.contacts.byContactId.imBindings.delete).mockResolvedValue({})
     vi.mocked(client.contacts.byContactId.imOverride.delete).mockResolvedValue({ contact })
     const repository = createContactsApiRepository()
@@ -790,7 +790,7 @@ describe('contacts IM API repository', () => {
       binding: { ...contact.im_bindings[0]!, scope: 'workspace' },
     })
     expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledWith(
-      { params: { contact_id: contact.id }, query: { binding_id: 'binding-1' } },
+      { params: { contact_id: contact.id } },
       { context: { silent: true } },
     )
     expect(client.contacts.byContactId.imOverride.delete).toHaveBeenCalledWith(
@@ -799,18 +799,16 @@ describe('contacts IM API repository', () => {
     )
   })
 
-  it('forwards an explicit unbind command to the bindings endpoint with the exact binding ID', async () => {
+  it('unbinds the contact default binding without requiring an effective binding ID', async () => {
     vi.mocked(client.contacts.byContactId.imBindings.delete).mockResolvedValue({})
 
     await createContactsApiRepository().unbindIMBinding({
       contactId: contact.id,
-      bindingId: 'binding-to-unbind',
     })
 
     expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith(
       {
         params: { contact_id: contact.id },
-        query: { binding_id: 'binding-to-unbind' },
       },
       { context: { silent: true } },
     )
@@ -837,14 +835,12 @@ describe('contacts IM API repository', () => {
       await expect(
         createContactsApiRepository().unbindIMBinding({
           contactId: contact.id,
-          bindingId: 'legacy-workspace-binding',
         }),
       ).rejects.toMatchObject({ code })
 
       expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith(
         {
           params: { contact_id: contact.id },
-          query: { binding_id: 'legacy-workspace-binding' },
         },
         { context: { silent: true } },
       )

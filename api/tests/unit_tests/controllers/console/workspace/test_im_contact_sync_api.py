@@ -195,7 +195,10 @@ class _BindingService:
         return _contact_view(IMBindingScope.ORGANIZATION)
 
     def delete_organization_binding(self, **kwargs: object) -> None:
-        assert kwargs["binding_id"] == IMBindingId("binding-organization")
+        assert kwargs == {
+            "organization_scope": WorkspaceScope(id=TenantId("workspace-1")),
+            "contact_id": ContactId("00000000-0000-0000-0000-000000000001"),
+        }
 
     def set_workspace_override(self, **_kwargs: object) -> ContactIMBindingView:
         return _contact_view(IMBindingScope.WORKSPACE)
@@ -483,10 +486,7 @@ def test_binding_and_override_handlers_return_current_contact_projection(
     with app.test_request_context(method="DELETE"):
         reset = unwrap(WorkspaceContactIMOverrideApi.delete)(WorkspaceContactIMOverrideApi(), "workspace-1", contact_id)
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    with app.test_request_context(
-        method="DELETE",
-        query_string={"binding_id": "binding-organization"},
-    ):
+    with app.test_request_context(method="DELETE"):
         deleted = unwrap(WorkspaceContactIMBindingsApi.delete)(
             WorkspaceContactIMBindingsApi(), "workspace-1", contact_id
         )
@@ -539,7 +539,6 @@ def test_binding_writes_follow_the_deployment_management_mode(
         "/binding",
         method=method,
         json={"identity_id": "identity-1"},
-        query_string={"binding_id": "binding-organization"},
     )
     if allowed:
         assert response.status_code == 200

@@ -642,10 +642,7 @@ function ContactIMChannels({
                       if (!canBind || busy) return
                       save.reset()
                       remove.reset()
-                      unbind.mutate(
-                        { contactId: contact.id, bindingId: editingBinding.id },
-                        { onSuccess: () => setOpen(false) },
-                      )
+                      unbind.mutate({ contactId: contact.id }, { onSuccess: () => setOpen(false) })
                     }
                   : undefined
               }

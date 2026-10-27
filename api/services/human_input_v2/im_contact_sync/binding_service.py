@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import HumanInputContactType, IMBindingScope
 from core.human_input_v2.im_integration import ContactIMBindingView, IMBindingCommandError, IMBindingCommandErrorCode
-from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, IMBindingId, IMIdentityId, TenantId
+from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, IMIdentityId, TenantId
 from libs.datetime_utils import naive_utc_now
 from repositories.human_input_v2.contact import IMBinding as ContactIMBinding
 from repositories.human_input_v2.im_binding_repository import (
@@ -70,14 +70,14 @@ class ContactIMBindingService:
         *,
         organization_scope: DirectoryScope,
         contact_id: ContactId,
-        binding_id: IMBindingId,
     ) -> None:
+        """Delete the Contact's current default Binding without changing workspace overrides."""
         tenant_id = _tenant_id(organization_scope)
         with self._session_factory() as session, session.begin():
             channel = self._require_channel(session, organization_scope)
             repository = SQLAlchemyIMBindingRepository(session, channel.id)
-            binding = repository.get(binding_id)
-            if binding is None or binding.contact_id != contact_id:
+            binding = repository.get_default_for_contact(contact_id)
+            if binding is None:
                 raise IMBindingCommandError(
                     IMBindingCommandErrorCode.BINDING_NOT_FOUND,
                     "IM Binding was not found",

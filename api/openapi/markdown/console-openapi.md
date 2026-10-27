@@ -15094,13 +15094,12 @@ Admin-only batch lookup for Contact management clients. Workflow editors must us
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/human-input/contacts/{contact_id}/im-bindings
-Delete an IM binding for a contact. Used for removing contact IM binding information. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
+Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| binding_id | query | IM binding to unbind. | Yes | string |
 | contact_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -15114,7 +15113,7 @@ Delete an IM binding for a contact. Used for removing contact IM binding informa
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/human-input/contacts/{contact_id}/im-bindings
-Set an IM binding for a contact, replacing the existing default binding when the identity changes. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
+Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
 
 #### Parameters
 
@@ -26720,7 +26719,7 @@ Human Input node data.
 | recipients_spec | [ [Contact](#contact)<br>[DynamicEmail](#dynamicemail)<br>[OnetimeEmail](#onetimeemail)<br>[Initiator](#initiator)<br>[AllWorkspaceContacts](#allworkspacecontacts) ] |  | Yes |
 | retry_config | [RetryConfig](#retryconfig) |  | No |
 | timeout | integer, <br>**Default:** 36 |  | No |
-| timeout_unit | [TimeoutUnit_533509329936_Strict_strict_False_](#timeoutunit_533509329936_strict_strict_false_) |  | No |
+| timeout_unit | [TimeoutUnit_516318332944_Strict_strict_False_](#timeoutunit_516318332944_strict_strict_false_) |  | No |
 | title | string |  | No |
 | type | string, <br>**Default:** human-input |  | No |
 | user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
@@ -35506,13 +35505,13 @@ Available voices
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
 
-#### TimeoutUnit_533509329936_Strict_strict_False_
+#### TimeoutUnit_516318332944_Strict_strict_False_
 
 Timeout unit for form expiration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| TimeoutUnit_533509329936_Strict_strict_False_ | string | Timeout unit for form expiration. |  |
+| TimeoutUnit_516318332944_Strict_strict_False_ | string | Timeout unit for form expiration. |  |
 
 #### TokensPerSecondStatisticItem
 
