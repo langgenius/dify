@@ -164,6 +164,7 @@ else
       --worker-class ${SERVER_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker} \
       --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
       --timeout ${GUNICORN_TIMEOUT:-200} \
+      --keep-alive ${GUNICORN_KEEP_ALIVE:-10} \
       app:socketio_app
   fi
 fi
