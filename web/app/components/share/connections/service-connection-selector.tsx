@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { reportClientError } from '@/service/client-error'
 import ApiKeyDialog from './api-key-dialog'
+import { getServiceConnectionStatus } from './connection-status'
 import RemoveConnectionDialog from './remove-connection-dialog'
 
 export type ConnectionActions = {
@@ -143,7 +144,7 @@ export default function ServiceConnectionSelector({
   onRemove,
   onRequestRemove,
 }: Props) {
-  const { t } = useTranslation(['share'])
+  const { t } = useTranslation(['share', 'common'])
   const methodId = useId()
   const selectedNameId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -159,9 +160,9 @@ export default function ServiceConnectionSelector({
   const selectedConnection = service.availableConnections.find(
     (connection) => connection.id === service.selectedConnectionId,
   )
-  const isExpired = selectedConnection?.status === 'expired'
+  const selectedStatus = getServiceConnectionStatus(service, selectedConnection)
   const isApiKey = selectedConnection?.method === 'api-key'
-  const hasWarning = isExpired || selectedConnection?.status === 'invalid'
+  const hasWarning = Boolean(selectedConnection && selectedStatus !== 'connected')
 
   return (
     <>
@@ -236,10 +237,11 @@ export default function ServiceConnectionSelector({
         >
           <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto overscroll-contain">
             {service.availableConnections.map((connection) => {
-              const expired = connection.status === 'expired'
-              const invalid = connection.status === 'invalid'
+              const connectionStatus = getServiceConnectionStatus(service, connection)
+              const expired = connectionStatus === 'reconnect_required'
+              const invalid = connectionStatus === 'invalid'
               const invalidApiKey = invalid && connection.method === 'api-key'
-              const unavailable = expired || invalid
+              const unavailable = connectionStatus !== 'connected'
               const selected = connection.id === service.selectedConnectionId
               const accountLabelId = `${methodId}-${encodeURIComponent(connection.id)}`
               return (
@@ -263,11 +265,15 @@ export default function ServiceConnectionSelector({
                             {connection.name}
                           </span>
                           <span className="system-xs-regular text-text-warning">
-                            {invalidApiKey
-                              ? t(($) => $['connections.apiKeys.invalid'], { ns: 'share' })
-                              : t(($) => $['connections.accounts.reconnectRequired'], {
-                                  ns: 'share',
-                                })}
+                            {connectionStatus === null
+                              ? t(($) => $['api.actionFailed'], { ns: 'common' })
+                              : connectionStatus === 'disconnected'
+                                ? t(($) => $['connections.setup.selectConnection'], { ns: 'share' })
+                                : invalidApiKey
+                                  ? t(($) => $['connections.apiKeys.invalid'], { ns: 'share' })
+                                  : t(($) => $['connections.accounts.reconnectRequired'], {
+                                      ns: 'share',
+                                    })}
                           </span>
                         </div>
                       </div>
@@ -289,7 +295,7 @@ export default function ServiceConnectionSelector({
                         >
                           {t(($) => $['connections.apiKeys.replace'], { ns: 'share' })}
                         </PopoverClose>
-                      ) : (
+                      ) : expired || invalid ? (
                         <Button
                           size="small"
                           variant="secondary-accent"
@@ -305,7 +311,7 @@ export default function ServiceConnectionSelector({
                         >
                           {t(($) => $['connections.accounts.reconnect'], { ns: 'share' })}
                         </Button>
-                      )}
+                      ) : null}
                     </>
                   ) : (
                     <PopoverClose

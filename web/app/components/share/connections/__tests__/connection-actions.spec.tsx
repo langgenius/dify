@@ -1,6 +1,8 @@
 import type {
   ConnectionConfigurationResponse,
   EndUserConnectionListResponse,
+  EndUserConnectionPreflightPayload,
+  EndUserConnectionPreflightResponse,
   EndUserConnectionResponse,
   WebAppConnectionRequirement,
   WebAppParametersResponse,
@@ -166,8 +168,26 @@ function installBackend(overrides: Partial<Backend> = {}) {
   const requests: Request[] = []
   const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const request = new Request(input, init)
-    requests.push(request)
     const url = new URL(request.url)
+    if (url.pathname.endsWith('/connections/preflight')) {
+      const payload = (await request.json()) as EndUserConnectionPreflightPayload
+      const connections = Object.entries(payload.connections).map(([node_id, connection_id]) => ({
+        node_id,
+        connection_id,
+        status: connection_id
+          ? (backend.records.find((connection) => connection.id === connection_id)
+              ?.credential_status ?? 'disconnected')
+          : ('disconnected' as const),
+        check: null,
+      }))
+      return Response.json({
+        connection_revision: payload.connection_revision,
+        connections,
+        ready: connections.every((connection) => connection.status === 'connected'),
+      } satisfies EndUserConnectionPreflightResponse)
+    }
+    // These assertions record connection management requests; Preflight has its own suite.
+    requests.push(request)
     if (request.method !== 'GET') return backend.write(request)
     if (url.pathname.endsWith('/parameters'))
       return Response.json(parameters(backend.connectionRevision))

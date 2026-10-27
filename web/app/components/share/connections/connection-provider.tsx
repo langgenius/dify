@@ -24,6 +24,7 @@ import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/serv
 import { useWebAppEntry } from '../webapp-entry'
 import { getConnectionData } from './connection-data'
 import useConnectionActions, { connectionDetailQueryKey } from './use-connection-actions'
+import useConnectionPreflight from './use-connection-preflight'
 import { ConnectionsContext } from './use-connections'
 
 type Props = PropsWithChildren<{
@@ -42,7 +43,9 @@ function ConnectionSession({
 }: Props & { authSession: number; entry: WebAppEntryState | null }) {
   const parameters = entry && 'parameters' in entry ? entry.parameters : null
   const requirements = parameters?.connection_requirements ?? []
-  const isActive = address.kind === 'default' && requirements.length > 0
+  const requiresConnections =
+    address.kind === 'default' && Boolean(parameters?.requires_end_user_connections)
+  const isActive = requiresConnections && requirements.length > 0
   const accountReady =
     entry &&
     'account' in entry &&
@@ -94,6 +97,7 @@ function ConnectionSession({
   )
   const [selectionOverrides, setSelectionOverrides] = useState<Record<string, string | null>>({})
   const [confirmedIds, setConfirmedIds] = useState<string[]>([])
+  const [validationRevision, setValidationRevision] = useState(0)
   const confirmed = useQueries({
     queries: confirmedIds.map((connectionId) =>
       webAppQuery.connections.byConnectionId.get.queryOptions({
@@ -181,6 +185,7 @@ function ConnectionSession({
     oauthCallbackOrigin,
     refreshConnections,
     onSaved: (nodeId, connection) => {
+      setValidationRevision((current) => current + 1)
       void queryClient.cancelQueries({ queryKey: listKey, exact: true })
       queryClient.setQueryData(
         connectionDetailQueryKey(address, authSession, connection.id),
@@ -192,6 +197,7 @@ function ConnectionSession({
       setSelectionOverrides((current) => ({ ...current, [nodeId]: connection.id }))
     },
     onRemoved: (connectionId) => {
+      setValidationRevision((current) => current + 1)
       void queryClient.cancelQueries({ queryKey: listKey, exact: true })
       void queryClient.cancelQueries({ queryKey: configurationKey, exact: true })
       queryClient.setQueryData<InfiniteData<EndUserConnectionListResponse>>(
@@ -233,6 +239,40 @@ function ConnectionSession({
     },
   })
 
+  const validation = useConnectionPreflight({
+    address,
+    authSession,
+    conversationId,
+    connectionRevision: parameters?.connection_revision,
+    requirements,
+    selections: data.selections,
+    selectedConnections: requirements.map(({ node_id }) => {
+      const selectedId = data.selections[node_id]
+      if (!selectedId) return null
+      const configured = configuration.data?.connections[node_id]
+      return connectionsById.get(selectedId) ?? (configured?.id === selectedId ? configured : null)
+    }),
+    validationRevision,
+    requiresConnections,
+    canRunWithoutConnections: entry?.canRun ?? false,
+    enabled:
+      status === 'ready' &&
+      !list.isRefetching &&
+      !configuration.isFetching &&
+      !confirmed.some((result) => result.isFetching) &&
+      !actions.isMutating,
+  })
+  const preflightByNodeId = new Map(
+    validation.preflight.response?.connections.map((connection) => [
+      connection.node_id,
+      connection,
+    ]),
+  )
+  const checkedServices = services.map((service) => ({
+    ...service,
+    preflight: preflightByNodeId.get(service.id),
+  }))
+
   const onConnectionChange = (nodeId: string, connectionId: string | null) => {
     if (status !== 'ready' || actions.isMutating) return
     const sourceId = data.sourceNodeByNodeId[nodeId]
@@ -254,7 +294,8 @@ function ConnectionSession({
       value={{
         ...data,
         ...actions,
-        services,
+        ...validation,
+        services: checkedServices,
         status,
         error,
         onConnectionChange,

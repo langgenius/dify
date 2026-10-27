@@ -26,6 +26,130 @@ const moreActions = (account: string) =>
   `share.connections.accounts.moreActions:${JSON.stringify({ account })}`
 
 describe('Service connection management', () => {
+  it('keeps node validation separate when two authorization sources select the same active account', async () => {
+    const user = userEvent.setup()
+    const onReconnect = vi.fn()
+    const onConnectionChange = vi.fn()
+    const sharedAccount = [
+      {
+        id: 'personal',
+        name: 'alex@example.com',
+        method: 'oauth' as const,
+        status: 'active' as const,
+      },
+    ]
+    render(
+      <RequiredServices
+        services={[
+          {
+            ...service,
+            id: 'blocked-source',
+            name: 'Read private messages',
+            selectedConnectionId: 'personal',
+            availableConnections: sharedAccount,
+            preflight: {
+              node_id: 'blocked-source',
+              connection_id: 'personal',
+              status: 'invalid',
+              check: {
+                checked_at: 1_700_000_000,
+                reason_code: 'credential_invalid',
+                retryable: false,
+                status: 'invalid',
+              },
+            },
+          },
+          {
+            ...service,
+            id: 'connected-source',
+            name: 'Read public messages',
+            selectedConnectionId: 'personal',
+            availableConnections: sharedAccount,
+            preflight: {
+              node_id: 'connected-source',
+              connection_id: 'personal',
+              status: 'connected',
+              check: null,
+            },
+          },
+        ]}
+        onConnect={vi.fn()}
+        onConnectionChange={onConnectionChange}
+        onReconnect={onReconnect}
+      />,
+    )
+
+    const blocked = screen.getByRole('button', { name: 'Read private messages' })
+    const connected = screen.getByRole('button', { name: 'Read public messages' })
+    expect(blocked).toHaveAccessibleDescription(/share.connections.accounts.reconnectRequired/)
+    expect(connected).not.toHaveAccessibleDescription(
+      /share.connections.accounts.reconnectRequired/,
+    )
+    expect(connected).toHaveTextContent('alex@example.com')
+    await user.click(blocked)
+    const picker = await screen.findByRole('dialog', {
+      name: 'share.connections.accounts.title:{"provider":"Read private messages"}',
+    })
+    await user.click(
+      within(picker).getByRole('button', { name: 'share.connections.accounts.reconnect' }),
+    )
+
+    expect(onReconnect).toHaveBeenCalledExactlyOnceWith('blocked-source', 'personal')
+    expect(onConnectionChange).not.toHaveBeenCalled()
+    expect(connected).not.toHaveAccessibleDescription(
+      /share.connections.accounts.reconnectRequired/,
+    )
+  })
+
+  it('retains the selected API Key during a temporary node check failure without offering credential replacement', async () => {
+    const user = userEvent.setup()
+    render(
+      <RequiredServices
+        services={[
+          {
+            ...service,
+            selectedConnectionId: 'key',
+            preflight: {
+              node_id: service.id,
+              connection_id: 'key',
+              status: null,
+              check: {
+                checked_at: 1_700_000_000,
+                reason_code: 'provider_timeout',
+                retryable: true,
+                status: 'temporarily_unavailable',
+              },
+            },
+          },
+        ]}
+        onConnect={vi.fn()}
+        onConnectionChange={vi.fn()}
+        onReplace={vi.fn()}
+        onReconnect={vi.fn()}
+      />,
+    )
+    const trigger = screen.getByRole('button', { name: 'Gmail' })
+    expect(trigger).toHaveTextContent('Personal key')
+    expect(trigger).toHaveAccessibleDescription(/common.api.actionFailed/)
+    expect(screen.queryByText('share.connections.apiKeys.warning')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('share.connections.accounts.reconnectRequired'),
+    ).not.toBeInTheDocument()
+
+    await user.click(trigger)
+    const picker = await screen.findByRole('dialog', {
+      name: 'share.connections.apiKeys.title:{"provider":"Gmail"}',
+    })
+    const selectedKey = within(picker).getByRole('listitem', { name: 'Personal key' })
+    expect(within(selectedKey).getByText('common.api.actionFailed')).toBeVisible()
+    expect(
+      within(selectedKey).queryByRole('button', { name: 'share.connections.apiKeys.replace' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(selectedKey).queryByRole('button', { name: 'share.connections.accounts.reconnect' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('offers Reconnect for an invalid OAuth account without API Key error copy or a Replace action', async () => {
     const user = userEvent.setup()
     const onReconnect = vi.fn()

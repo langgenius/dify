@@ -1,5 +1,6 @@
 'use client'
 
+import type { ConnectionPreflightStatus } from '@dify/contracts/api/web/types.gen'
 import type { ApiKeyValues } from './api-key-dialog'
 import type { RequiredConnection } from './required-connections'
 import type { ConnectionActions } from './service-connection-selector'
@@ -12,6 +13,7 @@ import useTheme from '@/hooks/use-theme'
 import { reportClientError } from '@/service/client-error'
 import { Theme } from '@/types/app'
 import ApiKeyDialog from './api-key-dialog'
+import { getServiceConnectionStatus } from './connection-status'
 import RemoveConnectionDialog from './remove-connection-dialog'
 import ServiceConnectionSelector from './service-connection-selector'
 
@@ -28,6 +30,7 @@ export type RequiredConnectionService = RequiredConnection & {
     status?: 'active' | 'expired' | 'invalid'
   }[]
   selectedConnectionId?: string
+  preflight?: ConnectionPreflightStatus
   methods: readonly ConnectionMethod[]
 }
 
@@ -67,7 +70,7 @@ function ServiceItem({
   | 'onRequestAddApiKey'
   | 'onRemove'
 >) {
-  const { t } = useTranslation(['share'])
+  const { t } = useTranslation(['share', 'common'])
   const { theme } = useTheme()
   const nameId = useId()
   const descriptionId = useId()
@@ -84,8 +87,12 @@ function ServiceItem({
   const selectedConnection = service.availableConnections.find(
     (connection) => connection.id === service.selectedConnectionId,
   )
-  const isExpired = selectedConnection?.status === 'expired'
-  const isInvalid = selectedConnection?.status === 'invalid'
+  const connectionStatus = getServiceConnectionStatus(service, selectedConnection)
+  const isExpired = connectionStatus === 'reconnect_required'
+  const isInvalid = connectionStatus === 'invalid'
+  const isDisconnected = Boolean(selectedConnection && connectionStatus === 'disconnected')
+  const checkUnavailable = connectionStatus === null
+  const hasWarning = isExpired || isInvalid || isDisconnected || checkUnavailable
 
   return (
     <li
@@ -117,13 +124,17 @@ function ServiceItem({
         <span id={descriptionId} className="system-xs-regular wrap-anywhere text-text-tertiary">
           {service.description}
         </span>
-        {(isExpired || isInvalid) && (
+        {hasWarning && (
           <span id={warningId} className="system-xs-regular wrap-anywhere text-text-warning">
-            {isInvalid
-              ? selectedConnection?.method === 'api-key'
-                ? t(($) => $['connections.apiKeys.warning'], { ns: 'share' })
-                : t(($) => $['connections.accounts.reconnectRequired'], { ns: 'share' })
-              : t(($) => $['connections.accounts.expired'], { ns: 'share' })}
+            {checkUnavailable
+              ? t(($) => $['api.actionFailed'], { ns: 'common' })
+              : isDisconnected
+                ? t(($) => $['connections.setup.selectConnection'], { ns: 'share' })
+                : isInvalid
+                  ? selectedConnection?.method === 'api-key'
+                    ? t(($) => $['connections.apiKeys.warning'], { ns: 'share' })
+                    : t(($) => $['connections.accounts.reconnectRequired'], { ns: 'share' })
+                  : t(($) => $['connections.accounts.expired'], { ns: 'share' })}
           </span>
         )}
       </div>
@@ -132,7 +143,7 @@ function ServiceItem({
           <ServiceConnectionSelector
             service={service}
             labelledBy={nameId}
-            describedBy={isExpired || isInvalid ? `${descriptionId} ${warningId}` : descriptionId}
+            describedBy={hasWarning ? `${descriptionId} ${warningId}` : descriptionId}
             disabled={disabled}
             onConnect={onConnect}
             onConnectionChange={onConnectionChange}
