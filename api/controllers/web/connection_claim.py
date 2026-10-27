@@ -35,17 +35,13 @@ class ConnectionClaimPayload(BaseModel):
     passports: list[Annotated[str, Field(min_length=1, max_length=8192)]] = Field(
         min_length=1, max_length=50, repr=False
     )
-    app_code: str | None = Field(
-        default=None, min_length=1, max_length=255, description="Login handoff App code; required only with PKCE"
-    )
     login_code: str | None = Field(default=None, min_length=1, max_length=256, repr=False)
     code_verifier: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._~-]{43,128}$", repr=False)
 
     @model_validator(mode="after")
     def validate_login_handoff(self) -> Self:
-        supplied = (self.app_code is not None, self.login_code is not None, self.code_verifier is not None)
-        if any(supplied) and not all(supplied):
-            raise ValueError("Provide app_code, login_code and code_verifier together, or use a Web login proof.")
+        if (self.login_code is None) != (self.code_verifier is None):
+            raise ValueError("Provide login_code and code_verifier together, or use a Web login proof.")
         return self
 
 
@@ -125,7 +121,7 @@ class ConnectionClaimApi(Resource):
     @web_ns.doc(
         description="Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. "
         "Submit Guest Passports in passports, with one Account Web login proof in Authorization. "
-        "Alternatively, redeem app_code/login_code/code_verifier once for the whole batch. "
+        "Alternatively, redeem login_code/code_verifier once; the login App comes from the stored grant. "
         "Account authentication and capability failures reject the batch before any transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
         "Success includes the App code, Account App Passport and this item's transferred Connection count. "
@@ -142,9 +138,9 @@ class ConnectionClaimApi(Resource):
             if not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
                 raise WebPassportAccountExchangeDisabledError()
             login_token = extract_webapp_access_token(request) or ""
-            if payload.app_code is not None and payload.login_code is not None and payload.code_verifier is not None:
+            if payload.login_code is not None and payload.code_verifier is not None:
                 login_token = application_services().web_login_handoff.redeem(
-                    app_code=payload.app_code, code=payload.login_code, code_verifier=payload.code_verifier
+                    app_code=None, code=payload.login_code, code_verifier=payload.code_verifier
                 )
             results = application_services().end_user_connection_claims.claim(
                 payload.passports, access_token=login_token

@@ -477,30 +477,56 @@ def test_pkce_return_can_claim_without_separate_passport_exchange(
         }
     )
     harness.client.set_cookie("__Host-access_token", console_token, domain="console.example.com", secure=True)
+    base = harness.oauth.base
+    with base.sessions.begin() as session:
+        app = App(
+            tenant_id=base.context.tenant_id, name="Login App", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True
+        )
+        session.add(app)
+        session.flush()
+        workflow = Workflow(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW,
+            version="published",
+            graph='{"nodes": [], "edges": []}',
+            _features="{}",
+            created_by=harness.account.account_id or "",
+        )
+        login_app_code = f"login-{uuid4()}"
+        session.add_all(
+            [
+                workflow,
+                Site(
+                    app_id=app.id,
+                    code=login_app_code,
+                    title="Login App",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+                ),
+            ]
+        )
+        session.flush()
+        app.workflow_id = workflow.id
     verifier = "v" * 43
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     response = harness.client.get(
         "/console/api/login",
         base_url="https://console.example.com",
         query_string={
-            "app_code": harness.oauth.app_code,
-            "redirect_url": f"https://apps.example.net/workflow/{harness.oauth.app_code}",
+            "app_code": login_app_code,
+            "redirect_url": f"https://apps.example.net/workflow/{login_app_code}",
             "code_challenge": challenge,
         },
     )
     assert response.status_code == 200
     code = parse_qs(urlsplit(response.get_json()["redirect_url"]).query)["login_code"][0]
-    headers = harness.headers()
-    headers.pop("Authorization")
     payload = {
-        "app_code": harness.oauth.app_code,
         "login_code": code,
         "code_verifier": verifier,
         "passports": [harness.guest_passport, harness.guest_passport],
     }
-    response = harness.client.post(
-        "/api/connections/claim", base_url="https://apps.example.net", headers=headers, json=payload
-    )
+    response = harness.client.post("/api/connections/claim", base_url="https://apps.example.net", json=payload)
     assert response.status_code == 200
     assert harness.signer.verify(response.get_json()["webapp_access_token"])["token_source"] == "webapp_account_login"
     assert [item["status"] for item in response.get_json()["data"]] == ["success", "success"]
@@ -509,9 +535,7 @@ def test_pkce_return_can_claim_without_separate_passport_exchange(
         == harness.account.end_user_id
     )
     assert harness.client.get_cookie("__Host-access_token", domain="apps.example.net") is None
-    replay = harness.client.post(
-        "/api/connections/claim", base_url="https://apps.example.net", headers=headers, json=payload
-    )
+    replay = harness.client.post("/api/connections/claim", base_url="https://apps.example.net", json=payload)
     assert replay.status_code == 400
 
 

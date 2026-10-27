@@ -181,7 +181,6 @@ export type ConnectionClaimFailureResponse = {
 }
 
 export type ConnectionClaimPayload = {
-  app_code?: string | null
   code_verifier?: string | null
   login_code?: string | null
   passports: Array<string>

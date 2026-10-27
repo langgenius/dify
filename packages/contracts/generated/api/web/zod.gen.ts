@@ -191,7 +191,6 @@ export const zConnectionClaimFailureResponse = z.object({
  * ConnectionClaimPayload
  */
 export const zConnectionClaimPayload = z.object({
-  app_code: z.string().min(1).max(255).nullish(),
   code_verifier: z
     .string()
     .regex(/^[A-Za-z0-9._~-]{43,128}$/)
