@@ -34,7 +34,14 @@ from services.entities.model_billing_mapping import MappingSource as MappingSour
 from services.entities.model_billing_mapping import MappingTarget as MappingTarget  # noqa: PLC0414
 from services.entities.model_billing_mapping import ModelMapping as ModelMapping  # noqa: PLC0414
 from services.entities.model_billing_mapping import ParameterAdapter as ParameterAdapter  # noqa: PLC0414
-from services.model_billing_mapping_service import hosted_migration_sources, mappings_for_revision
+from services.model_billing_mapping_service import (
+    additional_model_is_authorized,
+    hosted_migration_sources,
+    mapping_supports_installed_plugin,
+    mappings_for_revision,
+    model_schema_digest,
+    provider_has_prepared_ownership,
+)
 
 if TYPE_CHECKING:
     from core.entities.provider_configuration import ProviderConfiguration
@@ -105,7 +112,10 @@ def compatibility_quota_type(
     provider: str, quotas: list[QuotaConfiguration], state: dict[str, Any]
 ) -> ProviderQuotaType:
     """Restore prepared ownership without consulting the now-closed legacy wallet."""
-    ownership = state.get("source_ownership", {}).get(str(ModelProviderID(provider)))
+    source_ownership = state.get("source_ownership")
+    if not isinstance(source_ownership, dict):
+        raise ModelRouteUnavailable
+    ownership = source_ownership.get(str(ModelProviderID(provider)))
     if not isinstance(ownership, dict):
         raise ModelRouteUnavailable
     try:
@@ -319,6 +329,13 @@ def routed_credentials(
         raise ModelRouteUnmapped
     if state.get("model_mapping_version") != mapping.mapping_revision:
         raise ModelRouteUnmapped
+    additional_provider = not provider_has_prepared_ownership(provider, state)
+    if additional_provider and not additional_model_is_authorized(
+        system=configuration.system_configuration,
+        installed_models=configuration.provider.models,
+        mapping=mapping,
+    ):
+        raise ModelRouteUnmapped
     with session_factory.create_session() as session:
         integration = session.scalar(
             select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == configuration.tenant_id)
@@ -329,6 +346,8 @@ def routed_credentials(
             or not integration.provider_credential_id
             or not integration.plugin_unique_identifier
         ):
+            raise ModelRouteUnavailable
+        if additional_provider and not mapping_supports_installed_plugin(mapping, integration.plugin_unique_identifier):
             raise ModelRouteUnavailable
         expected_credential_fingerprint = _pinned_credential_fingerprint(
             state,
@@ -526,17 +545,7 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
                 and source_schema.model_properties.get(ModelPropertyKey.MODE) != rule.source.mode
             ):
                 raise ModelRouteUnmapped
-            source_digest = (
-                "sha256:"
-                + hashlib.sha256(
-                    json.dumps(
-                        source_schema.model_dump(mode="json"),
-                        sort_keys=True,
-                        separators=(",", ":"),
-                        ensure_ascii=False,
-                    ).encode()
-                ).hexdigest()
-            )
+            source_digest = model_schema_digest(source_schema)
             if source_digest != rule.source_schema_digest:
                 raise ModelRouteUnmapped
             required_ops = {"model/schema"}

@@ -133,6 +133,50 @@ a missing lookup is not enough to safely create replacement money.
 
 ## Verification boundaries
 
+### Providers installed after cutover
+
+The preparation snapshot describes installed providers at preparation time; it
+is not permission to use only that installation set forever. A later provider
+installation must not rewrite `source_ownership`, an existing App, the funding
+manifest, or the tenant's frozen mapping revision.
+
+The current Billing preparation contract admits unexpired Professional/Team
+subscriptions, not free/trial-only tenants. For a newly installed provider,
+finite mapped PAID availability precedes TRIAL availability; both settle against
+the same managed Tokener organization rather than an old credit balance. This is
+not an entitlement design for future free-user migration. Such an expansion
+requires an explicit tenant-level authorization rule, not inference from global
+hosting flags. Independent FREE/unlimited quotas retain their existing behavior.
+
+For an additional provider, the server admits SYSTEM shared-credit models only
+after checking enabled hosting policy, a verified Marketplace installation, the
+actual source schema, and an exact mapping in the tenant's pinned revision. The
+intersection is availability metadata, not new legacy credits. BYOK continues
+to use its own credential. Unmapped SYSTEM models fail closed without reopening
+the legacy wallet or automatically selecting a custom credential; their absence
+must not break unrelated providers or explicit BYOK configurations.
+
+Publish a complete reviewed revision **before** selecting it for a migration,
+including supported providers that may be installed later. Retain historical
+revisions unchanged. A new registry revision does not silently expand an already
+migrated tenant's contract. An exact model name in a catalog is necessary but
+does not establish parameter, media, tool-call, or embedding compatibility.
+
+Acceptance must distinguish these scenarios for every production credits model:
+
+- An existing App retains its source provider/model across cutover.
+- A new App after cutover selects an already installed source provider.
+- A provider first installed after cutover supplies the source SYSTEM model.
+- An explicitly selected custom credential remains a direct BYOK invocation.
+
+For each forwarding case record the original SYSTEM credential provenance,
+logical provider/model, actual daemon redirect target and plugin UID, result,
+Tokener usage, unchanged legacy consumption, and unchanged original App/provider
+configuration. Native Tokener calls, catalog presence, and unit tests do not
+substitute for these runtime observations. Missing source schemas, target
+models, reviewed parameter contracts, or independent BYOK credentials remain
+explicit blockers in the full production-model matrix.
+
 Required release evidence includes Core/SaaS/daemon source SHA + image digest,
 plugin unique identifier and mapping revision; isolated test-tenant preparation,
 cycle/replay/failure tests; original App configuration equality; real model

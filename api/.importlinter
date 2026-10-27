@@ -71,6 +71,7 @@ ignore_imports =
     core.helper.credential_utils -> services.system_feature_service
     core.mcp.auth_client -> services
     core.provider_manager -> services.credit_pool_service
+    core.provider_manager -> services.model_billing_mapping_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.knowledge.external.service
     core.rag.index_processor.index_processor -> services.vector_space_admission_service

@@ -715,8 +715,13 @@ class ProviderManager:
             migration_routing_state,
             settlement_owner,
         )
+        from services.model_billing_mapping_service import (
+            has_finite_hosted_credit_pool,
+            provider_has_prepared_ownership,
+        )
 
-        compatibility_route = has_compatibility_route(migration_routing_state(tenant_id))
+        routing_state = migration_routing_state(tenant_id)
+        compatibility_route = has_compatibility_route(routing_state)
 
         # Construct ProviderConfiguration objects for each provider
         for provider_entity in provider_entities:
@@ -765,12 +770,35 @@ class ProviderManager:
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
+            provider_hosting = ext_hosting_provider.hosting_configuration.provider_map.get(provider_name)
+            hosted_compatibility_default = (
+                not preferred_provider_type_record
+                and compatibility_route
+                and routing_state is not None
+                and not provider_has_prepared_ownership(provider_name, routing_state)
+                and provider_hosting is not None
+                and has_finite_hosted_credit_pool(provider_hosting)
+                and isinstance(provider_entity, PluginModelProviderDeclaration)
+                and provider_entity.installation_source == PluginInstallationSource.Marketplace
+            )
+            if (
+                hosted_compatibility_default
+                and not system_configuration.enabled
+                and isinstance(provider_entity, PluginModelProviderDeclaration)
+            ):
+                from core.plugin.plugin_service import PluginService
+
+                hosted_compatibility_default = PluginService.is_plugin_verified(
+                    tenant_id, provider_entity.plugin_unique_identifier
+                )
 
             if model_billing.uses_tokener and not compatibility_route:
                 preferred_provider_type = ProviderType.CUSTOM
             elif preferred_provider_type_record:
                 preferred_provider_type = preferred_provider_type_record.preferred_provider_type
-            elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and system_configuration.enabled:
+            elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+                system_configuration.enabled or hosted_compatibility_default
+            ):
                 preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
                 preferred_provider_type = ProviderType.CUSTOM
@@ -788,7 +816,10 @@ class ProviderManager:
 
             if preferred_provider_type == ProviderType.SYSTEM:
                 if not system_configuration.enabled or not system_configuration.quota_configurations:
-                    using_provider_type = ProviderType.CUSTOM
+                    # A missing managed route must not silently spend a user's
+                    # BYOK credential after shared-credit cutover.
+                    if not compatibility_route:
+                        using_provider_type = ProviderType.CUSTOM
                 elif (
                     not has_valid_quota
                     and not managed_shared_pool
@@ -1533,6 +1564,10 @@ class ProviderManager:
             has_compatibility_route,
             migration_routing_state,
         )
+        from services.model_billing_mapping_service import (
+            additional_hosted_availability,
+            provider_has_prepared_ownership,
+        )
 
         routing_state = migration_routing_state(tenant_id)
         compatibility_route = has_compatibility_route(routing_state)
@@ -1638,15 +1673,41 @@ class ProviderManager:
 
             quota_configurations.append(quota_configuration)
 
-        if len(quota_configurations) == 0:
+        additional_provider = (
+            compatibility_route
+            and routing_state is not None
+            and not provider_has_prepared_ownership(provider_entity.provider, routing_state)
+        )
+        if additional_provider:
+            availability = additional_hosted_availability(
+                provider=provider_entity.provider,
+                hosting=provider_hosting_configuration,
+                installed_models=provider_entity.models,
+                original_quotas=quota_configurations,
+                raw_registry=dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON,
+                revision=routing_state.get("model_mapping_version", "") if routing_state is not None else "",
+            )
+            if availability is None:
+                return SystemConfiguration(enabled=False)
+            quota_configurations = availability.quotas
+            current_quota_type = availability.current_quota_type
+        elif len(quota_configurations) == 0:
             return SystemConfiguration(enabled=False)
-
-        current_quota_type = self._choice_current_using_quota_type(quota_configurations)
-
-        if compatibility_route and routing_state is not None:
+        elif compatibility_route and routing_state is not None:
             current_quota_type = compatibility_quota_type(provider_entity.provider, quota_configurations, routing_state)
+        else:
+            current_quota_type = self._choice_current_using_quota_type(quota_configurations)
 
         current_using_credentials = provider_hosting_configuration.credentials
+        if additional_provider and any(
+            quota.quota_type == current_quota_type
+            and quota.quota_type != ProviderQuotaType.FREE
+            and quota.quota_limit != -1
+            for quota in quota_configurations
+        ):
+            # New shared-credit entries can only invoke the managed route; do
+            # not hand the original hosted key to any accidental legacy path.
+            current_using_credentials = None
         if current_quota_type == ProviderQuotaType.FREE:
             provider_record_quota_free = quota_type_to_provider_records_dict.get(current_quota_type)
 

@@ -201,8 +201,18 @@ class ProviderConfiguration(BaseModel):
                         raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
-            from core.model_invocation_routing import bind_legacy_credentials, routed_credentials
+            from core.model_invocation_routing import (
+                ModelRouteUnmapped,
+                bind_legacy_credentials,
+                has_compatibility_route,
+                migration_routing_state,
+                routed_credentials,
+            )
 
+            if not self.system_configuration.enabled and has_compatibility_route(
+                migration_routing_state(self.tenant_id)
+            ):
+                raise ModelRouteUnmapped
             managed = routed_credentials(self, model_type, model)
             if managed is not None:
                 return managed
