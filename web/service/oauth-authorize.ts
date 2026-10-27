@@ -40,7 +40,7 @@ function sendAuthorize(path: string, init: RequestInit): Promise<Response> {
   return fetch(`${AUTHORIZE_BASE}${path}`, init)
 }
 
-export async function fetchAuthorizeClient(
+async function fetchAuthorizeClient(
   clientId: string,
   redirectUri: string,
 ): Promise<OAuthAuthorizeClientResponse> {
