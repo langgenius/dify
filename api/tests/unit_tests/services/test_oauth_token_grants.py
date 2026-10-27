@@ -1,18 +1,20 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from http import HTTPStatus
 from typing import override
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import OAuthAccessTokenResolver, sha256_hex
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from models.oauth import OAuthAccessToken, OAuthRefreshToken
+from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_refresh_token_repository import (
@@ -21,6 +23,8 @@ from repositories.oauth_refresh_token_repository import (
     SQLAlchemyOAuthRefreshTokenRepository,
 )
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository
+from services.account_access_service import AccountAccessService
+from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.entities.oauth_server_entities import OAuthProviderAccountRecord, OAuthProviderAppRecord
 from services.oauth_authorize_service import AuthorizeRequest, OAuthAuthorizeService
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
@@ -599,6 +603,21 @@ class _HookedRefreshTokens(SQLAlchemyOAuthRefreshTokenRepository):
 
 
 @dataclass
+class _RecordingTokenCache:
+    invalidated: list[str] = field(default_factory=list)
+
+    def __call__(self, token_hash: str) -> None:
+        self.invalidated.append(token_hash)
+
+
+@dataclass
+class _NoAccessWorkspaces:
+    def list_account_access_workspaces(self, account_id: str) -> Sequence[AccountWorkspaceSnapshot]:
+        _ = account_id
+        return ()
+
+
+@dataclass
 class _RefreshWorld:
     login_handler: AuthorizationCodeGrantHandler
     handler: RefreshTokenGrantHandler
@@ -606,6 +625,9 @@ class _RefreshWorld:
     accounts: FakeAccounts
     revoker: GrantRevoker
     factory: sessionmaker[Session]
+    console_sessions: SQLAlchemyOAuthDeviceTokenRepository
+    account_access: AccountAccessService
+    token_cache: _RecordingTokenCache
 
     def login(self) -> TokenGrantResult:
         return self.login_handler(_code_request(_approve(self)))
@@ -644,6 +666,27 @@ class _RefreshWorld:
                 update(OAuthRefreshToken).where(OAuthRefreshToken.token_hash == sha256_hex(token)).values(**values)
             )
 
+    def set_access(self, result: TokenGrantResult, **values: object) -> None:
+        with self.factory() as session, session.begin():
+            session.execute(
+                update(OAuthAccessToken).where(OAuthAccessToken.id == result.payload["token_id"]).values(**values)
+            )
+
+    def delete_access_rows(self) -> None:
+        with self.factory() as session, session.begin():
+            session.execute(delete(OAuthAccessToken))
+
+    def account_context(self, token_id: str | None = None) -> AccountRequestContext:
+        return AccountRequestContext(request_id="r1", trace_id=None, account_id=ACCOUNT_ID, access_token_id=token_id)
+
+    def console_session_ids(self) -> list[str]:
+        page = self.console_sessions.list_account_sessions(account_id=ACCOUNT_ID, page=1, limit=100)
+        return [item.id for item in page.items]
+
+    def openapi_session_ids(self) -> list[str]:
+        page = self.account_access.list_sessions(self.account_context(), page=1, limit=100)
+        return [item.id for item in page.items]
+
 
 def _refresh_world(
     factory: sessionmaker[Session],
@@ -665,15 +708,14 @@ def _refresh_world(
         if after_find is None
         else _HookedRefreshTokens(session_factory=factory, after_find=after_find)
     )
-    tokens = OAuthDeviceTokenIssuanceGateway(
-        tokens=SQLAlchemyOAuthDeviceTokenRepository(
-            session_factory=factory, redis=cache, max_sessions_per_account=max_sessions_per_account
-        ),
-        ttl_policy=_FixedTTLPolicy(),
+    console_sessions = SQLAlchemyOAuthDeviceTokenRepository(
+        session_factory=factory, redis=cache, max_sessions_per_account=max_sessions_per_account
     )
+    tokens = OAuthDeviceTokenIssuanceGateway(tokens=console_sessions, ttl_policy=_FixedTTLPolicy())
     accounts = FakeAccounts()
     workspaces = FakeWorkspaces()
     revoker = GrantRevoker(session_factory=factory, redis=cache, refresh=refresh)
+    token_cache = _RecordingTokenCache()
     return _RefreshWorld(
         login_handler=AuthorizationCodeGrantHandler(
             clients=clients, codes=codes, accounts=accounts, workspaces=workspaces, tokens=tokens, settings=settings
@@ -691,6 +733,15 @@ def _refresh_world(
         accounts=accounts,
         revoker=revoker,
         factory=factory,
+        console_sessions=console_sessions,
+        account_access=AccountAccessService(
+            accounts=accounts,
+            workspaces=_NoAccessWorkspaces(),
+            sessions=SQLAlchemyOAuthAccessTokenRepository(session_factory=factory),
+            invalidate_token_cache=token_cache,
+            now=lambda: datetime.now(UTC),
+        ),
+        token_cache=token_cache,
     )
 
 
@@ -902,7 +953,9 @@ class TestRefreshTokenGrantCases:
         refresh_world.accounts.accounts[ACCOUNT_ID] = replace(account_snapshot(), email="new@example.com")
 
         assert refresh_world.refresh_error(login.refresh_token).code is TokenErrorCode.INVALID_GRANT
-        assert refresh_world.live_access_ids() == {login.payload["token_id"]}
+        # The grant can never refresh again, so it gives up its session slot.
+        assert refresh_world.refresh_rows() == []
+        assert refresh_world.live_access_ids() == set()
 
     @staticmethod
     def test_refresh_without_a_workspace_is_invalid_grant(refresh_world: _RefreshWorld) -> None:
@@ -910,6 +963,7 @@ class TestRefreshTokenGrantCases:
         refresh_world.set_refresh(login.refresh_token, workspace_id=None)
 
         assert refresh_world.refresh_error(login.refresh_token).code is TokenErrorCode.INVALID_GRANT
+        assert refresh_world.refresh_rows() == []
 
     @staticmethod
     def test_revoke_landing_after_the_read_is_not_undone(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -963,3 +1017,133 @@ class TestRefreshTokenGrantCases:
         second = log.tables.index("accounts", 1)
         assert LockLog(tables=log.tables[:second]).follows_lock_order()
         assert LockLog(tables=log.tables[second:]).follows_lock_order()
+
+
+class _SessionRevokePath(StrEnum):
+    OPENAPI_SELF = "openapi-self"
+    OPENAPI_BY_ID = "openapi-by-id"
+    CONSOLE = "console"
+
+    def revoke(self, world: _RefreshWorld, session_id: str) -> None:
+        _REVOKERS[self](world, session_id)
+
+
+def _revoke_openapi_self(world: _RefreshWorld, session_id: str) -> None:
+    world.account_access.revoke_current_session(world.account_context(session_id))
+
+
+def _revoke_openapi_by_id(world: _RefreshWorld, session_id: str) -> None:
+    world.account_access.revoke_session(world.account_context(), token_id=session_id)
+
+
+def _revoke_in_console(world: _RefreshWorld, session_id: str) -> None:
+    assert world.console_sessions.revoke_account_session(account_id=ACCOUNT_ID, token_id=session_id) is True
+
+
+_REVOKERS: Mapping[_SessionRevokePath, Callable[[_RefreshWorld, str], None]] = {
+    _SessionRevokePath.OPENAPI_SELF: _revoke_openapi_self,
+    _SessionRevokePath.OPENAPI_BY_ID: _revoke_openapi_by_id,
+    _SessionRevokePath.CONSOLE: _revoke_in_console,
+}
+
+# A session whose access token is gone can no longer call /account/sessions/self.
+_REVOKE_BY_ID_PATHS = (_SessionRevokePath.OPENAPI_BY_ID, _SessionRevokePath.CONSOLE)
+
+
+class _IdleAccess(StrEnum):
+    EXPIRED = "expired"
+    HARD_EXPIRED = "hard-expired"
+
+    def apply(self, world: _RefreshWorld, login: TokenGrantResult) -> None:
+        world.set_access(login, expires_at=datetime.now(UTC) - timedelta(hours=1))
+        if self is _IdleAccess.HARD_EXPIRED:
+            resolver = OAuthAccessTokenResolver(world.factory, _cache_wrapper())
+            with world.factory() as session:
+                resolver.hard_expire(session, login.payload["token_id"], sha256_hex(login.payload["token"]))
+
+
+@pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")
+class TestSessionPathsKnowRefreshGrants:
+    @staticmethod
+    @pytest.mark.parametrize("path", list(_SessionRevokePath))
+    def test_session_revoke_ends_the_refresh_grant(refresh_world: _RefreshWorld, path: _SessionRevokePath) -> None:
+        login = refresh_world.login()
+
+        path.revoke(refresh_world, login.payload["token_id"])
+
+        assert refresh_world.refresh_error(login.refresh_token).code is TokenErrorCode.INVALID_GRANT
+        assert refresh_world.refresh_rows() == []
+        assert refresh_world.live_access_ids() == set()
+
+    @staticmethod
+    def test_openapi_revoke_clears_the_bearer_cache(refresh_world: _RefreshWorld) -> None:
+        login = refresh_world.login()
+
+        _SessionRevokePath.OPENAPI_SELF.revoke(refresh_world, login.payload["token_id"])
+
+        assert refresh_world.token_cache.invalidated == [sha256_hex(login.payload["token"])]
+
+    @staticmethod
+    @pytest.mark.parametrize("idle", list(_IdleAccess))
+    def test_idle_grant_with_a_live_refresh_is_listed_by_its_latest_access_row(
+        refresh_world: _RefreshWorld, idle: _IdleAccess
+    ) -> None:
+        login = refresh_world.login()
+        idle.apply(refresh_world, login)
+
+        assert refresh_world.console_session_ids() == [login.payload["token_id"]]
+        assert refresh_world.openapi_session_ids() == [login.payload["token_id"]]
+
+    @staticmethod
+    @pytest.mark.parametrize("path", _REVOKE_BY_ID_PATHS)
+    @pytest.mark.parametrize("idle", list(_IdleAccess))
+    def test_revoking_an_idle_grant_by_its_listed_id_ends_the_refresh(
+        refresh_world: _RefreshWorld, idle: _IdleAccess, path: _SessionRevokePath
+    ) -> None:
+        login = refresh_world.login()
+        idle.apply(refresh_world, login)
+
+        path.revoke(refresh_world, login.payload["token_id"])
+
+        assert refresh_world.refresh_error(login.refresh_token).code is TokenErrorCode.INVALID_GRANT
+        assert refresh_world.console_session_ids() == []
+        assert refresh_world.openapi_session_ids() == []
+
+    @staticmethod
+    def test_grant_without_access_rows_is_listed_by_its_refresh_token(refresh_world: _RefreshWorld) -> None:
+        login = refresh_world.login()
+        refresh_world.delete_access_rows()
+        row = refresh_world.refresh_row(login.refresh_token)
+        assert row is not None
+
+        page = refresh_world.account_access.list_sessions(refresh_world.account_context(), page=1, limit=10)
+
+        [listed] = page.items
+        assert listed.id == row.id
+        assert listed.prefix == REFRESH_TOKEN_PREFIX
+        assert (listed.client_id, listed.device_label) == (row.client_id, row.device_label)
+        assert (listed.created_at, listed.expires_at) == (row.created_at, row.expires_at)
+        assert listed.last_used_at is None
+        assert refresh_world.console_session_ids() == [row.id]
+
+    @staticmethod
+    @pytest.mark.parametrize("path", _REVOKE_BY_ID_PATHS)
+    def test_revoking_a_grant_by_its_refresh_token_id_ends_it(
+        refresh_world: _RefreshWorld, path: _SessionRevokePath
+    ) -> None:
+        login = refresh_world.login()
+        refresh_world.delete_access_rows()
+        [session_id] = refresh_world.openapi_session_ids()
+
+        path.revoke(refresh_world, session_id)
+
+        assert refresh_world.refresh_error(login.refresh_token).code is TokenErrorCode.INVALID_GRANT
+        assert refresh_world.openapi_session_ids() == []
+
+    @staticmethod
+    def test_a_refreshed_grant_is_listed_once(refresh_world: _RefreshWorld) -> None:
+        login = refresh_world.login()
+        rotated = refresh_world.refresh(login.refresh_token)
+
+        assert refresh_world.openapi_session_ids() == [rotated.payload["token_id"]]
+        assert refresh_world.console_session_ids() == [rotated.payload["token_id"]]

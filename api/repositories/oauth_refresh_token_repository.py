@@ -5,8 +5,9 @@ import uuid
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import ColumnElement, Row, and_, delete, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import ensure_naive_utc
@@ -47,12 +48,40 @@ class RefreshTokenRecord:
         )
 
 
+@dataclass(frozen=True)
+class LiveRefreshToken:
+    """A grant's newest usable refresh token."""
+
+    id: str
+    grant: GrantKey
+    created_at: datetime
+    expires_at: datetime
+
+
 _GRANT_COLUMNS = (
     OAuthRefreshToken.subject_email,
     OAuthRefreshToken.subject_issuer,
     OAuthRefreshToken.client_id,
     OAuthRefreshToken.device_label,
 )
+
+
+def refresh_grant_filter(grant: GrantKey) -> ColumnElement[bool]:
+    return and_(
+        OAuthRefreshToken.subject_email == grant.subject_email,
+        OAuthRefreshToken.subject_issuer == grant.subject_issuer,
+        OAuthRefreshToken.client_id == grant.client_id,
+        OAuthRefreshToken.device_label == grant.device_label,
+    )
+
+
+def _grant_of(row: Row[Any]) -> GrantKey:
+    return GrantKey(
+        subject_email=row.subject_email,
+        subject_issuer=row.subject_issuer,
+        client_id=row.client_id,
+        device_label=row.device_label,
+    )
 
 
 def new_refresh_token() -> str:
@@ -107,43 +136,37 @@ def delete_refresh_grants(session: Session, grants: Collection[GrantKey]) -> Non
     """Delete every refresh token of these grants inside the caller's transaction."""
     if not grants:
         return
-    session.execute(
-        delete(OAuthRefreshToken).where(
-            or_(
-                *(
-                    and_(
-                        OAuthRefreshToken.subject_email == grant.subject_email,
-                        OAuthRefreshToken.subject_issuer == grant.subject_issuer,
-                        OAuthRefreshToken.client_id == grant.client_id,
-                        OAuthRefreshToken.device_label == grant.device_label,
-                    )
-                    for grant in grants
-                )
-            )
-        )
-    )
+    session.execute(delete(OAuthRefreshToken).where(or_(*(refresh_grant_filter(grant) for grant in grants))))
 
 
-def live_refresh_grants(session: Session, *, account_id: str, now: datetime) -> dict[GrantKey, datetime]:
-    """The account's grants holding a usable refresh token, each with its newest token's issue time."""
-    stmt = (
-        select(*_GRANT_COLUMNS, func.max(OAuthRefreshToken.created_at).label("issued_at"))
+def live_refresh_tokens(session: Session, *, account_id: str, now: datetime) -> dict[GrantKey, LiveRefreshToken]:
+    """The account's grants holding a usable refresh token, each with its newest one."""
+    rows = session.execute(
+        select(OAuthRefreshToken.id, *_GRANT_COLUMNS, OAuthRefreshToken.created_at, OAuthRefreshToken.expires_at)
         .where(
             OAuthRefreshToken.account_id == account_id,
             OAuthRefreshToken.rotated_at.is_(None),
             OAuthRefreshToken.expires_at > now,
         )
-        .group_by(*_GRANT_COLUMNS)
+        .order_by(OAuthRefreshToken.created_at.asc(), OAuthRefreshToken.id.asc())
     )
+    # Ascending order, so each grant keeps its newest token.
     return {
-        GrantKey(
-            subject_email=row.subject_email,
-            subject_issuer=row.subject_issuer,
-            client_id=row.client_id,
-            device_label=row.device_label,
-        ): row.issued_at
-        for row in session.execute(stmt)
+        _grant_of(row): LiveRefreshToken(
+            id=row.id, grant=_grant_of(row), created_at=row.created_at, expires_at=row.expires_at
+        )
+        for row in rows
     }
+
+
+def refresh_token_grant(session: Session, *, account_id: str, token_id: str) -> GrantKey | None:
+    """The grant of one of the account's refresh tokens, found by its row id."""
+    row = session.execute(
+        select(*_GRANT_COLUMNS).where(OAuthRefreshToken.id == token_id, OAuthRefreshToken.account_id == account_id)
+    ).first()
+    if row is None:
+        return None
+    return _grant_of(row)
 
 
 class SQLAlchemyOAuthRefreshTokenRepository:

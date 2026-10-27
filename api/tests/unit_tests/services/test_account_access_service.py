@@ -149,7 +149,7 @@ def test_list_sessions_delegates_database_pagination() -> None:
 
 
 def test_revoke_current_session_invalidates_live_token_cache() -> None:
-    sessions = _Sessions(revocation=AccountSessionRevocation(owned=True, token_hash="hash-1"))
+    sessions = _Sessions(revocation=AccountSessionRevocation(owned=True, token_hashes=("hash-1",)))
     cache = _TokenCache()
 
     _service(sessions=sessions, token_cache=cache).revoke_current_session(_context())

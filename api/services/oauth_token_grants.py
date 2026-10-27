@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Protocol
+from typing import NoReturn, Protocol
 
 from models.account import AccountStatus
 from repositories.oauth_authorization_code_repository import AuthorizationCodeRecord, RedisAuthorizationCodeRepository
@@ -224,10 +224,11 @@ class RefreshTokenGrantHandler:
         record = self._find(client, request)
         account = _active_account(self._accounts, record.account_id)
         # The access token is keyed by the account's current email; a changed one names another grant.
+        # Such a grant, like one without a workspace, can never refresh again, so it frees its session slot.
         if account.email != record.subject_email:
-            raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
+            self._end_dead_grant(record)
         if record.workspace_id is None:
-            raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
+            self._end_dead_grant(record)
 
         presented = PresentedRefreshToken(
             id=record.id,
@@ -247,6 +248,10 @@ class RefreshTokenGrantHandler:
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT) from None
         except RefreshTokenRejectedError:
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT) from None
+
+    def _end_dead_grant(self, record: RefreshTokenRecord) -> NoReturn:
+        self._revoke.revoke_grant(record.grant_key)
+        raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
 
     def _find(self, client: ResolvedClient, request: TokenRequest) -> RefreshTokenRecord:
         if not request.refresh_token:

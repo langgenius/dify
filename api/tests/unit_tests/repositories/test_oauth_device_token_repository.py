@@ -708,3 +708,55 @@ def test_rollback_after_eviction_restores_the_access_row_but_not_the_refresh(
 
     assert _live_token_ids(sqlite_session) == {first.token_id}
     assert _refresh_labels(sqlite_session) == set()
+
+
+def test_console_lists_and_revokes_a_device_session_as_before(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, repository, redis, _ttl_policy = _repository(sqlite_session_factory)
+    [device] = _issue_sessions(issuer, ["a"])
+
+    page = repository.list_account_sessions(account_id="account-1", page=1, limit=10)
+
+    assert [(item.id, item.prefix) for item in page.items] == [(device.token_id, "dfoa_")]
+    assert repository.revoke_account_session(account_id="account-1", token_id=device.token_id) is True
+    assert _live_token_ids(sqlite_session) == set()
+    assert redis.deleted == [_cache_key(device)]
+    assert repository.list_account_sessions(account_id="account-1", page=1, limit=10).items == ()
+
+
+def test_console_never_lists_or_revokes_an_external_sso_session(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, repository, redis, _ttl_policy = _repository(sqlite_session_factory)
+    external = issuer.issue_external_token(
+        subject_email="ada@example.com",
+        subject_issuer="https://idp.example",
+        client_id="difyctl",
+        device_label="cli",
+    )
+
+    assert repository.list_account_sessions(account_id="account-1", page=1, limit=10).total == 0
+    assert repository.revoke_account_session(account_id="account-1", token_id=external.token_id) is False
+    assert _live_token_ids(sqlite_session) == {external.token_id}
+    assert redis.deleted == []
+
+
+def test_console_revoke_by_refresh_token_id_locks_the_account_row_first(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+    [session_id] = [
+        item.id for item in repository.list_account_sessions(account_id="account-1", page=1, limit=10).items
+    ]
+
+    with record_locks(sqlite_session_factory) as log:
+        assert repository.revoke_account_session(account_id="account-1", token_id=session_id) is True
+
+    assert log.tables[0] == "accounts"
+    assert log.follows_lock_order()
+    assert _refresh_labels(sqlite_session) == set()

@@ -73,5 +73,5 @@ class AccountAccessService:
         )
         if require_owned and not revocation.owned:
             raise AccountSessionNotFoundError
-        if revocation.token_hash is not None:
-            self._invalidate_token_cache(revocation.token_hash)
+        for token_hash in revocation.token_hashes:
+            self._invalidate_token_cache(token_hash)
