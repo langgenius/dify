@@ -148,6 +148,32 @@ Stop a running completion message task.
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /connections/claim
+Explicitly claim the current Guest's Connections for the authenticated Account. Send the old Guest Passport in X-App-Passport, and an Account Web login proof in Authorization or a PKCE login_code/code_verifier pair in the JSON body. Returns a new Account-linked App Passport. Account App defaults take precedence over Guest defaults; Conversation choices and history are preserved.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| X-App-Code | header |  | Yes | string |
+| X-App-Passport | header |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConnectionClaimPayload](#connectionclaimpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Guest Connections claimed | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /connections/configuration
 Read saved App or Conversation choices without validating or refreshing credentials.
 
@@ -163,6 +189,7 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | ---- | ----------- | ------ |
 | 200 | Saved Connection configuration | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /connections/oauth/authorization-url
@@ -1397,6 +1424,21 @@ Completion request failed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
+
+#### ConnectionClaimPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code_verifier | string |  | No |
+| login_code | string |  | No |
+
+#### ConnectionClaimResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| claimed_connections | integer | Number transferred by the original claim; stable on retries | Yes |
+| webapp_access_token | string | Web-only login proof for subsequent login-status and Passport requests; never a Console token | Yes |
 
 #### ConnectionConfigurationInvalidError
 

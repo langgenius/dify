@@ -83,7 +83,7 @@ class ConnectionConfigurationApi(WebApiResource):
     @web_ns.doc(params=query_params_from_model(ConnectionConfigurationQuery))
     @web_ns.doc(description="Read saved App or Conversation choices without validating or refreshing credentials.")
     @web_ns.response(200, "Saved Connection configuration", web_ns.models[ConnectionConfigurationResponse.__name__])
-    @error_responses(ConnectionConfigurationHTTPError)
+    @error_responses(ConnectionConfigurationHTTPError, ConnectionLoginRequiredError)
     def get(self, app_model: App, end_user: EndUser):
         try:
             context = connection_context_from_web_passport(app=app_model, end_user=end_user)

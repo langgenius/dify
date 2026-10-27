@@ -139,6 +139,26 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ConnectionClaimPayload
+ */
+export const zConnectionClaimPayload = z.object({
+  code_verifier: z
+    .string()
+    .regex(/^[A-Za-z0-9._~-]{43,128}$/)
+    .nullish(),
+  login_code: z.string().min(1).max(256).nullish(),
+})
+
+/**
+ * ConnectionClaimResponse
+ */
+export const zConnectionClaimResponse = z.object({
+  access_token: z.string(),
+  claimed_connections: z.int().gte(0),
+  webapp_access_token: z.string(),
+})
+
+/**
  * ConnectionCredentialStatus
  *
  * Last known credential lifecycle state, not readiness for a particular node.
@@ -2343,6 +2363,18 @@ export const zPostConnectionsBody = zEndUserConnectionCreatePayload
  * API-key connection created
  */
 export const zPostConnectionsResponse = zEndUserConnectionResponse
+
+export const zPostConnectionsClaimBody = zConnectionClaimPayload
+
+export const zPostConnectionsClaimHeaders = z.object({
+  'X-App-Code': z.string(),
+  'X-App-Passport': z.string(),
+})
+
+/**
+ * Guest Connections claimed
+ */
+export const zPostConnectionsClaimResponse = zConnectionClaimResponse
 
 export const zGetConnectionsConfigurationQuery = z.object({
   conversation_id: z.uuid().optional(),

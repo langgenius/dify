@@ -57,7 +57,7 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
-from .end_user_connection import AppConnection, EndUserConnection, SessionConnection
+from .end_user_connection import AppConnection, EndUserConnection, EndUserConnectionClaim, SessionConnection
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -286,6 +286,7 @@ __all__ = [
     "Embedding",
     "EndUser",
     "EndUserConnection",
+    "EndUserConnectionClaim",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",

@@ -39,6 +39,7 @@ from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_labels import mask_account_label
 from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
 from services.end_user_connections.errors import (
+    ConnectionAccountRequiredError,
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionConflictError,
@@ -409,6 +410,7 @@ return 1
     _errors: dict[str, type[ConnectionError]] = {
         error.__name__: error
         for error in (
+            ConnectionAccountRequiredError,
             ConnectionCheckUnavailableError,
             ConnectionConflictError,
             ConnectionIdentityError,

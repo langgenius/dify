@@ -138,6 +138,7 @@ from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
+from services.end_user_connections.claim import ConnectionClaimService
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
@@ -347,6 +348,7 @@ class ApplicationServices:
     connection_selections: ConnectionSelectionService
     end_user_connection_execution: ConnectionExecutionService
     end_user_connection_runtime: ConnectionRuntimeService
+    end_user_connection_claims: ConnectionClaimService
     end_user_connections: ConnectionService
     end_user_connection_oauth: OAuthConnectionService
     end_user_connection_preflight: ConnectionPreflightService
@@ -585,6 +587,19 @@ def build_application_services(
     end_user_connection_preflight = build_end_user_connection_preflight(
         database_client=database_client, connections=end_user_connections
     )
+    web_passport = WebPassportService(
+        passports=web_passport_repository,
+        auth=DeploymentWebPassportAuthGateway(
+            webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
+            get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
+            is_user_allowed=EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp,
+        ),
+        tokens=web_passport_tokens,
+        identities=web_identity,
+        account_passports_enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
+        now=lambda: datetime.now(UTC),
+        access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+    )
     return ApplicationServices(
         rbac=rbac,
         accounts=account_services,
@@ -792,22 +807,15 @@ def build_application_services(
         end_user_connection_runtime=build_end_user_connection_runtime(
             database_client=database_client, connections=end_user_connections
         ),
+        end_user_connection_claims=ConnectionClaimService(
+            store=EndUserConnectionRepository(session_factory=database_client),
+            passports=web_passport,
+            tokens=web_passport_tokens,
+        ),
         end_user_connections=end_user_connections,
         end_user_connection_preflight=end_user_connection_preflight,
         end_user_connection_oauth=build_end_user_connection_oauth(database_client=database_client),
-        web_passport=WebPassportService(
-            passports=web_passport_repository,
-            auth=DeploymentWebPassportAuthGateway(
-                webapp_auth_enabled=SystemFeatureService.is_webapp_auth_enabled(deployment_edition=deployment_edition),
-                get_app_access_mode=EnterpriseService.WebAppAuth.get_app_access_mode_by_id,
-                is_user_allowed=EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp,
-            ),
-            tokens=web_passport_tokens,
-            identities=web_identity,
-            account_passports_enabled=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
-            now=lambda: datetime.now(UTC),
-            access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
-        ),
+        web_passport=web_passport,
         api_based_extensions=APIBasedExtensionApplicationService(
             extensions=APIBasedExtensionRepository(session_factory=database_client),
             secrets=WorkspaceTokenCipher(),

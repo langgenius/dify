@@ -147,6 +147,17 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionClaimPayload = {
+  code_verifier?: string | null
+  login_code?: string | null
+}
+
+export type ConnectionClaimResponse = {
+  access_token: string
+  claimed_connections: number
+  webapp_access_token: string
+}
+
 export type ConnectionConfigurationInvalidError = ErrorResponse & {
   code: 'connection_configuration_invalid'
   status: 400
@@ -1734,6 +1745,33 @@ export type PostConnectionsResponses = {
 
 export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
 
+export type PostConnectionsClaimData = {
+  body: ConnectionClaimPayload
+  headers: {
+    'X-App-Code': string
+    'X-App-Passport': string
+  }
+  path?: never
+  query?: never
+  url: '/connections/claim'
+}
+
+export type PostConnectionsClaimErrors = {
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsClaimError = PostConnectionsClaimErrors[keyof PostConnectionsClaimErrors]
+
+export type PostConnectionsClaimResponses = {
+  200: ConnectionClaimResponse
+}
+
+export type PostConnectionsClaimResponse =
+  PostConnectionsClaimResponses[keyof PostConnectionsClaimResponses]
+
 export type GetConnectionsConfigurationData = {
   body?: never
   path?: never
@@ -1745,6 +1783,7 @@ export type GetConnectionsConfigurationData = {
 
 export type GetConnectionsConfigurationErrors = {
   400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   default: ErrorResponse
 }
 

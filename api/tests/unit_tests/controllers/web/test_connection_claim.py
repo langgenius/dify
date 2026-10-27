@@ -1,0 +1,584 @@
+"""Guest Claim through real Passport verification and transactional persistence."""
+
+import base64
+import hashlib
+from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
+from threading import Event
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+from urllib.parse import parse_qs, urlsplit
+from uuid import uuid4
+
+import pytest
+import sqlalchemy as sa
+from flask import Flask
+from flask.testing import FlaskClient
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.test import TestResponse
+
+from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
+from controllers.console import bp as console_bp
+from controllers.console import wraps as console_wraps
+from controllers.console.auth import login as console_login
+from controllers.web import bp, connection_claim, connections, wraps
+from extensions.ext_redis import RedisClientWrapper
+from libs.passport import PassportService
+from models.account import Account, AccountStatus
+from models.end_user_connection import (
+    AppConnection,
+    EndUserConnection,
+    EndUserConnectionClaim,
+    EndUserConnectionRevisionAcceptance,
+    SessionConnection,
+)
+from models.enums import ConversationFromSource, EndUserType, InvokeFrom
+from models.model import App, AppMode, Conversation, EndUser
+from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.web_passport_repository import WebPassportRepository
+from services.end_user_connections.claim import ConnectionClaimService
+from services.end_user_connections.entities import WebConnectionContext
+from services.end_user_connections.errors import ConnectionAccountRequiredError
+from services.end_user_connections.selections import ConnectionSelectionService
+from services.entities.passport_entities import WebPassportRequest
+from services.web_identity_service import WebIdentityService
+from services.web_login_handoff import WebLoginHandoffService
+from services.web_login_handoff_adapters import RedisWebLoginGrantStore
+from services.web_passport_gateways import DeploymentWebPassportAuthGateway, PassportTokenGateway
+from services.web_passport_service import WebPassportService
+from tests.helpers.end_user_api_key import PROVIDER
+from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
+
+
+@dataclass
+class ClaimHarness:
+    oauth: OAuthHarness
+    account: WebConnectionContext
+    services: SimpleNamespace
+    signer: PassportService
+    proof: str
+    guest_passport: str
+    client: FlaskClient
+
+    def headers(self, *, proof: str | None = None) -> dict[str, str]:
+        return {
+            "X-App-Code": self.oauth.app_code,
+            "X-App-Passport": self.guest_passport,
+            "Authorization": f"Bearer {proof or self.proof}",
+        }
+
+    def claim(self) -> TestResponse:
+        return self.client.post("/api/connections/claim", headers=self.headers(), json={})
+
+
+def account_proof(signer: PassportService, account_id: str, *, expired: bool = False) -> str:
+    return signer.issue(
+        {
+            "sub": "Web API Account Login",
+            "token_source": "webapp_account_login",
+            "auth_type": "internal",
+            "user_id": account_id,
+            "exp": 1 if expired else int((datetime.now(UTC) + timedelta(hours=1)).timestamp()),
+        }
+    )
+
+
+@pytest.fixture
+def harness(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> Iterator[ClaimHarness]:
+    config_overrides(
+        SECRET_KEY="guest-connection-claim-test-key-with-32-bytes",
+        END_USER_AUTH_ALLOW_ANONYMOUS=True,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+        APP_WEB_URL="https://apps.example.net",
+        CONSOLE_WEB_URL="https://console.example.com",
+        CONSOLE_API_URL="https://console.example.com",
+        COOKIE_DOMAIN="",
+    )
+    oauth = make_oauth_harness(sqlite_session_factory, monkeypatch)
+    account = oauth.base.context
+    with sqlite_session_factory.begin() as session:
+        session.execute(sa.update(App).where(App.id == account.app_id).values(mode=AppMode.ADVANCED_CHAT))
+        guest = EndUser(
+            tenant_id=account.tenant_id,
+            app_id=account.app_id,
+            type=EndUserType.BROWSER,
+            account_id=None,
+            session_id=str(uuid4()),
+            _is_anonymous=True,
+        )
+        session.add(guest)
+        session.flush()
+        guest_id, guest_session = guest.id, guest.session_id
+    oauth.base.context = replace(account, end_user_id=guest_id, account_id=None)
+    signer = PassportService()
+    identity = WebIdentityService(
+        accounts=SQLAlchemyAccountRepository(sqlite_session_factory), allow_console_login=True, allow_webapp_login=False
+    )
+    tokens = PassportTokenGateway(passport=signer)
+    passports = WebPassportService(
+        passports=WebPassportRepository(
+            session_factory=sqlite_session_factory, generate_session_id=lambda: str(uuid4())
+        ),
+        auth=DeploymentWebPassportAuthGateway(
+            webapp_auth_enabled=False,
+            get_app_access_mode=lambda _: pytest.fail("No Cloud App ACL"),
+            is_user_allowed=lambda _user, _app: pytest.fail("No Cloud App ACL"),
+        ),
+        tokens=tokens,
+        identities=identity,
+        account_passports_enabled=True,
+        now=lambda: datetime.now(UTC),
+        access_token_expire_minutes=60,
+    )
+    services = SimpleNamespace(
+        connection_selections=ConnectionSelectionService(store=oauth.base.repository),
+        web_identity=identity,
+        web_passport=passports,
+        end_user_connections=oauth.base.service,
+        end_user_connection_claims=ConnectionClaimService(
+            store=oauth.base.repository, passports=passports, tokens=tokens
+        ),
+    )
+    for module in (wraps, connection_claim, connections, console_login):
+        monkeypatch.setattr(module, "application_services", lambda: services)
+    monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
+    monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
+    guest_token = passports.issue(WebPassportRequest(oauth.app_code, guest_session, None)).access_token
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(bp)
+    app.register_blueprint(console_bp)
+    assert account.account_id is not None
+    with app.test_client() as client:
+        yield ClaimHarness(
+            oauth, account, services, signer, account_proof(signer, account.account_id), guest_token, client
+        )
+
+
+def save_choices(
+    harness: ClaimHarness, identity: WebConnectionContext, connection_id: str, conversation_id: str | None = None
+) -> str:
+    run_id = str(uuid4())
+    harness.oauth.base.repository.save_run_selections(
+        ConnectionExecutionContext(
+            tenant_id=identity.tenant_id,
+            app_id=identity.app_id,
+            end_user_id=identity.end_user_id,
+            account_id=identity.account_id,
+            workflow_id=harness.oauth.base.workflow_id,
+            connection_revision=harness.oauth.base.connection_revision,
+            selections=(
+                ExecutionConnectionSelection(node_id="tool-1", provider=PROVIDER, connection_id=connection_id),
+            ),
+        ),
+        run_id,
+        conversation_id,
+        update_conversation=conversation_id is not None,
+    )
+    return run_id
+
+
+@pytest.mark.parametrize("credential_type", ["api-key", "oauth2"])
+@pytest.mark.parametrize("account_defaults", [False, True])
+def test_claim_preserves_credentials_ids_and_independent_choices(
+    harness: ClaimHarness, credential_type: str, account_defaults: bool, config_overrides: Callable[..., None]
+) -> None:
+    base = harness.oauth.base
+    existing = base.service.create_api_key(harness.account, base.command())
+    account_run = save_choices(harness, harness.account, existing.id) if account_defaults else None
+    first = (
+        harness.oauth.finish(harness.oauth.start())
+        if credential_type == "oauth2"
+        else base.service.create_api_key(base.context, base.command())
+    )
+    second = base.service.create_api_key(base.context, base.command("second-secret"))
+    with base.sessions.begin() as session:
+        conversations = [
+            Conversation(
+                app_id=base.context.app_id,
+                mode=AppMode.ADVANCED_CHAT,
+                name="Guest chat",
+                from_source=ConversationFromSource.API,
+                from_end_user_id=base.context.end_user_id,
+                from_account_id=None,
+                invoke_from=InvokeFrom.WEB_APP,
+                _inputs={},
+                is_deleted=False,
+            )
+            for _ in range(2)
+        ]
+        session.add_all(conversations)
+        session.flush()
+        ids = [row.id for row in conversations]
+    save_choices(harness, base.context, first.id, ids[0])
+    guest_run = save_choices(harness, base.context, second.id, ids[1])
+    with base.sessions() as session:
+        before = {
+            row.id: (
+                row.encrypted_credentials,
+                row.revision,
+                row.last_active_at,
+                row.oauth_client_id,
+                row.account_label,
+                row.oauth_client_fingerprint,
+                row.oauth_plugin_unique_identifier,
+            )
+            for row in session.scalars(sa.select(EndUserConnection))
+            if row.id in (first.id, second.id)
+        }
+        session_refs = [
+            (row.id, row.session_id, row.connection_id) for row in session.scalars(sa.select(SessionConnection))
+        ]
+    checks, exchanges = len(base.auth.calls), harness.oauth.handler.exchanges
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    response = harness.claim()
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.get_json()["claimed_connections"] == 2
+    assert set(response.get_json()) == {"access_token", "webapp_access_token", "claimed_connections"}
+    assert response.get_json()["webapp_access_token"] == harness.proof
+    claims = harness.signer.verify(response.get_json()["access_token"])
+    assert claims["end_user_id"] == harness.account.end_user_id
+    assert claims["end_user_id"] != base.context.end_user_id
+    assert harness.account.account_id not in claims.values()
+    assert len(base.auth.calls) == checks
+    assert harness.oauth.handler.exchanges == exchanges
+    with base.sessions() as session:
+        for connection_id, (ciphertext, revision, activity, client_id, label, fingerprint, artifact) in before.items():
+            row = session.get(EndUserConnection, connection_id)
+            assert row is not None
+            assert (row.account_id, row.end_user_id) == (harness.account.account_id, None)
+            assert (
+                row.encrypted_credentials,
+                row.revision,
+                row.last_active_at,
+                row.oauth_client_id,
+                row.account_label,
+                row.oauth_client_fingerprint,
+                row.oauth_plugin_unique_identifier,
+            ) == (ciphertext, revision + 1, activity, client_id, label, fingerprint, artifact)
+        assert [
+            (row.id, row.session_id, row.connection_id) for row in session.scalars(sa.select(SessionConnection))
+        ] == session_refs
+        for conversation_id in ids:
+            conversation = session.get(Conversation, conversation_id)
+            assert conversation is not None
+            assert conversation.from_end_user_id == base.context.end_user_id
+        defaults = list(session.scalars(sa.select(AppConnection)))
+        assert len(defaults) == 1
+        assert defaults[0].end_user_id == harness.account.end_user_id
+        assert defaults[0].connection_id == (existing.id if account_defaults else second.id)
+        assert defaults[0].source_run_id == (account_run if account_defaults else guest_run)
+    assert base.service.get_connection(harness.account, first.id).id == first.id
+    assert harness.claim().get_json()["claimed_connections"] == 2
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+    for path in (f"/api/connections/{first.id}", "/api/connections", "/api/connections/configuration"):
+        denied = harness.client.get(path, headers=harness.headers())
+        assert denied.status_code == 401
+        assert denied.get_json()["code"] == "end_user_login_required"
+    assert (
+        harness.client.post(
+            "/api/connections", headers=harness.headers(), json=base.command().model_dump(mode="json")
+        ).status_code
+        == 401
+    )
+    with base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionClaim)) == 1
+        stored = session.get(EndUserConnection, first.id)
+        assert stored is not None
+        assert stored.revision == before[first.id][1] + 1
+
+
+def test_empty_claim_is_bound_to_one_account_and_does_not_claim_other_guests(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    with base.sessions.begin() as session:
+        other = Account(name="Other", email=f"{uuid4()}@example.com", status=AccountStatus.ACTIVE)
+        session.add(other)
+        session.flush()
+        other_id = other.id
+        guest = EndUser(
+            tenant_id=base.context.tenant_id,
+            app_id=base.context.app_id,
+            type=EndUserType.BROWSER,
+            account_id=None,
+            session_id=str(uuid4()),
+        )
+        session.add(guest)
+        session.flush()
+        other_guest = replace(base.context, end_user_id=guest.id)
+    untouched = base.service.create_api_key(other_guest, base.command())
+    assert harness.claim().get_json()["claimed_connections"] == 0
+    assert harness.claim().get_json()["claimed_connections"] == 0
+    response = harness.client.post(
+        "/api/connections/claim", json={}, headers=harness.headers(proof=account_proof(harness.signer, other_id))
+    )
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "connection_conflict"
+    assert base.service.get_connection(other_guest, untouched.id).id == untouched.id
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "missing_account",
+        "expired_account",
+        "guest_as_account",
+        "console_as_account",
+        "expired_guest",
+        "account_as_guest",
+        "wrong_app",
+        "authority_payload",
+        "incomplete_handoff",
+    ],
+)
+def test_claim_requires_both_valid_scoped_identities(harness: ClaimHarness, failure: str) -> None:
+    headers = harness.headers()
+    payload: dict[str, object] = {}
+    if failure == "missing_account":
+        headers.pop("Authorization")
+    elif failure == "expired_account":
+        headers["Authorization"] = (
+            f"Bearer {account_proof(harness.signer, harness.account.account_id or '', expired=True)}"
+        )
+    elif failure == "guest_as_account":
+        headers["Authorization"] = f"Bearer {harness.guest_passport}"
+    elif failure == "console_as_account":
+        token = harness.signer.issue(
+            {
+                "sub": "Console API Passport",
+                "user_id": harness.account.account_id,
+                "exp": int((datetime.now(UTC) + timedelta(hours=1)).timestamp()),
+            }
+        )
+        headers["Authorization"] = f"Bearer {token}"
+    elif failure == "expired_guest":
+        claims = harness.signer.verify(harness.guest_passport)
+        claims["exp"] = 1
+        headers["X-App-Passport"] = harness.signer.issue(claims)
+    elif failure == "account_as_guest":
+        headers["X-App-Passport"] = harness.services.web_passport.issue_for_account(
+            app_code=harness.oauth.app_code, access_token=harness.proof
+        ).access_token
+    elif failure == "wrong_app":
+        headers["X-App-Code"] = "other-app"
+    elif failure == "incomplete_handoff":
+        payload["login_code"] = "untrusted-secret"
+    else:
+        payload["account_id"] = "untrusted-secret"
+    response = harness.client.post("/api/connections/claim", headers=headers, json=payload)
+    assert response.status_code == (422 if failure in {"authority_payload", "incomplete_handoff"} else 401)
+    assert harness.proof not in response.get_data(as_text=True)
+    with harness.oauth.base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionClaim)) == 0
+
+
+def test_oauth_started_by_guest_cannot_finish_after_claim(harness: ClaimHarness) -> None:
+    attempt = harness.oauth.start()
+    assert harness.claim().status_code == 200
+    with pytest.raises(ConnectionAccountRequiredError):
+        harness.oauth.finish(attempt)
+    assert harness.oauth.handler.exchanges == 0
+
+
+def test_guest_check_cannot_write_credentials_after_claim(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    base.auth.on_check = lambda: harness.services.end_user_connection_claims.claim(
+        base.context, app_code=harness.oauth.app_code, access_token=harness.proof
+    )
+    with pytest.raises(ConnectionAccountRequiredError):
+        base.service.check_connection(base.context, selected.id, connection_revision=base.connection_revision)
+    assert base.service.get_connection(harness.account, selected.id).id == selected.id
+
+
+def test_claim_rolls_back_owner_and_default_changes_together(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    save_choices(harness, base.context, selected.id)
+    engine = base.sessions.kw["bind"]
+
+    def fail_receipt(
+        _connection: object, _cursor: object, statement: str, _parameters: object, _context: object, _executemany: bool
+    ) -> None:
+        if statement.startswith("INSERT INTO end_user_connection_claims"):
+            raise RuntimeError("receipt unavailable")
+
+    event.listen(engine, "before_cursor_execute", fail_receipt)
+    try:
+        with pytest.raises(RuntimeError, match="receipt unavailable"):
+            harness.services.end_user_connection_claims.claim(
+                base.context, app_code=harness.oauth.app_code, access_token=harness.proof
+            )
+    finally:
+        event.remove(engine, "before_cursor_execute", fail_receipt)
+    assert base.service.get_connection(base.context, selected.id).id == selected.id
+    with base.sessions() as session:
+        assert session.scalar(sa.select(AppConnection.end_user_id)) == base.context.end_user_id
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionClaim)) == 0
+
+
+def test_pkce_return_can_claim_without_separate_passport_exchange(
+    harness: ClaimHarness, redis_transport: tuple[RedisClientWrapper, MagicMock]
+) -> None:
+    redis, commands = redis_transport
+    records: dict[str, str] = {}
+
+    def execute(command: str, *args: object, **_kwargs: object) -> object:
+        key = str(args[0])
+        if command == "SET":
+            records[key] = str(args[1])
+            return True
+        if command == "GET":
+            return records.get(key)
+        if command == "GETDEL":
+            return records.pop(key, None)
+        raise AssertionError(command)
+
+    commands.side_effect = execute
+    services = harness.services
+    services.web_login_handoff = WebLoginHandoffService(
+        grants=RedisWebLoginGrantStore(redis=redis),
+        apps=WebPassportRepository(
+            session_factory=harness.oauth.base.sessions, generate_session_id=lambda: str(uuid4())
+        ),
+        identities=services.web_identity,
+        tokens=PassportTokenGateway(passport=harness.signer),
+        enabled=True,
+        app_web_url="https://apps.example.net",
+        console_web_url="https://console.example.com",
+        now=lambda: datetime.now(UTC),
+    )
+    console_token = harness.signer.issue(
+        {
+            "sub": "Console API Passport",
+            "user_id": harness.account.account_id,
+            "exp": int((datetime.now(UTC) + timedelta(hours=1)).timestamp()),
+        }
+    )
+    harness.client.set_cookie("__Host-access_token", console_token, domain="console.example.com", secure=True)
+    verifier = "v" * 43
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    response = harness.client.get(
+        "/console/api/login",
+        base_url="https://console.example.com",
+        query_string={
+            "app_code": harness.oauth.app_code,
+            "redirect_url": f"https://apps.example.net/workflow/{harness.oauth.app_code}",
+            "code_challenge": challenge,
+        },
+    )
+    assert response.status_code == 200
+    code = parse_qs(urlsplit(response.get_json()["redirect_url"]).query)["login_code"][0]
+    headers = harness.headers()
+    headers.pop("Authorization")
+    payload = {"login_code": code, "code_verifier": verifier}
+    response = harness.client.post(
+        "/api/connections/claim", base_url="https://apps.example.net", headers=headers, json=payload
+    )
+    assert response.status_code == 200
+    assert harness.signer.verify(response.get_json()["webapp_access_token"])["token_source"] == "webapp_account_login"
+    assert harness.signer.verify(response.get_json()["access_token"])["end_user_id"] == harness.account.end_user_id
+    assert harness.client.get_cookie("__Host-access_token", domain="apps.example.net") is None
+    replay = harness.client.post(
+        "/api/connections/claim", base_url="https://apps.example.net", headers=headers, json=payload
+    )
+    assert replay.status_code == 400
+
+
+def test_claimed_oauth_connection_refreshes_for_account_without_reauthorization(harness: ClaimHarness) -> None:
+    selected = harness.oauth.finish(harness.oauth.start())
+    assert harness.claim().status_code == 200
+    with harness.oauth.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == selected.id)
+            .values(expires_at=datetime(2000, 1, 1))
+        )
+    checked = harness.oauth.base.service.check_connection(
+        harness.account,
+        selected.id,
+        connection_revision=harness.oauth.base.service.get_connection_revision(
+            harness.account, selected.id
+        ).connection_revision,
+    )
+    assert checked.connection_id == selected.id
+    assert checked.check.status == "valid"
+    assert harness.oauth.handler.exchanges == 1
+    assert len(harness.oauth.handler.refreshes) == 1
+
+
+def test_claim_creates_account_app_identity_on_first_visit(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    with base.sessions.begin() as session:
+        session.execute(sa.delete(EndUser).where(EndUser.id == harness.account.end_user_id))
+    response = harness.claim()
+    assert response.status_code == 200
+    target_id = harness.signer.verify(response.get_json()["access_token"])["end_user_id"]
+    assert target_id != harness.account.end_user_id
+    assert target_id != base.context.end_user_id
+    with base.sessions() as session:
+        target = session.get(EndUser, target_id)
+        assert target is not None
+        assert target.account_id == harness.account.account_id
+        assert target.app_id == base.context.app_id
+        record = session.get(EndUserConnection, selected.id)
+        assert record is not None
+        assert record.account_id == target.account_id
+        assert (
+            session.scalar(
+                sa.select(sa.func.count())
+                .select_from(EndUserConnectionRevisionAcceptance)
+                .where(EndUserConnectionRevisionAcceptance.end_user_id == target.id)
+            )
+            == 0
+        )
+        guest_acceptance_count = session.scalar(
+            sa.select(sa.func.count())
+            .select_from(EndUserConnectionRevisionAcceptance)
+            .where(EndUserConnectionRevisionAcceptance.end_user_id == base.context.end_user_id)
+        )
+        assert guest_acceptance_count is not None
+        assert guest_acceptance_count > 0
+
+
+def test_refresh_waiters_receive_login_required_when_guest_is_claimed(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    selected = harness.oauth.finish(harness.oauth.start())
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == selected.id)
+            .values(expires_at=datetime(2000, 1, 1))
+        )
+    entered, release = Event(), Event()
+
+    def refresh() -> None:
+        entered.set()
+        assert release.wait(5)
+
+    harness.oauth.handler.on_refresh = refresh
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        revision = base.service.get_connection_revision(base.context, selected.id).connection_revision
+        first = pool.submit(base.service.check_connection, base.context, selected.id, connection_revision=revision)
+        assert entered.wait(5)
+        second = pool.submit(base.service.check_connection, base.context, selected.id, connection_revision=revision)
+        try:
+            assert harness.oauth.flight_joined.wait(5)
+            result = harness.services.end_user_connection_claims.claim(
+                base.context, app_code=harness.oauth.app_code, access_token=harness.proof
+            )
+            assert result.claimed_connections == 1
+        finally:
+            release.set()
+        for future in (first, second):
+            with pytest.raises(ConnectionAccountRequiredError):
+                future.result(timeout=5)
+    assert base.service.get_connection(harness.account, selected.id).id == selected.id
