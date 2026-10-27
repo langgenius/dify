@@ -8,8 +8,6 @@ from typing import Literal, NotRequired, Protocol, TypedDict
 
 from constants.oauth_bearer import SubjectType
 
-from libs.datetime_utils import ensure_naive_utc
-
 DEVICE_FLOW_TTL_SECONDS = 15 * 60
 DEFAULT_POLL_INTERVAL_SECONDS = 5
 
@@ -158,11 +156,6 @@ class PresentedRefreshToken:
     id: str
     family_id: str
     reuse_grace: timedelta
-
-    def may_replay(self, *, rotated_at: datetime, now: datetime) -> bool:
-        if not self.reuse_grace:
-            return False
-        return ensure_naive_utc(now) - ensure_naive_utc(rotated_at) <= self.reuse_grace
 
 
 @dataclass(frozen=True, slots=True)

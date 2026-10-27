@@ -11,6 +11,7 @@ from repositories.oauth_refresh_token_repository import (
     RefreshTokenRecord,
     SQLAlchemyOAuthRefreshTokenRepository,
     spend_refresh_token,
+    within_replay_grace,
 )
 from services.oauth_device_contracts import (
     GrantKey,
@@ -180,9 +181,11 @@ def test_spend_rejects_an_expired_or_deleted_token(sqlite_session_factory: sessi
         assert not isinstance(caught.value, RefreshTokenReusedError)
 
 
-def test_replay_check_accepts_naive_and_aware_times() -> None:
-    presented = PresentedRefreshToken(id="r", family_id="f", reuse_grace=timedelta(minutes=30))
+def test_replay_grace_accepts_naive_and_aware_times() -> None:
+    grace = timedelta(minutes=30)
     now = datetime.now(UTC)
 
-    assert presented.may_replay(rotated_at=(now - timedelta(minutes=5)).replace(tzinfo=None), now=now)
-    assert not presented.may_replay(rotated_at=now - timedelta(minutes=31), now=now)
+    assert within_replay_grace(rotated_at=(now - timedelta(minutes=5)).replace(tzinfo=None), now=now, grace=grace)
+    assert within_replay_grace(rotated_at=now - timedelta(minutes=30), now=now, grace=grace)
+    assert not within_replay_grace(rotated_at=now - timedelta(minutes=31), now=now, grace=grace)
+    assert not within_replay_grace(rotated_at=now, now=now, grace=timedelta())

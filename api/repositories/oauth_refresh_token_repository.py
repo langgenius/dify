@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from libs.datetime_utils import ensure_naive_utc
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OAuthRefreshToken
 from services.oauth_device_contracts import (
@@ -91,8 +92,15 @@ def spend_refresh_token(session: Session, presented: PresentedRefreshToken, *, n
     if row.rotated_at is None:
         session.execute(update(OAuthRefreshToken).where(OAuthRefreshToken.id == presented.id).values(rotated_at=now))
         return
-    if not presented.may_replay(rotated_at=row.rotated_at, now=now):
+    if not within_replay_grace(rotated_at=row.rotated_at, now=now, grace=presented.reuse_grace):
         raise RefreshTokenReusedError
+
+
+def within_replay_grace(*, rotated_at: datetime, now: datetime, grace: timedelta) -> bool:
+    """Whether a token rotated at ``rotated_at`` may still be replayed. Some databases return naive UTC times."""
+    if not grace:
+        return False
+    return ensure_naive_utc(now) - ensure_naive_utc(rotated_at) <= grace
 
 
 def delete_refresh_grants(session: Session, grants: Collection[GrantKey]) -> None:
