@@ -24530,18 +24530,6 @@ You cannot transfer ownership to yourself.
 | ---- | ---- | ----------- | -------- |
 | CannotTransferOwnerToSelfError |  | You cannot transfer ownership to yourself. |  |
 
-#### CanvasEvent
-
-Granular canvas-mutation signals (spec §6).
-
-Signals emitted by Builder handlers and committed mutations. Presentation
-of committed backend state: replaying these from a snapshot must
-reconstruct the same canvas.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| CanvasEvent | string | Granular canvas-mutation signals (spec §6).  Signals emitted by Builder handlers and committed mutations. Presentation of committed backend state: replaying these from a snapshot must reconstruct the same canvas. |  |
-
 #### CardOption
 
 | Name | Type | Description | Required |
@@ -26531,22 +26519,11 @@ Enum representing the deployment edition of the platform.
 | payload | [AssistantTurnItem](#assistantturnitem) |  | Yes |
 | seq | integer |  | Yes |
 
-#### DifyBuilderCanvasEventData
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| at_version | integer |  | Yes |
-| event | [CanvasEvent](#canvasevent) |  | Yes |
-| node_id | string |  | No |
-| operation_id | string |  | Yes |
-| revision | integer |  | Yes |
-| session_id | string |  | Yes |
-
 #### DifyBuilderCanvasEventResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [DifyBuilderCanvasEventData](#difybuildercanvaseventdata) |  | Yes |
+| data | [DifyBuilderGraphChangedEventData](#difybuildergraphchangedeventdata)<br>[DifyBuilderEditTargetsChangedEventData](#difybuilderedittargetschangedeventdata)<br>[DifyBuilderPublishedEventData](#difybuilderpublishedeventdata) |  | Yes |
 | event | string |  | Yes |
 
 #### DifyBuilderChecklistErrorPayload
@@ -26694,6 +26671,17 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | payload | [DecisionItem](#decisionitem) |  | Yes |
 | seq | integer |  | Yes |
 
+#### DifyBuilderEditTargetsChangedEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| event | string |  | Yes |
+| node_ids | [ string ] |  | Yes |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+
 #### DifyBuilderErrorEventData
 
 | Name | Type | Description | Required |
@@ -26743,6 +26731,17 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | kind | string |  | Yes |
 | payload | [FormCard](#formcard) |  | Yes |
 | seq | integer |  | Yes |
+
+#### DifyBuilderGraphChangedEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| cause | string, <br>**Available values:** "apply", "restore" | *Enum:* `"apply"`, `"restore"` | Yes |
+| event | string |  | Yes |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
 
 #### DifyBuilderInteractionResponseConversationItemResponse
 
@@ -26847,6 +26846,16 @@ Complete observed activity state before subsequent live progress deltas.
 | ---- | ---- | ----------- | -------- |
 | data | [DifyBuilderProgressSnapshotEventData](#difybuilderprogresssnapshoteventdata) |  | Yes |
 | event | string |  | Yes |
+
+#### DifyBuilderPublishedEventData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| event | string |  | Yes |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
 
 #### DifyBuilderRealCallConsentResponse
 
