@@ -113,7 +113,7 @@ class ConnectionClaimService:
                 source = self._source(passport)
             except (ConnectionIdentityError, WebPassportNotFoundError):
                 continue
-            if source.context in seen or source.connection_count == 0:
+            if source.context in seen:
                 continue
             seen.add(source.context)
             result.append((index, source))

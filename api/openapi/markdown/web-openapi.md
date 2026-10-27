@@ -168,7 +168,7 @@ Claim up to 50 anonymous browser Passports across Web Apps for one authenticated
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /connections/claimable-passports
-Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
 
 #### Request Body
 
@@ -1421,7 +1421,7 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | app_code | string |  | Yes |
 | app_name | string |  | Yes |
-| connection_count | integer |  | Yes |
+| connection_count | integer | Current Guest Connection count; does not determine Passport eligibility | Yes |
 | index | integer | Index of the candidate in the request's passports list | Yes |
 
 #### ClaimablePassportsPayload

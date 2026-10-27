@@ -133,7 +133,7 @@ export const zChatMessagePayload = z.object({
 export const zClaimablePassportResponse = z.object({
   app_code: z.string(),
   app_name: z.string(),
-  connection_count: z.int().gte(1),
+  connection_count: z.int().gte(0),
   index: z.int().gte(0),
 })
 

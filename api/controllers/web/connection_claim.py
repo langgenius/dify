@@ -209,7 +209,9 @@ class ClaimablePassportResponse(ResponseModel):
     index: int = Field(ge=0, description="Index of the candidate in the request's passports list")
     app_code: str
     app_name: str
-    connection_count: int = Field(ge=1)
+    connection_count: int = Field(
+        ge=0, description="Current Guest Connection count; does not determine Passport eligibility"
+    )
 
 
 class ClaimablePassportsResponse(ResponseModel):
@@ -225,7 +227,9 @@ class ClaimablePassportsApi(Resource):
     @web_ns.doc(
         description="Check anonymous Passports held by this browser across Web Apps without changing identity or data. "
         "Submit local candidates; return their request indices, App names/codes and current Connection counts. "
-        "Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. "
+        "Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. "
+        "Unavailable, disabled and unpublished Web Apps are filtered out. "
+        "Zero-Connection Guest Passports are included. "
         "connection_count counts all currently Guest-owned Connections, including ones needing reconnection. "
         "This is advisory: actual Claim rechecks ownership and Account App admission."
     )

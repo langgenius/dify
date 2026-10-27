@@ -754,27 +754,105 @@ def test_discovery_and_batch_claim_are_scoped_across_apps(
         assert other.end_user_id is None
     assert harness.client.post(
         "/api/connections/claimable-passports", json={"passports": [harness.guest_passport]}
-    ).get_json() == {"data": []}
+    ).get_json() == {
+        "data": [{"index": 0, "app_code": harness.oauth.app_code, "app_name": "App", "connection_count": 0}]
+    }
 
 
-@pytest.mark.parametrize("unavailable", ["empty", "account", "sso", "disabled_app", "removed_site", "wrong_owner"])
+def test_zero_connection_guest_remains_claimable_for_future_conversation_migration(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    with base.sessions.begin() as session:
+        conversation = Conversation(
+            app_id=base.context.app_id,
+            mode=AppMode.ADVANCED_CHAT,
+            name="Guest chat",
+            from_source=ConversationFromSource.API,
+            from_end_user_id=base.context.end_user_id,
+            from_account_id=None,
+            invoke_from=InvokeFrom.WEB_APP,
+            _inputs={},
+            is_deleted=False,
+        )
+        session.add(conversation)
+        session.flush()
+        conversation_id = conversation.id
+    payload = {"passports": [harness.guest_passport, harness.guest_passport]}
+    expected = {"data": [{"index": 0, "app_code": harness.oauth.app_code, "app_name": "App", "connection_count": 0}]}
+    response = harness.client.post("/api/connections/claimable-passports", json=payload)
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.get_json() == expected
+    result = harness.claim()
+    assert result.status_code == 200
+    assert result.get_json()["data"][0]["claimed_connections"] == 0
+    assert harness.client.post("/api/connections/claimable-passports", json=payload).get_json() == expected
+    with base.sessions() as session:
+        stored = session.get(Conversation, conversation_id)
+        assert stored is not None
+        assert stored.from_end_user_id == base.context.end_user_id
+
+
+@pytest.mark.parametrize(
+    "unavailable",
+    [
+        "account",
+        "sso",
+        "disabled_app",
+        "removed_app",
+        "removed_site",
+        "app_status",
+        "site_status",
+        "unpublished",
+        "draft_workflow",
+        "missing_workflow",
+        "wrong_workflow_app",
+        "wrong_workflow_tenant",
+        "unsupported_mode",
+        "wrong_owner",
+    ],
+)
 def test_claimable_passports_omit_ineligible_identities(harness: ClaimHarness, unavailable: str) -> None:
     base = harness.oauth.base
+    base.service.create_api_key(base.context, base.command())
     token = harness.guest_passport
-    if unavailable != "empty":
-        base.service.create_api_key(base.context, base.command())
     if unavailable == "account":
         token = harness.services.web_passport.issue_for_account(
             app_code=harness.oauth.app_code, access_token=harness.proof
         ).access_token
     elif unavailable == "sso":
         token = harness.signer.issue({**harness.signer.verify(token), "token_source": "webapp"})
-    elif unavailable in {"disabled_app", "removed_site", "wrong_owner"}:
+    else:
         with base.sessions.begin() as session:
             if unavailable == "disabled_app":
                 session.execute(sa.update(App).where(App.id == base.context.app_id).values(enable_site=False))
+            elif unavailable == "removed_app":
+                session.execute(sa.delete(App).where(App.id == base.context.app_id))
             elif unavailable == "removed_site":
                 session.execute(sa.delete(Site).where(Site.app_id == base.context.app_id))
+            elif unavailable == "app_status":
+                session.execute(
+                    sa.text("UPDATE apps SET status = :status WHERE id = :app_id"),
+                    {"status": "disabled", "app_id": base.context.app_id},
+                )
+            elif unavailable == "site_status":
+                session.execute(
+                    sa.text("UPDATE sites SET status = :status WHERE app_id = :app_id"),
+                    {"status": "disabled", "app_id": base.context.app_id},
+                )
+            elif unavailable == "unpublished":
+                session.execute(sa.update(App).where(App.id == base.context.app_id).values(workflow_id=None))
+            elif unavailable == "draft_workflow":
+                session.execute(sa.update(Workflow).where(Workflow.id == base.workflow_id).values(version="draft"))
+            elif unavailable == "missing_workflow":
+                session.execute(sa.delete(Workflow).where(Workflow.id == base.workflow_id))
+            elif unavailable == "wrong_workflow_app":
+                session.execute(sa.update(Workflow).where(Workflow.id == base.workflow_id).values(app_id=str(uuid4())))
+            elif unavailable == "wrong_workflow_tenant":
+                session.execute(
+                    sa.update(Workflow).where(Workflow.id == base.workflow_id).values(tenant_id=str(uuid4()))
+                )
+            elif unavailable == "unsupported_mode":
+                session.execute(sa.update(App).where(App.id == base.context.app_id).values(mode=AppMode.CHAT))
             else:
                 session.execute(
                     sa.update(EndUser).where(EndUser.id == base.context.end_user_id).values(tenant_id=str(uuid4()))
