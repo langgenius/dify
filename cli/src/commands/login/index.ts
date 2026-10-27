@@ -109,12 +109,13 @@ export default class Login extends Command<typeof INPUT> {
     const code = await api.requestCode({ device_label: await deviceLabel(ctx) })
     // Checked before it is printed: a URI difyctl would refuse to open is one the
     // operator should not be invited to paste either.
-    validateVerificationURI(code.verification_uri, input.insecure)
-    streams.notice(`open ${code.verification_uri}`)
+    const verificationUri = code.verification_uri_complete ?? code.verification_uri
+    validateVerificationURI(verificationUri, input.insecure)
+    streams.notice(`open ${verificationUri}`)
     streams.notice(`code ${code.user_code}`)
 
     const decision = decideOpen(realEnv(), input.no_browser)
-    if (decision === OpenDecision.Auto) await openUrl(code.verification_uri)
+    if (decision === OpenDecision.Auto) await openUrl(verificationUri)
 
     const pending: Pending = {
       server,
@@ -126,7 +127,7 @@ export default class Login extends Command<typeof INPUT> {
       await pendingLogin.save(pending)
       return {
         status: PENDING_STATUS,
-        verification_uri: code.verification_uri,
+        verification_uri: verificationUri,
         user_code: code.user_code,
         expires_in: code.expires_in,
       }

@@ -15,6 +15,7 @@ export type CodeResponse = {
   device_code: string
   user_code: string
   verification_uri: string
+  verification_uri_complete?: string
   expires_in: number
   interval: number
 }
@@ -65,6 +66,10 @@ export type DeviceApiOptions = Readonly<{ insecure: boolean }>
 
 const DEVICE_CODE_PATH = '/openapi/v1/oauth/device/code'
 const DEVICE_TOKEN_PATH = '/openapi/v1/oauth/device/token'
+const TOKEN_PATH = '/openapi/v1/oauth/token'
+const DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code'
+const UNSUPPORTED_CLIENT_MESSAGE = 'this Dify host does not accept the difyctl client'
+const MS_PER_SECOND = 1000
 const DEVICE_FLOW_UNSUPPORTED_MESSAGE = 'this Dify host does not implement the OAuth device flow'
 
 const HttpStatus = { NotFound: 404, ServerErrorFloor: 500 } as const
@@ -77,7 +82,72 @@ const POLL_ERROR_STATUS: Readonly<Record<string, PollResult['status']>> = {
   access_denied: 'denied',
 }
 
+// Errors that mean the host refuses this client; they all surface as one error.
+const UNSUPPORTED_CLIENT_ERRORS: ReadonlySet<string> = new Set([
+  'invalid_client',
+  'unsupported_client',
+])
+
 type PollPayload = { error?: string } & Partial<PollSuccess>
+type StandardPollPayload = Omit<PollPayload, 'token' | 'expires_at'> & {
+  access_token?: string
+  token_type?: string
+  expires_in?: number
+}
+
+type PollRoute = 'standard' | 'legacy'
+
+type PollRouteSpec = {
+  readonly path: string
+  readonly encode: (req: PollRequest) => { contentType: string; body: string }
+  readonly normalize: (payload: PollPayload) => PollPayload
+  // The route to retry on when this one answers 404; absent means the host has no device flow.
+  readonly fallback?: PollRoute
+}
+
+function standardPollBody(req: PollRequest): { contentType: string; body: string } {
+  return {
+    contentType: 'application/x-www-form-urlencoded',
+    body: new URLSearchParams({
+      grant_type: DEVICE_GRANT_TYPE,
+      device_code: req.device_code,
+      client_id: req.client_id ?? DEFAULT_CLIENT_ID,
+    }).toString(),
+  }
+}
+
+function legacyPollBody(req: PollRequest): { contentType: string; body: string } {
+  return {
+    contentType: 'application/json',
+    body: JSON.stringify({
+      client_id: req.client_id ?? DEFAULT_CLIENT_ID,
+      device_code: req.device_code,
+    }),
+  }
+}
+
+function normalizeStandardPoll(raw: PollPayload): PollPayload {
+  const { access_token, expires_in, token_type: _tokenType, ...rest } = raw as StandardPollPayload
+  if (typeof access_token !== 'string' || access_token === '') return { error: rest.error }
+  const success: PollPayload = { ...rest, token: access_token }
+  if (typeof expires_in === 'number')
+    success.expires_at = new Date(Date.now() + expires_in * MS_PER_SECOND).toISOString()
+  return success
+}
+
+const POLL_ROUTES: Readonly<Record<PollRoute, PollRouteSpec>> = {
+  standard: {
+    path: TOKEN_PATH,
+    encode: standardPollBody,
+    normalize: normalizeStandardPoll,
+    fallback: 'legacy',
+  },
+  legacy: {
+    path: DEVICE_TOKEN_PATH,
+    encode: legacyPollBody,
+    normalize: (payload) => payload,
+  },
+}
 
 const CODE_RESPONSE_REQUIRED_FIELDS = ['device_code', 'user_code', 'verification_uri'] as const
 
@@ -92,6 +162,11 @@ function parseCodeResponse(text: string): CodeResponse {
       cause,
     })
   }
+  if (
+    typeof payload.verification_uri_complete !== 'string' ||
+    payload.verification_uri_complete === ''
+  )
+    delete payload.verification_uri_complete
   const missing = CODE_RESPONSE_REQUIRED_FIELDS.filter(
     (field) => typeof payload[field] !== 'string' || payload[field] === '',
   )
@@ -144,13 +219,18 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
     ? proxyDispatcher({ insecure: true })
     : proxyDispatcher()
 
-  async function post(path: string, body: unknown): Promise<{ url: URL; res: Response }> {
+  let pollRoute: PollRoute = 'standard'
+
+  async function post(
+    path: string,
+    payload: { contentType: string; body: string },
+  ): Promise<{ url: URL; res: Response }> {
     const url = new URL(path, server)
     const init = buildFetchInit(
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(body),
+        headers: { 'Content-Type': payload.contentType, Accept: 'application/json' },
+        body: payload.body,
       },
       { insecure: opts.insecure, dispatcher },
     )
@@ -168,39 +248,48 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
   return {
     requestCode: async (req) => {
       const { url, res } = await post(DEVICE_CODE_PATH, {
-        client_id: req.client_id ?? DEFAULT_CLIENT_ID,
-        device_label: req.device_label,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          client_id: req.client_id ?? DEFAULT_CLIENT_ID,
+          device_label: req.device_label,
+        }),
       })
       if (res.status === HttpStatus.NotFound) throw unsupportedDeviceFlow('POST', url)
       if (!res.ok) throw await nonOkError('POST', url, res)
       return parseCodeResponse(await res.text())
     },
     pollOnce: async (req) => {
-      const { url, res } = await post(DEVICE_TOKEN_PATH, {
-        client_id: req.client_id ?? DEFAULT_CLIENT_ID,
-        device_code: req.device_code,
-      })
-      if (res.status === HttpStatus.NotFound) throw unsupportedDeviceFlow('POST', url)
-      if (res.status >= HttpStatus.ServerErrorFloor) return { status: 'retry_5xx' }
+      for (;;) {
+        const spec = POLL_ROUTES[pollRoute]
+        const { url, res } = await post(spec.path, spec.encode(req))
+        if (res.status === HttpStatus.NotFound) {
+          if (spec.fallback === undefined) throw unsupportedDeviceFlow('POST', url)
+          pollRoute = spec.fallback
+          continue
+        }
+        if (res.status >= HttpStatus.ServerErrorFloor) return { status: 'retry_5xx' }
 
-      const payload = parsePollPayload(await res.text())
-      if (typeof payload.error === 'string' && payload.error !== '') {
-        const status = POLL_ERROR_STATUS[payload.error]
-        if (status === undefined) {
+        const payload = spec.normalize(parsePollPayload(await res.text()))
+        if (typeof payload.error === 'string' && payload.error !== '') {
+          if (UNSUPPORTED_CLIENT_ERRORS.has(payload.error))
+            throw new BaseError({ code: ErrorCode.Unknown, message: UNSUPPORTED_CLIENT_MESSAGE })
+          const status = POLL_ERROR_STATUS[payload.error]
+          if (status === undefined) {
+            throw new BaseError({
+              code: ErrorCode.Unknown,
+              message: `unknown poll error "${payload.error}"`,
+            })
+          }
+          return { status } as PollResult
+        }
+        if (typeof payload.token !== 'string' || payload.token === '') {
           throw new BaseError({
             code: ErrorCode.Unknown,
-            message: `unknown poll error "${payload.error}"`,
+            message: `poll: ${res.status} with no OAuth envelope`,
           })
         }
-        return { status } as PollResult
+        return { status: 'approved', success: payload as PollSuccess }
       }
-      if (typeof payload.token !== 'string' || payload.token === '') {
-        throw new BaseError({
-          code: ErrorCode.Unknown,
-          message: `poll: ${res.status} with no OAuth envelope`,
-        })
-      }
-      return { status: 'approved', success: payload as PollSuccess }
     },
   }
 }
