@@ -56,6 +56,17 @@ LIMIT_DEVICE_FLOW_APPROVE = RateLimit(
 LIMIT_LOOKUP_PUBLIC = RateLimit(
     name="lookup_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
 )
+LIMIT_AUTHORIZE_CLIENT_PUBLIC = RateLimit(
+    name="authorize_client_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
+)
+LIMIT_AUTHORIZE_APPROVE = RateLimit(
+    name="authorize_approve",
+    limit=dify_config.DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR,
+    window=timedelta(hours=1),
+    scopes=(RateLimitScope.CONSOLE_ACCOUNT,),
+)
+# Keyed by the caller as ``client:{client_id}``; only failed client authentications count.
+LIMIT_CLIENT_AUTH_FAILURE = RateLimit(name="client_auth_failure", limit=10, window=timedelta(minutes=15), scopes=())
 LIMIT_ME_PER_ACCOUNT = RateLimit(
     name="me_per_account", limit=60, window=timedelta(minutes=1), scopes=(RateLimitScope.ACCOUNT,)
 )
@@ -157,14 +168,21 @@ def rate_limit(spec: RateLimit) -> Callable[[Callable[_P, _R]], Callable[_P, _R]
     return wrap
 
 
+def is_limited(spec: RateLimit, *, key: str) -> bool:
+    return _build_limiter(spec).is_rate_limited(key)
+
+
+def record_hit(spec: RateLimit, *, key: str) -> None:
+    _build_limiter(spec).increment_rate_limit(key)
+
+
 def enforce(spec: RateLimit, *, key: str) -> None:
     """Imperative form — caller composes the bucket key to match scope
     semantics (the key is opaque here).
     """
-    limiter = _build_limiter(spec)
-    if limiter.is_rate_limited(key):
+    if is_limited(spec, key=key):
         raise TooManyRequests("rate_limited")
-    limiter.increment_rate_limit(key)
+    record_hit(spec, key=key)
 
 
 class _BearerRateLimited(TooManyRequests):

@@ -20,7 +20,10 @@ from libs import rate_limit as rate_limit_module
 from libs.helper import RateLimiter, _RateLimiterRedisClient
 from libs.oauth_bearer import AuthContext, TokenType, _auth_ctx_var
 from libs.rate_limit import (
+    LIMIT_AUTHORIZE_APPROVE,
+    LIMIT_AUTHORIZE_CLIENT_PUBLIC,
     LIMIT_BEARER_PER_TOKEN,
+    LIMIT_CLIENT_AUTH_FAILURE,
     LIMIT_DEVICE_CODE_PER_IP,
     LIMIT_DEVICE_FLOW_APPROVE,
     LIMIT_LOOKUP_PUBLIC,
@@ -28,8 +31,10 @@ from libs.rate_limit import (
     RateLimitScope,
     _BearerRateLimited,
     enforce_bearer_rate_limit,
+    is_limited,
     limiter_prefix,
     rate_limit,
+    record_hit,
 )
 
 
@@ -315,3 +320,32 @@ def test_console_account_scope_without_account_fails_closed(
 def test_session_scope_is_gone() -> None:
     assert "session" not in {scope.value for scope in RateLimitScope}
     assert RateLimitScope.CONSOLE_ACCOUNT.value == "console_account"
+
+
+def test_authorization_code_limits() -> None:
+    assert (LIMIT_CLIENT_AUTH_FAILURE.limit, LIMIT_CLIENT_AUTH_FAILURE.window) == (10, timedelta(minutes=15))
+    assert LIMIT_CLIENT_AUTH_FAILURE.scopes == ()
+    assert (LIMIT_AUTHORIZE_CLIENT_PUBLIC.limit, LIMIT_AUTHORIZE_CLIENT_PUBLIC.window) == (60, timedelta(minutes=5))
+    assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.scopes == (RateLimitScope.IP,)
+    assert LIMIT_AUTHORIZE_APPROVE.limit == LIMIT_DEVICE_FLOW_APPROVE.limit
+    assert LIMIT_AUTHORIZE_APPROVE.scopes == (RateLimitScope.CONSOLE_ACCOUNT,)
+    assert limiter_prefix(LIMIT_AUTHORIZE_APPROVE) != limiter_prefix(LIMIT_DEVICE_FLOW_APPROVE)
+
+
+def test_manual_helpers_count_per_key_inside_the_window(
+    fake_redis: _FakeZsetRedis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("libs.helper.time.time", lambda: 1_000_000)
+    key = "client:qwenwork"
+    for _ in range(LIMIT_CLIENT_AUTH_FAILURE.limit):
+        assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)
+        record_hit(LIMIT_CLIENT_AUTH_FAILURE, key=key)
+
+    assert is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)
+    assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key="client:other")
+    assert set(fake_redis.zsets) == {f"{limiter_prefix(LIMIT_CLIENT_AUTH_FAILURE)}:{key}"}
+
+    monkeypatch.setattr(
+        "libs.helper.time.time", lambda: 1_000_000 + LIMIT_CLIENT_AUTH_FAILURE.window.total_seconds() + 1
+    )
+    assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)
