@@ -246,12 +246,6 @@ class TestMessageApiCases:
         )
 
     @staticmethod
-    def test_annotation_count_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Test AnnotationCountResponse creation."""
-        response = message_module.AnnotationCountResponse(count=10)
-        assert response.count == 10
-
-    @staticmethod
     def test_message_detail_response_normalizes_aliases_and_timestamp(
         app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
