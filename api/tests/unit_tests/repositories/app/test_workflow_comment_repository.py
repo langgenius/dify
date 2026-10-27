@@ -201,6 +201,10 @@ def test_list_comments_resolves_accounts_and_participants(
     assert [participant.id for participant in summary.participants] == [OWNER_ID, USER_3_ID, USER_4_ID]
 
 
+def test_list_comments_is_empty_for_an_app_without_comments(repository: WorkflowCommentRepository) -> None:
+    assert repository.list_comments(workspace_id=TENANT_ID, app_id=APP_ID) == ()
+
+
 def test_list_comments_orders_newest_first(sqlite_session: Session, repository: WorkflowCommentRepository) -> None:
     older = _comment(content="older")
     newer = _comment(content="newer")
@@ -375,6 +379,33 @@ def test_add_comment_keeps_only_workspace_member_mentions(
         app_name="Canvas",
         commenter_name="Owner",
         recipients=(MentionRecipient(email="member@example.com", name="Member", interface_language="ja-JP"),),
+    )
+
+
+def test_add_comment_inserts_the_whole_thread_with_its_replies(
+    sqlite_session: Session, repository: WorkflowCommentRepository
+) -> None:
+    _persist(sqlite_session, _membership(USER_2_ID))
+    comment = _started(mentioned_user_ids=()).add_reply(
+        reply_id="55555555-5555-5555-5555-555555555555",
+        actor_id=USER_2_ID,
+        content="reply",
+        mentioned_user_ids=(USER_2_ID, OUTSIDER_ID),
+        now=NOW,
+    )
+
+    repository.add_comment(comment=comment, notify_user_ids=())
+
+    reply = sqlite_session.get_one(WorkflowCommentReply, "55555555-5555-5555-5555-555555555555")
+    assert (reply.comment_id, reply.content, reply.created_by, reply.created_at) == (
+        comment.id,
+        "reply",
+        USER_2_ID,
+        NOW,
+    )
+    assert _mention_user_ids(sqlite_session, comment.id, reply_id=reply.id) == [USER_2_ID]
+    assert _load(repository, comment.id) == replace(
+        comment, replies=(replace(comment.reply(reply.id), mentioned_user_ids=(USER_2_ID,)),)
     )
 
 
@@ -593,6 +624,33 @@ def test_save_comment_inserts_a_reply_with_member_mentions(
     assert (reply.created_at, reply.updated_at) == (NOW, NOW)
     assert _mention_user_ids(sqlite_session, comment.id, reply_id=reply.id) == [USER_2_ID]
     assert [recipient.email for recipient in mentions.recipients] == ["member@example.com"]
+
+
+def test_save_comment_keeps_reply_mentions_when_only_the_content_changes(
+    sqlite_session: Session, repository: WorkflowCommentRepository
+) -> None:
+    comment = _comment()
+    _persist(sqlite_session, _membership(USER_2_ID), comment)
+    reply = WorkflowCommentReply(comment_id=comment.id, content="old", created_by=OWNER_ID)
+    _persist(sqlite_session, reply)
+    _persist(
+        sqlite_session,
+        WorkflowCommentMention(comment_id=comment.id, reply_id=reply.id, mentioned_user_id=USER_2_ID),
+    )
+    mention_ids = _mention_row_ids(sqlite_session, comment.id)
+    loaded = _load(repository, comment.id)
+
+    _save(
+        repository,
+        loaded,
+        loaded.edit_reply(
+            reply_id=reply.id, actor_id=OWNER_ID, content="new", mentioned_user_ids=(USER_2_ID,), now=NOW
+        ),
+    )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get_one(WorkflowCommentReply, reply.id).content == "new"
+    assert _mention_row_ids(sqlite_session, comment.id) == mention_ids
 
 
 def test_save_comment_updates_a_reply_and_replaces_its_mentions(

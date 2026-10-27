@@ -182,11 +182,10 @@ class WorkflowCommentRepository(WorkflowCommentStore):
 
     @classmethod
     def _stored_thread(cls, session: Session, comment: WorkflowCommentAgg) -> WorkflowCommentAgg:
-        """Re-read the thread inside the write; the locking read sees the latest commit at any isolation level."""
-        stored = session.scalar(cls._thread(comment.workspace_id, comment.app_id, comment.id).with_for_update())
-        if stored is None:
-            raise WorkflowCommentNotFoundError
-        return cls._aggregate(stored)
+        """Re-read the thread inside the write; locking reads see the latest commit at any isolation level."""
+        cls._lock(session, comment)
+        stored = session.scalars(cls._thread(comment.workspace_id, comment.app_id, comment.id).with_for_update())
+        return cls._aggregate(stored.one())
 
     @staticmethod
     def _lock(session: Session, comment: WorkflowCommentAgg) -> None:
