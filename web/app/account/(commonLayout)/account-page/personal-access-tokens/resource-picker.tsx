@@ -177,32 +177,36 @@ export default function ResourcePicker({
                       <AvatarFallback>{app.display_name.slice(0, 1)}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate system-sm-medium text-text-secondary">
-                        {app.display_name}
-                      </p>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              aria-expanded={isExpanded(app.resource_id)}
+                              onClick={() =>
+                                setCollapsedApps((current) => {
+                                  const next = new Set(current)
+                                  if (next.has(app.resource_id)) next.delete(app.resource_id)
+                                  else next.add(app.resource_id)
+                                  return next
+                                })
+                              }
+                              className="inline-block max-w-full min-w-0 truncate rounded text-start system-sm-medium text-text-secondary focus-visible:outline-2"
+                            />
+                          }
+                        >
+                          {app.display_name}
+                        </TooltipTrigger>
+                        <TooltipContent>ID: {app.resource_id}</TooltipContent>
+                      </Tooltip>
                       <p className="truncate system-xs-regular text-text-tertiary">
                         {t(($) => $['personalAccessToken.workspace'])}: {app.workspace_name}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      aria-label={app.display_name}
-                      aria-expanded={isExpanded(app.resource_id)}
-                      onClick={() =>
-                        setCollapsedApps((current) => {
-                          const next = new Set(current)
-                          if (next.has(app.resource_id)) next.delete(app.resource_id)
-                          else next.add(app.resource_id)
-                          return next
-                        })
-                      }
-                      className="rounded p-1 text-text-tertiary hover:bg-state-base-hover focus-visible:outline-2"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`i-ri-arrow-${isExpanded(app.resource_id) ? 'down' : 'right'}-s-line size-4`}
-                      />
-                    </button>
+                    <span
+                      aria-hidden="true"
+                      className={`ms-auto i-ri-arrow-${isExpanded(app.resource_id) ? 'down' : 'right'}-s-line size-4 text-text-tertiary`}
+                    />
                   </div>
                   {isExpanded(app.resource_id) && (
                     <div className="ms-3">
