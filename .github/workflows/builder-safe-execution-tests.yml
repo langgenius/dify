@@ -109,7 +109,7 @@ jobs:
       - name: Real PostgreSQL and MySQL evidence protections
         run: >-
           uv run --project api --no-sync pytest --no-cov -q
-          api/tests/e2e_tests/containers/migrations/test_builder_native_migration_dialects.py
+          api/tests/test_containers_integration_tests/migrations/test_builder_native_migration_dialects.py
           --junitxml=builder-migration-dialects.xml
       - name: Require both real dialect cases
         if: always()
@@ -453,6 +453,19 @@ jobs:
               EXPECTED.setdefault('tests.e2e_tests.containers.core.workflow.test_builder_agent_operations', {}).update({'test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot': 2})
               EXPECTED.setdefault('tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations', {}).update({'test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read': 14,
                'test_real_unmarked_profiles_keep_raw_revision_and_immutable_private_scope': 2})
+              # Async config receipts: source-audited exact PostgreSQL case inventory.
+              for module, functions in {'tests.e2e_tests.containers.core.workflow.test_builder_agent_operations': {'test_actual_sql_approval_dispatch_and_result_replay_once': 1,
+                                                                                          'test_cancellation_during_final_ack_decryption_refuses_url_admission': 1,
+                                                                                          'test_completed_ack_exception_is_exclusive_to_original_shell_run': 5,
+                                                                                          'test_completed_async_ack_allows_second_declared_config_read_without_dispatch': 1,
+                                                                                          'test_completed_shell_config_read_refuses_uncertain_or_foreign_authority': 15,
+                                                                                          'test_confirmed_admission_uses_original_key_and_preallocated_parent_run': 1,
+                                                                                          'test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot': 2,
+                                                                                          'test_existing_live_shell_config_read_survives_later_approval_wait': 14,
+                                                                                          'test_noncompleted_outcome_never_unlocks_config_read': 3,
+                                                                                          'test_physical_timeout_is_unknown_and_cannot_dispatch_again': 1,
+                                                                                          'test_receipt_failure_preserves_known_completed_ack_and_refuses_config_read': 2}}.items():
+                  EXPECTED.setdefault(module, {}).update(functions)
               REPORT = "builder-native-continuation.xml"
               code = pytest.main(['api/tests/e2e_tests/containers/core/workflow/test_builder_agent_operations.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_agent_create_recovery.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_agent_continuation.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_continuation.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_pause.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_http_binding.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_approval_scope.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_dispatch_fence.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_host_capacity.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_stop_sealing.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_claimed_resume_checkpoint.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_observation_history.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_agent_associations.py', 'api/tests/e2e_tests/containers/core/workflow/test_builder_native_runtime.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-continuation.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
               problems = []
@@ -854,8 +867,88 @@ jobs:
               'test_create_app_authenticates_control_plane_routes': 5,
               'test_keep_alive_is_absent_without_configured_control_plane_auth': 1,
           })
+          # Async shell receipts/status: exact source-audited functions and parameter counts.
+          for module, functions in {'tests.local.dify_agent.layers.shell.test_layer': {'test_agent_stub_token_omits_workspace_session_identity': 1,
+                                                              'test_confirmed_shell_exit_keeps_jobs_without_unapproved_cleanup': 1,
+                                                              'test_native_required_stub_env_refuses_even_when_unconfigured': 1,
+                                                              'test_native_stub_refuses_before_job_creation': 2,
+                                                              'test_redact_output_applies_per_agent_config_patterns': 1,
+                                                              'test_redact_output_applies_server_level_patterns': 1,
+                                                              'test_redact_output_skips_short_jwe_values': 1,
+                                                              'test_run_remote_script_complete_passes_config_env_values_to_shellctl_env': 1,
+                                                              'test_run_remote_script_complete_returns_incomplete_reason_for_output_limit': 1,
+                                                              'test_run_remote_script_complete_returns_incomplete_reason_for_timeout': 1,
+                                                              'test_run_remote_script_complete_uses_agent_specific_home_and_workspace_cwd': 1,
+                                                              'test_run_remote_script_complete_uses_read_output_before_wait_and_deletes_job': 1,
+                                                              'test_run_remote_script_uses_agent_specific_home_and_workspace_cwd': 1,
+                                                              'test_shell_input_returns_error_observation_and_logs_unexpected_exception': 1,
+                                                              'test_shell_input_returns_provider_timeout_error_observation_with_job_id_and_no_unexpected_logging': 1,
+                                                              'test_shell_interrupt_logs_unexpected_tail_failure_but_still_succeeds': 1,
+                                                              'test_shell_interrupt_returns_error_observation_and_logs_unexpected_exception': 1,
+                                                              'test_shell_interrupt_returns_provider_request_error_observation_with_job_id_and_no_unexpected_logging': 1,
+                                                              'test_shell_interrupt_succeeds_when_tail_lookup_fails': 1,
+                                                              'test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_context': 1,
+                                                              'test_shell_layer_rejects_untracked_job_ids_without_provider_calls': 1,
+                                                              'test_shell_layer_tools_map_inputs_and_maintain_offsets_with_tail_end': 1,
+                                                              'test_shell_layer_uses_sandbox_layout_for_home_and_workspace_cwd': 1,
+                                                              'test_shell_prefix_prompt_describes_workspace_as_temp_space': 1,
+                                                              'test_shell_run_formats_large_non_truncated_output_without_tail_lookup': 1,
+                                                              'test_shell_run_issues_one_jwe_and_redaction_does_not_issue_another': 1,
+                                                              'test_shell_run_keeps_original_offset_when_tail_lookup_fails_for_truncated_output': 1,
+                                                              'test_shell_run_propagates_cancelled_error': 1,
+                                                              'test_shell_run_returns_error_observation_and_logs_unexpected_exception': 1,
+                                                              'test_shell_run_returns_provider_timeout_error_observation_without_unexpected_logging': 1,
+                                                              'test_shell_runtime_state_validates_offset_keys': 1,
+                                                              'test_shell_wait_returns_error_observation_and_logs_unexpected_exception': 1,
+                                                              'test_shell_wait_returns_provider_request_error_observation_with_job_id_and_no_unexpected_logging': 1,
+                                                              'test_strict_shell_checks_actual_deps_run_before_token_issuance': 1,
+                                                              'test_structured_receipt_uses_actual_lease_before_rendering_and_does_not_leak': 2,
+                                                              'test_two_running_jobs_redact_and_clean_up_their_own_jwes_independently': 1},
+           'tests.local.dify_agent.protocol.test_shell_job_receipt': {'test_shell_job_receipt_and_old_payload_wire': 1},
+           'tests.local.dify_agent.runtime.test_native_effects': {'test_actual_direct_plugin_claim_precedes_one_daemon_request': 2,
+                                                                  'test_actual_model_client_waits_before_http': 1,
+                                                                  'test_actual_tool_layer_defers_with_final_arguments_before_transport': 8,
+                                                                  'test_ambiguous_io_closes_as_unknown_without_retry': 1,
+                                                                  'test_bootstrap_waits_before_runtime_resource_access': 1,
+                                                                  'test_config_pull_waits_before_shell_io': 1,
+                                                                  'test_direct_plugin_target_guard_precedes_materialize_claim_and_dispatch': 1,
+                                                                  'test_direct_plugin_typed_json_guard_precedes_materialize_claim_and_dispatch': 5,
+                                                                  'test_eager_knowledge_waits_before_http_and_cache_write': 1,
+                                                                  'test_marked_runner_requires_real_effect_owner_before_loading': 1,
+                                                                  'test_missing_shell_lineage_stops_before_effect_reservation': 1,
+                                                                  'test_opaque_call_discloses_uncertainty': 1,
+                                                                  'test_private_policy_http_preserves_discriminants_and_typed_arguments': 1,
+                                                                  'test_real_sdk_pre_tool_boundary_checkpoints_wait_before_handler': 3,
+                                                                  'test_recorded_result_and_denial_never_invoke': 1,
+                                                                  'test_sdk_permit_is_spent_once_and_result_can_replay_without_handler': 1,
+                                                                  'test_session_typed_json_guard_precedes_authorization_and_dispatch': 10,
+                                                                  'test_shell_native_tool_waits_before_session_access': 4,
+                                                                  'test_shell_receipt_nested_dispatch_and_cancellation_are_invocation_local': 1,
+                                                                  'test_success_stores_protected_result_before_receipt': 1,
+                                                                  'test_waiting_preserves_typed_payload_and_never_invokes': 3},
+           'tests.local.dify_agent.server.test_app': {'test_anonymous_mode_does_not_mount_job_status': 1,
+                                                      'test_confirmed_owner_is_composed_without_withdrawing_ordinary_keys': 1,
+                                                      'test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services': 1,
+                                                      'test_create_app_authenticates_control_plane_routes': 6,
+                                                      'test_create_app_defaults_agent_observability_to_disabled': 1,
+                                                      'test_create_app_lifecycle_owns_agent_observability_instance': 1,
+                                                      'test_create_app_native_owner_injection_and_truthful_capabilities': 1,
+                                                      'test_create_app_passes_settings_to_server_observability': 1,
+                                                      'test_create_app_wires_authenticated_agent_stub_connection_route': 1,
+                                                      'test_create_app_wires_authenticated_agent_stub_file_upload_route': 1,
+                                                      'test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construction_args': 1,
+                                                      'test_create_plugin_daemon_http_client_uses_generic_outbound_httpx_construction_args': 1,
+                                                      'test_keep_alive_is_absent_without_configured_control_plane_auth': 1,
+                                                      'test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup': 2,
+                                                      'test_server_settings_use_generic_outbound_http_args_for_shared_clients': 1,
+                                                      'test_strict_embedded_stub_borrows_lifespan_reader_and_client': 1},
+           'tests.local.dify_agent.server.test_binding_job_status': {'test_invalid_job_selection_never_echoes_private_input': 1,
+                                                                     'test_status_real_http_only_get_and_strips_private_fields': 14,
+                                                                     'test_status_real_http_timeout_refuses': 1,
+                                                                     'test_status_unsupported_and_transport_failure_refuse_without_acquire': 1}}.items():
+              EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-native-agent.xml"
-          code = pytest.main(['tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
+          code = pytest.main(['tests/local/dify_agent/protocol/test_shell_job_receipt.py', 'tests/local/dify_agent/server/test_binding_job_status.py', 'tests/local/dify_agent/layers/shell/test_layer.py', 'tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
           problems = []
           identities = set()
           actual = {module: Counter() for module in EXPECTED}
@@ -947,6 +1040,10 @@ jobs:
           })
           # ENG-1240: additive waiting-binding health transport inventory.
           for module, functions in {'tests.local.dify_agent.server.test_app': {'test_keep_alive_is_absent_without_configured_control_plane_auth': 1, 'test_create_app_authenticates_control_plane_routes': 5}, 'tests.local.dify_agent.client.test_client': {'test_sync_keep_alive_client_uses_typed_private_route_once': 1, 'test_async_keep_alive_client_uses_typed_private_route_once': 1}}.items():
+              EXPECTED.setdefault(module, {}).update(functions)
+          # Exact source/collection additions after main and async receipt integration.
+          for module, functions in {'tests.local.dify_agent.server.test_app': {'test_anonymous_mode_does_not_mount_job_status': 1,
+                                                      'test_create_app_authenticates_control_plane_routes': 6}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-agent-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/protocol/test_protocol_schemas.py', 'tests/local/dify_agent/protocol/test_working_environment.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_run_scheduler.py', 'tests/local/dify_agent/storage/test_redis_run_store.py', 'tests/local/dify_agent/server/test_runs_routes.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/test_client_safe_exports.py', 'tests/local/dify_agent/server/test_auth.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-regressions.xml'])
@@ -1042,6 +1139,16 @@ jobs:
               EXPECTED.setdefault(module, {}).update(functions)
           # ENG-1240: additive waiting-binding health transport inventory.
           for module, functions in {'tests.local.dify_agent.runtime_backend.test_enterprise_backend': {'test_enterprise_idle_binding_is_lost_after_six_minutes_without_health': 1, 'test_enterprise_keep_alive_preserves_same_binding_across_approval_wait': 1, 'test_enterprise_keep_alive_is_one_health_read_and_closes_without_transport_retry': 3, 'test_enterprise_keep_alive_malformed_health_is_private_and_closed': 1, 'test_enterprise_keep_alive_cancellation_propagates_and_closes_transport': 1}, 'tests.local.dify_agent.server.test_execution_bindings': {'test_keep_alive_unsupported_backend_returns_false_without_operations': 1, 'test_keep_alive_real_unsupported_backends_never_open_transport': 3, 'test_keep_alive_sdk_route_actual_health_wire_is_fixed_and_private': 5, 'test_keep_alive_validation_does_not_echo_private_input': 2}, 'tests.local.dify_agent.server.test_app': {'test_keep_alive_is_absent_without_configured_control_plane_auth': 1, 'test_create_app_authenticates_control_plane_routes': 5}, 'tests.local.dify_agent.client.test_client': {'test_sync_keep_alive_client_uses_typed_private_route_once': 1, 'test_async_keep_alive_client_uses_typed_private_route_once': 1}}.items():
+              EXPECTED.setdefault(module, {}).update(functions)
+          # Exact source/collection additions after main and async receipt integration.
+          for module, functions in {'tests.local.dify_agent.layers.dify_core_tools.test_tracing': {'test_handled_failure_marks_only_its_native_tool_span': 6,
+                                                                          'test_successful_observation_is_not_classified_by_its_text': 1,
+                                                                          'test_uninstrumented_tool_failure_does_not_mark_an_unrelated_ambient_span': 3},
+           'tests.local.dify_agent.layers.shell.test_layer': {'test_structured_receipt_uses_actual_lease_before_rendering_and_does_not_leak': 2},
+           'tests.local.dify_agent.runtime_backend.test_local': {'test_local_binding_create_failure_preserves_existing_stdout': 1,
+                                                                 'test_local_binding_create_failure_without_stdout_keeps_job_diagnostics': 2},
+           'tests.local.dify_agent.server.test_app': {'test_anonymous_mode_does_not_mount_job_status': 1,
+                                                      'test_create_app_authenticates_control_plane_routes': 6}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
           REPORT = "builder-agent-workspace-regressions.xml"
           code = pytest.main(['tests/local/dify_agent/runtime_backend', 'tests/local/dify_agent/layers', 'tests/local/dify_agent/server/test_binding_files.py', 'tests/local/dify_agent/server/test_execution_bindings.py', 'tests/local/dify_agent/server/test_home_snapshots.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/runtime/test_modules.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-workspace-regressions.xml'])
@@ -1528,6 +1635,31 @@ jobs:
               "api/tests/unit_tests/extensions/test_ext_otel.py",
               "api/tests/unit_tests/core/workflow/nodes/knowledge_retrieval/test_retrieval.py",
           ]
+          # Main integration adds exact trace-session and resumption-log cases.
+          for module, functions in {'tests.unit_tests.core.helper.test_trace_id_helper': {'test_extract_trace_session_id_from_args_for_generator_extras': 1,
+                                                                 'test_extract_trace_session_id_from_args_missing_value_keeps_extras_clean': 1,
+                                                                 'test_extract_trace_session_id_from_args_returns_empty_dict_when_blank_after_trim': 1,
+                                                                 'test_extract_trace_session_id_from_args_returns_empty_dict_when_missing': 1,
+                                                                 'test_extract_trace_session_id_from_args_returns_trimmed_value': 1,
+                                                                 'test_get_trace_session_id_does_not_read_trace_id_or_traceparent': 1,
+                                                                 'test_get_trace_session_id_ignores_invalid_lower_priority_value': 1,
+                                                                 'test_get_trace_session_id_prefers_header_over_query_and_body': 1,
+                                                                 'test_get_trace_session_id_prefers_query_over_body': 1,
+                                                                 'test_get_trace_session_id_reads_body_when_no_higher_priority_input': 1,
+                                                                 'test_get_trace_session_id_rejects_invalid_highest_priority_input': 3},
+           'tests.unit_tests.core.helper.test_trace_id_helper.TestTraceIdHelper': {'test_extract_external_trace_id_from_args': 3,
+                                                                                   'test_extract_parent_trace_context_from_args': 6,
+                                                                                   'test_extract_parent_trace_context_rejects_incomplete_typed_context': 1,
+                                                                                   'test_extract_parent_trace_context_returns_typed_context': 1,
+                                                                                   'test_get_external_trace_id_from_args': 1,
+                                                                                   'test_get_external_trace_id_from_header': 1,
+                                                                                   'test_get_external_trace_id_from_json': 1,
+                                                                                   'test_get_external_trace_id_invalid': 4,
+                                                                                   'test_get_external_trace_id_priority': 1,
+                                                                                   'test_is_valid_trace_id': 8},
+           'tests.unit_tests.services.workflow_runtime.test_workflow_pipeline.TestGenerateTaskPipelineCases': {'test_workflow_app_log_saved_only_on_initial_start': 1,
+                                                                                                               'test_workflow_app_log_skipped_on_resumption_start': 1}}.items():
+              new_expected.setdefault(module, {}).update(functions)
           files = list(dict.fromkeys(files))
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
@@ -1544,6 +1676,11 @@ jobs:
                   module = (case.get("classname") or "").removeprefix("api.")
                   identity = (module, case.get("name") or "")
                   matching = [owner for owner in expected if module == owner or module.startswith(owner + ".")]
+                  trace_module = "tests.unit_tests.core.helper.test_trace_id_helper"
+                  if matching and (module == trace_module or module.startswith(trace_module + ".")):
+                      # Trace module functions and its declared classes have separate exact inventories.
+                      owner = max(matching, key=len)
+                      matching = [owner] if module == owner else []
                   if not matching or identity in seen:
                       problems.append(f"unexpected or duplicated native unit case: {identity}")
                   modules.update(matching)
