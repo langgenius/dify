@@ -134,19 +134,13 @@ FILES += [
 ]
 FILES += [
     path
-    for path in [
-        "api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py"
-    ]
+    for path in ["api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_completion.py"]
     if path not in FILES
 ]
-FILES += [
-    "api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_terminal_scan.py"
-]
+FILES += ["api/tests/unit_tests/services/dify_builder/native_testing/test_confirmed_agent_terminal_scan.py"]
 FILES += [
     path
-    for path in [
-        "api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py"
-    ]
+    for path in ["api/tests/unit_tests/services/dify_builder/test_agent_model_result_canonical.py"]
     if path not in FILES
 ]
 FILES += ["api/tests/unit_tests/services/dify_builder/test_test_actions.py"]
@@ -228,10 +222,7 @@ code = pytest.main(
 )
 # Full module identity avoids silently merging same-basename owners.
 module_paths = [*FILES, *(selection.split("::", 1)[0] for selection in SELECTED_GUARDS)]
-modules = {
-    Path(path).with_suffix("").as_posix().removeprefix("api/").replace("/", "."): 0
-    for path in module_paths
-}
+modules = {Path(path).with_suffix("").as_posix().removeprefix("api/").replace("/", "."): 0 for path in module_paths}
 identities = set()
 problems = []
 if not Path(JUNIT).is_file():
@@ -240,11 +231,7 @@ else:
     for case in ElementTree.parse(JUNIT).getroot().iter("testcase"):
         classname, name = case.get("classname") or "", case.get("name") or ""
         normalized = classname.removeprefix("api.")
-        matching = [
-            module
-            for module in modules
-            if normalized == module or normalized.startswith(module + ".")
-        ]
+        matching = [module for module in modules if normalized == module or normalized.startswith(module + ".")]
         if len(matching) != 1:
             problems.append(f"unexpected unit case {classname}::{name}")
             continue
@@ -794,12 +781,8 @@ for module, functions in {
 }.items():
     a4_expected.setdefault(module, {}).update(functions)
 # Candidate 3: frozen exact collection; retain every previously required function.
-a4_expected.setdefault(
-    "tests.unit_tests.services.dify_builder.test_agent_model_result_canonical", {}
-).update(
-    {
-        "test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement": 2
-    }
+a4_expected.setdefault("tests.unit_tests.services.dify_builder.test_agent_model_result_canonical", {}).update(
+    {"test_model_receipt_matches_sdk_roundtrip_without_changing_stream_or_accepting_replacement": 2}
 )
 a4_expected.setdefault(
     "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion",
@@ -2052,9 +2035,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_test_actions"] = {
     "test_standard_choice_envelope_can_submit_native_control": 1,
     "test_earlier_action_identity_cannot_be_reused_after_another_command": 1,
 }
-a4_expected[
-    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"
-].update(
+a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"].update(
     {
         "test_native_control_only_commits_do_not_strand_successful_builder_run": 1,
         "test_terminal_projection_crash_is_recovered_without_get_or_dispatch": 1,
@@ -2068,17 +2049,13 @@ a4_expected.setdefault(
     "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion",
     {},
 ).update({"test_expired_terminal_context_requires_actual_owned_terminal_workflow": 7})
-a4_expected.setdefault(
-    "tests.unit_tests.services.dify_builder.test_agent_operation_owner", {}
-).update(
+a4_expected.setdefault("tests.unit_tests.services.dify_builder.test_agent_operation_owner", {}).update(
     {"test_expired_completed_receipt_requires_exact_original_permit_and_result": 1}
 )
-a4_expected[
-    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_terminal_scan"
-] = {"test_terminal_scan_compares_input_ids_as_strings": 2}
-a4_expected[
-    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"
-].update(
+a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_terminal_scan"] = {
+    "test_terminal_scan_compares_input_ids_as_strings": 2
+}
+a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion"].update(
     {
         "test_cancel_after_completed_effects_closes_original_parent": 2,
         "test_resumed_saved_cancellation_projects_only_unchanged_terminal_proof": 17,
@@ -2139,15 +2116,12 @@ task_control_transport_expected = {
 }
 for function, count in task_control_transport_expected.items():
     actual = sum(
-        classname.removeprefix("api.")
-        == "tests.unit_tests.controllers.console.test_dify_builder_routes"
+        classname.removeprefix("api.") == "tests.unit_tests.controllers.console.test_dify_builder_routes"
         and name.split("[", 1)[0] == function
         for classname, name in identities
     )
     if actual != count:
-        problems.append(
-            f"Task control transport inventory mismatch {function}: {actual} != {count}"
-        )
+        problems.append(f"Task control transport inventory mismatch {function}: {actual} != {count}")
 # Current priority closeout: exact Local-collected regression inventory.
 a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_a_determinate_outcome_resets_the_unknown_outcome_count": 1,
@@ -2602,9 +2576,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_agent_operation_owner"]
         "test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth": 8,
     }
 )
-a4_expected[
-    "tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor"
-].update(
+a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor"].update(
     {
         "test_risk_rubric_separates_observed_destruction_from_uncertain_side_effects": 1,
     }
@@ -2618,9 +2590,7 @@ for module, expected in {**a3_expected, **a4_expected}.items():
             actual[function] = actual.get(function, 0) + 1
     if actual != expected:
         problems.append(f"A3 function inventory mismatch {module}: {actual}")
-json_admission_module = (
-    "tests.unit_tests.services.dify_builder.test_json_tool_execution_admission"
-)
+json_admission_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution_admission"
 expected_json_admission = {
     f"test_owned_json_parse_prepare_persists_restricted_request[{variant}]"
     for variant in ("raw-true", "raw-false", "constant-true", "constant-false")
@@ -2632,14 +2602,10 @@ expected_json_admission.update(
     }
 )
 actual_json_admission = {
-    name
-    for classname, name in identities
-    if classname.removeprefix("api.") == json_admission_module
+    name for classname, name in identities if classname.removeprefix("api.") == json_admission_module
 }
 if actual_json_admission != expected_json_admission:
-    problems.append(
-        "JSON admission case identities differ from the reviewed prepare variants and owner checks"
-    )
+    problems.append("JSON admission case identities differ from the reviewed prepare variants and owner checks")
 json_policy_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution"
 json_policy_expected = {
     "test_reviewed_pure_mixed_graph_admits_exact_native_chain": 1,
@@ -2833,9 +2799,7 @@ for module, expected in {
     for function, expected_count in expected.items():
         if actual.get(function, 0) != expected_count:
             problems.append(f"JSON case inventory mismatch {module}::{function}")
-    if (module == json_policy_module or module in json_runtime_expected) and set(
-        actual
-    ) != set(expected):
+    if (module == json_policy_module or module in json_runtime_expected) and set(actual) != set(expected):
         problems.append(f"unexpected JSON test functions {module}")
 print(f"COLLECTED total: {len(identities)} unit cases", flush=True)
 for problem in problems:
