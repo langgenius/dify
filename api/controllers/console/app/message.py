@@ -4,7 +4,6 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, select
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
 from controllers.common.errors import InternalServerError as InternalServerHTTPError
@@ -21,21 +20,16 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    account_initialization_required,
     model_validate,
-    rbac_permission_required,
-    setup_required,
 )
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import (
     MessageDetail as BaseMessageDetailResponse,
@@ -44,10 +38,9 @@ from fields.message_fields import SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
-from libs.login import login_required
 from machinery.context import RequestContext
 from models.enums import FeedbackRating
-from models.model import App, AppMode, MessageAnnotation
+from models.model import AppMode
 from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
@@ -94,10 +87,6 @@ class AppMessageFeedbackPayload(_MessageFeedbackPayloadBase):
         return uuid_value(value)
 
 
-class AnnotationCountResponse(ResponseModel):
-    count: int = Field(description="Number of annotations")
-
-
 class MessageDetailResponse(BaseMessageDetailResponse):
     extra_contents: list[ExecutionExtraContentDomainModel] = Field(default_factory=list)
 
@@ -115,7 +104,6 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    AnnotationCountResponse,
     SuggestedQuestionsResponse,
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
@@ -209,29 +197,6 @@ class AgentMessageFeedbackApi(Resource):
         except AgentAppNotFoundError as exc:
             raise AgentNotFoundError() from exc
         return _update_message_feedback(args=req_data, context=context, app_id=app_id)
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotations/count")
-class MessageAnnotationCountApi(Resource):
-    @console_ns.doc("get_annotation_count")
-    @console_ns.doc(description="Get count of message annotations for the app")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
-        200,
-        "Annotation count retrieved successfully",
-        console_ns.models[AnnotationCountResponse.__name__],
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model
-    def get(self, app_model: App):
-        count = db.session.scalar(
-            select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
-        )
-
-        return AnnotationCountResponse(count=count or 0).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
