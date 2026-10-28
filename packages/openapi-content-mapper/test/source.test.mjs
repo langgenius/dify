@@ -219,22 +219,24 @@ test('Vite refreshes command sources when a new backend input is added', async (
     server: { port: 0 },
   })
   t.after(() => server.close())
-  // DIAG(temp)
-  for (const f of ['max_user_watches', 'max_user_instances', 'max_queued_events'])
-    console.error('DIAG inotify', f, readFileSync(`/proc/sys/fs/inotify/${f}`, 'utf8').trim())
-  server.watcher.on('all', (event, path) => console.error('DIAG watcher', event, path))
-  server.watcher.on('error', (error) => console.error('DIAG watcher error', error))
-  server.watcher.on('raw', (event, path) => console.error('DIAG raw', event, path))
-  const diagSend = server.ws.send.bind(server.ws)
-  server.ws.send = (...args) => {
-    console.error('DIAG ws', JSON.stringify(args[0]))
-    return diagSend(...args)
-  }
   // A new file created during Chokidar's initial scan is not an `add` event
   // when ignoreInitial is enabled (notably on Linux).
   const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
   await server.listen()
   await watcherReady
+  // Slower Linux runners can report `ready` before inotify delivers root events.
+  // Rewrite a probe until the watcher sees it so the new input is not missed.
+  const probe = join(directory, 'unwatched', 'watch-probe')
+  await new Promise((resolve) => {
+    const write = () => writeFileSync(probe, String(Date.now()))
+    const timer = setInterval(write, 200)
+    server.watcher.on('all', (_event, path) => {
+      if (path !== probe) return
+      clearInterval(timer)
+      resolve()
+    })
+    write()
+  })
   await server.transformRequest('/entry.ts')
   await server.transformRequest('/pets.openapi-source')
   const url = '/pets.openapi-source?openapi-router=%5B%5D'
@@ -243,7 +245,7 @@ test('Vite refreshes command sources when a new backend input is added', async (
   const refreshed = new Promise((resolve, reject) => {
     const timeout = setTimeout(
       () => reject(new Error('No Vite reload after adding a backend input')),
-      30000,
+      10000,
     )
     const send = server.ws.send.bind(server.ws)
     server.ws.send = (...args) => {
@@ -254,7 +256,6 @@ test('Vite refreshes command sources when a new backend input is added', async (
       return send(...args)
     }
   })
-  console.error('DIAG watched', JSON.stringify(server.watcher.getWatched()), 'extra', extra)
   writeFileSync(extra, 'new backend route')
   await refreshed
   assert.match((await server.transformRequest(url)).code, /animals/)
