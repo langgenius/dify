@@ -69,15 +69,6 @@ class TestDuplicateDocumentIndexingTasks:
         """Return the document batch passed to the runner."""
         return mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0]
 
-    def _assert_documents_parsing(self, db_session_with_containers: Session, document_ids: list[str]) -> None:
-        """Assert the short status transaction remains committed when the runner exits early."""
-        db_session_with_containers.expire_all()
-        for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
-            assert updated_document is not None
-            assert updated_document.indexing_status == IndexingStatus.PARSING
-            assert updated_document.processing_started_at is not None
-
     def _create_test_dataset_and_documents(
         self, db_session_with_containers: Session, mock_external_service_dependencies, document_count=3
     ):
@@ -501,8 +492,12 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
-        # Parsing status is committed before the runner starts, so runner failure cannot roll it back.
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        for doc_id in document_ids:
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
+            assert updated_document.indexing_status == IndexingStatus.ERROR
+            assert updated_document.error == "Indexing runner failed"
+            assert updated_document.stopped_at is not None
 
     def _test_duplicate_document_indexing_task_billing_sandbox_plan_batch_limit(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -846,6 +841,35 @@ class TestDuplicateDocumentIndexingTasks:
         self._test_duplicate_document_indexing_task_indexing_runner_exception(
             db_session_with_containers, mock_external_service_dependencies
         )
+
+    def test_duplicate_document_indexing_cleanup_error_restores_segments(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test cleanup errors restore segments and persist a retryable error state."""
+        dataset, documents, segments = self._create_test_dataset_with_segments(
+            db_session_with_containers, mock_external_service_dependencies, document_count=2, segments_per_doc=2
+        )
+        document_ids = [document.id for document in documents]
+        segment_ids = [segment.id for segment in segments]
+        error_message = "Vector database cleanup failed"
+        mock_external_service_dependencies["index_processor"].clean.side_effect = Exception(error_message)
+
+        _duplicate_document_indexing_task(dataset.id, document_ids)
+
+        db_session_with_containers.expire_all()
+        for segment_id in segment_ids:
+            restored_segment = db_session_with_containers.scalar(
+                select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
+            )
+            assert restored_segment is not None
+        for document_id in document_ids:
+            updated_document = db_session_with_containers.scalar(
+                select(Document).where(Document.id == document_id).limit(1)
+            )
+            assert updated_document is not None
+            assert updated_document.indexing_status == IndexingStatus.ERROR
+            assert updated_document.error == error_message
+            assert updated_document.stopped_at is not None
 
     def _test_duplicate_document_indexing_task_document_is_paused(
         self, db_session_with_containers: Session, mock_external_service_dependencies
