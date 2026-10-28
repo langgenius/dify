@@ -258,6 +258,13 @@ class SkillServiceErrorCode(StrEnum):
     INVALID_SKILL_FILE = "invalid_skill_file"
 
 
+class SkillErrorDetail(StrEnum):
+    """Keys of ``SkillManagementServiceError.details`` that callers read back."""
+
+    SKILL_ID = "skill_id"
+    NAME = "name"
+
+
 class SkillManagementServiceError(Exception):
     """Skill operation failure mapped to HTTP status at controller boundaries."""
 
@@ -608,6 +615,26 @@ class SkillFileContent:
 
 def max_skill_archive_bytes() -> int:
     return dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * BYTES_PER_MIB
+
+
+def _size_text(size_bytes: int) -> str:
+    if size_bytes % BYTES_PER_MIB:
+        return f"{size_bytes} bytes"
+    return f"{size_bytes // BYTES_PER_MIB} MiB"
+
+
+def _too_many_files_error() -> SkillManagementServiceError:
+    return SkillManagementServiceError(
+        SkillServiceErrorCode.TOO_MANY_FILES,
+        f"skill has more than {dify_config.SKILL_PACKAGE_MAX_ENTRIES} files",
+    )
+
+
+def _skill_too_large_error() -> SkillManagementServiceError:
+    return SkillManagementServiceError(
+        SkillServiceErrorCode.SKILL_TOO_LARGE,
+        f"skill is over {_size_text(dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES)} uncompressed",
+    )
 
 
 def validate_skill_name(name: str) -> str:
@@ -1829,7 +1856,13 @@ class SkillManagementService:
                     "skill package name does not match the existing skill",
                     details={"expected": skill.name, "got": package.name},
                 )
-            files = self._replace_draft_from_archive(session, skill=skill, user_id=user_id, contents=package.contents)
+            files = self._replace_draft_from_archive(
+                session,
+                skill=skill,
+                user_id=user_id,
+                contents=package.contents,
+                display_name=self._display_name_from_frontmatter(metadata=package.contents.metadata, name=package.name),
+            )
             return self._serialize_skill_with_files(session, tenant_id=tenant_id, skill=skill, files=files)
 
     def _serialize_skill_with_files(
@@ -2258,8 +2291,11 @@ class SkillManagementService:
                     session.commit()
                 except IntegrityError as exc:
                     session.rollback()
+                    # The name was free at the pre-check, so which skill took it since is not known here.
                     raise SkillManagementServiceError(
-                        SkillServiceErrorCode.SKILL_NAME_CONFLICT, "skill name already exists"
+                        SkillServiceErrorCode.SKILL_NAME_CONFLICT,
+                        "skill name already exists",
+                        details={SkillErrorDetail.NAME: package.name},
                     ) from exc
             session.refresh(skill)
             return {
@@ -3648,7 +3684,11 @@ class SkillManagementService:
     def _reject_taken_skill_name(session, *, tenant_id: str, name: str) -> None:
         taken_id = session.scalar(select(Skill.id).where(Skill.tenant_id == tenant_id, Skill.name == name).limit(1))
         if taken_id is not None:
-            raise SkillManagementServiceError(SkillServiceErrorCode.SKILL_NAME_CONFLICT, "skill name already exists")
+            raise SkillManagementServiceError(
+                SkillServiceErrorCode.SKILL_NAME_CONFLICT,
+                "skill name already exists",
+                details={SkillErrorDetail.SKILL_ID: taken_id},
+            )
 
     @staticmethod
     def _require_version(session, *, skill_id: str, version_id: str) -> SkillVersion:
@@ -3925,9 +3965,10 @@ class SkillManagementService:
     @classmethod
     def _read_skill_package(cls, content: bytes) -> _SkillPackage:
         """Read an uploaded skill zip and validate the name and description in its SKILL.md."""
-        if len(content) > max_skill_archive_bytes():
+        max_bytes = max_skill_archive_bytes()
+        if len(content) > max_bytes:
             raise SkillManagementServiceError(
-                SkillServiceErrorCode.ARCHIVE_TOO_LARGE, "skill archive exceeds size limit"
+                SkillServiceErrorCode.ARCHIVE_TOO_LARGE, f"skill archive is over {_size_text(max_bytes)}"
             )
         contents = cls._read_skill_archive(archive_bytes=content)
         return _SkillPackage(
@@ -4042,8 +4083,18 @@ class SkillManagementService:
         return hashlib.sha256(payload).hexdigest()
 
     def _replace_draft_from_archive(
-        self, session, *, skill: Skill, user_id: str, contents: _SkillArchiveContents
+        self,
+        session,
+        *,
+        skill: Skill,
+        user_id: str,
+        contents: _SkillArchiveContents,
+        display_name: str | None = None,
     ) -> list[SkillDraftFile]:
+        """``display_name`` replaces the skill's unless SKILL.md names one; None keeps the skill's.
+
+        It is set only after the uploads, so no pending skill update holds a row lock while they run.
+        """
         uploads = _ToolFileUploads(
             tenant_id=skill.tenant_id,
             user_id=user_id,
@@ -4051,6 +4102,8 @@ class SkillManagementService:
         )
         with self._discard_uploads_on_failure(session, uploads=uploads):
             draft_payload = self._store_archive_entries(contents, uploads=uploads)
+            if display_name is not None:
+                skill.display_name = display_name
             files = self._build_draft_rows_from_tree(
                 skill=skill,
                 payload=draft_payload,
@@ -4170,7 +4223,7 @@ class SkillManagementService:
         """Validate ZIP metadata before any member is decompressed or persisted."""
         infos = archive.infolist()
         if len(infos) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
-            raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
+            raise _too_many_files_error()
 
         total_uncompressed = 0
         for info in infos:
@@ -4179,7 +4232,7 @@ class SkillManagementService:
 
             total_uncompressed += info.file_size
             if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
-                raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
+                raise _skill_too_large_error()
 
             if info.is_dir() or info.file_size == 0:
                 continue
@@ -4360,7 +4413,7 @@ class SkillManagementService:
                 parent = posixpath.dirname(parent)
 
         if len(entries_by_path) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
-            raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
+            raise _too_many_files_error()
 
         rows: list[SkillDraftFile] = []
         total_size = 0
@@ -4393,7 +4446,7 @@ class SkillManagementService:
             )
 
         if total_size > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
+            raise _skill_too_large_error()
         return rows
 
     def _sync_skill_metadata_from_draft_skill_md(self, *, skill: Skill, content: str) -> None:
@@ -4654,7 +4707,7 @@ class SkillManagementService:
     def _enforce_total_size(files: list[SkillDraftFile]) -> None:
         total = sum(file.size or 0 for file in {file.path: file for file in files}.values())
         if total > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
-            raise SkillManagementServiceError("skill_too_large", "skill exceeds uncompressed size limit")
+            raise _skill_too_large_error()
 
     @staticmethod
     def _load_tool_file_bytes(*, tenant_id: str, file_id: str) -> bytes:
@@ -5109,6 +5162,7 @@ __all__ = [
     "SkillDraftFileOperationPayload",
     "SkillDraftTreeItemPayload",
     "SkillDraftTreePayload",
+    "SkillErrorDetail",
     "SkillImportPayload",
     "SkillManagementService",
     "SkillManagementServiceError",

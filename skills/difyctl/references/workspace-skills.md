@@ -14,7 +14,7 @@ A workspace skill is a folder with a `SKILL.md` at its root, plus any files it u
 2. `difyctl import skill --files <dir>`
 3. `difyctl publish skill --skill-id <skill_id>`. Import never publishes. Use the `skill_id` from the import result.
 
-A name already taken gives 409. The hint is an import with `--skill-id`; use it only if the human wants to replace that skill. Find the existing skill's id with `difyctl get skill --keyword <name>`.
+A name already taken gives 409 `skill_name_conflict`. Its hint is an import with `--skill-id` set to the skill that has the name. Use it only if the human wants to replace that skill. If another import took the name a moment earlier, the server does not know that skill's id, so the hint is `difyctl get skill --keyword <name>` instead. Take the id from that list.
 
 ## Change a skill
 

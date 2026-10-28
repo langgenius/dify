@@ -56,6 +56,7 @@ from services.skill_management_service import (
     SkillDraftFileOperationPayload,
     SkillDraftTreeItemPayload,
     SkillDraftTreePayload,
+    SkillErrorDetail,
     SkillImportPayload,
     SkillManagementService,
     SkillManagementServiceError,
@@ -2935,7 +2936,7 @@ def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(mon
             payload=SkillImportPayload(content=b"not-empty", filename="expense-sop.zip"),
         )
 
-    assert exc_info.value.code == "archive_too_large"
+    assert (exc_info.value.code, exc_info.value.message) == ("archive_too_large", "skill archive is over 0 MiB")
 
 
 def test_import_skill_package_rejects_excessive_expansion_before_reading_members(
@@ -2954,7 +2955,7 @@ def test_import_skill_package_rejects_excessive_expansion_before_reading_members
     ):
         service._read_skill_archive(archive_bytes=package.getvalue())
 
-    assert exc_info.value.code == "skill_too_large"
+    assert (exc_info.value.code, exc_info.value.message) == ("skill_too_large", "skill is over 1 MiB uncompressed")
 
 
 def test_publish_and_export_include_binary_tool_files() -> None:
@@ -3704,8 +3705,18 @@ def test_archive_limits_accept_high_compression_ratio_within_size_budget(monkeyp
     with zipfile.ZipFile(io.BytesIO(output.getvalue())) as archive:
         assert SkillManagementService._validate_archive_limits(archive)[0].file_size == 1024 * 1024
         apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES=1024)
-        with pytest.raises(SkillManagementServiceError, match="uncompressed size limit"):
+        with pytest.raises(SkillManagementServiceError, match="^skill is over 1024 bytes uncompressed$"):
             SkillManagementService._validate_archive_limits(archive)
+
+
+def test_archive_limits_name_the_file_count_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_ENTRIES=2)
+    content = _zip_payload({"SKILL.md": _skill_md(), "a.md": "a", "b.md": "b"})
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        with pytest.raises(SkillManagementServiceError) as exc_info:
+            SkillManagementService._validate_archive_limits(archive)
+
+    assert (exc_info.value.code, exc_info.value.message) == ("too_many_files", "skill has more than 2 files")
 
 
 OTHER_TENANT = "99999999-9999-9999-9999-999999999999"
@@ -3875,6 +3886,23 @@ def test_overwrite_replaces_draft_and_syncs_metadata() -> None:
     assert _draft_paths(created["id"]) == ["SKILL.md", "new.md"]
 
 
+def test_overwrite_without_a_display_name_takes_the_one_derived_from_the_name() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="expense-sop", display_name="Console Title"),
+    )
+    payload = SkillOverwritePayload(content=_zip_payload({"SKILL.md": _skill_md(name="expense-sop")}))
+
+    result = service.overwrite_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=payload)
+
+    assert created["display_name"] == "Console Title"
+    expected = SkillManagementService._display_name_from_frontmatter(metadata={}, name="expense-sop")
+    assert result["display_name"] == expected == "Expense Sop"
+    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["display_name"] == expected
+
+
 def test_overwrite_rejects_a_different_name() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
@@ -3942,7 +3970,7 @@ def test_overwrite_rejects_oversized_archive(monkeypatch: pytest.MonkeyPatch) ->
             payload=SkillOverwritePayload(content=b"not-empty"),
         )
 
-    assert exc_info.value.code == "archive_too_large"
+    assert (exc_info.value.code, exc_info.value.message) == ("archive_too_large", "skill archive is over 0 MiB")
 
 
 def test_overwrite_unknown_skill_is_404() -> None:
@@ -4030,7 +4058,7 @@ def test_import_rejected_for_missing_name_stores_no_files(tool_files: _FakeToolF
 
 def test_import_name_taken_stores_no_files(tool_files: _FakeToolFileManager) -> None:
     service = SkillManagementService(tool_file_manager=tool_files)
-    service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
+    existing = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
     ids_before = _tool_file_ids()
     stored_before = dict(tool_files.stored)
 
@@ -4038,6 +4066,7 @@ def test_import_name_taken_stores_no_files(tool_files: _FakeToolFileManager) -> 
         _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
 
     assert (exc_info.value.code, exc_info.value.message) == ("skill_name_conflict", "skill name already exists")
+    assert exc_info.value.details == {SkillErrorDetail.SKILL_ID: existing["id"]}
     assert _tool_file_ids() == ids_before
     assert tool_files.stored == stored_before
 
@@ -4096,6 +4125,7 @@ def test_import_commit_conflict_deletes_its_files(
         _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
 
     assert (exc_info.value.code, exc_info.value.message) == ("skill_name_conflict", "skill name already exists")
+    assert exc_info.value.details == {SkillErrorDetail.NAME: "expense-sop"}
     assert _tool_file_ids() == ids_before
     assert tool_files.stored == stored_before
 

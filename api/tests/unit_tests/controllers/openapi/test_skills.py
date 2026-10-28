@@ -21,12 +21,13 @@ from controllers.openapi._errors import (
     DraftChanged,
     InvalidFilePart,
     RequestOverRouteLimits,
+    SkillNameConflict,
     SkillNameMismatch,
-    SkillNameTaken,
     SkillNotFound,
     SkillPackageInvalid,
     SkillPackageTooLarge,
     SkillRequestRejected,
+    SkillsDisabled,
     SkillVersionNotFound,
 )
 from controllers.openapi._models import (
@@ -42,6 +43,8 @@ from controllers.openapi._models import (
     SkillVersionListResponse,
 )
 from controllers.openapi._upload import UploadParts
+from controllers.openapi.auth.pipelines import Pipeline
+from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.skills import (
     _UPLOAD_CAP,
     ServiceRejection,
@@ -59,6 +62,7 @@ from controllers.openapi.skills import (
 from machinery.context import RequestContext
 from services.skill_management_service import (
     PublishedSkillArchive,
+    SkillErrorDetail,
     SkillManagementService,
     SkillManagementServiceError,
     SkillOverwritePayload,
@@ -66,7 +70,7 @@ from services.skill_management_service import (
 )
 from services.skill_management_service import SkillImportPayload as ServiceSkillImportPayload
 from services.skill_management_service import SkillPublishPayload as ServiceSkillPublishPayload
-from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_ctx
+from tests.helpers.unit.controllers.openapi.auth._world import TENANT_ID, account_subject, make_ctx, never_reached
 
 WORKSPACE_ID = "ws-id"
 SKILL_ID = "11111111-1111-4111-8111-111111111111"
@@ -78,6 +82,7 @@ type Record = dict[str, object]
 
 class Endpoint[T](Protocol):
     __handler__: Callable[..., T]
+    __spec__: EndpointSpec
 
 
 @dataclass
@@ -140,7 +145,7 @@ def test_rejection_maps_known_codes() -> None:
     )
     assert isinstance(_rejection(SkillManagementServiceError("skill_conflict", "x", status_code=409)), DraftChanged)
     assert isinstance(
-        _rejection(SkillManagementServiceError("skill_name_conflict", "x", status_code=409)), SkillNameTaken
+        _rejection(SkillManagementServiceError("skill_name_conflict", "x", status_code=409)), SkillNameConflict
     )
     assert isinstance(_rejection(SkillManagementServiceError("skill_name_mismatch", "x")), SkillNameMismatch)
 
@@ -155,10 +160,11 @@ def test_rejection_maps_package_codes(code: ServiceRejection) -> None:
 
 
 @pytest.mark.parametrize("code", [code for code in ServiceRejection if code.error is SkillPackageTooLarge])
-def test_rejection_maps_size_codes_to_413(code: ServiceRejection) -> None:
-    error = _rejection(SkillManagementServiceError(code, "x"))
+def test_rejection_maps_size_codes_to_413_with_the_service_message(code: ServiceRejection) -> None:
+    error = _rejection(SkillManagementServiceError(code, "skill has more than 5000 files"))
     assert isinstance(error, SkillPackageTooLarge)
     assert error.code == 413
+    assert error.description == "skill has more than 5000 files"
 
 
 def test_rejection_relays_unknown_codes_with_their_status() -> None:
@@ -404,16 +410,42 @@ def test_import_bad_skill_name_is_package_invalid(monkeypatch: pytest.MonkeyPatc
         _import(_folder(**{"SKILL.md": b"x"}), **fields)
 
 
-def test_import_name_taken_hints_overwrite(monkeypatch: pytest.MonkeyPatch) -> None:
-    def taken(**_kwargs: object) -> Record:
-        raise SkillManagementServiceError("skill_name_conflict", "skill name already exists", status_code=409)
+def _name_conflict(**details: object) -> Callable[..., Record]:
+    def conflict(**_kwargs: object) -> Record:
+        raise SkillManagementServiceError(
+            SkillServiceErrorCode.SKILL_NAME_CONFLICT, "skill name already exists", details=details
+        )
 
-    _stub(monkeypatch, "import_skill", taken)
-    with pytest.raises(SkillNameTaken) as exc:
+    return conflict
+
+
+def test_import_name_conflict_hints_overwriting_the_existing_skill(monkeypatch: pytest.MonkeyPatch) -> None:
+    existing_id = "22222222-2222-4222-8222-222222222222"
+    _stub(monkeypatch, "import_skill", _name_conflict(**{SkillErrorDetail.SKILL_ID: existing_id}))
+    with pytest.raises(SkillNameConflict) as exc:
         _import(_folder(**{"SKILL.md": b"x"}))
-    [hint] = exc.value.hints or []
+    assert exc.value.error_code == "skill_name_conflict"
+    assert exc.value.hints is not None
+    [hint] = exc.value.hints
     assert hint.op == "import.skill"
-    assert hint.input == {"workspace_id": WORKSPACE_ID, "skill_id": None, "files": None}
+    assert hint.input == {"workspace_id": WORKSPACE_ID, "skill_id": existing_id, "files": None}
+
+
+def test_import_name_conflict_without_the_existing_id_hints_a_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub(monkeypatch, "import_skill", _name_conflict(**{SkillErrorDetail.NAME: "expense-sop"}))
+    with pytest.raises(SkillNameConflict) as exc:
+        _import(_folder(**{"SKILL.md": b"x"}))
+    assert exc.value.hints is not None
+    [hint] = exc.value.hints
+    assert hint.op == "get.skill"
+    assert hint.input == {"workspace_id": WORKSPACE_ID, "keyword": "expense-sop"}
+
+
+def test_import_name_conflict_with_nothing_to_point_at_gives_no_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub(monkeypatch, "overwrite_skill", _name_conflict())
+    with pytest.raises(SkillNameConflict) as exc:
+        _import(_folder(**{"SKILL.md": b"x"}), skill_id=SKILL_ID)
+    assert exc.value.hints == []
 
 
 def test_import_name_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -513,3 +545,31 @@ def test_import_draft_hash_without_skill_id_is_rejected() -> None:
     with pytest.raises(ValidationError) as exc:
         SkillImportPayload.model_validate({"files": _folder(**{"SKILL.md": b"x"}), "draft_hash": "1761200000"})
     assert [error["loc"] for error in exc.value.errors()] == [("draft_hash",)]
+
+
+@pytest.mark.parametrize(
+    "view",
+    [
+        SkillListApi.get,
+        SkillDescribeApi.get,
+        SkillVersionListApi.get,
+        SkillExportApi.get,
+        SkillPublishApi.post,
+        SkillImportApi.post,
+    ],
+)
+def test_skills_off_is_503_before_membership_and_permission_checks(
+    sqlite_session: Session, config_overrides: Callable[..., None], view: object
+) -> None:
+    """The caller is not a member of the workspace, so any earlier check would refuse it first."""
+    config_overrides(ENABLE_SKILL=False, RBAC_ENABLED=True)
+    subject = account_subject()
+    with pytest.raises(SkillsDisabled):
+        Pipeline().run(
+            subject=subject,
+            auth=subject.auth,
+            spec=cast(Endpoint[object], view).__spec__,
+            ctx=make_ctx(sqlite_session, subject, workspace_id=TENANT_ID),
+            session=sqlite_session,
+            call=never_reached,
+        )
