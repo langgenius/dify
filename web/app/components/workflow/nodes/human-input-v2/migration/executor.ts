@@ -13,8 +13,9 @@ import {
 import { ORPCError } from '@orpc/client'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
+import { normalizeHumanInputFormInput } from '../../human-input/shared/types'
 import { isHumanInputV2NodeData } from '../types'
 import { classifyHumanInputVersion, HumanInputVersionKind } from './policy'
 import { HumanInputMigrationBlockerCode } from './types'
@@ -37,21 +38,7 @@ export const createHumanInputMigrationApi = (
         status: 'success',
         data: response.data.map(({ node_id, node_data }) => {
           if (node_data.version !== '2') throw new Error('human-input-migration-invalid-response')
-          // Legacy forms migrate to paragraph inputs. Normalize nullable defaults
-          // for the existing editor, without converting recipients a second time.
-          const inputs = (node_data.inputs ?? []).map((input) => {
-            if (input.type !== 'paragraph')
-              throw new Error('human-input-migration-invalid-response')
-            return {
-              ...input,
-              type: InputVarType.paragraph,
-              default: {
-                type: input.default?.type ?? 'constant',
-                selector: input.default?.selector ?? [],
-                value: input.default?.value ?? '',
-              },
-            }
-          })
+          const inputs = (node_data.inputs ?? []).map(normalizeHumanInputFormInput)
           // The editor uses TS enums for common node fields whose generated DTO
           // counterparts are string literals. All remote fields were validated above.
           const data = {

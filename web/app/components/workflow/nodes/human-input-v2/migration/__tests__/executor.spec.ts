@@ -2,11 +2,13 @@ import type { HumanInputNodeType } from '../../../human-input/types'
 import type { HumanInputMigrationExecutorDependencies } from '../executor'
 import type { HumanInputMigrationGraph } from '../types'
 import type { Node } from '@/app/components/workflow/types'
+import { zNodeDataMigrationResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { ORPCError } from '@orpc/client'
 import { describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { DeliveryMethodType } from '../../../human-input/types'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from '../executor'
+import v1Batch from './fixtures/v1-batch.json'
 
 vi.mock('@/service/console', () => ({
   consoleClient: {
@@ -266,6 +268,65 @@ describe('Human Input migration executor', () => {
       ],
     })
     expect(harness.getGraph().nodes[0]?.data).not.toHaveProperty('delivery_methods')
+  })
+
+  it('preserves a formal V1 batch through the real backend response and editor adaptation', async () => {
+    // The backend controller test validates this fixture against the formal V1
+    // schema and its actual HTTP conversion, including every supported input.
+    const nodes = v1Batch.request.nodes.map(({ node_id, node_data }) => ({
+      ...createLegacyNode(node_id),
+      data: {
+        ...createLegacyNode(node_id).data,
+        ...node_data,
+        error_strategy: node_data.error_strategy ?? undefined,
+        default_value: node_data.default_value ?? undefined,
+        desc: node_data.desc ?? '',
+        type: BlockEnum.HumanInput,
+      },
+    }))
+    const harness = createHarness({ nodes, edges: [] })
+    harness.post.mockResolvedValueOnce(zNodeDataMigrationResponse.parse(v1Batch.response))
+
+    expect(await executeHumanInputV2Migration(harness.dependencies)).toEqual({
+      status: 'success',
+      migratedNodeIds: ['all-inputs', 'text-only'],
+    })
+    expect(harness.getGraph().nodes[0]?.data).toMatchObject({
+      inputs: v1Batch.request.nodes[0]?.node_data.inputs,
+      user_actions: v1Batch.request.nodes[0]?.node_data.user_actions,
+    })
+    expect(harness.getGraph().nodes[1]?.data).toMatchObject({
+      inputs: [
+        {
+          type: 'paragraph',
+          output_variable_name: 'text',
+          default: { type: 'constant', value: '', selector: [] },
+        },
+      ],
+      user_actions: [{ title: 'B'.repeat(21) }],
+    })
+    expect(harness.replaceGraph).toHaveBeenCalledTimes(1)
+    expect(harness.syncDraft).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects an invalid file constraint in a mixed response without applying any node', async () => {
+    const originalGraph = {
+      nodes: [createLegacyNode('all-inputs'), createLegacyNode('text-only')],
+      edges: [],
+    }
+    const harness = createHarness(originalGraph)
+    const response = zNodeDataMigrationResponse.parse(v1Batch.response)
+    const second = response.data[1]!
+    second.node_data.inputs = [
+      { type: 'file-list', output_variable_name: 'files', number_limits: -1 },
+    ]
+    harness.post.mockResolvedValueOnce(response)
+
+    await expect(executeHumanInputV2Migration(harness.dependencies)).rejects.toThrow()
+    expect(harness.getGraph()).toEqual(originalGraph)
+    expect(harness.replaceGraph).not.toHaveBeenCalled()
+    expect(harness.syncDraft).not.toHaveBeenCalled()
+    expect(harness.saveHistory).not.toHaveBeenCalled()
   })
 
   it.each(['edit', 'delete', 'add', 'permission'] as const)(

@@ -1,8 +1,10 @@
 import inspect
+import json
 from collections.abc import Sequence
 from http import HTTPStatus
 from importlib import import_module
 from inspect import unwrap
+from pathlib import Path
 from typing import Never
 
 import pytest
@@ -12,15 +14,21 @@ from werkzeug.exceptions import Forbidden
 from werkzeug.local import LocalProxy
 
 from controllers.console.human_input_v2.contact import NodeDataMigrationAPI
+from core.human_input_v2.resolved_form import FileInput, FileListInput, ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import NormalizedEmail, TenantId
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
+from core.workflow.nodes.human_input.enums import FormInputType
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
+from core.workflow.nodes.human_input_v2.form_compiler import compile_resolved_form
 from core.workflow.nodes.human_input_v2.migration import (
-    LegacyHumanInputNodeData,
     MemberEmailSnapshot,
     MigrationBlockerCode,
     ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.runtime import VariablePool
+from graphon.variables import ArrayStringSegment
 from models.account import Account, TenantAccountRole
 from services.human_input_v2.node_data_migration import (
     HumanInputNodeDataMigrationService,
@@ -32,7 +40,6 @@ from services.human_input_v2.node_data_migration import (
 )
 
 _CONTROLLER_MODULE = import_module("controllers.console.human_input_v2.contact")
-_OMITTED_METHOD_ID = object()
 
 
 class _StaticMemberEmailLookup:
@@ -46,8 +53,8 @@ class _StaticMemberEmailLookup:
         )
 
 
-def _legacy_webapp_node(title: str = "Approval") -> LegacyHumanInputNodeData:
-    return LegacyHumanInputNodeData.model_validate(
+def _legacy_webapp_node(title: str = "Approval") -> HumanInputNodeDataFull:
+    return HumanInputNodeDataFull.model_validate(
         {
             "title": title,
             "delivery_methods": [{"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}],
@@ -101,10 +108,121 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
     }
 
 
+def test_migrated_current_v1_inputs_preserve_authoring_configuration_and_rendered_form(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    inputs = [
+        {
+            "type": "paragraph",
+            "output_variable_name": "reason",
+            "default": {"type": "constant", "selector": ["start", "reason"], "value": "Keep this reason"},
+        },
+        {
+            "type": "select",
+            "output_variable_name": "decision",
+            "option_source": {"type": "constant", "selector": ["start", "unused"], "value": ["Yes", "No"]},
+        },
+        {
+            "type": "select",
+            "output_variable_name": "reviewer",
+            "option_source": {"type": "variable", "selector": ["start", "reviewers"], "value": ["Previous"]},
+        },
+        {
+            "type": "file",
+            "output_variable_name": "attachment",
+            "allowed_file_types": ["custom"],
+            "allowed_file_extensions": [".csv", ".json"],
+            "allowed_file_upload_methods": ["local_file"],
+        },
+        {
+            "type": "file-list",
+            "output_variable_name": "images",
+            "allowed_file_types": ["image"],
+            "allowed_file_extensions": [],
+            "allowed_file_upload_methods": ["remote_url", "local_file"],
+            "number_limits": 7,
+        },
+    ]
+    form_content = (
+        "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}"
+    )
+    user_actions = [{"id": "approve", "title": "A" * 100, "button_style": "primary"}]
+    v1_node = HumanInputNodeDataFull.model_validate(
+        {
+            "title": "All inputs",
+            "delivery_methods": [{"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}],
+            "form_content": form_content,
+            "inputs": inputs,
+            "user_actions": user_actions,
+        }
+    )
+    assert {input.type for input in v1_node.inputs} == set(FormInputType)
+    text_node = HumanInputNodeDataFull.model_validate(
+        {
+            "title": "Text only",
+            "delivery_methods": v1_node.delivery_methods,
+            "inputs": [{"type": "paragraph", "output_variable_name": "text"}],
+            "user_actions": [{"id": "submit", "title": "B" * 21}],
+        }
+    )
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
+    handler = unwrap(NodeDataMigrationAPI.post)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "nodes": [
+                {"node_id": "all-inputs", "node_data": v1_node.model_dump(mode="json")},
+                {"node_id": "text-only", "node_data": text_node.model_dump(mode="json")},
+            ]
+        },
+    ):
+        response = handler(NodeDataMigrationAPI(), "workspace-1")
+
+    assert [node["node_id"] for node in response["data"]] == ["all-inputs", "text-only"]
+    assert response["data"][1]["node_data"]["user_actions"][0]["title"] == "B" * 21
+    migrated = response["data"][0]["node_data"]
+    assert migrated["inputs"] == inputs
+    assert migrated["user_actions"] == user_actions
+    assert migrated["recipients_spec"] == [{"type": "initiator"}]
+    pool = VariablePool.empty()
+    pool.add(["start", "reviewers"], ArrayStringSegment(value=["Alice", "Bob"]))
+    resolved = compile_resolved_form(HumanInputNodeData.model_validate_json(json.dumps(migrated)), pool)
+    assert resolved.parts == (
+        ParagraphInput(output_variable_name="reason", default_value="Keep this reason"),
+        SelectInput(output_variable_name="decision", options=("Yes", "No"), default_value=None),
+        SelectInput(output_variable_name="reviewer", options=("Alice", "Bob"), default_value=None),
+        FileInput(
+            output_variable_name="attachment",
+            allowed_file_types=(FileType.CUSTOM,),
+            allowed_file_extensions=(".csv", ".json"),
+            allowed_file_upload_methods=(FileTransferMethod.LOCAL_FILE,),
+        ),
+        FileListInput(
+            output_variable_name="images",
+            allowed_file_types=(FileType.IMAGE,),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(FileTransferMethod.REMOTE_URL, FileTransferMethod.LOCAL_FILE),
+            number_limits=7,
+        ),
+    )
+    assert resolved.actions[0].title == "A" * 100
+    fixture_path = Path(__file__).resolve().parents[6] / (
+        "web/app/components/workflow/nodes/human-input-v2/migration/__tests__/fixtures/v1-batch.json"
+    )
+    fixture = json.loads(fixture_path.read_text())
+    assert fixture["request"]["nodes"] == [
+        {"node_id": "all-inputs", "node_data": v1_node.model_dump(mode="json")},
+        {"node_id": "text-only", "node_data": text_node.model_dump(mode="json")},
+    ]
+    assert response == fixture["response"]
+
+
 @pytest.mark.parametrize(
     ("method_id", "expected_method_id"),
-    [(_OMITTED_METHOD_ID, None), (None, None), ("invalid-id", "invalid-id")],
-    ids=["omitted", "null", "invalid-uuid"],
+    [(None, None), ("invalid-id", "invalid-id")],
+    ids=["null", "invalid-uuid"],
 )
 def test_controller_maps_invalid_delivery_method_ids_to_typed_failure_without_partial_data(
     app: Flask,
@@ -113,8 +231,7 @@ def test_controller_maps_invalid_delivery_method_ids_to_typed_failure_without_pa
     expected_method_id: str | None,
 ) -> None:
     invalid_method: dict[str, object] = {"type": "webapp", "config": {}}
-    if method_id is not _OMITTED_METHOD_ID:
-        invalid_method["id"] = method_id
+    invalid_method["id"] = method_id
     service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
@@ -487,3 +604,34 @@ def test_controller_class_has_no_persistence_or_contact_dependencies() -> None:
         "contact_lookup",
     ):
         assert forbidden_dependency not in endpoint_source
+
+
+@pytest.mark.parametrize(
+    "input_config",
+    [
+        {"type": "paragraph", "output_variable_name": "answer"},
+        {"type": "select", "output_variable_name": "answer", "option_source": {"type": "constant"}},
+        {"type": "file", "output_variable_name": "answer"},
+        {"type": "file-list", "output_variable_name": "answer"},
+    ],
+)
+def test_http_migration_accepts_unserialized_v1_defaults(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    input_config: dict[str, object],
+) -> None:
+    raw_v1 = {"delivery_methods": [{"type": "webapp"}], "inputs": [input_config]}
+    v1 = HumanInputNodeDataFull.model_validate(raw_v1)
+    # A legal omitted default must remain a valid DSL configuration after save.
+    assert HumanInputNodeDataFull.model_validate_json(v1.model_dump_json()).model_dump(mode="json") == v1.model_dump(
+        mode="json"
+    )
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
+    with app.test_request_context(method="POST", json={"nodes": [{"node_id": "defaults", "node_data": raw_v1}]}):
+        response = unwrap(NodeDataMigrationAPI.post)(NodeDataMigrationAPI(), "workspace-1")
+    assert isinstance(response, dict)
+    migrated = response["data"][0]["node_data"]
+    assert migrated["inputs"] == v1.model_dump(mode="json")["inputs"]
+    assert migrated["recipients_spec"] == [{"type": "initiator"}]
+    HumanInputNodeData.model_validate_json(json.dumps(migrated))

@@ -23035,6 +23035,13 @@ Sandbox file download is unavailable.
 | ---- | ---- | ----------- | -------- |
 | BindingFileDownloadUnavailableError |  | Sandbox file download is unavailable. |  |
 
+#### BoundRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reference_id | string |  | Yes |
+| type | string, <br>**Default:** member |  | No |
+
 #### BrandingModel
 
 | Name | Type | Description | Required |
@@ -25602,6 +25609,24 @@ Email code verification is temporarily unavailable. Please try again later.
 | language | string |  | No |
 | turnstile_token | string | Cloudflare Turnstile token. Required at runtime for Dify Cloud. | No |
 
+#### EmailDeliveryConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| debug_mode | boolean |  | No |
+| recipients | [EmailRecipients](#emailrecipients) |  | Yes |
+| subject | string |  | Yes |
+
+#### EmailDeliveryMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [EmailDeliveryConfig](#emaildeliveryconfig) |  | Yes |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string (uuid) |  | No |
+| type | string, <br>**Default:** email |  | No |
+
 #### EmailDomainSuspendedError
 
 This email domain has been suspended.
@@ -25644,6 +25669,13 @@ Email provider supported by organization-level Human Input delivery.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmailProviderType | string | Email provider supported by organization-level Human Input delivery. |  |
+
+#### EmailRecipients
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_bound_group | boolean |  | No |
+| items | [ [BoundRecipient](#boundrecipient)<br>[ExternalRecipient](#externalrecipient) ] |  | No |
 
 #### EmailRegisterLimitError
 
@@ -26193,6 +26225,13 @@ Flask blueprint initialization.
 | ---- | ---- | ----------- | -------- |
 | api_key | string |  | No |
 | endpoint | string |  | No |
+
+#### ExternalRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| type | string, <br>**Default:** external |  | No |
 
 #### FeatureModel
 
@@ -27253,6 +27292,49 @@ The app is not available in this app library.
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
 | name | string | App name to search for | No |
 
+#### InstantMessageChannelRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channel_id | string |  | Yes |
+| type | string, <br>**Default:** channel |  | No |
+
+#### InstantMessageDeliveryConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | No |
+| provider | [InstantMessageProvider](#instantmessageprovider) |  | Yes |
+| recipients | [InstantMessageRecipients](#instantmessagerecipients) |  | No |
+
+#### InstantMessageDeliveryMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [InstantMessageDeliveryConfig](#instantmessagedeliveryconfig) |  | Yes |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string (uuid) |  | No |
+| type | string, <br>**Default:** im |  | No |
+
+#### InstantMessageProvider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InstantMessageProvider | string |  |  |
+
+#### InstantMessageRecipients
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [InstantMessageChannelRecipient](#instantmessagechannelrecipient)<br>[InstantMessageUserRecipient](#instantmessageuserrecipient) ] |  | No |
+
+#### InstantMessageUserRecipient
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string, <br>**Default:** user |  | No |
+| user_id | string |  | Yes |
+
 #### InstructionGeneratePayload
 
 | Name | Type | Description | Required |
@@ -27270,6 +27352,15 @@ The app is not available in this app library.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string | Instruction template type | Yes |
+
+#### InteractiveSurfaceDeliveryMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | [_InteractiveSurfaceDeliveryConfig](#_interactivesurfacedeliveryconfig) |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string (uuid) |  | No |
+| type | string, <br>**Default:** webapp |  | No |
 
 #### InvalidAccountDeletionCodeError
 
@@ -30317,31 +30408,6 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | recommended_apps | [ [RecommendedAppResponse](#recommendedappresponse) ] |  | Yes |
 
-#### LegacyEmailDeliveryConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| body | string |  | Yes |
-| debug_mode | boolean |  | No |
-| recipients | [LegacyEmailRecipients](#legacyemailrecipients) |  | Yes |
-| subject | string |  | Yes |
-
-#### LegacyEmailDeliveryMethod
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| config | [LegacyEmailDeliveryConfig](#legacyemaildeliveryconfig) |  | Yes |
-| enabled | boolean, <br>**Default:** true |  | No |
-| id | string (uuid) |  | Yes |
-| type | string, <br>**Default:** email |  | No |
-
-#### LegacyEmailRecipients
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [LegacyMemberRecipient](#legacymemberrecipient)<br>[LegacyExternalRecipient](#legacyexternalrecipient) ] |  | No |
-| whole_workspace | boolean |  | No |
-
 #### LegacyEndpointUpdatePayload
 
 | Name | Type | Description | Required |
@@ -30350,98 +30416,23 @@ Enum class for large language model mode.
 | name | string |  | Yes |
 | settings | object |  | Yes |
 
-#### LegacyExternalRecipient
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | Yes |
-| type | string, <br>**Default:** external |  | No |
-
-#### LegacyFormInput
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default | [LegacyFormInputDefault](#legacyforminputdefault) |  | No |
-| output_variable_name | string |  | Yes |
-| type | [LegacyFormInputType](#legacyforminputtype) |  | Yes |
-
-#### LegacyFormInputDefault
-
-Historical form default keeps both selector and constant value.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [LegacyPlaceholderType](#legacyplaceholdertype) |  | Yes |
-| value | string |  | No |
-
-#### LegacyFormInputType
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| LegacyFormInputType | string |  |  |
-
 #### LegacyHITLv1NodeData
 
-HTTP compatibility DTO; raw delivery JSON stops at preflight.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default_value | [JsonValue](#jsonvalue) |  | No |
-| delivery_methods | [ [LegacyWebAppDeliveryMethod](#legacywebappdeliverymethod)<br>[LegacyEmailDeliveryMethod](#legacyemaildeliverymethod) ] |  | No |
+| default_value | [ [DefaultValue](#defaultvalue) ] |  | No |
+| delivery_methods | [ [InteractiveSurfaceDeliveryMethod](#interactivesurfacedeliverymethod)<br>[EmailDeliveryMethod](#emaildeliverymethod)<br>[InstantMessageDeliveryMethod](#instantmessagedeliverymethod) ] |  | No |
 | desc | string |  | No |
 | error_strategy | [ErrorStrategy](#errorstrategy) |  | No |
 | form_content | string |  | No |
-| inputs | [ [LegacyFormInput](#legacyforminput) ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | retry_config | [RetryConfig](#retryconfig) |  | No |
 | timeout | integer, <br>**Default:** 36 |  | No |
-| timeout_unit | [LegacyTimeoutUnit](#legacytimeoutunit) |  | No |
-| title | string |  | Yes |
-| user_actions | [ [LegacyUserAction](#legacyuseraction) ] |  | No |
+| timeout_unit | [TimeoutUnit](#timeoutunit) |  | No |
+| title | string |  | No |
+| type | [NodeType](#nodetype) |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
 | version | string, <br>**Default:** 1 |  | No |
-
-#### LegacyMemberRecipient
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| type | string, <br>**Default:** member |  | No |
-| user_id | string |  | Yes |
-
-#### LegacyPlaceholderType
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| LegacyPlaceholderType | string |  |  |
-
-#### LegacyTimeoutUnit
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| LegacyTimeoutUnit | string |  |  |
-
-#### LegacyUserAction
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| button_style | [ButtonStyle](#buttonstyle) |  | No |
-| id | string |  | Yes |
-| title | string |  | Yes |
-
-#### LegacyWebAppDeliveryConfig
-
-Historical WebApp delivery config, intentionally empty.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-
-#### LegacyWebAppDeliveryMethod
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| config | [LegacyWebAppDeliveryConfig](#legacywebappdeliveryconfig) |  | No |
-| enabled | boolean, <br>**Default:** true |  | No |
-| id | string (uuid) |  | Yes |
-| type | string, <br>**Default:** webapp |  | No |
 
 #### LicenseLimitationModel
 
@@ -31548,6 +31539,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NodeStatus | string | Coarse node-level status used by Inspector to pick a banner. |  |
+
+#### NodeType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeType | string |  |  |
 
 #### NormalizedEmailAlreadyInUseError
 
@@ -35567,6 +35564,14 @@ Available voices
 | name | string | Voice display name | Yes |
 | value | string | Voice identifier | Yes |
 
+#### TimeoutUnit
+
+Timeout unit for form expiration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TimeoutUnit | string | Timeout unit for form expiration. |  |
+
 #### TimeoutUnit_Strict_strict_False_
 
 Timeout unit for form expiration.
@@ -38083,6 +38088,11 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | _Identifier | string |  |  |
+
+#### _InteractiveSurfaceDeliveryConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 
 #### _MembersInRoleList
 

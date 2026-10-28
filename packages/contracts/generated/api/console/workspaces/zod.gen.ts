@@ -4274,8 +4274,6 @@ export const zListLatestImSyncRunResultsResponse = z.object({
   total: z.int(),
 })
 
-export const zJsonValue = z.unknown()
-
 /**
  * ErrorStrategy
  */
@@ -4293,9 +4291,13 @@ export const zRetryConfig = z.object({
 })
 
 /**
- * LegacyTimeoutUnit
+ * TimeoutUnit
+ *
+ * Timeout unit for form expiration.
  */
-export const zLegacyTimeoutUnit = z.enum(['day', 'hour'])
+export const zTimeoutUnit = z.enum(['day', 'hour'])
+
+export const zNodeType = z.string()
 
 /**
  * MessageTemplateConfig
@@ -4752,26 +4754,41 @@ export const zEndpointListResponse = z.object({
 })
 
 /**
- * LegacyWebAppDeliveryConfig
- *
- * Historical WebApp delivery config, intentionally empty.
+ * DefaultValueType
  */
-export const zLegacyWebAppDeliveryConfig = z.record(z.string(), z.unknown())
+export const zDefaultValueType = z.enum([
+  'array[file]',
+  'array[number]',
+  'array[object]',
+  'array[string]',
+  'number',
+  'object',
+  'string',
+])
 
 /**
- * LegacyWebAppDeliveryMethod
+ * DefaultValue
  */
-export const zLegacyWebAppDeliveryMethod = z.object({
-  config: zLegacyWebAppDeliveryConfig.optional(),
-  enabled: z.boolean().optional().default(true),
-  id: z.uuid(),
-  type: z.literal('webapp').optional().default('webapp'),
+export const zDefaultValue = z.object({
+  key: z.string(),
+  type: zDefaultValueType,
+  value: z.unknown().optional(),
 })
 
 /**
- * LegacyFormInputType
+ * _InteractiveSurfaceDeliveryConfig
  */
-export const zLegacyFormInputType = z.enum(['paragraph', 'text_input'])
+export const zInteractiveSurfaceDeliveryConfig = z.record(z.string(), z.unknown())
+
+/**
+ * InteractiveSurfaceDeliveryMethod
+ */
+export const zInteractiveSurfaceDeliveryMethod = z.object({
+  config: zInteractiveSurfaceDeliveryConfig.optional(),
+  enabled: z.boolean().optional().default(true),
+  id: z.uuid().optional(),
+  type: z.literal('webapp').optional().default('webapp'),
+})
 
 /**
  * ButtonStyle
@@ -4779,15 +4796,6 @@ export const zLegacyFormInputType = z.enum(['paragraph', 'text_input'])
  * Button styles for user actions.
  */
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
-
-/**
- * LegacyUserAction
- */
-export const zLegacyUserAction = z.object({
-  button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
-  title: z.string().max(20),
-})
 
 /**
  * UserActionConfig
@@ -4824,28 +4832,6 @@ export const zDebugChannel = z.enum([
 export const zDebugModeConfig = z.object({
   channels: z.array(zDebugChannel),
   enabled: z.boolean().optional().default(false),
-})
-
-/**
- * DefaultValueType
- */
-export const zDefaultValueType = z.enum([
-  'array[file]',
-  'array[number]',
-  'array[object]',
-  'array[string]',
-  'number',
-  'object',
-  'string',
-])
-
-/**
- * DefaultValue
- */
-export const zDefaultValue = z.object({
-  key: z.string(),
-  type: zDefaultValueType,
-  value: z.unknown().optional(),
 })
 
 /**
@@ -5631,29 +5617,9 @@ export const zPluginBundleDependency = z.object({
 export const zPluginBundleUploadResponse = z.array(zPluginBundleDependency)
 
 /**
- * LegacyPlaceholderType
+ * InstantMessageProvider
  */
-export const zLegacyPlaceholderType = z.enum(['constant', 'variable'])
-
-/**
- * LegacyFormInputDefault
- *
- * Historical form default keeps both selector and constant value.
- */
-export const zLegacyFormInputDefault = z.object({
-  selector: z.array(z.string()).optional(),
-  type: zLegacyPlaceholderType,
-  value: z.string().optional().default(''),
-})
-
-/**
- * LegacyFormInput
- */
-export const zLegacyFormInput = z.object({
-  default: zLegacyFormInputDefault.nullish(),
-  output_variable_name: z.string(),
-  type: zLegacyFormInputType,
-})
+export const zInstantMessageProvider = z.enum(['discord', 'slack', 'teams'])
 
 /**
  * FileType
@@ -5694,88 +5660,91 @@ export const zFileListInputConfig = z.object({
 })
 
 /**
- * LegacyMemberRecipient
+ * BoundRecipient
  */
-export const zLegacyMemberRecipient = z.object({
+export const zBoundRecipient = z.object({
+  reference_id: z.string(),
   type: z.literal('member').optional().default('member'),
-  user_id: z.string(),
 })
 
 /**
- * LegacyExternalRecipient
+ * ExternalRecipient
  */
-export const zLegacyExternalRecipient = z.object({
+export const zExternalRecipient = z.object({
   email: z.string(),
   type: z.literal('external').optional().default('external'),
 })
 
 /**
- * LegacyEmailRecipients
+ * EmailRecipients
  */
-export const zLegacyEmailRecipients = z.object({
-  items: z.array(z.union([zLegacyMemberRecipient, zLegacyExternalRecipient])).optional(),
-  whole_workspace: z.boolean().optional().default(false),
+export const zEmailRecipients = z.object({
+  include_bound_group: z.boolean().optional().default(false),
+  items: z.array(z.union([zBoundRecipient, zExternalRecipient])).optional(),
 })
 
 /**
- * LegacyEmailDeliveryConfig
+ * EmailDeliveryConfig
  */
-export const zLegacyEmailDeliveryConfig = z.object({
+export const zEmailDeliveryConfig = z.object({
   body: z.string(),
   debug_mode: z.boolean().optional().default(false),
-  recipients: zLegacyEmailRecipients,
+  recipients: zEmailRecipients,
   subject: z.string(),
 })
 
 /**
- * LegacyEmailDeliveryMethod
+ * EmailDeliveryMethod
  */
-export const zLegacyEmailDeliveryMethod = z.object({
-  config: zLegacyEmailDeliveryConfig,
+export const zEmailDeliveryMethod = z.object({
+  config: zEmailDeliveryConfig,
   enabled: z.boolean().optional().default(true),
-  id: z.uuid(),
+  id: z.uuid().optional(),
   type: z.literal('email').optional().default('email'),
 })
 
 /**
- * LegacyHITLv1NodeData
- *
- * HTTP compatibility DTO; raw delivery JSON stops at preflight.
+ * InstantMessageChannelRecipient
  */
-export const zLegacyHitLv1NodeData = z.object({
-  default_value: zJsonValue.optional(),
-  delivery_methods: z
-    .array(z.union([zLegacyWebAppDeliveryMethod, zLegacyEmailDeliveryMethod]))
+export const zInstantMessageChannelRecipient = z.object({
+  channel_id: z.string(),
+  type: z.literal('channel').optional().default('channel'),
+})
+
+/**
+ * InstantMessageUserRecipient
+ */
+export const zInstantMessageUserRecipient = z.object({
+  type: z.literal('user').optional().default('user'),
+  user_id: z.string(),
+})
+
+/**
+ * InstantMessageRecipients
+ */
+export const zInstantMessageRecipients = z.object({
+  items: z
+    .array(z.union([zInstantMessageChannelRecipient, zInstantMessageUserRecipient]))
     .optional(),
-  desc: z.string().nullish(),
-  error_strategy: zErrorStrategy.nullish(),
-  form_content: z.string().optional().default(''),
-  inputs: z.array(zLegacyFormInput).optional(),
-  retry_config: zRetryConfig.optional(),
-  timeout: z.int().optional().default(36),
-  timeout_unit: zLegacyTimeoutUnit.optional().default('hour'),
-  title: z.string(),
-  user_actions: z.array(zLegacyUserAction).optional(),
-  version: z.literal('1').optional().default('1'),
 })
 
 /**
- * NodeDataMigrationInput
- *
- * One legacy node submitted through the frontend migration adapter boundary.
+ * InstantMessageDeliveryConfig
  */
-export const zNodeDataMigrationInput = z.object({
-  node_data: zLegacyHitLv1NodeData,
-  node_id: z.string(),
+export const zInstantMessageDeliveryConfig = z.object({
+  message: z.string().nullish(),
+  provider: zInstantMessageProvider,
+  recipients: zInstantMessageRecipients.optional(),
 })
 
 /**
- * NodeDataMigrationPayload
- *
- * Complete legacy-node batch submitted for one migration attempt.
+ * InstantMessageDeliveryMethod
  */
-export const zNodeDataMigrationPayload = z.object({
-  nodes: z.array(zNodeDataMigrationInput).min(1),
+export const zInstantMessageDeliveryMethod = z.object({
+  config: zInstantMessageDeliveryConfig,
+  enabled: z.boolean().optional().default(true),
+  id: z.uuid().optional(),
+  type: z.literal('im').optional().default('im'),
 })
 
 /**
@@ -5832,6 +5801,52 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
   zFileInputConfig,
   zFileListInputConfig,
 ])
+
+/**
+ * HumanInputNodeDataFull
+ */
+export const zLegacyHitLv1NodeData = z.object({
+  default_value: z.array(zDefaultValue).nullish(),
+  delivery_methods: z
+    .array(
+      z.union([
+        zInteractiveSurfaceDeliveryMethod,
+        zEmailDeliveryMethod,
+        zInstantMessageDeliveryMethod,
+      ]),
+    )
+    .optional(),
+  desc: z.string().nullish(),
+  error_strategy: zErrorStrategy.nullish(),
+  form_content: z.string().optional().default(''),
+  inputs: z.array(zFormInputConfig).optional(),
+  retry_config: zRetryConfig.optional(),
+  timeout: z.int().optional().default(36),
+  timeout_unit: zTimeoutUnit.optional().default('hour'),
+  title: z.string().optional().default(''),
+  type: zNodeType.optional().default('human-input'),
+  user_actions: z.array(zUserActionConfig).optional(),
+  version: z.string().optional().default('1'),
+})
+
+/**
+ * NodeDataMigrationInput
+ *
+ * One legacy node submitted through the frontend migration adapter boundary.
+ */
+export const zNodeDataMigrationInput = z.object({
+  node_data: zLegacyHitLv1NodeData,
+  node_id: z.string(),
+})
+
+/**
+ * NodeDataMigrationPayload
+ *
+ * Complete legacy-node batch submitted for one migration attempt.
+ */
+export const zNodeDataMigrationPayload = z.object({
+  nodes: z.array(zNodeDataMigrationInput).min(1),
+})
 
 /**
  * HumanInputNodeData
@@ -6130,11 +6145,9 @@ export const zImChannelUpdatePayloadWritable = z.object({
 })
 
 /**
- * LegacyWebAppDeliveryConfig
- *
- * Historical WebApp delivery config, intentionally empty.
+ * _InteractiveSurfaceDeliveryConfig
  */
-export const zLegacyWebAppDeliveryConfigWritable = z.record(z.string(), z.unknown())
+export const zInteractiveSurfaceDeliveryConfigWritable = z.record(z.string(), z.unknown())
 
 /**
  * Success

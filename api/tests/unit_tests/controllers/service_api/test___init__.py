@@ -259,27 +259,14 @@ def test_console_node_data_migration_documents_canonical_delivery_method_union(
     node_data_schema = schemas[node_data_ref.removeprefix("#/components/schemas/")]
     method_items = node_data_schema["properties"]["delivery_methods"]["items"]
 
-    assert method_items == {
-        "discriminator": {
-            "mapping": {
-                "email": "#/components/schemas/LegacyEmailDeliveryMethod",
-                "webapp": "#/components/schemas/LegacyWebAppDeliveryMethod",
-            },
-            "propertyName": "type",
-        },
-        "oneOf": [
-            {"$ref": "#/components/schemas/LegacyWebAppDeliveryMethod"},
-            {"$ref": "#/components/schemas/LegacyEmailDeliveryMethod"},
-        ],
-    }
-    for method_schema_name in ("LegacyWebAppDeliveryMethod", "LegacyEmailDeliveryMethod"):
-        method_schema = schemas[method_schema_name]
-        assert "id" in method_schema["required"]
-        assert method_schema["properties"]["id"] == {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string",
-        }
+    assert set(method_items["discriminator"]["mapping"]) == {"webapp", "email", "im"}
+    input_ref = node_data_schema["properties"]["inputs"]["items"]["$ref"]
+    input_schema = schemas[input_ref.removeprefix("#/components/schemas/")]
+    input_variants = input_schema["discriminator"]["mapping"]
+    assert set(input_variants) == {"paragraph", "select", "file", "file-list"}
+    action_ref = node_data_schema["properties"]["user_actions"]["items"]["$ref"]
+    action_schema = schemas[action_ref.removeprefix("#/components/schemas/")]
+    assert action_schema["properties"]["title"]["maxLength"] == 100
 
 
 def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: OpenAPIJSONLoader):

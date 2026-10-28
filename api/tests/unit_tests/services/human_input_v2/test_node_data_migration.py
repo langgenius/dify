@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common import human_input_v2_migration as migration_boundary
 from core.human_input_v2.shared.values import NormalizedEmail, TenantId
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input_v2 import migration as migration_module
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
-    LegacyHumanInputNodeData,
     MemberEmailSnapshot,
     MigrationBlockerCode,
     NodeMigrationConversion,
@@ -35,8 +35,8 @@ _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
 
 
-def _member_node(title: str, *member_ids: str) -> LegacyHumanInputNodeData:
-    return LegacyHumanInputNodeData.model_validate(
+def _member_node(title: str, *member_ids: str) -> HumanInputNodeDataFull:
+    return HumanInputNodeDataFull.model_validate(
         {
             "title": title,
             "delivery_methods": [
@@ -44,7 +44,9 @@ def _member_node(title: str, *member_ids: str) -> LegacyHumanInputNodeData:
                     "id": _EMAIL_METHOD_ID,
                     "type": "email",
                     "config": {
-                        "recipients": {"items": [{"type": "member", "user_id": member_id} for member_id in member_ids]},
+                        "recipients": {
+                            "items": [{"type": "member", "reference_id": member_id} for member_id in member_ids]
+                        },
                         "subject": "Review",
                         "body": "Please review",
                     },
@@ -86,7 +88,7 @@ class _ConverterSpy:
 
     def __call__(
         self,
-        node_data: LegacyHumanInputNodeData,
+        node_data: HumanInputNodeDataFull,
         member_emails: MemberEmailSnapshot,
     ) -> NodeMigrationConversion:
         self.snapshot_ids.append(id(member_emails))
@@ -115,7 +117,7 @@ def test_batch_uses_one_ordered_member_lookup_and_one_immutable_snapshot() -> No
 def test_service_collects_real_frontend_user_id_member_references() -> None:
     lookup = _LookupSpy()
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
-    node_data = LegacyHumanInputNodeData.model_validate(
+    node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
             "delivery_methods": [
@@ -125,7 +127,7 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
                     "config": {
                         "subject": "Review",
                         "body": "Please review",
-                        "recipients": {"items": [{"type": "member", "user_id": "member-1"}]},
+                        "recipients": {"items": [{"type": "member", "reference_id": "member-1"}]},
                     },
                 }
             ],
@@ -148,7 +150,7 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
 def test_service_merges_typed_preflight_issues_and_discards_converted_data() -> None:
     lookup = _LookupSpy()
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
-    node_data = LegacyHumanInputNodeData.model_validate(
+    node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
             "delivery_methods": [
@@ -188,7 +190,7 @@ def test_service_merges_typed_preflight_issues_and_discards_converted_data() -> 
 
 def test_service_preserves_method_order_when_merging_preflight_and_conversion_blockers() -> None:
     service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
-    node_data = LegacyHumanInputNodeData.model_validate(
+    node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
             "delivery_methods": [
@@ -346,7 +348,6 @@ def test_service_orders_invalid_delivery_ids_without_partial_data_or_persistence
     assert not hasattr(outcome, "data")
     assert [(blocker.code, blocker.method_id, blocker.value) for blocker in outcome.blockers] == [
         ("unsupported-delivery-method", None, "webapp"),
-        ("unsupported-delivery-method", None, "webapp"),
         ("unsupported-delivery-method", "invalid-id", "webapp"),
     ]
 
@@ -393,7 +394,7 @@ def test_service_source_orders_disabled_unknown_methods_as_unsupported_without_p
 
 def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None:
     duplicate_method_id = "11111111-1111-4111-8111-111111111111"
-    node_data = LegacyHumanInputNodeData.model_validate(
+    node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
             "delivery_methods": [
@@ -450,7 +451,7 @@ def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None
 def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> None:
     lookup = _LookupSpy()
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
-    node_data = LegacyHumanInputNodeData.model_validate(
+    node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
             "delivery_methods": [],
@@ -487,13 +488,13 @@ def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> No
 def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalently() -> None:
     lookup = _LookupSpy(frozenset({"missing-member"}))
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
-    valid_node = LegacyHumanInputNodeData.model_validate(
+    valid_node = HumanInputNodeDataFull.model_validate(
         {
             "title": "Valid",
             "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
         }
     )
-    invalid_node = LegacyHumanInputNodeData.model_validate(
+    invalid_node = HumanInputNodeDataFull.model_validate(
         {
             "title": "Invalid",
             "delivery_methods": [
@@ -506,7 +507,7 @@ def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalent
                         "recipients": {
                             "items": [
                                 {"type": "external", "email": "invalid-email"},
-                                {"type": "member", "user_id": "missing-member"},
+                                {"type": "member", "reference_id": "missing-member"},
                             ]
                         },
                     },
@@ -550,7 +551,7 @@ def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundar
     successful_nodes = (
         MigrationNode(
             "node-success",
-            LegacyHumanInputNodeData.model_validate(
+            HumanInputNodeDataFull.model_validate(
                 {
                     "title": "Success",
                     "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
@@ -561,7 +562,7 @@ def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundar
     blocked_nodes = (
         MigrationNode(
             "node-blocked",
-            LegacyHumanInputNodeData.model_validate({"title": "Blocked", "delivery_methods": []}),
+            HumanInputNodeDataFull.model_validate({"title": "Blocked", "delivery_methods": []}),
         ),
     )
 
@@ -579,7 +580,7 @@ def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundar
 def test_whole_workspace_does_not_enumerate_members() -> None:
     lookup = _LookupSpy()
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
-    node_data = LegacyHumanInputNodeData.model_validate(
+    node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
             "delivery_methods": [

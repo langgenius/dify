@@ -2936,18 +2936,22 @@ export type ImSyncResultSkipped = {
 }
 
 export type LegacyHitLv1NodeData = {
-  default_value?: JsonValue
-  delivery_methods?: Array<LegacyWebAppDeliveryMethod | LegacyEmailDeliveryMethod>
+  default_value?: Array<DefaultValue> | null
+  delivery_methods?: Array<
+    InteractiveSurfaceDeliveryMethod | EmailDeliveryMethod | InstantMessageDeliveryMethod
+  >
   desc?: string | null
   error_strategy?: ErrorStrategy | null
   form_content?: string
-  inputs?: Array<LegacyFormInput>
+  inputs?: Array<FormInputConfig>
   retry_config?: RetryConfig
   timeout?: number
-  timeout_unit?: LegacyTimeoutUnit
-  title: string
-  user_actions?: Array<LegacyUserAction>
-  version?: '1'
+  timeout_unit?: TimeoutUnit
+  title?: string
+  type?: NodeType
+  user_actions?: Array<UserActionConfig>
+  version?: string
+  [key: string]: unknown
 }
 
 export type HumanInputNodeData = {
@@ -3493,54 +3497,34 @@ export type ImSyncRemovalReason =
   | 'binding_replaced'
   | 'not_present_in_directory'
 
-export type JsonValue = unknown
-
-export type LegacyWebAppDeliveryMethod = {
-  config?: LegacyWebAppDeliveryConfig
-  enabled?: boolean
-  id: string
-  type?: 'webapp'
-}
-
-export type LegacyEmailDeliveryMethod = {
-  config: LegacyEmailDeliveryConfig
-  enabled?: boolean
-  id: string
-  type?: 'email'
-}
-
-export type ErrorStrategy = 'default-value' | 'fail-branch'
-
-export type LegacyFormInput = {
-  default?: LegacyFormInputDefault | null
-  output_variable_name: string
-  type: LegacyFormInputType
-}
-
-export type RetryConfig = {
-  max_retries?: number
-  retry_enabled?: boolean
-  retry_interval?: number
-}
-
-export type LegacyTimeoutUnit = 'day' | 'hour'
-
-export type LegacyUserAction = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
-}
-
-export type DebugModeConfig = {
-  channels: Array<DebugChannel>
-  enabled?: boolean
-}
-
 export type DefaultValue = {
   key: string
   type: DefaultValueType
   value?: unknown
 }
+
+export type InteractiveSurfaceDeliveryMethod = {
+  config?: InteractiveSurfaceDeliveryConfig
+  enabled?: boolean
+  id?: string
+  type?: 'webapp'
+}
+
+export type EmailDeliveryMethod = {
+  config: EmailDeliveryConfig
+  enabled?: boolean
+  id?: string
+  type?: 'email'
+}
+
+export type InstantMessageDeliveryMethod = {
+  config: InstantMessageDeliveryConfig
+  enabled?: boolean
+  id?: string
+  type?: 'im'
+}
+
+export type ErrorStrategy = 'default-value' | 'fail-branch'
 
 export type FormInputConfig =
   | ({
@@ -3555,6 +3539,27 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+
+export type RetryConfig = {
+  max_retries?: number
+  retry_enabled?: boolean
+  retry_interval?: number
+}
+
+export type TimeoutUnit = 'day' | 'hour'
+
+export type NodeType = string
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type DebugModeConfig = {
+  channels: Array<DebugChannel>
+  enabled?: boolean
+}
 
 export type MessageTemplateConfig = {
   body: string
@@ -3585,12 +3590,6 @@ export type AllWorkspaceContacts = {
 }
 
 export type TimeoutUnitStrictStrictFalse = 'day' | 'hour'
-
-export type UserActionConfig = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
-}
 
 export type UnaddedModelConfiguration = {
   model: string
@@ -3817,36 +3816,6 @@ export type EndpointProviderConfigScope =
   | 'vision'
   | 'workflow'
 
-export type LegacyWebAppDeliveryConfig = {
-  [key: string]: unknown
-}
-
-export type LegacyEmailDeliveryConfig = {
-  body: string
-  debug_mode?: boolean
-  recipients: LegacyEmailRecipients
-  subject: string
-}
-
-export type LegacyFormInputDefault = {
-  selector?: Array<string>
-  type: LegacyPlaceholderType
-  value?: string
-}
-
-export type LegacyFormInputType = 'paragraph' | 'text_input'
-
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
-
-export type DebugChannel =
-  | 'ding_talk'
-  | 'email'
-  | 'feishu'
-  | 'lark'
-  | 'ms_teams'
-  | 'slack'
-  | 'we_com'
-
 export type DefaultValueType =
   | 'array[file]'
   | 'array[number]'
@@ -3855,6 +3824,23 @@ export type DefaultValueType =
   | 'number'
   | 'object'
   | 'string'
+
+export type InteractiveSurfaceDeliveryConfig = {
+  [key: string]: unknown
+}
+
+export type EmailDeliveryConfig = {
+  body: string
+  debug_mode?: boolean
+  recipients: EmailRecipients
+  subject: string
+}
+
+export type InstantMessageDeliveryConfig = {
+  message?: string | null
+  provider: InstantMessageProvider
+  recipients?: InstantMessageRecipients
+}
 
 export type ParagraphInputConfig = {
   default?: StringSource | null
@@ -3884,6 +3870,17 @@ export type FileListInputConfig = {
   output_variable_name: string
   type?: 'file-list'
 }
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type DebugChannel =
+  | 'ding_talk'
+  | 'email'
+  | 'feishu'
+  | 'lark'
+  | 'ms_teams'
+  | 'slack'
+  | 'we_com'
 
 export type FormOption = {
   label: ModelRuntimeI18nObject
@@ -3942,12 +3939,16 @@ export type Tool = {
 
 export type PluginParameterAutoGenerateType = 'prompt_instruction'
 
-export type LegacyEmailRecipients = {
-  items?: Array<LegacyMemberRecipient | LegacyExternalRecipient>
-  whole_workspace?: boolean
+export type EmailRecipients = {
+  include_bound_group?: boolean
+  items?: Array<BoundRecipient | ExternalRecipient>
 }
 
-export type LegacyPlaceholderType = 'constant' | 'variable'
+export type InstantMessageProvider = 'discord' | 'slack' | 'teams'
+
+export type InstantMessageRecipients = {
+  items?: Array<InstantMessageChannelRecipient | InstantMessageUserRecipient>
+}
 
 export type StringSource = {
   selector?: Array<string>
@@ -3965,14 +3966,24 @@ export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
-export type LegacyMemberRecipient = {
+export type BoundRecipient = {
+  reference_id: string
   type?: 'member'
-  user_id: string
 }
 
-export type LegacyExternalRecipient = {
+export type ExternalRecipient = {
   email: string
   type?: 'external'
+}
+
+export type InstantMessageChannelRecipient = {
+  channel_id: string
+  type?: 'channel'
+}
+
+export type InstantMessageUserRecipient = {
+  type?: 'user'
+  user_id: string
 }
 
 export type ValueSourceType = 'constant' | 'variable'
@@ -4181,7 +4192,7 @@ export type WeComCredentialsUpdateInputWritable = {
   secret: RequiredSecret | UnchangedInput
 }
 
-export type LegacyWebAppDeliveryConfigWritable = {
+export type InteractiveSurfaceDeliveryConfigWritable = {
   [key: string]: unknown
 }
 
