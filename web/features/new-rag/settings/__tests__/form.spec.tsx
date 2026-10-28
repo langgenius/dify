@@ -12,21 +12,32 @@ import type {
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { ComponentProps, ReactNode } from 'react'
 import {
   zKnowledgeFsSettingsResponse,
   zKnowledgeFsSpaceDetailResponse,
 } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { useQuery } from '@tanstack/react-query'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-data'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderConsole,
+} from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { KnowledgeSettingsPage } from '../page'
 
 const serviceMock = vi.hoisted(() => ({
   deleteSpace: vi.fn(),
   getMigration: vi.fn(),
   getSpace: vi.fn(),
+  getSpaces: vi.fn(),
   patchExternalAccess: vi.fn(),
   patchSettings: vi.fn(),
   patchSpace: vi.fn(),
@@ -64,6 +75,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'knowledgeFs.spaces.get': serviceMock.getSpaces,
       [`${space}.delete`]: serviceMock.deleteSpace,
       [`${space}.externalAccess.get`]: async () => knowledgeQueryMock.externalAccess,
       [`${space}.externalAccess.put`]: serviceMock.patchExternalAccess,
@@ -75,107 +87,69 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${space}.settings.migrations.byMigrationId.get`]: serviceMock.getMigration,
       [`${space}.settings.patch`]: serviceMock.patchSettings,
       'workspaces.current.members.get': async () => ({ accounts: membersQueryMock.accounts }),
-      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
     }),
-  }
-})
-
-// The model selector loads provider catalogs and has its own suite; this stub keeps the
-// selection contract (value, change, and ARIA wiring) that the settings form owns.
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({
-    ariaDescribedBy,
-    ariaInvalid,
-    ariaLabelledBy,
-    ariaRequired,
-    value,
-    onValueChange,
-    disabled,
-  }: {
-    ariaDescribedBy?: string
-    ariaInvalid?: boolean
-    ariaLabelledBy?: string
-    ariaRequired?: boolean
-    value?: { model: string; provider: string }
-    onValueChange?: (model: { model: string; plugin_id: string; provider: string }) => void
-    disabled?: boolean
-  }) => {
-    const popupId = `${ariaLabelledBy ?? 'model-selector'}-popup`
-    return (
-      <>
-        <button
-          type="button"
-          aria-controls={popupId}
-          aria-expanded="false"
-          aria-describedby={ariaDescribedBy}
-          aria-labelledby={ariaLabelledBy}
-          data-invalid={ariaInvalid ? '' : undefined}
-          data-required={ariaRequired ? '' : undefined}
-          disabled={disabled}
-          onClick={() =>
-            onValueChange?.({
-              model: 'openrouter/auto',
-              plugin_id: 'langgenius/openrouter',
-              provider: 'langgenius/openrouter/openrouter',
-            })
-          }
-        >
-          {value ? `${value.provider}:${value.model}` : 'select-model'}
-        </button>
-        <span id={popupId} hidden />
-      </>
-    )
-  },
-}))
-
-// The real picker needs emoji data and canvas cropping and is covered by its browser suite; this
-// stub preserves its trigger/content/value contract.
-vi.mock('@/app/components/base/icon-picker', async () => {
-  const { createContext, use, useState } = await import('react')
-  type Selection = { background: string; icon: string; type: 'emoji' }
-  const PickerContext = createContext<{
-    open: boolean
-    setOpen: (open: boolean) => void
-    onValueChange: (selection: Selection) => void
-  } | null>(null)
-  return {
-    IconPicker: ({
-      onValueChange,
-      children,
-    }: {
-      onValueChange: (selection: Selection) => void
-      children: ReactNode
-    }) => {
-      const [open, setOpen] = useState(false)
-      return <PickerContext value={{ open, setOpen, onValueChange }}>{children}</PickerContext>
-    },
-    IconPickerTrigger: ({ children, ...props }: ComponentProps<'button'>) => {
-      const picker = use(PickerContext)
-      return (
-        <button type="button" {...props} onClick={() => picker?.setOpen(true)}>
-          {children}
-        </button>
-      )
-    },
-    IconPickerContent: () => {
-      const picker = use(PickerContext)
-      return picker?.open ? (
-        <button
-          type="button"
-          onClick={() =>
-            picker.onValueChange({ background: '#FCE7F6', icon: 'camera', type: 'emoji' })
-          }
-        >
-          Select camera style
-        </button>
-      ) : null
-    },
   }
 })
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
+
+const renderWithConsoleQuery = createNuqsTestRenderer(renderConsole)
+const modelCatalog = [
+  createModelCatalogFixture({
+    provider: 'langgenius/openai/openai',
+    models: [
+      createCatalogModelFixture({ model: 'gpt-4o', label: { en_US: 'gpt-4o' } }),
+      ...['text-embedding-3-large', 'text-embedding-3-small'].map((model) =>
+        createCatalogModelFixture({
+          model,
+          label: { en_US: model },
+          model_type: 'text-embedding',
+        }),
+      ),
+    ],
+  }),
+  createModelCatalogFixture({
+    provider: 'langgenius/openrouter/openrouter',
+    label: { en_US: 'OpenRouter' },
+    models: [
+      createCatalogModelFixture({ model: 'openrouter/auto', label: { en_US: 'openrouter/auto' } }),
+    ],
+  }),
+  createModelCatalogFixture({
+    provider: 'langgenius/cohere/cohere',
+    label: { en_US: 'Cohere' },
+    models: ['rerank-english-v3.0', 'rerank-v3.5'].map((model) =>
+      createCatalogModelFixture({
+        model,
+        label: { en_US: model },
+        model_type: 'rerank',
+      }),
+    ),
+  }),
+]
+
+async function chooseModel(user: ReturnType<typeof userEvent.setup>, model = 'openrouter/auto') {
+  const picker = await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' })
+  await user.click(within(picker).getByRole('button', { name: model }))
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+    ).not.toBeInTheDocument(),
+  )
+}
+
+async function chooseIcon(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.pink' }))
+  await user.click(screen.getByRole('gridcell', { name: 'Video camera' }))
+  await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('radio', { name: 'app.iconPicker.color.pink' }),
+    ).not.toBeInTheDocument(),
+  )
+}
 
 const space = {
   control_space_id: 'space-1',
@@ -231,7 +205,7 @@ const settings = {
     rerank: {
       enabled: true,
       model: {
-        model: 'rerank-v3',
+        model: 'rerank-english-v3.0',
         pluginId: 'langgenius/cohere',
         provider: 'cohere',
       },
@@ -292,10 +266,24 @@ const spacesListPage = () => ({
   page: 1,
 })
 
+function KnowledgeSpaceList({ keyword }: { keyword: string }) {
+  const { data } = useQuery(
+    consoleQuery.knowledgeFs.spaces.get.queryOptions({
+      input: { query: { query: keyword } },
+    }),
+  )
+  return (
+    <output aria-label={`Knowledge list: ${keyword || 'all'}`}>
+      {data?.data.map((item) => item.technical_summary?.name).join(', ')}
+    </output>
+  )
+}
+
 async function renderForm({
   accountProfile = {},
   externalAccess: externalAccessOverride = externalAccess,
   members = [],
+  listKeywords = [],
   permissions = [],
   queryClient: queryClientOverride,
   settings: settingsOverride = settings,
@@ -312,6 +300,7 @@ async function renderForm({
   }>
   externalAccess?: typeof externalAccess
   members?: AccountWithRoleResponse[]
+  listKeywords?: string[]
   permissions?: KnowledgeFsPermissionResponse[]
   queryClient?: QueryClient
   settings?: KnowledgeFsSettingsResponse
@@ -325,21 +314,42 @@ async function renderForm({
   const queryClient = queryClientOverride ?? createConsoleQueryClient()
   queryClient.setQueryData(queryKeys.externalAccess(), externalAccessOverride)
   queryClient.setQueryData(queryKeys.permissions(), { data: permissions })
+  seedModelProviderQueries(queryClient, modelCatalog)
+  queryClient.setQueryData(emojiCatalogOptions.queryKey, [
+    {
+      id: 'objects',
+      label: 'Objects',
+      items: [
+        { emoji: '📷', label: 'Camera', version: 0.6 },
+        { emoji: '📹', label: 'Video camera', version: 0.6 },
+      ],
+    },
+  ])
   seedSettings(queryClient, settingsOverride)
   seedSpace(queryClient, spaceOverride)
-  const view = renderWithConsoleQuery(<KnowledgeSettingsPage knowledgeSpaceId="space-1" />, {
-    accountProfile: {
-      avatar: '',
-      avatar_url: null,
-      email: 'test@dify.ai',
-      id: 'user-1',
-      is_password_set: false,
-      name: 'Test User',
-      timezone: 'Asia/Shanghai',
-      ...accountProfile,
+  for (const keyword of listKeywords)
+    queryClient.setQueryData(queryKeys.spacesList(keyword), spacesListPage())
+  const view = renderWithConsoleQuery(
+    <>
+      <KnowledgeSettingsPage knowledgeSpaceId="space-1" />
+      {listKeywords.map((keyword) => (
+        <KnowledgeSpaceList key={keyword} keyword={keyword} />
+      ))}
+    </>,
+    {
+      accountProfile: {
+        avatar: '',
+        avatar_url: null,
+        email: 'test@dify.ai',
+        id: 'user-1',
+        is_password_set: false,
+        name: 'Test User',
+        timezone: 'Asia/Shanghai',
+        ...accountProfile,
+      },
+      queryClient,
     },
-    queryClient,
-  })
+  )
   await waitFor(() => expect(queryClient.isFetching()).toBe(0))
   return view
 }
@@ -384,7 +394,7 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
   await user.type(description, 'Draft documentation')
   expectNoWrites()
   await user.click(screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }))
-  await user.click(screen.getByRole('button', { name: 'Select camera style' }))
+  await chooseIcon(user)
   expectNoWrites()
   await user.click(screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }))
   const picker = screen.getByRole('dialog', { name: 'datasetSettings.form.permissions' })
@@ -398,11 +408,12 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('switch', { name }))
     expectNoWrites()
   }
-  for (const name of [
-    'knowledgeSettings.settings.systemReasoningModelLabel',
-    'modelProvider.modelProvider.rerankModel.key',
-  ]) {
-    await user.click(screen.getByRole('button', { name }))
+  for (const [name, model] of [
+    ['knowledgeSettings.settings.systemReasoningModelLabel', 'openrouter/auto'],
+    ['modelProvider.modelProvider.rerankModel.key', 'rerank-v3.5'],
+  ] as const) {
+    await user.click(screen.getByRole('button', { name: new RegExp(name) }))
+    await chooseModel(user, model)
     expectNoWrites()
   }
   await user.click(screen.getByText('knowledgeSpace.settings.retrievalMode.deep'))
@@ -423,9 +434,13 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
 
 describe('KnowledgeSettingsPage workflows', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    Object.values(serviceMock).forEach((mock) => mock.mockReset())
     serviceMock.deleteSpace.mockResolvedValue(undefined)
     serviceMock.getSpace.mockImplementation(async () => knowledgeQueryMock.space)
+    serviceMock.getSpaces.mockImplementation(async () => ({
+      ...spacesListPage(),
+      data: [{ ...knowledgeQueryMock.space!, linked_apps: 0, tags: [] }],
+    }))
     serviceMock.patchExternalAccess.mockImplementation(
       async ({ body }: { body: KnowledgeFsExternalAccessPayload }) => {
         const current = knowledgeQueryMock.externalAccess!
@@ -529,11 +544,13 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
-  it('marks every cached knowledge-space list variant stale after saving basic information', async () => {
+  it('refreshes every subscribed knowledge-space list variant after saving basic information', async () => {
     const user = userEvent.setup()
-    const { queryClient } = await renderForm()
-    const listKeys = [queryKeys.spacesList(''), queryKeys.spacesList('camera')]
-    for (const queryKey of listKeys) queryClient.setQueryData(queryKey, spacesListPage())
+    await renderForm({ listKeywords: ['', 'camera'] })
+    for (const label of ['all', 'camera'])
+      expect(screen.getByLabelText(`Knowledge list: ${label}`)).toHaveTextContent(
+        'Camera Technical Spec',
+      )
 
     const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
     await user.clear(nameInput)
@@ -541,8 +558,12 @@ describe('KnowledgeSettingsPage workflows', () => {
     await saveChanges(user)
 
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
-    for (const queryKey of listKeys)
-      expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
+    await waitFor(() => {
+      for (const label of ['all', 'camera'])
+        expect(screen.getByLabelText(`Knowledge list: ${label}`)).toHaveTextContent(
+          'Updated camera specs',
+        )
+    })
   })
 
   it('keeps fields locked while Cancel refreshes the saved server data', async () => {
@@ -631,9 +652,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'datasetSettings.form.nameAndIcon',
     })
     await user.click(iconButton)
-    await user.click(screen.getByRole('button', { name: 'Select camera style' }))
-
-    expect(iconButton.firstElementChild?.firstElementChild).toHaveStyle({ background: '#FCE7F6' })
+    await chooseIcon(user)
 
     await user.click(
       screen.getByRole('button', {
@@ -644,21 +663,27 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => {
       expect(serviceMock.patchSpace).toHaveBeenCalledWith({
         body: {
-          icon: 'camera',
-          icon_background: '#FCE7F6',
+          icon: '📹',
+          icon_background: '#FDF2FA',
         },
         params: { control_space_id: 'space-1' },
       })
     })
+    await user.click(iconButton)
+    expect(screen.getByRole('radio', { name: 'app.iconPicker.color.pink' })).toBeChecked()
+    expect(
+      screen.getByText('app.iconPicker.currentEmoji:{"emoji":"Video camera"}'),
+    ).toBeInTheDocument()
   })
 
   it('restores a saved emoji background style from the space detail', async () => {
+    const user = userEvent.setup()
     await renderForm({
       space: {
         ...space,
         technical_summary: {
           ...space.technical_summary,
-          icon_background: '#D3F8DF',
+          icon_background: '#F3FEE7',
         },
       },
     })
@@ -666,7 +691,8 @@ describe('KnowledgeSettingsPage workflows', () => {
     const iconButton = screen.getByRole('button', {
       name: 'datasetSettings.form.nameAndIcon',
     })
-    expect(iconButton.firstElementChild?.firstElementChild).toHaveStyle({ background: '#D3F8DF' })
+    await user.click(iconButton)
+    expect(screen.getByRole('radio', { name: 'app.iconPicker.color.green' })).toBeChecked()
   })
 
   it('accepts 2000 description characters and blocks 2001 with a field error', async () => {
@@ -680,7 +706,8 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSettings.settings.saveChanges',
     })
     const invalidDescription = '知'.repeat(2001)
-    fireEvent.change(descriptionInput, { target: { value: invalidDescription } })
+    await user.clear(descriptionInput)
+    await user.paste(invalidDescription)
 
     expect(descriptionInput).toHaveValue(invalidDescription)
     expect(descriptionInput).toHaveAttribute('aria-invalid', 'true')
@@ -691,12 +718,14 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
 
     const boundaryDescription = '知'.repeat(2000)
-    fireEvent.change(descriptionInput, { target: { value: `${boundaryDescription} ` } })
+    await user.clear(descriptionInput)
+    await user.paste(`${boundaryDescription} `)
     expect(descriptionInput).toHaveAttribute('aria-invalid', 'true')
     expect(saveButton).toBeDisabled()
     expect(serviceMock.patchSpace).not.toHaveBeenCalled()
 
-    fireEvent.change(descriptionInput, { target: { value: boundaryDescription } })
+    await user.clear(descriptionInput)
+    await user.paste(boundaryDescription)
     expect(descriptionInput).not.toHaveAttribute('aria-invalid', 'true')
     expect(saveButton).toBeEnabled()
     await user.click(saveButton)
@@ -944,11 +973,11 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
   })
 
-  it('marks cached knowledge-space lists stale before returning after deletion', async () => {
+  it('refreshes subscribed knowledge-space lists after deletion and returns to knowledge', async () => {
     const user = userEvent.setup()
-    const { queryClient } = await renderForm()
-    const listKey = queryKeys.spacesList('')
-    queryClient.setQueryData(listKey, spacesListPage())
+    serviceMock.getSpaces.mockResolvedValue({ ...spacesListPage(), data: [] })
+    await renderForm({ listKeywords: [''] })
+    expect(screen.getByLabelText('Knowledge list: all')).toHaveTextContent('Camera Technical Spec')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     const dialog = await screen.findByRole('alertdialog')
@@ -956,7 +985,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent'))
-    expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
+    await waitFor(() => expect(screen.getByLabelText('Knowledge list: all')).toBeEmptyDOMElement())
   })
 
   it('keeps a failed deletion inline and retries with the same confirmed name', async () => {
@@ -1034,9 +1063,10 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
       }),
     )
+    await chooseModel(user, 'openrouter/auto')
 
     expectNoWrites()
     await saveChanges(user)
@@ -1064,9 +1094,10 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     await renderForm()
     const selector = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+      name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
     })
     await user.click(selector)
+    await chooseModel(user)
     expectNoWrites()
     await saveChanges(user)
 
@@ -1098,9 +1129,10 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
     await renderForm()
     const selector = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+      name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
     })
     await user.click(selector)
+    await chooseModel(user)
     expectNoWrites()
     await saveChanges(user)
     const reload = await screen.findByRole('button', {
@@ -1121,6 +1153,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(selector).not.toHaveTextContent('openrouter/auto')
     expect(serviceMock.patchSettings).toHaveBeenCalledTimes(1)
     await user.click(selector)
+    await chooseModel(user)
     await saveChanges(user)
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
     expect(serviceMock.patchSettings.mock.calls[1]?.[0].body).toMatchObject({
@@ -1169,8 +1202,18 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
 
     const search = within(picker).getByRole('searchbox', { name: 'common.operation.search' })
-    await user.type(search, 'Team')
-    expect(await within(picker).findByRole('button', { name: /Team Member/ })).toBeInTheDocument()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const searchUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await searchUser.type(search, 'Team')
+      await act(async () => vi.advanceTimersByTimeAsync(500))
+      expect(within(picker).getByRole('button', { name: /Team Member/ })).toBeInTheDocument()
+      expect(
+        within(picker).queryByRole('button', { name: /Workspace owner/ }),
+      ).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
     expect(screen.queryByRole('button', { name: 'common.operation.add' })).not.toBeInTheDocument()
   })
 
@@ -1285,9 +1328,10 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.embeddingModelLabel',
+        name: /knowledgeSettings\.settings\.embeddingModelLabel/,
       }),
     )
+    await chooseModel(user, 'text-embedding-3-small')
     const dialog = await screen.findByRole('alertdialog')
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
@@ -1298,9 +1342,9 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(serviceMock.patchSettings).toHaveBeenCalledWith({
         body: {
           embedding: {
-            model: 'openrouter/auto',
-            pluginId: 'langgenius/openrouter',
-            provider: 'openrouter',
+            model: 'text-embedding-3-small',
+            pluginId: 'langgenius/openai',
+            provider: 'openai',
           },
           expectedRevision: 5,
         },
@@ -1404,15 +1448,16 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
 
     expect(
-      screen.queryByRole('switch', { name: 'modelProvider.modelProvider.rerankModel.key' }),
+      screen.queryByRole('switch', { name: /modelProvider\.modelProvider\.rerankModel\.key/ }),
     ).not.toBeInTheDocument()
     const rerankSelector = screen.getByRole('button', {
-      name: 'modelProvider.modelProvider.rerankModel.key',
+      name: /modelProvider\.modelProvider\.rerankModel\.key/,
     })
     expect(rerankSelector).toHaveAccessibleDescription(
       'knowledgeSettings.settings.rerankModelRequired',
     )
     await user.click(rerankSelector)
+    await chooseModel(user, 'rerank-v3.5')
     expectNoWrites()
     await saveChanges(user)
 
@@ -1430,9 +1475,9 @@ describe('KnowledgeSettingsPage workflows', () => {
           rerank: {
             enabled: true,
             model: {
-              model: 'openrouter/auto',
-              pluginId: 'langgenius/openrouter',
-              provider: 'openrouter',
+              model: 'rerank-v3.5',
+              pluginId: 'langgenius/cohere',
+              provider: 'cohere',
             },
           },
           scoreThreshold: expect.objectContaining({ stage: 'rerank' }),
@@ -1514,19 +1559,19 @@ describe('KnowledgeSettingsPage workflows', () => {
       'datasetSettings.form.embeddingModel · modelProvider.modelProvider.systemReasoningModel.key · modelProvider.modelProvider.rerankModel.key',
     )
     const reasoningSelector = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+      name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
     })
     expect(reasoningSelector).toHaveAccessibleDescription(
       'knowledgeSettings.settings.systemReasoningModelRequired',
     )
     const embeddingSelector = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.embeddingModelLabel',
+      name: /knowledgeSettings\.settings\.embeddingModelLabel/,
     })
     expect(embeddingSelector).toHaveAccessibleDescription(
       'knowledgeSettings.settings.embeddingModelRequired',
     )
     const rerankSelector = screen.getByRole('button', {
-      name: 'modelProvider.modelProvider.rerankModel.key',
+      name: /modelProvider\.modelProvider\.rerankModel\.key/,
     })
     expect(rerankSelector).toHaveAccessibleDescription(
       'knowledgeSettings.settings.rerankModelRequired',
@@ -1540,19 +1585,22 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
       }),
     )
+    await chooseModel(user, 'openrouter/auto')
     expect(
       screen.queryByText('knowledgeSettings.settings.systemReasoningModelRequired'),
     ).not.toBeInTheDocument()
     expect(embeddingSelector).toBeEnabled()
     await user.click(embeddingSelector)
+    await chooseModel(user, 'text-embedding-3-small')
     expect(
       screen.queryByText('knowledgeSettings.settings.embeddingModelRequired'),
     ).not.toBeInTheDocument()
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
     await user.click(rerankSelector)
+    await chooseModel(user, 'rerank-v3.5')
     expect(
       screen.queryByText('knowledgeSettings.settings.rerankModelRequired'),
     ).not.toBeInTheDocument()
@@ -1665,6 +1713,7 @@ describe('KnowledgeSettingsPage workflows', () => {
   })
 
   it('normalizes split Knowledge FS provider identities for the model selector', async () => {
+    const user = userEvent.setup()
     await renderForm({
       settings: {
         ...settings,
@@ -1681,9 +1730,19 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
       }),
-    ).toBeInTheDocument()
+    ).toHaveTextContent('openrouter/auto')
+    await user.click(
+      screen.getByRole('button', {
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
+      }),
+    )
+    const picker = await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' })
+    expect(within(picker).getByRole('button', { name: 'openrouter/auto' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
   })
 
   it('splits a canonical model provider before saving Knowledge FS settings', async () => {
@@ -1692,9 +1751,10 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
       }),
     )
+    await chooseModel(user, 'openrouter/auto')
 
     expectNoWrites()
     await saveChanges(user)
@@ -1746,9 +1806,10 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
       }),
     )
+    await chooseModel(user, 'openrouter/auto')
 
     expectNoWrites()
     await saveChanges(user)
@@ -1799,9 +1860,10 @@ describe('KnowledgeSettingsPage workflows', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
       }),
     )
+    await chooseModel(user, 'openrouter/auto')
 
     expectNoWrites()
     await saveChanges(user)
@@ -1839,8 +1901,8 @@ describe('KnowledgeSettingsPage workflows', () => {
       body: {
         name: 'Draft camera specs',
         description: 'Draft documentation',
-        icon: 'camera',
-        icon_background: '#FCE7F6',
+        icon: '📹',
+        icon_background: '#FDF2FA',
         visibility: 'partial_members',
       },
       params: { control_space_id: 'space-1' },
@@ -1871,9 +1933,9 @@ describe('KnowledgeSettingsPage workflows', () => {
           rerank: {
             enabled: true,
             model: {
-              model: 'openrouter/auto',
-              pluginId: 'langgenius/openrouter',
-              provider: 'openrouter',
+              model: 'rerank-v3.5',
+              pluginId: 'langgenius/cohere',
+              provider: 'cohere',
             },
           },
           scoreThreshold: { enabled: true, stage: 'rerank', value: 0.72 },
@@ -1894,8 +1956,9 @@ describe('KnowledgeSettingsPage workflows', () => {
     await renderForm({ accountProfile: { id: 'owner-1' }, members: [teamMember] })
     const { name, description, topK, threshold } = await editAllSettings(user)
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
+      screen.getByRole('button', { name: /knowledgeSettings\.settings\.embeddingModelLabel/ }),
     )
+    await chooseModel(user, 'text-embedding-3-small')
     const confirmation = await screen.findByRole('alertdialog')
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
     expectNoWrites()
@@ -1911,14 +1974,16 @@ describe('KnowledgeSettingsPage workflows', () => {
       screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
+      screen.getByRole('button', {
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
+      }),
     ).toHaveTextContent('gpt-4o')
     expect(
-      screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
+      screen.getByRole('button', { name: /knowledgeSettings\.settings\.embeddingModelLabel/ }),
     ).toHaveTextContent('text-embedding-3-large')
     expect(
-      screen.getByRole('button', { name: 'modelProvider.modelProvider.rerankModel.key' }),
-    ).toHaveTextContent('rerank-v3')
+      screen.getByRole('button', { name: /modelProvider\.modelProvider\.rerankModel\.key/ }),
+    ).toHaveTextContent('rerank-english-v3.0')
     expect(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' })).toHaveAttribute(
       'aria-checked',
       'true',
@@ -1938,7 +2003,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     expectNoWrites()
   })
 
-  it('locks every section and already-open icon selection until the whole save finishes', async () => {
+  it('locks every section until the whole save finishes', async () => {
     const user = userEvent.setup()
     let finishSave!: () => void
     const originalSave = serviceMock.patchSpace.getMockImplementation()!
@@ -1953,7 +2018,13 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.clear(name)
     await user.type(name, 'Saving camera specs')
     await user.click(screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }))
-    expect(screen.getByRole('button', { name: 'Select camera style' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'app.iconPicker.color.lightBlue' })).toBeChecked()
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('radio', { name: 'app.iconPicker.color.lightBlue' }),
+      ).not.toBeInTheDocument(),
+    )
     await saveChanges(user)
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
 
@@ -1972,7 +2043,7 @@ describe('KnowledgeSettingsPage workflows', () => {
       'common.operation.cancel',
       'common.operation.delete',
     ])
-      expect(screen.getByRole('button', { name: label })).toBeDisabled()
+      expect(screen.getByRole('button', { name: new RegExp(label) })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
     ).toBeDisabled()
@@ -1984,10 +2055,14 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(screen.getByRole('switch', { name: label })).toHaveAttribute('aria-disabled', 'true')
     await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.apiAgentAccess' }))
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
+      screen.getByRole('button', {
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
+      }),
     )
-    const openIconChoice = screen.queryByRole('button', { name: 'Select camera style' })
-    if (openIconChoice) await user.click(openIconChoice)
+    await user.click(screen.getByRole('button', { name: 'datasetSettings.form.nameAndIcon' }))
+    expect(
+      screen.queryByRole('radio', { name: 'app.iconPicker.color.pink' }),
+    ).not.toBeInTheDocument()
     expect(serviceMock.patchExternalAccess).not.toHaveBeenCalled()
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
     expect(
@@ -2067,14 +2142,18 @@ describe('KnowledgeSettingsPage workflows', () => {
     })
     await renderForm()
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
+      screen.getByRole('button', { name: /knowledgeSettings\.settings\.embeddingModelLabel/ }),
     )
+    await chooseModel(user, 'text-embedding-3-small')
     const confirmation = await screen.findByRole('alertdialog')
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
     expectNoWrites()
     await user.click(
-      screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
+      screen.getByRole('button', {
+        name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
+      }),
     )
+    await chooseModel(user, 'openrouter/auto')
     const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
     await user.clear(topK)
     await user.type(topK, '8')
@@ -2087,9 +2166,9 @@ describe('KnowledgeSettingsPage workflows', () => {
       body: {
         expectedRevision: 5,
         embedding: {
-          model: 'openrouter/auto',
-          pluginId: 'langgenius/openrouter',
-          provider: 'openrouter',
+          model: 'text-embedding-3-small',
+          pluginId: 'langgenius/openai',
+          provider: 'openai',
         },
       },
       params: { control_space_id: 'space-1' },
@@ -2243,9 +2322,10 @@ describe('KnowledgeSettingsPage workflows', () => {
       .mockResolvedValueOnce({ ...migration, checkpoint: 'activated', run_state: 'succeeded' })
     await renderForm()
     const reasoning = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+      name: /knowledgeSettings\.settings\.systemReasoningModelLabel/,
     })
     await user.click(reasoning)
+    await chooseModel(user)
     expectNoWrites()
     await saveChanges(user)
 
