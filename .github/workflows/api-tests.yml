@@ -16,7 +16,7 @@ concurrency:
 jobs:
   api-unit-plan:
     name: Plan API unit shards
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,7 +63,7 @@ jobs:
   api-unit:
     needs: api-unit-plan
     name: API Unit Tests (${{ matrix.python-version }}, shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     env:
       PYTHONUNBUFFERED: '1'
       COVERAGE_FILE: coverage-unit-${{ matrix.python-version }}-${{ matrix.shardIndex }}
@@ -164,7 +164,7 @@ jobs:
 
   api-controllers:
     name: API Controller Tests (3.13)
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     env:
       PYTHONUNBUFFERED: '1'
       COVERAGE_FILE: coverage-controllers-3.13
@@ -226,7 +226,7 @@ jobs:
 
   api-integration:
     name: API Integration Tests (${{ matrix.python-version }})
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     env:
       COVERAGE_FILE: coverage-integration-${{ matrix.python-version }}
       STORAGE_TYPE: opendal

@@ -16,7 +16,7 @@ concurrency:
 jobs:
   publish:
     name: build + publish edge to R2
-    runs-on: ${{ github.repository == 'langgenius/dify' && 'depot-ubuntu-24.04' || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     if: vars.DIFYCTL_R2_BUCKET != ''
     defaults:
       run:

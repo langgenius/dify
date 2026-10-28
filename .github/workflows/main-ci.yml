@@ -21,10 +21,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
-  # Keep orchestration on Depot to avoid GitHub-hosted runner queue delays.
   pre_job:
     name: Skip Duplicate Checks
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip || 'false' }}
     steps:
@@ -40,7 +39,7 @@ jobs:
   # Check which paths were changed to determine which tests to run
   check-changes:
     name: Check Changed Files
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     outputs:
       api-changed: ${{ steps.changes.outputs.api }}
       cli-changed: ${{ steps.changes.outputs.cli }}
@@ -248,7 +247,7 @@ jobs:
       - pre_job
       - check-changes
       - api-tests-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize API Tests status
         env:
@@ -302,7 +301,7 @@ jobs:
       - pre_job
       - check-changes
       - cli-tests-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize CLI Tests status
         env:
@@ -356,7 +355,7 @@ jobs:
       - pre_job
       - check-changes
       - web-tests-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize Web Tests status
         env:
@@ -412,7 +411,7 @@ jobs:
       - pre_job
       - check-changes
       - web-e2e-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize Web Full-Stack E2E status
         env:
@@ -482,7 +481,7 @@ jobs:
       - pre_job
       - check-changes
       - vdb-tests-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize VDB Tests status
         env:
@@ -535,7 +534,7 @@ jobs:
       - pre_job
       - check-changes
       - db-migration-test-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize DB Migration Test status
         env:
@@ -589,7 +588,7 @@ jobs:
       - pre_job
       - check-changes
       - sandbox-runtime-tests-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize Sandbox Runtime Tests status
         env:
@@ -643,7 +642,7 @@ jobs:
       - pre_job
       - check-changes
       - dify-agent-tests-run
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize Dify Agent Tests status
         env:

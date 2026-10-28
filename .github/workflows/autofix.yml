@@ -11,7 +11,7 @@ permissions:
 jobs:
   autofix:
     if: github.repository == 'langgenius/dify'
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     steps:
       - name: Complete merge group check
         if: github.event_name == 'merge_group'

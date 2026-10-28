@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [depot-ubuntu-24.04, windows-latest, macos-latest]
+        os: [ubuntu-24.04, windows-latest, macos-latest]
     defaults:
       run:
         shell: bash
@@ -41,14 +41,14 @@ jobs:
           bun-version: latest
 
       - name: Validate release manifest
-        if: matrix.os == 'depot-ubuntu-24.04'
+        if: matrix.os == 'ubuntu-24.04'
         run: node scripts/release-naming.mjs validate
 
       - name: CI pipeline (tree, coverage, build)
         run: pnpm run ci
 
       - name: Report coverage
-        if: matrix.os == 'depot-ubuntu-24.04'
+        if: matrix.os == 'ubuntu-24.04'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: cli/coverage/coverage-final.json

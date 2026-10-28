@@ -12,7 +12,7 @@ permissions:
 jobs:
   openapi-sdk-test:
     name: OpenAPI SDK and Next.js adapters
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout code
@@ -50,7 +50,7 @@ jobs:
 
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -87,7 +87,7 @@ jobs:
 
   browser-test:
     name: Web Browser Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -133,7 +133,7 @@ jobs:
 
   dify-ui-test:
     name: dify-ui Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -181,7 +181,7 @@ jobs:
 
   dify-ui-storybook-test:
     name: dify-ui Storybook Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:

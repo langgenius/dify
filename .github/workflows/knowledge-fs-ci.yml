@@ -24,7 +24,7 @@ env:
 jobs:
   check-changes:
     name: Check KnowledgeFS changes
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     outputs:
       knowledge-fs: ${{ steps.changes.outputs.knowledge-fs }}
     steps:
@@ -124,7 +124,7 @@ jobs:
     name: Run KnowledgeFS quality and contract gates
     needs: check-changes
     if: needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     defaults:
       run:
         shell: bash
@@ -422,7 +422,7 @@ jobs:
     name: Skip KnowledgeFS quality and contract gates
     needs: check-changes
     if: needs.check-changes.outputs.knowledge-fs != 'true' && github.event_name != 'workflow_dispatch'
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     steps:
       - name: Report skipped KnowledgeFS checks
         run: echo "No KnowledgeFS-related changes detected; skipping KnowledgeFS checks."
@@ -435,7 +435,7 @@ jobs:
       - quality
       - vector-backends
       - skip
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     steps:
       - name: Finalize KnowledgeFS CI status
         env:
@@ -467,7 +467,7 @@ jobs:
     name: Test native KnowledgeFS vector backends
     needs: check-changes
     if: needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     services:
       qdrant:
         image: qdrant/qdrant:v1.8.3
