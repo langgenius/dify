@@ -87,6 +87,10 @@ import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody,
@@ -3326,6 +3330,41 @@ export const processingTasks = {
   byTaskId: byTaskId3,
 }
 
+/**
+ * Delete a logical document and its historical revisions. Use the logical document ID and its rowVersion as expectedRevision; the accepted deletion job runs asynchronously.
+ */
+export const delete12 = oc
+  .route({
+    description:
+      'Delete a logical document and its historical revisions. Use the logical document ID and its rowVersion as expectedRevision; the accepted deletion job runs asynchronously.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentId',
+    path: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}',
+    successStatus: 202,
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
+      headers: zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
+      params: zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath,
+    }),
+  )
+  .output(zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_credential: { status: 401, data: zKnowledgeFsInvalidCredentialError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 502, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
 export const get39 = oc
   .route({
     inputStructure: 'detailed',
@@ -3351,6 +3390,7 @@ export const get39 = oc
   })
 
 export const byDocumentId3 = {
+  delete: delete12,
   get: get39,
   processingTasks,
 }
@@ -3548,7 +3588,7 @@ export const resume = {
   post: post42,
 }
 
-export const delete12 = oc
+export const delete13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -3594,7 +3634,7 @@ export const get42 = oc
   })
 
 export const byTaskId4 = {
-  delete: delete12,
+  delete: delete13,
   get: get42,
   partials,
   resume,
@@ -4454,7 +4494,7 @@ export const workflowImports = {
   post: post56,
 }
 
-export const delete13 = oc
+export const delete14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -4536,7 +4576,7 @@ export const patch9 = oc
   })
 
 export const bySourceId = {
-  delete: delete13,
+  delete: delete14,
   get: get54,
   patch: patch9,
   crawl,

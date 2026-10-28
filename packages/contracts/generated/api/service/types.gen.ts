@@ -1998,6 +1998,10 @@ export type KnowledgeFsEmbeddingSettingsResponse = {
   vector_space_id?: string | null
 }
 
+export type KnowledgeFsLogicalDocumentDeletePayload = {
+  expectedRevision: number
+}
+
 export type KnowledgeFsLogicalDocumentListResponse = {
   data: Array<KnowledgeFsLogicalDocumentResponse>
   next_cursor?: string | null
@@ -7394,6 +7398,40 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
+  body: KnowledgeFsLogicalDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
+  202: KnowledgeFsDurableDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
   body?: never
