@@ -111,8 +111,17 @@ describe('ApiKeyDialog', () => {
     expect(token).toHaveValue('provider-secret')
     expect(toast.error).not.toHaveBeenCalled()
     expect(onOpenChange).not.toHaveBeenCalled()
+    expect(save).toBeDisabled()
+    await user.type(name, ' renamed')
+    expect(save).toBeDisabled()
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'share.connections.apiKeys.validationError',
+    )
+    await user.click(save)
+    expect(onSave).toHaveBeenCalledOnce()
     await user.type(token, '-retry')
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(save).toBeEnabled()
     await user.click(save)
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed'),

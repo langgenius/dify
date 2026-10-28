@@ -63,6 +63,12 @@ const ChatWrapper = () => {
     appSourceType,
   } = useEmbeddedChatbotContext()
 
+  const connectionsReady = isInstalledApp || (connections?.canRun ?? true)
+  const connectionsReadyRef = useRef(connectionsReady)
+  useEffect(() => {
+    connectionsReadyRef.current = connectionsReady
+  }, [connectionsReady])
+
   // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
   const sendOnEnter = useMemo(() => {
     if (typeof window === 'undefined') return true
@@ -384,7 +390,9 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
+      if (!connectionsReadyRef.current) return
       if (!(await prepareHumanInputSubmission())) return
+      if (!connectionsReadyRef.current) return
 
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
       else await submitHumanInputForm(formToken, formData)
@@ -496,6 +504,7 @@ const ChatWrapper = () => {
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
+      humanInputFormDisabled={!connectionsReady}
       onHumanInputFormSubmit={handleSubmitHumanInputForm}
       chatNode={
         <>

@@ -15,7 +15,7 @@ import {
   splitByOutputVar,
 } from './utils'
 
-const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
+const HumanInputForm = ({ formData, disabled = false, onSubmit }: HumanInputFormProps) => {
   const formToken = formData.form_token
   const contentList = splitByOutputVar(formData.form_content)
   const renderedFormInputs = getRenderedFormInputs(formData.inputs, formData.form_content)
@@ -49,7 +49,10 @@ const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
   }
 
   const isActionDisabled =
-    isSubmitting || !formToken || hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
+    disabled ||
+    isSubmitting ||
+    !formToken ||
+    hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
 
   return (
     <>

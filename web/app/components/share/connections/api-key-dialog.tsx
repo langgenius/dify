@@ -65,7 +65,14 @@ export function ApiKeyForm({
     t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field })
 
   const save = async (values: { name: string; api_key: string }) => {
-    if (disabled || savingRef.current || !values.name.trim() || !values.api_key.trim()) return
+    if (
+      disabled ||
+      savingRef.current ||
+      credentialsInvalid ||
+      !values.name.trim() ||
+      !values.api_key.trim()
+    )
+      return
     savingRef.current = true
     setSaving(true)
     onSavingChange?.(true)
@@ -136,15 +143,7 @@ export function ApiKeyForm({
                 *
               </span>
             </FieldLabel>
-            <Input
-              required
-              value={name}
-              autoComplete="off"
-              onValueChange={(value) => {
-                setName(value)
-                setCredentialsInvalid(false)
-              }}
-            />
+            <Input required value={name} autoComplete="off" onValueChange={setName} />
             <FieldError role="alert" />
           </Field>
           <Field
@@ -183,7 +182,7 @@ export function ApiKeyForm({
           type="submit"
           form={formId}
           variant="primary"
-          disabled={disabled || !name.trim() || !apiKey.trim()}
+          disabled={disabled || credentialsInvalid || !name.trim() || !apiKey.trim()}
           loading={saving}
         >
           {t(($) => $['operation.save'], { ns: 'common' })}

@@ -12,12 +12,14 @@ import { UnsubmittedHumanInputContent } from './human-input-content/unsubmitted'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
+  disabled?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
 
 const HumanInputFormList = ({
   humanInputFormDataList,
+  disabled,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }: HumanInputFormListProps) => {
@@ -76,6 +78,7 @@ const HumanInputFormList = ({
               showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}
               isEmailDebugMode={!!deliveryMethodsConfig[formData.node_id]?.isEmailDebugMode}
               showDebugModeTip={!!deliveryMethodsConfig[formData.node_id]?.showDebugModeTip}
+              disabled={disabled}
               onSubmit={onHumanInputFormSubmit}
             />
           </ContentWrapper>

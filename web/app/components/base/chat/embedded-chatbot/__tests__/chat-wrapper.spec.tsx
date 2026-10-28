@@ -304,6 +304,32 @@ describe('Embedded chatbot orchestration', () => {
     expect(submitInstalledHumanInput).not.toHaveBeenCalled()
   })
 
+  it('rechecks required connections before resuming an embedded chat and permits retry after repair', async () => {
+    const ready = createChatConnections()
+    const { user, updateConnections } = renderSubject(
+      {
+        currentConversationId: 'conversation-1',
+        appPrevChatList: [question('paused-question', 'Previous question', pausedAnswer())],
+      },
+      ready,
+    )
+    await user.click(await screen.findByRole('button', { name: 'Approve' }))
+    updateConnections({ ...ready, canRun: false, runConfiguration: null })
+    confirmPaused()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled())
+    expect(submitHumanInputForm).not.toHaveBeenCalled()
+    expect(screen.getByText('Previous question')).toBeVisible()
+
+    updateConnections(ready)
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    await waitFor(() =>
+      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('form-token', {
+        inputs: {},
+        action: 'approve',
+      }),
+    )
+  })
+
   it('regenerates a question and its edit against the preceding answer', async () => {
     const { user } = renderSubject({
       appPrevChatList: history(),

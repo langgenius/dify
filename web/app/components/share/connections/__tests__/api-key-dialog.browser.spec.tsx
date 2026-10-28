@@ -1,14 +1,18 @@
+import { ORPCError } from '@orpc/client'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ApiKeyDialog from '../api-key-dialog'
 
-it('submits the real credential editor on Enter with its Save button in the dialog footer', async ({
+it('submits on Enter through the external footer button and blocks a rejected key until it changes', async ({
   onTestFinished,
 }) => {
   // Native Enter must reach the real form even when Save is in the dialog footer.
   onTestFinished(guardUnexpectedFetch())
-  const onSave = vi.fn().mockResolvedValue(undefined)
+  const onSave = vi
+    .fn()
+    .mockRejectedValueOnce(new ORPCError('connection_credentials_invalid', { status: 400 }))
+    .mockResolvedValue(undefined)
   const screen = await render(
     <ApiKeyDialog mode="add" open onSave={onSave} onOpenChange={vi.fn()} />,
   )
@@ -28,5 +32,22 @@ it('submits the real credential editor on Enter with its Save button in the dial
           credentials: { api_key: 'provider-secret' },
         },
       ],
+    ])
+  await expect
+    .element(dialog.getByRole('alert'))
+    .toHaveTextContent('share.connections.apiKeys.validationError')
+  await expect.element(dialog.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+  await dialog.getByRole('textbox', { name: 'plugin.auth.authorizationName' }).fill('Renamed')
+  await userEvent.keyboard('{Enter}')
+  expect(onSave).toHaveBeenCalledOnce()
+  await token.fill('corrected-secret')
+  await expect.element(dialog.getByRole('button', { name: 'common.operation.save' })).toBeEnabled()
+  await token.click()
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .poll(() => onSave.mock.calls)
+    .toEqual([
+      [{ name: 'Research', credentials: { api_key: 'provider-secret' } }],
+      [{ name: 'Renamed', credentials: { api_key: 'corrected-secret' } }],
     ])
 })

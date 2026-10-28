@@ -778,6 +778,61 @@ it('does not submit human input when the workflow event connection fails before 
   expect(submitHumanInputForm).not.toHaveBeenCalled()
 })
 
+it('retains a paused form and prevents resuming while required connections are unavailable', async () => {
+  const user = userEvent.setup()
+  const ready = createChatConnections()
+  const { updateConnections } = renderChat(
+    {
+      appPrevChatTree: [
+        { id: 'q1', isAnswer: false, content: 'Previous question', children: [pausedAnswer()] },
+      ],
+    },
+    ready,
+  )
+  await act(async () => events().onWorkflowPaused?.(pausedEvent()))
+  const field = await screen.findByRole('textbox', { name: 'review' })
+  await user.type(field, 'Keep this review')
+  updateConnections({ ...ready, canRun: false, runConfiguration: null })
+  expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
+  expect(field).toHaveValue('Keep this review')
+  expect(screen.getByText('Previous question')).toBeVisible()
+  expect(submitHumanInputForm).not.toHaveBeenCalled()
+
+  updateConnections(ready)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  await waitFor(() =>
+    expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
+      inputs: { review: 'Keep this review' },
+      action: 'approve',
+    }),
+  )
+})
+
+it('rechecks connections after waiting for a paused workflow subscription before submitting', async () => {
+  const user = userEvent.setup()
+  const ready = createChatConnections()
+  const { updateConnections } = renderChat(
+    {
+      appPrevChatTree: [
+        { id: 'q1', isAnswer: false, content: 'Question', children: [pausedAnswer()] },
+      ],
+    },
+    ready,
+  )
+  await user.type(await screen.findByRole('textbox', { name: 'review' }), 'Keep this review')
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  updateConnections({ ...ready, canRun: false, runConfiguration: null })
+  await act(async () => events().onWorkflowPaused?.(pausedEvent()))
+  expect(submitHumanInputForm).not.toHaveBeenCalled()
+  expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this review')
+  updateConnections(ready)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
+    inputs: { review: 'Keep this review' },
+    action: 'approve',
+  })
+})
+
 it.each([false, true])(
   'shows inputs before the welcome and reveals it after starting chat (mobile=%s)',
   async (isMobile) => {

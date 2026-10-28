@@ -18,6 +18,7 @@ type WorkflowBodyProps = {
   depth: number
   hideProcessDetail?: boolean
   isError: boolean
+  humanInputFormDisabled?: boolean
   onSubmitHumanInputForm: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   onSwitchTab: (tab: string) => void
   showResultTabs: boolean
@@ -32,6 +33,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
   depth,
   hideProcessDetail,
   isError,
+  humanInputFormDisabled,
   onSubmitHumanInputForm,
   onSwitchTab,
   showResultTabs,
@@ -53,7 +55,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
               isError && 'text-text-destructive',
             )}
           >
-            <RiPlayList2Line className="mr-1 size-3" />
+            <RiPlayList2Line className="me-1 size-3" />
             <span>{t(($) => $['generation.execution'], { ns: 'share' })}</span>
             <span className="px-1">·</span>
             <span>{getGenerationTaskLabel(taskId, depth)}</span>
@@ -101,6 +103,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
               <div className="px-4 pt-4">
                 <HumanInputFormList
                   humanInputFormDataList={workflowProcessData.humanInputFormDataList}
+                  disabled={humanInputFormDisabled}
                   onHumanInputFormSubmit={onSubmitHumanInputForm}
                 />
               </div>
