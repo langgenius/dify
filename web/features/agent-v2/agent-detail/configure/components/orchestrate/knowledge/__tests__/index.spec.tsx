@@ -16,17 +16,22 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
 import {
   createConsoleQueryClient,
-  renderWithConsoleQuery as render,
+  renderWithConsoleQuery,
   seedKnowledgeFsFeatures,
 } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { RETRIEVE_TYPE } from '@/types/app'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
+
+const render = createNuqsTestRenderer(renderWithConsoleQuery)
 
 const { getDatasets, getDataset, getSpaces } = vi.hoisted(() => ({
   getDatasets: vi.fn(),
@@ -123,6 +128,7 @@ function setup(
   } = {},
 ) {
   const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
   const options = consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
     input: (pageParam) => ({ query: { limit: 50, page: pageParam } }),
     initialPageParam: 1,
@@ -297,6 +303,66 @@ describe('shared knowledge binding dialog', () => {
       value: 'support question',
     })
     expect(snapshot().knowledge.spaces).toHaveLength(1)
+  })
+
+  it('preserves single retrieval and its model when settings are only inspected', async () => {
+    const user = userEvent.setup()
+    setup(
+      [
+        {
+          id: 'classic',
+          name: 'Saved search',
+          selectedDatasets: [createDatasetFixture()],
+          retrievalMode: RETRIEVE_TYPE.oneWay,
+          singleRetrievalConfig: {
+            model: {
+              provider: 'openai',
+              name: 'gpt-4o',
+              mode: 'chat',
+              completion_params: { temperature: 0.2 },
+            },
+          },
+        },
+      ],
+      { enabled: false },
+    )
+    const original = snapshot().knowledge
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'dataset.retrievalSettings' }))
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge).toEqual(original)
+  })
+
+  it('rejects names used by hidden bindings without validating their unavailable state', async () => {
+    const user = userEvent.setup()
+    setup(
+      [
+        { ...binding, isMissing: true },
+        { id: 'classic', name: 'Saved search', selectedDatasets: [createDatasetFixture()] },
+      ],
+      { enabled: false },
+    )
+    const original = snapshot().knowledge
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
+    await user.clear(name)
+    await user.type(name, '  pRoDuCt MaNuAl  ')
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(dialog).toBeInTheDocument()
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(name).toHaveAccessibleDescription(/keyAlreadyExists/)
+    expect(snapshot().knowledge).toEqual(original)
+    expect(dialog.textContent).not.toMatch(/knowledgeFs/)
+    await user.clear(name)
+    await user.type(name, 'Distinct search')
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets[0].name).toBe('Distinct search')
+    expect(snapshot().knowledge.spaces).toEqual(original.spaces)
+    expect(getSpaces).not.toHaveBeenCalled()
   })
 
   it('stages changes to an existing dataset group until shared confirmation', async () => {

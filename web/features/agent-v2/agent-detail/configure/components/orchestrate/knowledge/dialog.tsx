@@ -13,7 +13,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
@@ -96,7 +96,7 @@ function AgentKnowledgeRetrievalForm({
       .map((item) => item.id),
   )
   const visibleBindings = draft.filter((item) => knowledgeFsEnabled || !item.controlSpaceId)
-  const validation = validateKnowledgeRetrievals(visibleBindings)
+  const validation = validateKnowledgeRetrievals(visibleBindings, draft)
   const spaceCount = draft.filter((item) => item.controlSpaceId).length
   const update = (id: string, patch: Partial<AgentKnowledgeRetrievalItem>) =>
     setDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
@@ -309,6 +309,11 @@ function AgentKnowledgeRetrievalForm({
                         value={item.name ?? ''}
                         onChange={(event) => update(item.id, { name: event.target.value })}
                       />
+                      {submitted && validation.byId[item.id]?.name && (
+                        <FieldError match>
+                          {validationMessage(validation.byId[item.id]?.name)}
+                        </FieldError>
+                      )}
                     </Field>
                     <Field>
                       <FieldLabel>

@@ -227,6 +227,7 @@ function ClassicSettingsFields({
           operations={
             <div className="flex items-center space-x-1">
               <RetrievalConfig
+                preserveRetrievalMode
                 payload={{
                   retrieval_mode: retrievalMode,
                   multiple_retrieval_config: effectiveMultipleRetrievalConfig,

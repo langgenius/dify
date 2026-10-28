@@ -94,13 +94,15 @@ const getNormalizedKnowledgeName = (item: AgentKnowledgeRetrievalItem) =>
 
 export const validateKnowledgeRetrievals = (
   retrievals: AgentKnowledgeRetrievalItem[],
+  nameScope: AgentKnowledgeRetrievalItem[] = retrievals,
 ): KnowledgeValidationResult => {
   const byId: KnowledgeValidationResult['byId'] = {}
   const issues: KnowledgeValidationIssue[] = []
   const nameCounts = new Map<string, number>()
   const spaceCount = retrievals.filter((item) => item.controlSpaceId).length
 
-  retrievals.forEach((item) => {
+  // Hidden bindings still reserve their names, without requiring field validation.
+  nameScope.forEach((item) => {
     const normalizedName = getNormalizedKnowledgeName(item)
     if (!normalizedName) return
 
