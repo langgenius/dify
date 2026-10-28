@@ -531,8 +531,12 @@ def test_login_is_exchanged_before_delayed_claim_confirmation(
         "/api/passport", base_url="https://apps.example.net", headers={"X-App-Code": login_app_code}, json=login_payload
     )
     assert response.status_code == 200
-    proof = response.get_json()["webapp_access_token"]
-    assert harness.signer.verify(proof)["token_source"] == "webapp_account_login"
+    assert "webapp_access_token" not in response.get_json()
+    login_cookie = harness.client.get_cookie("__Host-webapp_access_token", domain="apps.example.net")
+    assert login_cookie is not None
+    assert login_cookie.http_only
+    assert login_cookie.secure
+    assert harness.signer.verify(login_cookie.value)["token_source"] == "webapp_account_login"
     assert harness.signer.verify(response.get_json()["access_token"])["app_code"] == login_app_code
     assert harness.client.get_cookie("__Host-access_token", domain="apps.example.net") is None
     assert base.service.get_connection(base.context, selected.id).id == selected.id
@@ -540,7 +544,6 @@ def test_login_is_exchanged_before_delayed_claim_confirmation(
     response = harness.client.post(
         "/api/migration/claim",
         base_url="https://apps.example.net",
-        headers={"Authorization": f"Bearer {proof}"},
         json={"passports": [harness.guest_passport, harness.guest_passport]},
     )
     assert response.status_code == 200
