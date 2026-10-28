@@ -52,6 +52,8 @@ func TestDumpCLIHelpCoversPromptCommands(t *testing.T) {
 		"config files pull",
 		"config note pull",
 		"config note push",
+		"config prompt pull",
+		"config prompt push",
 		"config env push",
 		"config files push",
 		"config files delete",

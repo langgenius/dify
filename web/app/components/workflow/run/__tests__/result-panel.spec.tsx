@@ -1,29 +1,14 @@
 import type { ReactNode } from 'react'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { withSelectorKey } from '@/test/i18n-mock'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWorkflowComponent as render } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
-
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockCodeEditor = vi.hoisted(() => vi.fn())
-const mockLargeDataAlert = vi.hoisted(() => vi.fn())
-const mockStatusPanel = vi.hoisted(() => vi.fn())
-const mockMetaData = vi.hoisted(() => vi.fn())
-const mockErrorHandleTip = vi.hoisted(() => vi.fn())
-const mockIterationLogTrigger = vi.hoisted(() => vi.fn())
-const mockLoopLogTrigger = vi.hoisted(() => vi.fn())
-const mockRetryLogTrigger = vi.hoisted(() => vi.fn())
-const mockAgentLogTrigger = vi.hoisted(() => vi.fn())
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   __esModule: true,
   default: (props: { title: ReactNode; value: unknown; footer?: ReactNode; tip?: ReactNode }) => {
-    mockCodeEditor(props)
     return (
       <section data-testid="code-editor">
         <div>{props.title}</div>
@@ -32,104 +17,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
         {props.footer}
       </section>
     )
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => {
-    mockErrorHandleTip(type)
-    return <div data-testid="error-handle-tip">{type}</div>
-  },
-}))
-
-vi.mock('@/app/components/workflow/run/iteration-log', () => ({
-  IterationLogTrigger: (props: {
-    onShowIterationResultList: (detail: unknown, durationMap: unknown) => void
-    nodeInfo: { details?: unknown; iterDurationMap?: unknown }
-  }) => {
-    mockIterationLogTrigger(props)
-    return (
-      <button
-        type="button"
-        onClick={() =>
-          props.onShowIterationResultList(props.nodeInfo.details, props.nodeInfo.iterDurationMap)
-        }
-      >
-        iteration-trigger
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/run/loop-log', () => ({
-  LoopLogTrigger: (props: {
-    onShowLoopResultList: (detail: unknown, durationMap: unknown) => void
-    nodeInfo: { details?: unknown; loopDurationMap?: unknown }
-  }) => {
-    mockLoopLogTrigger(props)
-    return (
-      <button
-        type="button"
-        onClick={() =>
-          props.onShowLoopResultList(props.nodeInfo.details, props.nodeInfo.loopDurationMap)
-        }
-      >
-        loop-trigger
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/run/retry-log', () => ({
-  RetryLogTrigger: (props: {
-    onShowRetryResultList: (detail: unknown) => void
-    nodeInfo: { retryDetail?: unknown }
-  }) => {
-    mockRetryLogTrigger(props)
-    return (
-      <button type="button" onClick={() => props.onShowRetryResultList(props.nodeInfo.retryDetail)}>
-        retry-trigger
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/run/agent-log/agent-log-trigger', () => ({
-  AgentLogTrigger: (props: {
-    onShowAgentOrToolLog: (detail: unknown) => void
-    nodeInfo: { agentLog?: unknown }
-  }) => {
-    mockAgentLogTrigger(props)
-    return (
-      <button type="button" onClick={() => props.onShowAgentOrToolLog(props.nodeInfo.agentLog)}>
-        agent-trigger
-      </button>
-    )
-  },
-}))
-
-vi.mock('@/app/components/workflow/variable-inspect/large-data-alert', () => ({
-  __esModule: true,
-  default: (props: { downloadUrl?: string }) => {
-    mockLargeDataAlert(props)
-    return <div data-testid="large-data-alert">{props.downloadUrl ?? 'no-download'}</div>
-  },
-}))
-
-vi.mock('@/app/components/workflow/run/meta', () => ({
-  __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    mockMetaData(props)
-    return <div data-testid="meta-data">{JSON.stringify(props)}</div>
-  },
-}))
-
-vi.mock('@/app/components/workflow/run/status', () => ({
-  __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    mockStatusPanel(props)
-    return <div data-testid="status-panel">{JSON.stringify(props)}</div>
   },
 }))
 
@@ -188,13 +75,6 @@ const createAgentLog = (label: string): AgentLogItemWithChildren => ({
 })
 
 describe('ResultPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-  })
-
   it('should render status, editors, alerts, error strategy tip, and metadata', () => {
     render(
       <ResultPanel
@@ -215,50 +95,32 @@ describe('ResultPanel', () => {
         steps={3}
         showSteps
         exceptionCounts={1}
-        execution_metadata={{ error_strategy: 'continue-on-error' }}
+        execution_metadata={{ error_strategy: 'default-value' }}
         isListening
         workflowRunId="run-1"
       />,
     )
 
-    expect(screen.getByTestId('status-panel')).toBeInTheDocument()
-    expect(screen.getByText('COMMON.INPUT')).toBeInTheDocument()
-    expect(screen.getByText('COMMON.PROCESSDATA')).toBeInTheDocument()
-    expect(screen.getByText('COMMON.OUTPUT')).toBeInTheDocument()
-    expect(screen.getAllByTestId('code-editor')).toHaveLength(3)
-    expect(screen.getAllByTestId('large-data-alert')).toHaveLength(3)
-    expect(screen.getByTestId('error-handle-tip')).toHaveTextContent('continue-on-error')
-    expect(screen.getByTestId('meta-data')).toBeInTheDocument()
-    expect(mockStatusPanel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: NodeRunningStatus.Succeeded,
-        time: 2.5,
-        tokens: 42,
-        error: 'boom',
-        exceptionCounts: 1,
-        isListening: true,
-        workflowRunId: 'run-1',
-      }),
-    )
-    expect(mockMetaData).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: NodeRunningStatus.Succeeded,
-        executor: 'Alice',
-        startTime: 1710000000,
-        time: 2.5,
-        tokens: 42,
-        steps: 3,
-        showSteps: true,
-      }),
-    )
-    expect(mockLargeDataAlert).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        downloadUrl: 'https://example.com/output.json',
-      }),
-    )
+    expect(screen.getByText('WORKFLOW.COMMON.INPUT')).toBeInTheDocument()
+    expect(screen.getByText('WORKFLOW.COMMON.PROCESSDATA')).toBeInTheDocument()
+    expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
+    expect(screen.getByText('{"answer":"done"}')).toBeInTheDocument()
+    expect(
+      screen.getAllByText('workflowDebug.debug.variableInspect.largeDataNoExport'),
+    ).toHaveLength(3)
+    expect(
+      screen.getByText('workflow.nodes.common.errorHandle.defaultValue.inLog'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    expect(screen.getAllByText('2.500s')).toHaveLength(2)
+    expect(screen.getAllByText('42 Tokens')).toHaveLength(2)
+    expect(
+      screen.getByRole('link', { name: 'workflowDebug.debug.variableInspect.export' }),
+    ).toHaveAttribute('href', 'https://example.com/output.json')
   })
 
-  it('should render and invoke iteration and loop triggers only when their handlers are provided', () => {
+  it('opens iteration and loop details with their execution durations', async () => {
+    const user = userEvent.setup()
     const handleShowIterationResultList = vi.fn()
     const handleShowLoopResultList = vi.fn()
     const details = [[createLogDetail('iter-1')]]
@@ -275,7 +137,9 @@ describe('ResultPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'iteration-trigger' }))
+    await user.click(
+      screen.getByRole('button', { name: /workflowLogic.nodes.iteration.iteration/ }),
+    )
     expect(handleShowIterationResultList).toHaveBeenCalledWith(details, { 0: 3 })
 
     rerender(
@@ -290,11 +154,12 @@ describe('ResultPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'loop-trigger' }))
-    expect(handleShowLoopResultList).toHaveBeenCalledWith(details, { 0: 5 })
+    await user.click(screen.getByRole('button', { name: /workflowLogic.nodes.loop.loop/ }))
+    expect(handleShowLoopResultList).toHaveBeenCalledWith(details, { 0: 5 }, {})
   })
 
-  it('should render retry and agent/tool triggers when the node shape supports them', () => {
+  it('opens retry and agent/tool details for supported node types', async () => {
+    const user = userEvent.setup()
     const onShowRetryDetail = vi.fn()
     const handleShowAgentOrToolLog = vi.fn()
     const retryDetail = [createLogDetail('retry-1')]
@@ -311,7 +176,7 @@ describe('ResultPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'retry-trigger' }))
+    await user.click(screen.getByRole('button', { name: /workflow.nodes.common.retry.retries/ }))
     expect(onShowRetryDetail).toHaveBeenCalledWith(retryDetail)
 
     rerender(
@@ -325,8 +190,13 @@ describe('ResultPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'agent-trigger' }))
-    expect(handleShowAgentOrToolLog).toHaveBeenCalledWith(agentLog)
+    await user.click(
+      screen.getByRole('button', { name: /workflowAgent.nodes.agent.strategy.label/ }),
+    )
+    expect(handleShowAgentOrToolLog).toHaveBeenCalledWith({
+      message_id: 'trace-node-1',
+      children: agentLog,
+    })
 
     rerender(
       <ResultPanel
@@ -339,7 +209,9 @@ describe('ResultPanel', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'agent-trigger' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /workflowAgent.nodes.agent.strategy.label/ }),
+    ).not.toBeInTheDocument()
 
     rerender(
       <ResultPanel
@@ -352,8 +224,13 @@ describe('ResultPanel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'agent-trigger' }))
-    expect(handleShowAgentOrToolLog).toHaveBeenLastCalledWith(agentLog)
+    await user.click(
+      screen.getByRole('button', { name: /workflowAgent.nodes.agent.strategy.label/ }),
+    )
+    expect(handleShowAgentOrToolLog).toHaveBeenLastCalledWith({
+      message_id: 'trace-node-1',
+      children: agentLog,
+    })
   })
 
   it('should still render the output editor while the node is running even without outputs', () => {
@@ -361,6 +238,6 @@ describe('ResultPanel', () => {
       <ResultPanel nodeInfo={createNodeInfo()} inputs="{}" status={NodeRunningStatus.Running} />,
     )
 
-    expect(screen.getByText('COMMON.OUTPUT')).toBeInTheDocument()
+    expect(screen.getByText('WORKFLOW.COMMON.OUTPUT')).toBeInTheDocument()
   })
 })

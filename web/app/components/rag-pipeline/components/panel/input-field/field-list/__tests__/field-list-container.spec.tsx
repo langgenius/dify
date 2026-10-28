@@ -27,23 +27,6 @@ describe('FieldListContainer', () => {
     vi.clearAllMocks()
   })
 
-  it('should render the field items inside the sortable container', () => {
-    const onListSortChange = vi.fn()
-    render(
-      <FieldListContainer
-        inputFields={[createInputVar('field_1'), createInputVar('field_2')]}
-        onListSortChange={onListSortChange}
-        onRemoveField={vi.fn()}
-        onEditField={vi.fn()}
-      />,
-    )
-
-    expect(screen.getAllByText('field_1').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('field_2').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: /sort.handle/ })).toHaveLength(2)
-    expect(onListSortChange).not.toHaveBeenCalled()
-  })
-
   it('moves fields in both directions by clicking and disables movement past the ends', async () => {
     const user = userEvent.setup()
     const onListSortChange = vi.fn()

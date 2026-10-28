@@ -283,7 +283,7 @@ export function StepByStepTourCoachmark({
             aria-hidden="true"
             data-step-by-step-tour-backdrop=""
             data-step-by-step-tour-blocker=""
-            className="fixed z-50 cursor-default bg-transparent"
+            className="fixed cursor-default bg-transparent"
             style={style}
           />
         ))
@@ -291,7 +291,7 @@ export function StepByStepTourCoachmark({
         <div
           aria-hidden="true"
           data-step-by-step-tour-backdrop=""
-          className="fixed inset-0 z-50 cursor-default bg-transparent"
+          className="fixed inset-0 cursor-default bg-transparent"
         />
       )}
       {stableOverlay && highlightStyle && (
@@ -299,12 +299,12 @@ export function StepByStepTourCoachmark({
           <div
             aria-hidden="true"
             data-step-by-step-tour-highlight=""
-            className="pointer-events-none fixed z-50 rounded-xl shadow-[0_0_0_9999px_var(--color-background-overlay)]"
+            className="pointer-events-none fixed rounded-xl shadow-[0_0_0_9999px_var(--color-background-overlay)]"
             style={highlightStyle}
           />
           <div
             ref={coachmarkRef}
-            className="fixed z-50 w-88 max-w-[calc(100vw-16px)]"
+            className="fixed w-88 max-w-[calc(100vw-16px)]"
             data-step-by-step-tour-coachmark=""
             style={stableOverlay.coachmarkPosition.bubbleStyle}
           >

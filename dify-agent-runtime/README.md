@@ -14,6 +14,26 @@ cmd/
 internal/            - internal implementations
 ```
 
+## Agent configuration prompt
+
+The sandbox's `dify-agent` CLI uses the authenticated Agent Stub connection:
+
+```bash
+dify-agent config prompt pull                      # Save ./.dify_conf/prompt.md; print its absolute path
+dify-agent config prompt pull --to ./prompt.txt
+dify-agent config prompt push                      # Read ./.dify_conf/prompt.md; print saved prompt JSON
+dify-agent config prompt push ./prompt.txt
+printf '%s' 'New instructions' | dify-agent config prompt push -
+```
+
+Pull and push preserve raw UTF-8 text, including mention markers, whitespace,
+and line endings. Empty input clears the prompt; a missing file is an error.
+Local edits must be pushed to persist. Only the current account's build draft
+is writable; snapshot and shared-draft configurations are read-only. Later
+requests built from the draft use the saved prompt; already-built requests
+retain their prompt. See the [runtime contract](../dify-agent/docs/dify-agent/index.md)
+for the Agent Stub and inner API endpoints.
+
 ## Job execution modes
 
 `POST /v1/jobs/run` accepts an optional `mode` field:
@@ -46,13 +66,23 @@ docker build -f dify-agent-runtime/docker/Dockerfile \
   dify-agent-runtime/
 ```
 
-### Running docker container
+### Running a Local docker container
+
+Set `SHELLCTL_AUTH_TOKEN` to a nonblank secret and configure the Agent Backend's
+`DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` with the same value.
 
 ```
 docker run -d --name dify-agent-runtime \
   -p 15004:5004 \
-  dify-agent-runtime:latest
+  -e SHELLCTL_AUTH_TOKEN \
+  dify-agent-runtime:latest \
+  shellctl serve --listen 0.0.0.0:5004 --require-auth-token
 ```
+
+`--require-auth-token` rejects a missing, empty, or whitespace-only final token
+before service initialization. A nonempty `--token` overrides
+`SHELLCTL_AUTH_TOKEN`; valid values are preserved unchanged. The flag defaults
+to off in the shared image, so E2B and Enterprise may omit a shellctl token.
 
 ## Help text generation
 
@@ -85,7 +115,10 @@ The runner sets `TMPDIR`, `TMP`, and `TEMP` directly to the job's `cwd`. It does
 
 See [here](./internal/envvar/envvar.go)
 
-Requires Linux ≥ 5.13. On unsupported kernels, a warning is printed to stderr.
+Requires Linux ≥ 5.13 with Landlock enabled. When path isolation is enabled,
+any Landlock setup error aborts the job with exit code `125` before the user
+script executes. Deployments may explicitly set
+`SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable this restriction.
 
 ## API Routes
 

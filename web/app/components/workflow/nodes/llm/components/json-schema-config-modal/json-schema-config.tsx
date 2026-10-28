@@ -199,7 +199,10 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
     >
       {/* Header */}
       <div className="relative flex p-6 pr-14 pb-3">
-        <DialogTitle className="grow truncate title-2xl-semi-bold text-text-primary">
+        <DialogTitle
+          // oxlint-disable-next-line shadcn/no-restyle -- Title shares the editor's header row with its actions.
+          className="grow"
+        >
           {t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflowModels' })}
         </DialogTitle>
         <DialogClose
@@ -232,7 +235,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
         </TabsList>
         <div className="flex items-center gap-x-0.5">
           {/* JSON Schema Generator */}
-          <JsonSchemaGenerator crossAxisOffset={btnWidth} onApply={handleApplySchema} />
+          <JsonSchemaGenerator alignOffset={btnWidth} onApply={handleApplySchema} />
           <Separator decorative orientation="vertical" className="mx-2 h-3" />
           {/* JSON Schema Importer */}
           <JsonImporter updateBtnWidth={updateBtnWidth} onSubmit={handleSubmit} />

@@ -1,5 +1,5 @@
 import { act, waitFor } from '@testing-library/react'
-import { createNode } from '../../../__tests__/fixtures'
+import { createNode, createNodeTracing } from '../../../__tests__/fixtures'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import { useWorkflowNodeFinished } from '../use-workflow-node-finished'
@@ -21,7 +21,9 @@ describe('useWorkflowNodeFinished', () => {
       ],
       initialStoreState: {
         workflowRunningData: baseRunningData({
-          tracing: [{ id: 'trace-1', node_id: 'n1', status: NodeRunningStatus.Running }],
+          tracing: [
+            createNodeTracing({ id: 'trace-1', node_id: 'n1', status: NodeRunningStatus.Running }),
+          ],
         }),
       },
     })
@@ -48,12 +50,14 @@ describe('useWorkflowNodeFinished', () => {
       nodes: [
         createNode({
           id: 'n1',
-          data: { _runningStatus: NodeRunningStatus.Running },
+          data: { type: BlockEnum.IfElse, _runningStatus: NodeRunningStatus.Running },
         }),
       ],
       initialStoreState: {
         workflowRunningData: baseRunningData({
-          tracing: [{ id: 'trace-1', node_id: 'n1', status: NodeRunningStatus.Running }],
+          tracing: [
+            createNodeTracing({ id: 'trace-1', node_id: 'n1', status: NodeRunningStatus.Running }),
+          ],
         }),
       },
     })
@@ -62,12 +66,13 @@ describe('useWorkflowNodeFinished', () => {
       result.current.handleWorkflowNodeFinished(
         createNodeFinishedResponse({
           data: {
+            ...createNodeFinishedResponse().data,
             id: 'trace-1',
             node_id: 'n1',
             node_type: BlockEnum.IfElse,
             status: NodeRunningStatus.Succeeded,
             outputs: { selected_case_id: 'branch-a' },
-          } as never,
+          },
         }),
       )
     })

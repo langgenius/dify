@@ -94,7 +94,7 @@ export function PricingContent() {
           </TabsList>
           {isCloud && (
             <Field>
-              <FieldLabel className="flex items-center gap-x-3 px-2 pb-3 xl:justify-end xl:pr-5 xl:pb-0 xl:pl-0">
+              <FieldLabel className="flex cursor-pointer items-center gap-x-3 px-2 pb-3 xl:justify-end xl:pr-5 xl:pb-0 xl:pl-0">
                 <Switch
                   size="lg"
                   checked={billingInterval === 'year'}

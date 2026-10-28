@@ -10,6 +10,7 @@ import { createConsoleQuery } from './query-policies'
 export type ConsoleClientContext = TanstackQueryOperationContext & {
   keepalive?: boolean
   silent?: boolean
+  onResponseHeaders?: (headers: Headers) => void
 }
 
 export type ConsoleClient = JsonifiedClient<

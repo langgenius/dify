@@ -42,7 +42,7 @@ def refresh_billing_vector_space_task(self, tenant_id: str) -> None:
             tenant_id,
             exc_info=True,
         )
-        raise self.retry(exc=exc, countdown=_RETRY_DELAY_SECONDS * (2**self.request.retries))
+        raise self.retry(exc=exc, countdown=_RETRY_DELAY_SECONDS * (2**self.request.retries)) from exc
 
     _refresh_counter.add(1, {"outcome": "success"})
     logger.info("Billing vector-space cache refreshed, tenant_id=%s", tenant_id)

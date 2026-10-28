@@ -20,7 +20,7 @@ from repositories.conversation_variable_repository import ConversationVariableRe
 from services.conversation_variable_query import ConversationVariableAppNotFoundError
 from services.entities.conversation_entities import EndUserConversationRef
 from services.errors.conversation import ConversationNotExistsError, ConversationVariableNotExistsError
-from tests.unit_tests.model_factories import make_app, make_conversation, make_end_user
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user
 
 CONTEXT = RequestContext(request_id="request", trace_id=None, account_id="account-1", active_workspace_id="tenant-1")
 

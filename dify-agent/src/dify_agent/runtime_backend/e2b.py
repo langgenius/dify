@@ -284,8 +284,10 @@ class E2BExecutionBindingBackend:
         lease: E2BRuntimeLease | None = None
         try:
             sandbox = await self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds)
-            if not await sandbox.files.exists(self.layout.workspace_dir):
-                raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Workspace")
+            if not await sandbox.files.exists(self.layout.home_dir) or not await sandbox.files.exists(
+                self.layout.workspace_dir
+            ):
+                raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Home or Workspace")
             lease = await self._lease(sandbox)
             await _wait_for_shellctl_ready(lease.data_plane.client)
             return lease

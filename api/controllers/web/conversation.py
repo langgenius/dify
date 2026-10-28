@@ -22,6 +22,7 @@ from fields.conversation_fields import (
     ResultResponse,
     SimpleConversation,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, AppMode, EndUser
 from services.entities.conversation_entities import EndUserConversationRef, EndUserConversationScope
@@ -49,6 +50,7 @@ register_response_schema_models(web_ns, ConversationInfiniteScrollPagination, Re
 
 @web_ns.route("/conversations")
 class ConversationListApi(WebApiResource):
+    @error_responses(NotChatAppError, ConversationCursorNotFoundHTTPError, ConversationNotFoundHTTPError)
     @web_ns.doc("Get Conversation List")
     @web_ns.doc(description="Retrieve paginated list of conversations for a chat application.")
     @web_ns.doc(params=query_params_from_model(ConversationListQuery))
@@ -57,7 +59,6 @@ class ConversationListApi(WebApiResource):
             HTTPStatus.OK: "Success",
             HTTPStatus.BAD_REQUEST: "Invalid conversation list query or app mode does not match the API route.",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: (
                 "`conversation_cursor_not_found`: Cursor is outside the current list. "
                 "`conversation_not_found`: The app or user is no longer available."
@@ -94,6 +95,7 @@ class ConversationListApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>")
 class ConversationApi(WebApiResource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
     @web_ns.doc("Delete Conversation")
     @web_ns.doc(description="Delete a specific conversation.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -102,7 +104,6 @@ class ConversationApi(WebApiResource):
             HTTPStatus.NO_CONTENT: "Conversation deleted successfully",
             HTTPStatus.BAD_REQUEST: "Bad Request",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
             HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
@@ -129,6 +130,7 @@ class ConversationApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(WebApiResource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError, ConversationFirstMessageNotFoundHTTPError)
     @web_ns.doc("Rename Conversation")
     @web_ns.doc(description="Rename a specific conversation with a custom name or auto-generate one.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -148,7 +150,6 @@ class ConversationRenameApi(WebApiResource):
             HTTPStatus.OK: "Conversation renamed successfully; model failure preserves the existing name.",
             HTTPStatus.BAD_REQUEST: "Bad Request",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: (
                 "`conversation_not_found`: Conversation does not exist. "
                 "`conversation_first_message_not_found`: No first message is available for automatic naming."
@@ -190,6 +191,7 @@ class ConversationRenameApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>/pin")
 class ConversationPinApi(WebApiResource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
     @web_ns.doc("Pin Conversation")
     @web_ns.doc(description="Pin a specific conversation to keep it at the top of the list.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -198,7 +200,6 @@ class ConversationPinApi(WebApiResource):
             HTTPStatus.OK: "Conversation pinned successfully",
             HTTPStatus.BAD_REQUEST: "Bad Request",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
             HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
@@ -229,6 +230,7 @@ class ConversationPinApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>/unpin")
 class ConversationUnPinApi(WebApiResource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
     @web_ns.doc("Unpin Conversation")
     @web_ns.doc(description="Remove the current user's pin. Succeeds when the conversation is already unpinned.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -237,7 +239,6 @@ class ConversationUnPinApi(WebApiResource):
             HTTPStatus.OK: "Conversation unpinned successfully",
             HTTPStatus.BAD_REQUEST: "Bad Request",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: "`conversation_not_found`: The app or user is no longer available.",
             HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }

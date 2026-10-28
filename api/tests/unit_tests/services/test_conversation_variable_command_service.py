@@ -17,7 +17,7 @@ from repositories.conversation_variable_repository import ConversationVariableRe
 from services.conversation_variable_command_service import ConversationVariableCommandService
 from services.entities.conversation_entities import EndUserConversationRef
 from services.errors.conversation import ConversationVariableNotExistsError, ConversationVariableTypeMismatchError
-from tests.unit_tests.model_factories import make_app, make_conversation, make_end_user
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user
 
 _CREATED_AT = datetime(2024, 1, 1, 9, 0, 0)
 

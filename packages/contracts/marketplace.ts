@@ -472,6 +472,30 @@ const templateSearchContract = base
   )
   .output(type<TemplateSearchResponse>())
 
+export type PluginVersionsResponse = {
+  data: {
+    versions: Array<{
+      plugin_org: string
+      plugin_name: string
+      version: string
+      file_name: string
+      checksum: string
+      created_at: string
+      unique_identifier: string
+    }>
+  }
+}
+
+const pluginVersionsContract = base
+  .route({ path: '/plugins/{organization}/{pluginName}/versions', method: 'GET' })
+  .input(
+    type<{
+      params: { organization: string; pluginName: string }
+      query: { page: number; page_size: number }
+    }>(),
+  )
+  .output(type<PluginVersionsResponse>())
+
 const downloadPluginContract = base
   .route({
     path: '/plugins/{organization}/{pluginName}/{version}/download',
@@ -568,6 +592,7 @@ export const marketplaceRouterContract = {
   templateDetail: templateDetailContract,
   templateSearch: templateSearchContract,
   downloadPlugin: downloadPluginContract,
+  pluginVersions: pluginVersionsContract,
   creatorDetail: creatorDetailContract,
   organizationDetail: organizationDetailContract,
   publisherPlugins: publisherPluginsContract,

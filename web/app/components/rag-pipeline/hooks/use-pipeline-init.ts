@@ -1,8 +1,13 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useCallback, useEffect, useState } from 'react'
+import { ORPCError } from '@orpc/client'
+import { useAtomValue } from 'jotai'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toIconInfo } from '@/app/components/datasets/dataset-fields'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import { consoleClient } from '@/service/console'
+import { fetchWorkflowDraft } from '@/service/workflow'
 import { usePipelineConfig } from './use-pipeline-config'
 import { usePipelineTemplate } from './use-pipeline-template'
 
@@ -11,13 +16,14 @@ export const usePipelineInit = () => {
   const { nodes: nodesTemplate, edges: edgesTemplate } = usePipelineTemplate()
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
-  const datasetId = useDatasetDetailContextWithSelector((s) => s.dataset)?.pipeline_id
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const knowledgeName = useDatasetDetailContextWithSelector((s) => s.dataset)?.name
-  const knowledgeIcon = useDatasetDetailContextWithSelector((s) => s.dataset)?.icon_info
+  const datasetIcon = useDatasetDetailContextWithSelector((s) => s.dataset?.icon_info)
+  const knowledgeIcon = useMemo(() => toIconInfo(datasetIcon), [datasetIcon])
 
   useEffect(() => {
-    workflowStore.setState({ pipelineId: datasetId, knowledgeName, knowledgeIcon })
-  }, [datasetId, workflowStore, knowledgeName, knowledgeIcon])
+    workflowStore.setState({ knowledgeName, knowledgeIcon })
+  }, [pipelineId, workflowStore, knowledgeName, knowledgeIcon])
 
   usePipelineConfig()
 
@@ -31,7 +37,7 @@ export const usePipelineInit = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     try {
-      const res = await fetchWorkflowDraft(`/rag/pipelines/${datasetId}/workflows/draft`)
+      const res = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
       setData(res)
       setDraftUpdatedAt(res.updated_at)
       setToolPublished(res.tool_published)
@@ -55,33 +61,36 @@ export const usePipelineInit = () => {
       setRagPipelineVariables?.(res.rag_pipeline_variables || [])
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
-    } catch (error: any) {
-      if (error && error.json && !error.bodyUsed && datasetId) {
-        error.json().then((err: any) => {
-          if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({
-              notInitialWorkflow: true,
-              shouldAutoOpenStartNodeSelector: true,
-            })
-            syncWorkflowDraft({
-              url: `/rag/pipelines/${datasetId}/workflows/draft`,
-              params: {
-                graph: {
-                  nodes: nodesTemplate,
-                  edges: edgesTemplate,
+    } catch (error: unknown) {
+      if (error instanceof ORPCError && pipelineId) {
+        if (error.code === 'draft_workflow_not_exist') {
+          workflowStore.setState({
+            notInitialWorkflow: true,
+            shouldAutoOpenStartNodeSelector: true,
+          })
+          consoleClient.rag.pipelines.byPipelineId.workflows.draft
+            .post(
+              {
+                params: { pipeline_id: pipelineId },
+                body: {
+                  graph: {
+                    nodes: nodesTemplate,
+                    edges: edgesTemplate,
+                  },
+                  environment_variables: [],
                 },
-                environment_variables: [],
               },
-            }).then((res) => {
+              { context: { silent: true } },
+            )
+            .then((res) => {
               const { setDraftUpdatedAt } = workflowStore.getState()
               setDraftUpdatedAt(res.updated_at)
               handleGetInitialWorkflowData()
             })
-          }
-        })
+        }
       }
     }
-  }, [nodesTemplate, edgesTemplate, workflowStore, datasetId])
+  }, [nodesTemplate, edgesTemplate, workflowStore, pipelineId])
 
   useEffect(() => {
     handleGetInitialWorkflowData()

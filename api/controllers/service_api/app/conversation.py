@@ -30,6 +30,7 @@ from fields.conversation_fields import (
     SimpleConversation,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty, dump_response, to_timestamp
 from machinery.context import ServiceApiEndUserContext
 from models.model import AppMode
@@ -165,6 +166,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/conversations")
 class ConversationApi(Resource):
+    @error_responses(NotChatAppError, ConversationCursorNotFoundHTTPError, ConversationNotFoundHTTPError)
     @service_api_ns.doc(
         summary="List Conversations",
         description="Retrieve the conversation list for the current user, ordered by most recently active.",
@@ -218,6 +220,7 @@ class ConversationApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>")
 class ConversationDetailApi(Resource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError)
     @service_api_ns.doc(
         summary="Delete Conversation",
         description="Delete a conversation.",
@@ -256,6 +259,7 @@ class ConversationDetailApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/name")
 class ConversationRenameApi(Resource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError, ConversationFirstMessageNotFoundHTTPError)
     @service_api_ns.doc(
         summary="Rename Conversation",
         description=(
@@ -317,6 +321,7 @@ class ConversationRenameApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables")
 class ConversationVariablesApi(Resource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError, ConversationVariableNotFoundHTTPError)
     @service_api_ns.doc(
         summary="List Conversation Variables",
         description="Retrieve variables from a specific conversation.",
@@ -388,6 +393,12 @@ class ConversationVariablesApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables/<uuid:variable_id>")
 class ConversationVariableDetailApi(Resource):
+    @error_responses(
+        NotChatAppError,
+        ConversationNotFoundHTTPError,
+        ConversationVariableNotFoundHTTPError,
+        ConversationVariableTypeMismatchHTTPError,
+    )
     @service_api_ns.doc(
         summary="Update Conversation Variable",
         description="Update the value of a specific conversation variable. The value must match the expected type.",

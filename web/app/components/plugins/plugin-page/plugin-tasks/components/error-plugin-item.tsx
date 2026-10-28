@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { toPluginText } from '@/app/components/plugins/install-plugin/utils'
 import { PluginSource } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import PluginItem from './plugin-item'
@@ -46,7 +47,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
         version: info.latest_version,
         latest_version: info.latest_version,
         latest_package_identifier: info.latest_package_identifier,
-        label: plugin.labels,
+        label: toPluginText(plugin.labels),
         brief: {},
         description: {},
         icon: plugin.icon,

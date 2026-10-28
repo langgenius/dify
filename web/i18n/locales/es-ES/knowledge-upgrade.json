@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "«{{name}}» ahora es una base de conocimientos Agent",
+  "upgrade.completeTitle": "Actualización completada",
+  "upgrade.contactSupport": "Contactar con soporte",
+  "upgrade.dialogAvailability": "Después de la actualización, <strong>tanto la base de conocimientos clásica como la de Agent siguen disponibles</strong>",
+  "upgrade.dialogDescription": "Actualiza esta <legacy>base de conocimientos clásica</legacy> a una <new>base de conocimientos Agent</new>, conservando todos los documentos, ajustes y conexiones de aplicaciones. Se te llevará a la base de conocimientos Agent automáticamente.",
+  "upgrade.dialogDuration": "Tarda de unos minutos a varias horas, según el tamaño. El progreso aparece en la tarjeta de la base de conocimientos",
+  "upgrade.dialogLinkedApps": "Las aplicaciones vinculadas siguen recuperando datos durante la actualización",
+  "upgrade.dialogTitle": "¿Actualizar a una base de conocimientos Agent?",
+  "upgrade.failedDescription": "La actualización falló; no se cambió nada. Tu base de conocimientos clásica sigue disponible.",
+  "upgrade.failedTitle": "Error en la actualización",
+  "upgrade.failedToastDescription": "«{{name}}» sigue siendo una base de conocimientos clásica; no se modificaron datos",
+  "upgrade.justNow": "Ahora mismo",
+  "upgrade.menuLabel": "Actualizar a una base de conocimientos Agent",
+  "upgrade.migratingDocuments": "Migrando documentos…",
+  "upgrade.modelCostDescription": "La actualización usa modelos para procesar los documentos de esta base de conocimiento y consume tokens. Cuanto más contenido tengan los documentos, normalmente mayor es el consumo y puede generar costes elevados. El coste real depende de cómo se facture el modelo utilizado.",
+  "upgrade.start": "Iniciar actualización",
+  "upgrade.startFailed": "No se pudo iniciar la actualización. Inténtalo de nuevo.",
+  "upgrade.statusFailed": "Error en la actualización",
+  "upgrade.statusUpgrading": "Actualizando",
+  "upgrade.summary": "Base de conocimiento: {{name}}",
+  "upgrade.upgradedJustNow": "Actualizada ahora mismo"
+}

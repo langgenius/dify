@@ -8,10 +8,10 @@ import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Concatenate, Literal
+from typing import Any, Concatenate, Literal, NoReturn
 from uuid import UUID
 
-from flask import Response, make_response, request, send_file, url_for
+from flask import Response, after_this_request, make_response, request, send_file, url_for
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -27,7 +27,7 @@ from controllers.common.schema import (
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
-from controllers.console.app.error import AppUnavailableError
+from controllers.console.app.error import AgentNotBoundError, AppUnavailableError
 from controllers.console.app.preview_admission import get_preview_app
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -43,13 +43,15 @@ from controllers.console.wraps import (
 from extensions.ext_application_services import application_services
 from fields.agent_fields import AgentAppComposerResponse
 from fields.base import ResponseModel
+from libs.exception import RelayedHTTPError
+from libs.external_api import document_errors, error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
 from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
-from services.agent.errors import AgentVersionNotFoundError
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.agent_config_service import (
     AgentConfigService,
     AgentConfigServiceError,
@@ -276,6 +278,12 @@ def _with_trial_config[T, Q: TrialAgentConfigQuery, **P](
 ) -> Callable[Concatenate[T, Q, AppPreviewRef, P], Response]:
     @wraps(view)
     def decorated(self: T, query: Q, app: AppPreviewRef, /, *args: P.args, **kwargs: P.kwargs) -> Response:
+        @after_this_request
+        def _no_store(response: Response) -> Response:
+            # Published template assets and their errors are never cached by the browser.
+            response.headers["Cache-Control"] = "no-store"
+            return response
+
         try:
             state = AgentAppComposerResponse.model_validate(
                 application_services().app_previews.get_agent_composer(app=app)
@@ -292,15 +300,14 @@ def _with_trial_config[T, Q: TrialAgentConfigQuery, **P](
                 version_id=snapshot.id,
                 version_kind=AgentConfigVersionKind.SNAPSHOT,
             )
-            response = make_response(view(self, target, query, *args, **kwargs))
+            return make_response(view(self, target, query, *args, **kwargs))
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
         except AgentConfigServiceError as exc:
-            response = make_response(_handle(exc))
-        response.headers["Cache-Control"] = "no-store"
-        return response
+            # Raised, not returned, so the surface's error handler builds the body.
+            raise _relayed_error(exc) from exc
 
-    return decorated
+    return document_errors(decorated, AppUnavailableError, RelayedHTTPError)
 
 
 def _service() -> AgentConfigService:
@@ -318,12 +325,12 @@ def _resolve_agent_id(session: Session, app_model: App, node_id: str | None) -> 
     return app_model.bound_agent_id_with_session(session=session)
 
 
-def _agent_not_bound() -> tuple[dict[str, object], int]:
-    return {"code": "agent_not_bound", "message": "no agent is bound for this app/node"}, 400
+def _relayed_error(exc: AgentConfigServiceError) -> RelayedHTTPError:
+    return RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message)
 
 
-def _handle(exc: AgentConfigServiceError) -> tuple[dict[str, object], int]:
-    return {"code": exc.code, "message": exc.message}, exc.status_code
+def _handle(exc: AgentConfigServiceError) -> NoReturn:
+    raise _relayed_error(exc) from exc
 
 
 def _json_response(data: Mapping[str, Any]) -> Response:
@@ -444,10 +451,10 @@ def _resolve_app_route_target(
     app_model: App,
     current_user: Account,
     query: AgentConfigQuery,
-) -> _ResolvedConsoleTarget | tuple[dict[str, object], int]:
+) -> _ResolvedConsoleTarget:
     agent_id = _resolve_agent_id(session, app_model, query.node_id)
     if not agent_id:
-        return _agent_not_bound()
+        raise AgentNotBoundError()
     return _resolve_target(
         session=session,
         tenant_id=app_model.tenant_id,
@@ -477,7 +484,7 @@ def _with_agent_route_target(
         )
         return action(target)
     except AgentConfigServiceError as exc:
-        return _handle(exc)
+        _handle(exc)
 
 
 def _with_app_route_target(
@@ -490,11 +497,9 @@ def _with_app_route_target(
     query = query_params_from_request(AgentConfigQuery)
     try:
         target = _resolve_app_route_target(session=session, app_model=app_model, current_user=current_user, query=query)
-        if isinstance(target, tuple):
-            return target
         return action(target)
     except AgentConfigServiceError as exc:
-        return _handle(exc)
+        _handle(exc)
 
 
 def _manifest_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
@@ -727,6 +732,7 @@ def _file_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[str
 
 @console_ns.route("/agent/<uuid:agent_id>/config/manifest")
 class AgentConfigManifestByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("get_agent_config_manifest_by_agent")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
     @console_ns.response(200, "Agent config manifest", console_ns.models[AgentConfigManifestResponse.__name__])
@@ -749,6 +755,7 @@ class AgentConfigManifestByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/manifest")
 class AgentConfigManifestApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("get_agent_config_manifest")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(200, "Agent config manifest", console_ns.models[AgentConfigManifestResponse.__name__])
@@ -766,6 +773,7 @@ class AgentConfigManifestApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/upload")
 class AgentConfigSkillUploadByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("upload_agent_config_skill_by_agent")
     @console_ns.doc(
         consumes=["multipart/form-data"],
@@ -795,6 +803,7 @@ class AgentConfigSkillUploadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/upload")
 class AgentConfigSkillUploadApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("upload_agent_config_skill")
     @console_ns.doc(
         consumes=["multipart/form-data"],
@@ -821,6 +830,7 @@ class AgentConfigSkillUploadApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills")
 class AgentConfigSkillsByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("get_agent_config_skills_by_agent")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
     @console_ns.response(200, "Config skills", console_ns.models[AgentConfigSkillListResponse.__name__])
@@ -843,6 +853,7 @@ class AgentConfigSkillsByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills")
 class AgentConfigSkillsApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("get_agent_config_skills")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(200, "Config skills", console_ns.models[AgentConfigSkillListResponse.__name__])
@@ -860,6 +871,7 @@ class AgentConfigSkillsApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files")
 class AgentConfigFilesByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("get_agent_config_files_by_agent")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
     @console_ns.response(200, "Config files", console_ns.models[AgentConfigFileListResponse.__name__])
@@ -879,6 +891,7 @@ class AgentConfigFilesByAgentApi(Resource):
             action=_file_list_response,
         )
 
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("upload_agent_config_file_by_agent")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
     @console_ns.expect(console_ns.models[AgentConfigFileUploadPayload.__name__])
@@ -910,6 +923,7 @@ class AgentConfigFilesByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files")
 class AgentConfigFilesApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("get_agent_config_files")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(200, "Config files", console_ns.models[AgentConfigFileListResponse.__name__])
@@ -924,6 +938,7 @@ class AgentConfigFilesApi(Resource):
             session=session, app_model=app_model, current_user=current_user, action=_file_list_response
         )
 
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("upload_agent_config_file")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.expect(console_ns.models[AgentConfigFileUploadPayload.__name__])
@@ -948,6 +963,7 @@ class AgentConfigFilesApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/inspect")
 class AgentConfigSkillInspectByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("inspect_agent_config_skill_by_agent")
     @console_ns.doc(
         params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)}
@@ -972,6 +988,7 @@ class AgentConfigSkillInspectByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/inspect")
 class AgentConfigSkillInspectApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("inspect_agent_config_skill")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
@@ -994,6 +1011,7 @@ class AgentConfigSkillInspectApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/files/preview")
 class AgentConfigSkillFilePreviewByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("preview_agent_config_skill_file_by_agent")
     @console_ns.doc(
         params={
@@ -1024,11 +1042,12 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
             )
             return _skill_file_preview_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/preview")
 class AgentConfigSkillFilePreviewApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("preview_agent_config_skill_file")
     @console_ns.doc(
         params={
@@ -1052,15 +1071,14 @@ class AgentConfigSkillFilePreviewApi(Resource):
             target = _resolve_app_route_target(
                 session=session, app_model=app_model, current_user=current_user, query=query
             )
-            if isinstance(target, tuple):
-                return target
             return _skill_file_preview_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/download")
 class AgentConfigSkillDownloadByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("download_agent_config_skill_by_agent")
     @console_ns.doc(
         params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)}
@@ -1085,6 +1103,7 @@ class AgentConfigSkillDownloadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/download")
 class AgentConfigSkillDownloadApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("download_agent_config_skill")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
@@ -1107,6 +1126,7 @@ class AgentConfigSkillDownloadApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/files/download")
 class AgentConfigSkillFileDownloadByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("download_agent_config_skill_file_by_agent")
     @console_ns.doc(
         params={
@@ -1141,11 +1161,12 @@ class AgentConfigSkillFileDownloadByAgentApi(Resource):
                 route_params={"agent_id": str(agent_id)},
             )
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/download")
 class AgentConfigSkillFileDownloadApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("download_agent_config_skill_file")
     @console_ns.doc(
         params={
@@ -1167,8 +1188,6 @@ class AgentConfigSkillFileDownloadApi(Resource):
             target = _resolve_app_route_target(
                 session=session, app_model=app_model, current_user=current_user, query=query
             )
-            if isinstance(target, tuple):
-                return target
             return _skill_file_download_response(
                 target,
                 name=name,
@@ -1178,7 +1197,7 @@ class AgentConfigSkillFileDownloadApi(Resource):
                 extra_query_params={"node_id": query.node_id} if query.node_id else None,
             )
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route(
@@ -1186,6 +1205,7 @@ class AgentConfigSkillFileDownloadApi(Resource):
     endpoint="agent_config_skill_file_download_content_by_agent_api",
 )
 class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1205,7 +1225,7 @@ class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
             )
             return _skill_file_raw_download_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route(
@@ -1213,6 +1233,7 @@ class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
     endpoint="agent_config_skill_file_download_content_api",
 )
 class AgentConfigSkillFileDownloadContentApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1225,15 +1246,14 @@ class AgentConfigSkillFileDownloadContentApi(Resource):
             target = _resolve_app_route_target(
                 session=session, app_model=app_model, current_user=current_user, query=query
             )
-            if isinstance(target, tuple):
-                return target
             return _skill_file_raw_download_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>")
 class AgentConfigSkillByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("delete_agent_config_skill_by_agent")
     @console_ns.doc(
         params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)}
@@ -1258,6 +1278,7 @@ class AgentConfigSkillByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>")
 class AgentConfigSkillApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("delete_agent_config_skill")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
@@ -1282,6 +1303,7 @@ class AgentConfigSkillApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>/preview")
 class AgentConfigFilePreviewByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("preview_agent_config_file_by_agent")
     @console_ns.doc(
         params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)}
@@ -1306,6 +1328,7 @@ class AgentConfigFilePreviewByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/preview")
 class AgentConfigFilePreviewApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("preview_agent_config_file")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}
@@ -1328,6 +1351,7 @@ class AgentConfigFilePreviewApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>/download")
 class AgentConfigFileDownloadByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("download_agent_config_file_by_agent")
     @console_ns.doc(
         params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)}
@@ -1352,6 +1376,7 @@ class AgentConfigFileDownloadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/download")
 class AgentConfigFileDownloadApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("download_agent_config_file")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}
@@ -1374,6 +1399,7 @@ class AgentConfigFileDownloadApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>")
 class AgentConfigFileByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("delete_agent_config_file_by_agent")
     @console_ns.doc(
         params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)}
@@ -1398,6 +1424,7 @@ class AgentConfigFileByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>")
 class AgentConfigFileApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
     @console_ns.doc("delete_agent_config_file")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}

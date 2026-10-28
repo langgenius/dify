@@ -21,6 +21,7 @@ from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.model import AppMode, IconType
@@ -139,6 +140,7 @@ register_response_schema_models(
 
 @console_ns.route("/installed-apps")
 class InstalledAppsListApi(Resource):
+    @error_responses(InstalledAppInvalidCursorError, WebAppAccessUnavailableHTTPError)
     @console_ns.doc(params=query_params_from_model(InstalledAppsListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[InstalledAppListResponse.__name__])
     @console_account_admission()
@@ -185,6 +187,7 @@ class InstalledAppsListApi(Resource):
 class InstalledAppApi(Resource):
     """Read or update an admitted workspace installation."""
 
+    @error_responses(InstalledAppNotFoundHTTPError, InstalledAppUnavailableHTTPError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[InstalledAppResponse.__name__])
     @console_account_admission()
     @get_installed_app
@@ -209,6 +212,7 @@ class InstalledAppApi(Resource):
             ),
         )
 
+    @error_responses(InstalledAppNotFoundHTTPError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     @console_ns.expect(console_ns.models[InstalledAppUpdatePayload.__name__])
     @console_account_admission()

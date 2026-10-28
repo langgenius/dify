@@ -35,7 +35,7 @@ def end_user_ref(sqlite_session_factory: sessionmaker[Session]) -> EndUserConver
             app_id=app.id,
             mode=AppMode.CHAT,
             name="Original",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.API,
             from_end_user_id=end_user.id,
             from_account_id=None,

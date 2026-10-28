@@ -19,6 +19,7 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from services.entities.file_grant_entities import FileGrantMintRequest, FileGrantScope, FileKind, FileRef
 from services.file_grant_service import (
     AppNotFoundError,
@@ -119,18 +120,19 @@ class EnterpriseFileGrantApi(Resource):
 
     @setup_required
     @enterprise_inner_api_only
+    @error_responses(
+        InvalidGrantRequestError,
+        GrantTtlTooLongError,
+        InvalidSubjectError,
+        GrantAppNotFoundError,
+        GrantedFileNotFoundError,
+    )
     @inner_api_ns.doc("enterprise_mint_file_grant")
     @inner_api_ns.expect(inner_api_ns.models[FileGrantMintPayload.__name__])
     @inner_api_ns.response(
         200,
         "File grant minted",
         inner_api_ns.models[FileGrantMintResponse.__name__],
-    )
-    @inner_api_ns.doc(
-        responses={
-            400: "Invalid request, subject, or grant TTL",
-            404: "App not found, or a required file is not owned by the subject",
-        }
     )
     def post(self):
         try:

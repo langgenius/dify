@@ -1,32 +1,21 @@
 import type { TriggerWithProvider } from '../../types'
 import type { Event } from '@/app/components/tools/types'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { Theme } from '@/types/app'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import TriggerPluginActionItem from '../action-item'
 import TriggerPluginItem from '../item'
 import TriggerPluginList from '../list'
 
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
+vi.mock('@/service/use-triggers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-triggers')>()),
   useAllTriggerPlugins: vi.fn(),
 }))
 
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
 const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
 
 const createEvent = (name: string, label: string): Event => ({
@@ -89,8 +78,6 @@ const createTriggerProvider = (
 describe('trigger plugin selector components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<
       typeof useAllTriggerPlugins
     >)

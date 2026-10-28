@@ -3,7 +3,6 @@ import { screen } from '@testing-library/react'
 import { renderNodeComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
-import { getNextExecutionTime } from '../utils/execution-time-calculator'
 
 const createNodeData = (
   overrides: Partial<ScheduleTriggerNodeType> = {},
@@ -22,7 +21,12 @@ const createNodeData = (
 
 describe('TriggerScheduleNode', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-15T12:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   // The node should surface the computed next execution time for both valid and invalid schedules.
@@ -35,7 +39,7 @@ describe('TriggerScheduleNode', () => {
       expect(
         screen.getByText('workflowIntegrations.nodes.triggerSchedule.nextExecutionTime'),
       ).toBeInTheDocument()
-      expect(screen.getByText(getNextExecutionTime(data))).toBeInTheDocument()
+      expect(screen.getByText(/January 16, 2026, 11:30\sAM/)).toBeInTheDocument()
     })
 
     it('should render the placeholder when cron mode has an invalid expression', () => {

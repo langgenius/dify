@@ -65,12 +65,7 @@ const VarGroupItem: FC<Props> = ({
     (newList: ValueSelector[], changedItem?: ValueSelector) => {
       if (changedItem) {
         const chosenVariables = payload.variables
-        if (
-          chosenVariables.some(
-            (item) => item.join('.') === (changedItem as ValueSelector).join('.'),
-          )
-        )
-          return
+        if (chosenVariables.some((item) => item.join('.') === changedItem.join('.'))) return
       }
 
       const newPayload = produce(payload, (draft) => {
@@ -119,13 +114,16 @@ const VarGroupItem: FC<Props> = ({
               {!isEditGroupName ? (
                 <div
                   className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100"
-                  onClick={() => setIsEditGroupName(true)}
+                  onClick={() => {
+                    if (!readOnly) setIsEditGroupName(true)
+                  }}
                 >
                   {payload.group_name}
                 </div>
               ) : (
                 <input
                   type="text"
+                  disabled={readOnly}
                   className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-hidden"
                   // style={{
                   //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,

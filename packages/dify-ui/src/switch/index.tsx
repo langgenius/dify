@@ -10,7 +10,7 @@ import { resolveClassName } from '../internal/resolve-class-name'
 
 const switchRootVariants = cva(
   [
-    'group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center transition-colors duration-200 ease-in-out motion-reduce:transition-none',
+    'group relative inline-flex shrink-0 touch-manipulation items-center transition-colors duration-200 ease-in-out motion-reduce:transition-none',
     checkedControlFocusClassName,
     'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled',

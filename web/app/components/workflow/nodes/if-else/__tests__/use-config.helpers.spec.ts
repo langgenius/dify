@@ -61,10 +61,17 @@ describe('if-else use-config helpers', () => {
   it('adds, removes and sorts cases while keeping target branches aligned', () => {
     const added = addCase(createInputs())
     expect(added.cases).toHaveLength(2)
-    expect(added._targetBranches?.map((branch) => branch.id)).toContain('false')
+    expect(added._targetBranches?.map((branch) => branch.id)).toEqual([
+      ...added.cases.map((item) => item.case_id),
+      'false',
+    ])
 
     const removed = removeCase(added, 'case-1')
-    expect(removed.cases?.some((item) => item.case_id === 'case-1')).toBe(false)
+    expect(removed.cases.map((item) => item.case_id)).toEqual([added.cases[1]!.case_id])
+    expect(removed._targetBranches?.map((branch) => branch.id)).toEqual([
+      added.cases[1]!.case_id,
+      'false',
+    ])
 
     const sorted = sortCases(createInputs(), [
       { id: 'display-2', case_id: 'case-2', logical_operator: LogicalOperator.or, conditions: [] },

@@ -20,7 +20,7 @@ function TryApp({ appId, appDetail }: Props) {
     <FileUploadContext
       value={{
         localUploadUrl: `/trial-apps/${appId}/files/upload`,
-        remoteUploadUrl: `/trial-apps/${appId}/remote-files/upload`,
+        trialAppId: appId,
       }}
     >
       <div className="flex size-full">

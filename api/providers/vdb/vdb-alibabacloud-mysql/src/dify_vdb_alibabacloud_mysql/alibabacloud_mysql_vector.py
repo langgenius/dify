@@ -262,13 +262,10 @@ class AlibabaCloudMySQLVector(BaseVector):
                 try:
                     distance = float(record["distance"])
                     # Convert distance to similarity score
-                    if self.distance_function == "cosine":
-                        # For cosine distance: similarity = 1 - distance
-                        similarity = 1.0 - distance
-                    else:
-                        # For euclidean distance: use inverse relationship
-                        # similarity = 1 / (1 + distance)
-                        similarity = 1.0 / (1.0 + distance)
+                    # For cosine distance: similarity = 1 - distance
+                    # For euclidean distance: use inverse relationship
+                    # similarity = 1 / (1 + distance)
+                    similarity = 1.0 - distance if self.distance_function == "cosine" else 1.0 / (1.0 + distance)
 
                     metadata = parse_metadata_json(record["meta"])
                     metadata["score"] = similarity

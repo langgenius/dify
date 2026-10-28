@@ -146,6 +146,19 @@ export const userInputsFormToPromptVariables = (
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
       })
+    } else if (type === 'json_object') {
+      promptVariables.push({
+        key: variable,
+        name: getString(content.label),
+        required: getBoolean(content.required, true),
+        type,
+        hide: getBoolean(content.hide),
+        default: getOptionalString(content.default),
+        json_schema:
+          typeof content.json_schema === 'string' || isRecord(content.json_schema)
+            ? content.json_schema
+            : undefined,
+      })
     } else {
       promptVariables.push({
         key: variable,
@@ -178,7 +191,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             variable: item.key,
             required: item.required !== false, // default true
             max_length: item.max_length,
-            default: '',
+            default: getString(item.default),
             hide: item.hide,
           },
         })
@@ -191,7 +204,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             variable: item.key,
             required: item.required !== false, // default true
             max_length: item.max_length,
-            default: '',
+            default: getString(item.default),
             hide: item.hide,
           },
         })
@@ -203,7 +216,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             label: item.name,
             variable: item.key,
             required: item.required !== false, // default true
-            default: '',
+            default: typeof item.default === 'number' ? item.default : getString(item.default),
             hide: item.hide,
           },
         })
@@ -213,7 +226,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             label: item.name,
             variable: item.key,
             required: item.required !== false, // default true
-            default: '',
+            default: typeof item.default === 'boolean' ? item.default : getString(item.default),
             hide: item.hide,
           },
         })
@@ -226,6 +239,34 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             options: item.options,
             default: getString(item.default),
             hide: item.hide,
+          },
+        })
+      } else if (item.type === 'file' || item.type === 'file-list') {
+        const config = item.config ?? {}
+        const field = {
+          label: item.name,
+          variable: item.key,
+          required: item.required !== false,
+          hide: item.hide,
+          default: getString(item.default),
+          allowed_file_types: config.allowed_file_types,
+          allowed_file_extensions: config.allowed_file_extensions,
+          allowed_file_upload_methods: config.allowed_file_upload_methods,
+        }
+        userInputs.push(
+          item.type === 'file'
+            ? { file: field }
+            : { 'file-list': { ...field, max_length: config.number_limits } },
+        )
+      } else if (item.type === 'json_object') {
+        userInputs.push({
+          json_object: {
+            label: item.name,
+            variable: item.key,
+            required: item.required !== false,
+            default: getString(item.default),
+            hide: item.hide,
+            json_schema: item.json_schema,
           },
         })
       } else {

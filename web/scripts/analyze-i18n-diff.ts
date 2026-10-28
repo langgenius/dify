@@ -53,9 +53,9 @@ function flattenObject(obj: NestedTranslation, prefix = ''): FlatTranslation {
       result[newKey] = value
     } else if (Array.isArray(value)) {
       // Preserve arrays as-is
-      result[newKey] = value as string[]
+      result[newKey] = value
     } else if (typeof value === 'object' && value !== null) {
-      Object.assign(result, flattenObject(value as NestedTranslation, newKey))
+      Object.assign(result, flattenObject(value, newKey))
     }
   }
 
