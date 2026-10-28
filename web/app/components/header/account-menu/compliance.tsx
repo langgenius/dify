@@ -1,0 +1,229 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactNode } from 'react'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import {
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuSubmenu,
+  MenuSubmenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  pricingQueryParamName,
+  pricingQueryParser,
+} from '@/app/components/billing/pricing/query-params'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { downloadUrl } from '@/utils/download'
+import PremiumBadge from '../../base/premium-badge'
+import { MenuItemContent } from './menu-item-content'
+
+const DocName = {
+  SOC2_Type_I: 'SOC2_Type_I',
+  SOC2_Type_II: 'SOC2_Type_II',
+  ISO_27001: 'ISO_27001',
+  GDPR: 'GDPR',
+} as const
+type DocName = (typeof DocName)[keyof typeof DocName]
+
+type ComplianceDocActionVisualProps = {
+  isCurrentPlanCanDownload: boolean
+  isPending: boolean
+  tooltipText: string
+  downloadText: string
+  upgradeText: string
+}
+
+function ComplianceDocActionVisual({
+  isCurrentPlanCanDownload,
+  isPending,
+  tooltipText,
+  downloadText,
+  upgradeText,
+}: ComplianceDocActionVisualProps) {
+  if (isCurrentPlanCanDownload) {
+    return (
+      <span
+        data-disabled={isPending || undefined}
+        className={buttonVariants({ size: 'small', className: 'shrink-0' })}
+      >
+        <span
+          aria-hidden
+          className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled"
+        />
+        <span className="system-xs-medium text-components-button-secondary-text">
+          {downloadText}
+        </span>
+        {isPending && (
+          <span
+            className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+            aria-hidden
+          />
+        )}
+      </span>
+    )
+  }
+
+  const canShowUpgradeTooltip = tooltipText.length > 0
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        disabled={!canShowUpgradeTooltip}
+        render={
+          <PremiumBadge color="blue" allowHover={true}>
+            <span
+              aria-hidden="true"
+              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+            />
+            <div className="px-1 system-xs-medium">{upgradeText}</div>
+          </PremiumBadge>
+        }
+      />
+      {canShowUpgradeTooltip && <TooltipContent>{tooltipText}</TooltipContent>}
+    </Tooltip>
+  )
+}
+
+type ComplianceDocRowItemProps = {
+  icon: ReactNode
+  label: ReactNode
+  docName: DocName
+}
+
+function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProps) {
+  const { t } = useTranslation(['billing', 'common'])
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: docName !== DocName.GDPR,
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
+  const isFreePlan = plan === 'sandbox'
+
+  const { isPending, mutate: downloadCompliance } = useMutation({
+    mutationKey: ['downloadCompliance', docName],
+    mutationFn: async () => {
+      try {
+        const ret = await consoleClient.compliance.download.get(
+          { query: { doc_name: docName } },
+          { context: { silent: true } },
+        )
+        downloadUrl({ url: ret.url })
+        toast.success(t(($) => $['operation.downloadSuccess'], { ns: 'common' }))
+      } catch (error) {
+        console.error(error)
+        toast.error(t(($) => $['operation.downloadFailed'], { ns: 'common' }))
+      }
+    },
+  })
+
+  const whichPlanCanDownloadCompliance: Record<DocName, CloudPlan[]> = {
+    [DocName.SOC2_Type_I]: ['professional', 'team'],
+    [DocName.SOC2_Type_II]: ['team'],
+    [DocName.ISO_27001]: ['team'],
+    [DocName.GDPR]: ['team', 'professional', 'sandbox'],
+  }
+
+  const isCurrentPlanCanDownload =
+    docName === DocName.GDPR ||
+    (plan !== undefined && whichPlanCanDownloadCompliance[docName].includes(plan))
+
+  const handleSelect = useCallback(() => {
+    if (isCurrentPlanCanDownload) {
+      if (!isPending) downloadCompliance()
+      return
+    }
+
+    if (isFreePlan) setPricing('open')
+    else setSettingsDestination('billing')
+  }, [
+    downloadCompliance,
+    isCurrentPlanCanDownload,
+    isFreePlan,
+    isPending,
+    setSettingsDestination,
+    setPricing,
+  ])
+
+  const upgradeTooltip: Record<CloudPlan, string> = {
+    sandbox: t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' }),
+    professional: t(($) => $['compliance.professionalUpgradeTooltip'], { ns: 'common' }),
+    team: '',
+  }
+  const labelTitle = typeof label === 'string' ? label : undefined
+
+  if (docName !== DocName.GDPR && plan === undefined) return null
+
+  return (
+    <MenuItem
+      className="h-10 justify-between py-1 pr-2 pl-1"
+      closeOnClick={!isCurrentPlanCanDownload}
+      disabled={isPending}
+      onClick={handleSelect}
+    >
+      {icon}
+      <div className="grow truncate px-1 system-md-regular text-text-secondary" title={labelTitle}>
+        {label}
+      </div>
+      <ComplianceDocActionVisual
+        isCurrentPlanCanDownload={isCurrentPlanCanDownload}
+        isPending={isPending}
+        tooltipText={plan ? upgradeTooltip[plan] : ''}
+        downloadText={t(($) => $['operation.download'], { ns: 'common' })}
+        upgradeText={t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
+      />
+    </MenuItem>
+  )
+}
+
+// Submenu-only: this component must be rendered within an existing Menu root.
+export default function Compliance() {
+  const { t } = useTranslation(['common'])
+
+  return (
+    <MenuSubmenu>
+      <MenuSubmenuTrigger className="h-8 gap-1 px-3 py-1">
+        <MenuItemContent
+          iconClassName="i-ri-verified-badge-line"
+          label={t(($) => $['userProfile.compliance'], { ns: 'common' })}
+        />
+      </MenuSubmenuTrigger>
+      <MenuContent className="w-84.25 divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
+        <MenuGroup className="py-1">
+          <ComplianceDocRowItem
+            icon={<span aria-hidden className="i-custom-public-common-soc2 size-7 shrink-0" />}
+            label={t(($) => $['compliance.soc2Type1'], { ns: 'common' })}
+            docName={DocName.SOC2_Type_I}
+          />
+          <ComplianceDocRowItem
+            icon={<span aria-hidden className="i-custom-public-common-soc2 size-7 shrink-0" />}
+            label={t(($) => $['compliance.soc2Type2'], { ns: 'common' })}
+            docName={DocName.SOC2_Type_II}
+          />
+          <ComplianceDocRowItem
+            icon={<span aria-hidden className="i-custom-public-common-iso size-7 shrink-0" />}
+            label={t(($) => $['compliance.iso27001'], { ns: 'common' })}
+            docName={DocName.ISO_27001}
+          />
+          <ComplianceDocRowItem
+            icon={<span aria-hidden className="i-custom-public-common-gdpr size-7 shrink-0" />}
+            label={t(($) => $['compliance.gdpr'], { ns: 'common' })}
+            docName={DocName.GDPR}
+          />
+        </MenuGroup>
+      </MenuContent>
+    </MenuSubmenu>
+  )
+}

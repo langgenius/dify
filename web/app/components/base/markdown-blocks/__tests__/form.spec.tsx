@@ -33,6 +33,7 @@ const { mockOnSend } = vi.hoisted(() => ({
 const render = (ui: Parameters<typeof renderUI>[0]) =>
   renderUI(ui, {
     wrapper: ({ children }) => (
+      // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its custom Provider.
       <ChatContext.Provider value={{ chatList: [], onSend: mockOnSend }}>
         {children}
       </ChatContext.Provider>
@@ -806,3 +807,36 @@ describe('MarkdownForm', () => {
     })
   })
 })
+
+it.each([
+  ['date', '2025-01-15'],
+  ['time', '13:30'],
+  ['datetime', '2025-01-15T13:30:00.000Z'],
+])(
+  'omits disabled %s values while retaining read-only values in the chat payload',
+  async (type, value) => {
+    const user = userEvent.setup()
+    mockOnSend.mockReset()
+    const node = createRootNode(
+      [
+        createElementNode('input', { type, name: 'disabledDate', value, disabled: true }),
+        createElementNode('input', { type, name: 'readOnlyDate', value, readOnly: true }),
+        createElementNode('input', {
+          type: 'text',
+          name: 'disabledText',
+          value: 'Hidden from submission',
+          disabled: true,
+        }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ],
+      { dataFormat: 'json' },
+    )
+    render(<MarkdownForm node={node} />)
+    expect(screen.getByRole('button', { name: /^disabledDate/ })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+    await waitFor(() =>
+      expect(mockOnSend).toHaveBeenCalledExactlyOnceWith(JSON.stringify({ readOnlyDate: value })),
+    )
+    expect(screen.getByRole('textbox', { name: 'disabledText' })).toBeDisabled()
+  },
+)

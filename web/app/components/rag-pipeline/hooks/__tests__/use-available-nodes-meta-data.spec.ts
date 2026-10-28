@@ -1,6 +1,6 @@
-import { renderHook } from '@testing-library/react'
 import { expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
@@ -15,7 +15,9 @@ vi.mock('@/features/agent-v2/feature-flag', () => ({
 
 it.each([true, false])('offers the pipeline node catalog with Agent v2 enabled=%s', (enabled) => {
   mockIsAgentV2Enabled.mockReturnValue(enabled)
-  const { result } = renderHook(() => useAvailableNodesMetaData())
+  const { result } = renderHookWithConsoleQuery(() => useAvailableNodesMetaData(), {
+    knowledgeFsFeatures: { enabled: true },
+  })
   const { nodes, nodesMap } = result.current
   const types = nodes.map((node) => node.metaData.type)
   expect(types).toEqual(
@@ -25,6 +27,7 @@ it.each([true, false])('offers the pipeline node catalog with Agent v2 enabled=%
       BlockEnum.DataSource,
       BlockEnum.KnowledgeBase,
       BlockEnum.DataSourceEmpty,
+      BlockEnum.KnowledgeRetrievalV2,
       enabled ? BlockEnum.AgentV2 : BlockEnum.Agent,
     ]),
   )
@@ -49,4 +52,13 @@ it.each([true, false])('offers the pipeline node catalog with Agent v2 enabled=%
       title: `workflow.blocks.${type}`,
     })
   }
+})
+
+it('hides Knowledge Retrieval V2 when KnowledgeFS is unavailable', () => {
+  const { result } = renderHookWithConsoleQuery(() => useAvailableNodesMetaData(), {
+    knowledgeFsFeatures: { enabled: false },
+  })
+  const types = result.current.nodes.map((node) => node.metaData.type)
+  expect(types).not.toContain(BlockEnum.KnowledgeRetrievalV2)
+  expect(result.current.nodesMap[BlockEnum.KnowledgeRetrievalV2]).toBeUndefined()
 })
