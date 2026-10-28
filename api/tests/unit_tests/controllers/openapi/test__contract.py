@@ -129,6 +129,23 @@ def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app):
     assert result.limit == 20
 
 
+class ContractListQuery(BaseModel):
+    tag: list[str] | None = None
+    word: str | None = None
+
+
+def test_accepts_fills_list_typed_query_fields_from_repeated_parameters(app: Flask) -> None:
+    @accepts(query=ContractListQuery)
+    def view(*, query: ContractListQuery) -> ContractListQuery:
+        return query
+
+    with app.test_request_context("/?tag=a&tag=b&word=x&word=y"):
+        result = view()
+
+    assert result.tag == ["a", "b"]
+    assert result.word == "x"
+
+
 @pytest.mark.parametrize("query_string", ["page=abc", "unknown=1"])
 def test_accepts_rejects_invalid_query_with_422(app, query_string):
     @accepts(query=ContractQuery)

@@ -18,7 +18,7 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, Final, cast, override
+from typing import Any, Final, cast, get_args, get_origin, override
 
 from flask import request
 from flask_restx import abort
@@ -95,17 +95,27 @@ def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
         ) from exc
 
 
+def _list_fields(model: type[BaseModel]) -> tuple[str, ...]:
+    """Query fields typed as a list, which a repeated parameter fills."""
+    return tuple(
+        name
+        for name, field in model.model_fields.items()
+        if any(get_origin(part) is list for part in (field.annotation, *get_args(field.annotation)))
+    )
+
+
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
     """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
 
     def decorator(view: Callable) -> Callable:
         body_file_fields = file_fields(body) if body is not None else frozenset()
+        query_list_fields = _list_fields(query) if query is not None else ()
 
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 if query is not None:
-                    kwargs["query"] = query_params_from_request(query)
+                    kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
                 if body is not None:
                     kwargs["body"] = body.model_validate(_read_body(body_file_fields))
             except ValidationError as exc:

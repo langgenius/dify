@@ -27,6 +27,7 @@ from controllers.openapi._errors import (
     MemberLimitExceeded,
     PluginInstallForbidden,
     ServiceApiDisabled,
+    SkillsDisabled,
     WebAppAccessRequiresEE,
 )
 from controllers.openapi._models import Hint
@@ -264,6 +265,13 @@ class CheckPluginInstallSetting(Requirement):
                 raise PluginInstallForbidden("Plugin install is turned off in this workspace.")
             case unknown:
                 raise PluginInstallForbidden(f"Plugin install setting {unknown!r} is not known to this server.")
+
+
+class CheckSkillEnabled(Requirement):
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not dify_config.ENABLE_SKILL:
+            raise SkillsDisabled()
 
 
 class CheckAppAccess(Requirement):

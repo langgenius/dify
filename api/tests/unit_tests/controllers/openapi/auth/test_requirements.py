@@ -32,6 +32,7 @@ from controllers.openapi._errors import (
     OpenApiErrorCode,
     OpenApiErrorFormatter,
     ServiceApiDisabled,
+    SkillsDisabled,
     WebAppAccessRequiresEE,
 )
 from controllers.openapi._models import ServiceApiPatch
@@ -46,6 +47,7 @@ from controllers.openapi.auth.requirements import (
     CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
+    CheckSkillEnabled,
     CheckSubject,
     CheckWebAppAuthEnterprise,
     CheckWorkspaceInvitationQuota,
@@ -179,6 +181,21 @@ class TestRequirementsCases:
         subject = account_subject()
 
         CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session)
+
+    @staticmethod
+    @pytest.mark.parametrize("enabled", [True, False])
+    def test_check_skill_enabled_follows_the_server_flag(
+        sqlite_session: Session, config_overrides: Callable[..., None], enabled: bool
+    ) -> None:
+        config_overrides(ENABLE_SKILL=enabled)
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject)
+
+        if enabled:
+            CheckSkillEnabled().run(subject, ctx, sqlite_session)
+            return
+        with pytest.raises(SkillsDisabled):
+            CheckSkillEnabled().run(subject, ctx, sqlite_session)
 
     class TestCheckRBACPermission:
         @staticmethod
@@ -640,6 +657,26 @@ ROUTES: tuple[Route, ...] = (
         "tool_providers.credential.set",
         "PATCH",
         "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route("skills.list", "GET", "/workspaces/{workspace_id}/skills", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("skills.describe", "GET", "/workspaces/{workspace_id}/skills/{skill_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route(
+        "skills.versions",
+        "GET",
+        "/workspaces/{workspace_id}/skills/{skill_id}/versions",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "skills.export",
+        "GET",
+        "/workspaces/{workspace_id}/skills/{skill_id}/archive",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "skills.publish",
+        "POST",
+        "/workspaces/{workspace_id}/skills/{skill_id}:publish",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
@@ -1310,6 +1347,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "workspaces.members.invite": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.check": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1394,6 +1433,19 @@ _REQ_ACCOUNT_WORKSPACE_READ_MEMBER = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_READ),
     CheckWorkspaceMember(),
+)
+_REQ_SKILL_READ = (
+    *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    CheckRBACPermission(RBACCheck(RBACPermission.SKILL_VIEW, Workspace())),
+    CheckSkillEnabled(),
+)
+_REQ_SKILL_PUBLISH = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())),
+    CheckWorkspaceRole(_EDITOR_UP),
+    CheckSkillEnabled(),
 )
 _REQ_MEMBER_MANAGE = (
     CheckSubject(allowed=_ACCOUNT),
@@ -1600,6 +1652,11 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "tool_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "skills.list": _REQ_SKILL_READ,
+    "skills.describe": _REQ_SKILL_READ,
+    "skills.versions": _REQ_SKILL_READ,
+    "skills.export": _REQ_SKILL_READ,
+    "skills.publish": _REQ_SKILL_PUBLISH,
     "knowledge_bases.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
@@ -1930,6 +1987,7 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "form_token": uuid.uuid4().hex,
         "run_id": str(uuid.uuid4()),
         "version_id": str(uuid.uuid4()),
+        "skill_id": str(uuid.uuid4()),
         "env_id": str(uuid.uuid4()),
         "node_type": "llm",
         "node_id": "node-1",
@@ -2137,6 +2195,11 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
         {"200", "422", "default"}
     ),
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills/{skill_id}"): frozenset({"200", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills/{skill_id}/archive"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/skills/{skill_id}:publish"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/models"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials"): frozenset(
         {"201", "422", "default"}
