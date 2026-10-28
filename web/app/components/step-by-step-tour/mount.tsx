@@ -765,38 +765,34 @@ export default function StepByStepTourMount({
 
           return (
             <div className={cn('relative', className)}>
-              {overlayVisible &&
-                !allTasksCompleted &&
-                activeTask &&
-                activeGuide &&
-                activeTargetElement && (
-                  <StepByStepTourCoachmark
-                    guide={{
-                      ...activeGuide,
-                      description: t(($) => $[activeGuide.description]),
-                      learnMoreHref: activeGuide.learnMoreDocPath
-                        ? docLink(activeGuide.learnMoreDocPath)
-                        : undefined,
-                      learnMoreLabel: t(($) => $[activeGuide.learnMoreLabel]),
-                      primaryActionLabel: t(($) => $[activeGuide.primaryActionLabel]),
-                      title: t(($) => $[activeGuide.title]),
-                    }}
-                    targetElement={activeTargetElement}
-                    placement={activeGuidePlacement}
-                    stepLabel={t(($) => $['stepByStepTour.stepLabel'], {
-                      ns: 'onboarding',
-                      current: activeStepIndex + 1,
-                      total: activeStepTotal,
-                    })}
-                    skipLabel={t(($) => $['stepByStepTour.skip'], { ns: 'onboarding' })}
-                    interactionPolicy={getStepByStepTourGuideInteractionPolicy(
-                      activeGuide,
-                      activeTask.canClickThrough,
-                    )}
-                    onSkip={skipActiveGuide}
-                    onComplete={completeActiveGuide}
-                  />
-                )}
+              {overlayVisible && !allTasksCompleted && activeTask && activeGuide && (
+                <StepByStepTourCoachmark
+                  guide={{
+                    ...activeGuide,
+                    description: t(($) => $[activeGuide.description]),
+                    learnMoreHref: activeGuide.learnMoreDocPath
+                      ? docLink(activeGuide.learnMoreDocPath)
+                      : undefined,
+                    learnMoreLabel: t(($) => $[activeGuide.learnMoreLabel]),
+                    primaryActionLabel: t(($) => $[activeGuide.primaryActionLabel]),
+                    title: t(($) => $[activeGuide.title]),
+                  }}
+                  targetElement={activeTargetElement}
+                  placement={activeGuidePlacement}
+                  stepLabel={t(($) => $['stepByStepTour.stepLabel'], {
+                    ns: 'onboarding',
+                    current: activeStepIndex + 1,
+                    total: activeStepTotal,
+                  })}
+                  skipLabel={t(($) => $['stepByStepTour.skip'], { ns: 'onboarding' })}
+                  interactionPolicy={getStepByStepTourGuideInteractionPolicy(
+                    activeGuide,
+                    activeTask.canClickThrough,
+                  )}
+                  onSkip={skipActiveGuide}
+                  onComplete={completeActiveGuide}
+                />
+              )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (
                 <Popover
                   open={overlayVisible && expanded}
@@ -834,7 +830,11 @@ export default function StepByStepTourMount({
                       >
                         <PopoverPopup
                           initialFocus={checklistCloseButtonRef}
-                          finalFocus={restoreTriggerRef}
+                          finalFocus={() =>
+                            hasActiveGuide && activeTargetElement
+                              ? false
+                              : restoreTriggerRef.current
+                          }
                         >
                           {floatingChecklist}
                         </PopoverPopup>
