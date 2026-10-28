@@ -126,10 +126,11 @@ class PluginApiKeyCredentialGateway:
         for config in schema:
             if config.type not in {"secret-input", "text-input", "select", "boolean"} or config.multiple:
                 raise ConnectionConfigurationError()
-            field = config.model_copy(deep=True)
-            if field.type == ProviderConfigType.SECRET_INPUT:
-                field.default = None
-            fields.append(field)
+            fields.append(
+                config.model_copy(
+                    deep=True, update={"default": None} if config.type == ProviderConfigType.SECRET_INPUT else None
+                )
+            )
         return tuple(fields)
 
     def validate_format(
