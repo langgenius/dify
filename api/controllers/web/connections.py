@@ -5,7 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from flask import request
-from pydantic import ConfigDict, Field, JsonValue, ValidationError, field_serializer
+from pydantic import ConfigDict, Field, JsonValue, RootModel, ValidationError, field_serializer
 from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
@@ -25,6 +25,7 @@ from controllers.common.end_user_connections import (
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from core.entities.provider_entities import ProviderConfig
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.datetime_utils import to_utc_timestamp
@@ -36,6 +37,7 @@ from services.end_user_connections.contracts import (
     ConnectionInput,
     ConnectionRevisionView,
     ConnectionSummary,
+    ConnectionTargetInput,
     CreateApiKeyConnectionInput,
     ListConnectionsInput,
     UpdateConnectionInput,
@@ -131,6 +133,14 @@ class EndUserConnectionRevisionResponse(ConnectionRevisionView, ResponseModel):
     pass
 
 
+class ConnectionCredentialSchemaQuery(ConnectionTargetInput):
+    pass
+
+
+class ConnectionCredentialSchemaResponse(RootModel[list[ProviderConfig]]):
+    pass
+
+
 class EndUserConnectionListQuery(ListConnectionsInput):
     limit: int = Field(default=20, ge=1, le=100, strict=False)
 
@@ -148,8 +158,35 @@ register_schema_models(
     EndUserConnectionListQuery,
 )
 register_response_schema_models(
-    web_ns, EndUserConnectionResponse, EndUserConnectionListResponse, EndUserConnectionRevisionResponse
+    web_ns,
+    EndUserConnectionResponse,
+    EndUserConnectionListResponse,
+    EndUserConnectionRevisionResponse,
+    ConnectionCredentialSchemaResponse,
 )
+
+
+@web_ns.route("/connections/credential-schema")
+class ConnectionCredentialSchemaApi(WebApiResource):
+    @web_ns.doc(params=query_params_from_model(ConnectionCredentialSchemaQuery))
+    @web_ns.doc(description="Read API-key form fields for an authorized published tool node; no credential values.")
+    @web_ns.response(200, "API-key form schema", web_ns.models[ConnectionCredentialSchemaResponse.__name__])
+    @error_responses(
+        ConnectionLoginRequiredError,
+        ConnectionConfigurationHTTPError,
+        ConnectionRevisionChangedHTTPError,
+        ConnectionCheckUnavailableHTTPError,
+    )
+    def get(self, app_model: App, end_user: EndUser):
+        try:
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
+            query = ConnectionCredentialSchemaQuery.model_validate(request.args.to_dict(flat=True))
+            result = application_services().end_user_connections.get_api_key_schema(context, query)
+        except ValidationError:
+            raise ValueError("Invalid connection schema query.") from None
+        except ConnectionError as error:
+            _raise_error(error)
+        return dump_response(ConnectionCredentialSchemaResponse, result), 200, {"Cache-Control": "no-store"}
 
 
 @web_ns.route("/connections")

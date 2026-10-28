@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
@@ -150,6 +151,50 @@ class TestCompletionStopApi:
 # ChatApi
 # ---------------------------------------------------------------------------
 class TestChatApi:
+    @pytest.mark.parametrize("conversation", [{}, {"conversation_id": None}, {"conversation_id": ""}])
+    def test_new_chatflow_normalizes_conversation_before_generation(
+        self, app: Flask, conversation: dict[str, str | None]
+    ) -> None:
+        connection_id = str(uuid.uuid4())
+        revision = str(uuid.uuid4())
+        with (
+            patch("controllers.web.completion.AppGenerateService.generate", return_value={}) as generate,
+            patch("controllers.web.completion.ConversationService.get_conversation") as get_conversation,
+            app.test_request_context(
+                "/chat-messages",
+                method="POST",
+                json={
+                    "inputs": {},
+                    "query": "hello",
+                    "connection_revision": revision,
+                    "connections": {"tool-1": connection_id},
+                    **conversation,
+                },
+            ),
+        ):
+            ChatApi().post(_app(AppMode.ADVANCED_CHAT), _end_user())
+
+        args = generate.call_args.kwargs["args"]
+        assert "conversation_id" not in args
+        assert args["connections"] == {"tool-1": connection_id}
+        assert args["connection_revision"] == revision
+        get_conversation.assert_not_called()
+
+    @pytest.mark.parametrize("conversation_id", ["not-a-uuid", " "])
+    def test_invalid_conversation_is_rejected_before_generation(self, app: Flask, conversation_id: str) -> None:
+        with (
+            patch("controllers.web.completion.AppGenerateService.generate") as generate,
+            app.test_request_context(
+                "/chat-messages",
+                method="POST",
+                json={"inputs": {}, "query": "hello", "conversation_id": conversation_id},
+            ),
+            pytest.raises(ValidationError),
+        ):
+            ChatApi().post(_app(AppMode.ADVANCED_CHAT), _end_user())
+
+        generate.assert_not_called()
+
     def test_wrong_mode_raises(self, app: Flask) -> None:
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(NotChatAppError):
@@ -210,6 +255,8 @@ class TestChatApi:
             unwrap(ChatApi.post)(ChatApi(), session, _chat_app(), _end_user())
 
         assert mock_get_conversation.call_args.kwargs["session"] is session
+        assert mock_get_conversation.call_args.kwargs["conversation_id"] == mock_ns.payload["conversation_id"]
+        assert mock_generate.call_args.kwargs["args"]["conversation_id"] == mock_ns.payload["conversation_id"]
 
 
 # ---------------------------------------------------------------------------
