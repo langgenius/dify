@@ -225,10 +225,6 @@ class ConnectionManagement(Protocol):
         self, context: WebConnectionContext, reference: ConnectionTargetInput
     ) -> tuple[ProviderConfig, ...]: ...
 
-    def get_connection_schema(
-        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
-    ) -> tuple[ProviderConfig, ...]: ...
-
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
         """Validate schema and target, check credentials, encrypt, then persist.
 

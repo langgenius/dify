@@ -72,9 +72,6 @@ import {
   zDeleteConversationsByCIdResponse,
   zDeleteSavedMessagesByMessageIdPath,
   zDeleteSavedMessagesByMessageIdResponse,
-  zGetConnectionsByConnectionIdCredentialSchemaPath,
-  zGetConnectionsByConnectionIdCredentialSchemaQuery,
-  zGetConnectionsByConnectionIdCredentialSchemaResponse,
   zGetConnectionsByConnectionIdPath,
   zGetConnectionsByConnectionIdResponse,
   zGetConnectionsByConnectionIdRevisionPath,
@@ -458,38 +455,6 @@ export const preflight = {
   post: post7,
 }
 
-/**
- * Read API-key form fields for an owned Connection, independently of published tool nodes.
- */
-export const get3 = oc
-  .route({
-    description:
-      'Read API-key form fields for an owned Connection, independently of published tool nodes.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getConnectionsByConnectionIdCredentialSchema',
-    path: '/connections/{connection_id}/credential-schema',
-    tags: ['web'],
-  })
-  .input(
-    z.object({
-      params: zGetConnectionsByConnectionIdCredentialSchemaPath,
-      query: zGetConnectionsByConnectionIdCredentialSchemaQuery,
-    }),
-  )
-  .output(zGetConnectionsByConnectionIdCredentialSchemaResponse)
-  .errors({
-    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
-    connection_not_found: { status: 404, data: zConnectionNotFoundError },
-    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
-    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
-  })
-
-export const credentialSchema2 = {
-  get: get3,
-}
-
 export const post8 = oc
   .route({
     inputStructure: 'detailed',
@@ -529,7 +494,7 @@ export const reauthorize = {
 /**
  * Read a Provider revision for an owned Connection, independently of published tool nodes.
  */
-export const get4 = oc
+export const get3 = oc
   .route({
     description:
       'Read a Provider revision for an owned Connection, independently of published tool nodes.',
@@ -549,7 +514,7 @@ export const get4 = oc
   })
 
 export const revision = {
-  get: get4,
+  get: get3,
 }
 
 /**
@@ -575,7 +540,7 @@ export const delete_ = oc
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   })
 
-export const get5 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -622,14 +587,13 @@ export const patch = oc
 
 export const byConnectionId = {
   delete: delete_,
-  get: get5,
+  get: get4,
   patch,
-  credentialSchema: credentialSchema2,
   reauthorize,
   revision,
 }
 
-export const get6 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -668,7 +632,7 @@ export const post9 = oc
   })
 
 export const connections = {
-  get: get6,
+  get: get5,
   post: post9,
   configuration,
   credentialSchema,
@@ -770,7 +734,7 @@ export const byCId = {
 /**
  * Retrieve paginated list of conversations for a chat application.
  */
-export const get7 = oc
+export const get6 = oc
   .route({
     description: 'Retrieve paginated list of conversations for a chat application.',
     inputStructure: 'detailed',
@@ -784,7 +748,7 @@ export const get7 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const conversations = {
-  get: get7,
+  get: get6,
   byCId,
 }
 
@@ -1001,7 +965,7 @@ export const uploadToken = {
  * Get a human input form definition by token
  * GET /api/form/human_input/<form_token>
  */
-export const get8 = oc
+export const get7 = oc
   .route({
     description:
       'Get a human input form definition by token\nGET /api/form/human_input/<form_token>',
@@ -1060,7 +1024,7 @@ export const post18 = oc
   })
 
 export const byFormToken = {
-  get: get8,
+  get: get7,
   post: post18,
   uploadToken,
 }
@@ -1118,7 +1082,7 @@ export const humanInputForms = {
 /**
  * Check login status
  */
-export const get9 = oc
+export const get8 = oc
   .route({
     description: 'Check login status',
     inputStructure: 'detailed',
@@ -1131,7 +1095,7 @@ export const get9 = oc
   .output(zGetLoginStatusResponse)
 
 export const status = {
-  get: get9,
+  get: get8,
 }
 
 /**
@@ -1207,7 +1171,7 @@ export const feedbacks = {
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get10 = oc
+export const get9 = oc
   .route({
     description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
@@ -1233,13 +1197,13 @@ export const get10 = oc
   })
 
 export const moreLikeThis = {
-  get: get10,
+  get: get9,
 }
 
 /**
  * Get suggested follow-up questions after a message (chat apps only).
  */
-export const get11 = oc
+export const get10 = oc
   .route({
     description: 'Get suggested follow-up questions after a message (chat apps only).',
     inputStructure: 'detailed',
@@ -1263,7 +1227,7 @@ export const get11 = oc
   })
 
 export const suggestedQuestions = {
-  get: get11,
+  get: get10,
 }
 
 export const byMessageId = {
@@ -1275,7 +1239,7 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get12 = oc
+export const get11 = oc
   .route({
     description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
@@ -1289,7 +1253,7 @@ export const get12 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const messages = {
-  get: get12,
+  get: get11,
   byMessageId,
 }
 
@@ -1298,7 +1262,7 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get13 = oc
+export const get12 = oc
   .route({
     description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
@@ -1312,7 +1276,7 @@ export const get13 = oc
   .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
-  get: get13,
+  get: get12,
 }
 
 /**
@@ -1370,7 +1334,7 @@ export const migration = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get14 = oc
+export const get13 = oc
   .route({
     description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
@@ -1387,13 +1351,13 @@ export const get14 = oc
   })
 
 export const parameters = {
-  get: get14,
+  get: get13,
 }
 
 /**
  * Get authentication passport for web application access
  */
-export const get15 = oc
+export const get14 = oc
   .route({
     description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
@@ -1427,7 +1391,7 @@ export const post25 = oc
   })
 
 export const passport = {
-  get: get15,
+  get: get14,
   post: post25,
 }
 
@@ -1507,7 +1471,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get16 = oc
+export const get15 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -1530,7 +1494,7 @@ export const get16 = oc
   })
 
 export const byUrl = {
-  get: get16,
+  get: get15,
 }
 
 export const remoteFiles = {
@@ -1562,7 +1526,7 @@ export const byMessageId2 = {
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get17 = oc
+export const get16 = oc
   .route({
     description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
@@ -1592,7 +1556,7 @@ export const post27 = oc
   .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
-  get: get17,
+  get: get16,
   post: post27,
   byMessageId: byMessageId2,
 }
@@ -1602,7 +1566,7 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get18 = oc
+export const get17 = oc
   .route({
     description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
@@ -1615,7 +1579,7 @@ export const get18 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get18,
+  get: get17,
 }
 
 /**
@@ -1627,7 +1591,7 @@ export const site = {
  *
  * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get19 = oc
+export const get18 = oc
   .route({
     description:
       'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
@@ -1641,7 +1605,7 @@ export const get19 = oc
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get19,
+  get: get18,
 }
 
 /**
@@ -1676,7 +1640,7 @@ export const textToAudio = {
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get20 = oc
+export const get19 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -1690,13 +1654,13 @@ export const get20 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
-  get: get20,
+  get: get19,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get21 = oc
+export const get20 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -1709,7 +1673,7 @@ export const get21 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get21,
+  get: get20,
 }
 
 export const webapp = {
@@ -1724,7 +1688,7 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get22 = oc
+export const get21 = oc
   .route({
     description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
@@ -1739,7 +1703,7 @@ export const get22 = oc
   .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
-  get: get22,
+  get: get21,
 }
 
 export const byTaskId3 = {

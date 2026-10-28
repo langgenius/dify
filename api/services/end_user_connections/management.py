@@ -208,21 +208,9 @@ class ConnectionService:
             credential_type=ConnectionCredentialType.API_KEY,
             target=target,
         )
-        return self._get_credential_schema(context, target.provider, reference.connection_revision)
-
-    def get_connection_schema(
-        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
-    ) -> tuple[ProviderConfig, ...]:
-        record = self._load(context, connection_id)
-        self._require_api_key(record)
-        return self._get_credential_schema(context, record.access.provider, connection_revision)
-
-    def _get_credential_schema(
-        self, context: WebConnectionContext, provider: str, revision: str
-    ) -> tuple[ProviderConfig, ...]:
-        admitted = self._revisions.require(context, provider, revision)
+        admitted = self._revisions.require(context, target.provider, reference.connection_revision)
         return self._credentials.get_schema(
-            context.tenant_id, provider, plugin_unique_identifier=admitted.plugin_unique_identifier
+            context.tenant_id, target.provider, plugin_unique_identifier=admitted.plugin_unique_identifier
         )
 
     def update_connection(

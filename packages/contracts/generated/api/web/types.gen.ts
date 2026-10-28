@@ -2031,36 +2031,6 @@ export type PatchConnectionsByConnectionIdResponses = {
 export type PatchConnectionsByConnectionIdResponse =
   PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
 
-export type GetConnectionsByConnectionIdCredentialSchemaData = {
-  body?: never
-  path: {
-    connection_id: string
-  }
-  query: {
-    connection_revision: string
-  }
-  url: '/connections/{connection_id}/credential-schema'
-}
-
-export type GetConnectionsByConnectionIdCredentialSchemaErrors = {
-  400: ConnectionConfigurationInvalidError | ErrorResponse
-  401: EndUserLoginRequiredError | ErrorResponse
-  404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionRevisionChangedError | ErrorResponse
-  503: CredentialCheckUnavailableError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type GetConnectionsByConnectionIdCredentialSchemaError =
-  GetConnectionsByConnectionIdCredentialSchemaErrors[keyof GetConnectionsByConnectionIdCredentialSchemaErrors]
-
-export type GetConnectionsByConnectionIdCredentialSchemaResponses = {
-  200: ConnectionCredentialSchemaResponse
-}
-
-export type GetConnectionsByConnectionIdCredentialSchemaResponse =
-  GetConnectionsByConnectionIdCredentialSchemaResponses[keyof GetConnectionsByConnectionIdCredentialSchemaResponses]
-
 export type PostConnectionsByConnectionIdReauthorizeData = {
   body: EndUserConnectionReauthorizePayload
   path: {

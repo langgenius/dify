@@ -10,7 +10,6 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth_entities import CredentialCheckResult
-from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
 from controllers.web import bp, connections, wraps
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.entities.common_entities import I18nObject
@@ -393,70 +392,15 @@ def test_credential_schema_rejects_invalid_targets(
     assert harness.cipher.values == {}
 
 
-def test_owned_credential_schema_survives_node_removal_without_exposing_saved_values(
-    client: FlaskClient, harness: ConnectionHarness
-) -> None:
-    from models.workflow import Workflow
-
-    connection = harness.service.create_api_key(harness.context, harness.command())
-    harness.auth.calls.clear()
-    with harness.sessions.begin() as session:
-        workflow = session.get(Workflow, harness.workflow_id)
-        assert workflow is not None
-        workflow.graph = '{"nodes":[]}'
-    revision = client.get(f"/api/connections/{connection.id}/revision").get_json()["connection_revision"]
-    response = client.get(
-        f"/api/connections/{connection.id}/credential-schema", query_string={"connection_revision": revision}
-    )
-    assert response.status_code == 200
-    assert response.headers["Cache-Control"] == "no-store"
-    assert response.get_json()[0]["name"] == "api_key"
-    assert "original-secret" not in response.get_data(as_text=True)
-    assert harness.auth.calls == []
-    changed = client.patch(
-        f"/api/connections/{connection.id}",
-        json={"connection_revision": revision, "credentials": {"api_key": "replacement"}},
-    )
-    assert changed.status_code == 200
-
-
-def test_owned_schema_hides_foreign_connections_and_rejects_oauth(
-    client: FlaskClient, harness: ConnectionHarness
-) -> None:
-    other = make_harness(harness.sessions)
-    foreign = other.service.create_api_key(other.context, other.command())
-    query = {"connection_revision": harness.connection_revision}
-    missing = client.get(f"/api/connections/{uuid4()}/credential-schema", query_string=query)
-    denied = client.get(f"/api/connections/{foreign.id}/credential-schema", query_string=query)
-    assert missing.status_code == denied.status_code == 404
-    assert missing.get_json() == denied.get_json()
-    owned = harness.service.create_api_key(harness.context, harness.command())
-    with harness.sessions.begin() as session:
-        session.execute(
-            sa.update(EndUserConnection)
-            .where(EndUserConnection.id == owned.id)
-            .values(credential_type=ConnectionCredentialType.OAUTH2, oauth_client_source=OAuthClientSource.WORKSPACE)
-        )
-    response = client.get(f"/api/connections/{owned.id}/credential-schema", query_string=query)
-    assert response.status_code == 400
-    assert response.get_json()["code"] == "connection_configuration_invalid"
-
-
 def test_schema_queries_follow_anonymous_connection_policy(
     client: FlaskClient, harness: ConnectionHarness, config_overrides: Callable[..., None]
 ) -> None:
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
     with harness.sessions.begin() as session:
         session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
-    query = {"connection_revision": harness.connection_revision}
-    for path, params in (
-        ("/api/connections/credential-schema", {**query, "node_id": "tool-1"}),
-        (f"/api/connections/{uuid4()}/credential-schema", query),
-    ):
-        response = client.get(path, query_string=params)
-        assert response.status_code == 401
-        assert response.get_json()["code"] == "end_user_login_required"
+    query = {"connection_revision": harness.connection_revision, "node_id": "tool-1"}
+    response = client.get("/api/connections/credential-schema", query_string=query)
+    assert response.status_code == 401
+    assert response.get_json()["code"] == "end_user_login_required"
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
-    assert (
-        client.get("/api/connections/credential-schema", query_string={**query, "node_id": "tool-1"}).status_code == 200
-    )
+    assert client.get("/api/connections/credential-schema", query_string=query).status_code == 200

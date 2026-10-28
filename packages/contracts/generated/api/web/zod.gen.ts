@@ -2585,20 +2585,6 @@ export const zPatchConnectionsByConnectionIdPath = z.object({
  */
 export const zPatchConnectionsByConnectionIdResponse = zEndUserConnectionResponse
 
-export const zGetConnectionsByConnectionIdCredentialSchemaPath = z.object({
-  connection_id: z.uuid(),
-})
-
-export const zGetConnectionsByConnectionIdCredentialSchemaQuery = z.object({
-  connection_revision: z.uuid(),
-})
-
-/**
- * API-key form schema
- */
-export const zGetConnectionsByConnectionIdCredentialSchemaResponse =
-  zConnectionCredentialSchemaResponse
-
 export const zPostConnectionsByConnectionIdReauthorizeBody = zEndUserConnectionReauthorizePayload
 
 export const zPostConnectionsByConnectionIdReauthorizePath = z.object({

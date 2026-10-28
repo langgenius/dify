@@ -34,7 +34,6 @@ from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import (
-    ConnectionContractInput,
     ConnectionInput,
     ConnectionRevisionView,
     ConnectionSummary,
@@ -138,10 +137,6 @@ class ConnectionCredentialSchemaQuery(ConnectionTargetInput):
     pass
 
 
-class OwnedConnectionCredentialSchemaQuery(ConnectionContractInput):
-    pass
-
-
 class ConnectionCredentialSchemaResponse(RootModel[list[ProviderConfig]]):
     pass
 
@@ -187,32 +182,6 @@ class ConnectionCredentialSchemaApi(WebApiResource):
             context = connection_context_from_web_passport(app=app_model, end_user=end_user)
             query = ConnectionCredentialSchemaQuery.model_validate(request.args.to_dict(flat=True))
             result = application_services().end_user_connections.get_api_key_schema(context, query)
-        except ValidationError:
-            raise ValueError("Invalid connection schema query.") from None
-        except ConnectionError as error:
-            _raise_error(error)
-        return dump_response(ConnectionCredentialSchemaResponse, result), 200, {"Cache-Control": "no-store"}
-
-
-@web_ns.route("/connections/<uuid:connection_id>/credential-schema")
-class OwnedConnectionCredentialSchemaApi(WebApiResource):
-    @web_ns.doc(params=query_params_from_model(OwnedConnectionCredentialSchemaQuery))
-    @web_ns.doc(description="Read API-key form fields for an owned Connection, independently of published tool nodes.")
-    @web_ns.response(200, "API-key form schema", web_ns.models[ConnectionCredentialSchemaResponse.__name__])
-    @error_responses(
-        ConnectionLoginRequiredError,
-        ConnectionNotFoundHTTPError,
-        ConnectionConfigurationHTTPError,
-        ConnectionRevisionChangedHTTPError,
-        ConnectionCheckUnavailableHTTPError,
-    )
-    def get(self, app_model: App, end_user: EndUser, connection_id: UUID):
-        try:
-            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
-            query = OwnedConnectionCredentialSchemaQuery.model_validate(request.args.to_dict(flat=True))
-            result = application_services().end_user_connections.get_connection_schema(
-                context, str(connection_id), connection_revision=query.connection_revision
-            )
         except ValidationError:
             raise ValueError("Invalid connection schema query.") from None
         except ConnectionError as error:

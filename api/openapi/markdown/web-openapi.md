@@ -303,28 +303,6 @@ Disconnect locally and remove live selections, then attempt OAuth revocation aga
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [GET] /connections/{connection_id}/credential-schema
-Read API-key form fields for an owned Connection, independently of published tool nodes.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| connection_revision | query | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes | string (uuid) |
-| connection_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | API-key form schema | **application/json**: [ConnectionCredentialSchemaResponse](#connectioncredentialschemaresponse)<br> |
-| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /connections/{connection_id}/reauthorize
 #### Parameters
 
