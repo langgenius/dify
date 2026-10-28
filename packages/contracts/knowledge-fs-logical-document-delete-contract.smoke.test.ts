@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { logicalDocuments } from './generated/api/console/knowledge-fs/orpc.gen.ts'
-import { logicalDocuments as serviceLogicalDocuments } from './generated/api/service/orpc.gen.ts'
 import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
   zKnowledgeFsDocumentDeletePayload,
 } from './generated/api/console/knowledge-fs/zod.gen.ts'
+import { logicalDocuments as serviceLogicalDocuments } from './generated/api/service/orpc.gen.ts'
 import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody as zServiceAssetDeleteBody,
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody as zServiceLogicalDeleteBody,
