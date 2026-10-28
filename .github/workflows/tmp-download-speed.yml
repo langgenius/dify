@@ -14,7 +14,7 @@ jobs:
   probe:
     name: Probe (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -23,22 +23,26 @@ jobs:
       - name: Measure downloads
         run: |
           probe() {
-            curl -sS -o /dev/null -L --max-time 120 \
+            curl -sS -o /dev/null -L --max-time 90 \
               -w "%{http_code}\t%{size_download}\t%{speed_download}\t%{time_total}\t%{remote_ip}\t$1\n" \
               "$2" || echo "fail\t-\t-\t-\t-\t$1"
           }
           {
             printf 'http\tbytes\tB/s\tseconds\tip\ttarget\n'
-            for round in 1 2; do
-              probe "nodejs.org node 24.22.1 (round $round)" https://nodejs.org/download/release/v24.22.1/node-v24.22.1-linux-x64.tar.gz
+            for version in v24.22.1 v22.11.0; do
+              file="$version/node-$version-linux-x64.tar.gz"
+              for base in \
+                https://nodejs.org/download/release \
+                https://nodejs.org/dist \
+                https://direct.nodejs.org/dist \
+                https://cdn.npmmirror.com/binaries/node \
+                https://mirrors.cloud.tencent.com/nodejs-release \
+                https://mirrors.aliyun.com/nodejs-release \
+                https://mirrors.ustc.edu.cn/node; do
+                probe "$base ($version)" "$base/$file"
+              done
             done
-            probe "GitHub mirror node 24.22.1" https://github.com/actions/node-versions/releases/download/24.22.1-39619001896/node-24.22.1-linux-x64.tar.gz
             probe "npm registry next@16.4.2 (44MB)" https://registry.npmjs.org/next/-/next-16.4.2.tgz
-            probe "npm registry @next/swc-linux-x64-gnu" https://registry.npmjs.org/@next/swc-linux-x64-gnu/-/swc-linux-x64-gnu-16.4.3.tgz
-            probe "npm registry @pnpm/exe.linux-x64@12.10.1" https://registry.npmjs.org/@pnpm/exe.linux-x64/-/exe.linux-x64-12.10.1.tgz
-            probe "npm registry typescript 5.9.3 (small)" https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz
-            probe "raw.githubusercontent.com" https://raw.githubusercontent.com/voidzero-dev/vite-plus/v1.4.0/packages/cli/install.sh
-            probe "PyPI numpy wheel" https://files.pythonhosted.org/packages/source/n/numpy/numpy-2.3.4.tar.gz
           } | tee results.tsv | column -t -s $'\t'
           {
             echo "### ${{ matrix.runner }}"
