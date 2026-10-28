@@ -174,6 +174,7 @@ def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
         assert json.loads(path.read_text(encoding="utf-8")) == live_payloads[path.name]
 
 
+@pytest.mark.timeout(60)  # Cold subprocess imports every controller before exporting specs.
 def test_generate_specs_after_controllers_were_imported_with_swagger_disabled(tmp_path: Path):
     api_dir = Path(__file__).resolve().parents[3]
     script = """

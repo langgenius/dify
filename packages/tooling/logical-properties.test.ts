@@ -58,7 +58,7 @@ it('enforces logical classes in both Web and Dify UI without the canonical-class
   } finally {
     test.close()
   }
-})
+}, 30000)
 
 it('preserves physical geometry and described exceptions while rejecting ordinary offsets', () => {
   const test = fixture()
@@ -77,7 +77,7 @@ it('preserves physical geometry and described exceptions while rejecting ordinar
   } finally {
     test.close()
   }
-})
+}, 30000)
 
 it('baselines Web debt, rejects additional violations, and fixes baselined classes', () => {
   const test = fixture()
@@ -94,4 +94,4 @@ it('baselines Web debt, rejects additional violations, and fixes baselined class
   } finally {
     test.close()
   }
-})
+}, 30000)

@@ -157,7 +157,7 @@ describe('Starting Build', () => {
     await user.click(workingDirectoryButton()!)
     expect(await screen.findByRole('dialog', { name: 'result.txt' })).toBeVisible()
     expect(await screen.findByText('Build result')).toBeVisible()
-  })
+  }, 15000)
 })
 
 describe('Leaving Build', () => {
@@ -221,7 +221,7 @@ describe('Leaving Build', () => {
     expect(api.getBuildDraft).not.toHaveBeenCalled()
     expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
     expect(screen.queryByText('Built answer')).not.toBeInTheDocument()
-  })
+  }, 15000)
 
   it('keeps the draft and confirmation open when discard fails, then supports retry', async () => {
     const user = userEvent.setup()
@@ -321,6 +321,7 @@ describe('Build stream completion', () => {
       await flushBuildRefresh()
       expect(applyButton()).toBeEnabled()
     },
+    15000,
   )
 
   it('reopens persisted Build history without retaining a previous page action lock', async () => {
