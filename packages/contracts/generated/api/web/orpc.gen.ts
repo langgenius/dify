@@ -12,6 +12,7 @@ import {
   zAudioTooLargeError,
   zAuthenticationFailedError,
   zCompletionRequestError,
+  zConversationCursorNotFoundError,
   zConversationFirstMessageNotFoundError,
   zConversationNotFoundError,
   zEmailCodeError,
@@ -406,7 +407,11 @@ export const get = oc
   })
   .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const conversations = {
   get,
