@@ -5,6 +5,7 @@ import pytest
 import services.app_definition_query_service as module
 from constants.end_user_connections import ConnectionCredentialType
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from core.tools.entities.common_entities import I18nObject
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionQuery,
@@ -177,11 +178,24 @@ def test_get_site_configuration_rejects_missing_site() -> None:
         service.get_site_configuration("app-1")
 
 
-def test_web_parameters_include_version_and_requirements_without_changing_public_parameters() -> None:
+@pytest.mark.parametrize(
+    ("language", "expected_label"),
+    [
+        ("en-US", "Calendar"),
+        ("pt-BR", "Calendario"),
+        ("zh-Hans", "Calendar (Chinese)"),
+        ("ja-JP", "Calendar"),
+        ("fr-FR", "Calendar"),
+    ],
+)
+def test_web_parameters_include_version_and_requirements_without_changing_public_parameters(
+    language: str, expected_label: str
+) -> None:
     service, definitions = _service()
     parameters = AppParameterConfig(features_dict={"opening_statement": "Hello"}, user_input_form=[])
     definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
         parameters=parameters,
+        default_language=language,
         workflow_id="published-version",
         requires_end_user_connections=True,
         connection_requirements=(
@@ -217,6 +231,7 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     providers = (
         ConnectionProviderMetadata(
             provider="vendor/calendar/calendar",
+            provider_label=I18nObject(en_US="Calendar", pt_BR="Calendario", zh_Hans="Calendar (Chinese)"),
             plugin_unique_identifier="vendor/calendar:1.0.0@" + "a" * 64,
             icon="https://console.example/plugin/icon.svg",
             icon_dark="https://console.example/plugin/icon-dark.svg",
@@ -231,6 +246,7 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     assert requirement.node_id == "tool-1"
     assert requirement.node_ids == ("tool-1", "tool-2")
     assert requirement.provider == "vendor/calendar/calendar"
+    assert requirement.provider_label == expected_label
     assert requirement.plugin_unique_identifier == providers[0].plugin_unique_identifier
     assert requirement.icon == providers[0].icon
     assert requirement.icon_dark == providers[0].icon_dark
@@ -265,6 +281,7 @@ def test_web_parameters_without_personal_tools_have_empty_requirements(workflow_
     service, definitions = _service()
     definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
         parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
+        default_language="en-US",
         workflow_id=workflow_id,
         requires_end_user_connections=False,
         connection_requirements=(),

@@ -6,6 +6,7 @@ from typing import Any, NamedTuple, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from constants.end_user_connections import ConnectionCredentialType
+from core.tools.entities.common_entities import I18nObject
 
 
 class ToolConnectionRequirement(BaseModel):
@@ -23,6 +24,7 @@ class ToolConnectionRequirement(BaseModel):
 
 class ConnectionProviderMetadata(NamedTuple):
     provider: str
+    provider_label: I18nObject
     plugin_unique_identifier: str
     icon: str
     icon_dark: str | None

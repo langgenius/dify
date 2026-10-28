@@ -192,9 +192,15 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
     @override
     def get_web_parameter_config(self, app_id: str, tenant_id: str) -> WebAppParameterConfig | None:
         with self._session_factory() as session:
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
-            if app is None:
+            record = session.execute(
+                select(App, Site.default_language)
+                .outerjoin(Site, Site.app_id == App.id)
+                .where(App.id == app_id, App.tenant_id == tenant_id)
+                .limit(1)
+            ).one_or_none()
+            if record is None:
                 return None
+            app, default_language = record
             if app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
                 workflow = session.scalar(
                     select(Workflow).where(
@@ -212,6 +218,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 except (KeyError, TypeError, ValueError):
                     return None
                 return WebAppParameterConfig(
+                    default_language=default_language or "en-US",
                     parameters=AppParameterConfig(
                         features_dict=workflow.features_dict,
                         user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
@@ -230,6 +237,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 return None
             return WebAppParameterConfig(
                 parameters=config,
+                default_language=default_language or "en-US",
                 workflow_id=None,
                 requires_end_user_connections=False,
                 connection_requirements=(),
