@@ -24,7 +24,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "jwcrypto>=1.5.6,<2",
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
     "openshell>=0.0.106,<0.1.0",
-    "pillow>=11.3.0,<13",
+    "pillow>=13.0.0,<14",
     "pydantic-ai-slim[anthropic,google,openai]==2.31.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",

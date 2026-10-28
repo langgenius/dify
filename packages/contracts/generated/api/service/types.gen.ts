@@ -507,6 +507,16 @@ export type Condition = {
   value?: string | Array<string> | number | null
 }
 
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -517,6 +527,11 @@ export type ConversationListQuery = {
   last_id?: string | null
   limit?: number
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+}
+
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
 }
 
 export type ConversationRenamePayload = (
@@ -1202,6 +1217,11 @@ export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 export type FilenameNotExistsError = ErrorResponse & {
   code: 'filename_not_exists_error'
   status: 400
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
 }
 
 export type FormInputConfig =
@@ -4577,6 +4597,7 @@ export type GetAppFeedbacksErrors = {
     | AppAbnormalStatusError
     | AppApiDisabledError
     | AppNotFoundError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse
@@ -4601,8 +4622,18 @@ export type PostAppsAnnotationReplyByActionData = {
 }
 
 export type PostAppsAnnotationReplyByActionErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4629,7 +4660,15 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
 export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
   400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4655,8 +4694,18 @@ export type GetAppsAnnotationsData = {
 }
 
 export type GetAppsAnnotationsErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4677,8 +4726,18 @@ export type PostAppsAnnotationsData = {
 }
 
 export type PostAppsAnnotationsErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4701,8 +4760,16 @@ export type DeleteAppsAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -4727,9 +4794,18 @@ export type PutAppsAnnotationsByAnnotationIdData = {
 }
 
 export type PutAppsAnnotationsByAnnotationIdErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
   404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4912,8 +4988,16 @@ export type GetConversationsData = {
 export type GetConversationsErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4937,8 +5021,15 @@ export type DeleteConversationsByConversationIdData = {
 export type DeleteConversationsByConversationIdErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4964,8 +5055,16 @@ export type PostConversationsByConversationIdNameData = {
 export type PostConversationsByConversationIdNameErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationFirstMessageNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8820,6 +8919,7 @@ export type GetMessagesErrors = {
     | AppAbnormalStatusError
     | AppApiDisabledError
     | AppNotFoundError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse
@@ -8851,6 +8951,7 @@ export type PostMessagesByMessageIdFeedbacksErrors = {
     | AppAbnormalStatusError
     | AppApiDisabledError
     | AppNotFoundError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse
@@ -8894,6 +8995,7 @@ export type GetMessagesByMessageIdSuggestedErrors = {
     | AppApiDisabledError
     | AppNotFoundError
     | AppSuggestedQuestionsAfterAnswerDisabledError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse

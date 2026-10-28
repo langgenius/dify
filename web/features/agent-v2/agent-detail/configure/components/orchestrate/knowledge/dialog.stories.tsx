@@ -55,8 +55,7 @@ function createPreviewQueryClient(many: boolean) {
       visibility: 'only_me',
       permission_keys: [
         'knowledge_space_read',
-        'knowledge_space_query',
-        ...(index % examples.length === 5 ? [] : ['knowledge_space_access_config']),
+        ...(index % examples.length === 5 ? [] : ['knowledge_space_query']),
       ],
       technical_summary: {
         knowledge_space_id: id,

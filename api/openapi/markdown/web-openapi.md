@@ -344,9 +344,9 @@ Retrieve paginated list of conversations for a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid conversation list query or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | App Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_cursor_not_found`: Cursor is outside the current list. `conversation_not_found`: The app or user is no longer available. | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -366,7 +366,7 @@ Delete a specific conversation.
 | 204 | Conversation deleted successfully |  |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -391,10 +391,11 @@ Rename a specific conversation with a custom name or auto-generate one.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| 200 | Conversation renamed successfully; model failure preserves the existing name. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist. `conversation_first_message_not_found`: No first message is available for automatic naming. | **application/json**: [ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation rename payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -414,12 +415,12 @@ Pin a specific conversation to keep it at the top of the list.
 | 200 | Conversation pinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /conversations/{c_id}/unpin
-Unpin a specific conversation to remove it from the top of the list.
+Remove the current user's pin. Succeeds when the conversation is already unpinned.
 
 #### Parameters
 
@@ -434,7 +435,7 @@ Unpin a specific conversation to remove it from the top of the list.
 | 200 | Conversation unpinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: The app or user is no longer available. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1517,6 +1518,22 @@ The connection requirements changed. Refresh and confirm again.
 | ---- | ---- | ----------- | -------- |
 | ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
 
+#### ConversationCursorNotFoundError
+
+The conversation cursor is not in the current list. Refresh the list and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationCursorNotFoundError |  | The conversation cursor is not in the current list. Refresh the list and try again. |  |
+
+#### ConversationFirstMessageNotFoundError
+
+The conversation has no message from which to generate a name.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationFirstMessageNotFoundError |  | The conversation has no message from which to generate a name. |  |
+
 #### ConversationInfiniteScrollPagination
 
 | Name | Type | Description | Required |
@@ -1533,6 +1550,14 @@ The connection requirements changed. Refresh and confirm again.
 | limit | integer, <br>**Default:** 20 |  | No |
 | pinned | boolean |  | No |
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | *Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+
+#### ConversationNotFoundError
+
+The conversation was not found for this user and app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationNotFoundError |  | The conversation was not found for this user and app. |  |
 
 #### ConversationRenamePayload
 

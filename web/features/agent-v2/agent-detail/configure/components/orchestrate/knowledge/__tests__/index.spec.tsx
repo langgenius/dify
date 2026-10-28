@@ -256,23 +256,45 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.spaces[0].is_missing).toBe(false)
   })
 
-  it.each([
-    'knowledge_space_read',
-    'knowledge_space_query',
-    'knowledge_space_access_config',
-  ] as const)('hides spaces without %s even when filtering by name', async (permission) => {
-    const user = userEvent.setup()
-    const restricted = space(SECOND, 'Restricted')
-    restricted.permission_keys = restricted.permission_keys.filter((key) => key !== permission)
-    setup([], { spaces: [space(), restricted] })
-    const dialog = await open(user)
-    expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1)
-    expect(within(dialog).queryByText('Restricted')).not.toBeInTheDocument()
-    await user.type(within(dialog).getByRole('searchbox'), 'Restricted')
-    expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
-    expect(within(dialog).getByText(/knowledgeFs.empty/)).toBeVisible()
-    expect(within(dialog).queryByText(/knowledgeFs.publishPermission/)).not.toBeInTheDocument()
-  })
+  it.each(['all_team_members', 'partial_members'] as const)(
+    'allows selecting a %s space with read and query permissions',
+    async (visibility) => {
+      const user = userEvent.setup()
+      setup([], {
+        spaces: [
+          {
+            ...space(),
+            visibility,
+            permission_keys: ['knowledge_space_read', 'knowledge_space_query'],
+          },
+        ],
+      })
+      const dialog = await open(user)
+      await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      expect(snapshot().knowledge.spaces).toEqual([
+        expect.objectContaining({ control_space_id: SPACE, name: 'Product manual' }),
+      ])
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['knowledge_space_read', 'knowledge_space_query'] as const)(
+    'hides spaces without %s even when filtering by name',
+    async (permission) => {
+      const user = userEvent.setup()
+      const restricted = space(SECOND, 'Restricted')
+      restricted.permission_keys = restricted.permission_keys.filter((key) => key !== permission)
+      setup([], { spaces: [space(), restricted] })
+      const dialog = await open(user)
+      expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1)
+      expect(within(dialog).queryByText('Restricted')).not.toBeInTheDocument()
+      await user.type(within(dialog).getByRole('searchbox'), 'Restricted')
+      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(within(dialog).getByText(/knowledgeFs.empty/)).toBeVisible()
+      expect(within(dialog).queryByText(/knowledgeFs.publishPermission/)).not.toBeInTheDocument()
+    },
+  )
 
   it('hides unavailable and inactive spaces from the candidate list', async () => {
     const user = userEvent.setup()
@@ -339,7 +361,7 @@ describe('KnowledgeFS composer interaction', () => {
         ],
         pageParams: [1],
       })
-    refresh([{ ...space(), permission_keys: ['knowledge_space_read', 'knowledge_space_query'] }])
+    refresh([{ ...space(), permission_keys: ['knowledge_space_read'] }])
     await waitFor(() => expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument())
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(within(dialog).getByRole('alert').textContent).toMatch(/knowledgeFs.unavailable/)

@@ -9,7 +9,7 @@ import type {
 import type { WebAppEntryState } from '../../webapp-entry'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { captureAppAccessScope } from '@/features/app-access-error/state'
@@ -183,9 +183,8 @@ function selections() {
   >
 }
 
-function selectedAccount(serviceName: string) {
-  const row = screen.getByRole('listitem', { name: serviceName })
-  return within(row).getByRole('button', { name: serviceName })
+function selectedAccount(description: string) {
+  return screen.getByRole('button', { name: 'GitHub', description: new RegExp(description) })
 }
 
 type Scope = {
@@ -295,7 +294,7 @@ describe('WebAppConnectionsProvider', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Run configuration')).toHaveTextContent(firstId),
     )
-    await user.click(selectedAccount('Find repositories'))
+    await user.click(selectedAccount('Read repositories for the research brief.'))
     await user.click(await screen.findByRole('button', { name: 'work@example.com' }))
     await waitFor(() => expect(checks).toHaveLength(3))
     expect(selections()['source-a']).toBe(secondId)
@@ -406,15 +405,21 @@ describe('WebAppConnectionsProvider', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
     )
-    expect(selectedAccount('Find repositories')).toHaveTextContent('work@example.com')
-    expect(selectedAccount('Read README')).toHaveTextContent('personal@example.com')
+    expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
+      'work@example.com',
+    )
+    expect(selectedAccount('Read documentation for the answer.')).toHaveTextContent(
+      'personal@example.com',
+    )
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getByLabelText('More connections')).toHaveTextContent('true')
 
     await user.click(screen.getByRole('button', { name: 'Load more connections' }))
 
     await waitFor(() =>
-      expect(selectedAccount('Find repositories')).toHaveTextContent('updated-work@example.com'),
+      expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
+        'updated-work@example.com',
+      ),
     )
     expect(screen.getByLabelText('More connections')).toHaveTextContent('false')
     const lastRequest = new URL(requests.at(-1)!.url)
@@ -446,7 +451,7 @@ describe('WebAppConnectionsProvider', () => {
       'reuse-a': 'source-a',
       'source-b': 'source-b',
     })
-    await user.click(selectedAccount('Find repositories'))
+    await user.click(selectedAccount('Read repositories for the research brief.'))
     await user.click(await screen.findByRole('button', { name: 'work@example.com' }))
     expect(selections()).toEqual({ 'source-a': secondId, 'source-b': secondId })
 
@@ -454,10 +459,12 @@ describe('WebAppConnectionsProvider', () => {
     expect(selections()).toEqual({ 'source-a': firstId, 'source-b': secondId })
     await user.click(screen.getByRole('button', { name: 'Clear reused node connection' }))
     expect(selections()).toEqual({ 'source-a': null, 'source-b': secondId })
-    expect(selectedAccount('Find repositories')).toHaveTextContent(
+    expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
       'share.connections.setup.selectConnection',
     )
-    expect(selectedAccount('Read README')).toHaveTextContent('work@example.com')
+    expect(selectedAccount('Read documentation for the answer.')).toHaveTextContent(
+      'work@example.com',
+    )
     expect(onConnect).not.toHaveBeenCalled()
   })
 
@@ -478,10 +485,10 @@ describe('WebAppConnectionsProvider', () => {
       expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
     )
     expect(selections()).toEqual({ 'source-a': null, 'source-b': null })
-    expect(selectedAccount('Find repositories')).toHaveTextContent(
+    expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
       'share.connections.setup.selectConnection',
     )
-    expect(selectedAccount('Read README')).toHaveTextContent(
+    expect(selectedAccount('Read documentation for the answer.')).toHaveTextContent(
       'share.connections.setup.selectConnection',
     )
   })
@@ -568,7 +575,9 @@ describe('WebAppConnectionsProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Load more connections' }))
 
     await waitFor(() => expect(screen.getByLabelText('Connection error')).not.toBeEmptyDOMElement())
-    expect(selectedAccount('Find repositories')).toHaveTextContent('work@example.com')
+    expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
+      'work@example.com',
+    )
     expect(selections()['source-a']).toBe(secondId)
     expect(screen.getByLabelText('More connections')).toHaveTextContent('true')
     expect(nextPageAttempts).toBe(1)
@@ -607,7 +616,9 @@ describe('WebAppConnectionsProvider', () => {
     )
     expect(screen.getByLabelText('Connection error')).not.toBeEmptyDOMElement()
     await waitFor(() =>
-      expect(selectedAccount('Find repositories')).toHaveTextContent('work@example.com'),
+      expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
+        'work@example.com',
+      ),
     )
     expect(selections()['source-a']).toBe(secondId)
     expect(listAttempts).toBe(1)
@@ -646,7 +657,7 @@ describe('WebAppConnectionsProvider', () => {
       await waitFor(() =>
         expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
       )
-      await user.click(selectedAccount('Find repositories'))
+      await user.click(selectedAccount('Read repositories for the research brief.'))
       await user.click(await screen.findByRole('button', { name: 'work@example.com' }))
       expect(selections()['source-a']).toBe(secondId)
 
@@ -686,7 +697,9 @@ describe('WebAppConnectionsProvider', () => {
         )
       })
       expect(selections()).toEqual({ 'source-a': firstId, 'source-b': secondId })
-      expect(selectedAccount('Find repositories')).toHaveTextContent('personal@example.com')
+      expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
+        'personal@example.com',
+      )
     },
   )
 })

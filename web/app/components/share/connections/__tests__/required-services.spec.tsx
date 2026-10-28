@@ -86,7 +86,7 @@ describe('RequiredServices', () => {
     }).services
     const props = { services, onConnect: vi.fn(), onConnectionChange: vi.fn() }
     const { rerender } = render(<RequiredServices {...props} />)
-    const row = screen.getByRole('listitem', { name: 'Research documents' })
+    const row = screen.getByRole('listitem', { name: 'Research' })
     expect(row.querySelector('img')).toHaveAttribute('src', '/provider-light.svg')
 
     theme.value = 'dark'

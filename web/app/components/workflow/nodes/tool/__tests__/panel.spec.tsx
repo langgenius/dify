@@ -11,6 +11,7 @@ import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { renderNodePanel } from '../../__tests__/render-node-panel'
 import Panel from '../panel'
+import { ToolCredentialSource } from '../types'
 
 const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
   title: 'Google Search',
@@ -40,6 +41,7 @@ const createTool = (output_schema: ToolApiEntity['output_schema'] = {}): ToolApi
 const renderPanel = ({
   tool = createTool(),
   authorized = true,
+  nodeData = {} as Partial<ToolNodeType>,
   definitions = [] as { name: string; schema: Record<string, unknown> }[],
 } = {}) => {
   const queryClient = createConsoleQueryClient()
@@ -66,6 +68,7 @@ const renderPanel = ({
     createNodeData({
       tool_parameters: { count: { type: VarKindType.constant, value: 2 } },
       tool_configurations: { limit: { type: VarKindType.constant, value: 10 } },
+      ...nodeData,
     }),
     { queryClient, resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' } },
   )
@@ -107,6 +110,31 @@ describe('ToolPanel', () => {
     for (const name of ['text', 'files', 'json']) expect(screen.getByText(name)).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
+
+  it.each([ToolCredentialSource.EndUser, ToolCredentialSource.ReuseNode])(
+    'allows configuring tool inputs and settings before %s authorization is configured',
+    async (credentialSource) => {
+      const user = userEvent.setup()
+      const { data } = renderPanel({
+        authorized: false,
+        nodeData: { credential_source: credentialSource },
+      })
+      const count = screen.getByRole<HTMLInputElement>('textbox', { name: 'count' })
+      await user.click(count)
+      count.select()
+      await user.paste('3')
+      const limit = screen.getByRole<HTMLInputElement>('textbox', { name: 'limit' })
+      await user.click(limit)
+      limit.select()
+      await user.paste('20')
+
+      expect(data()).toMatchObject({
+        credential_source: credentialSource,
+        tool_parameters: { count: { type: VarKindType.constant, value: 3 } },
+        tool_configurations: { limit: { type: VarKindType.constant, value: 20 } },
+      })
+    },
+  )
 
   it('renders scalar outputs and matches structured outputs to schema definitions', async () => {
     const user = userEvent.setup()
