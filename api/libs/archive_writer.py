@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import BinaryIO, Final, Protocol, cast, override
 
-_COPY_CHUNK_SIZE = 1024 * 1024
-_SPOOL_MAX_MEMORY = 16 * 1024 * 1024
+BYTES_PER_MIB: Final = 1024 * 1024
+_COPY_CHUNK_SIZE = BYTES_PER_MIB
+_SPOOL_MAX_MEMORY = 16 * BYTES_PER_MIB
 _FILE_MODE = stat.S_IFREG | 0o644
 _EXTERNAL_ATTR_SHIFT = 16
 _PATH_SEPARATOR = "/"

@@ -1867,7 +1867,7 @@ export const zSkillExportQuery = z.object({
  * SkillImportBody
  */
 export const zSkillImportBody = z.object({
-  draft_hash: z.string().nullish(),
+  draft_hash: z.string().regex(/^\d+$/).nullish(),
   files: z.record(
     z.string(),
     z.union([

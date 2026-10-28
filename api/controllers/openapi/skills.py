@@ -11,7 +11,6 @@ from typing import Any, Final
 
 from flask import send_file
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
@@ -36,6 +35,7 @@ from controllers.openapi._errors import (
     SkillPackageTooLarge,
     SkillRequestRejected,
     SkillVersionNotFound,
+    require_uuid,
 )
 from controllers.openapi._models import (
     Hint,
@@ -63,6 +63,7 @@ from controllers.openapi.auth.requirements import (
     workspace_write_guards,
 )
 from libs.archive_writer import (
+    BYTES_PER_MIB,
     ArchiveEmptyError,
     ArchiveError,
     ArchiveLimitKind,
@@ -80,6 +81,7 @@ from services.skill_management_service import (
     SkillManagementService,
     SkillManagementServiceError,
     SkillOverwritePayload,
+    max_skill_archive_bytes,
 )
 from services.skill_management_service import SkillPublishPayload as ServiceSkillPublishPayload
 
@@ -134,12 +136,11 @@ _REJECTIONS: Final[Mapping[str, type[OpenApiError]]] = {
     **dict.fromkeys(_TOO_LARGE_CODES, SkillPackageTooLarge),
 }
 
-_BYTES_PER_MIB: Final = 1024 * 1024
 _IMPORT_FILENAME: Final = "skill.zip"
 
 _LIMIT_MESSAGES: Final[Mapping[ArchiveLimitKind, Callable[[int], str]]] = {
     ArchiveLimitKind.ENTRIES: lambda limit: f"The skill folder has more than {limit} files",
-    ArchiveLimitKind.BYTES: lambda limit: f"The skill folder is over {limit // _BYTES_PER_MIB} MiB",
+    ArchiveLimitKind.BYTES: lambda limit: f"The skill folder is over {limit // BYTES_PER_MIB} MiB",
 }
 
 _READ_GUARDS: Final = (
@@ -178,17 +179,13 @@ def _rejecting(*, hints: Mapping[type[OpenApiError], list[Hint]] | None = None) 
         raise rejection from error
 
 
-def _skill_upload_bytes() -> int:
-    return dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * _BYTES_PER_MIB
-
-
 def _skill_upload_parts() -> int:
     plain_fields = len(SkillImportBody.model_fields) - len(file_fields(SkillImportBody))
     return dify_config.SKILL_PACKAGE_MAX_ENTRIES + plain_fields
 
 
 _UPLOAD_CAP: Final = CapRequestBody(
-    max_bytes=lambda: _skill_upload_bytes() + multipart_header_allowance(_skill_upload_parts()),
+    max_bytes=lambda: max_skill_archive_bytes() + multipart_header_allowance(_skill_upload_parts()),
     max_parts=_skill_upload_parts,
 )
 
@@ -207,7 +204,7 @@ def _archive_rejection(error: ArchiveError) -> OpenApiError:
 def _archive_of(folder: UploadParts) -> bytes:
     options = ArchiveOptions(
         StrictPathPolicy(),
-        ArchiveLimits(max_entries=dify_config.SKILL_PACKAGE_MAX_ENTRIES, max_bytes=_skill_upload_bytes()),
+        ArchiveLimits(max_entries=dify_config.SKILL_PACKAGE_MAX_ENTRIES, max_bytes=max_skill_archive_bytes()),
     )
     try:
         result = write_archive(entries_from_folder(folder_streams(folder)), options)
@@ -226,10 +223,7 @@ def _draft_hash(updated_at_epoch: int) -> str:
 def _expected_updated_at(draft_hash: str | None) -> int | None:
     if draft_hash is None:
         return None
-    try:
-        return int(draft_hash)
-    except ValueError as error:
-        raise BadRequest("draft_hash is not one this server issued") from error
+    return int(draft_hash)
 
 
 def _version_fields(record: Mapping[str, Any]) -> dict[str, Any]:
@@ -280,6 +274,7 @@ class SkillDescribeApi(Resource):
         returns=(HTTPStatus.OK, SkillDescribeResponse, "Skill"),
     )
     def get(self, ctx: RequestContext, workspace_id: str, skill_id: str):
+        skill_id = require_uuid(skill_id, not_found=SkillNotFound)
         service = SkillManagementService()
         with _rejecting():
             record = service.get_skill(tenant_id=ctx.active_workspace_id, skill_id=skill_id)
@@ -307,6 +302,7 @@ class SkillVersionListApi(Resource):
         returns=(HTTPStatus.OK, SkillVersionListResponse, "Versions"),
     )
     def get(self, ctx: RequestContext, workspace_id: str, skill_id: str, *, query: SkillVersionListQuery):
+        skill_id = require_uuid(skill_id, not_found=SkillNotFound)
         with _rejecting():
             records = SkillManagementService().list_versions(tenant_id=ctx.active_workspace_id, skill_id=skill_id)
         rows = [SkillVersionRow.model_validate(_version_fields(record)) for record in records["data"]]
@@ -329,6 +325,7 @@ class SkillExportApi(Resource):
         returns=(HTTPStatus.OK, BinaryFileResponse, "Zip archive"),
     )
     def get(self, ctx: RequestContext, workspace_id: str, skill_id: str, *, query: SkillExportQuery):
+        skill_id = require_uuid(skill_id, not_found=SkillNotFound)
         service = SkillManagementService()
         with _rejecting():
             if query.version_id is None:
@@ -361,6 +358,7 @@ class SkillPublishApi(Resource):
         returns=(HTTPStatus.OK, SkillPublishResponse, "Published"),
     )
     def post(self, ctx: RequestContext, workspace_id: str, skill_id: str, *, body: SkillPublishPayload):
+        skill_id = require_uuid(skill_id, not_found=SkillNotFound)
         with _rejecting():
             record = SkillManagementService().publish_skill(
                 tenant_id=ctx.active_workspace_id,
@@ -385,7 +383,7 @@ class SkillImportApi(Resource):
                 input={
                     "files": {"SKILL.md": "./my-skill/SKILL.md"},
                     "skill_id": "<skill_id>",
-                    "draft_hash": "<draft_hash>",
+                    "draft_hash": "1761200000",
                 },
             ),
         ),

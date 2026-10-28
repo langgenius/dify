@@ -14,7 +14,7 @@ A workspace skill is a folder with a `SKILL.md` at its root, plus any files it u
 2. `difyctl import skill --files <dir>`
 3. `difyctl publish skill --skill-id <skill_id>`. Import never publishes. Use the `skill_id` from the import result.
 
-A name already taken gives 409. The hint is an import with `--skill-id`; use it only if the human wants to replace that skill.
+A name already taken gives 409. The hint is an import with `--skill-id`; use it only if the human wants to replace that skill. Find the existing skill's id with `difyctl get skill --keyword <name>`.
 
 ## Change a skill
 
@@ -29,7 +29,7 @@ Leaving out `--draft-hash` on an overwrite skips the conflict check, so the impo
 
 The folder replaces the whole draft. A file you leave out of the folder is deleted from the draft.
 
-If step 5 gives 409, someone else changed the draft after your `describe`. Run steps 1 to 4 again and redo your edits on the new export.
+If step 5 gives 409, someone changed or published the skill since you took the hash. Run steps 1 to 4 again and redo your edits on the new export.
 
 ## Read what is live
 
