@@ -16,13 +16,14 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.console import flask_admission
 from controllers.console.agent import tracing_runs
+from domain.tracing.trace_run_agg import TraceRunState, TraceSourceKind
 from extensions.ext_application_services import ApplicationServices
 from libs.external_api import ExternalApi
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
 from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.tracing.collection import TraceRunState, TraceRunStatus, TraceSourceKind
+from services.tracing.collection import TraceRunStatus
 from services.tracing.errors import TraceCollectionConflictError, TraceCollectionError, TraceCollectionNotFoundError
 from tests.helpers.unit.config_override import apply_config_overrides
 

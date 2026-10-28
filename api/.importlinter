@@ -6,6 +6,7 @@ root_packages =
     context
     configs
     controllers
+    domain
     extensions
     factories
     fields
@@ -16,6 +17,26 @@ root_packages =
     tasks
     services
 include_external_packages = True
+
+[importlinter:contract:domain-boundary]
+name = Domain code depends on no application, persistence, framework, configuration, queue, transport, or legacy kernel code
+type = forbidden
+source_modules =
+    domain
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    enterprise
+    extensions
+    flask
+    models
+    repositories
+    services
+    sqlalchemy
+    tasks
+    werkzeug
 
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
@@ -1306,10 +1327,10 @@ type = forbidden
 source_modules =
     services.tracing.canonical
     services.tracing.collection
+    services.tracing.collection_ports
     services.tracing.delivery
     services.tracing.errors
     services.tracing.hierarchy
-    services.tracing.normalization
     services.tracing.provider_configs
     services.tracing.providers
     services.tracing.records
@@ -1352,6 +1373,7 @@ forbidden_modules =
     services.tracing.registry
     services.tracing.runtime_bridge
     services.tracing.service
+    domain
 # The composition root (extensions.ext_application_services) wires repositories and
 # adapters, so only direct imports are checked here.
 allow_indirect_imports = True

@@ -6,13 +6,16 @@ Message is complete. Recovery never invents answers, usage, or success states.
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent, TracePayload, WorkflowRunCompleted
 
-from graphon.enums import WorkflowExecutionStatus
-from services.tracing.collection import ApplicationTraceStore, TraceRun, TraceRunState
+from domain.tracing.errors import TraceRunError
+from domain.tracing.terminal_recovery import message_terminal_due, workflow_terminal_due
+from domain.tracing.trace_run_agg import TraceRunAgg
+from libs.datetime_utils import naive_utc_now
+from services.tracing.collection_ports import TraceRunRepository, TraceSourceQuery
 from services.tracing.delivery import TraceCollector, TraceRecordSource
 from services.tracing.errors import (
     SourceNotFoundError,
@@ -24,16 +27,9 @@ from services.tracing.errors import (
 from services.tracing.records import MessageTraceInfo, WorkflowTraceInfo
 
 logger = logging.getLogger(__name__)
-_SETTLE_SECONDS = 5
-_WORKFLOW_TERMINAL = {
-    WorkflowExecutionStatus.SUCCEEDED,
-    WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
-    WorkflowExecutionStatus.FAILED,
-    WorkflowExecutionStatus.STOPPED,
-}
 
 
-def _event(run: TraceRun, payload: TracePayload, user_id: str | None) -> TraceEvent:
+def _event(run: TraceRunAgg, payload: TracePayload, user_id: str | None) -> TraceEvent:
     return TraceEvent(
         event_id=uuid4().hex,
         tenant_id=run.tenant_id,
@@ -51,49 +47,22 @@ def _event(run: TraceRun, payload: TracePayload, user_id: str | None) -> TraceEv
 
 
 def _message_event(
-    traces: ApplicationTraceStore, run: TraceRun, now: datetime, collection_timeout: int
+    sources: TraceSourceQuery, run: TraceRunAgg, now: datetime, collection_timeout: int
 ) -> TraceEvent | None:
-    progress = traces.message_progress(tenant_id=run.tenant_id, app_id=run.app_id, message_id=run.source_id)
+    progress = sources.message_progress(tenant_id=run.tenant_id, app_id=run.app_id, message_id=run.source_id)
     if progress is None:
         raise TraceCollectionNotFoundError("tracing_source_not_found")
-    pending_agent_stop = progress.agent_app and progress.agent_stop_requested
-    if progress.paused and not pending_agent_stop:
-        return None
-    invocations = traces.invocations(run.id)
-    if any(not invocation.finalized or invocation.finalized_at is None for invocation in invocations):
-        if (progress.explicit_error or pending_agent_stop) and progress.updated_at + timedelta(
-            seconds=collection_timeout
-        ) < now:
-            raise TraceCollectionError("agent_trace_collection_incomplete")
-        return None
-    finalized = [invocation.finalized_at for invocation in invocations if invocation.finalized_at is not None]
-    anchor = max([progress.updated_at, *finalized])
-    if pending_agent_stop:
-        # Even a fully saved partial answer/usage cannot establish which
-        # runtime terminal won the stop race. Wait for the existing worker
-        # handoff, or converge to incomplete delivery after its deadline.
-        if anchor + timedelta(seconds=collection_timeout) < now:
-            raise TraceCollectionError("business_terminal_not_persisted")
-        return None
-    if run.capture_agent and not invocations:
-        return None
-    if anchor + timedelta(seconds=_SETTLE_SECONDS) > now:
-        return None
-    if not (progress.explicit_error or progress.answer_saved):
-        if finalized and max(finalized) + timedelta(seconds=collection_timeout) < now:
-            raise TraceCollectionError("business_terminal_not_persisted")
+    if not message_terminal_due(run, progress, now=now, collection_timeout=collection_timeout):
         return None
     return _event(run, MessageCompleted(message_id=progress.message_id, conversation_id=progress.conversation_id), None)
 
 
-def _workflow_event(traces: ApplicationTraceStore, run: TraceRun, now: datetime) -> TraceEvent | None:
-    workflow = traces.workflow_run(tenant_id=run.tenant_id, app_id=run.app_id, workflow_run_id=run.source_id)
+def _workflow_event(sources: TraceSourceQuery, run: TraceRunAgg, now: datetime) -> TraceEvent | None:
+    workflow = sources.workflow_run(tenant_id=run.tenant_id, app_id=run.app_id, workflow_run_id=run.source_id)
     # An asynchronous workflow repository may not have saved the reserved run yet.
-    if workflow is None or workflow.status not in _WORKFLOW_TERMINAL or workflow.finished_at is None:
+    if workflow is None or not workflow_terminal_due(workflow, now=now):
         return None
-    if workflow.finished_at + timedelta(seconds=_SETTLE_SECONDS) > now:
-        return None
-    conversation_id = traces.workflow_run_conversation_id(
+    conversation_id = sources.workflow_run_conversation_id(
         tenant_id=run.tenant_id, app_id=run.app_id, workflow_run_id=workflow.id
     )
     return _event(
@@ -104,9 +73,10 @@ def _workflow_event(traces: ApplicationTraceStore, run: TraceRun, now: datetime)
 
 
 def recover_terminal(
-    run: TraceRun,
+    run: TraceRunAgg,
     *,
-    traces: ApplicationTraceStore,
+    runs: TraceRunRepository,
+    sources: TraceSourceQuery,
     records: TraceRecordSource,
     collector: TraceCollector,
     collection_timeout: int,
@@ -116,18 +86,14 @@ def recover_terminal(
 
     ``now`` is naive UTC, like the ledger's timestamps.
     """
-    if (
-        run.outer_trace is not None
-        or run.state not in {TraceRunState.COLLECTING, TraceRunState.READY}
-        or run.source_kind not in {"message", "workflow"}
-    ):
+    if not run.awaits_terminal or run.source_kind not in {"message", "workflow"}:
         return False
     error_code: str | None = None
     try:
         event = (
-            _message_event(traces, run, now, collection_timeout)
+            _message_event(sources, run, now, collection_timeout)
             if run.source_kind == "message"
-            else _workflow_event(traces, run, now)
+            else _workflow_event(sources, run, now)
         )
         if event is None:
             return False
@@ -142,7 +108,7 @@ def recover_terminal(
         if not collector.capture_terminal(tenant_id=run.tenant_id, info=info):
             raise TraceCollectionError("business_terminal_recovery_unclaimed")
         return True
-    except TraceCollectionError as error:
+    except (TraceCollectionError, TraceRunError) as error:
         error_code = error.code
         return False
     except TracingStoreUnavailableError:
@@ -154,4 +120,6 @@ def recover_terminal(
         logger.warning("Application trace recovery failed: run_id=%s error_type=%s", run.id, type(error).__name__)
         return False
     finally:
-        traces.recovery_checked(run.id, error_code=error_code)
+        with runs.change(run.id) as locked:
+            if locked is not None:
+                locked.run.recovery_checked(error_code, now=naive_utc_now())

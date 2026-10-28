@@ -8,7 +8,7 @@ from dify_trace_sdk.ids import span_id_for
 from dify_trace_sdk.model import Cost, Span, SpanKind, SpanStatus, TokenUsage, Trace
 from pydantic import ValidationError
 
-from services.tracing.normalization import (
+from domain.tracing.normalization import (
     legacy_outer_trace,
     normalize_agent_span,
     order_spans,

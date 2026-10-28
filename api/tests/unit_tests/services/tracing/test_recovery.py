@@ -49,6 +49,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
+from domain.tracing.trace_run_agg import TraceInvocation, TraceRunState
 from events.event_handlers import update_provider_when_message_created as receiver
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks, bind_tracing
@@ -65,7 +66,7 @@ from repositories.application_trace_repository import ApplicationTraceRepository
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
-from services.tracing.collection import AgentTraceSettings, TraceInvocation, TraceRun, TraceRunState
+from services.tracing.collection import AgentTraceSettings, TraceRun
 from services.tracing.delivery import TraceRecordSource
 from services.tracing.errors import SourceNotReadyError, TraceCollectionNotFoundError
 from services.tracing.providers import ProviderConfigCodec
@@ -104,9 +105,11 @@ class Collection:
     run: TraceRun
 
     def invocation(self, name: str) -> TraceInvocation:
-        return self.repository.invocation(
-            run_id=self.run.id, agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key=name
-        )
+        with self.repository.change(self.run.id) as locked:
+            assert locked is not None
+            return locked.run.open_invocation(
+                agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key=name
+            )
 
 
 class ScriptedProvider(TraceProvider[LangfuseConfig]):
@@ -140,6 +143,32 @@ class ScriptedProvider(TraceProvider[LangfuseConfig]):
         return SendResult(
             trace_id=str(body["trace_id"]), trace_url=body.get("trace_url"), span_urls=body.get("span_urls", {})
         )
+
+
+def record_source(sessions: sessionmaker[Session]) -> TraceRecordRepository:
+    return TraceRecordRepository(sessions, files_url="https://files.test", enterprise_details=False)
+
+
+def tracing_service(
+    repository: ApplicationTraceRepository,
+    records: TraceRecordSource,
+    destination: RecordingEgress,
+    scheduled: list[str],
+    settings: AgentTraceSettings,
+) -> ApplicationTracingService:
+    """Agent trace collection over ``repository``; scheduled exports are recorded instead of enqueued."""
+    return ApplicationTracingService(
+        runs=repository,
+        run_query=repository,
+        sources=repository,
+        records=records,
+        builder=CanonicalTraceBuilder(),
+        providers=InstalledTraceProviders(ScriptedProvider),
+        codec=ProviderConfigCodec(WorkspaceBoundCipher()),
+        egress=destination,
+        schedule_export=scheduled.append,
+        settings=settings,
+    )
 
 
 def seed(sessions: sessionmaker[Session], name: str, *, capture_content: bool, capture_agent: bool) -> Collection:
@@ -190,7 +219,9 @@ def seed(sessions: sessionmaker[Session], name: str, *, capture_content: bool, c
             )
         )
     repository = ApplicationTraceRepository(sessions)
-    run = repository.start(
+    run = tracing_service(
+        repository, record_source(sessions), RecordingEgress([], grpc_target=None), [], AGENT_TRACE_SETTINGS
+    ).start(
         tenant_id=tenant_id,
         app_id=app_id,
         source_kind="message",
@@ -269,8 +300,45 @@ def batch_for(run: TraceRun, invocation: TraceInvocation, *, final: bool, span_i
     )
 
 
-def ingest(collection: Collection, batch: AgentTraceBatch) -> tuple[int, str]:
-    return collection.repository.ingest(batch, max_spans=100, max_bytes=1_000_000)
+def ingest(collection: Collection, batch: AgentTraceBatch) -> None:
+    """Store a runtime batch in its run without scheduling the run's export."""
+    with collection.repository.change(str(batch.run_id)) as locked:
+        assert locked is not None
+        locked.run.ingest(batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=naive_utc_now())
+
+
+def claim(collection: Collection, run_id: str) -> str | None:
+    """Claim the run for an export attempt; ``None`` when it may not export now."""
+    token = str(uuid4())
+    with collection.repository.change(run_id) as locked:
+        assert locked is not None
+        claimed = locked.run.claim_export(
+            token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=30, now=naive_utc_now()
+        )
+    return token if claimed else None
+
+
+def recover(
+    collection: Collection,
+    run: TraceRun,
+    *,
+    records: TraceRecordSource,
+    collector: ApplicationTracingService,
+    settings: AgentTraceSettings,
+    now: datetime,
+) -> bool:
+    """One reconciler recovery attempt of ``run`` at ``now``."""
+    current = collection.repository.load(run.id)
+    assert current is not None
+    return recover_terminal(
+        current,
+        runs=collection.repository,
+        sources=collection.repository,
+        records=records,
+        collector=collector,
+        collection_timeout=settings.collection_timeout_seconds,
+        now=now,
+    )
 
 
 def sent_traces(egress: RecordingEgress) -> list[Trace]:
@@ -289,13 +357,8 @@ class RecoveryCase:
 
     def recover(self, run: TraceRun, *, now: datetime) -> bool:
         """One reconciler recovery attempt of ``run`` at ``now``."""
-        return recover_terminal(
-            run,
-            traces=self.collection.repository,
-            records=self.records,
-            collector=self.service,
-            collection_timeout=self.settings.collection_timeout_seconds,
-            now=now,
+        return recover(
+            self.collection, run, records=self.records, collector=self.service, settings=self.settings, now=now
         )
 
 
@@ -303,18 +366,9 @@ def recovery_case(
     collection: Collection, destination: RecordingEgress, settings: AgentTraceSettings, now: datetime
 ) -> RecoveryCase:
     """The service the runtime hooks reach; scheduled exports are recorded instead of enqueued."""
-    records = TraceRecordRepository(collection.sessions, files_url="https://files.test", enterprise_details=False)
+    records = record_source(collection.sessions)
     scheduled: list[str] = []
-    service = ApplicationTracingService(
-        traces=collection.repository,
-        records=records,
-        builder=CanonicalTraceBuilder(),
-        providers=InstalledTraceProviders(ScriptedProvider),
-        codec=ProviderConfigCodec(WorkspaceBoundCipher()),
-        egress=destination,
-        schedule_export=scheduled.append,
-        settings=settings,
-    )
+    service = tracing_service(collection.repository, records, destination, scheduled, settings)
     return RecoveryCase(collection, records, service, settings, now, scheduled, destination)
 
 
@@ -613,7 +667,7 @@ def test_stopped_consumer_cannot_freeze_a_terminal_before_the_runtime_worker(
     assert stored.outer_trace is None, "a stopped SSE save is not the runtime terminal"
     assert queued == []
     assert stopped.recover(stored, now=case.now) is False
-    assert case.collection.repository.claim(stored.id, collection_timeout=60, lease_seconds=30) is None
+    assert claim(case.collection, stored.id) is None
     service.deliver(stored.id)
     assert destination.requests == []
 
@@ -810,7 +864,7 @@ def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
     assert root.status.value == ("ok" if runtime_outcome == "succeeded" else "error")
     assert len(store.saved) == (0 if snapshot_save_fails else 1)
     if pending_invocation is not None:
-        assert case.collection.repository.claim(run.id, collection_timeout=60, lease_seconds=30) is None
+        assert claim(case.collection, run.id) is None
         case.service.deliver(run.id)
         assert case.destination.requests == []
         ingest(case.collection, batch_for(run, pending_invocation, final=True, span_id="b" * 16))
@@ -848,7 +902,7 @@ def test_missing_runtime_stop_terminal_converges_without_inventing_success(
         "agent_trace_collection_incomplete" if incomplete else "business_terminal_not_persisted"
     )
     assert stored.outer_trace is None
-    assert case.collection.repository.claim(stored.id, collection_timeout=60, lease_seconds=30) is None
+    assert claim(case.collection, stored.id) is None
 
 
 @pytest.mark.parametrize("stop_on_end", [False, True])
@@ -1200,13 +1254,9 @@ def test_cross_tenant_source_is_rejected_before_the_record_repository_runs(case:
         assert app is not None
         app.tenant_id = identifier("other-tenant")
     records = _FailingRecords(AssertionError("a foreign source must never be assembled"))
-    recovered = recover_terminal(
-        case.collection.run,
-        traces=case.collection.repository,
-        records=records,
-        collector=case.service,
-        collection_timeout=case.settings.collection_timeout_seconds,
-        now=case.now,
+    service = tracing_service(case.collection.repository, records, case.destination, case.scheduled, case.settings)
+    recovered = recover(
+        case.collection, case.collection.run, records=records, collector=service, settings=case.settings, now=case.now
     )
     assert recovered is False
     assert records.events == []
@@ -1222,13 +1272,9 @@ def test_source_not_ready_for_assembly_is_retried_later(case: RecoveryCase) -> N
         message.message_metadata = complete_metadata()
         message.updated_at = case.now - timedelta(seconds=11)
     records = _FailingRecords(SourceNotReadyError())
-    recovered = recover_terminal(
-        case.collection.run,
-        traces=case.collection.repository,
-        records=records,
-        collector=case.service,
-        collection_timeout=case.settings.collection_timeout_seconds,
-        now=case.now,
+    service = tracing_service(case.collection.repository, records, case.destination, case.scheduled, case.settings)
+    recovered = recover(
+        case.collection, case.collection.run, records=records, collector=service, settings=case.settings, now=case.now
     )
     assert recovered is False
     assert [event.payload for event in records.events] == [
@@ -1293,7 +1339,7 @@ def add_workflow_run(case: RecoveryCase, status: WorkflowExecutionStatus, *, fin
 
 
 def start_workflow(case: RecoveryCase, workflow_run_id: str) -> TraceRun:
-    run = case.collection.repository.start(
+    run = case.service.start(
         tenant_id=case.collection.run.tenant_id,
         app_id=case.collection.run.app_id,
         source_kind="workflow",
@@ -1499,4 +1545,4 @@ def test_worker_handoff_leaves_a_not_collected_run_untouched(case: RecoveryCase)
     assert stored is not None
     assert stored.outer_trace is None
     assert case.scheduled == []
-    assert case.collection.repository.claim(case.collection.run.id, collection_timeout=60, lease_seconds=30) is None
+    assert claim(case.collection, case.collection.run.id) is None

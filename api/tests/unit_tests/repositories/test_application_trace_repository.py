@@ -1,23 +1,28 @@
 import json
-from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from collections.abc import Callable, Generator, Iterator
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, override
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import pytest
 from aliyun.log.logclient import LogClient
 from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceSpan
-from dify_trace_sdk.events import WorkflowRunCompleted
+from dify_trace_sdk.events import TraceEvent, WorkflowRunCompleted
 from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
-from dify_trace_sdk.provider import SendResult
 from dify_trace_sdk.testing import RecordingEgress
 from sqlalchemy import Connection, Engine, delete, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from domain.tracing.errors import TraceRunConflictError
+from domain.tracing.trace_run_agg import TraceBatch, TraceInvocation, TraceRunAgg, TraceRunState
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
+    _dict_to_workflow_node_execution_model,
+)
 from extensions.logstore.repositories.logstore_api_workflow_run_repository import _dict_to_workflow_run
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -25,11 +30,13 @@ from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvo
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Message, TraceAppConfig
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
-from repositories import application_trace_repository as repository_module
 from repositories.application_trace_repository import ApplicationTraceRepository
 from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing import service as service_module
 from services.tracing.canonical import CanonicalTraceBuilder
-from services.tracing.collection import TraceInvocation, TraceRun, TraceRunState, TraceRunStatus
+from services.tracing.collection import AppTracingSnapshot, TraceRun, TraceRunStatus
+from services.tracing.collection_ports import LockedTraceRun
+from services.tracing.delivery import TraceRecordSource
 from services.tracing.errors import (
     TraceCollectionConflictError,
     TraceCollectionError,
@@ -37,11 +44,17 @@ from services.tracing.errors import (
     TracingStoreUnavailableError,
 )
 from services.tracing.providers import ProviderConfigCodec
-from services.tracing.records import ModerationTraceInfo, TraceMessage, WorkflowTraceInfo
-from services.tracing.recovery import _workflow_event
+from services.tracing.records import (
+    BaseTraceInfo,
+    MessageTraceInfo,
+    ModerationTraceInfo,
+    TraceMessage,
+    WorkflowTraceInfo,
+)
+from services.tracing.recovery import recover_terminal
 from services.tracing.service import ApplicationTracingService
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_message, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
 from tests.helpers.unit.services.tracing_ports import (
     AGENT_TRACE_SETTINGS,
     InstalledTraceProviders,
@@ -54,10 +67,37 @@ AGENT_GRAPH = {
     "nodes": [{"id": "agent", "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}],
     "edges": list[object](),
 }
+LANGFUSE_POLICY = {"enabled": True, "tracing_provider": "langfuse", "capture_content": False, "capture_agent": True}
+"""The tracing policy every seeded app stores."""
 
 
 def identifier(value: str) -> str:
     return str(uuid5(NAMESPACE_URL, value))
+
+
+def trace_records(sessions: sessionmaker[Session]) -> TraceRecordRepository:
+    return TraceRecordRepository(sessions, files_url="https://files.test", enterprise_details=False)
+
+
+def collector(
+    repository: ApplicationTraceRepository, records: TraceRecordSource, scheduled: list[str]
+) -> ApplicationTracingService:
+    """Agent trace collection over ``repository`` that schedules exports into ``scheduled``.
+
+    No provider is installed, so a delivery stops before it reaches any destination.
+    """
+    return ApplicationTracingService(
+        runs=repository,
+        run_query=repository,
+        sources=repository,
+        records=records,
+        builder=CanonicalTraceBuilder(),
+        providers=InstalledTraceProviders(),
+        codec=ProviderConfigCodec(WorkspaceBoundCipher()),
+        egress=RecordingEgress([], grpc_target=None),
+        schedule_export=scheduled.append,
+        settings=AGENT_TRACE_SETTINGS,
+    )
 
 
 @dataclass
@@ -65,11 +105,14 @@ class Collection:
     repository: ApplicationTraceRepository
     sessions: sessionmaker[Session]
     run: TraceRun
+    scheduled: list[str]
+    """The runs this collection's service scheduled for export."""
+
+    def service(self) -> ApplicationTracingService:
+        return collector(self.repository, trace_records(self.sessions), self.scheduled)
 
     def invocation(self) -> TraceInvocation:
-        return self.repository.invocation(
-            run_id=self.run.id, agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key="first"
-        )
+        return open_invocation(self, node_execution_id=None, call_key="first")
 
 
 def seed(sessions: sessionmaker[Session], name: str) -> Collection:
@@ -81,14 +124,7 @@ def seed(sessions: sessionmaker[Session], name: str) -> Collection:
     cipher = WorkspaceBoundCipher()
     with sessions.begin() as session:
         session.add(
-            make_app(
-                app_id=app_id,
-                tenant_id=tenant_id,
-                mode=AppMode.AGENT,
-                tracing=json.dumps(
-                    {"enabled": True, "tracing_provider": "langfuse", "capture_content": False, "capture_agent": True}
-                ),
-            )
+            make_app(app_id=app_id, tenant_id=tenant_id, mode=AppMode.AGENT, tracing=json.dumps(LANGFUSE_POLICY))
         )
         session.add(
             make_message(
@@ -118,7 +154,8 @@ def seed(sessions: sessionmaker[Session], name: str) -> Collection:
             )
         )
     repository = ApplicationTraceRepository(sessions)
-    run = repository.start(
+    scheduled: list[str] = []
+    run = collector(repository, trace_records(sessions), scheduled).start(
         tenant_id=tenant_id,
         app_id=app_id,
         source_kind="message",
@@ -127,7 +164,15 @@ def seed(sessions: sessionmaker[Session], name: str) -> Collection:
         workflow_id=None,
     )
     assert run is not None
-    return Collection(repository, sessions, run)
+    return Collection(repository, sessions, run, scheduled)
+
+
+def open_invocation(collection: Collection, *, node_execution_id: str | None, call_key: str) -> TraceInvocation:
+    with collection.repository.change(collection.run.id) as locked:
+        assert locked is not None
+        return locked.run.open_invocation(
+            agent_id=identifier("agent"), node_execution_id=node_execution_id, attempt=0, call_key=call_key
+        )
 
 
 def batch_for(run: TraceRun, invocation: TraceInvocation) -> AgentTraceBatch:
@@ -151,14 +196,21 @@ def batch_for(run: TraceRun, invocation: TraceInvocation) -> AgentTraceBatch:
     )
 
 
-def ingest(collection: Collection, batch: AgentTraceBatch) -> tuple[int, str]:
-    return collection.repository.ingest(batch, max_spans=100, max_bytes=1_000_000)
+def ingest(collection: Collection, batch: AgentTraceBatch) -> int:
+    return collection.service().ingest(batch)
 
 
-def terminal(collection: Collection) -> None:
-    run = collection.run
+def store_batch(collection: Collection, batch: AgentTraceBatch) -> None:
+    """Ingest ``batch`` into the collection's run inside one change of the run."""
+    with collection.repository.change(collection.run.id) as locked:
+        assert locked is not None
+        locked.run.ingest(batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=naive_utc_now())
+
+
+def agent_turn(run: TraceRun, *, root_span_id: str) -> Trace:
+    """A business terminal of one Agent turn under ``root_span_id``."""
     root = Span(
-        span_id=run.root_span_id,
+        span_id=root_span_id,
         parent_span_id=None,
         name="Agent turn",
         kind=SpanKind.CHAIN,
@@ -166,7 +218,7 @@ def terminal(collection: Collection) -> None:
         end_time=datetime.fromtimestamp(3, UTC),
         status=SpanStatus.OK,
     )
-    trace = Trace(
+    return Trace(
         trace_id=run.trace_id,
         external_trace_id=None,
         session_id=run.session_id,
@@ -174,11 +226,82 @@ def terminal(collection: Collection) -> None:
         parent=None,
         spans=(root,),
     )
-    collection.repository.terminal(run.id, trace.model_dump(mode="json"), root.span_id)
 
 
-def claim(collection: Collection) -> tuple[TraceRun, str] | None:
-    return collection.repository.claim(collection.run.id, collection_timeout=60, lease_seconds=30)
+def capture_terminal(collection: Collection, trace: Trace) -> None:
+    with collection.repository.change(collection.run.id) as locked:
+        assert locked is not None
+        locked.run.capture_terminal(trace, now=naive_utc_now())
+
+
+def terminal(collection: Collection) -> None:
+    capture_terminal(collection, agent_turn(collection.run, root_span_id=collection.run.root_span_id))
+
+
+def claim(collection: Collection) -> str | None:
+    """Lease the collection's run for one export attempt; the token fencing it, ``None`` when it cannot export."""
+    token = str(uuid4())
+    with collection.repository.change(collection.run.id) as locked:
+        assert locked is not None
+        claimed = locked.run.claim_export(
+            token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=30, now=naive_utc_now()
+        )
+    return token if claimed else None
+
+
+def recover(collection: Collection, service: ApplicationTracingService, records: TraceRecordSource) -> bool:
+    """One reconciler recovery attempt of the collection's run, collected by ``service``."""
+    run = collection.repository.load(collection.run.id)
+    assert run is not None
+    return recover_terminal(
+        run,
+        runs=collection.repository,
+        sources=collection.repository,
+        records=records,
+        collector=service,
+        collection_timeout=AGENT_TRACE_SETTINGS.collection_timeout_seconds,
+        now=naive_utc_now(),
+    )
+
+
+def message_info(collection: Collection) -> MessageTraceInfo:
+    """The completed message record of the collection's message."""
+    with collection.sessions() as session:
+        message = session.get(Message, collection.run.source_id)
+        assert message is not None
+        data = TraceMessage(
+            id=message.id,
+            app_id=message.app_id,
+            conversation_id=message.conversation_id,
+            workflow_run_id=message.workflow_run_id,
+            query=message.query,
+            answer=message.answer,
+            error=message.error,
+            created_at=message.created_at,
+            model_provider=message.model_provider,
+            model_id=message.model_id,
+            total_price=message.total_price,
+            currency=message.currency,
+        )
+    return MessageTraceInfo(
+        message_id=data.id,
+        message_data=data,
+        inputs={"query": data.query},
+        outputs=data.answer,
+        start_time=data.created_at,
+        end_time=data.created_at,
+        metadata={"app_id": data.app_id},
+        conversation_model="chat",
+        message_tokens=0,
+        answer_tokens=0,
+        total_tokens=0,
+        error=None,
+        file_list=[],
+        conversation_mode=AppMode.AGENT,
+        gen_ai_server_time_to_first_token=None,
+        llm_streaming_time_to_generate=None,
+        is_streaming_request=False,
+    )
 
 
 def workflow_info(row: WorkflowRun, parent: WorkflowRun | None) -> WorkflowTraceInfo:
@@ -224,10 +347,9 @@ class StoredSource:
     kind: Literal["workflow", "node"]
     row: dict[str, object]
     requests: list[str]
-    scheduled: list[str]
 
     def start(self) -> TraceRun:
-        run = self.case.repository.start(
+        run = self.service().start(
             tenant_id=self.case.run.tenant_id,
             app_id=self.case.run.app_id,
             source_kind=self.kind,
@@ -239,17 +361,7 @@ class StoredSource:
         return run
 
     def service(self) -> ApplicationTracingService:
-        return ApplicationTracingService(
-            traces=self.case.repository,
-            records=TraceRecordRepository(self.case.sessions, files_url="https://files.test", enterprise_details=False),
-            builder=CanonicalTraceBuilder(),
-            # No provider is installed, so a delivery stops before it reaches any destination.
-            providers=InstalledTraceProviders(),
-            codec=ProviderConfigCodec(WorkspaceBoundCipher()),
-            egress=RecordingEgress([], grpc_target=None),
-            schedule_export=self.scheduled.append,
-            settings=AGENT_TRACE_SETTINGS,
-        )
+        return self.case.service()
 
     def status(self, *, node_execution_id: str | None) -> TraceRunStatus:
         return self.service().status(
@@ -259,6 +371,19 @@ class StoredSource:
             source_id=str(self.row["id"]),
             node_execution_id=node_execution_id,
         )
+
+
+class AssembledEvents(TraceRecordSource):
+    """Real trace records that remember every event they were asked to assemble."""
+
+    def __init__(self, records: TraceRecordSource) -> None:
+        self._records = records
+        self.events: list[TraceEvent] = []
+
+    @override
+    def assemble(self, event: TraceEvent) -> BaseTraceInfo:
+        self.events.append(event)
+        return self._records.assemble(event)
 
 
 class TestApplicationTraceLogstoreCases:
@@ -369,7 +494,7 @@ class TestApplicationTraceLogstoreCases:
         event.listen(sqlite_engine, "commit", ended)
         event.listen(sqlite_engine, "rollback", ended)
         try:
-            yield StoredSource(case, kind, row, requests, scheduled=[])
+            yield StoredSource(case, kind, row, requests)
         finally:
             event.remove(sqlite_engine, "begin", begun)
             event.remove(sqlite_engine, "commit", ended)
@@ -398,7 +523,7 @@ class TestApplicationTraceLogstoreCases:
             node_execution_id=None,
         )
         assert result.status is TraceRunState.READY
-        assert stored.scheduled == [run.id]
+        assert stored.case.scheduled == [run.id]
         assert len(stored.requests) == 1
 
     @staticmethod
@@ -429,8 +554,11 @@ class TestApplicationTraceLogstoreCases:
         assert stored.requests == []
 
     @staticmethod
+    @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
     def test_initialization_failure_uses_configured_source_reader(stored: StoredSource) -> None:
-        run = stored.case.repository.record_initialization_failure(
+        info = workflow_info(_dict_to_workflow_run(stored.row), None)
+        assert stored.service().capture_terminal(tenant_id=stored.case.run.tenant_id, info=info) is True
+        run = stored.case.repository.source_run(
             tenant_id=stored.case.run.tenant_id,
             app_id=stored.case.run.app_id,
             source_kind=stored.kind,
@@ -445,7 +573,7 @@ class TestApplicationTraceLogstoreCases:
         original = stored.start()
         stored.requests.clear()
         stored.row.clear()
-        current = stored.case.repository.start(
+        current = stored.service().start(
             tenant_id=original.tenant_id,
             app_id=original.app_id,
             source_kind=stored.kind,
@@ -462,25 +590,22 @@ class TestApplicationTraceLogstoreCases:
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
     def test_workflow_node_deep_link_is_scoped_to_durable_invocation(stored: StoredSource) -> None:
         run = stored.start()
-        case = Collection(stored.case.repository, stored.case.sessions, run)
+        case = replace(stored.case, run=run)
         node_id = identifier("logstore-agent-node")
-        invocation = case.repository.invocation(
-            run_id=run.id, agent_id=identifier("agent"), node_execution_id=node_id, attempt=0, call_key="node"
-        )
+        invocation = open_invocation(case, node_execution_id=node_id, call_key="node")
         ingest(case, batch_for(run, invocation))
         terminal(case)
-        lease = claim(case)
-        assert lease is not None
-        case.repository.complete(
-            run.id,
-            lease[1],
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=SendResult(
-                trace_id="provider-id", trace_url=None, span_urls={invocation.span_id: "https://trace.test/span"}
-            ),
-            retry_delay=None,
-        )
+        token = claim(case)
+        assert token is not None
+        with case.repository.change(run.id) as locked:
+            assert locked is not None
+            locked.run.export_accepted(
+                token,
+                provider_trace_id="provider-id",
+                trace_url=None,
+                span_urls={invocation.span_id: "https://trace.test/span"},
+                now=naive_utc_now(),
+            )
         assert stored.status(node_execution_id=node_id).span_url == "https://trace.test/span"
         with pytest.raises(TraceCollectionNotFoundError, match="tracing_node_not_found"):
             stored.status(node_execution_id=identifier("another-run-node"))
@@ -489,16 +614,20 @@ class TestApplicationTraceLogstoreCases:
     def test_preview_settlement_and_workflow_recovery_use_configured_source(stored: StoredSource) -> None:
         run = stored.start()
         if stored.kind == "workflow":
-            event = _workflow_event(stored.case.repository, run, naive_utc_now())
-            assert event is not None
-            assert event.payload == WorkflowRunCompleted(
+            records = AssembledEvents(trace_records(stored.case.sessions))
+            service = collector(stored.case.repository, records, stored.case.scheduled)
+            stored.row["status"] = "running"
+            assert recover(replace(stored.case, run=run), service, records) is False
+            assert records.events == []
+            stored.row["status"] = "succeeded"
+            assert recover(replace(stored.case, run=run), service, records) is True
+            (recovered,) = records.events
+            assert recovered.payload == WorkflowRunCompleted(
                 workflow_run_id=run.source_id, conversation_id=None, total_tokens=None
             )
-            assert (event.tenant_id, event.app_id) == (run.tenant_id, run.app_id)
-            assert event.user_id == stored.row["created_by"]
-            assert event.correlation.session_id == run.session_id
-            stored.row["status"] = "running"
-            assert _workflow_event(stored.case.repository, run, naive_utc_now()) is None
+            assert (recovered.tenant_id, recovered.app_id) == (run.tenant_id, run.app_id)
+            assert recovered.user_id == stored.row["created_by"]
+            assert recovered.correlation.session_id == run.session_id
         else:
             # Delivery settles a finished preview from its node execution before claiming the export.
             stored.service().deliver(run.id)
@@ -641,7 +770,7 @@ class TestApplicationTraceLogstoreCases:
 
 
 def race_before_insert(monkeypatch: pytest.MonkeyPatch, competitor: Callable[[], None]) -> None:
-    """Run ``competitor`` after the caller's existence check, when it allocates its new run's identifiers."""
+    """Run ``competitor`` after the caller's existence checks, when it allocates its new run's identifiers."""
     raced: list[bool] = []
 
     def allocate() -> UUID:
@@ -650,7 +779,7 @@ def race_before_insert(monkeypatch: pytest.MonkeyPatch, competitor: Callable[[],
             competitor()
         return uuidv7()
 
-    monkeypatch.setattr(repository_module, "uuidv7", allocate)
+    monkeypatch.setattr(service_module, "uuidv7", allocate)
 
 
 def drop_run(case: Collection) -> None:
@@ -668,7 +797,7 @@ def run_count(case: Collection) -> int | None:
 
 
 def start_message(case: Collection, session_id: str) -> TraceRun | None:
-    return case.repository.start(
+    return case.service().start(
         tenant_id=case.run.tenant_id,
         app_id=case.run.app_id,
         source_kind="message",
@@ -676,6 +805,17 @@ def start_message(case: Collection, session_id: str) -> TraceRun | None:
         session_id=session_id,
         workflow_id=None,
     )
+
+
+class PurgedBeforeLock(ApplicationTraceRepository):
+    """Retention that keeps runs for zero days purges each run after a use case read it and before it locks it."""
+
+    @override
+    @contextmanager
+    def change(self, run_id: str) -> Generator[LockedTraceRun | None]:
+        self.purge(retention_days=0, limit=100)
+        with super().change(run_id) as locked:
+            yield locked
 
 
 class TestApplicationTraceRepositoryBoundariesCases:
@@ -701,9 +841,12 @@ class TestApplicationTraceRepositoryBoundariesCases:
     ) -> None:
         case = seed(sqlite_session_factory, "concurrent-failure")
         drop_run(case)
+        info = message_info(case)
         winners: list[TraceRun | None] = []
         race_before_insert(monkeypatch, lambda: winners.append(start_message(case, "started-session")))
-        current = case.repository.record_initialization_failure(
+        # The Agent app's terminal finds no start snapshot, so it records an initialization failure.
+        assert case.service().capture_terminal(tenant_id=case.run.tenant_id, info=info) is True
+        current = case.repository.source_run(
             tenant_id=case.run.tenant_id, app_id=case.run.app_id, source_kind="message", source_id=case.run.source_id
         )
         assert current is not None
@@ -721,7 +864,7 @@ class TestApplicationTraceRepositoryBoundariesCases:
         case = seed(sqlite_session_factory, "colliding-start")
         other = seed(sqlite_session_factory, "colliding-owner")
         drop_run(case)
-        monkeypatch.setattr(repository_module, "uuidv7", lambda: UUID(other.run.id))
+        monkeypatch.setattr(service_module, "uuidv7", lambda: UUID(other.run.id))
         with pytest.raises(TracingStoreUnavailableError) as caught:
             start_message(case, "colliding-session")
         assert isinstance(caught.value.__cause__, IntegrityError)
@@ -739,13 +882,17 @@ class TestApplicationTraceRepositoryBoundariesCases:
             app = session.get(App, case.run.app_id)
             assert app is not None
             app.tracing = policy
-        run = case.repository.start(
+        started = case.service().start(
             tenant_id=case.run.tenant_id,
             app_id=case.run.app_id,
             source_kind="message",
             source_id=case.run.source_id,
             session_id="",
             workflow_id=None,
+        )
+        assert started is None
+        run = case.repository.source_run(
+            tenant_id=case.run.tenant_id, app_id=case.run.app_id, source_kind="message", source_id=case.run.source_id
         )
         assert run is not None
         assert run.state is TraceRunState.NOT_COLLECTED
@@ -757,14 +904,21 @@ class TestApplicationTraceRepositoryBoundariesCases:
     @staticmethod
     def test_reserved_preview_requires_persisted_owner_workflow(sqlite_session_factory: sessionmaker[Session]) -> None:
         case = seed(sqlite_session_factory, "missing-preview-owner")
+        preview = identifier("preview")
         assert (
-            case.repository.start(
+            case.service().start(
                 tenant_id=case.run.tenant_id,
                 app_id=case.run.app_id,
                 source_kind="node",
-                source_id=identifier("preview"),
+                source_id=preview,
                 session_id="preview",
                 workflow_id=identifier("missing-workflow"),
+            )
+            is None
+        )
+        assert (
+            case.repository.source_run(
+                tenant_id=case.run.tenant_id, app_id=case.run.app_id, source_kind="node", source_id=preview
             )
             is None
         )
@@ -774,25 +928,24 @@ class TestApplicationTraceRepositoryBoundariesCases:
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         case = seed(sqlite_session_factory, "failure-snapshot")
-        same = case.repository.record_initialization_failure(
-            tenant_id=case.run.tenant_id,
-            app_id=case.run.app_id,
-            source_kind="message",
-            source_id=case.run.source_id,
+        info = message_info(case)
+        assert case.service().capture_terminal(tenant_id=case.run.tenant_id, info=info) is True
+        same = case.repository.source_run(
+            tenant_id=case.run.tenant_id, app_id=case.run.app_id, source_kind="message", source_id=case.run.source_id
         )
         assert same is not None
         assert same.id == case.run.id
         assert same.state is TraceRunState.COLLECTING
         assert same.provider_config == case.run.provider_config
+        foreign = identifier("foreign-tenant")
+        assert case.service().capture_terminal(tenant_id=foreign, info=info) is False
         assert (
-            case.repository.record_initialization_failure(
-                tenant_id=identifier("foreign-tenant"),
-                app_id=case.run.app_id,
-                source_kind="message",
-                source_id=case.run.source_id,
+            case.repository.source_run(
+                tenant_id=foreign, app_id=case.run.app_id, source_kind="message", source_id=case.run.source_id
             )
             is None
         )
+        assert run_count(case) == 1
 
     @staticmethod
     @pytest.mark.parametrize("target", ["missing_run", "revoked_owner", "closed_invocation"])
@@ -834,7 +987,8 @@ class TestApplicationTraceRepositoryBoundariesCases:
         terminal(case)
         before = case.repository.get(case.run.id)
         assert before is not None
-        case.repository.terminal(case.run.id, {"replacement": True}, "f" * 16)
+        replacement = agent_turn(case.run, root_span_id="f" * 16)
+        capture_terminal(case, replacement)
         after = case.repository.get(case.run.id)
         assert after is not None
         assert after.outer_trace == before.outer_trace
@@ -848,7 +1002,7 @@ class TestApplicationTraceRepositoryBoundariesCases:
         assert failed is not None
         assert failed.error_code == "tracing_owner_not_found"
         assert failed.state is TraceRunState.FAILED
-        case.repository.terminal(case.run.id, {"replacement": True}, "f" * 16)
+        capture_terminal(case, replacement)
         frozen = case.repository.get(case.run.id)
         assert frozen is not None
         assert frozen.outer_trace == before.outer_trace
@@ -875,7 +1029,14 @@ class TestApplicationTraceRepositoryBoundariesCases:
             assert row is not None
             row.state = state
         with pytest.raises(error, match=code):
-            case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
+            case.service().retry(
+                tenant_id=case.run.tenant_id,
+                app_id=case.run.app_id,
+                source_kind="message",
+                source_id=case.run.source_id,
+                acknowledge_possible_duplicates=True,
+                node_execution_id=None,
+            )
         current = case.repository.get(case.run.id)
         assert current is not None
         assert current.state is state
@@ -885,17 +1046,34 @@ class TestApplicationTraceRepositoryBoundariesCases:
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         case = seed(sqlite_session_factory, "retry-unknown")
+        purged = replace(case, repository=PurgedBeforeLock(case.sessions)).service()
         with pytest.raises(TraceCollectionNotFoundError, match="tracing_run_not_found"):
-            case.repository.retry(run_id=identifier("missing"), acknowledge_possible_duplicates=True)
+            purged.retry(
+                tenant_id=case.run.tenant_id,
+                app_id=case.run.app_id,
+                source_kind="message",
+                source_id=case.run.source_id,
+                acknowledge_possible_duplicates=True,
+                node_execution_id=None,
+            )
         with pytest.raises(TraceCollectionConflictError, match="tracing_run_not_collecting"):
-            case.repository.invocation(
-                run_id=identifier("missing"),
+            purged.prepare_invocation(
+                tenant_id=case.run.tenant_id,
+                app_id=case.run.app_id,
                 agent_id=identifier("agent"),
+                source_kind="message",
+                source_id=case.run.source_id,
+                session_id="unknown-session",
                 node_execution_id=None,
                 attempt=0,
                 call_key="x",
+                workflow_id=None,
             )
-        assert case.repository.claim(identifier("missing"), collection_timeout=1, lease_seconds=1) is None
+        purged.deliver(case.run.id)
+        assert run_count(case) == 0
+        with case.sessions() as session:
+            assert session.scalar(select(func.count()).select_from(ApplicationTraceInvocation)) == 0
+        assert case.scheduled == []
 
     @staticmethod
     def test_collection_without_terminal_is_not_exportable(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -921,8 +1099,511 @@ class TestApplicationTraceRepositoryBoundariesCases:
             row.created_at = naive_utc_now() - timedelta(days=8)
         assert expired.repository.purge(retention_days=7, limit=100) == 1
         assert expired.repository.get(expired.run.id) is None
-        assert expired.repository.collected(expired.run.id) == ([], [])
+        assert expired.repository.invocations(expired.run.id) == []
+        assert expired.repository.batches(expired.run.id) == []
         assert fresh.repository.get(fresh.run.id) is not None
-        invocations, batches = fresh.repository.collected(fresh.run.id)
-        assert len(invocations) == len(batches) == 1
+        assert len(fresh.repository.invocations(fresh.run.id)) == len(fresh.repository.batches(fresh.run.id)) == 1
         assert expired.repository.purge(retention_days=7, limit=100) == 0
+
+
+"""Whole runs load and save under their row lock; every read is scoped by the run's owner."""
+
+
+def stored_fields(run: TraceRunAgg) -> dict[str, object]:
+    """Every field of a run that its repository saves and loads again."""
+    return {name: value for name, value in asdict(run).items() if name != "new_batches"}
+
+
+def reloaded(collection: Collection) -> dict[str, object]:
+    with collection.repository.change(collection.run.id) as locked:
+        assert locked is not None
+        return stored_fields(locked.run)
+
+
+def record_of(run: TraceRunAgg) -> TraceRun:
+    """The record the repository reads back for a stored run."""
+    return TraceRun(
+        id=run.id,
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        source_kind=run.source_kind,
+        source_id=run.source_id,
+        provider=run.provider,
+        config_revision=run.config_revision,
+        provider_config=run.provider_config,
+        trace_id=run.trace_id,
+        root_span_id=run.root_span_id,
+        session_id=run.session_id,
+        capture_content=run.capture_content,
+        capture_agent=run.capture_agent,
+        state=run.state,
+        outer_trace=run.outer_trace,
+        span_count=run.span_count,
+        attempts=run.attempts,
+        error_code=run.error_code,
+        trace_url=run.trace_url,
+        provider_trace_id=run.provider_trace_id,
+        span_urls=run.span_urls,
+        accepted_at=run.accepted_at,
+    )
+
+
+def frozen_run(case: Collection) -> TraceRunAgg:
+    """A new run of the collection's message, frozen for its Langfuse destination."""
+    return TraceRunAgg.freeze(
+        run_id=str(uuidv7()),
+        trace_id=uuidv7().hex,
+        tenant_id=case.run.tenant_id,
+        app_id=case.run.app_id,
+        source_kind="message",
+        source_id=case.run.source_id,
+        session_id="frozen-session",
+        policy=LANGFUSE_POLICY,
+        stored_config=case.run.provider_config,
+        now=naive_utc_now(),
+    )
+
+
+def failed_run(case: Collection) -> TraceRunAgg:
+    """A new run of the collection's message, closed because its start snapshot is missing."""
+    return TraceRunAgg.initialization_failed(
+        run_id=str(uuidv7()),
+        trace_id=uuidv7().hex,
+        tenant_id=case.run.tenant_id,
+        app_id=case.run.app_id,
+        source_kind="message",
+        source_id=case.run.source_id,
+        now=naive_utc_now(),
+    )
+
+
+def store_policy(case: Collection, policy: str | None) -> None:
+    with case.sessions.begin() as session:
+        app = session.get(App, case.run.app_id)
+        assert app is not None
+        app.tracing = policy
+
+
+@dataclass
+class OwnedSources:
+    """An Agent app's message in its conversation, a workflow definition, and a run of it with a node execution."""
+
+    case: Collection
+    workflow_id: str
+    workflow_run_id: str
+    node_execution_id: str
+
+    def read(self, name: str, *, tenant_id: str, app_id: str) -> object:
+        repository = self.case.repository
+        message_id = self.case.run.source_id
+        match name:
+            case "source_run":
+                return repository.source_run(
+                    tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id
+                )
+            case "workflow_run_trace":
+                return repository.workflow_run_trace(tenant_id=tenant_id, workflow_run_id=self.workflow_run_id)
+            case "app":
+                return repository.app(tenant_id=tenant_id, app_id=app_id)
+            case "app_tracing":
+                return repository.app_tracing(tenant_id=tenant_id, app_id=app_id)
+            case "app_workflow_graph":
+                return repository.app_workflow_graph(tenant_id=tenant_id, app_id=app_id, workflow_id=self.workflow_id)
+            case "message":
+                return repository.message(tenant_id=tenant_id, app_id=app_id, message_id=message_id)
+            case "workflow_run":
+                return repository.workflow_run(tenant_id=tenant_id, app_id=app_id, workflow_run_id=self.workflow_run_id)
+            case "node_execution":
+                return repository.node_execution(
+                    tenant_id=tenant_id, app_id=app_id, node_execution_id=self.node_execution_id
+                )
+            case "workflow_run_conversation_id":
+                return repository.workflow_run_conversation_id(
+                    tenant_id=tenant_id, app_id=app_id, workflow_run_id=self.workflow_run_id
+                )
+            case "message_progress":
+                return repository.message_progress(tenant_id=tenant_id, app_id=app_id, message_id=message_id)
+            case _:
+                raise AssertionError(f"unknown read: {name}")
+
+
+WORKSPACE_READS = (
+    "source_run",
+    "workflow_run_trace",
+    "app",
+    "app_tracing",
+    "app_workflow_graph",
+    "message",
+    "workflow_run",
+    "node_execution",
+    "workflow_run_conversation_id",
+    "message_progress",
+)
+"""Every read of runs and of the records they are collected for that names a workspace."""
+APP_READS = tuple(name for name in WORKSPACE_READS if name not in {"workflow_run_trace", "app", "app_tracing"})
+"""The reads that also name the app owning the record."""
+
+
+class TestApplicationTraceRepositoryPersistenceCases:
+    @staticmethod
+    @pytest.fixture
+    def owned(sqlite_session_factory: sessionmaker[Session]) -> OwnedSources:
+        case = seed(sqlite_session_factory, "owned")
+        workflow_id, workflow_run_id = identifier("owned-definition"), identifier("owned-run")
+        node_execution_id, owner = identifier("owned-node"), identifier("owner")
+        with case.sessions.begin() as session:
+            message = session.get(Message, case.run.source_id)
+            assert message is not None
+            message.workflow_run_id = workflow_run_id
+            session.add(
+                make_conversation(
+                    conversation_id=message.conversation_id,
+                    app_id=case.run.app_id,
+                    mode=AppMode.AGENT,
+                    inputs={},
+                    from_source=ConversationFromSource.CONSOLE,
+                )
+            )
+            session.add(
+                make_workflow(
+                    workflow_id=workflow_id, tenant_id=case.run.tenant_id, app_id=case.run.app_id, graph=AGENT_GRAPH
+                )
+            )
+            session.add(
+                _dict_to_workflow_run(
+                    {
+                        "id": workflow_run_id,
+                        "tenant_id": case.run.tenant_id,
+                        "app_id": case.run.app_id,
+                        "workflow_id": workflow_id,
+                        "created_by": owner,
+                    }
+                )
+            )
+            session.add(
+                _dict_to_workflow_node_execution_model(
+                    {
+                        "id": node_execution_id,
+                        "tenant_id": case.run.tenant_id,
+                        "app_id": case.run.app_id,
+                        "workflow_id": workflow_id,
+                        "workflow_run_id": workflow_run_id,
+                        "node_id": "agent",
+                        "node_type": "agent",
+                        "title": "Agent",
+                        "status": "succeeded",
+                        "created_by": owner,
+                    }
+                )
+            )
+        workflow_trace = case.service().start(
+            tenant_id=case.run.tenant_id,
+            app_id=case.run.app_id,
+            source_kind="workflow",
+            source_id=workflow_run_id,
+            session_id="owned-session",
+            workflow_id=None,
+        )
+        assert workflow_trace is not None
+        return OwnedSources(case, workflow_id, workflow_run_id, node_execution_id)
+
+    @staticmethod
+    @pytest.mark.parametrize("new_run", [frozen_run, failed_run], ids=["frozen", "initialization_failed"])
+    def test_add_stores_every_field_of_a_new_run(
+        sqlite_session_factory: sessionmaker[Session], new_run: Callable[[Collection], TraceRunAgg]
+    ) -> None:
+        case = seed(sqlite_session_factory, "added")
+        drop_run(case)
+        run = new_run(case)
+        assert case.repository.add(run) is True
+        assert case.repository.get(run.id) == record_of(run)
+        assert reloaded(replace(case, run=record_of(run))) == stored_fields(run)
+
+    @staticmethod
+    def test_add_leaves_a_source_to_the_run_that_first_froze_it(sqlite_session_factory: sessionmaker[Session]) -> None:
+        case = seed(sqlite_session_factory, "first-frozen")
+        later, failed = frozen_run(case), failed_run(case)
+        assert case.repository.add(later) is False
+        assert case.repository.add(failed) is False
+        assert case.repository.get(later.id) is None
+        assert case.repository.get(failed.id) is None
+        assert (
+            case.repository.source_run(
+                tenant_id=case.run.tenant_id,
+                app_id=case.run.app_id,
+                source_kind="message",
+                source_id=case.run.source_id,
+            )
+            == case.run
+        )
+        assert run_count(case) == 1
+
+    @staticmethod
+    def test_change_saves_root_fields_invocations_and_new_batches(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        case = seed(sqlite_session_factory, "saved")
+        now = naive_utc_now()
+        batches: list[TraceBatch] = []
+        with case.repository.change(case.run.id) as locked:
+            assert locked is not None
+            invocation = locked.run.open_invocation(
+                agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key="first"
+            )
+            partial = batch_for(case.run, invocation).model_copy(update={"final": False})
+            locked.run.ingest(partial.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=now)
+            locked.run.capture_terminal(agent_turn(case.run, root_span_id="b" * 16), now=now)
+            batches.extend(locked.run.new_batches)
+            saved = stored_fields(locked.run)
+        assert reloaded(case) == saved
+
+        with case.repository.change(case.run.id) as locked:
+            assert locked is not None
+            # The final batch finalizes the invocation the previous change stored.
+            final = batch_for(case.run, invocation)
+            locked.run.ingest(final.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=now)
+            token = str(uuid4())
+            assert locked.run.claim_export(
+                token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=30, now=now
+            )
+            batches.extend(locked.run.new_batches)
+            saved = stored_fields(locked.run)
+        assert reloaded(case) == saved
+
+        with case.repository.change(case.run.id) as locked:
+            assert locked is not None
+            locked.run.export_deferred(token, max_attempts=8, now=now)
+            saved = stored_fields(locked.run)
+        assert reloaded(case) == saved
+
+        later = now + timedelta(minutes=1)
+        with case.repository.change(case.run.id) as locked:
+            assert locked is not None
+            token = str(uuid4())
+            assert locked.run.claim_export(
+                token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=30, now=later
+            )
+            locked.run.export_accepted(
+                token,
+                provider_trace_id="provider-trace",
+                trace_url="https://trace.test",
+                span_urls={invocation.span_id: "https://trace.test/agent"},
+                now=later,
+            )
+            saved, record = stored_fields(locked.run), record_of(locked.run)
+        assert reloaded(case) == saved
+        assert case.repository.get(case.run.id) == record
+        assert case.repository.invocations(case.run.id) == [replace(invocation, finalized=True, finalized_at=now)]
+        assert case.repository.batches(case.run.id) == batches
+
+    @staticmethod
+    def test_change_rolls_back_the_whole_block_when_it_raises(sqlite_session_factory: sessionmaker[Session]) -> None:
+        case = seed(sqlite_session_factory, "rolled-back")
+        before = reloaded(case)
+
+        def change_then_break_a_rule() -> None:
+            with case.repository.change(case.run.id) as locked:
+                assert locked is not None
+                invocation = locked.run.open_invocation(
+                    agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key="first"
+                )
+                batch = batch_for(case.run, invocation)
+                locked.run.ingest(
+                    batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=naive_utc_now()
+                )
+                locked.run.capture_terminal(
+                    agent_turn(case.run, root_span_id=case.run.root_span_id), now=naive_utc_now()
+                )
+                locked.run.open_invocation(
+                    agent_id=identifier("another-agent"), node_execution_id=None, attempt=0, call_key="first"
+                )
+
+        with pytest.raises(TraceRunConflictError, match="tracing_invocation_conflict"):
+            change_then_break_a_rule()
+        assert reloaded(case) == before
+        assert case.repository.invocations(case.run.id) == []
+        assert case.repository.batches(case.run.id) == []
+
+    @staticmethod
+    def test_change_rejects_a_new_batch_whose_id_another_run_stores(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        case = seed(sqlite_session_factory, "batch-owner")
+        other = seed(sqlite_session_factory, "batch-reuse")
+        batch = batch_for(case.run, case.invocation())
+        ingest(case, batch)
+        reused = batch_for(other.run, other.invocation()).model_copy(update={"batch_id": batch.batch_id})
+        before = reloaded(other)
+        with pytest.raises(TraceCollectionConflictError, match="tracing_batch_conflict"):
+            store_batch(other, reused)
+        assert reloaded(other) == before
+        assert other.repository.batches(other.run.id) == []
+        (kept,) = case.repository.batches(case.run.id)
+        assert (kept.id, kept.invocation_id) == (str(batch.batch_id), str(batch.invocation_id))
+
+    @staticmethod
+    @pytest.mark.parametrize("revocation", ["moved", "deleted"])
+    def test_change_tells_whether_the_owning_app_still_exists(
+        sqlite_session_factory: sessionmaker[Session], revocation: str
+    ) -> None:
+        case = seed(sqlite_session_factory, "owner")
+
+        def owner_exists() -> bool:
+            with case.repository.change(case.run.id) as locked:
+                assert locked is not None
+                return locked.owner_exists
+
+        assert owner_exists() is True
+        with case.sessions.begin() as session:
+            app = session.get(App, case.run.app_id)
+            assert app is not None
+            if revocation == "moved":
+                app.tenant_id = identifier("another-tenant")
+            else:
+                session.delete(app)
+        assert owner_exists() is False
+
+    @staticmethod
+    def test_change_yields_nothing_for_a_missing_run(sqlite_session_factory: sessionmaker[Session]) -> None:
+        case = seed(sqlite_session_factory, "missing")
+        with case.repository.change(identifier("missing-run")) as locked:
+            assert locked is None
+
+    @staticmethod
+    @pytest.mark.parametrize("read", WORKSPACE_READS)
+    def test_reads_are_scoped_to_the_owning_workspace(owned: OwnedSources, read: str) -> None:
+        owner = owned.case.run
+        assert owned.read(read, tenant_id=owner.tenant_id, app_id=owner.app_id) is not None
+        assert owned.read(read, tenant_id=identifier("foreign-tenant"), app_id=owner.app_id) is None
+
+    @staticmethod
+    @pytest.mark.parametrize("read", APP_READS)
+    def test_reads_are_scoped_to_the_owning_app(owned: OwnedSources, read: str) -> None:
+        # Every seeded app belongs to the same workspace.
+        sibling = seed(owned.case.sessions, "sibling")
+        assert owned.read(read, tenant_id=sibling.run.tenant_id, app_id=sibling.run.app_id) is None
+
+    @staticmethod
+    def test_workflow_run_trace_requires_its_app(owned: OwnedSources) -> None:
+        owner = owned.case.run
+        with owned.case.sessions.begin() as session:
+            session.execute(delete(App).where(App.id == owner.app_id))
+        assert owned.read("workflow_run_trace", tenant_id=owner.tenant_id, app_id=owner.app_id) is None
+
+    @staticmethod
+    @pytest.mark.parametrize("policy", [None, "", "invalid-json", "null", "[]", '"langfuse"'])
+    def test_app_tracing_reads_a_missing_or_malformed_policy_as_empty(
+        sqlite_session_factory: sessionmaker[Session], policy: str | None
+    ) -> None:
+        case = seed(sqlite_session_factory, "unreadable-policy")
+        store_policy(case, policy)
+        tracing = case.repository.app_tracing(tenant_id=case.run.tenant_id, app_id=case.run.app_id)
+        assert tracing == AppTracingSnapshot(policy={}, config=None)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("policy", "named"),
+        [
+            ({"enabled": True, "tracing_provider": "langfuse"}, "langfuse"),
+            ({"enabled": False, "tracing_provider": "phoenix"}, "phoenix"),
+            ({"enabled": True, "tracing_provider": "opik"}, None),
+            ({"enabled": True}, None),
+        ],
+        ids=["enabled", "disabled", "unconfigured", "unnamed"],
+    )
+    def test_app_tracing_reads_the_stored_configuration_of_the_named_provider(
+        sqlite_session_factory: sessionmaker[Session], policy: dict[str, object], named: str | None
+    ) -> None:
+        case = seed(sqlite_session_factory, "named-provider")
+        configs = {"langfuse": dict(case.run.provider_config), "phoenix": {"endpoint": "https://phoenix.test"}}
+        with case.sessions.begin() as session:
+            session.add(
+                TraceAppConfig(app_id=case.run.app_id, tracing_provider="phoenix", tracing_config=configs["phoenix"])
+            )
+        store_policy(case, json.dumps(policy))
+        tracing = case.repository.app_tracing(tenant_id=case.run.tenant_id, app_id=case.run.app_id)
+        assert tracing == AppTracingSnapshot(policy=policy, config=configs[named] if named else None)
+
+    @staticmethod
+    def test_runs_read_invocations_by_attempt_then_creation_and_batches_by_arrival(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        case = seed(sqlite_session_factory, "collected")
+        now = naive_utc_now()
+        agent_id = identifier("agent")
+        with case.repository.change(case.run.id) as locked:
+            assert locked is not None
+            retried = locked.run.open_invocation(agent_id=agent_id, node_execution_id=None, attempt=1, call_key="r")
+            first = locked.run.open_invocation(agent_id=agent_id, node_execution_id=None, attempt=0, call_key="a")
+            second = locked.run.open_invocation(agent_id=agent_id, node_execution_id=None, attempt=0, call_key="b")
+            for invocation in (first, second, retried):
+                batch = batch_for(case.run, invocation)
+                locked.run.ingest(batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=now)
+            invocations, batches = dict(locked.run.invocations), list(locked.run.new_batches)
+        # Creation and arrival times that contradict attempt, identifier and storage order.
+        earlier, later = sorted([first, second], key=lambda invocation: invocation.id, reverse=True)
+        arrival = [batches[2], batches[0], batches[1]]
+        with case.sessions.begin() as session:
+            for offset, invocation in enumerate([retried, earlier, later]):
+                stored_invocation = session.get(ApplicationTraceInvocation, invocation.id)
+                assert stored_invocation is not None
+                stored_invocation.created_at = now + timedelta(seconds=offset)
+            for offset, batch in enumerate(arrival):
+                stored_batch = session.get(ApplicationTraceBatch, batch.id)
+                assert stored_batch is not None
+                stored_batch.created_at = now + timedelta(seconds=offset)
+        ordered = [invocations[earlier.id], invocations[later.id], invocations[retried.id]]
+        assert case.repository.invocations(case.run.id) == ordered
+        assert case.repository.batches(case.run.id) == arrival
+        loaded = case.repository.load(case.run.id)
+        assert loaded is not None
+        assert list(loaded.invocations.values()) == ordered
+
+    @staticmethod
+    def test_pending_ids_lists_due_runs_that_may_export_with_terminals_first(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        case = seed(sqlite_session_factory, "pending")
+        drop_run(case)
+        now, hour = naive_utc_now(), timedelta(hours=1)
+        # name: (state, terminal_at, next_attempt_at, updated_at), stored in another order than the expected one
+        rows: dict[str, tuple[TraceRunState, datetime | None, datetime | None, datetime]] = {
+            "newer-ready": (TraceRunState.READY, None, None, now - hour),
+            "older-collecting": (TraceRunState.COLLECTING, None, None, now - 6 * hour),
+            "terminal-collecting": (TraceRunState.COLLECTING, now - 5 * hour, None, now - 2 * hour),
+            "due-retry": (TraceRunState.RETRYING, now - 5 * hour, now - timedelta(minutes=1), now - 3 * hour),
+            "exporting": (TraceRunState.EXPORTING, now - 5 * hour, None, now - 4 * hour),
+            "backing-off": (TraceRunState.RETRYING, now - 5 * hour, now + hour, now - 7 * hour),
+            "accepted": (TraceRunState.ACCEPTED, now - 5 * hour, None, now - 7 * hour),
+            "failed": (TraceRunState.FAILED, now - 5 * hour, None, now - 7 * hour),
+            "uncertain": (TraceRunState.UNCERTAIN, now - 5 * hour, None, now - 7 * hour),
+            "not-collected": (TraceRunState.NOT_COLLECTED, None, None, now - 7 * hour),
+        }
+        run_ids: dict[str, str] = {}
+        for name in rows:
+            run = TraceRunAgg.freeze(
+                run_id=str(uuidv7()),
+                trace_id=uuidv7().hex,
+                tenant_id=case.run.tenant_id,
+                app_id=case.run.app_id,
+                source_kind="message",
+                source_id=identifier(f"pending-{name}"),
+                session_id=name,
+                policy=LANGFUSE_POLICY,
+                stored_config=case.run.provider_config,
+                now=now,
+            )
+            assert case.repository.add(run) is True
+            run_ids[name] = run.id
+        with case.sessions.begin() as session:
+            for name, (state, terminal_at, next_attempt_at, updated_at) in rows.items():
+                row = session.get(ApplicationTraceRun, run_ids[name])
+                assert row is not None
+                row.state, row.terminal_at = state, terminal_at
+                row.next_attempt_at, row.updated_at = next_attempt_at, updated_at
+        pending = [
+            run_ids[name]
+            for name in ("exporting", "due-retry", "terminal-collecting", "older-collecting", "newer-ready")
+        ]
+        assert case.repository.pending_ids(100) == pending
+        assert case.repository.pending_ids(2) == pending[:2]

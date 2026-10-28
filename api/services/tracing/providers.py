@@ -8,7 +8,8 @@ top level and its secrets as workspace-encrypted tokens.
 
 import logging
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol
+from dataclasses import dataclass
+from typing import Any, Literal, Protocol
 
 from dify_trace_sdk.config import ProviderConfig
 from dify_trace_sdk.provider import TraceProvider
@@ -102,3 +103,27 @@ class ProviderConfigCodec:
 
 def configured_secrets(provider: type[TraceProvider[Any]], stored: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(name for name in sorted(provider.config_model.secret_fields()) if stored.get(name))
+
+
+@dataclass(frozen=True, slots=True)
+class TraceProviderSupport:
+    """What a provider's mapping supports. Describes the adapter, not delivery health."""
+
+    provider: str
+    native_cost: bool
+    trace_url: bool
+    span_url: bool
+    agent_spans: Literal[True] = True
+    session: Literal[True] = True
+    native_usage: Literal[True] = True
+    export_ack: Literal["accepted"] = "accepted"
+    """An exporter acknowledgement does not confirm that the destination can query the trace."""
+
+
+def support_of(provider: type[TraceProvider[Any]]) -> TraceProviderSupport:
+    return TraceProviderSupport(
+        provider=provider.id,
+        native_cost=provider.capabilities.native_cost,
+        trace_url=provider.capabilities.trace_url,
+        span_url=provider.capabilities.span_url,
+    )
