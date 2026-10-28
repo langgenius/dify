@@ -91,7 +91,7 @@ export const ConversationCard = memo(
       const fields = item.payload.fields ?? []
       const hasFields = fields.length > 0
       return (
-        <article className="w-full rounded-xl border border-components-panel-border px-1 py-[3px]">
+        <article className="w-full rounded-xl border border-components-panel-border px-1 py-0.75">
           <div className={hasFields ? 'px-2 pt-1.5 pb-0.5' : 'rounded-lg px-2 py-1.5'}>
             <h3
               className={

@@ -59,14 +59,14 @@ const ActivityList = ({
   )
 
   return (
-    <ol className="ms-[7px] space-y-1 border-s border-divider-subtle py-1 ps-[19px]">
+    <ol className="ms-1.75 space-y-1 border-s border-divider-subtle py-1 ps-4.75">
       {roots.map((activity) => {
         const children = childrenByParent.get(activity.id) ?? []
         return (
           <li key={activity.id}>
             <ActivityRow renderText={renderText} activity={activity} />
             {children.length > 0 && (
-              <ol className="ms-[7px] mt-1 space-y-1 border-s border-divider-subtle ps-[19px]">
+              <ol className="ms-1.75 mt-1 space-y-1 border-s border-divider-subtle ps-4.75">
                 {children.map((child) => (
                   <li key={child.id}>
                     <ActivityRow renderText={renderText} activity={child} />
@@ -122,7 +122,7 @@ export const ExecutionProgress = memo(
           <span className="grow" />
           <span
             aria-hidden
-            className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90"
+            className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90 motion-reduce:transition-none [&:dir(rtl)]:-scale-x-100 [&:dir(rtl)]:group-open:-rotate-90"
           />
         </summary>
         {open && <ActivityList renderText={renderText} activities={activities} />}

@@ -538,6 +538,21 @@
       "count": 1
     }
   },
+  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/configuration/tools/external-data-tool-modal.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/create-app-dialog-shell.tsx": {
+    "better-tailwindcss/enforce-logical-properties": {
+      "count": 1
+    }
+  },
   "web/app/components/app/create-app-dialog/app-card/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2

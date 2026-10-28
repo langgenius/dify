@@ -46,7 +46,7 @@ export function CreateAppDialogShell({
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                 variant="tertiary"
                 size="xl"
-                className="absolute inset-e-3 top-3 z-50"
+                className="absolute inset-e-3 top-3"
                 onClick={onClose}
               >
                 <span
