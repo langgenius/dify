@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy import select
+from sqlalchemy import Table, select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import PluginInstallationSource
@@ -52,7 +52,9 @@ def plugin_db() -> Iterator[Session]:
 
     with app.app_context():
         for model in (ProviderCredential, Provider, TenantPreferredModelProvider):
-            model.__table__.create(db.engine)
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(db.engine)
         with Session(db.engine, expire_on_commit=False) as session:
             yield session
 
@@ -82,7 +84,9 @@ class TestFetchLatestPluginVersion:
 
         result = PluginService.fetch_latest_plugin_version(["p1"])
 
-        assert result["p1"].version == "1.0.0"
+        cached = result["p1"]
+        assert cached is not None
+        assert cached.version == "1.0.0"
         mock_marketplace.batch_fetch_plugin_manifests.assert_not_called()
 
     @patch("core.plugin.plugin_service.marketplace")
@@ -100,7 +104,9 @@ class TestFetchLatestPluginVersion:
 
         result = PluginService.fetch_latest_plugin_version(["p1"])
 
-        assert result["p1"].version == "2.0.0"
+        fetched = result["p1"]
+        assert fetched is not None
+        assert fetched.version == "2.0.0"
         mock_redis.setex.assert_called_once()
 
     @patch("core.plugin.plugin_service.marketplace")
@@ -588,7 +594,9 @@ class TestUninstall:
         assert result is True
         plugin_db.expire_all()
         assert plugin_db.get(ProviderCredential, credential.id) is not None
-        assert plugin_db.get(Provider, provider.id).credential_id == credential.id
+        stored_provider = plugin_db.get(Provider, provider.id)
+        assert stored_provider is not None
+        assert stored_provider.credential_id == credential.id
         assert plugin_db.get(TenantPreferredModelProvider, preferred_provider.id) is not None
 
     @patch("core.plugin.plugin_service.PluginInstaller")
