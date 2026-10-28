@@ -14,6 +14,7 @@ import Split from '../_base/components/split'
 import useMatchSchemaType, {
   getMatchedSchemaType,
 } from '../_base/components/variable/use-match-schema-type'
+import { getToolAuthorizationTab } from './authorization-config'
 import ToolForm from './components/tool-form'
 import useConfig from './hooks/use-config'
 
@@ -41,6 +42,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
   const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
+  const showToolForm = !isShowAuthBtn || getToolAuthorizationTab(inputs) !== 'workspace-auth'
 
   if (isLoading) {
     return (
@@ -52,7 +54,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
 
   return (
     <div className="pt-2">
-      {!isShowAuthBtn && (
+      {showToolForm && (
         <div className="relative">
           {toolInputVarSchema.length > 0 && (
             <div className="px-4">
