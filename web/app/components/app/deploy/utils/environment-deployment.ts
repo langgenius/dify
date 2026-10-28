@@ -1,4 +1,4 @@
-import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { EnvironmentDeployment } from '@dify/openapi-content-mapper/enterprise-app-deploy'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
