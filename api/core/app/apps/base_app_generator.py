@@ -17,16 +17,15 @@ from core.app.file_access import (
     DatabaseFileAccessController,
     FileAccessScope,
     bind_file_access_scope,
-    grant_upload_file_access,
 )
 from extensions.ext_database import db
 from factories import file_factory
-from factories.file_factory.common import resolve_mapping_file_id
 from graphon.enums import NodeType
-from graphon.file import File, FileTransferMethod, FileUploadConfig
+from graphon.file import File, FileUploadConfig
 from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
 from models import Account, EndUser, Workflow, WorkflowRun
+from services.app.file_input_defaults import apply_file_input_defaults
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -132,40 +131,6 @@ class BaseAppGenerator:
             )
         )
 
-    @classmethod
-    def _normalize_file_default(cls, value: Any) -> Any:
-        if isinstance(value, list):
-            return [cls._normalize_file_default(item) for item in value]
-        if isinstance(value, dict) and "transferMethod" in value:
-            # The editor persists FileEntity values, whereas the file factory accepts API mappings.
-            return {
-                "type": value.get("supportFileType"),
-                "transfer_method": value.get("transferMethod"),
-                "url": value.get("url") or "",
-                "upload_file_id": value.get("uploadedId") or "",
-            }
-        return value
-
-    @classmethod
-    def _grant_file_default_access(cls, variables: Sequence["VariableEntity"]) -> None:
-        """Grant only files configured by the app author, within the current execution's tenant."""
-        file_ids: set[str] = set()
-        for variable in variables:
-            if variable.type not in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}:
-                continue
-            default = cls._normalize_file_default(variable.default)
-            mappings = default if isinstance(default, list) else [default]
-            for mapping in mappings:
-                if not isinstance(mapping, dict) or mapping.get("transfer_method") not in {
-                    FileTransferMethod.LOCAL_FILE,
-                    FileTransferMethod.REMOTE_URL,
-                }:
-                    continue
-                file_id = resolve_mapping_file_id(mapping, "upload_file_id")
-                if file_id:
-                    file_ids.add(file_id)
-        grant_upload_file_access(file_ids)
-
     def _prepare_user_inputs(
         self,
         *,
@@ -174,16 +139,7 @@ class BaseAppGenerator:
         tenant_id: str,
         strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
-        user_inputs = dict(user_inputs or {})
-        self._grant_file_default_access(variables)
-        # Fill omitted file inputs before required validation; explicit values win.
-        for variable in variables:
-            if (
-                variable.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
-                and user_inputs.get(variable.variable) is None
-                and variable.default
-            ):
-                user_inputs[variable.variable] = self._normalize_file_default(variable.default)
+        user_inputs = apply_file_input_defaults(user_inputs, variables)
         # Filter input variables from form configuration, handle required fields, default values, and option values
         user_inputs = {
             var.variable: self._validate_inputs(value=user_inputs.get(var.variable), variable_entity=var)

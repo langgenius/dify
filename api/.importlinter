@@ -29,6 +29,10 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
+    # Legacy generators delegate configured file defaults to the application owner during core migration.
+    core.app.apps.base_app_generator -> services.app.file_input_defaults
+    core.app.apps.advanced_chat.app_generator -> services.app.file_input_defaults
+    core.app.apps.workflow.app_generator -> services.app.file_input_defaults
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
     core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
