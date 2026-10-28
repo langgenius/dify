@@ -79,7 +79,11 @@ function KnowledgeSpaceOptionItem({
     : option.description
 
   return (
-    <ComboboxItem<string> value={option.id} disabled={disabled} className="min-h-12 gap-3">
+    <ComboboxItem<string>
+      value={option.id}
+      disabled={disabled}
+      className="group/space min-h-12 gap-3"
+    >
       <span className="flex min-w-0 items-center gap-2.5">
         <span
           aria-hidden
@@ -109,7 +113,14 @@ function KnowledgeSpaceOptionItem({
           )}
         </span>
       </span>
-      <ComboboxItemIndicator className="text-text-accent" />
+      <span
+        aria-hidden
+        className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border border-components-checkbox-border bg-components-checkbox-bg-unchecked text-components-checkbox-icon shadow-xs shadow-shadow-shadow-3 group-data-disabled/space:border-components-checkbox-border-disabled group-data-disabled/space:bg-components-checkbox-bg-disabled group-data-selected/space:border-transparent group-data-selected/space:bg-components-checkbox-bg"
+      >
+        <ComboboxItemIndicator className="ms-0 text-components-checkbox-icon">
+          <span className="i-ri-check-line size-3" />
+        </ComboboxItemIndicator>
+      </span>
     </ComboboxItem>
   )
 }
