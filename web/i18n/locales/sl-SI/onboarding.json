@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "Označi {{title}} kot nedokončano",
   "stepByStepTour.minimize": "Pomanjšaj",
   "stepByStepTour.progressAriaValueText": "Dokončanih {{completed}} od {{total}} korakov",
-  "stepByStepTour.restore": "Odpri vodnik po korakih",
   "stepByStepTour.skip": "Preskoči vodnik",
   "stepByStepTour.skipRecovery.dismiss": "Razumem",
   "stepByStepTour.skipRecovery.label": "Namig za obnovitev Step-by-step Tour",

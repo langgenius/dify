@@ -3936,16 +3936,6 @@
       "count": 1
     }
   },
-  "web/app/components/step-by-step-tour/coachmark.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/step-by-step-tour/mount.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
