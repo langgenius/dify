@@ -247,27 +247,17 @@ function TourTaskRow({
 
   return (
     <div
+      data-status={task.status}
       aria-current={current ? 'step' : undefined}
       aria-disabled={disabled || undefined}
-      className={cn(
-        'group flex w-full gap-1 rounded-xl p-2 transition-colors',
-        completed ? 'items-center' : 'items-start',
-        current && 'bg-state-base-hover-subtle',
-        disabled && 'cursor-not-allowed opacity-60',
-      )}
+      className="group flex w-full items-start gap-1 rounded-xl p-2 transition-colors data-[status=completed]:items-center data-[status=current]:bg-state-base-hover-subtle data-[status=disabled]:cursor-not-allowed data-[status=disabled]:opacity-60"
     >
-      <div className={cn('flex min-w-0 flex-1 gap-3', completed ? 'items-center' : 'items-start')}>
-        <div
-          className={cn(
-            'flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg',
-            current ? 'text-text-accent-light-mode-only' : 'text-text-secondary',
-            completed && 'opacity-50',
-          )}
-        >
+      <div className="flex min-w-0 flex-1 items-start gap-3 group-data-[status=completed]:items-center">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg text-text-secondary group-data-[status=completed]:opacity-50 group-data-[status=current]:text-text-accent-light-mode-only">
           <span aria-hidden className={cn('size-4', task.iconClassName)} />
         </div>
-        <div className={cn('min-w-0 flex-1', completed && 'opacity-50')}>
-          <div className={cn('system-md-medium text-text-secondary', completed && 'line-through')}>
+        <div className="min-w-0 flex-1 group-data-[status=completed]:opacity-50">
+          <div className="system-md-medium text-text-secondary group-data-[status=completed]:line-through">
             {task.title}
           </div>
           {!completed && (
