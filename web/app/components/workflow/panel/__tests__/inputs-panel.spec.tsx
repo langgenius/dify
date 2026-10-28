@@ -15,6 +15,7 @@ const mockNotify = vi.fn()
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({}),
+  usePathname: () => '/',
 }))
 
 vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
@@ -258,6 +259,69 @@ describe('InputsPanel', () => {
         },
         files: [uploadedRunFile],
       })
+    })
+
+    it('should submit a configured file default and send an explicit clear after removal', async () => {
+      const user = userEvent.setup()
+      const handleRun = vi.fn()
+      const defaultFile = {
+        id: 'default-file',
+        name: 'default.txt',
+        size: 10,
+        type: 'text/plain',
+        progress: 100,
+        transferMethod: TransferMethod.local_file,
+        supportFileType: 'document',
+        uploadedId: 'default-upload',
+      }
+
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.singleFile,
+                variable: 'file',
+                label: 'File',
+                required: false,
+                default: defaultFile,
+                allowed_file_types: ['document'],
+                allowed_file_upload_methods: [TransferMethod.remote_url],
+              },
+            ],
+          },
+        }),
+        {
+          hooksStoreProps: createHooksStoreProps({
+            handleRun,
+            configsMap: {
+              flowId: 'flow-1',
+              flowType: FlowType.appFlow,
+              fileSettings: { enabled: false },
+            },
+          }),
+        },
+      )
+      const runButton = screen.getByRole('button', { name: 'workflow.singleRun.startRun' })
+      await user.click(runButton)
+      expect(handleRun).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          inputs: {
+            file: {
+              type: 'document',
+              transfer_method: 'local_file',
+              url: '',
+              upload_file_id: 'default-upload',
+            },
+          },
+        }),
+      )
+
+      await user.click(screen.getByRole('button', { name: /remove.*default.txt/ }))
+      expect(screen.queryByText('default.txt')).not.toBeInTheDocument()
+      handleRun.mockClear()
+      await user.click(runButton)
+      expect(handleRun).toHaveBeenCalledWith(expect.objectContaining({ inputs: { file: '' } }))
     })
   })
 
