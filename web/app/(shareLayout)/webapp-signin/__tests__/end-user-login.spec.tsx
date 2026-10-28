@@ -72,19 +72,22 @@ describe('App user callback owner', () => {
     </StrictMode>
   )
 
-  it('exchanges once despite StrictMode and the proof changing, bypassing the enterprise bootstrap', async () => {
+  it('exchanges once in StrictMode without persisting returned credentials or starting the enterprise bootstrap', async () => {
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    const persist = vi.spyOn(localStorage, 'setItem')
     const fetch = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(Response.json({ access_token: 'passport', webapp_access_token: 'proof' }))
     const { unmount } = render(content())
     await waitFor(() => expect(replace).toHaveBeenCalledWith(target))
-    expect(getWebAppAccessToken()).toBe('proof')
+    expect(persist).not.toHaveBeenCalled()
+    expect(getWebAppAccessToken()).toBe('')
     expect(fetch).toHaveBeenCalledOnce()
     unmount()
     render(content())
     await waitFor(() => expect(replace).toHaveBeenCalledTimes(2))
     expect(fetch).toHaveBeenCalledOnce()
+    expect(persist).not.toHaveBeenCalled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -107,6 +110,7 @@ describe('App user callback owner', () => {
 
   it('starts the new callback when its URL changes and ignores the previous pending exchange', async () => {
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    const persist = vi.spyOn(localStorage, 'setItem')
     let finishPrevious!: (response: Response) => void
     const previous = new Promise<Response>((resolve) => {
       finishPrevious = resolve
@@ -138,7 +142,8 @@ describe('App user callback owner', () => {
       ),
     )
     expect(fetch).toHaveBeenCalledTimes(2)
-    expect(getWebAppAccessToken()).toBe('next-proof')
+    expect(persist).not.toHaveBeenCalled()
+    expect(getWebAppAccessToken()).toBe('')
     expect(replace).not.toHaveBeenCalledWith(target)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })

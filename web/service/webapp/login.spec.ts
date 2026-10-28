@@ -78,13 +78,14 @@ describe('Webapp Account PKCE transaction', () => {
     expect(login.href).not.toContain(stored.verifier)
   })
 
-  it('exchanges exactly once across concurrent calls and a completed callback remount, then stores both tokens', async () => {
+  it('exchanges once with cookies across concurrent calls and remounts without storing returned credentials', async () => {
     const address = { kind: 'default', code: `app-${sequence}` } as const
     const otherApp = { kind: 'default', code: 'another-app' } as const
     setWebAppPassport(address, 'anonymous-passport', 'anonymous')
     setWebAppPassport(otherApp, 'another-anonymous-passport', 'anonymous')
     await beginWebAppAccountLogin(accountUrl, returnUrl)
     callback()
+    const storeCredentials = vi.spyOn(localStorage, 'setItem')
     let body: unknown
     let headers: Headers | undefined
     const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -92,6 +93,7 @@ describe('Webapp Account PKCE transaction', () => {
       headers = request.headers
       body = await request.json()
       expect(new URL(request.url).pathname).toMatch(/\/passport$/)
+      expect(request.credentials).toBe('include')
       return Response.json({ access_token: 'app-passport', webapp_access_token: 'web-proof' })
     })
     const first = completeWebAppAccountLogin(returnUrl, 'one-use-code')
@@ -105,8 +107,9 @@ describe('Webapp Account PKCE transaction', () => {
       login_code: 'one-use-code',
       code_verifier: expect.stringMatching(/^[\w-]{43}$/),
     })
-    expect(getWebAppAccessToken()).toBe('web-proof')
-    expect(getWebAppPassport(address)).toBe('app-passport')
+    expect(storeCredentials).not.toHaveBeenCalled()
+    expect(getWebAppAccessToken()).toBe('')
+    expect(getWebAppPassport(address)).toBe('anonymous-passport')
     expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
     expect(getAnonymousWebAppPassport(otherApp)).toBe('another-anonymous-passport')
     expect(sessionStorage.getItem(`webapp-account-login-app-${sequence}`)).toBeNull()
@@ -135,7 +138,7 @@ describe('Webapp Account PKCE transaction', () => {
     },
   )
 
-  it('does not save an old exchange after the Web account changes', async () => {
+  it('does not complete an old exchange after the Web account changes', async () => {
     await beginWebAppAccountLogin(accountUrl, returnUrl)
     callback()
     let finish!: (response: Response) => void

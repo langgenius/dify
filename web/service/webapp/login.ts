@@ -1,6 +1,6 @@
 import { basePath } from '@/utils/var'
 import { parseWebAppAddress } from '../webapp-address'
-import { captureWebAppAuthSession, setWebAppAccessToken, setWebAppPassport } from '../webapp-auth'
+import { captureWebAppAuthSession } from '../webapp-auth'
 import { webAppClient } from './index'
 
 const TRANSACTION_PREFIX = 'webapp-account-login-'
@@ -157,11 +157,10 @@ export function completeWebAppAccountLogin(
   if (!transaction || transaction.redirectUrl !== target.url)
     return Promise.reject(new Error('Missing or expired Web App login transaction.'))
   const isSameSession = captureWebAppAuthSession()
-  let isCurrent = isSameSession
   const originalUrl = window.location.href
   const operation = (async () => {
     try {
-      const tokens = await webAppClient.passport.post(
+      await webAppClient.passport.post(
         {
           headers: { 'X-App-Code': target.address.code },
           body: { login_code: loginCode, code_verifier: transaction.verifier },
@@ -174,9 +173,6 @@ export function completeWebAppAccountLogin(
         readTransaction(target.address.code)?.verifier !== transaction.verifier
       )
         throw new DOMException('The Web App login changed.', 'AbortError')
-      setWebAppAccessToken(tokens.webapp_access_token, 'end_user')
-      setWebAppPassport(target.address, tokens.access_token, 'authenticated')
-      isCurrent = captureWebAppAuthSession()
       removeTransaction(target.address.code)
       return target.url
     } catch (error) {
@@ -185,7 +181,7 @@ export function completeWebAppAccountLogin(
       throw error
     }
   })()
-  exchanges.set(key, { promise: operation, createdAt: Date.now(), isCurrent: () => isCurrent() })
+  exchanges.set(key, { promise: operation, createdAt: Date.now(), isCurrent: isSameSession })
   void operation.catch(() => exchanges.delete(key))
   return operation
 }
