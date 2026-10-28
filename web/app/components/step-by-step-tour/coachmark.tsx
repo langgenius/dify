@@ -22,31 +22,15 @@ import { getStepByStepTourGuideKind, getStepByStepTourTargetSelector } from './t
 import { useStepByStepTourTargetRect } from './use-target-rect'
 
 const HIGHLIGHT_PADDING = 4
-const BUBBLE_SIDE_OFFSET = 20
-const VIEWPORT_PADDING = 8
 // The vertical arrow's dot sits this far from the target's left edge, as in the Figma frame.
 const VERTICAL_ARROW_DOT_LEFT = 28
-const VERTICAL_ARROW_DOT_WIDTH = 2
 const STEP_GLIDE_DURATION = 400
 const STEP_GLIDE_CLASS_NAME =
   'data-gliding:duration-300 data-gliding:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
 const TARGET_TABBABLE_SELECTOR =
   'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
-const SKIP_BUTTON_CLASS_NAME =
-  'shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-left system-sm-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
-export type StepByStepTourCoachmarkPlacement = 'bottom' | 'right' | 'top'
-
-const createClientRect = ({ height, left, top, width }: StepByStepTourTargetRect) => ({
-  bottom: top + height,
-  height,
-  left,
-  right: left + width,
-  top,
-  width,
-  x: left,
-  y: top,
-})
+export type StepByStepTourCoachmarkPlacement = 'bottom' | 'inline-end' | 'top'
 
 // Base UI centers the arrow on the anchor: narrow the anchor to the spot the arrow points at, and let
 // `alignOffset` move the popup back to the highlight's edge.
@@ -55,25 +39,18 @@ const getStepByStepTourCoachmarkAnchoring = (
   highlightRect: StepByStepTourTargetRect,
   anchorRect: StepByStepTourTargetRect,
 ): Pick<PopoverPositionerProps, 'alignOffset' | 'anchor'> => {
-  if (placement === 'right') {
-    const rect = createClientRect({
-      height: anchorRect.height,
-      left: highlightRect.left,
-      top: anchorRect.top,
-      width: highlightRect.width,
-    })
-
+  if (placement === 'inline-end') {
+    const rect = new DOMRect(
+      highlightRect.left,
+      anchorRect.top,
+      highlightRect.width,
+      anchorRect.height,
+    )
     return { anchor: { getBoundingClientRect: () => rect }, alignOffset: 0 }
   }
 
   const arrowDotLeft = anchorRect.left + VERTICAL_ARROW_DOT_LEFT
-  const rect = createClientRect({
-    height: highlightRect.height,
-    left: arrowDotLeft,
-    top: highlightRect.top,
-    width: VERTICAL_ARROW_DOT_WIDTH,
-  })
-
+  const rect = new DOMRect(arrowDotLeft, highlightRect.top, 2, highlightRect.height)
   return {
     anchor: { getBoundingClientRect: () => rect },
     alignOffset: highlightRect.left - arrowDotLeft,
@@ -125,7 +102,10 @@ type StepByStepTourCoachmarkProps = {
   onComplete: () => void
 }
 
-type StepByStepTourCoachmarkOverlay = Omit<StepByStepTourCoachmarkProps, 'targetElement'> & {
+type StepByStepTourCoachmarkOverlay = Omit<
+  StepByStepTourCoachmarkProps,
+  'onComplete' | 'onSkip' | 'targetElement'
+> & {
   anchorRect: StepByStepTourTargetRect
   highlightRect: StepByStepTourTargetRect
   placement: StepByStepTourCoachmarkPlacement
@@ -158,8 +138,6 @@ export function StepByStepTourCoachmark({
           guide,
           highlightRect: targetRects.highlightRect,
           interactionPolicy,
-          onComplete,
-          onSkip,
           placement,
           skipLabel,
           stepLabel,
@@ -282,12 +260,12 @@ export function StepByStepTourCoachmark({
           />
           <PopoverPositioner
             anchor={anchoring.anchor}
-            side={overlay.placement === 'right' ? 'inline-end' : overlay.placement}
-            align={overlay.placement === 'right' ? 'center' : 'start'}
+            side={overlay.placement}
+            align={overlay.placement === 'inline-end' ? 'center' : 'start'}
             alignOffset={anchoring.alignOffset}
-            sideOffset={BUBBLE_SIDE_OFFSET}
+            sideOffset={20}
             arrowPadding={12}
-            collisionPadding={VIEWPORT_PADDING}
+            collisionPadding={8}
             collisionAvoidance={{ side: 'flip', align: 'shift', fallbackAxisSide: 'none' }}
             positionMethod="fixed"
             data-gliding={gliding ? '' : undefined}
@@ -357,7 +335,7 @@ export function StepByStepTourCoachmark({
                 )}
               >
                 <PopoverClose
-                  className={SKIP_BUTTON_CLASS_NAME}
+                  className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-start system-sm-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onKeyDown={
                     overlay.interactionPolicy === 'target-only' ? handleSkipKeyDown : undefined
                   }
@@ -382,7 +360,7 @@ export function StepByStepTourCoachmark({
                       variant="primary"
                       size="medium"
                       className="min-w-20 px-3"
-                      onClick={() => currentOverlay?.onComplete()}
+                      onClick={currentOverlay ? onComplete : undefined}
                     >
                       {overlay.guide.primaryActionLabel}
                     </Button>
