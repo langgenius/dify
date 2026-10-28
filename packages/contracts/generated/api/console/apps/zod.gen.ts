@@ -229,6 +229,13 @@ export const zAgentConfigFileUploadPayload = z.object({
 })
 
 /**
+ * AgentConfigFilesUploadPayload
+ */
+export const zAgentConfigFilesUploadPayload = z.object({
+  upload_file_ids: z.array(z.uuid()).min(1),
+})
+
+/**
  * AgentConfigDeleteResponse
  */
 export const zAgentConfigDeleteResponse = z.object({
@@ -1714,6 +1721,14 @@ export const zAgentConfigFileListResponse = z.object({
 export const zAgentConfigFileUploadResponse = z.object({
   config_version: zAgentConfigVersionResponse,
   file: zAgentConfigFileItemResponse,
+})
+
+/**
+ * AgentConfigFilesUploadResponse
+ */
+export const zAgentConfigFilesUploadResponse = z.object({
+  config_version: zAgentConfigVersionResponse,
+  files: z.array(zAgentConfigFileItemResponse),
 })
 
 /**
@@ -6675,6 +6690,23 @@ export const zPostAppsByAppIdAgentConfigFilesQuery = z.object({
  * Uploaded config file
  */
 export const zPostAppsByAppIdAgentConfigFilesResponse = zAgentConfigFileUploadResponse
+
+export const zPostAppsByAppIdAgentConfigFilesBatchBody = zAgentConfigFilesUploadPayload
+
+export const zPostAppsByAppIdAgentConfigFilesBatchPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zPostAppsByAppIdAgentConfigFilesBatchQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  node_id: z.string().optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Bound config files
+ */
+export const zPostAppsByAppIdAgentConfigFilesBatchResponse = zAgentConfigFilesUploadResponse
 
 export const zDeleteAppsByAppIdAgentConfigFilesByNamePath = z.object({
   app_id: z.uuid(),

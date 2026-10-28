@@ -7,7 +7,7 @@ import type {
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
-import { debounce } from 'es-toolkit/compat'
+import { debounce, omit } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -16,7 +16,6 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
-import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import {
   useKnowledgeValidationMessage,
@@ -64,7 +63,6 @@ export function useAgentConfigureSync({
   const toolPresentation = useAgentToolPresentation(toolPresentationIdentities, toolProviderCatalog)
   const queryClient = useQueryClient()
   const store = useStore()
-  const fileUploadSync = useAtomValue(agentConfigFileUploadSyncAtom)
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
   const enabledRef = useRef(enabled)
@@ -146,7 +144,7 @@ export function useAgentConfigureSync({
     [setSavedDraft],
   )
 
-  const runSaveComposer = useSerialAsyncCallback(
+  const saveComposer = useSerialAsyncCallback(
     async ({
       configSnapshot,
       draftBaseline,
@@ -176,7 +174,7 @@ export function useAgentConfigureSync({
             body: {
               variant: 'agent_app',
               save_strategy: 'save_to_current_version',
-              agent_soul: configSnapshot,
+              agent_soul: omit(configSnapshot, ['config_files']),
             },
           })
         } catch (error) {
@@ -226,11 +224,6 @@ export function useAgentConfigureSync({
       return true
     },
   )
-  const saveComposer = useCallback(
-    (...args: Parameters<typeof runSaveComposer>) =>
-      fileUploadSync.trackSave(runSaveComposer(...args)),
-    [fileUploadSync, runSaveComposer],
-  )
 
   const saveComposerOnPageClose = useCallback(
     async ({
@@ -252,7 +245,7 @@ export function useAgentConfigureSync({
           body: {
             variant: 'agent_app',
             save_strategy: 'save_to_current_version',
-            agent_soul: configSnapshot,
+            agent_soul: omit(configSnapshot, ['config_files']),
           },
         })
       } catch {
@@ -304,31 +297,12 @@ export function useAgentConfigureSync({
   const debouncedSaveDraft = useMemo(
     () =>
       debounce(() => {
-        if (enabledRef.current && !fileUploadSync.isUploading) latestDraftSaveRef.current()
+        if (enabledRef.current) latestDraftSaveRef.current()
       }, DRAFT_AUTOSAVE_WAIT),
-    [fileUploadSync],
-  )
-
-  useEffect(
-    () =>
-      fileUploadSync.register({
-        pause: () => debouncedSaveDraft.cancel?.(),
-        saveLatest: async () => {
-          if (!enabledRef.current || !store.get(isAgentComposerDirtyAtom)) return
-          await saveComposer({
-            configSnapshot: getAgentSoulDraft(),
-            draftBaseline: store.get(agentComposerDraftAtom),
-          })
-        },
-        resume: () => {
-          if (enabledRef.current && store.get(isAgentComposerDirtyAtom)) debouncedSaveDraft()
-        },
-      }),
-    [debouncedSaveDraft, fileUploadSync, getAgentSoulDraft, saveComposer, store],
+    [],
   )
 
   const saveDraft = useCallback(async () => {
-    if (fileUploadSync.isUploading) await fileUploadSync.waitForUpload()
     if (!enabledRef.current) return
 
     const draft = store.get(agentComposerDraftAtom)
@@ -358,12 +332,11 @@ export function useAgentConfigureSync({
     store,
     tCommon,
     explicitlySavingDraftKeysRef,
-    fileUploadSync,
   ])
 
   const saveDirtyDraftOnPageClose = useCallback(
     (allowInFlightDuplicate = false) => {
-      if (!enabledRef.current || fileUploadSync.isUploading) return
+      if (!enabledRef.current) return
 
       const draft = store.get(agentComposerDraftAtom)
       if (!store.get(isAgentComposerDirtyAtom)) {
@@ -382,18 +355,14 @@ export function useAgentConfigureSync({
 
       debouncedSaveDraft.cancel?.()
       pageCloseSavingDraftKeyRef.current = draftKey
-      void fileUploadSync
-        .trackSave(
-          saveComposerOnPageClose({
-            configSnapshot,
-            draftBaseline: draft,
-            draftKey,
-          }),
-        )
-        .finally(() => {
-          if (pageCloseSavingDraftKeyRef.current === draftKey)
-            pageCloseSavingDraftKeyRef.current = undefined
-        })
+      void saveComposerOnPageClose({
+        configSnapshot,
+        draftBaseline: draft,
+        draftKey,
+      }).finally(() => {
+        if (pageCloseSavingDraftKeyRef.current === draftKey)
+          pageCloseSavingDraftKeyRef.current = undefined
+      })
     },
     [
       debouncedSaveDraft,
@@ -401,7 +370,6 @@ export function useAgentConfigureSync({
       saveComposerOnPageClose,
       store,
       explicitlySavingDraftKeysRef,
-      fileUploadSync,
     ],
   )
 
@@ -411,13 +379,8 @@ export function useAgentConfigureSync({
       const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
       const isDirty = store.get(isAgentComposerDirtyAtom)
 
-      if (
-        !enabledRef.current ||
-        publishInFlightRef.current ||
-        fileUploadSync.isUploading ||
-        !isDirty
-      ) {
-        if (fileUploadSync.isUploading || !isDirty) debouncedSaveDraft.cancel?.()
+      if (!enabledRef.current || publishInFlightRef.current || !isDirty) {
+        if (!isDirty) debouncedSaveDraft.cancel?.()
         return
       }
 
@@ -427,7 +390,7 @@ export function useAgentConfigureSync({
 
       debouncedSaveDraft()
     })
-  }, [debouncedSaveDraft, fileUploadSync, getAgentSoulDraft, store])
+  }, [debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     const saveDraftWhenPageHidden = () => {
@@ -453,7 +416,6 @@ export function useAgentConfigureSync({
   }, [saveDirtyDraftOnPageClose])
 
   const publishDraft = useCallback(async (): Promise<AgentConfigurePublishResult | false> => {
-    if (fileUploadSync.isUploading) await fileUploadSync.waitForUpload()
     if (
       !publishEnabledRef.current ||
       !getCurrentPermissions().canReleaseAndVersion ||
@@ -526,7 +488,6 @@ export function useAgentConfigureSync({
     agentId,
     agentName,
     debouncedSaveDraft,
-    fileUploadSync,
     getKnowledgeValidationMessage,
     getCurrentPermissions,
     runPublishTransaction,

@@ -32,14 +32,16 @@ const mocks = vi.hoisted(() => ({
   uploadFileMutationFn: vi.fn(async (_input: unknown) => ({ id: 'upload-1' })),
   commitFileMutationFn: vi.fn(async (_input: unknown) => ({
     config_version: { id: 'draft-1', kind: 'draft', writable: true },
-    file: {
-      id: 'uploaded.md',
-      name: 'uploaded.md',
-      file_id: 'drive-file-1',
-      hash: 'sha256:file-1',
-      mime_type: 'text/markdown',
-      size: 5,
-    },
+    files: [
+      {
+        id: 'uploaded.md',
+        name: 'uploaded.md',
+        file_id: 'drive-file-1',
+        hash: 'sha256:file-1',
+        mime_type: 'text/markdown',
+        size: 5,
+      },
+    ],
   })),
   deleteFileMutationFn: vi.fn(async (_input: unknown) => ({
     removed_names: ['brief.md'],
@@ -101,8 +103,10 @@ vi.mock('@/service/console', async (importOriginal) => {
         byAgentId: {
           config: {
             files: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
+              batch: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
+                },
               },
               byName: {
                 delete: {
@@ -124,8 +128,10 @@ vi.mock('@/service/console', async (importOriginal) => {
           agent: {
             config: {
               files: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
+                batch: {
+                  post: {
+                    mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
+                  },
                 },
                 byName: {
                   delete: {
@@ -410,7 +416,7 @@ describe('AgentFiles', () => {
             version_id: undefined,
           },
           body: {
-            upload_file_id: 'upload-1',
+            upload_file_ids: ['upload-1'],
           },
         },
         expect.anything(),
@@ -532,7 +538,7 @@ describe('AgentFiles', () => {
             version_id: 'draft-1',
           },
           body: {
-            upload_file_id: 'upload-1',
+            upload_file_ids: ['upload-1'],
           },
         },
         expect.anything(),

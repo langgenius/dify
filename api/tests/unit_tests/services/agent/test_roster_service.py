@@ -1021,7 +1021,7 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
             tenant_id="tenant-1",
             agent_id="agent-1",
             draft_type=AgentConfigDraftType.DRAFT,
-            config_snapshot=AgentSoulConfig(),
+            config_snapshot=agent_soul,
             id="draft-1",
             home_snapshot_id="home-initial",
         ),
@@ -2666,7 +2666,11 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         "_create_roster_agent_for_composer",
         fake_create_roster_agent_for_composer,
     )
-    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_require_agent",
+        lambda **kwargs: workflow_agent if kwargs["agent_id"] == workflow_agent.id else roster_agent,
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_require_version",
@@ -2711,6 +2715,8 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         agent_id="inline-agent-1",
         current_snapshot_id="inline-version-1",
     )
+    session.add_all([workflow_agent, roster_agent, existing_binding])
+    session.commit()
 
     updated_binding = AgentComposerService._save_node_job_only(
         session=session,
@@ -2868,6 +2874,8 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         ),
     )
     original_node_job = binding.node_job_config_dict
+    session.add_all([inline_agent, current_snapshot, normal_draft, binding])
+    session.commit()
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,

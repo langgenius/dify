@@ -13,17 +13,17 @@ import { AgentFiles } from '../../files'
 import { AgentPromptEditor } from '../index'
 
 type UploadInput = { body: { file: File } }
-type CommitInput = { body: { upload_file_id: string } }
+type CommitInput = { body: { upload_file_ids: string[] } }
 
 const mocks = vi.hoisted(() => ({
   upload: vi.fn(async ({ body }: UploadInput) => ({ id: `upload-${body.file.name}` })),
   commit: vi.fn(async ({ body }: CommitInput) => ({
-    file: {
-      name: body.upload_file_id.replace('upload-', ''),
-      file_id: body.upload_file_id,
+    files: body.upload_file_ids.map((id) => ({
+      name: id.replace('upload-', ''),
+      file_id: id,
       mime_type: 'text/markdown',
       size: 5,
-    },
+    })),
   })),
 }))
 
@@ -35,7 +35,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'files.upload.post': mocks.upload,
-      'agent.byAgentId.config.files.post': mocks.commit,
+      'agent.byAgentId.config.files.batch.post': mocks.commit,
     }),
   }
 })
@@ -114,6 +114,11 @@ describe('Prompt file uploads', () => {
     await openPromptFileUpload(user)
     await uploadFiles(user, ['first.md', 'second.md'])
 
+    expect(mocks.commit).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: { upload_file_ids: ['upload-first.md', 'upload-second.md'] },
+      }),
+    )
     const snapshot = configSnapshot()
     expect(snapshot.config_files).toEqual([
       expect.objectContaining({ name: 'first.md', file_id: 'upload-first.md' }),

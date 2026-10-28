@@ -21,13 +21,11 @@ import {
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
 import { formatFileSize } from '@/utils/format'
@@ -307,19 +305,18 @@ export function AgentFileUploadDialog({
   const [isUploading, setIsUploading] = useState(false)
   const isUploadingRef = useRef(false)
   const nextFileIdRef = useRef(0)
-  const fileUploadSync = useAtomValue(agentConfigFileUploadSyncAtom)
   const uploadFileMutation = useMutation(
     consoleQuery.files.upload.post.mutationOptions({
       context: { silent: true },
     }),
   )
   const commitAgentFileMutation = useMutation(
-    consoleQuery.agent.byAgentId.config.files.post.mutationOptions({
+    consoleQuery.agent.byAgentId.config.files.batch.post.mutationOptions({
       context: { silent: true },
     }),
   )
   const commitWorkflowAgentFileMutation = useMutation(
-    consoleQuery.apps.byAppId.agent.config.files.post.mutationOptions({
+    consoleQuery.apps.byAppId.agent.config.files.batch.post.mutationOptions({
       context: { silent: true },
     }),
   )
@@ -363,17 +360,19 @@ export function AgentFileUploadDialog({
       setFiles(updatedFiles)
     }
 
-    const releaseAutosave = await fileUploadSync.beginUpload()
     try {
-      // Both upload and binding are sequential: binding writes the whole Agent config snapshot.
-      for (const item of selectedFiles) {
-        let uploadFileId = item.uploadFileId
-        if (!uploadFileId) {
-          updateFile(item.id, { status: 'uploading', error: undefined })
+      const uploadResults = await Promise.allSettled(
+        selectedFiles.map(async (item) => {
+          updateFile(item.id, {
+            status: item.uploadFileId ? 'queued' : 'uploading',
+            error: undefined,
+          })
+          if (item.uploadFileId) return { id: item.id, uploadFileId: item.uploadFileId }
+
           try {
             const uploadedFile = await uploadFileMutation.mutateAsync({ body: { file: item.file } })
-            uploadFileId = uploadedFile.id
-            updateFile(item.id, { uploadFileId })
+            updateFile(item.id, { uploadFileId: uploadedFile.id, status: 'queued' })
+            return { id: item.id, uploadFileId: uploadedFile.id }
           } catch (error) {
             updateFile(item.id, {
               status: 'failed',
@@ -382,45 +381,51 @@ export function AgentFileUploadDialog({
                   ? error.message
                   : t(($) => $['agentDetail.configure.files.upload.failed']),
             })
-            continue
+            throw error
           }
-        }
+        }),
+      )
+      const uploadedFiles = uploadResults.flatMap((result) =>
+        result.status === 'fulfilled' ? [result.value] : [],
+      )
+      if (uploadedFiles.length === 0) return
 
-        updateFile(item.id, { status: 'binding', error: undefined })
-        try {
-          const body = { upload_file_id: uploadFileId }
-          const committedFile = apiContext.workflow
-            ? await commitWorkflowAgentFileMutation.mutateAsync({
-                params: { app_id: apiContext.workflow.appId },
-                query: {
-                  node_id: apiContext.workflow.nodeId,
-                  draft_type: apiContext.draftType,
-                  version_id: apiContext.versionId,
-                },
-                body,
-              })
-            : await commitAgentFileMutation.mutateAsync({
-                params: { agent_id: apiContext.agentId },
-                query: {
-                  draft_type: apiContext.draftType,
-                  version_id: apiContext.versionId,
-                },
-                body,
-              })
-          updateFile(item.id, { status: 'success' })
-          onUploaded(toAgentFileNode(committedFile.file))
-        } catch (error) {
-          updateFile(item.id, {
+      uploadedFiles.forEach(({ id }) => updateFile(id, { status: 'binding' }))
+      try {
+        // Preserve selection order so the backend can deterministically resolve duplicate names.
+        const body = { upload_file_ids: uploadedFiles.map(({ uploadFileId }) => uploadFileId) }
+        const committedFiles = apiContext.workflow
+          ? await commitWorkflowAgentFileMutation.mutateAsync({
+              params: { app_id: apiContext.workflow.appId },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+              body,
+            })
+          : await commitAgentFileMutation.mutateAsync({
+              params: { agent_id: apiContext.agentId },
+              query: {
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+              body,
+            })
+        uploadedFiles.forEach(({ id }) => updateFile(id, { status: 'success' }))
+        committedFiles.files.forEach((file) => onUploaded(toAgentFileNode(file)))
+      } catch (error) {
+        uploadedFiles.forEach(({ id }) =>
+          updateFile(id, {
             status: 'failed',
             error:
               error instanceof Error
                 ? error.message
                 : t(($) => $['agentDetail.configure.files.upload.bindingFailed']),
-          })
-        }
+          }),
+        )
       }
     } finally {
-      await releaseAutosave()
       isUploadingRef.current = false
       setIsUploading(false)
     }
