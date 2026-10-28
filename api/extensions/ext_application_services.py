@@ -66,6 +66,7 @@ from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRe
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
+from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from services.account_access_service import AccountAccessService
 from services.account_activation_service import AccountActivationService
 from services.account_adapters import (
@@ -209,6 +210,7 @@ from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
 from services.workspace_query_service import WorkspaceQueryService
+from services.workspace.resource_cleanup_service import WorkspaceResourceCleanupService
 from tasks.mail_inner_task import enqueue_inner_mail
 
 _EXTENSION_KEY = "application_services"
@@ -287,6 +289,7 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    workspace_resource_cleanup: WorkspaceResourceCleanupService
     workflow_app_logs: WorkflowAppLogQueryService
     inner_mail: InnerMailService
     web_passport: WebPassportService
@@ -731,6 +734,10 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        workspace_resource_cleanup=WorkspaceResourceCleanupService(
+            session_factory=database_client,
+            agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
         ),
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
