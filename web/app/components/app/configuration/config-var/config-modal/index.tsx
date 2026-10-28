@@ -229,6 +229,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }, [handlePayloadChange, t])
 
   const checkboxDefaultSelectValue = useMemo(() => getCheckboxDefaultSelectValue(tempPayload.default), [tempPayload.default])
+  // File inputs keep FileEntity defaults; the text, number and select default editors only handle scalar values.
+  const scalarDefault = typeof tempPayload.default === 'string' || typeof tempPayload.default === 'number' ? tempPayload.default : undefined
 
   const isJsonSchemaEmpty = (value: InputVar['json_schema']) => {
     if (value === null || value === undefined) {
@@ -363,7 +365,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           {type === InputVarType.textInput && (
             <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
               <Input
-                value={tempPayload.default || ''}
+                value={scalarDefault || ''}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
               />
@@ -386,7 +388,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
             <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
               <Input
                 type="number"
-                value={tempPayload.default || ''}
+                value={scalarDefault || ''}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
               />
@@ -428,7 +430,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
                         name: option,
                       })),
                     ]}
-                    defaultValue={tempPayload.default || ''}
+                    defaultValue={scalarDefault || ''}
                     onSelect={item => handlePayloadChange('default')(item.value === '' ? undefined : item.value)}
                     placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })}
                     allowSearch={false}

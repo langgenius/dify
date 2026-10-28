@@ -399,7 +399,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
         if (fileIsUploading)
           return
 
-        if (!newConversationInputsRef.current[variable] && !silent)
+        const inputValue = newConversationInputsRef.current[variable]
+        if ((!inputValue || (Array.isArray(inputValue) && inputValue.length === 0)) && !silent)
           hasEmptyInput = label as string
 
         if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && newConversationInputsRef.current[variable] && !silent) {
@@ -438,18 +439,22 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (conversationId)
       setClearChatList(false)
   }, [handleConversationIdInfoChange, setClearChatList])
-  const handleNewConversation = useCallback(async () => {
+  const handleNewConversation = useCallback(() => {
     if (isTryApp) {
       setClearChatList(true)
       return
     }
 
     currentChatInstanceRef.current.handleStop()
+    const conversationInputs: Record<string, InputValueTypes> = {}
+    inputsForms.forEach((item) => {
+      conversationInputs[item.variable] = item.default || null
+    })
+    handleNewConversationInputsChange(conversationInputs)
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
-    handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
-  }, [isTryApp, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [isTryApp, setShowNewConversationItemInList, handleChangeConversation, handleNewConversationInputsChange, setClearChatList, inputsForms])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)

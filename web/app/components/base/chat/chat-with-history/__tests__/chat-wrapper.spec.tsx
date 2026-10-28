@@ -418,6 +418,28 @@ describe('ChatWrapper', () => {
     expect(container).toBeInTheDocument()
   })
 
+  it('should disable input when a required file list is empty', () => {
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      inputsForms: [{
+        variable: 'files',
+        label: 'Files',
+        type: InputVarType.multiFiles,
+        required: true,
+      }],
+      newConversationInputsRef: {
+        current: { files: [] },
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      currentConversationId: '',
+    })
+
+    render(<ChatWrapper />)
+    const textboxes = screen.getAllByRole('textbox')
+    const chatInput = textboxes[textboxes.length - 1]
+    const container = getDisabledInputContainer(chatInput)
+    expect(container).toBeInTheDocument()
+  })
+
   it('should not disable when all files are uploaded', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,

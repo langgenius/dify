@@ -15,6 +15,7 @@ from dify_graph.variables.input_entities import VariableEntityType
 from factories import file_factory
 from libs.orjson import orjson_dumps
 from models import Account, EndUser
+from services.app.file_input_defaults import apply_file_input_defaults
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ class BaseAppGenerator:
         tenant_id: str,
         strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
-        user_inputs = user_inputs or {}
+        user_inputs = apply_file_input_defaults(user_inputs, variables)
         # Filter input variables from form configuration, handle required fields, default values, and option values
         user_inputs = {
             var.variable: self._validate_inputs(value=user_inputs.get(var.variable), variable_entity=var)

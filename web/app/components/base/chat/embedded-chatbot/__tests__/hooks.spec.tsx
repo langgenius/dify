@@ -585,6 +585,57 @@ describe('useEmbeddedChatbot', () => {
       expect(result.current.clearChatList).toBe(true)
     })
 
+    it('restores required file defaults after completion and reset, with initial URL inputs taking priority', async () => {
+      const file = {
+        id: 'default-file',
+        name: 'default.txt',
+        size: 128,
+        type: 'text/plain',
+        progress: 100,
+        supportFileType: 'document',
+        transferMethod: TransferMethod.local_file,
+        uploadedId: 'default-upload',
+      }
+      const replacement = { ...file, id: 'replacement', uploadedId: 'replacement-upload' }
+      mockStoreState.embeddedConversationId = null
+      mockStoreState.appParams = {
+        user_input_form: [
+          { file: { variable: 'file', label: 'File', required: true, default: file } },
+          { 'file-list': { variable: 'files', label: 'Files', required: true, default: [file] } },
+          { 'text-input': { variable: 'topic', label: 'Topic', required: true, default: 'configured' } },
+        ],
+      } as unknown as ChatConfig
+      mockGetProcessedInputsFromUrlParams.mockResolvedValue({ topic: 'initial-url' })
+      mockGenerationConversationName.mockResolvedValue(createConversationItem({ id: 'completed-conversation' }))
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      await waitFor(() => expect(result.current.newConversationInputs.topic).toBe('initial-url'))
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({
+          file: replacement,
+          files: [replacement],
+          topic: 'edited',
+        })
+        result.current.handleNewConversationCompleted('completed-conversation')
+      })
+      await waitFor(() => expect(result.current.currentConversationId).toBe('completed-conversation'))
+      act(() => {
+        result.current.handleNewConversation()
+      })
+
+      const onStart = vi.fn()
+      act(() => {
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).toHaveBeenCalledOnce()
+      expect(result.current.currentConversationId).toBe('')
+      expect(result.current.newConversationInputs).toEqual({
+        file,
+        files: [file],
+        topic: 'initial-url',
+      })
+    })
+
     it('handleNewConversation sets clearChatList to true for tryApp without complex parsing', async () => {
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'))
 
@@ -801,6 +852,28 @@ describe('useEmbeddedChatbot', () => {
       // The form field has required=true but silent mode through allInputsHidden=false,
       // so the callback is NOT called (validation blocked it)
       // This exercises the silent=false path with empty field -> notify -> return false
+      expect(onStart).not.toHaveBeenCalled()
+    })
+
+    it('does not start a conversation after a required file list is cleared', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [{
+          'file-list': {
+            variable: 'files',
+            required: true,
+            label: 'Files',
+            default: [{ id: 'default-file', transferMethod: TransferMethod.local_file, uploadedId: 'default-upload' }],
+          },
+        }],
+      } as unknown as ChatConfig
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      const onStart = vi.fn()
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({ files: [] })
+        result.current.handleStartChat(onStart)
+      })
+
       expect(onStart).not.toHaveBeenCalled()
     })
 
