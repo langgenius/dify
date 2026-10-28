@@ -30,7 +30,7 @@ const STEP_GLIDE_CLASS_NAME =
 const TARGET_TABBABLE_SELECTOR =
   'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
 
-export type StepByStepTourCoachmarkPlacement = 'bottom' | 'inline-end' | 'top'
+type StepByStepTourCoachmarkPlacement = 'bottom' | 'inline-end' | 'top'
 
 // Base UI centers the arrow on the anchor: narrow the anchor to the spot the arrow points at, and let
 // `alignOffset` move the popup back to the highlight's edge.
