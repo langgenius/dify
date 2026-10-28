@@ -285,6 +285,16 @@ describe('shared knowledge binding dialog', () => {
     expect(await within(dialog).findByRole('textbox', { name: /customInputLabel/ })).toHaveValue(
       'original question',
     )
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+      }),
+    )
+    const unchangedPicker = await screen.findByRole('dialog', {
+      name: /feature.dataSet.selectTitle/,
+    })
+    await user.click(within(unchangedPicker).getByRole('button', { name: 'common.operation.add' }))
+    await waitFor(() => expect(unchangedPicker).not.toBeInTheDocument())
     const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
     await user.clear(name)
     await user.type(name, 'Renamed search')
@@ -577,6 +587,208 @@ describe('shared knowledge binding dialog', () => {
     await user.click(within(dialog).getByRole('button', { name: /operation.retry/ }))
     expect(await within(dialog).findByRole('radio', { name: /dialog.query.agent$/ })).toBeVisible()
   })
+
+  it.each([false, true])(
+    'replaces deleted datasets without losing the group identity or saved settings (retained dataset=%s)',
+    async (hasRetainedDataset) => {
+      const user = userEvent.setup()
+      const retained = createDatasetFixture({
+        name: 'Retained docs',
+        doc_metadata: [{ id: 'topic-retained', name: 'topic', type: 'string' }],
+      })
+      const replacement = createDatasetFixture({
+        id: 'replacement',
+        name: 'Replacement docs',
+        doc_metadata: [{ id: 'topic-replacement', name: 'topic', type: 'string' }],
+      })
+      getDataset.mockImplementation(async ({ params }: { params: { dataset_id: string } }) => {
+        if (params.dataset_id.startsWith('deleted'))
+          throw new ORPCError('NOT_FOUND', { status: 404 })
+        return retained
+      })
+      getDatasets.mockResolvedValue(datasetPage([retained, replacement]))
+      setup(
+        [
+          {
+            id: 'saved-group',
+            name: 'Saved group',
+            datasetRefs: [
+              ...(hasRetainedDataset ? [{ id: retained.id, name: retained.name }] : []),
+              { id: 'deleted', name: 'Deleted docs' },
+              { id: 'deleted-2', name: 'Other missing docs' },
+            ],
+            queryMode: 'custom',
+            customQuery: 'support question',
+            multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
+            metadataFilterMode: MetadataFilteringModeEnum.manual,
+            metadataFilteringConditions: {
+              logical_operator: LogicalOperator.and,
+              conditions: [
+                {
+                  id: 'topic-condition',
+                  name: 'topic',
+                  comparison_operator: ComparisonOperator.is,
+                  value: 'agents',
+                },
+              ],
+            },
+          },
+        ],
+        { enabled: false },
+      )
+      const original = snapshot().knowledge
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      await user.click(
+        await within(dialog).findByRole('button', { name: 'common.operation.remove Deleted docs' }),
+      )
+      await user.click(
+        within(dialog).getByRole('button', { name: 'common.operation.remove Other missing docs' }),
+      )
+      await user.click(
+        await within(dialog).findByRole('button', {
+          name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+        }),
+      )
+      const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+      await user.click(await within(picker).findByRole('button', { name: /Replacement docs/ }))
+      await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
+      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      expect(snapshot().knowledge).toEqual(original)
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      expect(snapshot().knowledge.sets).toEqual([
+        expect.objectContaining({
+          id: 'saved-group',
+          name: 'Saved group',
+          datasets: [
+            ...(hasRetainedDataset ? [expect.objectContaining({ id: retained.id })] : []),
+            expect.objectContaining({ id: replacement.id }),
+          ],
+          query: { mode: 'user_query', value: 'support question' },
+          retrieval: expect.objectContaining({ top_k: 7, score_threshold: 0.4 }),
+          metadata_filtering: {
+            mode: 'manual',
+            conditions: {
+              logical_operator: 'and',
+              conditions: [
+                {
+                  id: 'topic-condition',
+                  metadata_id: hasRetainedDataset ? 'topic-retained' : 'topic-replacement',
+                  name: 'topic',
+                  comparison_operator: 'is',
+                  value: 'agents',
+                },
+              ],
+            },
+          },
+        }),
+      ])
+    },
+  )
+
+  it.each([false, true])(
+    'cleans incompatible metadata only after replacing datasets (shared field=%s)',
+    async (hasSharedField) => {
+      const user = userEvent.setup()
+      const originalDataset = createDatasetFixture({
+        name: 'Original docs',
+        doc_metadata: [
+          { id: 'topic-old', name: 'topic', type: 'string' },
+          { id: 'language-old', name: 'language', type: 'string' },
+        ],
+      })
+      const replacement = createDatasetFixture({
+        id: 'replacement',
+        name: 'Replacement docs',
+        doc_metadata: hasSharedField
+          ? [{ id: 'language-new', name: 'language', type: 'string' }]
+          : [],
+      })
+      getDatasets.mockResolvedValue(datasetPage([originalDataset, replacement]))
+      setup(
+        [
+          {
+            id: 'group',
+            name: 'Saved group',
+            selectedDatasets: [originalDataset],
+            metadataFilterMode: MetadataFilteringModeEnum.manual,
+            metadataFilteringConditions: {
+              logical_operator: LogicalOperator.and,
+              conditions: [
+                {
+                  id: 'topic-condition',
+                  metadata_id: 'topic-old',
+                  name: 'topic',
+                  comparison_operator: ComparisonOperator.is,
+                  value: 'agents',
+                },
+                {
+                  id: 'language-condition',
+                  metadata_id: 'language-old',
+                  name: 'language',
+                  comparison_operator: ComparisonOperator.is,
+                  value: 'en',
+                },
+              ],
+            },
+          },
+        ],
+        { enabled: false },
+      )
+      const original = snapshot().knowledge
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+        }),
+      )
+      const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+      await user.click(await within(picker).findByRole('button', { name: /Original docs/ }))
+      await user.click(within(picker).getByRole('button', { name: /Replacement docs/ }))
+      await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
+      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      expect(snapshot().knowledge).toEqual(original)
+      const conditions = within(dialog).getByRole('button', { name: /metadata.panel.conditions/ })
+      await user.click(conditions)
+      expect(screen.queryByRole('group', { name: 'topic' })).not.toBeInTheDocument()
+      expect(screen.queryByDisplayValue('agents')).not.toBeInTheDocument()
+      if (hasSharedField)
+        expect(
+          within(screen.getByRole('group', { name: 'language' })).getByRole('textbox'),
+        ).toHaveValue('en')
+      await user.click(conditions)
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      if (hasSharedField) {
+        expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual([
+          {
+            id: 'language-condition',
+            metadata_id: 'language-new',
+            name: 'language',
+            comparison_operator: 'is',
+            value: 'en',
+          },
+        ])
+      } else {
+        expect(dialog).toBeInTheDocument()
+        expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(
+          /metadata.panel.conditions/,
+        )
+        expect(snapshot().knowledge).toEqual(original)
+        await user.click(
+          within(dialog).getByRole('button', { name: /metadata.options.manual.title/ }),
+        )
+        await user.click(
+          screen.getByRole('menuitemradio', { name: /metadata.options.disabled.title/ }),
+        )
+        await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+        expect(snapshot().knowledge.sets[0].metadata_filtering).toEqual({ mode: 'disabled' })
+      }
+      expect(snapshot().knowledge.sets[0].datasets).toEqual([
+        expect.objectContaining({ id: replacement.id }),
+      ])
+    },
+  )
 
   it('saves edited metadata conditions and their logical operator only on confirmation', async () => {
     const user = userEvent.setup()

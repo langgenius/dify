@@ -68,6 +68,26 @@ const createDefaultMetadataFilteringConditions = () => ({
   conditions: [] as MetadataFilteringCondition[],
 })
 
+const getSharedMetadata = (datasets: DatasetDetailWithPartialMembersResponse[]) =>
+  datasets.length
+    ? intersectionBy(...datasets.map((dataset) => dataset.doc_metadata ?? []), 'name')
+    : []
+
+const reconcileMetadataConditions = (
+  conditions: AgentKnowledgeRetrievalItem['metadataFilteringConditions'],
+  datasets: DatasetDetailWithPartialMembersResponse[],
+) => {
+  if (!conditions) return conditions
+  const metadata = getSharedMetadata(datasets)
+  return {
+    ...conditions,
+    conditions: conditions.conditions.flatMap((condition) => {
+      const field = metadata.find((field) => field.name === condition.name)
+      return field ? [{ ...condition, metadata_id: field.id }] : []
+    }),
+  }
+}
+
 const createMetadataCondition = ({
   id,
   name,
@@ -132,21 +152,23 @@ function ClassicSettingsFields({
     const nextDatasets = selected.map(
       (dataset) => selectedDatasets.find((current) => current.id === dataset.id) ?? dataset,
     )
+    const datasetsChanged =
+      nextDatasets.length !== selectedDatasets.length ||
+      nextDatasets.some((dataset) => !selectedDatasets.some((current) => current.id === dataset.id))
+    if (!datasetsChanged) return
     onChange({
       selectedDatasets: nextDatasets,
+      metadataFilteringConditions: reconcileMetadataConditions(
+        item.metadataFilteringConditions,
+        nextDatasets,
+      ),
       multipleRetrievalConfig:
         retrievalMode === RETRIEVE_TYPE.multiWay && nextDatasets.length > 0
           ? resolveMultipleRetrievalConfig(multipleRetrievalConfig, nextDatasets)
           : multipleRetrievalConfig,
     })
   }
-  const metadataList = useMemo(() => {
-    const datasetsWithMetadata = selectedDatasets.filter((dataset) => !!dataset.doc_metadata)
-
-    if (datasetsWithMetadata.length === 0) return []
-
-    return intersectionBy(...datasetsWithMetadata.map((dataset) => dataset.doc_metadata!), 'name')
-  }, [selectedDatasets])
+  const metadataList = useMemo(() => getSharedMetadata(selectedDatasets), [selectedDatasets])
   const datasetsError = getValidationMessage(errors?.datasets)
   const queryError = getValidationMessage(errors?.query)
   const retrievalError = getValidationMessage(errors?.retrieval)
@@ -423,16 +445,53 @@ export function ClassicKnowledgeSettings(props: Props) {
         >
           {t(($) => $['operation.retry'])}
         </Button>
-        <AddKnowledge
-          selectedIds={ids}
-          modal
-          onChange={(next) =>
-            props.onChange({
-              datasetRefs: next.map(({ id, name }) => ({ id, name })),
-              selectedDatasets: undefined,
-            })
-          }
-        />
+        <ul className="space-y-1">
+          {ids
+            .filter((_, index) => queries[index]?.isError)
+            .map((id) => {
+              const name = props.item.datasetRefs?.find((dataset) => dataset.id === id)?.name || id
+              return (
+                <li key={id} className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 system-xs-regular wrap-break-word text-text-secondary">
+                    {name}
+                  </span>
+                  <Button
+                    size="small"
+                    aria-label={`${t(($) => $['operation.remove'])} ${name}`}
+                    onClick={() => {
+                      const datasetRefs = props.item.datasetRefs?.filter(
+                        (dataset) => dataset.id !== id,
+                      )
+                      const remainingDatasets = queries.flatMap((query) =>
+                        query.isSuccess && query.data.id !== id ? [query.data] : [],
+                      )
+                      const allResolved = ids
+                        .filter((current) => current !== id)
+                        .every((current) =>
+                          remainingDatasets.some((dataset) => dataset.id === current),
+                        )
+                      props.onChange({
+                        datasetRefs,
+                        ...(allResolved
+                          ? {
+                              selectedDatasets: remainingDatasets,
+                              metadataFilteringConditions: remainingDatasets.length
+                                ? reconcileMetadataConditions(
+                                    props.item.metadataFilteringConditions,
+                                    remainingDatasets,
+                                  )
+                                : props.item.metadataFilteringConditions,
+                            }
+                          : {}),
+                      })
+                    }}
+                  >
+                    {t(($) => $['operation.remove'])}
+                  </Button>
+                </li>
+              )
+            })}
+        </ul>
       </div>
     )
   return <ClassicSettingsFields {...props} selectedDatasets={datasets} />
