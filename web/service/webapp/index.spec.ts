@@ -113,13 +113,13 @@ describe('generated Web App client', () => {
       const request = new Request(input, init)
       sentMethod = request.method
       sentBody = await request.json()
-      return Response.json({ access_token: 'app-passport', webapp_access_token: 'account-proof' })
+      return Response.json({ access_token: 'app-passport' })
     })
     const body = { login_code: 'one-use-code', code_verifier: 'a'.repeat(43) }
 
     await expect(
       webAppClient.passport.post({ headers: { 'X-App-Code': 'shared-code' }, body }),
-    ).resolves.toEqual({ access_token: 'app-passport', webapp_access_token: 'account-proof' })
+    ).resolves.toEqual({ access_token: 'app-passport' })
 
     expect(sentMethod).toBe('POST')
     expect(sentBody).toEqual(body)

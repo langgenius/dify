@@ -10,6 +10,7 @@ import {
   getWebAppPassport,
   setWebAppAccessToken,
   setWebAppPassport,
+  startWebAppAccountSession,
 } from '../webapp-auth'
 import {
   beginWebAppAccountLogin,
@@ -80,41 +81,51 @@ describe('Webapp Account PKCE transaction', () => {
     expect(login.href).not.toContain(stored.verifier)
   })
 
-  it('exchanges once across concurrent calls and remounts, preserving anonymous history and storing the new account', async () => {
-    const address = { kind: 'default', code: `app-${sequence}` } as const
-    const otherApp = { kind: 'default', code: 'another-app' } as const
-    setWebAppPassport(address, 'anonymous-passport', 'anonymous')
-    setWebAppPassport(otherApp, 'another-anonymous-passport', 'anonymous')
-    await beginWebAppAccountLogin(accountUrl, returnUrl)
-    callback()
-    let body: unknown
-    let headers: Headers | undefined
-    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      const request = new Request(input, init)
-      headers = request.headers
-      body = await request.json()
-      expect(new URL(request.url).pathname).toMatch(/\/passport$/)
-      expect(request.credentials).toBe('include')
-      return Response.json({ access_token: 'app-passport', webapp_access_token: 'web-proof' })
-    })
-    const first = completeWebAppAccountLogin(returnUrl, 'one-use-code')
-    const concurrent = completeWebAppAccountLogin(returnUrl, 'one-use-code')
-    expect(first).toBe(concurrent)
-    await expect(first).resolves.toBe(returnUrl)
-    await expect(completeWebAppAccountLogin(returnUrl, 'one-use-code')).resolves.toBe(returnUrl)
-    expect(fetch).toHaveBeenCalledOnce()
-    expect(headers?.get('X-App-Code')).toBe(`app-${sequence}`)
-    expect(body).toEqual({
-      login_code: 'one-use-code',
-      code_verifier: expect.stringMatching(/^[\w-]{43}$/),
-    })
-    expect(getWebAppAccessToken()).toBe('web-proof')
-    expect(getWebAppLoginMode()).toBe('end_user')
-    expect(getAuthenticatedWebAppPassport(address)).toBe('app-passport')
-    expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
-    expect(getAnonymousWebAppPassport(otherApp)).toBe('another-anonymous-passport')
-    expect(sessionStorage.getItem(`webapp-account-login-app-${sequence}`)).toBeNull()
-  })
+  it.each(['stale-bearer', ''])(
+    'exchanges once and replaces old account credentials while preserving anonymous history (previous bearer: %s)',
+    async (previousBearer) => {
+      const address = { kind: 'default', code: `app-${sequence}` } as const
+      const otherApp = { kind: 'default', code: 'another-app' } as const
+      const environmentApp = { kind: 'environment', code: 'environment-app' } as const
+      setWebAppAccessToken(previousBearer, 'end_user')
+      setWebAppPassport(address, 'previous-app-passport', 'authenticated')
+      setWebAppPassport(otherApp, 'previous-other-passport', 'authenticated')
+      setWebAppPassport(environmentApp, 'previous-environment-passport', 'authenticated')
+      setWebAppPassport(address, 'anonymous-passport', 'anonymous')
+      setWebAppPassport(otherApp, 'another-anonymous-passport', 'anonymous')
+      await beginWebAppAccountLogin(accountUrl, returnUrl)
+      callback()
+      let body: unknown
+      let headers: Headers | undefined
+      const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const request = new Request(input, init)
+        headers = request.headers
+        body = await request.json()
+        expect(new URL(request.url).pathname).toMatch(/\/passport$/)
+        expect(request.credentials).toBe('include')
+        return Response.json({ access_token: 'app-passport' })
+      })
+      const first = completeWebAppAccountLogin(returnUrl, 'one-use-code')
+      const concurrent = completeWebAppAccountLogin(returnUrl, 'one-use-code')
+      expect(first).toBe(concurrent)
+      await expect(first).resolves.toBe(returnUrl)
+      await expect(completeWebAppAccountLogin(returnUrl, 'one-use-code')).resolves.toBe(returnUrl)
+      expect(fetch).toHaveBeenCalledOnce()
+      expect(headers?.get('X-App-Code')).toBe(`app-${sequence}`)
+      expect(body).toEqual({
+        login_code: 'one-use-code',
+        code_verifier: expect.stringMatching(/^[\w-]{43}$/),
+      })
+      expect(getWebAppAccessToken()).toBe('')
+      expect(getWebAppLoginMode()).toBe('end_user')
+      expect(getAuthenticatedWebAppPassport(address)).toBe('app-passport')
+      expect(getAuthenticatedWebAppPassport(otherApp)).toBe('')
+      expect(getAuthenticatedWebAppPassport(environmentApp)).toBe('')
+      expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
+      expect(getAnonymousWebAppPassport(otherApp)).toBe('another-anonymous-passport')
+      expect(sessionStorage.getItem(`webapp-account-login-app-${sequence}`)).toBeNull()
+    },
+  )
 
   it.each(['cancel', 'expired', 'wrong-return'] as const)(
     'rejects a %s transaction before any exchange',
@@ -139,22 +150,28 @@ describe('Webapp Account PKCE transaction', () => {
     },
   )
 
-  it('does not complete an old exchange after the Web account changes', async () => {
-    await beginWebAppAccountLogin(accountUrl, returnUrl)
-    callback()
-    let finish!: (response: Response) => void
-    vi.spyOn(globalThis, 'fetch').mockReturnValue(
-      new Promise((resolve) => {
-        finish = resolve
-      }),
-    )
-    const operation = completeWebAppAccountLogin(returnUrl, 'one-use-code')
-    setWebAppAccessToken('newer-account', 'end_user')
-    finish(Response.json({ access_token: 'old-passport', webapp_access_token: 'old-proof' }))
-    await expect(operation).rejects.toMatchObject({ name: 'AbortError' })
-    expect(getWebAppAccessToken()).toBe('newer-account')
-    expect(getWebAppPassport({ kind: 'default', code: `app-${sequence}` })).toBe('')
-  })
+  it.each(['bearer', 'cookie'])(
+    'does not complete an old exchange after the Web account changes through %s authentication',
+    async (authentication) => {
+      if (authentication === 'cookie') startWebAppAccountSession()
+      await beginWebAppAccountLogin(accountUrl, returnUrl)
+      callback()
+      let finish!: (response: Response) => void
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+      )
+      const operation = completeWebAppAccountLogin(returnUrl, 'one-use-code')
+      if (authentication === 'cookie') startWebAppAccountSession()
+      else setWebAppAccessToken('newer-account', 'end_user')
+      finish(Response.json({ access_token: 'old-passport' }))
+      await expect(operation).rejects.toMatchObject({ name: 'AbortError' })
+      expect(getWebAppAccessToken()).toBe(authentication === 'cookie' ? '' : 'newer-account')
+      expect(getWebAppLoginMode()).toBe('end_user')
+      expect(getWebAppPassport({ kind: 'default', code: `app-${sequence}` })).toBe('')
+    },
+  )
 
   it.each(['navigation', 'cancel', 'new transaction'] as const)(
     'does not complete an exchange after %s changes its scope',
@@ -171,7 +188,7 @@ describe('Webapp Account PKCE transaction', () => {
       else if (change === 'cancel') cancelWebAppAccountLogin(returnUrl)
       else await beginWebAppAccountLogin(accountUrl, returnUrl)
 
-      finish(Response.json({ access_token: 'old-passport', webapp_access_token: 'old-proof' }))
+      finish(Response.json({ access_token: 'old-passport' }))
 
       await expect(operation).rejects.toMatchObject({ name: 'AbortError' })
       expect(getWebAppAccessToken()).toBe('')
@@ -203,7 +220,7 @@ describe('Webapp Account PKCE transaction', () => {
     callback()
     const fetch = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(Response.json({ access_token: 'passport', webapp_access_token: 'proof' }))
+      .mockResolvedValue(Response.json({ access_token: 'passport' }))
     await completeWebAppAccountLogin(returnUrl, 'one-use-code')
     setWebAppAccessToken('another-account', 'end_user')
 

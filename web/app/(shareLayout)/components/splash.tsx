@@ -123,12 +123,7 @@ export default function Splash({ children }: PropsWithChildren) {
 
     const initialize = async () => {
       try {
-        if (
-          !isSigninRoute &&
-          address.kind === 'default' &&
-          getWebAppAccessToken() &&
-          getWebAppLoginMode() === 'end_user'
-        ) {
+        if (!isSigninRoute && address.kind === 'default' && getWebAppLoginMode() === 'end_user') {
           if (await restoreWebAppAccountSession(address, canContinue)) redirectOrFinish()
           return
         }

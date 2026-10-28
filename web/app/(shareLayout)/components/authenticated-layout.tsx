@@ -18,12 +18,7 @@ import {
   useGetWebAppParams,
 } from '@/service/use-share'
 import { getWebAppScopeKey, resolveWebAppAddress } from '@/service/webapp-address'
-import {
-  expireWebAppAccountSession,
-  getWebAppAccessToken,
-  getWebAppLoginMode,
-  webAppLogout,
-} from '@/service/webapp-auth'
+import { expireWebAppAccountSession, getWebAppLoginMode, webAppLogout } from '@/service/webapp-auth'
 
 const AuthenticatedApp = ({
   address,
@@ -44,11 +39,7 @@ const AuthenticatedApp = ({
   } = useGetWebAppParams(address)
   const { data: loginStatus, error: loginStatusError } = useGetWebAppAccountStatus(address)
   useEffect(() => {
-    if (
-      loginStatus?.logged_in === false &&
-      getWebAppAccessToken() &&
-      getWebAppLoginMode() === 'end_user'
-    )
+    if (loginStatus?.logged_in === false && getWebAppLoginMode() === 'end_user')
       expireWebAppAccountSession()
   }, [loginStatus])
   const { isLoading: isLoadingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()

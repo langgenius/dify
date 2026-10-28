@@ -5,9 +5,10 @@ import {
   getAnonymousWebAppPassport,
   getAuthenticatedWebAppPassport,
   getWebAppAccessToken,
+  getWebAppLoginMode,
   getWebAppPassport,
-  setWebAppAccessToken,
   setWebAppPassport,
+  startWebAppAccountSession,
 } from '../webapp-auth'
 import { restoreWebAppAccountSession } from './account-session'
 
@@ -19,7 +20,7 @@ beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   window.history.replaceState({}, '', '/chat/research')
-  setWebAppAccessToken('account-proof', 'end_user')
+  startWebAppAccountSession()
 })
 
 afterEach(() => {
@@ -30,7 +31,7 @@ afterEach(() => {
 })
 
 describe('App user session restoration', () => {
-  it('renews only the App Passport using the existing account proof and end_user mode', async () => {
+  it('renews only the App Passport using the HttpOnly cookie and end_user mode', async () => {
     setWebAppPassport(address, 'anonymous-passport', 'anonymous')
     const fetch = vi
       .spyOn(globalThis, 'fetch')
@@ -47,12 +48,15 @@ describe('App user session restoration', () => {
     )
     expect(statusUrl.searchParams.get('mode')).toBe('end_user')
     expect(statusUrl.searchParams.get('app_code')).toBe('research')
-    expect(statusRequest.headers.get('Authorization')).toBe('Bearer account-proof')
+    expect(statusRequest.headers.has('Authorization')).toBe(false)
+    expect(statusRequest.credentials).toBe('include')
     const [passportInput, passportInit] = fetch.mock.calls[1]!
     const passportRequest = new Request(passportInput, passportInit)
     expect(new URL(passportRequest.url).searchParams.get('mode')).toBe('end_user')
     expect(passportRequest.headers.get('X-App-Code')).toBe('research')
-    expect(getWebAppAccessToken()).toBe('account-proof')
+    expect(passportRequest.headers.has('Authorization')).toBe(false)
+    expect(passportRequest.credentials).toBe('include')
+    expect(getWebAppLoginMode()).toBe('end_user')
     expect(getWebAppPassport(address)).toBe('renewed-passport')
     expect(getAuthenticatedWebAppPassport(address)).toBe('renewed-passport')
     expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
@@ -81,6 +85,7 @@ describe('App user session restoration', () => {
     await expect(restoreWebAppAccountSession(address, () => true)).resolves.toBe(false)
 
     expect(getWebAppAccessToken()).toBe('')
+    expect(getWebAppLoginMode()).toBe('console')
     expect(getAuthenticatedWebAppPassport(address)).toBe('')
     expect(getWebAppPassport(address)).toBe('anonymous-passport')
     expect(localStorage.getItem('session_id-research')).toBe('anonymous-history')
@@ -96,14 +101,15 @@ describe('App user session restoration', () => {
 
       await expect(restoreWebAppAccountSession(address, () => true)).resolves.toBe(false)
       expect(getWebAppAccessToken()).toBe('')
+      expect(getWebAppLoginMode()).toBe('console')
     },
   )
 
-  it('retains the account proof when restoration fails because the service is unavailable', async () => {
+  it('retains the account session marker when restoration fails because the service is unavailable', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 503 }))
 
     await expect(restoreWebAppAccountSession(address, () => true)).rejects.toThrow()
-    expect(getWebAppAccessToken()).toBe('account-proof')
+    expect(getWebAppLoginMode()).toBe('end_user')
   })
 
   it.each([403, 503])(
@@ -117,7 +123,7 @@ describe('App user session restoration', () => {
 
       await expect(restoreWebAppAccountSession(address, () => true)).rejects.toThrow()
 
-      expect(getWebAppAccessToken()).toBe('account-proof')
+      expect(getWebAppLoginMode()).toBe('end_user')
       expect(getAuthenticatedWebAppPassport(address)).toBe('existing-account-passport')
       expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
     },
@@ -135,7 +141,7 @@ describe('App user session restoration', () => {
 
       const restoring = restoreWebAppAccountSession(address, () => true)
       await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
-      setWebAppAccessToken('next-account-proof', 'end_user')
+      startWebAppAccountSession()
       setWebAppPassport(address, 'next-account-passport', 'authenticated')
       passport.resolve(
         status === 200
@@ -144,7 +150,7 @@ describe('App user session restoration', () => {
       )
 
       await expect(restoring).resolves.toBe(false)
-      expect(getWebAppAccessToken()).toBe('next-account-proof')
+      expect(getWebAppLoginMode()).toBe('end_user')
       expect(getAuthenticatedWebAppPassport(address)).toBe('next-account-passport')
       expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
     },
@@ -159,10 +165,10 @@ describe('App user session restoration', () => {
     )
     const restoring = restoreWebAppAccountSession(address, () => true)
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
-    setWebAppAccessToken('next-account-proof', 'end_user')
+    startWebAppAccountSession()
     resolveStatus(Response.json({ logged_in: false, app_logged_in: false }))
 
     await expect(restoring).resolves.toBe(false)
-    expect(getWebAppAccessToken()).toBe('next-account-proof')
+    expect(getWebAppLoginMode()).toBe('end_user')
   })
 })

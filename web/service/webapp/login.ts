@@ -1,5 +1,9 @@
 import { parseWebAppAddress } from '../webapp-address'
-import { captureWebAppAuthSession, setWebAppAccessToken, setWebAppPassport } from '../webapp-auth'
+import {
+  captureWebAppAuthSession,
+  setWebAppPassport,
+  startWebAppAccountSession,
+} from '../webapp-auth'
 import { webAppClient } from './index'
 
 const TRANSACTION_PREFIX = 'webapp-account-login-'
@@ -156,7 +160,7 @@ export function completeWebAppAccountLogin(
   const originalUrl = window.location.href
   const operation = (async () => {
     try {
-      const { access_token, webapp_access_token } = await webAppClient.passport.post(
+      const { access_token } = await webAppClient.passport.post(
         {
           headers: { 'X-App-Code': target.address.code },
           body: { login_code: loginCode, code_verifier: transaction.verifier },
@@ -169,7 +173,7 @@ export function completeWebAppAccountLogin(
         readTransaction(target.address.code)?.verifier !== transaction.verifier
       )
         throw new DOMException('The Web App login changed.', 'AbortError')
-      setWebAppAccessToken(webapp_access_token, 'end_user')
+      startWebAppAccountSession()
       setWebAppPassport(target.address, access_token, 'authenticated')
       // Deduplicate remounts against the new session created by this exchange.
       isSameSession = captureWebAppAuthSession()

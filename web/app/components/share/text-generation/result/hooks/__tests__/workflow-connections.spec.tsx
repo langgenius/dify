@@ -60,6 +60,7 @@ const entry: Extract<WebAppEntryState, { parameters: unknown }> = {
         node_id: 'source',
         node_ids: ['source', 'reuse'],
         provider: connection.provider,
+        provider_label: 'GitHub',
         allowed_credential_types: ['api-key'],
         plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
         title: 'Find repositories',

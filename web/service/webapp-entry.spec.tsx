@@ -24,6 +24,7 @@ const parameters: WebAppParametersResponse = {
       title: 'Read email',
       purpose: 'Find messages for this conversation',
       provider: 'langgenius/gmail/gmail',
+      provider_label: 'Gmail',
       allowed_credential_types: ['oauth2'],
     },
   ],

@@ -21,6 +21,7 @@ export const chatConnectionEntry: WebAppEntryState = {
         node_id: 'github-node',
         node_ids: ['github-node'],
         provider: 'langgenius/github/github',
+        provider_label: 'GitHub',
         allowed_credential_types: ['oauth2'],
         plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
         title: 'Find repositories',
