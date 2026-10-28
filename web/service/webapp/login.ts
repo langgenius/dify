@@ -1,6 +1,5 @@
-import { basePath } from '@/utils/var'
 import { parseWebAppAddress } from '../webapp-address'
-import { captureWebAppAuthSession } from '../webapp-auth'
+import { captureWebAppAuthSession, setWebAppAccessToken, setWebAppPassport } from '../webapp-auth'
 import { webAppClient } from './index'
 
 const TRANSACTION_PREFIX = 'webapp-account-login-'
@@ -13,21 +12,12 @@ const exchanges = new Map<
 >()
 
 export function isWebAppAccountCallback(pathname: string, params: Pick<URLSearchParams, 'get'>) {
-  const prefix = basePath.replace(/\/$/, '')
-  const path =
-    prefix && pathname.startsWith(`${prefix}/`) ? pathname.slice(prefix.length) : pathname
-  if (path !== '/webapp-signin' || params.get('mode') !== 'end_user') return false
-  try {
-    const target = new URL(params.get('redirect_url') || '', 'https://login-redirect.invalid')
-    return (
-      ['http:', 'https:'].includes(target.protocol) &&
-      !target.username &&
-      !target.password &&
-      parseWebAppAddress(target.pathname)?.kind === 'default'
-    )
-  } catch {
-    return false
-  }
+  // Handle malformed direct callbacks here too, before application initialization.
+  return (
+    params.get('mode') === 'end_user' &&
+    parseWebAppAddress(pathname)?.kind === 'default' &&
+    params.get('login_code') !== null
+  )
 }
 
 export function resolveWebAppAccountReturn(raw: string | null) {
@@ -146,6 +136,12 @@ export function completeWebAppAccountLogin(
 ): Promise<string> {
   const target = resolveWebAppAccountReturn(rawRedirect)
   if (!target || !loginCode) return Promise.reject(new Error('Invalid Web App login callback.'))
+  const currentAddress = parseWebAppAddress(window.location.pathname)
+  if (
+    currentAddress?.kind !== 'default' ||
+    window.location.pathname !== new URL(target.url).pathname
+  )
+    return Promise.reject(new Error('Invalid Web App login callback.'))
   const key = `${target.url}:${loginCode}`
   const existing = exchanges.get(key)
   for (const [storedKey, exchange] of exchanges) {
@@ -156,11 +152,11 @@ export function completeWebAppAccountLogin(
   const transaction = readTransaction(target.address.code)
   if (!transaction || transaction.redirectUrl !== target.url)
     return Promise.reject(new Error('Missing or expired Web App login transaction.'))
-  const isSameSession = captureWebAppAuthSession()
+  let isSameSession = captureWebAppAuthSession()
   const originalUrl = window.location.href
   const operation = (async () => {
     try {
-      await webAppClient.passport.post(
+      const { access_token, webapp_access_token } = await webAppClient.passport.post(
         {
           headers: { 'X-App-Code': target.address.code },
           body: { login_code: loginCode, code_verifier: transaction.verifier },
@@ -173,6 +169,10 @@ export function completeWebAppAccountLogin(
         readTransaction(target.address.code)?.verifier !== transaction.verifier
       )
         throw new DOMException('The Web App login changed.', 'AbortError')
+      setWebAppAccessToken(webapp_access_token, 'end_user')
+      setWebAppPassport(target.address, access_token, 'authenticated')
+      // Deduplicate remounts against the new session created by this exchange.
+      isSameSession = captureWebAppAuthSession()
       removeTransaction(target.address.code)
       return target.url
     } catch (error) {
@@ -181,7 +181,11 @@ export function completeWebAppAccountLogin(
       throw error
     }
   })()
-  exchanges.set(key, { promise: operation, createdAt: Date.now(), isCurrent: isSameSession })
+  exchanges.set(key, {
+    promise: operation,
+    createdAt: Date.now(),
+    isCurrent: () => isSameSession(),
+  })
   void operation.catch(() => exchanges.delete(key))
   return operation
 }

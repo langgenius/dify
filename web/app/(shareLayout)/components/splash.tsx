@@ -30,12 +30,11 @@ import {
   webAppLogout,
 } from '@/service/webapp-auth'
 import { restoreWebAppAccountSession } from '@/service/webapp/account-session'
-import { isWebAppAccountCallback } from '@/service/webapp/login'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
-function WebAppBootstrap({ children }: PropsWithChildren) {
+export default function Splash({ children }: PropsWithChildren) {
   const { t } = useTranslation(['common', 'share'])
   const shareCode = useWebAppStore((s) => s.shareCode)
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
@@ -244,14 +243,4 @@ function WebAppBootstrap({ children }: PropsWithChildren) {
     )
   }
   return <>{children}</>
-}
-
-export default function Splash({ children }: PropsWithChildren) {
-  const pathname = usePathname()
-  const params = useSearchParams()
-  return isWebAppAccountCallback(pathname, params) ? (
-    children
-  ) : (
-    <WebAppBootstrap>{children}</WebAppBootstrap>
-  )
 }
