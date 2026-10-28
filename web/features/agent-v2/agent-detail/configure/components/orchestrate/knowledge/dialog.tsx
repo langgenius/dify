@@ -52,7 +52,7 @@ const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
 
 /** Draft state lives as long as the dialog content: each opening starts from the saved bindings. */
 function AgentKnowledgeRetrievalForm({
-  initialBindings,
+  initialBindings: bindings,
   knowledgeFsEnabled,
   onConfirm,
   onClose,
@@ -60,6 +60,22 @@ function AgentKnowledgeRetrievalForm({
 }: FormProps) {
   const { t } = useTranslation(['agentV2', 'datasetSettings', 'appDebug'])
   const { t: tc } = useTranslation(['common'])
+  const [initialBindings] = useState(() =>
+    bindings.map((item) =>
+      item.metadataFilteringConditions
+        ? {
+            ...item,
+            metadataFilteringConditions: {
+              ...item.metadataFilteringConditions,
+              conditions: item.metadataFilteringConditions.conditions.map((condition) => ({
+                ...condition,
+                id: condition.id || crypto.randomUUID(),
+              })),
+            },
+          }
+        : item,
+    ),
+  )
   const [draft, setDraft] = useState(initialBindings)
   const [filter, setFilter] = useState('')
   const [submitted, setSubmitted] = useState(false)

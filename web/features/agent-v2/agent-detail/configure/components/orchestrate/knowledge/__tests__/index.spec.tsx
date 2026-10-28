@@ -11,7 +11,10 @@ import {
   LogicalOperator,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
+import {
+  agentSoulConfigToFormState,
+  formStateToAgentSoulConfig,
+} from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -413,6 +416,112 @@ describe('shared knowledge binding dialog', () => {
       id: 'group',
       name: 'Saved group',
       datasets: [{ id: first.id }, { id: second.id }],
+    })
+  })
+
+  it('edits and removes imported metadata conditions independently when their row IDs are missing', async () => {
+    const user = userEvent.setup()
+    getDataset.mockResolvedValue(
+      createDatasetFixture({
+        doc_metadata: ['topic', 'author', 'language'].map((name) => ({
+          id: name,
+          name,
+          type: 'string',
+        })),
+      }),
+    )
+    const config = formStateToAgentSoulConfig({
+      formState: {
+        ...defaultAgentSoulConfigFormState,
+        knowledgeRetrievals: [
+          { id: 'classic', name: 'Imported search', datasetRefs: [{ id: 'dataset-1' }] },
+        ],
+      },
+    })
+    config.knowledge!.sets![0]!.metadata_filtering = {
+      mode: 'manual',
+      conditions: {
+        logical_operator: 'and',
+        conditions: [
+          { name: 'topic', comparison_operator: 'is', value: 'agents' },
+          { name: 'author', comparison_operator: 'is', value: 'Ada' },
+          { id: 'existing-id', name: 'language', comparison_operator: 'is', value: 'en' },
+        ],
+      },
+    }
+    setup(agentSoulConfigToFormState(config).knowledgeRetrievals, { enabled: false })
+    let dialog = await open(user)
+    await advanced(user, dialog)
+    const conditionsButton = await within(dialog).findByRole('button', {
+      name: /metadata.panel.conditions/,
+    })
+    await user.click(conditionsButton)
+    const author = within(screen.getByRole('group', { name: 'author' }))
+    await user.clear(author.getByRole('textbox'))
+    await user.type(author.getByRole('textbox'), 'Grace')
+    expect(within(screen.getByRole('group', { name: 'topic' })).getByRole('textbox')).toHaveValue(
+      'agents',
+    )
+    await user.click(
+      within(screen.getByRole('group', { name: 'topic' })).getByRole('button', {
+        name: 'common.operation.remove',
+      }),
+    )
+    expect(screen.getByRole('group', { name: 'author' })).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'topic' })).not.toBeInTheDocument()
+    await user.click(conditionsButton)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    const saved = snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions
+    expect(saved).toEqual([
+      expect.objectContaining({ id: expect.any(String), name: 'author', value: 'Grace' }),
+      expect.objectContaining({ id: 'existing-id', name: 'language', value: 'en' }),
+    ])
+    expect(saved[0].id).not.toBe(saved[1].id)
+    dialog = await open(user)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual(saved)
+  })
+
+  it('blocks a mixed-index group without a required reranker and allows correcting the dataset selection', async () => {
+    const user = userEvent.setup()
+    const first = createDatasetFixture()
+    const second = createDatasetFixture({
+      id: 'dataset-2',
+      name: 'Economy docs',
+      indexing_technique: 'economy',
+    })
+    getDatasets.mockResolvedValue(datasetPage([first, second]))
+    setup([{ id: 'group', name: 'Saved group', selectedDatasets: [first] }], { enabled: false })
+    const original = snapshot().knowledge
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+      }),
+    )
+    const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+    await user.click(await within(picker).findByRole('button', { name: /Economy docs/ }))
+    await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(/rerankModel/)
+    expect(snapshot().knowledge).toEqual(original)
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+      }),
+    )
+    const correction = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+    await user.click(await within(correction).findByRole('button', { name: /Economy docs/ }))
+    await user.click(within(correction).getByRole('button', { name: 'common.operation.add' }))
+    await waitFor(() => expect(correction).not.toBeInTheDocument())
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(snapshot().knowledge.sets[0]).toMatchObject({
+      datasets: [{ id: first.id }],
+      retrieval: { reranking_enable: false },
     })
   })
 

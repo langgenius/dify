@@ -3,10 +3,63 @@ import {
   LogicalOperator,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { RerankingModeEnum } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { validateKnowledgeRetrievals } from '../knowledge-validation'
 
 describe('validateKnowledgeRetrievals', () => {
+  it('rejects an enabled reranker without a model even before dataset details load', () => {
+    const binding = {
+      id: 'classic',
+      name: 'Saved search',
+      datasetRefs: [{ id: 'dataset-1' }],
+      multipleRetrievalConfig: {
+        top_k: 4,
+        score_threshold: null,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_enable: true,
+      },
+    }
+    expect(validateKnowledgeRetrievals([binding]).byId.classic).toEqual({
+      retrieval: 'rerank_model_required',
+    })
+    expect(
+      validateKnowledgeRetrievals([
+        {
+          ...binding,
+          multipleRetrievalConfig: {
+            ...binding.multipleRetrievalConfig,
+            reranking_model: { provider: 'cohere', model: 'rerank-v3' },
+          },
+        },
+      ]).isValid,
+    ).toBe(true)
+  })
+
+  it('keeps optional reranking disabled for saved and loaded economy bindings', () => {
+    const binding = {
+      id: 'classic',
+      name: 'Saved search',
+      datasetRefs: [{ id: 'dataset-1' }],
+      multipleRetrievalConfig: {
+        top_k: 4,
+        score_threshold: null,
+        reranking_mode: RerankingModeEnum.RerankingModel,
+        reranking_enable: false,
+      },
+    }
+    expect(validateKnowledgeRetrievals([binding]).isValid).toBe(true)
+    expect(
+      validateKnowledgeRetrievals([
+        {
+          ...binding,
+          selectedDatasets: [createDatasetFixture({ indexing_technique: 'economy' })],
+        },
+      ]).isValid,
+    ).toBe(true)
+  })
+
   it('accepts a valid Classic Knowledge Base binding', () => {
     const result = validateKnowledgeRetrievals([
       {

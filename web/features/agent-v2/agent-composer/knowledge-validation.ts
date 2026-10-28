@@ -1,6 +1,7 @@
 import type { AgentKnowledgeRetrievalItem } from './form-state'
 import { useTranslation } from 'react-i18next'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { checkoutRerankModelConfiguredInRetrievalSettings } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { RETRIEVE_TYPE } from '@/types/app'
 
 export type KnowledgeValidationIssueCode =
@@ -9,6 +10,7 @@ export type KnowledgeValidationIssueCode =
   | 'datasets_required'
   | 'custom_query_required'
   | 'single_model_required'
+  | 'rerank_model_required'
   | 'metadata_model_required'
   | 'metadata_conditions_required'
   | 'space_unavailable'
@@ -74,6 +76,10 @@ export const useKnowledgeValidationMessage = () => {
         return t(
           ($) => $['agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired'],
         )
+      case 'rerank_model_required':
+        return tCommon(($) => $['errorMsg.fieldRequired'], {
+          field: tCommon(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+        })
       case 'metadata_conditions_required':
         return tCommon(($) => $['errorMsg.fieldRequired'], {
           field: tWorkflow(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions'], {
@@ -190,6 +196,19 @@ export const validateKnowledgeRetrievals = (
         code: 'metadata_model_required',
         field: 'metadata',
       })
+    }
+
+    if (
+      item.retrievalMode !== RETRIEVE_TYPE.oneWay &&
+      // Saved bindings may have only dataset refs. Without catalog details, an
+      // explicitly enabled reranker still requires a model; disabled ones do not.
+      (item.selectedDatasets || item.multipleRetrievalConfig?.reranking_enable) &&
+      !checkoutRerankModelConfiguredInRetrievalSettings(
+        item.selectedDatasets ?? [],
+        item.multipleRetrievalConfig,
+      )
+    ) {
+      pushIssue({ itemId: item.id, code: 'rerank_model_required', field: 'retrieval' })
     }
 
     if (
