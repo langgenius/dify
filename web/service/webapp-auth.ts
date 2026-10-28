@@ -97,6 +97,18 @@ export function setWebAppAccessToken(token: string, mode: 'end_user' | 'console'
   notifySessionChanged()
 }
 
+/** Record a newly issued HttpOnly account session without exposing its login proof. */
+export function startWebAppAccountSession() {
+  clearAuthenticatedWebAppPassports()
+  // oxlint-disable-next-line no-restricted-globals -- Cookie login must remove any legacy bearer before new account requests begin.
+  localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
+  // oxlint-disable-next-line no-restricted-globals -- Reset the mode so other tabs observe a cookie-session replacement even when the mode stays end_user.
+  localStorage.removeItem(WEB_APP_LOGIN_MODE_KEY)
+  // oxlint-disable-next-line no-restricted-globals -- Persist only the login mode; the account proof belongs to the HttpOnly cookie.
+  localStorage.setItem(WEB_APP_LOGIN_MODE_KEY, 'end_user')
+  notifySessionChanged()
+}
+
 function getPassportStorageKey(address: WebAppAddress, source: WebAppPassportSource) {
   const key = getWebAppPassportKey(address)
   return source === 'authenticated'
@@ -107,7 +119,9 @@ function getPassportStorageKey(address: WebAppAddress, source: WebAppPassportSou
 export function setWebAppPassport(
   address: WebAppAddress,
   token: string,
-  source: WebAppPassportSource = getWebAppAccessToken() ? 'authenticated' : 'anonymous',
+  source: WebAppPassportSource = getWebAppLoginMode() === 'end_user' || getWebAppAccessToken()
+    ? 'authenticated'
+    : 'anonymous',
 ) {
   localStorage.setItem(getPassportStorageKey(address, source), token)
 }

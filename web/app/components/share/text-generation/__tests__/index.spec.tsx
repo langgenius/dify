@@ -235,6 +235,7 @@ describe('Workflow connections entry', () => {
               node_id: 'source',
               node_ids: ['source'],
               provider: connection.provider,
+              provider_label: 'GitHub',
               allowed_credential_types: ['api-key'],
               plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
               title: 'Research',

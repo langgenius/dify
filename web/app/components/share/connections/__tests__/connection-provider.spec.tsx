@@ -45,6 +45,7 @@ const requirements: WebAppConnectionRequirement[] = [
     purpose: 'Read repositories for the research brief.',
     provider,
     allowed_credential_types: ['oauth2', 'api-key'],
+    provider_label: 'GitHub',
   },
   {
     node_id: 'source-b',
@@ -56,6 +57,7 @@ const requirements: WebAppConnectionRequirement[] = [
     purpose: 'Read documentation for the answer.',
     provider,
     allowed_credential_types: ['oauth2'],
+    provider_label: 'GitHub',
   },
 ]
 

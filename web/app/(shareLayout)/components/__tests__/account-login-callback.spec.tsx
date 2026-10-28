@@ -5,7 +5,11 @@ import userEvent from '@testing-library/user-event'
 import { StrictMode, useSyncExternalStore } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
-import { getAuthenticatedWebAppPassport, getWebAppAccessToken } from '@/service/webapp-auth'
+import {
+  getAuthenticatedWebAppPassport,
+  getWebAppAccessToken,
+  getWebAppLoginMode,
+} from '@/service/webapp-auth'
 import { beginWebAppAccountLogin } from '@/service/webapp/login'
 import { createDeferred } from '@/test/deferred'
 import Layout from '../../layout'
@@ -87,10 +91,11 @@ describe('App user callback owner', () => {
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
     const fetch = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(Response.json({ access_token: 'passport', webapp_access_token: 'proof' }))
+      .mockResolvedValue(Response.json({ access_token: 'passport' }))
     const { unmount } = render(content())
     await waitFor(() => expect(replace).toHaveBeenCalledWith(target))
-    expect(getWebAppAccessToken()).toBe('proof')
+    expect(getWebAppAccessToken()).toBe('')
+    expect(getWebAppLoginMode()).toBe('end_user')
     expect(
       getAuthenticatedWebAppPassport({ kind: 'default', code: `callback-app-${sequence}` }),
     ).toBe('passport')
@@ -100,18 +105,24 @@ describe('App user callback owner', () => {
     render(content())
     await waitFor(() => expect(replace).toHaveBeenCalledTimes(2))
     expect(fetch).toHaveBeenCalledOnce()
-    expect(getWebAppAccessToken()).toBe('proof')
+    expect(getWebAppAccessToken()).toBe('')
+    expect(getWebAppLoginMode()).toBe('end_user')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('hydrates the real layout before exchanging without starting App initialization', async () => {
     const response = createDeferred<Response>()
     const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(response.promise)
+    let credentialsAtNavigation: unknown
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {
-      expect(getWebAppAccessToken()).toBe('proof')
-      expect(
-        getAuthenticatedWebAppPassport({ kind: 'default', code: `callback-app-${sequence}` }),
-      ).toBe('passport')
+      credentialsAtNavigation = {
+        bearer: getWebAppAccessToken(),
+        mode: getWebAppLoginMode(),
+        passport: getAuthenticatedWebAppPassport({
+          kind: 'default',
+          code: `callback-app-${sequence}`,
+        }),
+      }
     })
     const browserWindow = window
     let markup: string
@@ -137,10 +148,13 @@ describe('App user callback owner', () => {
       expect(request.method).toBe('POST')
       expect(replace).not.toHaveBeenCalled()
       expect(screen.queryByRole('heading', { name: 'Web App content' })).not.toBeInTheDocument()
-      await act(async () =>
-        response.resolve(Response.json({ access_token: 'passport', webapp_access_token: 'proof' })),
-      )
+      await act(async () => response.resolve(Response.json({ access_token: 'passport' })))
       await waitFor(() => expect(replace).toHaveBeenCalledWith(target))
+      expect(credentialsAtNavigation).toEqual({
+        bearer: '',
+        mode: 'end_user',
+        passport: 'passport',
+      })
       expect(fetch).toHaveBeenCalledOnce()
       expect(onRecoverableError).not.toHaveBeenCalled()
     } finally {
@@ -175,9 +189,7 @@ describe('App user callback owner', () => {
     const fetch = vi
       .spyOn(globalThis, 'fetch')
       .mockReturnValueOnce(previous)
-      .mockResolvedValueOnce(
-        Response.json({ access_token: 'next-passport', webapp_access_token: 'next-proof' }),
-      )
+      .mockResolvedValueOnce(Response.json({ access_token: 'next-passport' }))
     const { rerender } = render(content())
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
 
@@ -189,13 +201,10 @@ describe('App user callback owner', () => {
     rerender(content())
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith(nextTarget))
-    await act(async () =>
-      finishPrevious(
-        Response.json({ access_token: 'previous-passport', webapp_access_token: 'previous-proof' }),
-      ),
-    )
+    await act(async () => finishPrevious(Response.json({ access_token: 'previous-passport' })))
     expect(fetch).toHaveBeenCalledTimes(2)
-    expect(getWebAppAccessToken()).toBe('next-proof')
+    expect(getWebAppAccessToken()).toBe('')
+    expect(getWebAppLoginMode()).toBe('end_user')
     expect(getAuthenticatedWebAppPassport({ kind: 'default', code: 'next-app' })).toBe(
       'next-passport',
     )

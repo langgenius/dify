@@ -86,12 +86,11 @@ describe('Splash', () => {
     })
   })
 
-  it('keeps the enterprise sign-in route on its original flow even with an App user proof', async () => {
+  it('keeps the enterprise sign-in route on its original flow even with an App user cookie session', async () => {
     navigationMocks.pathname = '/webapp-signin'
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: '/workflow/share-app',
     })
-    webAppAuthMocks.getWebAppAccessToken.mockReturnValue('account-proof')
     webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
     render(
       <Splash>
@@ -104,9 +103,8 @@ describe('Splash', () => {
     expect(fetchAccessTokenMock).not.toHaveBeenCalled()
   })
 
-  it('restores an account Passport with end_user mode instead of replacing it with an anonymous Passport', async () => {
+  it('restores a cookie-backed account Passport with end_user mode instead of replacing it with an anonymous Passport', async () => {
     navigationMocks.searchParams = new URLSearchParams()
-    webAppAuthMocks.getWebAppAccessToken.mockReturnValue('account-proof')
     webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
     accountClient.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: false })
     accountClient.passport.get.mockResolvedValue({ access_token: 'account-passport' })
@@ -130,9 +128,8 @@ describe('Splash', () => {
     expect(fetchAccessTokenMock).not.toHaveBeenCalled()
   })
 
-  it('clears an expired account proof before anonymous initialization can resume', async () => {
+  it('clears an expired cookie session before anonymous initialization can resume', async () => {
     navigationMocks.searchParams = new URLSearchParams()
-    webAppAuthMocks.getWebAppAccessToken.mockReturnValue('expired-proof')
     webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
     accountClient.login.status.get.mockResolvedValue({ logged_in: false, app_logged_in: false })
     render(
@@ -148,7 +145,6 @@ describe('Splash', () => {
 
   it('recovers an account that expires between the login check and Passport renewal without forcing sign-in', async () => {
     navigationMocks.searchParams = new URLSearchParams()
-    webAppAuthMocks.getWebAppAccessToken.mockReturnValue('expired-during-renewal')
     webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
     accountClient.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: false })
     accountClient.passport.get.mockRejectedValue(
@@ -164,12 +160,11 @@ describe('Splash', () => {
     expect(fetchAccessTokenMock).not.toHaveBeenCalled()
   })
 
-  it('keeps environment Apps on their existing authentication flow even when an ordinary App account proof is stored', async () => {
+  it('keeps environment Apps on their existing authentication flow even when an ordinary App cookie session is active', async () => {
     navigationMocks.pathname = '/environment/workflow/environment-app'
     navigationMocks.searchParams = new URLSearchParams()
     window.history.replaceState({}, '', navigationMocks.pathname)
     useWebAppStore.setState({ shareCode: 'environment-app' })
-    webAppAuthMocks.getWebAppAccessToken.mockReturnValue('ordinary-app-proof')
     webAppAuthMocks.getWebAppLoginMode.mockReturnValue('end_user')
     webAppAuthMocks.webAppLoginStatus.mockResolvedValue({ userLoggedIn: true, appLoggedIn: true })
     render(

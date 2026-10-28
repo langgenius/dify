@@ -4,6 +4,7 @@ import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
 import { createDeferred } from '@/test/deferred'
 import {
   beginWebAppAuthorizationRecovery,
+  captureWebAppAuthSession,
   clearAnonymousWebAppPassports,
   clearWebAppPassport,
   completeWebAppAuthorizationRecovery,
@@ -17,6 +18,7 @@ import {
   getWebAppPassport,
   setWebAppAccessToken,
   setWebAppPassport,
+  startWebAppAccountSession,
   subscribeWebAppAuthSession,
   webAppLoginStatus,
   webAppLogout,
@@ -144,6 +146,30 @@ describe('Webapp credentials', () => {
     expect(getWebAppPassport(ordinary)).toBe('account-a-passport')
   })
 
+  it('invalidates the previous cookie session even without a visible account proof', () => {
+    startWebAppAccountSession()
+    setWebAppPassport(ordinary, 'old-account-passport')
+    setWebAppPassport(environment, 'old-environment-passport')
+    setWebAppPassport(ordinary, 'anonymous-history', 'anonymous')
+    const isOldSession = captureWebAppAuthSession()
+    const listener = vi.fn()
+    const unsubscribe = subscribeWebAppAuthSession(listener)
+
+    startWebAppAccountSession()
+
+    expect(isOldSession()).toBe(false)
+    expect(listener).toHaveBeenCalledOnce()
+    expect(getWebAppAccessToken()).toBe('')
+    expect(localStorage.getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)).toBeNull()
+    expect(getWebAppLoginMode()).toBe('end_user')
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
+    expect(getAuthenticatedWebAppPassport(environment)).toBe('')
+    expect(getAnonymousWebAppPassport(ordinary)).toBe('anonymous-history')
+    setWebAppPassport(ordinary, 'new-account-passport')
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('new-account-passport')
+    unsubscribe()
+  })
+
   it('distinguishes legacy SSO credentials from the new Account login proof', () => {
     localStorage.setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, 'legacy-credential')
     expect(getWebAppLoginMode()).toBe('console')
@@ -175,10 +201,10 @@ describe('Webapp credentials', () => {
     unsubscribe()
   })
 
-  it('sends logout with the current proof, then keeps anonymous Passports for a deferred history decision', async () => {
+  it('sends logout with the session cookie, then keeps anonymous Passports for a deferred history decision', async () => {
     setWebAppPassport(ordinary, 'anonymous-ordinary', 'anonymous')
     setWebAppPassport(environment, 'anonymous-environment', 'anonymous')
-    setWebAppAccessToken('account-proof', 'end_user')
+    startWebAppAccountSession()
     setWebAppPassport(ordinary, 'ordinary-passport')
     setWebAppPassport(environment, 'environment-passport')
     const fetch = vi
@@ -187,8 +213,11 @@ describe('Webapp credentials', () => {
 
     await webAppLogout(ordinary)
 
-    const [, options] = fetch.mock.calls[0]!
-    expect(new Headers(options?.headers).get('Authorization')).toBe('Bearer account-proof')
+    const [input, options] = fetch.mock.calls[0]!
+    const request = new Request(input, options)
+    expect(request.headers.has('Authorization')).toBe(false)
+    expect(request.credentials).toBe('include')
+    expect(getWebAppLoginMode()).toBe('console')
     expect(getWebAppAccessToken()).toBe('')
     expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
     expect(getAuthenticatedWebAppPassport(environment)).toBe('')

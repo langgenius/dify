@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event'
 import SignIn from '@/app/components/share/sign-in'
 import { useWebAppEntry } from '@/app/components/share/webapp-entry'
 import { useWebAppStore } from '@/context/web-app-context'
-import { webAppLogout } from '@/service/webapp-auth'
+import { expireWebAppAccountSession, getWebAppLoginMode, webAppLogout } from '@/service/webapp-auth'
 import AuthenticatedLayout from '../authenticated-layout'
 
 type QueryState<TData> = {
@@ -123,7 +123,7 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: vi.fn(),
   getWebAppAccessToken: () => '',
-  getWebAppLoginMode: () => 'console',
+  getWebAppLoginMode: vi.fn(() => 'console'),
   expireWebAppAccountSession: vi.fn(),
 }))
 
@@ -196,6 +196,7 @@ const renderLayout = () => render(layout)
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {
     queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    vi.mocked(getWebAppLoginMode).mockReturnValue('console')
     resetQueryStates()
     useWebAppStore.setState({ shareCode: 'share-code' })
   })
@@ -269,6 +270,15 @@ describe('AuthenticatedLayout', () => {
     expect(screen.getByRole('button', { name: 'share.auth.signIn' })).toBeInTheDocument()
   })
 
+  it('expires a cookie-only Account session when login status reports it is no longer authenticated', () => {
+    vi.mocked(getWebAppLoginMode).mockReturnValue('end_user')
+    accountStatusQueryState.data = { logged_in: false, app_logged_in: false }
+
+    renderLayout()
+
+    expect(expireWebAppAccountSession).toHaveBeenCalledOnce()
+  })
+
   it('should keep a Workspace-only App runnable while optional account status is loading', () => {
     accountStatusQueryState.data = undefined
     accountStatusQueryState.isLoading = true
@@ -314,6 +324,7 @@ describe('AuthenticatedLayout', () => {
         connection_requirements: [
           {
             provider: 'langgenius/google/google',
+            provider_label: 'Google',
             title: 'Search',
             purpose: 'Search documents',
             node_id: 'search-node',

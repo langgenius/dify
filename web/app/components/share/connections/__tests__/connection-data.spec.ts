@@ -16,6 +16,7 @@ function requirement(
     plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
     node_ids: ['source-one'],
     provider: 'langgenius/github/github',
+    provider_label: 'GitHub',
     title: 'Repository connection',
     purpose: 'Read repository documentation.',
     allowed_credential_types: ['oauth2', 'api-key'],

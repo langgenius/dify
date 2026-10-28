@@ -73,6 +73,7 @@ describe('RequiredServices', () => {
       title: 'Research documents',
       purpose: 'Read source documents.',
       provider: 'langgenius/research/research',
+      provider_label: 'Research',
       plugin_unique_identifier: 'langgenius/research:1.0.0@digest',
       icon: '/provider-light.svg',
       icon_dark: '/provider-dark.svg',

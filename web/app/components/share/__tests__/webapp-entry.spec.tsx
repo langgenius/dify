@@ -45,6 +45,7 @@ const requirement: WebAppConnectionRequirement = {
   icon_dark: null,
   plugin_unique_identifier: 'langgenius/google:1.0.0@digest',
   provider: 'langgenius/google/google',
+  provider_label: 'Google',
   title: 'Google Search',
   purpose: 'Search documents',
   node_id: 'search-node',

@@ -52,6 +52,7 @@ const requirements: WebAppConnectionRequirement[] = [
     purpose: 'Read repository documentation.',
     provider,
     allowed_credential_types: ['api-key'],
+    provider_label: 'GitHub',
   },
   {
     node_id: 'source-b',
@@ -63,6 +64,7 @@ const requirements: WebAppConnectionRequirement[] = [
     purpose: 'Read the project README.',
     provider,
     allowed_credential_types: ['api-key'],
+    provider_label: 'GitHub',
   },
 ]
 
