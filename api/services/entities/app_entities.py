@@ -62,7 +62,8 @@ class AppListBaseParams(BaseModel):
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     accessible_app_ids: list[str] | None = None
-    include_own_apps: bool = False
+    # Credential resource bindings are a strict scope; None means no binding restriction.
+    resource_app_ids: list[str] | None = None
 
 
 class AppListParams(AppListBaseParams):

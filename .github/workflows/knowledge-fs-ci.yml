@@ -266,6 +266,7 @@ jobs:
             api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py
             api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py
             api/tests/unit_tests/core/workflow/test_node_runtime.py
+            api/tests/unit_tests/core/workflow/test_structured_output_compatibility.py
             api/tests/unit_tests/services/enterprise/test_rbac_service.py
             api/tests/unit_tests/repositories/workspace/test_workspace_repository.py
             api/tests/unit_tests/services/test_agent_tool_inner_service.py
