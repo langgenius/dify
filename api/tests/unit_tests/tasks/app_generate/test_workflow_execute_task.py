@@ -45,6 +45,7 @@ from tasks.app_generate.workflow_execute_task import (
     _resume_advanced_chat,
     _resume_app_execution,
     _resume_workflow,
+    workflow_based_app_execution_task,
 )
 
 
@@ -1372,3 +1373,74 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         WorkflowStartReason.RESUMPTION,
     )
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)
+
+
+class _ClaimRedis:
+    """Minimal Redis client stand-in covering the SET NX call used by the execution claim."""
+
+    def __init__(self, *, fail: bool = False) -> None:
+        self._keys: set[str] = set()
+        self._fail = fail
+        self.calls: list[dict[str, object]] = []
+
+    def set(self, name: str, value: bytes, *, nx: bool = False, ex: int | None = None) -> bool | None:
+        self.calls.append({"name": name, "value": value, "nx": nx, "ex": ex})
+        if self._fail:
+            raise ConnectionError("redis is unavailable")
+        if name in self._keys:
+            return None
+        self._keys.add(name)
+        return True
+
+
+def _build_execution_payload(workflow_run_id: str) -> str:
+    return AppExecutionParams(
+        app_id="app-id",
+        workflow_id="workflow-id",
+        tenant_id="tenant-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        user={"TYPE": "account", "user_id": "user-id"},
+        args={"inputs": {}, "query": "test"},
+        invoke_from=InvokeFrom.EXPLORE,
+        streaming=True,
+        workflow_run_id=workflow_run_id,
+    ).model_dump_json()
+
+
+def test_workflow_execution_task_drops_duplicate_delivery(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    payload = _build_execution_payload("workflow-run-id")
+    claim_redis = _ClaimRedis()
+    runner = MagicMock()
+    runner.run.return_value = {"answer": "ok"}
+    monkeypatch.setattr(workflow_execute_task_module, "redis_client", claim_redis)
+    monkeypatch.setattr(workflow_execute_task_module, "_AppRunner", MagicMock(return_value=runner))
+    monkeypatch.setattr(workflow_execute_task_module, "db", SimpleNamespace(engine=MagicMock()))
+
+    with caplog.at_level(logging.WARNING, logger="tasks.app_generate.workflow_execute_task"):
+        assert workflow_based_app_execution_task.run(payload) == {"answer": "ok"}
+        assert workflow_based_app_execution_task.run(payload) is None
+
+    assert runner.run.call_count == 1
+    assert claim_redis.calls[0]["name"] == "workflow_run_execution_claim:workflow-run-id"
+    assert claim_redis.calls[0]["nx"] is True
+    assert claim_redis.calls[0]["ex"] == 60 * 60
+    assert "workflow-run-id" in caplog.text
+
+    assert workflow_based_app_execution_task.run(_build_execution_payload("another-workflow-run-id")) == {
+        "answer": "ok"
+    }
+    assert runner.run.call_count == 2
+
+
+def test_workflow_execution_task_runs_when_claim_backend_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _build_execution_payload("workflow-run-id")
+    runner = MagicMock()
+    runner.run.return_value = {"answer": "ok"}
+    monkeypatch.setattr(workflow_execute_task_module, "redis_client", _ClaimRedis(fail=True))
+    monkeypatch.setattr(workflow_execute_task_module, "_AppRunner", MagicMock(return_value=runner))
+    monkeypatch.setattr(workflow_execute_task_module, "db", SimpleNamespace(engine=MagicMock()))
+
+    assert workflow_based_app_execution_task.run(payload) == {"answer": "ok"}
+    assert runner.run.call_count == 1

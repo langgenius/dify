@@ -25,6 +25,7 @@ from core.app.entities.task_entities import WorkflowFinishStreamResponse, Workfl
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
@@ -44,6 +45,7 @@ from services.workflow_run_agg import WorkflowRunAgg
 logger = logging.getLogger(__name__)
 
 WORKFLOW_BASED_APP_EXECUTION_QUEUE = "workflow_based_app_execution"
+_WORKFLOW_RUN_EXECUTION_CLAIM_TTL_SECONDS = 60 * 60
 
 
 class _UserType(StrEnum):
@@ -473,6 +475,29 @@ def _publish_streaming_response(
         )
 
 
+def _claim_workflow_run_execution(workflow_run_id: str) -> bool:
+    """
+    Claim the initial execution of a workflow run before running it.
+
+    Celery retries publishing when the broker connection drops after a message was
+    delivered, so the same payload can reach a worker more than once. The claim is
+    left to expire instead of being released because a duplicate delivery can still
+    be queued. If Redis is unavailable the run executes without a claim so that a
+    message is never dropped.
+    """
+    try:
+        claimed = redis_client.set(
+            f"workflow_run_execution_claim:{workflow_run_id}",
+            b"1",
+            nx=True,
+            ex=_WORKFLOW_RUN_EXECUTION_CLAIM_TTL_SECONDS,
+        )
+    except Exception:
+        logger.exception("Failed to claim workflow run %s for execution; running without a claim", workflow_run_id)
+        return True
+    return bool(claimed)
+
+
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
 def workflow_based_app_execution_task(
     payload: str,
@@ -480,6 +505,10 @@ def workflow_based_app_execution_task(
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
+
+    if not _claim_workflow_run_execution(exec_params.workflow_run_id):
+        logger.warning("Skipping duplicate delivery of workflow run %s", exec_params.workflow_run_id)
+        return None
 
     runner = _AppRunner(db.engine, exec_params=exec_params)
     return runner.run()
