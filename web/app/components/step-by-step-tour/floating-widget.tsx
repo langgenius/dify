@@ -333,7 +333,7 @@ function TaskStatusIndicator({
         type="button"
         aria-label={incompleteLabel}
         disabled={disabled}
-        className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-hidden hover:bg-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-saas-dify-blue-accessible"
+        className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-state-accent-solid hover:bg-saas-dify-blue-inverted focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-saas-dify-blue-accessible"
         onClick={onUncomplete}
       >
         <span aria-hidden className="i-ri-check-line size-3" />
@@ -346,7 +346,7 @@ function TaskStatusIndicator({
       type="button"
       aria-label={completeLabel}
       disabled={disabled}
-      className="flex size-4.5 shrink-0 items-center justify-center rounded-full border border-components-checkbox-border bg-components-checkbox-bg-unchecked outline-hidden hover:border-state-accent-solid focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:border-components-checkbox-border"
+      className="flex size-4.5 shrink-0 items-center justify-center rounded-full border border-components-checkbox-border bg-components-checkbox-bg-unchecked outline-state-accent-solid hover:border-state-accent-solid focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:hover:border-components-checkbox-border"
       onClick={onComplete}
     />
   )
