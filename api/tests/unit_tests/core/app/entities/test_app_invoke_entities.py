@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import (
     CreditUsageCreatedBy,
     DifyRunContext,
     InvokeFrom,
+    UserFrom,
     WorkflowAppGenerateEntity,
     get_credit_usage_app_type,
     get_credit_usage_created_by,
@@ -56,6 +57,7 @@ def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
 
 def _create_workflow_generate_entity(trace_scope: TraceScope) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="workflow-task",
         app_config=_build_workflow_app_config(AppMode.WORKFLOW),
         inputs={"topic": "serialization"},
