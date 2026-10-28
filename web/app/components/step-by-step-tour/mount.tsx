@@ -275,7 +275,7 @@ export default function StepByStepTourMount({
     activeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify
       ? 'top'
       : activeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.integration
-        ? 'right'
+        ? 'inline-end'
         : 'bottom'
   const getPermissionVariant = (taskId: StepByStepTourTaskId) =>
     getStepByStepTourPermissionVariant({
