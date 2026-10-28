@@ -5966,9 +5966,6 @@
     }
   },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 4
     },

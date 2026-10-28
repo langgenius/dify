@@ -24,6 +24,11 @@ const getChildExecutions = vi.hoisted(() =>
     typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get
   >(),
 )
+const getPauseDetails = vi.hoisted(() =>
+  vi.fn<
+    typeof import('@/service/console').consoleClient.workflow.byWorkflowRunId.pauseDetails.get
+  >(),
+)
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -32,6 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get':
         getChildExecutions,
+      'workflow.byWorkflowRunId.pauseDetails.get': getPauseDetails,
     }),
   }
 })
@@ -113,6 +119,7 @@ const createHumanInputFilledFormData = (
 
 beforeEach(() => {
   getChildExecutions.mockReset()
+  getPauseDetails.mockReset()
   mockSubmitHumanInputForm.mockReset().mockResolvedValue({ result: 'success' })
   vi.mocked(copy).mockReset().mockResolvedValue(true)
   vi.spyOn(toast, 'success')
@@ -206,6 +213,64 @@ it('opens pending human input on pause and submits the token with the entered re
       undefined,
     ),
   )
+})
+
+it('loads the approval URL for the live run after it pauses and details are opened', async () => {
+  const user = userEvent.setup()
+  getPauseDetails.mockResolvedValue({
+    paused_at: '2026-10-28T00:00:00Z',
+    paused_nodes: [
+      {
+        node_id: 'approval-node',
+        node_title: 'Review request',
+        pause_type: {
+          type: 'human_input',
+          form_id: 'approval-form',
+          backstage_input_url: 'https://approval.example.com/form/live-approval-token',
+        },
+      },
+    ],
+  })
+  const { queryClient } = createConsoleQueryWrapper()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.traceRuns.bySourceKind.bySourceId.get.queryKey({
+      input: {
+        params: { app_id: 'app-1', source_kind: 'workflow', source_id: 'live-preview-run' },
+      },
+    }),
+    { status: 'not_collected', source_kind: 'workflow', source_id: 'live-preview-run' },
+  )
+  const { store } = renderPreview({
+    queryClient,
+    initialStoreState: {
+      workflowRunningData: createPreviewRunningData({
+        result: createWorkflowResult({ id: 'live-preview-run' }),
+      }),
+    },
+  })
+
+  await user.click(screen.getByText('runLog.detail'))
+  expect(screen.getByRole('status')).toHaveTextContent('appLog.status.running')
+  expect(getPauseDetails).not.toHaveBeenCalled()
+
+  act(() => {
+    store.setState({
+      workflowRunningData: createPreviewRunningData({
+        result: createWorkflowResult({
+          id: 'live-preview-run',
+          status: WorkflowRunningStatus.Paused,
+        }),
+      }),
+    })
+  })
+  await user.click(screen.getByText('runLog.detail'))
+
+  const approval = await screen.findByRole('link', { name: '/human-input/live-approval-token' })
+  expect(approval).toHaveAttribute('href', '/human-input/live-approval-token')
+  expect(
+    screen.getByText('workflowHumanInput.nodes.humanInput.log.reasonContent'),
+  ).toBeInTheDocument()
+  expect(getPauseDetails).toHaveBeenCalledWith({ params: { workflow_run_id: 'live-preview-run' } })
 })
 
 it('copies the completed output from the result tab', async () => {
