@@ -1,5 +1,8 @@
 // Import existing type names from the mapper subpath, with no handwritten aliases.
 // Only the import path changes; no customConditions are required.
+// With the local OpenAPI Backend Navigation extension, F12 on DatasetCreatePayload
+// opens its Python class; F12 on PostDatasetsData opens DatasetListApi.post.
+// The same targets are available as "Open backend implementation" hover links.
 import type {
   ClientOptions,
   DatasetCreatePayload,

@@ -2,7 +2,8 @@ import type { UserConfig } from '@hey-api/openapi-ts'
 import type { SwaggerDocument } from '../api-documents.ts'
 import { execFileSync } from 'node:child_process'
 import { readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { isAbsolute, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { createClient } from '@hey-api/openapi-ts'
 import {
   cloneDocumentWithPaths,
@@ -48,7 +49,41 @@ export async function renderCompatibilityTypes(
   const file = files.find((file) => file.path.endsWith('/types.gen.ts'))
   if (!file || files.length !== 1)
     throw new Error('Expected one generated compatibility types module')
-  return file.content
+  const origins = new Map<string, string>()
+  for (const symbol of context!.gen.symbols.registered()) {
+    const path = symbol.meta?.path
+    if (!Array.isArray(path)) continue
+    let node: unknown = document
+    for (const part of path) {
+      node =
+        node && typeof node === 'object'
+          ? (node as Record<string, unknown>)[String(part)]
+          : undefined
+    }
+    if (!node || typeof node !== 'object') continue
+    const source = (node as Record<string, unknown>)['x-source-location'] as
+      | { file?: unknown; line?: unknown }
+      | undefined
+    if (
+      !source ||
+      typeof source.file !== 'string' ||
+      !isAbsolute(source.file) ||
+      typeof source.line !== 'number' ||
+      !Number.isSafeInteger(source.line) ||
+      source.line < 1
+    )
+      continue
+    const url = pathToFileURL(source.file)
+    url.hash = `L${source.line}`
+    const href = url.href.replaceAll('*', '%2A').replaceAll('(', '%28').replaceAll(')', '%29')
+    origins.set(symbol.finalName, `/** [Open backend implementation](${href}) */\n`)
+  }
+  // Use the generator's resolved symbols, including renamed schemas and envelopes.
+  // Normal contracts generation stays unchanged; only virtual exports get links.
+  return file.content.replace(
+    /^export (?:type|interface|const|enum) (\w+)/gm,
+    (declaration, name: string) => `${origins.get(name) ?? ''}${declaration}`,
+  )
 }
 
 export function selectCommunityDocument(
@@ -102,8 +137,8 @@ export function loadCommunityDocuments(consoleOnly: boolean): Record<string, Swa
       'import contextlib, json, sys',
       'sys.path.insert(0, "api")',
       'with contextlib.redirect_stdout(sys.stderr):',
-      '    from dev.generate_swagger_specs import export_specs',
-      '    documents = export_specs()',
+      '    from dev.export_console_openapi import export_all_with_sources',
+      '    documents = export_all_with_sources()',
       'json.dump(documents, sys.stdout)',
     ].join('\n'),
   ])

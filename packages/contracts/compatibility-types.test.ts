@@ -10,6 +10,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 import { normalizeApiSwagger } from './api-documents.ts'
 import {
@@ -21,6 +22,56 @@ import { generateCompatibilitySources } from './scripts/generate-compatibility-s
 const root = import.meta.dirname
 
 describe('compatible contracts exports', () => {
+  it('keeps exact backend origins on renamed models and every operation envelope', async () => {
+    const file = resolve(root, 'backend (models)*/models.py')
+    const source = { file, line: 17 }
+    const document = normalizeApiSwagger({
+      openapi: '3.1.0',
+      info: { title: 'Navigation', version: '1' },
+      paths: {
+        '/pets': {
+          post: {
+            'x-source-location': { file, line: 42 },
+            requestBody: {
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/pet-model' } },
+              },
+            },
+            responses: {
+              200: {
+                content: {
+                  'application/json': { schema: { $ref: '#/components/schemas/pet-model' } },
+                },
+              },
+              400: { content: { 'application/json': { schema: { type: 'string' } } } },
+            },
+          },
+        },
+      },
+      components: {
+        schemas: {
+          'pet-model': { type: 'object', 'x-source-location': source },
+          Missing: { type: 'string' },
+          Relative: { type: 'string', 'x-source-location': { file: 'models.py', line: 1 } },
+          Invalid: { type: 'string', 'x-source-location': { file, line: 0 } },
+        },
+      },
+    })
+    const output = await renderCompatibilityTypes(document)
+    const href = pathToFileURL(file)
+      .href.replaceAll('*', '%2A')
+      .replaceAll('(', '%28')
+      .replaceAll(')', '%29')
+    expect(output).toContain(
+      `/** [Open backend implementation](${href}#L17) */\nexport type PetModel`,
+    )
+    for (const suffix of ['Data', 'Responses', 'Response', 'Errors', 'Error'])
+      expect(output).toContain(
+        `/** [Open backend implementation](${href}#L42) */\nexport type PostPets${suffix} =`,
+      )
+    expect(output.match(/Open backend implementation/g)).toHaveLength(6)
+  })
+
   it('generates subpath entries, preserves no-op mtimes and removes obsolete generated files', async () => {
     const directory = mkdtempSync(resolve(tmpdir(), 'dify-contracts-descriptors-'))
     try {

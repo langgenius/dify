@@ -378,6 +378,14 @@ recursive models, binary types and enum naming therefore follow the existing
 contracts rules, rather than the mapper RPC `Inputs`/`Outputs` rules. Backend
 contract changes still change the inferred types.
 
+Type hovers include **Open backend implementation** links for registered Community
+Python models and API request/response/error envelopes. With the local
+[VS Code extension], F12 / Cmd+click and Go to
+Implementation follow these links, including through import aliases and re-exports.
+In the example, `DatasetCreatePayload` opens its Python class and `PostDatasetsData`
+opens `DatasetListApi.post`. Synthetic models and snapshots without source metadata
+have no backend target; the exporter does not guess by type name.
+
 Enterprise and App Deploy use the retained OpenAPI snapshots. These snapshots omit
 some non-Console models; missing exports are re-exported from the existing complete
 contracts modules. Those retained types update with regular Enterprise generation,
