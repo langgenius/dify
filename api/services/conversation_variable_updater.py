@@ -13,10 +13,11 @@ class ConversationVariableUpdater:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker: sessionmaker[Session] = session_maker
 
-    def update(self, conversation_id: str, variable: VariableBase) -> None:
+    def update(self, *, app_id: str, conversation_id: str, variable: VariableBase) -> None:
         stmt = select(ConversationVariable).where(
             ConversationVariable.id == ConversationVariable.storage_id(variable),
             ConversationVariable.conversation_id == conversation_id,
+            ConversationVariable.app_id == app_id,
         )
         with self._session_maker() as session:
             row = session.scalar(stmt)

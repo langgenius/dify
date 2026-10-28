@@ -33,14 +33,14 @@ class TestConversationVariableUpdater:
     def test_should_update_conversation_variable_data_and_commit(self, db_session_with_containers: Session):
         conversation_id = str(uuid4())
         variable = StringVariable(id=str(uuid4()), name="topic", value="old value")
-        self._create_conversation_variable(
+        created = self._create_conversation_variable(
             db_session_with_containers, conversation_id=conversation_id, variable=variable
         )
 
         updated_variable = StringVariable(id=variable.id, name="topic", value="new value")
         updater = ConversationVariableUpdater(sessionmaker(bind=db.engine))
 
-        updater.update(conversation_id=conversation_id, variable=updated_variable)
+        updater.update(app_id=created.app_id, conversation_id=conversation_id, variable=updated_variable)
 
         db_session_with_containers.expire_all()
         row = db_session_with_containers.get(ConversationVariable, (variable.id, conversation_id))
@@ -53,7 +53,7 @@ class TestConversationVariableUpdater:
         updater = ConversationVariableUpdater(sessionmaker(bind=db.engine))
 
         with pytest.raises(ConversationVariableNotFoundError, match="conversation variable not found in the database"):
-            updater.update(conversation_id=conversation_id, variable=variable)
+            updater.update(app_id=str(uuid4()), conversation_id=conversation_id, variable=variable)
 
     def test_should_do_nothing_when_flush_is_called(self, db_session_with_containers: Session):
         updater = ConversationVariableUpdater(sessionmaker(bind=db.engine))

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
@@ -19,15 +19,19 @@ from core.app.entities.queue_entities import (
     QueueWorkflowPausedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import get_session_maker
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
+from core.workflow.system_variables import build_system_variables
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
 from extensions.application_services.workflow_run import build_workflow_run_execution_service
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
+from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -35,11 +39,13 @@ from graphon.engine_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeRunVariableUpdatedEvent,
 )
-from graphon.enums import WorkflowExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.nodes.start.entities import StartNodeData
-from graphon.runtime import RuntimeState
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
+from graphon.variables import StringVariable
 from models import Account
 from models.agent import AgentWorkspace, AgentWorkspaceBinding, WorkflowAgentBindingType
 from models.dataset import Document
@@ -49,6 +55,7 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
+    ConversationVariable,
     Workflow,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
@@ -57,8 +64,13 @@ from models.workflow import (
 )
 from models.workflow import WorkflowType as ModelWorkflowType
 from services.agent.workspace_service import AgentWorkspaceService
+from services.conversation_variable_updater import ConversationVariableNotFoundError, ConversationVariableUpdater
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
-from services.workflow_run_execution_service import WorkflowRunAttempt, WorkflowRunExecutionService
+from services.workflow_run_execution_service import (
+    WorkflowRunAttempt,
+    WorkflowRunExecutionService,
+    _RunConversationVariables,
+)
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
@@ -561,6 +573,46 @@ class TestWorkflowRunExecutionServiceCases:
         assert [event.form_id for event in completions] == [first.id, late.id]
         assert completions[-1].rendered_content == "Decision: late answer"
         assert isinstance(events[-1], QueueWorkflowSucceededEvent)
+
+    @staticmethod
+    def test_conversation_variable_writes_are_scoped_to_the_run_app(
+        sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        run_app_id = str(uuid4())
+        conversation_id = str(uuid4())
+        variable = StringVariable(
+            id=str(uuid4()), name="topic", value="original", selector=[CONVERSATION_VARIABLE_NODE_ID, "topic"]
+        )
+        row = ConversationVariable.from_variable(app_id=run_app_id, conversation_id=conversation_id, variable=variable)
+        sqlite_session.add(row)
+        sqlite_session.commit()
+        runtime_state = ReadOnlyRuntimeStateWrapper(
+            RuntimeState(
+                workflow_id="workflow",
+                variable_pool=VariablePool.from_bootstrap(
+                    system_variables=build_system_variables(conversation_id=conversation_id)
+                ),
+                start_at=0,
+            )
+        )
+        assigned = NodeRunVariableUpdatedEvent(
+            id="node-execution",
+            node_id="assigner",
+            node_type=BuiltinNodeTypes.VARIABLE_ASSIGNER,
+            variable=variable.model_copy(update={"value": "updated"}),
+        )
+        updater = ConversationVariableUpdater(sqlite_session_factory)
+
+        other_app_layer = ConversationVariablePersistenceLayer(_RunConversationVariables(updater, app_id=str(uuid4())))
+        other_app_layer.initialize(runtime_state, InMemoryChannel())
+        with pytest.raises(ConversationVariableNotFoundError):
+            other_app_layer.on_event(assigned)
+        run_app_layer = ConversationVariablePersistenceLayer(_RunConversationVariables(updater, app_id=run_app_id))
+        run_app_layer.initialize(runtime_state, InMemoryChannel())
+        run_app_layer.on_event(assigned)
+
+        sqlite_session.expire_all()
+        assert row.to_variable().value == "updated"
 
     @staticmethod
     @pytest.mark.usefixtures("_local_storage")

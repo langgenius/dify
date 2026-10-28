@@ -83,20 +83,30 @@ class WorkflowRunTasks(Protocol):
     """Durable task binding, stop, and pause records of a workflow run."""
 
     def bind_task(self, *, tenant_id: str, app_id: str, workflow_run_id: str, task_id: str) -> None:
-        """Bind the public task to the run before its started event is exposed."""
+        """Bind the public task to the run before its started event is exposed.
+
+        One conditional write in the tenant and app binds only a run without a task, so the first binding wins.
+        A missing or already bound run is left unchanged without an error.
+        """
         ...
 
     def stop_paused_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
-        """Record stop intent for the task and finish its paused run."""
+        """Record stop intent for the task and finish its paused run.
+
+        One transaction locks the task's run in the tenant and app, so a concurrent resume cannot reopen it,
+        and expires the run's waiting forms. A task without a running or paused run is left unchanged
+        without an error.
+        """
         ...
 
     def save_pause(
         self, *, workflow_run_id: str, state_owner_user_id: str, state: str, pause_reasons: Sequence[PauseReason]
     ) -> None:
-        """Persist the resumable pause under a lock on the run row.
+        """Persist the resumable pause of the run with this id under a lock on its row.
 
-        Raise ``WorkflowRunPauseStoppedError`` when the locked run already records stop intent,
-        so a concurrent stop always wins over the pause.
+        The state is stored before the transaction opens. Raise ``WorkflowRunPauseStoppedError`` when the
+        locked run already records stop intent, so a concurrent stop always wins over the pause. A missing
+        run, or one that is neither running nor paused, fails with the adapter's own error.
         """
         ...
 
@@ -104,7 +114,12 @@ class WorkflowRunTasks(Protocol):
 class PipelineDocumentFailures(Protocol):
     """Marks a pipeline document failed when its run cannot start."""
 
-    def mark_failed(self, *, workspace_id: str, dataset_id: str, document_id: str, error: str) -> None: ...
+    def mark_failed(self, *, workspace_id: str, dataset_id: str, document_id: str, error: str) -> None:
+        """Record the error on the document in one write scoped to the workspace and dataset.
+
+        A missing document is left unchanged without an error.
+        """
+        ...
 
 
 class WorkflowRunToolSources(Protocol):
@@ -129,11 +144,25 @@ class WorkflowRunToolSources(Protocol):
 
 
 class WorkflowRunConversationVariables(Protocol):
-    """Conversation variables that an advanced chat run updates, scoped to one conversation."""
+    """Conversation variables that an advanced chat run updates, scoped to one app's conversation."""
+
+    def update(self, *, app_id: str, conversation_id: str, variable: VariableBase) -> None:
+        """Save the variable's new value in one bounded write.
+
+        Raise when the app's conversation has no such variable.
+        """
+        ...
+
+
+class _RunConversationVariables:
+    """Supply the run's app to the conversation variable writes of the kernel persistence layer."""
+
+    def __init__(self, conversation_variables: WorkflowRunConversationVariables, *, app_id: str) -> None:
+        self._conversation_variables = conversation_variables
+        self._app_id = app_id
 
     def update(self, conversation_id: str, variable: VariableBase) -> None:
-        """Save the variable's new value in one bounded write; raise when the conversation has no such variable."""
-        ...
+        self._conversation_variables.update(app_id=self._app_id, conversation_id=conversation_id, variable=variable)
 
 
 class WorkflowRunAttempt:
@@ -227,7 +256,11 @@ class WorkflowRunAttempt:
             build_workflow_agent_workspace_retirement_layer(dify_run_context=self._run_context),
         ]
         if isinstance(prepared.generate_entity, AdvancedChatAppGenerateEntity):
-            application_layers.append(ConversationVariablePersistenceLayer(conversation_variables))
+            application_layers.append(
+                ConversationVariablePersistenceLayer(
+                    _RunConversationVariables(conversation_variables, app_id=self._run_context.app_id)
+                )
+            )
         self._application_layers = (*application_layers, *prepared.application_layers)
         for layer in self._application_layers:
             self._entry.graph_engine.add_layer(layer)
