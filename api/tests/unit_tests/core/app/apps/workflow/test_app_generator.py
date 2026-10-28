@@ -12,26 +12,42 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.workflow.app_generator as _workflow_app_generator
+from controllers.inner_api.plugin.wraps import get_user
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow import app_generator as _app_generator_extra_app_generator_module
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
-from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
+from core.app.file_access import DatabaseFileAccessController
+from core.app.layers.pause_state_persist_layer import (
+    PauseStateLayerConfig,
+    WorkflowResumptionContext,
+    _WorkflowGenerateEntityWrapper,
+)
+from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.file_reference import build_file_reference
+from core.workflow.node_runtime import resolve_dify_run_context
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
+from graphon.variables.input_entities import VariableEntity
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
+from services.file_request_service import FileRequestService
 from services.workflow_run_agg import WorkflowRunAgg
-from tests.helpers.unit.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_account, make_upload_file, make_workflow
 
 """SQLite-backed tests for workflow app generation and worker reload behavior."""
 
@@ -98,6 +114,7 @@ def _generate_entity(
     stream: bool = True,
 ) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         app_config=_app_config(app, workflow),
         inputs={},
@@ -167,6 +184,7 @@ class TestWorkflowAppGeneratorCases:
         )
         sqlite_session.commit()
         entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
             task_id="worker-task",
             app_config=_app_config(app_model, workflow),
             inputs={},
@@ -312,6 +330,7 @@ class TestWorkflowAppGeneratorCases:
             app_model=app,
             workflow=workflow,
             user=end_user,
+            execution_identity=WorkflowExecutionIdentity(user_id=end_user.id, user_from=UserFrom.ACCOUNT),
             args={
                 "inputs": {"query": "hello"},
                 "files": [],
@@ -481,13 +500,39 @@ class TestWorkflowAppGeneratorCases:
         assert draft_factory_tenant_ids == [app.tenant_id]
 
     @staticmethod
-    def test_resume_path_runs_worker_with_runtime_state(
+    @pytest.mark.parametrize("resuming", [False, True])
+    @pytest.mark.parametrize("invoke_from", [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
+    def test_execution_grants_default_files_to_worker_and_response(
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
+        resuming: bool,
+        invoke_from: InvokeFrom,
     ) -> None:
         generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
         app, workflow, end_user = _persist_generator_rows(sqlite_session)
+        default_file, unrelated_file = [
+            make_upload_file(
+                tenant_id=app.tenant_id,
+                key=name,
+                name=name,
+                extension="gif",
+                mime_type="image/gif",
+            )
+            for name in ("default.gif", "unrelated.gif")
+        ]
+        variable = VariableEntity.model_validate(
+            {
+                "type": "file",
+                "variable": "file",
+                "label": "File",
+                "required": True,
+                "default": {"transferMethod": "local_file", "uploadedId": default_file.id, "supportFileType": "image"},
+            }
+        )
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["variables"] = [variable.model_dump(mode="json")]
+        workflow.graph = json.dumps(graph)
         workflow_run = WorkflowRun(
             id="run",
             tenant_id=workflow.tenant_id,
@@ -502,9 +547,22 @@ class TestWorkflowAppGeneratorCases:
             created_by_role=CreatorUserRole.END_USER,
             created_by=end_user.id,
         )
-        sqlite_session.add(workflow_run)
+        sqlite_session.add_all([workflow_run, default_file, unrelated_file])
         sqlite_session.commit()
-        runtime_state = _runtime_state()
+        if resuming:
+            graph["nodes"][0]["data"]["variables"][0]["default"]["uploadedId"] = unrelated_file.id
+            workflow.graph = json.dumps(graph)
+            sqlite_session.commit()
+        runtime_state = _runtime_state() if resuming else None
+        file_runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+        monkeypatch.setattr(file_runtime, "_secret_key", lambda: b"test-key")
+
+        def assert_default_file_access() -> None:
+            assert file_runtime.resolve_upload_file_uri(upload_file_id=default_file.id).startswith(
+                f"/files/{default_file.id}/file-preview?"
+            )
+            with pytest.raises(ValueError, match="not found"):
+                file_runtime.resolve_upload_file_uri(upload_file_id=unrelated_file.id)
 
         queue_manager = MagicMock()
         monkeypatch.setattr(
@@ -512,7 +570,11 @@ class TestWorkflowAppGeneratorCases:
             MagicMock(return_value=queue_manager),
         )
 
-        monkeypatch.setattr(generator, "_handle_response", MagicMock(return_value="raw-response"))
+        def handle_response(**_kwargs):
+            assert_default_file_access()
+            return "raw-response"
+
+        monkeypatch.setattr(generator, "_handle_response", handle_response)
         monkeypatch.setattr(
             "core.app.apps.workflow.app_generator.WorkflowAppGenerateResponseConverter.convert",
             MagicMock(side_effect=lambda response, invoke_from: response),
@@ -529,6 +591,7 @@ class TestWorkflowAppGeneratorCases:
             assert kwargs["workflow"].id == workflow.id
             assert kwargs["system_user_id"] == end_user.session_id
             assert kwargs["queue_manager"] is queue_manager
+            assert_default_file_access()
             return runner_instance
 
         monkeypatch.setattr(
@@ -559,21 +622,23 @@ class TestWorkflowAppGeneratorCases:
             state_owner_user_id="owner",
         )
 
-        application_generate_entity = _generate_entity(app, workflow, end_user)
+        application_generate_entity = _generate_entity(app, workflow, end_user, invoke_from=invoke_from)
+        application_generate_entity.app_config.variables = [variable]
         workflow_execution_repository, workflow_node_execution_repository = _repositories(
             sqlite_session_factory, app, end_user
         )
 
-        result = generator.resume(
-            app_model=app,
-            workflow=workflow,
-            user=end_user,
-            application_generate_entity=application_generate_entity,
-            graph_runtime_state=runtime_state,
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-            pause_state_config=pause_config,
-        )
+        kwargs = {
+            "app_model": app,
+            "workflow": workflow,
+            "user": end_user,
+            "application_generate_entity": application_generate_entity,
+            "graph_runtime_state": runtime_state,
+            "workflow_execution_repository": workflow_execution_repository,
+            "workflow_node_execution_repository": workflow_node_execution_repository,
+            "pause_state_config": pause_config,
+        }
+        result = generator.resume(**kwargs) if resuming else generator._generate(**kwargs, invoke_from=invoke_from)
 
         assert result == "raw-response"
         assert worker_lifecycle["joined"] is True
@@ -718,6 +783,138 @@ class TestAppGeneratorExtraCases:
         )
         return sqlite_session
 
+    @pytest.mark.parametrize("resuming", ["fresh", "new-snapshot", "legacy-snapshot"])
+    @pytest.mark.parametrize("is_account", [True, False], ids=["account", "end-user"])
+    def test_service_api_preserves_caller_identity_and_file_access(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_generator_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        resuming: str,
+        is_account: bool,
+    ) -> None:
+        app_model, workflow, end_user = _persist_generator_rows(sqlite_generator_session)
+        account = make_account(account_id="scheduled-account")
+        user = account if is_account else end_user
+        expected_user_from = UserFrom.ACCOUNT if is_account and resuming != "legacy-snapshot" else UserFrom.END_USER
+        expected_system_user_id = account.id if is_account else end_user.session_id
+        entity = _generate_entity(app_model, workflow, end_user, stream=False)
+        entity.user_id = user.id
+        entity.user_from = expected_user_from
+        runtime_state = None
+        if resuming != "fresh":
+            # New paused runs retain the explicit identity across serialization.
+            payload = WorkflowResumptionContext(
+                generate_entity=_WorkflowGenerateEntityWrapper(entity=entity),
+                serialized_graph_runtime_state="",
+            ).model_dump(mode="json")
+            if resuming == "legacy-snapshot":
+                payload["generate_entity"]["entity"].pop("user_from")
+            restored = WorkflowResumptionContext.loads(json.dumps(payload)).get_generate_entity()
+            assert isinstance(restored, WorkflowAppGenerateEntity)
+            entity = restored
+            runtime_state = _runtime_state()
+            runtime_state.variable_pool.add(["sys", "user_id"], expected_system_user_id)
+        execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
+        observed: list[tuple[str, UserFrom, str]] = []
+
+        def inspect_execution(
+            runner: WorkflowBasedAppRunner,
+            _pause_config: PauseStateLayerConfig | None,
+            _executions: WorkflowExecutionRepository,
+            _nodes: WorkflowNodeExecutionRepository,
+        ) -> None:
+            prepared = runner.prepare()
+            assert prepared is not None
+            context = resolve_dify_run_context(prepared.entry.graph_engine.graph.root_node.run_context)
+            system_user_id = get_system_text(
+                prepared.entry.graph_engine.runtime_state.variable_pool, SystemVariableKey.USER_ID
+            )
+            assert context.user_from == expected_user_from
+            # Old scheduled snapshots retain the Agent upload's EndUser remapping,
+            # including its known mismatch with download's original Account id.
+            legacy_scheduled = resuming == "legacy-snapshot" and is_account
+            owner_id = get_user(context.tenant_id, context.user_id).id if legacy_scheduled else context.user_id
+            tool_file = ToolFileManager().create_file_by_raw(
+                user_id=owner_id,
+                tenant_id=context.tenant_id,
+                conversation_id=None,
+                file_binary=b"scheduled report",
+                mimetype="text/plain",
+                filename="report.txt",
+            )
+            mapping = {"transfer_method": "tool_file", "reference": build_file_reference(record_id=tool_file.id)}
+            service = FileRequestService()
+            if legacy_scheduled:
+                assert owner_id != context.user_id
+                with pytest.raises(ValueError, match="not found"):
+                    service.request_download(
+                        tenant_id=context.tenant_id,
+                        user_id=context.user_id,
+                        user_from=context.user_from,
+                        invoke_from=context.invoke_from,
+                        file_mapping=mapping,
+                    )
+                observed.append((context.user_id, context.user_from, system_user_id or ""))
+                return
+            result = service.request_download(
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                user_from=context.user_from,
+                invoke_from=context.invoke_from,
+                file_mapping=mapping,
+            )
+            assert result.filename == "report.txt"
+            assert result.size == len(b"scheduled report")
+            assert tool_file.id in result.download_uri
+            for tenant_id, user_id, user_from in [
+                (context.tenant_id, "another-end-user", UserFrom.END_USER),
+                ("another-tenant", context.user_id, context.user_from),
+            ]:
+                with pytest.raises(ValueError, match="not found"):
+                    service.request_download(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        user_from=user_from,
+                        invoke_from=InvokeFrom.SERVICE_API,
+                        file_mapping=mapping,
+                    )
+
+            observed.append((context.user_id, context.user_from, system_user_id or ""))
+
+        generator = WorkflowAppGenerator(execution_driver=inspect_execution)
+        monkeypatch.setattr(generator, "_handle_response", lambda **kwargs: {})
+        monkeypatch.setattr(
+            _workflow_app_generator.WorkflowAppGenerateResponseConverter,
+            "convert",
+            lambda response, invoke_from: response,
+        )
+        monkeypatch.setattr(generator, "_restore_workflow_run_graph", lambda **kwargs: None)
+        monkeypatch.setattr("core.tools.tool_file_manager.storage.save", lambda *args: None)
+        monkeypatch.setattr("controllers.inner_api.plugin.wraps.db", _workflow_app_generator.db)
+        if resuming == "fresh":
+            generator.generate(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=expected_user_from),
+                args={"inputs": {}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+            )
+        else:
+            assert runtime_state is not None
+            generator.resume(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                application_generate_entity=entity,
+                workflow_execution_repository=execution_repository,
+                workflow_node_execution_repository=node_repository,
+                graph_runtime_state=runtime_state,
+            )
+        assert observed == [(user.id, expected_user_from, expected_system_user_id)]
+
     class TestWorkflowAppGeneratorValidation:
         @pytest.mark.usefixtures("sqlite_generator_session")
         def test_generate_stream_joins_worker_after_response_exhaustion(
@@ -738,6 +935,7 @@ class TestAppGeneratorExtraCases:
                 workflow_id="workflow-id",
             )
             application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+                user_from=UserFrom.END_USER,
                 task_id="task",
                 app_config=app_config,
                 inputs={},
@@ -843,6 +1041,7 @@ class TestAppGeneratorExtraCases:
                     workflow=_app_generator_extra_workflow(),
                     node_id="",
                     user=_end_user(),
+                    execution_identity=WorkflowExecutionIdentity(user_id=_end_user().id, user_from=UserFrom.END_USER),
                     args={"inputs": {}},
                     streaming=False,
                     session=sqlite_session,
@@ -854,6 +1053,7 @@ class TestAppGeneratorExtraCases:
                     workflow=_app_generator_extra_workflow(),
                     node_id="node",
                     user=_end_user(),
+                    execution_identity=WorkflowExecutionIdentity(user_id=_end_user().id, user_from=UserFrom.END_USER),
                     args={},
                     streaming=False,
                     session=sqlite_session,
@@ -868,6 +1068,7 @@ class TestAppGeneratorExtraCases:
                     workflow=_app_generator_extra_workflow(),
                     node_id="",
                     user=_end_user(),
+                    execution_identity=WorkflowExecutionIdentity(user_id=_end_user().id, user_from=UserFrom.END_USER),
                     args=SimpleNamespace(inputs={}),
                     streaming=False,
                     session=sqlite_session,
@@ -924,6 +1125,7 @@ class TestAppGeneratorExtraCases:
                 workflow=workflow,
                 node_id="node-1",
                 user=user,
+                execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=UserFrom.END_USER),
                 args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
                 streaming=False,
                 session=sqlite_session,
@@ -986,6 +1188,7 @@ class TestAppGeneratorExtraCases:
                 workflow=workflow,
                 node_id="node-2",
                 user=user,
+                execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=UserFrom.END_USER),
                 args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
                 streaming=False,
                 session=sqlite_session,
@@ -1003,6 +1206,7 @@ class TestAppGeneratorExtraCases:
                     workflow=_app_generator_extra_workflow(),
                     node_id="node",
                     user=_end_user(),
+                    execution_identity=WorkflowExecutionIdentity(user_id=_end_user().id, user_from=UserFrom.END_USER),
                     args=SimpleNamespace(inputs=None),
                     streaming=False,
                     session=sqlite_session,
@@ -1021,6 +1225,7 @@ class TestAppGeneratorExtraCases:
                 workflow_id="workflow-id",
             )
             application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+                user_from=UserFrom.END_USER,
                 task_id="task",
                 app_config=app_config,
                 inputs={},
@@ -1088,6 +1293,7 @@ class TestAppGeneratorExtraCases:
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=UserFrom.END_USER),
                 args={"inputs": inputs},
                 invoke_from=invoke_from,
                 streaming=False,
@@ -1129,6 +1335,7 @@ class TestAppGeneratorExtraCases:
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=UserFrom.END_USER),
                 args={"inputs": {"question": "hello", "unknown": "filtered"}},
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
@@ -1144,6 +1351,7 @@ class TestAppGeneratorExtraCases:
                     app_model=app,
                     workflow=workflow,
                     user=user,
+                    execution_identity=WorkflowExecutionIdentity(user_id=user.id, user_from=UserFrom.END_USER),
                     args={"inputs": {}},
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=False,
@@ -1163,6 +1371,7 @@ class TestAppGeneratorExtraCases:
                 workflow_id="workflow-id",
             )
             application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+                user_from=UserFrom.END_USER,
                 task_id="task",
                 app_config=app_config,
                 inputs={},
@@ -1226,6 +1435,7 @@ class TestAppGeneratorExtraCases:
             )
             existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
             application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+                user_from=UserFrom.END_USER,
                 task_id="task",
                 app_config=app_config,
                 inputs={},
@@ -1298,6 +1508,7 @@ class TestAppGeneratorExtraCases:
                 workflow_id=WORKFLOW_ID,
             )
             application_generate_entity = WorkflowAppGenerateEntity.model_construct(
+                user_from=UserFrom.END_USER,
                 task_id="task",
                 app_config=app_config,
                 inputs={},

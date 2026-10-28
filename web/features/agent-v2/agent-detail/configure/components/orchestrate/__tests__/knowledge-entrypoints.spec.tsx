@@ -121,7 +121,7 @@ function setup({
 
 async function confirmSpace(user: ReturnType<typeof userEvent.setup>) {
   const dialog = await screen.findByRole('dialog', { name: /knowledgeFs.title/ })
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+  await user.click(within(dialog).getByRole('option', { name: /Product manual/ }))
   await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 }
@@ -140,8 +140,8 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
       expect(screen.getByText('Product manual')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /knowledgeFs.add/ }))
       const dialog = await screen.findByRole('dialog', { name: /knowledgeFs.title/ })
-      expect(within(dialog).getByRole('checkbox', { name: 'Product manual' })).toHaveAttribute(
-        'aria-checked',
+      expect(within(dialog).getByRole('option', { name: /Product manual/ })).toHaveAttribute(
+        'aria-selected',
         'true',
       )
     },

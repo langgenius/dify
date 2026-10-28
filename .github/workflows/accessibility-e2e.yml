@@ -72,7 +72,7 @@ jobs:
 
       - name: Install web dependencies
         timeout-minutes: 15
-        run: pnpm install --frozen-lockfile --no-runtime
+        run: vp install --frozen-lockfile
 
       - name: Install Chromium for accessibility E2E
         timeout-minutes: 15

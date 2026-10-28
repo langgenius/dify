@@ -34,11 +34,11 @@ import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/ana
 import {
   disableStepByStepTourForCurrentWorkspaceAtom,
   enableStepByStepTourForCurrentWorkspaceAtom,
+  stepByStepTourChecklistMinimizedAtom,
   stepByStepTourEnabledForCurrentWorkspaceAtom,
   stepByStepTourSkipRecoveryVisibleAtom,
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
-import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
@@ -119,7 +119,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
   const setSkipRecoveryVisible = useSetAtom(stepByStepTourSkipRecoveryVisibleAtom)
   const enableStepByStepTour = useSetAtom(enableStepByStepTourForCurrentWorkspaceAtom)
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
-  const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
+  const setStepByStepTourChecklistMinimized = useSetAtom(stepByStepTourChecklistMinimizedAtom)
   const [aboutOpen, setAboutOpen] = useState(false)
   const usesDefaultTrigger = !triggerIcon
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
@@ -135,7 +135,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
       trackStepByStepTourEvent({ action: checked ? 'tour_enabled' : 'tour_disabled' })
 
     if (checked) {
-      setStepByStepTourShellMode('expanded')
+      setStepByStepTourChecklistMinimized(false)
       enableStepByStepTour({
         onSuccess: trackVisibilityToggled,
       })
