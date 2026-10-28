@@ -4569,6 +4569,7 @@ export type PostWorkspacesByWorkspaceIdSkillsImportsError =
   PostWorkspacesByWorkspaceIdSkillsImportsErrors[keyof PostWorkspacesByWorkspaceIdSkillsImportsErrors]
 
 export type PostWorkspacesByWorkspaceIdSkillsImportsResponses = {
+  200: SkillImportResponse
   201: SkillImportResponse
 }
 

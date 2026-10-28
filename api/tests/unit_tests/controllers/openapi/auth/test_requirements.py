@@ -2217,7 +2217,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/archive"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/skills/{skill_id}:publish"): frozenset({"200", "422", "default"}),
-    ("post", "/workspaces/{workspace_id}/skills/imports"): frozenset({"201", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/skills/imports"): frozenset({"200", "201", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/models"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials"): frozenset(
         {"201", "422", "default"}

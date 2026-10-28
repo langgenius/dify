@@ -2023,7 +2023,8 @@ so an edit made in the same second as the export is not detected.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Created, or overwritten with 200 | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 200 | Overwritten | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 201 | Created | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 

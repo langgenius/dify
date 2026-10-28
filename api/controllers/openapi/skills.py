@@ -391,7 +391,10 @@ class SkillImportApi(Resource):
         ),
         requirements=(*_edit_guards(RBACPermission.SKILL_EDIT), _UPLOAD_CAP),
         body=SkillImportBody,
-        returns=(HTTPStatus.CREATED, SkillImportResponse, "Created, or overwritten with 200"),
+        returns=(
+            (HTTPStatus.CREATED, SkillImportResponse, "Created"),
+            (HTTPStatus.OK, SkillImportResponse, "Overwritten"),
+        ),
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: SkillImportBody):
         """Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,

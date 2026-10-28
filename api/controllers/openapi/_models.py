@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Final, Literal, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
 
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
@@ -1403,6 +1403,13 @@ class SkillImportBody(BaseModel):
     draft_hash: str | None = Field(
         None, description="From describe.skill; rejects the overwrite if the draft changed since"
     )
+
+    @field_validator("draft_hash")
+    @classmethod
+    def _needs_skill_id(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if value is not None and info.data.get("skill_id") is None:
+            raise ValueError("draft_hash only applies to an overwrite; give skill_id too")
+        return value
 
 
 class SkillImportResponse(Hinted):
