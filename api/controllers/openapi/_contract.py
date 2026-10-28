@@ -26,6 +26,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from constants import BYTES_PER_MIB
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits
@@ -39,7 +40,6 @@ from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect, EndpointSpec, Example, Kind
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
-from services.skill_management_service import BYTES_PER_MIB
 
 __all__ = [
     "MULTIPART_HEADER_BYTES_PER_PART",

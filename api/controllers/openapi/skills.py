@@ -13,6 +13,7 @@ from flask import send_file
 from flask_restx import Resource
 
 from configs import dify_config
+from constants import BYTES_PER_MIB
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
@@ -76,7 +77,6 @@ from libs.archive_writer import (
 )
 from machinery.context import RequestContext
 from services.skill_management_service import (
-    BYTES_PER_MIB,
     SkillImportPayload,
     SkillManagementService,
     SkillManagementServiceError,
