@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from enum import StrEnum
+from functools import partial
 from http import HTTPStatus
 from io import BytesIO
 from types import MappingProxyType
@@ -30,8 +31,8 @@ from controllers.openapi._errors import (
     DraftChanged,
     ErrorDetail,
     OpenApiError,
+    SkillNameConflict,
     SkillNameMismatch,
-    SkillNameTaken,
     SkillNotFound,
     SkillPackageInvalid,
     SkillPackageTooLarge,
@@ -77,14 +78,15 @@ from libs.archive_writer import (
     write_archive,
 )
 from machinery.context import RequestContext
-from services.skill_management_service import SkillImportPayload as ServiceSkillImportPayload
 from services.skill_management_service import (
+    SkillErrorDetail,
     SkillManagementService,
     SkillManagementServiceError,
     SkillOverwritePayload,
     SkillServiceErrorCode,
     max_skill_archive_bytes,
 )
+from services.skill_management_service import SkillImportPayload as ServiceSkillImportPayload
 from services.skill_management_service import SkillPublishPayload as ServiceSkillPublishPayload
 
 
@@ -96,7 +98,7 @@ class ServiceRejection(StrEnum):
     NOT_FOUND = (SkillServiceErrorCode.SKILL_NOT_FOUND, SkillNotFound)
     VERSION_NOT_FOUND = (SkillServiceErrorCode.SKILL_VERSION_NOT_FOUND, SkillVersionNotFound)
     CONFLICT = (SkillServiceErrorCode.SKILL_CONFLICT, DraftChanged)
-    NAME_CONFLICT = (SkillServiceErrorCode.SKILL_NAME_CONFLICT, SkillNameTaken)
+    NAME_CONFLICT = (SkillServiceErrorCode.SKILL_NAME_CONFLICT, SkillNameConflict)
     NAME_MISMATCH = (SkillServiceErrorCode.SKILL_NAME_MISMATCH, SkillNameMismatch)
     MISSING_SKILL_MD = (SkillServiceErrorCode.MISSING_SKILL_MD, SkillPackageInvalid)
     INVALID_SKILL_MD = (SkillServiceErrorCode.INVALID_SKILL_MD, SkillPackageInvalid)
@@ -119,7 +121,9 @@ class ServiceRejection(StrEnum):
         return member
 
 
-_NO_HINTS: Final[Mapping[type[OpenApiError], list[Hint]]] = MappingProxyType({})
+type HintsFor = Callable[[SkillManagementServiceError], list[Hint]]
+
+_NO_HINTS: Final[Mapping[type[OpenApiError], HintsFor]] = MappingProxyType({})
 
 _IMPORT_FILENAME: Final = "skill.zip"
 
@@ -129,14 +133,14 @@ _LIMIT_MESSAGES: Final[Mapping[ArchiveLimitKind, Callable[[int], str]]] = {
 }
 
 _READ_GUARDS: Final = (
+    CheckSkillEnabled(),
     *WORKSPACE_READ_GUARDS,
     CheckRBACPermission(RBACCheck(RBACPermission.SKILL_VIEW, Workspace())),
-    CheckSkillEnabled(),
 )
 
 
 def _edit_guards(permission: RBACPermission) -> tuple[Requirement, ...]:
-    return workspace_write_guards(permission, roles=EDITOR_ROLES, extra=(CheckSkillEnabled(),))
+    return (CheckSkillEnabled(), *workspace_write_guards(permission, roles=EDITOR_ROLES))
 
 
 def _details(error: SkillManagementServiceError) -> list[ErrorDetail]:
@@ -155,15 +159,37 @@ def _rejection(error: SkillManagementServiceError) -> OpenApiError:
 
 
 @contextmanager
-def _relaying_service_errors(*, hints: Mapping[type[OpenApiError], list[Hint]] = _NO_HINTS) -> Generator[None]:
+def _relaying_service_errors(*, hints: Mapping[type[OpenApiError], HintsFor] = _NO_HINTS) -> Generator[None]:
     try:
         yield
     except SkillManagementServiceError as error:
         rejection = _rejection(error)
-        rejection_hints = hints.get(type(rejection))
-        if rejection_hints is not None:
-            rejection.hints = rejection_hints
+        hints_for = hints.get(type(rejection))
+        if hints_for is not None:
+            rejection.hints = hints_for(error)
         raise rejection from error
+
+
+def _name_conflict_hints(error: SkillManagementServiceError, *, workspace_id: str) -> list[Hint]:
+    skill_id = error.details.get(SkillErrorDetail.SKILL_ID)
+    if skill_id is not None:
+        return [
+            Hint(
+                summary="Overwrite the existing skill instead",
+                op=op_of(SkillImportApi.post),
+                input={"workspace_id": workspace_id, "skill_id": skill_id, "files": None},
+            )
+        ]
+    name = error.details.get(SkillErrorDetail.NAME)
+    if name is not None:
+        return [
+            Hint(
+                summary="Find the skill that has this name",
+                op=op_of(SkillListApi.get),
+                input={"workspace_id": workspace_id, "keyword": name},
+            )
+        ]
+    return []
 
 
 def _skill_upload_parts() -> int:
@@ -383,14 +409,8 @@ class SkillImportApi(Resource):
         """
         content = _archive_of(body.files)
         workspace = ctx.active_workspace_id
-        name_conflict_hints: Mapping[type[OpenApiError], list[Hint]] = {
-            SkillNameTaken: [
-                Hint(
-                    summary="Overwrite the existing skill instead",
-                    op=op_of(SkillImportApi.post),
-                    input={"workspace_id": workspace, "skill_id": None, "files": None},
-                )
-            ]
+        name_conflict_hints: Mapping[type[OpenApiError], HintsFor] = {
+            SkillNameConflict: partial(_name_conflict_hints, workspace_id=workspace)
         }
         service = SkillManagementService()
         with _relaying_service_errors(hints=name_conflict_hints):

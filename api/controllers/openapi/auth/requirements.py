@@ -268,6 +268,10 @@ class CheckPluginInstallSetting(Requirement):
 
 
 class CheckSkillEnabled(Requirement):
+    """Ranked ahead of membership and permission checks so every caller gets 503 while Skills is off."""
+
+    rank = Rank.EARLY
+
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not dify_config.ENABLE_SKILL:

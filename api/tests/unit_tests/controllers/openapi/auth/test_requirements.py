@@ -1442,25 +1442,25 @@ _REQ_ACCOUNT_WORKSPACE_READ_MEMBER = (
     CheckWorkspaceMember(),
 )
 _REQ_SKILL_READ = (
+    CheckSkillEnabled(),
     *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     CheckRBACPermission(RBACCheck(RBACPermission.SKILL_VIEW, Workspace())),
-    CheckSkillEnabled(),
 )
 _REQ_SKILL_PUBLISH = (
+    CheckSkillEnabled(),
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),
     CheckWorkspaceMember(),
     CheckRBACPermission(RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())),
     CheckWorkspaceRole(_EDITOR_UP),
-    CheckSkillEnabled(),
 )
 _REQ_SKILL_IMPORT = (
+    CheckSkillEnabled(),
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),
     CheckWorkspaceMember(),
     CheckRBACPermission(RBACCheck(RBACPermission.SKILL_EDIT, Workspace())),
     CheckWorkspaceRole(_EDITOR_UP),
-    CheckSkillEnabled(),
     CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
 )
 _REQ_MEMBER_MANAGE = (

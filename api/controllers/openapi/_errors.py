@@ -111,7 +111,7 @@ class OpenApiErrorCode(StrEnum):
     SKILLS_DISABLED = "skills_disabled"
     SKILL_NOT_FOUND = "skill_not_found"
     SKILL_VERSION_NOT_FOUND = "skill_version_not_found"
-    SKILL_NAME_TAKEN = "skill_name_taken"
+    SKILL_NAME_CONFLICT = "skill_name_conflict"
     SKILL_NAME_MISMATCH = "skill_name_mismatch"
     SKILL_PACKAGE_INVALID = "skill_package_invalid"
     SKILL_REQUEST_REJECTED = "skill_request_rejected"
@@ -572,9 +572,9 @@ class SkillVersionNotFound(OpenApiError):  # noqa: N818
     hint = "List them with get.skill.version."
 
 
-class SkillNameTaken(OpenApiError):  # noqa: N818
+class SkillNameConflict(OpenApiError):  # noqa: N818
     code = 409
-    error_code = OpenApiErrorCode.SKILL_NAME_TAKEN
+    error_code = OpenApiErrorCode.SKILL_NAME_CONFLICT
     description = "A skill with this name already exists in this workspace."
 
 
