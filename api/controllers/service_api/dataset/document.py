@@ -545,8 +545,6 @@ def _file_document_account(dataset: Dataset, *, session: Session) -> Account:
 
     # The dataset creator may have left the tenant. The authenticated Service API
     # account is the tenant owner and already has the required tenant context.
-    if not isinstance(current_user, Account):
-        raise ValueError("current_user must be an Account")
     return current_user
 
 
