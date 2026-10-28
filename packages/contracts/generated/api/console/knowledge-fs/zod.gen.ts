@@ -4050,6 +4050,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.objec
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
   limit: z.int().gte(1).lte(100).optional().default(50),
+  query: z.string().max(200).optional(),
+  status: z.enum(['disabled', 'failed', 'processing', 'queued', 'ready']).optional(),
 })
 
 /**

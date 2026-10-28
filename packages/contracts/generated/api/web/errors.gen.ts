@@ -82,6 +82,30 @@ const zCompletionRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConversationCursorNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_cursor_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zConversationFirstMessageNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_first_message_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zConversationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zEmailCodeError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -439,15 +463,35 @@ export const post5Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post6Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const post6Errors = {
+  conversation_first_message_not_found: {
+    status: 404,
+    data: zConversationFirstMessageNotFoundError,
+  },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const patchErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patchErrors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const patch2Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patch2Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const delete_Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const delete_Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const getErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const getErrors = {
+  conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
 export const post7Errors = {
   account_banned: { status: 400, data: zAccountBannedError },
@@ -561,7 +605,10 @@ export const get5Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get6Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const get6Errors = {
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
 export const get7Errors = { app_unavailable: { status: 400, data: zAppUnavailableError } }
 

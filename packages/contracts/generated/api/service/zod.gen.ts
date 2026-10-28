@@ -1053,6 +1053,42 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -1224,6 +1260,18 @@ export const zFilenameNotExistsError = zErrorResponse.and(
   z.object({
     code: z.literal('filename_not_exists_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
   }),
 )
 
@@ -6162,7 +6210,7 @@ export const zGetConversationsQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversations list.
+ * Conversations retrieved successfully.
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
@@ -6184,7 +6232,7 @@ export const zPostConversationsByConversationIdNamePath = z.object({
 })
 
 /**
- * Conversation renamed successfully.
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 

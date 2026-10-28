@@ -2427,7 +2427,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.list_logical_documents,
             data_facade_module.KnowledgeFSLogicalDocumentListResponse,
             "listLogicalDocuments",
-            {"cursor": "cursor-1"},
+            {"cursor": "cursor-1", "limit": 25, "query": "late report", "status": "processing"},
             None,
         ),
         (
@@ -2840,6 +2840,13 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
 
     if child_resource_id is not None:
         assert delegated_kwargs["resource_id"] == child_resource_id
+    if operation_id == "listLogicalDocuments":
+        assert delegated_kwargs["query"] == (
+            ("cursor", "cursor-1"),
+            ("limit", "25"),
+            ("query", "late report"),
+            ("status", "processing"),
+        )
     if operation_id == "listDocumentRevisions":
         assert delegated_kwargs["query"] == (("cursor", "cursor-1"), ("limit", "1"))
     if operation_id in {"listGoldenQuestions", "listQualityBadCases"}:
