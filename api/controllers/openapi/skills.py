@@ -1,8 +1,8 @@
-"""Workspace skills: list, describe, export and publish."""
+"""Workspace skills: list, describe, export, import and publish."""
 
 from __future__ import annotations
 
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from enum import StrEnum
 from http import HTTPStatus
@@ -13,10 +13,18 @@ from flask import send_file
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
+from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._contract import (
+    CapRequestBody,
+    Example,
+    Kind,
+    endpoint,
+    multipart_header_allowance,
+    op_of,
+)
 from controllers.openapi._errors import (
     DraftChanged,
     ErrorDetail,
@@ -25,12 +33,16 @@ from controllers.openapi._errors import (
     SkillNameTaken,
     SkillNotFound,
     SkillPackageInvalid,
+    SkillPackageTooLarge,
     SkillRequestRejected,
     SkillVersionNotFound,
 )
 from controllers.openapi._models import (
+    Hint,
     SkillDescribeResponse,
     SkillExportQuery,
+    SkillImportBody,
+    SkillImportResponse,
     SkillListQuery,
     SkillListResponse,
     SkillPublishPayload,
@@ -40,6 +52,8 @@ from controllers.openapi._models import (
     SkillVersionListResponse,
     SkillVersionRow,
 )
+from controllers.openapi._multipart import folder_streams
+from controllers.openapi._upload import UploadParts, file_fields
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     WORKSPACE_READ_GUARDS,
@@ -48,8 +62,25 @@ from controllers.openapi.auth.requirements import (
     Requirement,
     workspace_write_guards,
 )
+from libs.archive_writer import (
+    ArchiveEmptyError,
+    ArchiveError,
+    ArchiveLimitKind,
+    ArchiveLimits,
+    ArchiveOptions,
+    ArchivePathError,
+    ArchiveTooLargeError,
+    StrictPathPolicy,
+    entries_from_folder,
+    write_archive,
+)
 from machinery.context import RequestContext
-from services.skill_management_service import SkillManagementService, SkillManagementServiceError
+from services.skill_management_service import (
+    SkillImportPayload,
+    SkillManagementService,
+    SkillManagementServiceError,
+    SkillOverwritePayload,
+)
 from services.skill_management_service import SkillPublishPayload as ServiceSkillPublishPayload
 
 
@@ -82,12 +113,15 @@ _PACKAGE_CODES: Final = (
     ServiceCode.MISSING_SKILL_DESCRIPTION,
     ServiceCode.INVALID_SKILL_DESCRIPTION,
     ServiceCode.INVALID_SKILL_PACKAGE,
-    ServiceCode.ARCHIVE_TOO_LARGE,
-    ServiceCode.SKILL_TOO_LARGE,
-    ServiceCode.TOO_MANY_FILES,
     ServiceCode.DUPLICATE_FILE_PATH,
     ServiceCode.FILE_PATH_CONFLICT,
     ServiceCode.INVALID_SKILL_FILE,
+)
+
+_TOO_LARGE_CODES: Final = (
+    ServiceCode.ARCHIVE_TOO_LARGE,
+    ServiceCode.SKILL_TOO_LARGE,
+    ServiceCode.TOO_MANY_FILES,
 )
 
 _REJECTIONS: Final[Mapping[str, type[OpenApiError]]] = {
@@ -97,6 +131,15 @@ _REJECTIONS: Final[Mapping[str, type[OpenApiError]]] = {
     ServiceCode.NAME_CONFLICT: SkillNameTaken,
     ServiceCode.NAME_MISMATCH: SkillNameMismatch,
     **dict.fromkeys(_PACKAGE_CODES, SkillPackageInvalid),
+    **dict.fromkeys(_TOO_LARGE_CODES, SkillPackageTooLarge),
+}
+
+_BYTES_PER_MIB: Final = 1024 * 1024
+_IMPORT_FILENAME: Final = "skill.zip"
+
+_LIMIT_MESSAGES: Final[Mapping[ArchiveLimitKind, Callable[[int], str]]] = {
+    ArchiveLimitKind.ENTRIES: lambda limit: f"The skill folder has more than {limit} files",
+    ArchiveLimitKind.BYTES: lambda limit: f"The skill folder is over {limit // _BYTES_PER_MIB} MiB",
 }
 
 _READ_GUARDS: Final = (
@@ -125,11 +168,55 @@ def _rejection(error: SkillManagementServiceError) -> OpenApiError:
 
 
 @contextmanager
-def _rejecting() -> Generator[None]:
+def _rejecting(*, hints: Mapping[type[OpenApiError], list[Hint]] | None = None) -> Generator[None]:
     try:
         yield
     except SkillManagementServiceError as error:
-        raise _rejection(error) from error
+        rejection = _rejection(error)
+        if hints is not None and type(rejection) in hints:
+            rejection.hints = hints[type(rejection)]
+        raise rejection from error
+
+
+def _skill_upload_bytes() -> int:
+    return dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * _BYTES_PER_MIB
+
+
+def _skill_upload_parts() -> int:
+    plain_fields = len(SkillImportBody.model_fields) - len(file_fields(SkillImportBody))
+    return dify_config.SKILL_PACKAGE_MAX_ENTRIES + plain_fields
+
+
+_UPLOAD_CAP: Final = CapRequestBody(
+    max_bytes=lambda: _skill_upload_bytes() + multipart_header_allowance(_skill_upload_parts()),
+    max_parts=_skill_upload_parts,
+)
+
+
+def _archive_rejection(error: ArchiveError) -> OpenApiError:
+    if isinstance(error, ArchiveTooLargeError):
+        return SkillPackageTooLarge(_LIMIT_MESSAGES[error.kind](error.limit))
+    if isinstance(error, ArchivePathError):
+        detail = ErrorDetail(type=error.reason.value, loc=[error.path], msg=error.reason.message)
+        return SkillPackageInvalid(str(error), details=[detail])
+    if isinstance(error, ArchiveEmptyError):
+        return SkillPackageInvalid("The skill folder has no files")
+    raise error
+
+
+def _archive_of(folder: UploadParts) -> bytes:
+    options = ArchiveOptions(
+        StrictPathPolicy(),
+        ArchiveLimits(max_entries=dify_config.SKILL_PACKAGE_MAX_ENTRIES, max_bytes=_skill_upload_bytes()),
+    )
+    try:
+        result = write_archive(entries_from_folder(folder_streams(folder)), options)
+    except ArchiveError as error:
+        raise _archive_rejection(error) from error
+    try:
+        return result.file.read()
+    finally:
+        result.file.close()
 
 
 def _draft_hash(updated_at_epoch: int) -> str:
@@ -282,3 +369,77 @@ class SkillPublishApi(Resource):
                 payload=ServiceSkillPublishPayload(version_name=body.version_name, publish_note=body.publish_note),
             )
         return SkillPublishResponse.model_validate(_version_fields(record))
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>/skills/imports")
+class SkillImportApi(Resource):
+    @endpoint(
+        context="workspace",
+        op="import.skill",
+        kind=Kind.OBJECT,
+        summary="Create a skill from a folder, or overwrite a skill's draft with one",
+        examples=(
+            Example(title="Create a skill", input={"files": {"SKILL.md": "./my-skill/SKILL.md"}}),
+            Example(
+                title="Overwrite a skill's draft",
+                input={
+                    "files": {"SKILL.md": "./my-skill/SKILL.md"},
+                    "skill_id": "<skill_id>",
+                    "draft_hash": "<draft_hash>",
+                },
+            ),
+        ),
+        requirements=(*_edit_guards(RBACPermission.SKILL_EDIT), _UPLOAD_CAP),
+        body=SkillImportBody,
+        returns=(HTTPStatus.CREATED, SkillImportResponse, "Created, or overwritten with 200"),
+    )
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: SkillImportBody):
+        """Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+        so an edit made in the same second as the export is not detected.
+        """
+        content = _archive_of(body.files)
+        workspace = ctx.active_workspace_id
+        taken: dict[type[OpenApiError], list[Hint]] = {
+            SkillNameTaken: [
+                Hint(
+                    summary="Overwrite the existing skill instead",
+                    op=op_of(SkillImportApi.post),
+                    input={"workspace_id": workspace, "skill_id": None, "files": None},
+                )
+            ]
+        }
+        service = SkillManagementService()
+        with _rejecting(hints=taken):
+            if body.skill_id is None:
+                status = HTTPStatus.CREATED
+                record = service.import_skill(
+                    tenant_id=workspace,
+                    user_id=ctx.account_id,
+                    payload=SkillImportPayload(content=content, filename=_IMPORT_FILENAME),
+                )
+            else:
+                status = HTTPStatus.OK
+                record = service.overwrite_skill(
+                    tenant_id=workspace,
+                    user_id=ctx.account_id,
+                    skill_id=body.skill_id,
+                    payload=SkillOverwritePayload(
+                        content=content, expected_updated_at=_expected_updated_at(body.draft_hash)
+                    ),
+                )
+        return (
+            SkillImportResponse(
+                id=record["id"],
+                name=record["name"],
+                draft_hash=_draft_hash(record["updated_at"]),
+                file_count=len(record["files"]),
+                hints=[
+                    Hint(
+                        summary="Publish so agents use it",
+                        op=op_of(SkillPublishApi.post),
+                        input={"workspace_id": workspace, "skill_id": record["id"]},
+                    )
+                ],
+            ),
+            status,
+        )

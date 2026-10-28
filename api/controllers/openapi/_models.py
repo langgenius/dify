@@ -1393,3 +1393,20 @@ class SkillPublishPayload(BaseModel):
 
 class SkillPublishResponse(SkillVersionRow, Hinted):
     pass
+
+
+class SkillImportBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    files: UploadParts = Field(description="The skill folder, one part per file; SKILL.md at its root")
+    skill_id: UUIDStr | None = Field(None, description="Overwrite this skill's draft; omit to create a new skill")
+    draft_hash: str | None = Field(
+        None, description="From describe.skill; rejects the overwrite if the draft changed since"
+    )
+
+
+class SkillImportResponse(Hinted):
+    id: str
+    name: str
+    draft_hash: str = Field(description="Opaque; names the draft this wrote")
+    file_count: int

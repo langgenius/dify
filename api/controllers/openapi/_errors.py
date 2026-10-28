@@ -589,6 +589,12 @@ class SkillPackageInvalid(OpenApiError):  # noqa: N818
     description = "The skill folder is not a valid skill."
 
 
+class SkillPackageTooLarge(OpenApiError):  # noqa: N818
+    code = 413
+    error_code = OpenApiErrorCode.REQUEST_TOO_LARGE
+    description = "The skill folder is over a limit of this server."
+
+
 class SkillRequestRejected(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.SKILL_REQUEST_REJECTED
     description = "The skill request was refused."
