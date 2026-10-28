@@ -516,7 +516,6 @@ export function AgentFiles() {
     (file: AgentFileNode) => {
       upsertAgentFile(file)
       promptAddCallbackRef.current?.(file)
-      promptAddCallbackRef.current = undefined
     },
     [upsertAgentFile],
   )
