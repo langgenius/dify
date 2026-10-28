@@ -1330,3 +1330,66 @@ class ModelCredentialCreatePayload(ModelRef):
 class ModelCredentialUpdatePayload(ModelRef):
     credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
     name: str | None = None
+
+
+class SkillListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    keyword: str | None = Field(
+        None, max_length=200, description="Words to match in the name, display name or description"
+    )
+    tag: list[str] | None = Field(None, description="Only skills with every one of these tags; repeat to give several")
+
+
+class SkillRow(BaseModel):
+    id: str
+    name: str
+    display_name: str
+    description: str
+    icon: str | None
+    tags: list[str]
+    updated_at: int
+    latest_published_version_id: str | None = Field(description="Null while the skill has never been published")
+
+
+class SkillListResponse(PaginationEnvelope[SkillRow]):
+    pass
+
+
+class SkillVersionRow(BaseModel):
+    id: str
+    version_number: int
+    version_name: str | None
+    publish_note: str
+    created_at: int
+    created_by: str | None = Field(description="Account id that published it")
+
+
+class SkillDescribeResponse(SkillRow, Hinted):
+    draft_hash: str = Field(description="Opaque; names the draft this was read from")
+    latest_version: SkillVersionRow | None = Field(description="Null while the skill has never been published")
+
+
+class SkillVersionListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+
+class SkillVersionListResponse(PaginationEnvelope[SkillVersionRow]):
+    pass
+
+
+class SkillExportQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_id: UUIDStr | None = Field(None, description="Export this published version instead of the draft")
+
+
+class SkillPublishPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_name: str | None = Field(None, max_length=128, description="Name for the new version")
+    publish_note: str = Field("", max_length=1024, description="Note for the new version")
+
+
+class SkillPublishResponse(SkillVersionRow, Hinted):
+    pass
