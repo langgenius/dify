@@ -1026,7 +1026,7 @@ describe('StepByStepTourMount', () => {
     }
   })
 
-  it('opens the coachmark once its target scrolls into view and focuses it', async () => {
+  it('opens the coachmark once its target scrolls into view and then follows it', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
@@ -1057,6 +1057,16 @@ describe('StepByStepTourMount', () => {
         name: 'Pick a lesson to see how it works.',
       })
       await waitFor(() => expect(coachmark).toHaveFocus())
+
+      rect.top = 900
+      fireEvent.scroll(window)
+
+      await waitFor(() =>
+        expect(document.querySelector('[data-step-by-step-tour-highlight]')).toHaveStyle({
+          top: '896px',
+        }),
+      )
+      expect(coachmark).toBeInTheDocument()
     } finally {
       target.remove()
     }

@@ -135,7 +135,6 @@ export function StepByStepTourCoachmark({
     targetRects?.targetElement === targetElement &&
     targetRects.highlightPartsReady &&
     targetRects.rectSettled &&
-    isRectInViewport(targetRects.highlightRect) &&
     targetElement.matches(getStepByStepTourTargetSelector(guide.target))
       ? {
           anchorRect: targetRects.anchorRect,
@@ -148,9 +147,10 @@ export function StepByStepTourCoachmark({
         }
       : undefined
 
-  const [awaitingTarget, setAwaitingTarget] = useState(!targetElement)
+  const [awaitingTarget, setAwaitingTarget] = useState(true)
   if (!targetElement && !awaitingTarget) setAwaitingTarget(true)
-  if (currentOverlay && awaitingTarget) setAwaitingTarget(false)
+  if (currentOverlay && awaitingTarget && isRectInViewport(currentOverlay.highlightRect))
+    setAwaitingTarget(false)
 
   useLayoutEffect(() => {
     if (currentOverlay) lastOverlayRef.current = currentOverlay
