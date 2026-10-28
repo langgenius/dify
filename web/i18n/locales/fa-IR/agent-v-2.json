@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "فایل‌ها را برای این عامل بارگذاری کنید.",
   "agentDetail.configure.files.upload.dropzone": "فایل‌ها را اینجا رها کنید، یا",
   "agentDetail.configure.files.upload.failed": "بارگذاری فایل ناموفق بود.",
-  "agentDetail.configure.files.upload.fileType": "FILE",
   "agentDetail.configure.files.upload.queued": "در صف",
   "agentDetail.configure.files.upload.success": "فایل بارگذاری شد.",
   "agentDetail.configure.files.upload.title": "بارگذاری فایل‌ها",

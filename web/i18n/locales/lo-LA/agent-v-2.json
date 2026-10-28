@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "ອັບໂຫຼດຫຼາຍໄຟລ໌ສຳລັບຕົວແທນນີ້.",
   "agentDetail.configure.files.upload.dropzone": "ວາງໄຟລ໌ໃສ່ນີ້, ຫຼື",
   "agentDetail.configure.files.upload.failed": "ອັບໂຫຼດໄຟລ໌ບໍ່ສຳເລັດ.",
-  "agentDetail.configure.files.upload.fileType": "FILE",
   "agentDetail.configure.files.upload.queued": "ຢູ່ໃນຄິວ",
   "agentDetail.configure.files.upload.success": "ອັບໂຫຼດໄຟລ໌ສຳເລັດ.",
   "agentDetail.configure.files.upload.title": "ອັບໂຫຼດໄຟລ໌",

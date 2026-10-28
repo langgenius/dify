@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "इस एजेंट के लिए फ़ाइलें अपलोड करें।",
   "agentDetail.configure.files.upload.dropzone": "यहाँ फ़ाइलें छोड़ें, या",
   "agentDetail.configure.files.upload.failed": "फ़ाइल अपलोड करने में विफल।",
-  "agentDetail.configure.files.upload.fileType": "FILE",
   "agentDetail.configure.files.upload.queued": "कतार में",
   "agentDetail.configure.files.upload.success": "फ़ाइल अपलोड हो गई।",
   "agentDetail.configure.files.upload.title": "फ़ाइलें अपलोड करें",

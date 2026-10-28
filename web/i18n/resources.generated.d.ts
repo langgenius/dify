@@ -271,7 +271,6 @@ export default interface Resources {
     'agentDetail.configure.files.upload.description': 'Upload files for this agent.'
     'agentDetail.configure.files.upload.dropzone': 'Drop files here, or'
     'agentDetail.configure.files.upload.failed': 'Failed to upload file.'
-    'agentDetail.configure.files.upload.fileType': 'FILE'
     'agentDetail.configure.files.upload.queued': 'Queued'
     'agentDetail.configure.files.upload.success': 'File uploaded.'
     'agentDetail.configure.files.upload.title': 'Upload files'

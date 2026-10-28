@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "Upload bestanden voor deze agent.",
   "agentDetail.configure.files.upload.dropzone": "Sleep bestanden hierheen, of",
   "agentDetail.configure.files.upload.failed": "Bestand uploaden mislukt.",
-  "agentDetail.configure.files.upload.fileType": "BESTAND",
   "agentDetail.configure.files.upload.queued": "In de wachtrij",
   "agentDetail.configure.files.upload.success": "Bestand geüpload.",
   "agentDetail.configure.files.upload.title": "Bestanden uploaden",

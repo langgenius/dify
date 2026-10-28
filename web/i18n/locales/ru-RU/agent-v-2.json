@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "Загрузите файлы для этого агента.",
   "agentDetail.configure.files.upload.dropzone": "Перетащите файлы сюда или",
   "agentDetail.configure.files.upload.failed": "Не удалось загрузить файл.",
-  "agentDetail.configure.files.upload.fileType": "ФАЙЛ",
   "agentDetail.configure.files.upload.queued": "В очереди",
   "agentDetail.configure.files.upload.success": "Файл загружен.",
   "agentDetail.configure.files.upload.title": "Загрузить файлы",

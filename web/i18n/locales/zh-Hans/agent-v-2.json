@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "为此 Agent 上传一个或多个文件。",
   "agentDetail.configure.files.upload.dropzone": "拖入文件，或",
   "agentDetail.configure.files.upload.failed": "文件上传失败。",
-  "agentDetail.configure.files.upload.fileType": "文件",
   "agentDetail.configure.files.upload.queued": "排队中",
   "agentDetail.configure.files.upload.success": "文件已上传。",
   "agentDetail.configure.files.upload.title": "上传文件",

@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "Téléversez des fichiers pour cet agent.",
   "agentDetail.configure.files.upload.dropzone": "Déposez des fichiers ici, ou",
   "agentDetail.configure.files.upload.failed": "Échec du téléversement du fichier.",
-  "agentDetail.configure.files.upload.fileType": "FICHIER",
   "agentDetail.configure.files.upload.queued": "En attente",
   "agentDetail.configure.files.upload.success": "Fichier téléversé.",
   "agentDetail.configure.files.upload.title": "Téléverser des fichiers",
