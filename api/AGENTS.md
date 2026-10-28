@@ -20,9 +20,9 @@ Follow the backend developer guide's [test layout and naming requirements](READM
 Read all backend architecture documentation before modifying backend code:
 
 - [Backend architecture][architecture]
-- [Repositories rule][repositories]
-- [SQLAlchemy rule][sqlalchemy]
-- [Database schema rule][db-schema]
+- [Repositories][repositories]
+- [SQLAlchemy][sqlalchemy]
+- [Database schema][db-schema]
 - [API schema guide][schema-guide]
 
 ## Additional Backend Rules
@@ -42,8 +42,8 @@ changes, and CI checks the PR against its target revision.
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
 
-[architecture]: ../.agents/skills/backend-code-review/references/architecture-rule.md
-[repositories]: ../.agents/skills/backend-code-review/references/repositories-rule.md
-[sqlalchemy]: ../.agents/skills/backend-code-review/references/sqlalchemy-rule.md
-[db-schema]: ../.agents/skills/backend-code-review/references/db-schema-rule.md
+[architecture]: ../docs/BACKEND_ARCHITECTURE.md
+[repositories]: ../docs/BACKEND_REPOSITORIES.md
+[sqlalchemy]: ../docs/BACKEND_SQLALCHEMY.md
+[db-schema]: ../docs/BACKEND_DATABASE_SCHEMA.md
 [schema-guide]: controllers/API_SCHEMA_GUIDE.md
