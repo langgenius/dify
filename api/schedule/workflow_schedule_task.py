@@ -1,7 +1,7 @@
 import logging
 
 from celery import current_app, shared_task
-from sqlalchemy import and_, select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -62,21 +62,21 @@ def _fetch_due_schedules(session: Session) -> list[WorkflowSchedulePlan]:
     now = naive_utc_now()
 
     due_schedules = session.scalars(
-        (
-            select(WorkflowSchedulePlan)
-            .join(
-                AppTrigger,
-                and_(
+        select(WorkflowSchedulePlan)
+        .where(
+            WorkflowSchedulePlan.next_run_at <= now,
+            WorkflowSchedulePlan.next_run_at.isnot(None),
+            # EXISTS instead of a join: duplicate AppTrigger rows (there is no
+            # unique constraint on (app_id, node_id)) must not fan one schedule
+            # out into multiple dispatches.
+            exists(
+                select(AppTrigger.id).where(
                     AppTrigger.app_id == WorkflowSchedulePlan.app_id,
                     AppTrigger.node_id == WorkflowSchedulePlan.node_id,
                     AppTrigger.trigger_type == AppTriggerType.TRIGGER_SCHEDULE,
-                ),
-            )
-            .where(
-                WorkflowSchedulePlan.next_run_at <= now,
-                WorkflowSchedulePlan.next_run_at.isnot(None),
-                AppTrigger.status == AppTriggerStatus.ENABLED,
-            )
+                    AppTrigger.status == AppTriggerStatus.ENABLED,
+                )
+            ),
         )
         .order_by(WorkflowSchedulePlan.next_run_at.asc())
         .with_for_update(skip_locked=True)
