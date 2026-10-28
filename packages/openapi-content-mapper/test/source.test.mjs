@@ -232,7 +232,7 @@ test('Vite refreshes command sources when a new backend input is added', async (
   const refreshed = new Promise((resolve, reject) => {
     const timeout = setTimeout(
       () => reject(new Error('No Vite reload after adding a backend input')),
-      10000,
+      30000,
     )
     const send = server.ws.send.bind(server.ws)
     server.ws.send = (...args) => {

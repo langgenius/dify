@@ -212,6 +212,6 @@ describe('Compliance', () => {
       )
       // getDocDownloadUrl should still have only been called once
       expect(consoleClient.compliance.download.get).toHaveBeenCalledTimes(1)
-    }, 20000)
+    })
   })
 })

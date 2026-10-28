@@ -255,7 +255,7 @@ describe('SkillDetailPage builder', () => {
 
     expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
     expect(promptInput).toHaveValue('Use the attached guide')
-  }, 10000)
+  })
 
   it('ignores an in-flight attachment after restarting Skill Builder', async () => {
     const user = userEvent.setup()
@@ -406,7 +406,7 @@ describe('SkillDetailPage builder', () => {
 
     expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
     expect(sendButton).toBeDisabled()
-  }, 15000)
+  })
 
   it('uses an available model instead of a default model that no longer exists', async () => {
     const user = userEvent.setup()
@@ -630,8 +630,7 @@ describe('SkillDetailPage builder', () => {
         },
       }),
     )
-    // Opens the settings dialog, loads parameter rules and types through several fields.
-  }, 15000)
+  })
 
   it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup()
@@ -692,7 +691,7 @@ describe('SkillDetailPage builder', () => {
     expect(
       screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeEnabled()
-  }, 15000)
+  })
 
   it('shows Skill Builder completion errors returned by the assistant stream', async () => {
     const user = userEvent.setup()

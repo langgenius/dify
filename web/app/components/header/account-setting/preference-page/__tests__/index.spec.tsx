@@ -331,7 +331,7 @@ describe('PreferencePage - Interactions', () => {
     expect(request.method).toBe('PATCH')
     await expect(request.json()).resolves.toEqual({ timezone: midwayTimezone.value })
     await waitFor(() => expect(trigger).toHaveTextContent(midwayTimezone.name))
-  }, 15000)
+  })
 
   it('should show one request-layer error and preserve the saved timezone on failure', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
@@ -353,5 +353,5 @@ describe('PreferencePage - Interactions', () => {
     expect(screen.getByRole('combobox', { name: 'common.language.timezone' })).not.toHaveAttribute(
       'aria-readonly',
     )
-  }, 15000)
+  })
 })

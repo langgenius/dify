@@ -378,5 +378,5 @@ describe('SkillDetailPage editor', () => {
         expect.anything(),
       )
     })
-  }, 15000)
+  })
 })

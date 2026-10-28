@@ -248,7 +248,7 @@ describe('Agent conversation history', () => {
       }),
       expect.anything(),
     )
-  }, 10000)
+  })
 
   it.each([false, true])(
     'preserves unsent text when history refreshes (existing messages: %s)',

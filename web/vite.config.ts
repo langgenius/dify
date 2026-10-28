@@ -127,6 +127,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
           test: {
             name: 'unit',
             pool: 'threads',
+            // GitHub-hosted runners are slower and noisier than local machines.
+            testTimeout: isCI ? 30_000 : 5_000,
             environment: 'happy-dom',
             globals: true,
             setupFiles: ['./vitest.setup.ts'],

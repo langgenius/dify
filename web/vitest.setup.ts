@@ -1,4 +1,4 @@
-import { act, cleanup } from '@testing-library/react'
+import { act, cleanup, configure } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, vi } from 'vite-plus/test'
 import '@testing-library/jest-dom/vitest'
@@ -9,6 +9,9 @@ import 'vitest-canvas-mock'
     BASE_UI_ANIMATIONS_DISABLED: boolean
   }
 ).BASE_UI_ANIMATIONS_DISABLED = true
+
+// Match the CI test timeout headroom for findBy*/waitFor polling.
+if (process.env.CI) configure({ asyncUtilTimeout: 5_000 })
 
 if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
   Element.prototype.getAnimations = () => []

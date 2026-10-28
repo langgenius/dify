@@ -134,7 +134,7 @@ describe('SkillDetailPage autosave', () => {
         }),
       }),
     )
-  }, 10000)
+  })
 
   it('discards live editor content when loading the latest draft after a conflict', async () => {
     const user = userEvent.setup()
@@ -182,7 +182,7 @@ describe('SkillDetailPage autosave', () => {
       expect(reloadedLivePreview).toHaveTextContent('Latest content from another tab')
       expect(reloadedLivePreview).not.toHaveTextContent('Local unsaved content')
     })
-  }, 10000)
+  })
 
   it('uses conflict details from response errors without retrying autosave', async () => {
     const user = userEvent.setup()
@@ -228,7 +228,7 @@ describe('SkillDetailPage autosave', () => {
     })
 
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
-  }, 10000)
+  })
 
   it('shows a save failure when conflict recovery cannot determine the latest timestamp', async () => {
     const user = userEvent.setup()
@@ -291,5 +291,5 @@ describe('SkillDetailPage autosave', () => {
     } finally {
       vi.useRealTimers()
     }
-  }, 10000)
+  })
 })
