@@ -12,8 +12,12 @@ inputs:
 runs:
   using: composite
   steps:
-    # pnpm/setup downloads Node.js from nodejs.org, which can stall for tens of minutes on
-    # GitHub-hosted runners. setup-node resolves devEngines.runtime from GitHub's mirror instead.
+    # pnpm downloads devEngines.runtime from nodejs.org/download/release, which can crawl at
+    # ~1 MB/s or stall on CI runners. nodejs.org/dist serves the same files and stays fast.
+    - name: Download Node.js runtimes from nodejs.org/dist
+      shell: bash
+      run: echo 'PNPM_CONFIG_NODE_DOWNLOAD_MIRRORS={"release":"https://nodejs.org/dist/"}' >> "$GITHUB_ENV"
+    # setup-node resolves devEngines.runtime from the runner tool cache or GitHub's mirror.
     - name: Setup Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
