@@ -10,6 +10,7 @@ import { Suspense } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { AgentPermission } from '@/features/agent-v2/acl'
+import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
   agentComposerDraftAtom,
@@ -911,6 +912,144 @@ describe('useAgentConfigureSync', () => {
               },
             ],
             config_skills: [],
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('waits for an existing composer save, then saves the complete upload batch without intermediate or page-close snapshots', async () => {
+    const saving = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(saving.promise)
+    const { result, store } = renderUseAgentConfigureSync()
+    const uploads = store.get(agentConfigFileUploadSyncAtom)
+
+    act(() => store.set(agentComposerPromptAtom, 'Before uploading'))
+    let savePromise!: Promise<void>
+    act(() => {
+      savePromise = result.current.saveDraft()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledOnce()
+
+    const readyToBind = vi.fn()
+    const opening = uploads.beginUpload().then((release) => {
+      readyToBind()
+      return release
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000)
+    })
+    expect(readyToBind).not.toHaveBeenCalled()
+
+    let release!: Awaited<typeof opening>
+    await act(async () => {
+      saving.resolve({ agent_soul: {} })
+      await savePromise
+      release = await opening
+    })
+    expect(readyToBind).toHaveBeenCalledOnce()
+
+    const firstFile = {
+      id: 'first.md',
+      name: 'first.md',
+      icon: 'markdown' as const,
+      fileId: 'first-upload',
+    }
+    const secondFile = {
+      id: 'second.md',
+      name: 'second.md',
+      icon: 'markdown' as const,
+      fileId: 'second-upload',
+    }
+    act(() => store.set(agentComposerFilesAtom, [firstFile]))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000)
+      setDocumentVisibilityState('hidden')
+      document.dispatchEvent(new Event('visibilitychange'))
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      store.set(agentComposerFilesAtom, [firstFile, secondFile])
+      store.set(agentComposerPromptAtom, 'Use both uploaded files')
+      await release()
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: { system_prompt: 'Use both uploaded files' },
+            config_files: [
+              expect.objectContaining({ name: 'first.md', file_id: 'first-upload' }),
+              expect.objectContaining({ name: 'second.md', file_id: 'second-upload' }),
+            ],
+          }),
+        }),
+      }),
+    )
+    expect(composerPutRequestContexts).toEqual([{ silent: true }, { silent: true }])
+  })
+
+  it('does not flush a partial upload snapshot when Configure unmounts during a batch', async () => {
+    const { store, unmount } = renderUseAgentConfigureSync()
+    const release = await store.get(agentConfigFileUploadSyncAtom).beginUpload()
+    act(() => {
+      store.set(agentComposerFilesAtom, [
+        {
+          id: 'first.md',
+          name: 'first.md',
+          icon: 'markdown',
+          fileId: 'first-upload',
+        },
+      ])
+      unmount()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000)
+    })
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    await release()
+  })
+
+  it('resumes autosave after the batch-final save fails and retries the latest successful file draft', async () => {
+    const { store } = renderUseAgentConfigureSync()
+    const release = await store.get(agentConfigFileUploadSyncAtom).beginUpload()
+    act(() => {
+      store.set(agentComposerFilesAtom, [
+        {
+          id: 'successful.md',
+          name: 'successful.md',
+          icon: 'markdown',
+          fileId: 'successful-upload',
+        },
+      ])
+      store.set(agentComposerPromptAtom, 'Use the successful upload')
+    })
+    composerPutMutationFn.mockRejectedValueOnce(new Error('Composer temporarily unavailable'))
+    await act(async () => {
+      await release()
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledOnce()
+
+    act(() => store.set(agentComposerPromptAtom, 'Latest edit after the failed final save'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: { system_prompt: 'Latest edit after the failed final save' },
+            config_files: [
+              expect.objectContaining({ name: 'successful.md', file_id: 'successful-upload' }),
+            ],
           }),
         }),
       }),

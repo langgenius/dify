@@ -3,8 +3,10 @@ import type { AgentConfigApiContext } from '../../config-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import { consoleQuery } from '@/service/console'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AgentFileUploadDialog } from '../upload-dialog'
@@ -72,6 +74,7 @@ function renderUploadDialog({
 } = {}) {
   const onUploaded = vi.fn()
   const onOpenChange = vi.fn()
+  const store = createStore()
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity },
@@ -102,10 +105,12 @@ function renderUploadDialog({
 
   render(
     <QueryClientProvider client={queryClient}>
-      <Harness />
+      <Provider store={store}>
+        <Harness />
+      </Provider>
     </QueryClientProvider>,
   )
-  return { onUploaded, onOpenChange }
+  return { onUploaded, onOpenChange, fileUploadSync: store.get(agentConfigFileUploadSyncAtom) }
 }
 
 function markdownFile(name: string) {
@@ -175,6 +180,24 @@ describe('AgentFileUploadDialog batch uploads', () => {
 
     await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
     expect(mocks.upload).toHaveBeenCalledExactlyOnceWith({ body: { file } })
+    expect(mocks.commitAgent).toHaveBeenCalledOnce()
+  })
+
+  it('waits for an existing composer save before starting a batch', async () => {
+    const user = userEvent.setup()
+    const pendingSave = deferred<void>()
+    const { fileUploadSync, onUploaded } = renderUploadDialog()
+    fileUploadSync.trackSave(pendingSave.promise)
+    await user.upload(fileInput(), markdownFile('after-save.md'))
+    await user.click(uploadButton())
+
+    expect(mocks.upload).not.toHaveBeenCalled()
+    expect(mocks.commitAgent).not.toHaveBeenCalled()
+    expect(fileInput()).toBeDisabled()
+    await act(async () => pendingSave.resolve())
+
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
+    expect(mocks.upload).toHaveBeenCalledOnce()
     expect(mocks.commitAgent).toHaveBeenCalledOnce()
   })
 
