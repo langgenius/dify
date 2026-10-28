@@ -4,7 +4,10 @@ Revision ID: d7e9a1c3f502
 Revises: b9d3f7a5c102
 Create Date: 2026-10-28 12:00:00
 
-Online only: existing indexes must be checked, including PostgreSQL validity.
+Online upgrades validate and reuse existing indexes, including PostgreSQL validity.
+Offline SQL emits unconditional DDL for databases without these indexes. It fails
+on existing names instead of silently accepting an invalid or conflicting index;
+use online upgrades to reconcile indexes already created by SRE.
 Concurrent DDL commits independently of the revision stamp. Retrying preserves
 completed indexes. If a build leaves an invalid index, inspect its definition
 and ensure no build is still running, then DROP INDEX CONCURRENTLY that specific
@@ -80,8 +83,6 @@ def _index_exists(table: str, name: str, column: str, schema: str) -> bool:
 
 
 def _schema() -> str:
-    if op.get_context().as_sql:
-        raise RuntimeError("App cleanup reference indexes require an online migration to validate existing indexes.")
     schema = sa.inspect(op.get_bind()).default_schema_name
     if schema is None:
         raise RuntimeError("Cannot determine the migration's default schema")
@@ -89,10 +90,13 @@ def _schema() -> str:
 
 
 def upgrade() -> None:
-    schema = _schema()
+    offline = op.get_context().as_sql
+    schema = None if offline else _schema()
     # Preflight every name before starting any expensive, independently committed DDL.
     missing = [
-        (table, name, column) for table, name, column in INDEXES if not _index_exists(table, name, column, schema)
+        (table, name, column)
+        for table, name, column in INDEXES
+        if schema is None or not _index_exists(table, name, column, schema)
     ]
     for table, name, column in missing:
         if op.get_bind().dialect.name == "postgresql":
@@ -100,13 +104,15 @@ def upgrade() -> None:
                 op.create_index(name, table, [column], schema=schema, postgresql_concurrently=True)
         else:
             op.create_index(name, table, [column], schema=schema)
-        if not _index_exists(table, name, column, schema):
+        if schema is not None and not _index_exists(table, name, column, schema):
             raise RuntimeError(f"Index {schema}.{name} was not created")
 
 
 def downgrade() -> None:
-    schema = _schema()
-    existing = [(table, name) for table, name, column in INDEXES if _index_exists(table, name, column, schema)]
+    schema = None if op.get_context().as_sql else _schema()
+    existing = [
+        (table, name) for table, name, column in INDEXES if schema is None or _index_exists(table, name, column, schema)
+    ]
     for table, name in reversed(existing):
         if op.get_bind().dialect.name == "postgresql":
             with op.get_context().autocommit_block():

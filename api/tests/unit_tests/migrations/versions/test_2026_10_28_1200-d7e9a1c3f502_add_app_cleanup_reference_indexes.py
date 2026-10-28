@@ -1,11 +1,18 @@
 import importlib.util
+import shutil
+from io import StringIO
 from pathlib import Path
 from types import ModuleType
 
 import pytest
 import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from flask import Flask
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 
 from models.model import MessageFile
@@ -99,8 +106,62 @@ def test_model_indexes_match_migration() -> None:
 
 
 @pytest.mark.parametrize("dialect", ["postgresql", "mysql"])
-def test_offline_migration_cannot_silently_skip_catalog_validation(dialect: str) -> None:
+def test_offline_migration_emits_ddl_without_silently_skipping_existing_indexes(dialect: str) -> None:
     migration = load_migration()
-    migration.__dict__["op"] = Operations(MigrationContext.configure(dialect_name=dialect, opts={"as_sql": True}))
-    with pytest.raises(RuntimeError, match="online migration"):
+    output = StringIO()
+    context = MigrationContext.configure(dialect_name=dialect, opts={"as_sql": True, "output_buffer": output})
+    migration.__dict__["op"] = Operations(context)
+    with context.begin_transaction():
         migration.upgrade()
+        migration.downgrade()
+    sql = output.getvalue()
+    statements = [statement.strip() for statement in sql.split(";") if statement.strip()]
+    assert "IF NOT EXISTS" not in sql
+    assert sql.count("CREATE INDEX") == 3
+    assert sql.count("DROP INDEX") == 3
+    for table, name, column in migration.INDEXES:
+        if dialect == "postgresql":
+            create = f"CREATE INDEX CONCURRENTLY {name} ON {table} ({column})"
+            drop = f"DROP INDEX CONCURRENTLY {name}"
+            for ddl in (create, drop):
+                position = statements.index(ddl)
+                assert statements[position - 1] == "COMMIT"
+                assert statements[position + 1] == "BEGIN"
+        else:
+            assert f"CREATE INDEX {name} ON {table} ({column})" in statements
+            assert f"DROP INDEX {name} ON {table}" in statements
+            assert "CONCURRENTLY" not in sql
+
+
+@pytest.mark.parametrize("database_uri", ["postgresql://", "mysql+pymysql://"])
+def test_alembic_offline_upgrade_and_downgrade_stamp_revision(
+    database_uri: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    migrations = Path(__file__).resolve().parents[4] / "migrations"
+    # Exercise the real env.py and this revision without loading unrelated
+    # local migration branches. The parent is only a starting revision marker.
+    versions = tmp_path / "versions"
+    versions.mkdir()
+    shutil.copyfile(migrations / "env.py", tmp_path / "env.py")
+    filename = "2026_10_28_1200-d7e9a1c3f502_add_app_cleanup_reference_indexes.py"
+    shutil.copyfile(migrations / "versions" / filename, versions / filename)
+    (versions / "parent.py").write_text('revision = "b9d3f7a5c102"\ndown_revision = None\n')
+    output = StringIO()
+    config = Config(str(migrations / "alembic.ini"), output_buffer=output)
+    config.set_main_option("script_location", str(tmp_path))
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
+    database = SQLAlchemy(app)
+    Migrate(app, database)
+    monkeypatch.setattr("logging.config.fileConfig", lambda _filename: None)
+    with app.app_context():
+        command.upgrade(config, "b9d3f7a5c102:d7e9a1c3f502", sql=True)
+        command.downgrade(config, "d7e9a1c3f502:b9d3f7a5c102", sql=True)
+        database.engine.dispose()
+    sql = output.getvalue()
+    assert sql.count("CREATE INDEX") == 3
+    assert sql.count("DROP INDEX") == 3
+    upgrade_stamp = sql.index("UPDATE alembic_version SET version_num='d7e9a1c3f502'")
+    downgrade_stamp = sql.index("UPDATE alembic_version SET version_num='b9d3f7a5c102'")
+    assert sql.rindex("CREATE INDEX") < upgrade_stamp < sql.index("DROP INDEX")
+    assert sql.rindex("DROP INDEX") < downgrade_stamp
