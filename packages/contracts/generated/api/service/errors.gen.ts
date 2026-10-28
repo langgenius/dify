@@ -90,6 +90,14 @@ const zCompletionRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConversationCursorNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_cursor_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zConversationFirstMessageNotFoundError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -576,7 +584,17 @@ export const delete2Errors = {
   workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
 }
 
-export const get6Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const get6Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
 export const post9Errors = {
   file_too_large: { status: 413, data: zFileTooLargeError },
