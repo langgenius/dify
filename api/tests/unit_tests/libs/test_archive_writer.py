@@ -1,11 +1,13 @@
 import hashlib
 import io
 import unicodedata
+import zipfile
 from contextlib import closing
 
 import pytest
 
 from libs.archive_writer import (
+    ArchiveCompression,
     ArchiveEmptyError,
     ArchiveEntry,
     ArchiveLimits,
@@ -49,6 +51,15 @@ def test_empty_and_oversized_archives_are_rejected() -> None:
         write_archive([_entry("a"), _entry("b")], _options(max_entries=1))
     with pytest.raises(ArchiveTooLargeError):
         write_archive([_entry("a", b"x" * 200)], _options(max_bytes=100))
+
+
+def test_an_entry_that_inflates_past_zip64_limit_still_writes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(zipfile, "ZIP64_LIMIT", 2 * 1024 * 1024)
+    data = bytes(3 * 1024 * 1024)
+    options = ArchiveOptions(StrictPathPolicy(), ArchiveLimits(1, 100_000), ArchiveCompression.DEFLATED)
+    result = write_archive([_entry("a", data)], options)
+    with result.file, zipfile.ZipFile(result.file) as archive:
+        assert archive.read("a") == data
 
 
 @pytest.mark.parametrize(

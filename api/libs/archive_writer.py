@@ -41,10 +41,6 @@ class ArchiveLimitKind(StrEnum):
     ENTRIES = "entries"
     BYTES = "bytes"
 
-    @property
-    def unit(self) -> str:
-        return self.value
-
 
 class ArchivePathReason(StrEnum):
     message: str
@@ -90,7 +86,7 @@ class ArchiveTooLargeError(ArchiveError):
     def __init__(self, kind: ArchiveLimitKind, limit: int) -> None:
         self.kind = kind
         self.limit = limit
-        super().__init__(f"archive is over the limit of {limit} {kind.unit}")
+        super().__init__(f"archive is over the limit of {limit} {kind.value}")
 
 
 ChunkSource = Callable[[], Iterable[bytes]]
@@ -204,7 +200,6 @@ def write_archive(entries: Iterable[ArchiveEntry], options: ArchiveOptions) -> A
 
 def _write_entries(spool: BinaryIO, entries: Sequence[ArchiveEntry], options: ArchiveOptions) -> list[WrittenEntry]:
     max_bytes = options.limits.max_bytes
-    force_zip64 = max_bytes + _COPY_CHUNK_SIZE > zipfile.ZIP64_LIMIT
     written: list[WrittenEntry] = []
     with zipfile.ZipFile(spool, "w", allowZip64=True) as archive:
         for entry in entries:
@@ -213,7 +208,7 @@ def _write_entries(spool: BinaryIO, entries: Sequence[ArchiveEntry], options: Ar
             info.external_attr = _FILE_MODE << _EXTERNAL_ATTR_SHIFT
             digest = hashlib.sha256()
             size = 0
-            with archive.open(info, "w", force_zip64=force_zip64) as target:
+            with archive.open(info, "w", force_zip64=True) as target:
                 for chunk in entry.open():
                     target.write(chunk)
                     digest.update(chunk)

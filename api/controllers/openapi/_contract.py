@@ -88,7 +88,7 @@ def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
         if limit is None:
             raise
         raise RequestOverRouteLimits(
-            f"Request is over this route's limits: at most {request.max_form_parts} parts"
+            f"{RequestOverRouteLimits.description}: at most {request.max_form_parts} parts"
             f" and {limit / _BYTES_PER_MIB:g} MiB"
         ) from exc
 
