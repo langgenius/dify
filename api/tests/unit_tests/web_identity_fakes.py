@@ -9,6 +9,17 @@ from services.web_identity_service import WebIdentityService
 ACCOUNT_ID = "8a3e045b-9051-4e12-8431-93786413c001"
 
 
+def webapp_login_claims(**overrides: object) -> dict[str, object]:
+    return {
+        "sub": "Web API Account Login",
+        "token_source": "webapp_account_login",
+        "auth_type": "internal",
+        "user_id": ACCOUNT_ID,
+        "exp": 2_000_000_000,
+        **overrides,
+    }
+
+
 @dataclass
 class WebAccounts:
     status: str | None = "active"

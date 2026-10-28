@@ -14,7 +14,7 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
-from libs.token import extract_webapp_access_token
+from libs.token import extract_webapp_access_token, extract_webapp_cookie_token, set_webapp_access_token_to_cookie
 from services.entities.account_login_entities import LoginMode
 from services.entities.passport_entities import WebPassportRequest
 from services.web_passport_service import (
@@ -46,13 +46,7 @@ class PassportAccessTokenResponse(ResponseModel):
     access_token: str
 
 
-class PassportLoginResponse(PassportAccessTokenResponse):
-    webapp_access_token: str = Field(
-        description="Web-only login proof for subsequent login-status and Passport requests; never a Console token"
-    )
-
-
-register_response_schema_models(web_ns, PassportAccessTokenResponse, PassportLoginResponse)
+register_response_schema_models(web_ns, PassportAccessTokenResponse)
 
 
 @web_ns.route("/passport")
@@ -80,7 +74,9 @@ class PassportResource(Resource):
         passport_request = WebPassportRequest(
             app_code=app_code,
             user_session_id=query.user_id,
-            access_token=extract_webapp_access_token(request),
+            access_token=extract_webapp_cookie_token(request)
+            if query.mode == LoginMode.END_USER
+            else extract_webapp_access_token(request),
             mode=query.mode,
         )
         try:
@@ -110,11 +106,12 @@ class PassportResource(Resource):
     @web_ns.doc("exchange_web_app_login")
     @web_ns.doc(
         description="Redeem a one-use S256 PKCE login code after returning to /webapp-signin. "
-        "Returns the App Passport and a Web-only login proof for subsequent visits."
+        "Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. "
+        "Account Passports require the matching WebApp login cookie on subsequent requests."
     )
     @web_ns.doc(params={"X-App-Code": {"in": "header", "required": True, "description": "Web app code"}})
     @web_ns.expect(web_ns.models[PassportLoginPayload.__name__])
-    @web_ns.response(200, "Web login completed", web_ns.models[PassportLoginResponse.__name__])
+    @web_ns.response(200, "Web login completed", web_ns.models[PassportAccessTokenResponse.__name__])
     @error_responses(ConnectionLoginRequiredError, WebLoginUnavailableHTTPError)
     @model_validate(PassportLoginPayload)
     def post(self, payload: PassportLoginPayload):
@@ -122,13 +119,16 @@ class PassportResource(Resource):
         if not app_code:
             raise Unauthorized("X-App-Code header is missing.")
         with web_login_errors():
-            login_token = application_services().web_login_handoff.redeem(
+            login_session = application_services().web_login_handoff.redeem(
                 app_code=app_code, code=payload.login_code, code_verifier=payload.code_verifier
             )
             try:
                 result = application_services().web_passport.issue(
                     WebPassportRequest(
-                        app_code=app_code, user_session_id=None, access_token=login_token, mode=LoginMode.END_USER
+                        app_code=app_code,
+                        user_session_id=None,
+                        access_token=login_session.access_token,
+                        mode=LoginMode.END_USER,
                     )
                 )
             except WebPassportAccessDeniedError as exc:
@@ -136,14 +136,7 @@ class PassportResource(Resource):
             except WebPassportAuthenticationRequiredError as exc:
                 raise ConnectionLoginRequiredError() from exc
         # response-contract:ignore credential-bearing response
-        response = make_response(
-            dump_response(
-                PassportLoginResponse,
-                {
-                    "access_token": result.access_token,
-                    "webapp_access_token": login_token,
-                },
-            )
-        )
+        response = make_response(dump_response(PassportAccessTokenResponse, result))
+        set_webapp_access_token_to_cookie(response, login_session.access_token, expires_at=login_session.expires_at)
         response.headers["Cache-Control"] = "no-store"
         return response

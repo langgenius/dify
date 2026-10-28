@@ -142,7 +142,7 @@ class WebPassportService:
         claims = self._decode_login_token(access_token)
         if claims is None:
             raise WebPassportAuthenticationRequiredError("Account login required.")
-        if claims.token_source not in {None, "webapp_account_login"} or claims.account_id is None:
+        if claims.token_source != "webapp_account_login" or claims.account_id is None:
             raise WebPassportUnauthorizedError("Account login required.")
         auth_type = (
             self._auth.get_app_auth_type(app.app_id) if self._auth.is_webapp_auth_enabled() else WebAppAuthType.PUBLIC
