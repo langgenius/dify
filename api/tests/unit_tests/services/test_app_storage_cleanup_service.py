@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -14,7 +15,6 @@ from extensions.storage.storage_type import StorageType
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
-from models import WorkflowType
 from models.enums import (
     ConversationFromSource,
     CreatorUserRole,
@@ -32,6 +32,7 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from services import app_storage_cleanup_service as cleanup
 
 
@@ -116,7 +117,7 @@ def test_nested_offload_cleanup_preserves_retry_references(
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=WorkflowType.CHAT,
+            type=ModelWorkflowType.CHAT,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.SUCCEEDED,
@@ -364,7 +365,7 @@ def test_pause_files_and_reasons_are_removed_only_after_storage_success(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,
@@ -445,19 +446,19 @@ def test_shared_message_files_are_retained(sqlite_session: Session, storage: Mag
     upload.created_by_role = CreatorUserRole.END_USER
     upload.created_by = user.id
     conversation = Conversation(
-        app_id="app-2", mode=AppMode.CHAT, name="other app", inputs={}, from_source=ConversationFromSource.API
+        app_id="app-2", mode=AppMode.CHAT, name="other app", _inputs={}, from_source=ConversationFromSource.API
     )
     sqlite_session.add(conversation)
     sqlite_session.flush()
     message = Message(
         app_id="app-2",
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="q",
         message={},
-        message_unit_price=0,
+        message_unit_price=Decimal(0),
         answer="a",
-        answer_unit_price=0,
+        answer_unit_price=Decimal(0),
         currency="USD",
         from_source=ConversationFromSource.API,
     )
@@ -506,7 +507,7 @@ def test_conversation_owned_tools_are_cleaned_and_account_assets_retained(
     sqlite_session: Session, storage: MagicMock
 ) -> None:
     conversation = Conversation(
-        app_id="app-1", mode=AppMode.CHAT, name="owned", inputs={}, from_source=ConversationFromSource.CONSOLE
+        app_id="app-1", mode=AppMode.CHAT, name="owned", _inputs={}, from_source=ConversationFromSource.CONSOLE
     )
     sqlite_session.add(conversation)
     sqlite_session.flush()

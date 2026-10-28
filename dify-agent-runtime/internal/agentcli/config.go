@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
+	"unicode/utf8"
 )
 
 const (
@@ -559,6 +561,82 @@ func RunConfigNotePush(env *Environment, localPath string) error {
 	defer func() { _ = client.Close() }()
 
 	body, err := client.PutConfigNote(context.Background(), note)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(body))
+	return nil
+}
+
+// RunConfigPromptPull saves the raw system prompt without expanding mentions.
+func RunConfigPromptPull(env *Environment, localPath string) error {
+	client, err := NewStubClient(env)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = client.Close() }()
+
+	body, err := client.GetConfigPrompt(context.Background())
+	if err != nil {
+		return err
+	}
+	var response struct {
+		Prompt *string `json:"prompt"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return fmt.Errorf("parse prompt response: %w", err)
+	}
+	if response.Prompt == nil {
+		return fmt.Errorf("prompt response is missing prompt text")
+	}
+
+	targetPath := localPath
+	if targetPath == "" {
+		targetPath = filepath.Join(defaultConfigBase, "prompt.md")
+	}
+	absPath, err := filepath.Abs(targetPath)
+	if err != nil {
+		return fmt.Errorf("resolve path: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
+		return fmt.Errorf("create directory: %w", err)
+	}
+	if err := os.WriteFile(absPath, []byte(*response.Prompt), 0o644); err != nil {
+		return fmt.Errorf("write prompt: %w", err)
+	}
+	fmt.Println(absPath)
+	return nil
+}
+
+// RunConfigPromptPush replaces the build-draft prompt; empty text clears it.
+func RunConfigPromptPush(env *Environment, localPath string) error {
+	var data []byte
+	var err error
+	if localPath == "-" {
+		data, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("read stdin: %w", err)
+		}
+	} else {
+		if localPath == "" {
+			localPath = filepath.Join(defaultConfigBase, "prompt.md")
+		}
+		data, err = os.ReadFile(localPath)
+		if err != nil {
+			return fmt.Errorf("read file: %w", err)
+		}
+	}
+	if !utf8.Valid(data) {
+		return fmt.Errorf("prompt must be valid UTF-8 text")
+	}
+
+	client, err := NewStubClient(env)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = client.Close() }()
+
+	body, err := client.PutConfigPrompt(context.Background(), string(data))
 	if err != nil {
 		return err
 	}

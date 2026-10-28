@@ -164,7 +164,7 @@ export const TagFilter = ({
           </IconButton>
         )}
         <ComboboxPortal {...portalProps}>
-          <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+          <ComboboxPositioner>
             <ComboboxPopup
               aria-label={triggerLabel}
               className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"

@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Viri",
   "resourceAccessToken.searchPlaceholder": "Išči žetone…",
   "resourceAccessToken.searchResourcesPlaceholder": "Išči aplikacije ali baze znanja…",
-  "resourceAccessToken.tabAll": "Vse",
+  "resourceAccessToken.tabAllTypes": "Vse vrste",
   "resourceAccessToken.tabApps": "Aplikacije",
   "resourceAccessToken.tabKnowledgeBases": "Baze znanja",
   "resourceAccessToken.token": "Žeton",

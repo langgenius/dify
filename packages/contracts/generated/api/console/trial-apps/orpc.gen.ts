@@ -596,6 +596,7 @@ export const get13 = oc
   .input(z.object({ params: zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
       data: zAppSuggestedQuestionsAfterAnswerDisabledError,

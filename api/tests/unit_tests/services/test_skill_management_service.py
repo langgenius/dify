@@ -65,7 +65,7 @@ from services.skill_management_service import (
     validate_skill_description,
     validate_skill_name,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 AGENT = "22222222-2222-2222-2222-222222222222"
@@ -363,6 +363,36 @@ def test_list_skills_keyword_matches_display_name() -> None:
     result = service.list_skills(tenant_id=TENANT, keyword="onboarding")
 
     assert [item["name"] for item in result["data"]] == ["employee-onboarding"]
+
+
+@pytest.mark.parametrize("field", ["display_name", "description"])
+@pytest.mark.parametrize(
+    ("keyword", "matching", "nonmatching"),
+    [
+        ("%", "Report % growth", "Report growth"),
+        ("my_key", "prefix my_key suffix", "prefix my key suffix"),
+        ("\\", r"path\file", "path/file"),
+        (r"\%_", r"prefix \%_ suffix", "prefix %_ suffix"),
+        ("  MY_KEY  ", "prefix my_key suffix", "prefix my key suffix"),
+        ("  GROWTH  ", "Report growth figures", "Report figures"),
+    ],
+)
+def test_list_skills_keyword_matches_literal_substrings(
+    field: str, keyword: str, matching: str, nonmatching: str
+) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    for name, value in [("matching-skill", matching), ("other-skill", nonmatching)]:
+        service.create_skill(
+            tenant_id=TENANT,
+            user_id=USER,
+            payload=SkillCreatePayload.model_validate({"name": name, field: value}),
+        )
+
+    result = service.list_skills(tenant_id=TENANT, keyword=keyword, limit=1)
+
+    assert [item["name"] for item in result["data"]] == ["matching-skill"]
+    assert result["total"] == 1
+    assert result["has_more"] is False
 
 
 def test_list_skills_returns_pagination_metadata() -> None:
@@ -3442,6 +3472,10 @@ def test_pptx_extraction_ignores_unreferenced_external_and_missing_slide_parts()
         pytest.param(b"{\\rtf1 Caf\xe9}", "Café", id="latin1-literal-text"),
         pytest.param(rb"{\rtf1\ansi caf\'e9}", "café", id="hex-literal-text"),
         pytest.param(rb"{\rtf1\ansi \{notes\} \\ path}", r"{notes} \ path", id="escaped-literal-text"),
+        pytest.param(rb"{\rtf1\ansi \u-10179?\u-8704? followed}", "😀 followed", id="surrogate-pair-signed"),
+        pytest.param(rb"{\rtf1\ansi \u55357?\u56832? followed}", "😀 followed", id="surrogate-pair-unsigned"),
+        pytest.param(rb"{\rtf1\ansi \u-10179? alone}", "\ufffd alone", id="unmatched-high-surrogate"),
+        pytest.param(rb"{\rtf1\ansi \u-8704? alone}", "\ufffd alone", id="unmatched-low-surrogate"),
     ],
 )
 def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, expected: str) -> None:
@@ -3462,6 +3496,14 @@ def test_build_assistant_attachment_context_extracts_rtf_text(payload: bytes, ex
         )
 
     assert context == f"--- notes.rtf (application/rtf, {len(payload)} bytes) ---\n{expected}"
+    assert context.encode("utf-8")
+
+
+def test_extract_rtf_text_truncation_preserves_supplementary_characters() -> None:
+    payload = rb"{\rtf1\ansi \u-10179?\u-8704?tail}"
+    extracted = SkillManagementService._extract_rtf_text(payload, max_chars=1)
+    assert extracted == "😀\n[TRUNCATED]"
+    assert extracted.encode("utf-8")
 
 
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:

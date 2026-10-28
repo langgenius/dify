@@ -3,7 +3,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.file_access import DatabaseFileAccessController
@@ -179,7 +179,7 @@ class TokenBufferMemory:
                 workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
                 if not workflow:
                     raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
-                return FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+                return FileUploadConfigManager.convert(workflow.normalized_features_dict, is_vision=False)
             case _:
                 raise AssertionError(f"Invalid app mode: {conversation.mode}")
 
@@ -224,7 +224,25 @@ class TokenBufferMemory:
         require the app. An omitted workflow repository uses the configured factory.
         """
         # fetch limited messages, and return reversed
-        stmt = select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at.desc())
+        # Load only the columns used to rebuild history. Message.message stores the full prompt of each turn,
+        # earlier history included, so loading it makes memory grow quadratically with conversation length.
+        stmt = (
+            select(Message)
+            .options(
+                load_only(
+                    Message.id,
+                    Message.app_id,
+                    Message.parent_message_id,
+                    Message.query,
+                    Message.answer,
+                    Message.answer_tokens,
+                    Message.workflow_run_id,
+                    Message.created_at,
+                )
+            )
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at.desc())
+        )
 
         message_limit = min(message_limit, 500) if message_limit and message_limit > 0 else 500
 

@@ -14,7 +14,7 @@ from core.tools.entities.tool_entities import ToolProviderType
 class TestToolProviderApiEntityWorkflowAppId:
     """Test suite for ToolProviderApiEntity workflow_app_id field."""
 
-    def test_workflow_app_id_field_default_none(self):
+    def test_workflow_app_id_field_default_none(self) -> None:
         """Test that workflow_app_id defaults to None when not provided."""
         entity = ToolProviderApiEntity(
             id="test_id",
@@ -28,7 +28,7 @@ class TestToolProviderApiEntityWorkflowAppId:
 
         assert entity.workflow_app_id is None
 
-    def test_to_dict_includes_workflow_app_id_when_workflow_type_and_has_value(self):
+    def test_to_dict_includes_workflow_app_id_when_workflow_type_and_has_value(self) -> None:
         """Test that to_dict() includes workflow_app_id when type is WORKFLOW and value is set."""
         workflow_app_id = "app_123"
         entity = ToolProviderApiEntity(
@@ -47,7 +47,7 @@ class TestToolProviderApiEntityWorkflowAppId:
         assert "workflow_app_id" in result
         assert result["workflow_app_id"] == workflow_app_id
 
-    def test_to_dict_excludes_workflow_app_id_when_workflow_type_and_none(self):
+    def test_to_dict_excludes_workflow_app_id_when_workflow_type_and_none(self) -> None:
         """Test that to_dict() excludes workflow_app_id when type is WORKFLOW but value is None."""
         entity = ToolProviderApiEntity(
             id="test_id",
@@ -64,7 +64,7 @@ class TestToolProviderApiEntityWorkflowAppId:
 
         assert "workflow_app_id" not in result
 
-    def test_to_dict_excludes_workflow_app_id_when_not_workflow_type(self):
+    def test_to_dict_excludes_workflow_app_id_when_not_workflow_type(self) -> None:
         """Test that to_dict() excludes workflow_app_id when type is not WORKFLOW."""
         workflow_app_id = "app_123"
         entity = ToolProviderApiEntity(
@@ -82,7 +82,7 @@ class TestToolProviderApiEntityWorkflowAppId:
 
         assert "workflow_app_id" not in result
 
-    def test_to_dict_includes_workflow_app_id_for_workflow_type_with_empty_string(self):
+    def test_to_dict_includes_workflow_app_id_for_workflow_type_with_empty_string(self) -> None:
         """Test that to_dict() excludes workflow_app_id when value is empty string (falsy)."""
         entity = ToolProviderApiEntity(
             id="test_id",

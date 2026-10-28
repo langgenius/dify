@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.17.1"
+version = "1.18.0"
 requires-python = "~=3.13.0"
 
 dependencies = [
@@ -40,9 +40,9 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
     "opentelemetry-propagator-b3>=1.45.0,<2.0.0",
-    "pypandoc==1.17",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
+    "werkzeug>=3.1.7,<4.0.0",
     "zstandard==0.25.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]==0.7.0",
@@ -218,7 +218,7 @@ storage = [
 ############################################################
 # [ Tools ] dependency group
 ############################################################
-tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.3,<4.0.0"]
+tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.4,<4.0.0"]
 
 ############################################################
 # [ VDB ] workspace plugins — hollow packages under providers/vdb/*

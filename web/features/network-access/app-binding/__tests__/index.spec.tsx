@@ -7,6 +7,7 @@ import type {
   GetWorkspacesCurrentSummaryResponse,
   NetworkAccessGroupResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactNode } from 'react'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -24,23 +25,13 @@ import {
   seedNetworkAccessGroups,
 } from '@/test/console/network-access'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AccessControlEntry } from '..'
 
-const mockSetPricing = vi.fn()
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-const mockSetSettingsDestination = vi.fn()
 vi.unmock('react-i18next')
 
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: (name: string) => {
-      if (name === 'pricing') return [null, mockSetPricing]
-      return [null, mockSetSettingsDestination]
-    },
-  }
-})
+const initialSearchParams = 'source=network-access'
 
 const renderEntry = ({
   plan,
@@ -69,14 +60,21 @@ const renderEntry = ({
     binding,
     available_access_points: availableAccessPoints,
   })
-  return renderWithConsoleQuery(
-    <AccessControlEntry
-      appMode="chat"
-      appId="app-1"
-      appIcon={null}
-      isPublished={isPublished}
-      canEditBinding={canEditBinding}
-    />,
+  // Keep nuqs' real parsers and assert the complete resulting query, including retained params.
+  const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({
+    searchParams: initialSearchParams,
+    hasMemory: true,
+  })
+  const rendered = renderWithConsoleQuery(
+    <UrlState>
+      <AccessControlEntry
+        appMode="chat"
+        appId="app-1"
+        appIcon={null}
+        isPublished={isPublished}
+        canEditBinding={canEditBinding}
+      />
+    </UrlState>,
     {
       queryClient,
       currentWorkspace: { role },
@@ -90,6 +88,14 @@ const renderEntry = ({
         : undefined,
     },
   )
+  const getSearchParams = () =>
+    onUrlUpdate.mock.lastCall?.[0].searchParams ?? new URLSearchParams(initialSearchParams)
+  return {
+    ...rendered,
+    getSearchParams,
+    onUrlUpdate,
+    rerender: (ui: ReactNode) => rendered.rerender(<UrlState>{ui}</UrlState>),
+  }
 }
 
 const metadataResponse = (request: Request) => {
@@ -141,10 +147,6 @@ const createBinding = (
 })
 
 describe('AccessControlEntry', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it.each([
     { entryStatus: 'off', plan: 'professional', binding: null },
     { entryStatus: 'paused', plan: 'professional', binding: createBinding({ enabled: false }) },
@@ -312,7 +314,7 @@ describe('AccessControlEntry', () => {
     'shows PRO and the saved resume configuration on Cloud sandbox (%j)',
     async ({ enabled, accessPoints, coverage }) => {
       const user = userEvent.setup()
-      renderEntry({
+      const { getSearchParams } = renderEntry({
         plan: 'sandbox',
         groups: [createNetworkAccessGroupFixture()],
         binding: {
@@ -349,7 +351,7 @@ describe('AccessControlEntry', () => {
       ).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Turn on Access Control' }))
-      expect(mockSetPricing).toHaveBeenCalledWith('open')
+      expect(getSearchParams().toString()).toBe('source=network-access&pricing=open')
     },
   )
 
@@ -403,7 +405,7 @@ describe('AccessControlEntry', () => {
 
   it('opens the paywall popover from the chip and sends the user to pricing', async () => {
     const user = userEvent.setup()
-    renderEntry({ plan: 'sandbox' })
+    const { getSearchParams } = renderEntry({ plan: 'sandbox' })
 
     await user.click(getChip())
 
@@ -421,7 +423,7 @@ describe('AccessControlEntry', () => {
     expect(turnOn).not.toHaveTextContent('PRO')
     await user.click(turnOn)
 
-    expect(mockSetPricing).toHaveBeenCalledWith('open')
+    expect(getSearchParams().toString()).toBe('source=network-access&pricing=open')
     expect(trackEvent).toHaveBeenLastCalledWith('access_control_upgrade_click', {
       app_id: 'app-1',
       app_mode: 'chat',
@@ -432,7 +434,7 @@ describe('AccessControlEntry', () => {
 
   it('closes the paywall on Escape without side effects', async () => {
     const user = userEvent.setup()
-    renderEntry({ plan: 'sandbox' })
+    const { getSearchParams } = renderEntry({ plan: 'sandbox' })
 
     await user.click(getChip())
     expect(screen.getByText('Restrict this app to IP addresses you trust')).toBeInTheDocument()
@@ -444,7 +446,7 @@ describe('AccessControlEntry', () => {
         screen.queryByText('Restrict this app to IP addresses you trust'),
       ).not.toBeInTheDocument()
     })
-    expect(mockSetPricing).not.toHaveBeenCalled()
+    expect(getSearchParams().toString()).toBe(initialSearchParams)
   })
 
   it('opens the first-time config popover for paid workspaces without a back control', async () => {
@@ -472,18 +474,18 @@ describe('AccessControlEntry', () => {
 
   it('opens the new policy dialog from the empty-state create action', async () => {
     const user = userEvent.setup()
-    renderEntry({ plan: 'professional' })
+    const { getSearchParams } = renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
     await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
 
     expect(screen.getByRole('heading', { name: 'New IP Policy' })).toBeInTheDocument()
-    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+    expect(getSearchParams().toString()).toBe(initialSearchParams)
   })
 
   it('returns to the empty-state config after canceling the new policy dialog', async () => {
     const user = userEvent.setup()
-    renderEntry({ plan: 'professional' })
+    const { getSearchParams } = renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
     await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
@@ -493,7 +495,7 @@ describe('AccessControlEntry', () => {
       expect(screen.queryByRole('heading', { name: 'New IP Policy' })).not.toBeInTheDocument()
     })
     expect(screen.getByText('No IP policies in this workspace yet')).toBeInTheDocument()
-    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+    expect(getSearchParams().toString()).toBe(initialSearchParams)
   })
 
   it('posts a new policy from the empty-state dialog without opening Settings', async () => {
@@ -529,7 +531,7 @@ describe('AccessControlEntry', () => {
       }
       return Response.json({ group: created }, { status: 201 })
     })
-    renderEntry({ plan: 'professional' })
+    const { getSearchParams } = renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
     await user.click(screen.getByRole('button', { name: 'Create an IP policy' }))
@@ -552,12 +554,12 @@ describe('AccessControlEntry', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Web App' })).toHaveAttribute('aria-disabled', 'true')
     expect(posted.filter((request) => request.method === 'PUT')).toHaveLength(0)
-    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+    expect(getSearchParams().toString()).toBe(initialSearchParams)
   })
 
   it('sends paid users to Settings IP Policies from manage', async () => {
     const user = userEvent.setup()
-    renderEntry({
+    const { getSearchParams } = renderEntry({
       plan: 'professional',
       groups: [createNetworkAccessGroupFixture()],
     })
@@ -565,12 +567,12 @@ describe('AccessControlEntry', () => {
     await user.click(getChip())
     await user.click(screen.getByRole('button', { name: 'Manage IP policies' }))
 
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
+    expect(getSearchParams().toString()).toBe('source=network-access&settings=ip-policies')
   })
 
   it('closes the first-time config on Cancel without opening settings', async () => {
     const user = userEvent.setup()
-    renderEntry({ plan: 'professional' })
+    const { getSearchParams } = renderEntry({ plan: 'professional' })
 
     await user.click(getChip())
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -578,8 +580,7 @@ describe('AccessControlEntry', () => {
     await waitFor(() => {
       expect(screen.queryByText('No IP policies in this workspace yet')).not.toBeInTheDocument()
     })
-    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
-    expect(mockSetPricing).not.toHaveBeenCalled()
+    expect(getSearchParams().toString()).toBe(initialSearchParams)
   })
 
   it.each([
@@ -875,8 +876,6 @@ const capabilityCases = [
 }[]
 
 describe('supported access points and binding permission', () => {
-  beforeEach(() => vi.clearAllMocks())
-
   it.each(capabilityCases)(
     'shows and saves exactly the $name capabilities',
     async ({ points, labels }) => {
@@ -990,7 +989,7 @@ describe('supported access points and binding permission', () => {
         }),
     )
     try {
-      renderEntry({
+      const { getSearchParams } = renderEntry({
         plan: 'professional',
         role: 'editor',
         groups: [createNetworkAccessGroupFixture()],
@@ -998,7 +997,7 @@ describe('supported access points and binding permission', () => {
       await user.click(getChip())
       expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'View IP policies' }))
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('ip-policies')
+      expect(getSearchParams().toString()).toBe('source=network-access&settings=ip-policies')
       await user.click(getChip())
       await user.click(screen.getByRole('button', { name: /Internal Network/ }))
       await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -1313,14 +1312,19 @@ describe('supported access points and binding permission', () => {
     seedNetworkAccessGroups(queryClient, { entitled: true })
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response())
     try {
+      const { wrapper: UrlState } = createNuqsTestWrapper({
+        searchParams: initialSearchParams,
+      })
       renderWithConsoleQuery(
-        <AccessControlEntry
-          appMode="chat"
-          appId="app-1"
-          appIcon={null}
-          isPublished={false}
-          canEditBinding
-        />,
+        <UrlState>
+          <AccessControlEntry
+            appMode="chat"
+            appId="app-1"
+            appIcon={null}
+            isPublished={false}
+            canEditBinding
+          />
+        </UrlState>,
         {
           queryClient,
           systemFeatures: { deployment_edition: 'CLOUD' },

@@ -189,7 +189,7 @@ def test_workflow_history_budget_preserves_database_turns(
         conversation_id=conversation.id,
         parent_message_id=older.id,
         workflow_run_id="latest-run",
-        inputs={},
+        _inputs={},
         query="latest query",
         message={},
         message_unit_price=0,
@@ -198,8 +198,8 @@ def test_workflow_history_budget_preserves_database_turns(
         answer_unit_price=0,
         currency="USD",
         from_source=older.from_source,
-        created_at=older.created_at + timedelta(seconds=1),
     )
+    latest.created_at = older.created_at + timedelta(seconds=1)
     provider = agent_generate_entity.model_conf.provider
     tool_call = AssistantPromptMessage.ToolCall(
         id="lookup-call",
