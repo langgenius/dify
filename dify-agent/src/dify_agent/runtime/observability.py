@@ -307,7 +307,9 @@ class _ApplicationRunTracer(_RunScopedTracer):
         # Preserve only this invocation's descendants. Platform spans, a previous
         # invocation, or caller-supplied ambient context must not choose the root.
         if isinstance(current, ReadableSpan):
-            attributes = current.attributes or {}
+            # Logfire also wraps non-recording spans as ReadableSpan. Without
+            # attributes they cannot prove invocation ownership; use the API parent.
+            attributes = getattr(current, "attributes", None) or {}
             current_context = current.get_span_context()
             if (
                 attributes.get(DIFY_TRACING_RUN_ID_ATTRIBUTE) == str(self.tracing.run_id)

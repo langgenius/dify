@@ -90,6 +90,14 @@ const zAgentNotFoundError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zBadRequestError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('bad_request'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zNoFileUploadedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -207,6 +215,14 @@ const zRosterAgentPackageExportFailedError = /* @__PURE__ */ (() =>
     z.object({
       code: z.literal('roster_agent_package_export_failed'),
       status: z.literal(500),
+    }),
+  ))()
+
+const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('message_feedback_rating_required'),
+      status: z.literal(400),
     }),
   ))()
 
@@ -598,6 +614,8 @@ export const post13Errors = {
 
 export const get20Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
+export const delete4Errors = { bad_request: { status: 400, data: zBadRequestError } }
+
 export const post17Errors = {
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_not_found: { status: 404, data: zAppNotFoundError },
@@ -620,6 +638,7 @@ export const get24Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 export const get25Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const get26Errors = {
+  agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
@@ -634,7 +653,10 @@ export const get26Errors = {
 
 export const post18Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const get27Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get27Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const delete6Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -661,9 +683,16 @@ export const get31Errors = {
   roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
 }
 
-export const post23Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post23Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+}
 
-export const get32Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get32Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const post25Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 

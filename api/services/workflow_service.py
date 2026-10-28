@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -95,6 +95,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeEx
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,
@@ -471,13 +472,13 @@ class WorkflowService:
             workflow = Workflow(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
-                type=WorkflowType.from_app_mode(app_model.mode).value,
+                type=WorkflowType.from_app_mode(app_model.mode),
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps(graph),
-                features=json.dumps(features),
+                _features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=initial_environment_variables,
-                conversation_variables=conversation_variables,
+                _environment_variables=initial_environment_variables,
+                _conversation_variables=conversation_variables,
             )
             session.add(workflow)
         # update draft workflow if found
@@ -1866,6 +1867,7 @@ class WorkflowService:
         if app_model.mode not in {AppMode.CHAT, AppMode.COMPLETION}:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
+        source_app_id = app_model.id
         # convert to workflow
         new_app: App = workflow_converter.convert_to_workflow(
             app_model=app_model,
@@ -1876,6 +1878,13 @@ class WorkflowService:
             icon_background=args.get("icon_background", "#FFEAD5"),
             session=session,
         )
+
+        if SystemFeatureService.is_webapp_auth_enabled():
+            # The converter committed and expired the App. Read its identity without
+            # opening another database transaction before calling Enterprise.
+            identity = inspect(new_app).identity
+            assert identity is not None
+            EnterpriseService.WebAppAuth.inherit_app_access_mode(source_app_id, str(identity[0]))
 
         return new_app
 
