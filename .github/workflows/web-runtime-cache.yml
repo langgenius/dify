@@ -1,0 +1,34 @@
+name: Prepare Web Runtime Cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/web-runtime-cache.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Download pinned Node.js runtime
+    if: github.repository == 'langgenius/dify' && github.ref == 'refs/heads/main'
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 15
+    # Start from origin downloads, never from caches produced by other jobs.
+    cache-mode: write-only
+    steps:
+      - name: Checkout trusted runtime configuration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cache runtime without installing workspace dependencies
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+          cache: true
+          save-cache: true

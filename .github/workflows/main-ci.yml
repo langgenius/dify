@@ -107,6 +107,8 @@ jobs:
               - 'pnpm-workspace.yaml'
               - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-tests.yml'
+              - '.github/workflows/web-bundle-size.yml'
+              - '.github/workflows/web-runtime-cache.yml'
               - '.github/actions/setup-web/**'
             e2e:
               - 'api/**'

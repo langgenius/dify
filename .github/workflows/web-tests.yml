@@ -14,6 +14,7 @@ jobs:
     name: OpenAPI SDK and Next.js adapters
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 15
+    cache-mode: read
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -22,6 +23,11 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          runtime-cache: 'true'
+
+      - name: Check runtime cache isolation
+        run: node --test .github/actions/setup-web/runtime-cache.test.cjs
 
       - name: Setup Python for in-memory Console schema export
         uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2

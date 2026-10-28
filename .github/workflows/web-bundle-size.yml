@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   measure:
@@ -19,6 +18,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    cache-mode: read
     strategy:
       fail-fast: false
       matrix:
@@ -31,14 +31,16 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
-      # Keep one collector for both revisions, including when it does not exist on base yet.
+      # Keep the collector and read-only cache policy identical for both revisions.
       - name: Checkout reporting tools
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Preserve collector
-        run: cp web/scripts/bundle-analysis.ts "$RUNNER_TEMP/bundle-analysis.ts"
+      - name: Preserve collector and web setup
+        run: |
+          cp web/scripts/bundle-analysis.ts "$RUNNER_TEMP/bundle-analysis.ts"
+          cp .github/actions/setup-web/action.yml "$RUNNER_TEMP/setup-web-action.yml"
 
       - name: Checkout measured revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,8 +48,13 @@ jobs:
           ref: ${{ matrix.sha }}
           persist-credentials: false
 
+      - name: Restore current web setup
+        run: cp "$RUNNER_TEMP/setup-web-action.yml" .github/actions/setup-web/action.yml
+
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          runtime-cache: 'true'
 
       - name: Instrument selected revision
         run: node "$RUNNER_TEMP/bundle-analysis.ts" instrument web
@@ -93,7 +100,9 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: write
+    cache-mode: read
+    outputs:
+      should-comment: ${{ steps.compare.outputs.should-comment }}
     steps:
       - name: Checkout reporting tools
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -104,6 +113,8 @@ jobs:
         uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
+          cache: true
+          save-cache: false
 
       - name: Download size snapshots
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -124,12 +135,36 @@ jobs:
           printf '\nComparison: event base SHA vs the tested merge commit at GITHUB_SHA (PR or merge queue).\n' >> bundle-report.md
           cat bundle-report.md >> "$GITHUB_STEP_SUMMARY"
 
-      # Forks still receive the job summary and artifacts, without a privileged PR build.
+      - name: Upload PR report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-bundle-report
+          path: bundle-report.md
+          if-no-files-found: error
+          retention-days: 1
+
+  # Publish report data without executing repository code or restoring caches.
+  comment:
+    name: Publish bundle report
+    needs: report
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    cache-mode: none
+    steps:
+      - name: Download PR report
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web-bundle-report
+          path: ${{ runner.temp }}/web-bundle-report
+
       - name: Update PR report
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          SHOULD_COMMENT: ${{ steps.compare.outputs.should-comment }}
+          SHOULD_COMMENT: ${{ needs.report.outputs.should-comment }}
+          REPORT_PATH: ${{ runner.temp }}/web-bundle-report/bundle-report.md
         with:
           script: |
             const fs = require('node:fs');
@@ -141,7 +176,7 @@ jobs:
               core.info('Skipping a superseded bundle report.');
               return;
             }
-            const body = fs.readFileSync('bundle-report.md', 'utf8');
+            const body = fs.readFileSync(process.env.REPORT_PATH, 'utf8');
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner, repo, issue_number: pull_number, per_page: 100,
             });

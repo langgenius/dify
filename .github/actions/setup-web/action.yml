@@ -8,14 +8,37 @@ inputs:
   cache-save:
     description: Save the dependency cache after the job completes
     default: 'true'
+  runtime-cache:
+    description: Reuse the pnpm runtime store in a job with cache-mode read
+    default: 'false'
 
 runs:
   using: composite
   steps:
+    - name: Require read-only runtime cache credentials
+      shell: bash
+      env:
+        RUNTIME_CACHE: ${{ inputs.runtime-cache }}
+      run: |
+        case "$RUNTIME_CACHE" in
+          false) ;;
+          true)
+            if [[ "${ACTIONS_CACHE_MODE:-}" != read ]]; then
+              echo '::error::Runtime cache consumers must set cache-mode: read.'
+              exit 1
+            fi
+            ;;
+          *)
+            echo '::error::runtime-cache must be true or false.'
+            exit 1
+            ;;
+        esac
     - name: Setup pnpm and Node.js
-      uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
       with:
         install: false
+        cache: ${{ inputs.runtime-cache }}
+        save-cache: false
     - name: Setup Vite+
       uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
       with:
