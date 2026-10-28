@@ -121,6 +121,7 @@ class AgentNode(Node[AgentNodeData]):
         agent_parameters = strategy.get_parameters()
 
         parameters = self._runtime_support.build_parameters(
+            node_id=self._node_id,
             agent_parameters=agent_parameters,
             variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,
@@ -131,6 +132,7 @@ class AgentNode(Node[AgentNodeData]):
             invoke_from=dify_ctx.invoke_from,
         )
         parameters_for_log = self._runtime_support.build_parameters(
+            node_id=self._node_id,
             agent_parameters=agent_parameters,
             variable_pool=self.runtime_state.variable_pool,
             node_data=self.node_data,

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope
-from core.memory.token_buffer_memory import PreparedHistory
+from core.memory.token_buffer_memory import HistoryPrompt, PreparedHistory
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
@@ -281,12 +281,16 @@ def test_queries_return_detached_configuration_and_history_without_changing_call
         harness.assert_closed()
 
         history = harness.queries.load_history(context)
-        assert [(prompt.text, prompt.is_user_message) for prompt in history.prompts] == [
+        user_prompt, assistant_prompt = history.prompts
+        assert isinstance(user_prompt, HistoryPrompt)
+        assert isinstance(assistant_prompt, HistoryPrompt)
+        prompts = (user_prompt, assistant_prompt)
+        assert [(prompt.text, prompt.is_user_message) for prompt in prompts] == [
             ("How does this work?", True),
             ("Like this.", False),
         ]
-        assert all(not prompt.files for prompt in history.prompts)
-        assert all(prompt.tenant_id == harness.target.tenant_id for prompt in history.prompts)
+        assert all(not prompt.files for prompt in prompts)
+        assert all(prompt.tenant_id == harness.target.tenant_id for prompt in prompts)
         assert len(harness.read_sessions) == 2
         assert harness.read_sessions[0] is not harness.read_sessions[1]
         harness.assert_closed()
@@ -315,7 +319,7 @@ def test_queries_return_detached_configuration_and_history_without_changing_call
         )
         session.execute(update(Message).where(Message.id == harness.message.id).values(answer="Changed answer"))
     assert context.config == feature
-    assert history.prompts[-1].text == "Like this."
+    assert assistant_prompt.text == "Like this."
 
 
 @pytest.mark.parametrize("invoke_from", ["explore", "service-api"])
@@ -485,6 +489,8 @@ def test_history_detaches_remote_attachment_references_before_rendering(harness:
     harness.assert_closed()
     assert len(harness.read_sessions) == 2
     user_prompt, assistant_prompt = history.prompts
+    assert isinstance(user_prompt, HistoryPrompt)
+    assert isinstance(assistant_prompt, HistoryPrompt)
     assert user_prompt.text == "How does this work?"
     assert user_prompt.tenant_id == harness.target.tenant_id
     assert len(user_prompt.files) == 1

@@ -36,6 +36,10 @@ server = [
     "uvicorn[standard]==0.46.0",
 ]
 
+[tool.uv.sources]
+# shortcut: pin the joint replay candidate until Graphon releases incremental accumulation and container output fixes.
+graphon = { git = "https://github.com/langgenius/graphon", rev = "86f1e11b199bb8ad9111ed49d42edea82a16b7fa" }
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["dify_agent*", "shellctl*"]

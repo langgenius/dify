@@ -319,7 +319,7 @@ def test_create_agent_thought_persists_row(
 
 
 def _persist_thought(session: Session, *, tool: str = "tool1;tool2") -> MessageAgentThought:
-    thought = _thought(thought_id="thought-1", tool=tool, thought="")
+    thought = _thought(thought_id="thought-1", message_id="msg_current", tool=tool, thought="")
     session.add(thought)
     session.commit()
     return thought

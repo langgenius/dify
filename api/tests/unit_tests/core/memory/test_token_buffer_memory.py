@@ -378,7 +378,7 @@ class TestGetHistoryPromptMessages:
         assert sum("FROM apps" in sql for sql in selects) == 1
         assert len(result) == 10
 
-    def test_history_query_skips_saved_prompt_column(self, database: Database) -> None:
+    def test_history_query_loads_replay_scope_without_saved_prompt(self, database: Database) -> None:
         """Message.message stores each turn's full prompt, so history must neither select nor lazy-load it."""
         mem = self._make_memory(database)
         base_time = datetime.now(UTC).replace(tzinfo=None)
@@ -396,7 +396,17 @@ class TestGetHistoryPromptMessages:
         database.session.expunge_all()
         before = len(database.statements)
 
-        result = mem.get_history_prompt_messages()
+        def load_message(message: Message) -> list[PromptMessage] | None:
+            return None if message.app_id == "app-1" else []
+
+        history = TokenBufferMemory.load_history(
+            conversation=mem.conversation,
+            app_record=None,
+            session=database.session,
+            message_limit=None,
+            message_loader=load_message,
+        )
+        result = history.to_prompt_messages()
 
         message_selects = [sql for sql, _ in database.statements[before:] if "FROM messages" in sql]
         assert len(message_selects) == 1

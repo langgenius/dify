@@ -49,6 +49,7 @@ def runner():
     runner._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
     runner._query = "user query"
     runner._agent_scratchpad = []
+    runner._current_thoughts = []
     runner.files = []
     runner.application_generate_entity = DummyGenerateEntity()
     runner._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
@@ -165,52 +166,15 @@ class TestOrganizePromptMessages:
         assert "query" in result
         runner._organize_historic_prompt_messages.assert_called_once()
 
-    def test_with_final_scratchpad(self, runner, mocker: MockerFixture):
-        runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
+    def test_preserves_model_messages_between_tool_rounds(self, runner):
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])
-
-        unit = DummyUnit(final=True, agent_response="done")
-        runner._agent_scratchpad = [unit]
-
-        result = runner._organize_prompt_messages()
-        assistant_msgs = [m for m in result if hasattr(m, "content")]
-        combined = "".join([m.content for m in assistant_msgs if isinstance(m.content, str)])
-        assert "Final Answer: done" in combined
-
-    def test_with_thought_action_observation(self, runner, mocker: MockerFixture):
-        runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
-        runner._organize_system_prompt = MagicMock(return_value="system")
-        runner._organize_user_query = MagicMock(return_value=["query"])
-
-        unit = DummyUnit(
-            final=False,
-            thought="thinking",
-            action_str="action",
-            observation="observe",
-        )
-        runner._agent_scratchpad = [unit]
-
-        result = runner._organize_prompt_messages()
-        assistant_msgs = [m for m in result if hasattr(m, "content")]
-        combined = "".join([m.content for m in assistant_msgs if isinstance(m.content, str)])
-        assert "Thought: thinking" in combined
-        assert "Action: action" in combined
-        assert "Observation: observe" in combined
-
-    def test_multiple_units_mixed(self, runner, mocker: MockerFixture):
-        runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
-        runner._organize_system_prompt = MagicMock(return_value="system")
-        runner._organize_user_query = MagicMock(return_value=["query"])
-
-        units = [
-            DummyUnit(final=False, thought="t1"),
-            DummyUnit(final=True, agent_response="done"),
+        runner._current_thoughts = [
+            AssistantPromptMessage(content=[TextPromptMessageContent(data="action", opaque_body=0)], opaque_body=False),
+            UserPromptMessage(content="Observation: result\n\ncontinue"),
+            AssistantPromptMessage(content="done", opaque_body={"signature": "signed"}),
         ]
-        runner._agent_scratchpad = units
-
         result = runner._organize_prompt_messages()
-        assistant_msgs = [m for m in result if hasattr(m, "content")]
-        combined = "".join([m.content for m in assistant_msgs if isinstance(m.content, str)])
-        assert "Thought: t1" in combined
-        assert "Final Answer: done" in combined
+        assert result == ["system", "historic", "query", *runner._current_thoughts]

@@ -142,13 +142,15 @@ def test_token_transport_failure_propagates_before_best_effort_generation(
     # request or a replaced transport. The real plugin client wraps that error.
     monkeypatch.setattr(plugin_base, "plugin_daemon_inner_api_baseurl", URL("unsupported://plugin-daemon"))
     history = PreparedHistory(
-        prompts=(
-            HistoryPrompt(
-                text="How does this work?",
-                is_user_message=True,
-                files=(),
-                tenant_id=str(uuid4()),
-                image_detail=ImagePromptMessageContent.DETAIL.HIGH,
+        turns=(
+            (
+                HistoryPrompt(
+                    text="How does this work?",
+                    is_user_message=True,
+                    files=(),
+                    tenant_id=str(uuid4()),
+                    image_detail=ImagePromptMessageContent.DETAIL.HIGH,
+                ),
             ),
         )
     )
@@ -264,7 +266,7 @@ def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
         # stored config before it could create a timer or dispatch telemetry.
         with pytest.raises(ValidationError), current_app.app_context():
             SuggestedQuestionsGenerator().generate(
-                PreparedHistory(prompts=()),
+                PreparedHistory(turns=()),
                 history_model=make_model_instance(provider="invalid/provider", model="unused"),
                 context=context,
                 instruction_prompt=None,

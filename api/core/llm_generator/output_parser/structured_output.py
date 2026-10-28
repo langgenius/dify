@@ -147,13 +147,8 @@ def invoke_llm_with_structured_output(
     )
 
     if isinstance(llm_result, LLMResult):
-        if not isinstance(llm_result.message.content, str):
-            raise OutputParserError(
-                f"Failed to parse structured output, LLM result is not a string: {llm_result.message.content}"
-            )
-
         return LLMResultWithStructuredOutput(
-            structured_output=_parse_structured_output(llm_result.message.content),
+            structured_output=_parse_structured_output(llm_result.message.get_text_content()),
             model=llm_result.model,
             message=llm_result.message,
             usage=llm_result.usage,
