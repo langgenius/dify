@@ -42,6 +42,7 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
+import { basePath } from '@/utils/var'
 import { getStepByStepTourPermissionVariant, trackStepByStepTourEvent } from './analytics'
 import { StepByStepTourCoachmark } from './coachmark'
 import { FloatingChecklist, MinimizedTourPill } from './floating-widget'
@@ -65,7 +66,6 @@ import {
 } from './state'
 import {
   getStepByStepTourGuideInteractionPolicy,
-  getStepByStepTourGuideKind,
   getStepByStepTourGuides,
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -227,9 +227,9 @@ export default function StepByStepTourMount({
   const minimized = Boolean(activeTask) || checklistMinimized
   const activeGuideIndexes =
     activeGuides.length > 0
-      ? getActiveGuideIndexes(activeGuides, sessionGuideIndexes)
-          .filter((index) => isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences))
-          .filter((index) => isOptionalGuideTargetAvailable(activeGuides[index]!, pathname))
+      ? getActiveGuideIndexes(activeGuides, sessionGuideIndexes).filter((index) =>
+          isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences),
+        )
       : []
   const activeGuidePlanIndex = activeGuideIndexes.findIndex((index) => index === activeGuideIndex)
   const activeStepIndex =
@@ -320,7 +320,7 @@ export default function StepByStepTourMount({
     if (lastRequestedIntegrationRouteRef.current === activeGuideRoute) return
 
     lastRequestedIntegrationRouteRef.current = activeGuideRoute
-    router.push(activeGuideRoute)
+    router.replace(activeGuideRoute)
   }, [activeGuide?.integrationSection, activeTask?.id, pathname, router])
 
   useEffect(() => {
@@ -513,7 +513,6 @@ export default function StepByStepTourMount({
               id: task.id,
               iconClassName: knowledgeUnavailable ? 'i-ri-lock-line' : task.iconClassName,
               status: completed ? 'completed' : task.id === currentTask?.id ? 'current' : 'pending',
-              canToggleCompletion: false,
             }
           })
 
@@ -599,6 +598,16 @@ export default function StepByStepTourMount({
                 return
               }
 
+              const nextGuideSection =
+                activeTask.id === 'integration'
+                  ? activeGuides[nextActiveGuide.activeGuideIndex]?.integrationSection
+                  : undefined
+              const nextGuideRoute = nextGuideSection && buildIntegrationPath(nextGuideSection)
+              // The Integrations page stays mounted across sections, so the step only needs the URL.
+              if (nextGuideRoute && nextGuideRoute !== pathname) {
+                lastRequestedIntegrationRouteRef.current = nextGuideRoute
+                window.history.replaceState(null, '', `${basePath}${nextGuideRoute}`)
+              }
               advanceGuide({
                 guideIndex: nextActiveGuide.activeGuideIndex,
                 guideIndexes: nextActiveGuide.activeGuideIndexes,
@@ -671,18 +680,6 @@ export default function StepByStepTourMount({
                 setChecklistMinimized(true)
               }}
               onSkip={skipTour}
-              onCompleteTask={(taskId) => {
-                const guides = getStepByStepTourGuides(taskId, sessionGuideGroup)
-                const hasExternalCompletionGuide = guides.some(
-                  (guide) => getStepByStepTourGuideKind(guide) === 'action',
-                )
-                if (hasExternalCompletionGuide) return
-
-                completeTask({
-                  taskId,
-                  onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
-                })
-              }}
               onStartTask={(taskId) => {
                 const task = availableTasks.find((item) => item.id === taskId)
 
@@ -710,15 +707,7 @@ export default function StepByStepTourMount({
                   return
                 }
 
-                const guides = getStepByStepTourGuides(taskId, guideGroup)
-                const guideIndexes = createGuideIndexes(guides).filter((index) =>
-                  isGuideEligibleForPlan(guides[index]!, canSetPluginPreferences),
-                )
-                startTask({
-                  taskId,
-                  guideGroup,
-                  guideIndexes: guideIndexes.length > 0 ? guideIndexes : undefined,
-                })
+                startTask({ taskId, guideGroup })
                 router.push(task.route)
               }}
               onUncompleteTask={(taskId) => {
