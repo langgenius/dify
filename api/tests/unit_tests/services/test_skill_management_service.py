@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import zipfile
@@ -3982,6 +3983,7 @@ def test_overwrite_unknown_skill_is_404() -> None:
 
 _LOGO = b"\x89PNG\r\n\x1a\n\x00logo"
 _CHART = b"\x89PNG\r\n\x1a\n\x00chart"
+_SAME_SIZE_AS_LOGO = b"\x89PNG\r\n\x1a\n\x00fake"
 
 
 class _ForcedFailureError(Exception):
@@ -4247,3 +4249,136 @@ def test_restore_reuses_identical_binary(tool_files: _FakeToolFileManager) -> No
     assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id}
     assert _tool_file_ids() == ids_before
     assert any("# Expenses" in (file["content"] or "") for file in restored["files"])
+
+
+def _stored_tool_file(manager: _FakeToolFileManager, payload: bytes, *, tenant_id: str = TENANT) -> ToolFile:
+    return manager.create_file_by_raw(
+        user_id=USER, tenant_id=tenant_id, conversation_id=None, file_binary=payload, mimetype="image/png"
+    )
+
+
+def _draft_logo_claims_logo_bytes(service: SkillManagementService, skill_id: str, *, tool_file_id: str) -> None:
+    """Point the draft's logo row at ``tool_file_id`` while claiming the hash and size of ``_LOGO``."""
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=skill_id,
+        payload=SkillDraftTreePayload(
+            files=[
+                {"path": "SKILL.md", "content": _skill_md(name="expense-sop", description="Expenses")},
+                {
+                    "path": "assets/logo.png",
+                    "storage": "tool_file",
+                    "tool_file_id": tool_file_id,
+                    "mime_type": "image/png",
+                    "size": len(_LOGO),
+                    "hash": hashlib.sha256(_LOGO).hexdigest(),
+                },
+            ]
+        ),
+    )
+
+
+def _overwrite_logo_after_claim(tool_files: _FakeToolFileManager, *, claimed_tool_file_id: str) -> str:
+    service = SkillManagementService(tool_file_manager=tool_files)
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
+    _draft_logo_claims_logo_bytes(service, created["id"], tool_file_id=claimed_tool_file_id)
+
+    _overwrite_package(service, created["id"], _skill_package({"assets/logo.png": _LOGO}))
+
+    new_logo_id = _draft_tool_file_ids(created["id"])["assets/logo.png"]
+    assert new_logo_id is not None
+    assert new_logo_id != claimed_tool_file_id
+    assert tool_files.stored[_tool_file_key(new_logo_id)] == _LOGO
+    return new_logo_id
+
+
+def _tool_file_key(tool_file_id: str) -> str:
+    with session_factory.create_session() as session:
+        key = session.scalar(select(ToolFile.file_key).where(ToolFile.id == tool_file_id))
+    assert key is not None
+    return key
+
+
+def test_overwrite_does_not_reuse_a_file_whose_bytes_differ_from_its_claimed_hash(
+    tool_files: _FakeToolFileManager,
+) -> None:
+    forged = _stored_tool_file(tool_files, _SAME_SIZE_AS_LOGO)
+
+    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=forged.id)
+
+    assert tool_files.stored[forged.file_key] == _SAME_SIZE_AS_LOGO
+    assert forged.id in _tool_file_ids()
+
+
+def test_overwrite_does_not_reuse_a_missing_file(tool_files: _FakeToolFileManager) -> None:
+    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=str(uuid4()))
+
+
+def test_overwrite_does_not_reuse_another_tenants_file(tool_files: _FakeToolFileManager) -> None:
+    foreign = _stored_tool_file(tool_files, _LOGO, tenant_id=OTHER_TENANT)
+
+    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=foreign.id)
+
+    assert tool_files.stored[foreign.file_key] == _LOGO
+    assert foreign.id in _tool_file_ids()
+
+
+def test_overwrite_uploads_a_new_copy_when_the_candidate_cannot_be_loaded(tool_files: _FakeToolFileManager) -> None:
+    unreadable = _stored_tool_file(tool_files, _LOGO)
+    del tool_files.stored[unreadable.file_key]
+
+    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=unreadable.id)
+
+    assert unreadable.id in _tool_file_ids()
+
+
+def test_overwrite_loads_each_reuse_candidate_once(
+    tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = SkillManagementService(tool_file_manager=tool_files)
+    skill_id, logo_id = _skill_with_logo(service)
+    loaded: list[str] = []
+
+    def load_once(key: str) -> bytes:
+        loaded.append(key)
+        return tool_files.stored[key]
+
+    monkeypatch.setattr("services.skill_management_service.storage.load_once", load_once)
+
+    _overwrite_package(service, skill_id, _skill_package({"assets/logo.png": _LOGO, "images/logo.png": _LOGO}))
+
+    assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id, "images/logo.png": logo_id}
+    assert loaded == [_tool_file_key(logo_id)]
+
+
+def test_import_uploads_while_no_transaction_is_open() -> None:
+    in_transaction_at_upload: list[bool] = []
+    with session_factory.create_session() as session:
+
+        class _TransactionCheckingToolFileManager(_FakeToolFileManager):
+            @override
+            def create_file_by_raw(
+                self,
+                *,
+                user_id: str,
+                tenant_id: str,
+                conversation_id: str | None,
+                file_binary: bytes,
+                mimetype: str,
+                filename: str | None = None,
+            ) -> ToolFile:
+                in_transaction_at_upload.append(session.in_transaction())
+                return super().create_file_by_raw(
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    conversation_id=conversation_id,
+                    file_binary=file_binary,
+                    mimetype=mimetype,
+                    filename=filename,
+                )
+
+        service = SkillManagementService(tool_file_manager=_TransactionCheckingToolFileManager(), session=session)
+        _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
+
+    assert in_transaction_at_upload == [False]

@@ -26,7 +26,7 @@ from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import json_repair
@@ -39,6 +39,7 @@ from sqlalchemy.orm import Session, object_session
 from yaml.error import MarkedYAMLError
 
 from configs import dify_config
+from constants import BYTES_PER_MIB
 from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
@@ -537,27 +538,32 @@ class RuntimeAgentSkillArchive:
 
 
 @dataclass(frozen=True, slots=True)
-class _ArchiveEntry:
+class _BinaryArchiveEntry:
     path: str
-    kind: SkillFileKind
-    text: str | None = None
-    binary: bytes | None = None
+    payload: bytes
 
 
 @dataclass(frozen=True, slots=True)
 class _SkillArchiveContents:
-    entries: tuple[_ArchiveEntry, ...]
+    """Directories and text files are final draft items; binaries still need a stored tool file."""
+
+    entries: tuple[SkillDraftTreeItemPayload | _BinaryArchiveEntry, ...]
     metadata: dict[str, Any]
     skill_md_content: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class _ToolFileUploads:
-    """Tool files one request stores. ``reusable_ids`` maps a ``(sha256, size)`` to an existing file to reuse."""
+    """Tool files one request stores or reuses.
+
+    ``candidate_ids`` maps a draft row's claimed ``(sha256, size)`` to its tool file ids. The claim is
+    client-set, so ``stored_digests`` caches the sha256 of each candidate's real bytes (None if unreadable).
+    """
 
     tenant_id: str
     user_id: str
-    reusable_ids: Mapping[tuple[str, int], str] = field(default_factory=dict)
+    candidate_ids: Mapping[tuple[str, int], tuple[str, ...]] = field(default_factory=dict)
+    stored_digests: dict[str, str | None] = field(default_factory=dict)
     created: list[ToolFile] = field(default_factory=list)
 
 
@@ -570,9 +576,6 @@ class SkillFileContent:
     content: str | None
     size: int
     hash: str
-
-
-BYTES_PER_MIB: Final = 1024 * 1024
 
 
 def max_skill_archive_bytes() -> int:
@@ -2212,6 +2215,8 @@ class SkillManagementService:
         with self._session_scope() as session:
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
             self._reject_taken_skill_name(session, tenant_id=tenant_id, name=name)
+            # Ends the pre-check read transaction so none stays open while the binaries upload.
+            session.commit()
             uploads = _ToolFileUploads(tenant_id=tenant_id, user_id=user_id)
             with self._discard_uploads_on_failure(session, uploads=uploads):
                 draft_payload = self._store_archive_entries(contents, uploads=uploads)
@@ -3907,7 +3912,7 @@ class SkillManagementService:
                 path_map = cls._strip_single_root(raw_paths)
                 if _SKILL_MD not in set(path_map.values()):
                     raise SkillManagementServiceError("missing_skill_md", "Skill package must contain SKILL.md")
-                entries: list[_ArchiveEntry] = []
+                entries: list[SkillDraftTreeItemPayload | _BinaryArchiveEntry] = []
                 metadata: dict[str, Any] = {}
                 skill_md_content = ""
                 for info in infos:
@@ -3916,7 +3921,7 @@ class SkillManagementService:
                         continue
                     path = normalize_skill_file_path(path_map[raw_path])
                     if info.is_dir():
-                        entries.append(_ArchiveEntry(path=path, kind=SkillFileKind.DIRECTORY))
+                        entries.append(SkillDraftTreeItemPayload(path=path, kind=SkillFileKind.DIRECTORY))
                         continue
                     payload = archive.read(info)
                     text = cls._decode_text_payload(path, payload)
@@ -3926,10 +3931,17 @@ class SkillManagementService:
                         text = cls._normalize_newlines(text)
                         metadata = cls._parse_frontmatter(text)
                         skill_md_content = text
-                    if text is not None:
-                        entries.append(_ArchiveEntry(path=path, kind=SkillFileKind.FILE, text=text))
-                    else:
-                        entries.append(_ArchiveEntry(path=path, kind=SkillFileKind.FILE, binary=payload))
+                    if text is None:
+                        entries.append(_BinaryArchiveEntry(path=path, payload=payload))
+                        continue
+                    entries.append(
+                        SkillDraftTreeItemPayload(
+                            path=path,
+                            storage=SkillFileStorage.TEXT,
+                            mime_type=cls._guess_mime_type(path),
+                            content=text,
+                        )
+                    )
         except zipfile.BadZipFile as exc:
             raise SkillManagementServiceError("invalid_skill_package", "skill package must be a valid zip") from exc
         return _SkillArchiveContents(entries=tuple(entries), metadata=metadata, skill_md_content=skill_md_content)
@@ -3939,45 +3951,58 @@ class SkillManagementService:
     ) -> SkillDraftTreePayload:
         items: list[SkillDraftTreeItemPayload] = []
         for entry in contents.entries:
-            if entry.kind == SkillFileKind.DIRECTORY:
-                items.append(SkillDraftTreeItemPayload(path=entry.path, kind=SkillFileKind.DIRECTORY))
+            if isinstance(entry, _BinaryArchiveEntry):
+                items.append(self._store_binary_entry(entry, uploads=uploads))
                 continue
-            mime_type = self._guess_mime_type(entry.path)
-            if entry.binary is None:
-                items.append(
-                    SkillDraftTreeItemPayload(
-                        path=entry.path,
-                        storage=SkillFileStorage.TEXT,
-                        mime_type=mime_type,
-                        content=entry.text,
-                    )
-                )
-                continue
-            digest = hashlib.sha256(entry.binary).hexdigest()
-            size = len(entry.binary)
-            tool_file_id = uploads.reusable_ids.get((digest, size))
-            if tool_file_id is None:
-                tool_file = self._tool_files.create_file_by_raw(
-                    user_id=uploads.user_id,
-                    tenant_id=uploads.tenant_id,
-                    conversation_id=None,
-                    file_binary=entry.binary,
-                    mimetype=mime_type,
-                    filename=entry.path.rsplit("/", 1)[-1],
-                )
-                uploads.created.append(tool_file)
-                tool_file_id = tool_file.id
-            items.append(
-                SkillDraftTreeItemPayload(
-                    path=entry.path,
-                    storage=SkillFileStorage.TOOL_FILE,
-                    mime_type=mime_type,
-                    tool_file_id=tool_file_id,
-                    size=size,
-                    hash=digest,
-                )
-            )
+            items.append(entry)
         return SkillDraftTreePayload(files=items)
+
+    def _store_binary_entry(
+        self, entry: _BinaryArchiveEntry, *, uploads: _ToolFileUploads
+    ) -> SkillDraftTreeItemPayload:
+        digest = hashlib.sha256(entry.payload).hexdigest()
+        size = len(entry.payload)
+        mime_type = self._guess_mime_type(entry.path)
+        tool_file_id = self._reusable_tool_file_id(uploads, digest=digest, size=size)
+        if tool_file_id is None:
+            tool_file = self._tool_files.create_file_by_raw(
+                user_id=uploads.user_id,
+                tenant_id=uploads.tenant_id,
+                conversation_id=None,
+                file_binary=entry.payload,
+                mimetype=mime_type,
+                filename=entry.path.rsplit("/", 1)[-1],
+            )
+            uploads.created.append(tool_file)
+            tool_file_id = tool_file.id
+        return SkillDraftTreeItemPayload(
+            path=entry.path,
+            storage=SkillFileStorage.TOOL_FILE,
+            mime_type=mime_type,
+            tool_file_id=tool_file_id,
+            size=size,
+            hash=digest,
+        )
+
+    def _reusable_tool_file_id(self, uploads: _ToolFileUploads, *, digest: str, size: int) -> str | None:
+        for candidate_id in uploads.candidate_ids.get((digest, size), ()):
+            if candidate_id not in uploads.stored_digests:
+                uploads.stored_digests[candidate_id] = self._stored_tool_file_digest(
+                    tenant_id=uploads.tenant_id, tool_file_id=candidate_id
+                )
+            if uploads.stored_digests[candidate_id] == digest:
+                return candidate_id
+        return None
+
+    @classmethod
+    def _stored_tool_file_digest(cls, *, tenant_id: str, tool_file_id: str) -> str | None:
+        try:
+            payload = cls._load_draft_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id)
+        except Exception:
+            # Reuse is only an optimization; an unreadable candidate means storing a fresh copy.
+            logger.warning("Skill draft tool file %s could not be read for reuse", tool_file_id, exc_info=True)
+            return None
+        return hashlib.sha256(payload).hexdigest()
 
     def _replace_draft_from_archive(
         self, session, *, skill: Skill, user_id: str, contents: _SkillArchiveContents
@@ -3985,7 +4010,7 @@ class SkillManagementService:
         uploads = _ToolFileUploads(
             tenant_id=skill.tenant_id,
             user_id=user_id,
-            reusable_ids=self._reusable_tool_file_ids(session, skill_id=skill.id),
+            candidate_ids=self._reuse_candidate_ids(session, skill=skill),
         )
         with self._discard_uploads_on_failure(session, uploads=uploads):
             draft_payload = self._store_archive_entries(contents, uploads=uploads)
@@ -3999,18 +4024,24 @@ class SkillManagementService:
         return files
 
     @staticmethod
-    def _reusable_tool_file_ids(session, *, skill_id: str) -> dict[tuple[str, int], str]:
+    def _reuse_candidate_ids(session, *, skill: Skill) -> dict[tuple[str, int], tuple[str, ...]]:
+        """Draft rows whose tool file exists in the skill's tenant with the size the row claims."""
         rows = session.execute(
-            select(SkillDraftFile.hash, SkillDraftFile.size, SkillDraftFile.tool_file_id).where(
-                SkillDraftFile.skill_id == skill_id,
+            select(SkillDraftFile.hash, SkillDraftFile.size, SkillDraftFile.tool_file_id)
+            .join(ToolFile, ToolFile.id == SkillDraftFile.tool_file_id)
+            .where(
+                SkillDraftFile.skill_id == skill.id,
                 SkillDraftFile.storage == SkillFileStorage.TOOL_FILE,
-                SkillDraftFile.hash.is_not(None),
                 SkillDraftFile.hash != "",
-                SkillDraftFile.size.is_not(None),
-                SkillDraftFile.tool_file_id.is_not(None),
+                ToolFile.tenant_id == skill.tenant_id,
+                ToolFile.size == SkillDraftFile.size,
             )
         ).all()
-        return {(row.hash, row.size): row.tool_file_id for row in rows}
+        candidates: dict[tuple[str, int], tuple[str, ...]] = {}
+        for row in rows:
+            key = (row.hash, row.size)
+            candidates[key] = (*candidates.get(key, ()), row.tool_file_id)
+        return candidates
 
     @contextmanager
     def _discard_uploads_on_failure(self, session, *, uploads: _ToolFileUploads) -> Generator[None]:
@@ -4029,7 +4060,7 @@ class SkillManagementService:
     def _delete_created_tool_files(session, *, uploads: _ToolFileUploads) -> None:
         tool_file_ids = [tool_file.id for tool_file in uploads.created]
         try:
-            # Ends the failed request's transaction so the cleanup session is not blocked by its row locks.
+            # Release the failed transaction's row locks before the slower storage deletes.
             session.rollback()
             for tool_file in uploads.created:
                 with suppress(FileNotFoundError):
