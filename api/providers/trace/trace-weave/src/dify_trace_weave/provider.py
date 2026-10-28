@@ -281,7 +281,7 @@ class WeaveProvider(TraceProvider[WeaveConfig]):
                 raise ExportOutcomeUnknownError("Weave accepted only part of the trace") from None
             raise
         calls_url = f"{_project_url(config, entity, project)}/r/call"
-        root_span_id = trace.trace_root.span_id if trace.trace_root is not None else trace.root.span_id
+        root_span_id = trace.parent.span_id if trace.parent is not None else trace.root.span_id
         return SendResult(
             trace_id=trace_key,
             trace_url=f"{calls_url}/{_call_id(trace, root_span_id)}",

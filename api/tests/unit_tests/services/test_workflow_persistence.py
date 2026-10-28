@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
-from dify_trace_sdk.events import TraceCorrelation, TraceEvent, TraceParent, WorkflowRunCompleted
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent, WorkflowRunCompleted
 from flask import Flask
 from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy import select
@@ -293,7 +293,9 @@ def _trace_scope(recorder: _TraceRecorder, correlation: TraceCorrelation) -> Tra
 
 
 def _empty_correlation() -> TraceCorrelation:
-    return TraceCorrelation(external_trace_id=None, session_id=None, parent=None)
+    return TraceCorrelation(
+        external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+    )
 
 
 def _naive_utc_now() -> datetime:
@@ -1102,13 +1104,8 @@ class TestPersistenceLayerCases:
             correlation = TraceCorrelation(
                 external_trace_id="trace",
                 session_id="session-1",
-                parent=TraceParent(
-                    workflow_run_id="outer-workflow-run-1",
-                    app_id="outer-app-1",
-                    node_execution_id="outer-node-execution-1",
-                    external_trace_id=None,
-                    parent=None,
-                ),
+                parent_workflow_run_id="outer-workflow-run-1",
+                parent_node_execution_id="outer-node-execution-1",
             )
             layer, _, _, runtime_state = _make_layer(
                 system_variables,

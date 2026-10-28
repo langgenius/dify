@@ -60,7 +60,9 @@ def _trace_scope() -> TraceScope:
         tenant_id="tenant",
         app_id="app1",
         user_id="user",
-        correlation=TraceCorrelation(external_trace_id=None, session_id="session-1", parent=None),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
     )
 
 

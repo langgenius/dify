@@ -11,7 +11,6 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from dify_trace_sdk.events import TraceParent
 from pydantic import BaseModel, ConfigDict, StrictStr, ValidationError
 
 from graphon.entities import WorkflowNodeExecution
@@ -115,8 +114,6 @@ class WorkflowTraceInfo(BaseTraceInfo):
     file_list: list[str]
     invoked_by: str | None
     query: str
-    parent: TraceParent | None
-    """The run that started this nested workflow run; ``None`` outside nested workflows."""
 
 
 class MessageTraceInfo(BaseTraceInfo):

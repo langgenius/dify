@@ -20,7 +20,6 @@ from dify_trace_sdk.testing import (
     WORKFLOW_RUN_ID,
     RecordingEgress,
     message_trace,
-    nested_workflow_fragment,
     response,
     tool_fragment,
     workflow_trace,
@@ -276,25 +275,6 @@ def test_fragment_attaches_under_the_message_run() -> None:
         trace_url=f"{PROJECT_URL}/r/{MESSAGE_ID}",
         span_urls={fragment.root.span_id: f"{PROJECT_URL}/r/{tool_run_id}"},
     )
-
-
-def test_nested_workflow_attaches_under_the_trace_root_run() -> None:
-    """LangSmith orders runs by their full ancestry, which a deeper parent's unit does not carry."""
-    workflow_provider, workflow_egress = _provider(*_accepted(3))
-    workflow_provider.send(VERIFIED, workflow_trace())
-    root_order = _runs(workflow_egress)[0]["dotted_order"]
-    provider, egress = _provider(*_accepted(2))
-    fragment = nested_workflow_fragment()
-    run_id = str(span_uuid(fragment.trace_id, fragment.root.span_id))
-
-    provider.send(VERIFIED, fragment)
-
-    nested_run, node_run = _runs(egress)
-    assert nested_run["id"] == run_id
-    assert (nested_run["parent_run_id"], nested_run["trace_id"]) == (WORKFLOW_RUN_ID, WORKFLOW_RUN_ID)
-    assert nested_run["dotted_order"] == f"{root_order}.20261001T080003100000Z{run_id}"
-    assert node_run["parent_run_id"] == run_id
-    assert node_run["dotted_order"].startswith(f"{nested_run['dotted_order']}.")
 
 
 def test_runs_are_posted_under_the_endpoint_path() -> None:

@@ -21,7 +21,6 @@ from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
-from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import QuotaManagedModelInstance
@@ -1143,7 +1142,7 @@ class TestToolNodeRuntimeCases:
         assert workflow_tool.provider_type == CoreToolProviderType.BUILT_IN
 
     @staticmethod
-    def test_workflow_tools_receive_the_chained_parent_trace_context(
+    def test_get_runtime_stores_parent_trace_context_for_workflow_tools(
         runtime: DifyToolNodeRuntime,
     ) -> None:
         variable_pool: VariablePool = build_test_variable_pool(
@@ -1154,11 +1153,6 @@ class TestToolNodeRuntimeCases:
         )
         workflow_runtime = MagicMock()
         workflow_runtime.runtime.runtime_parameters = {}
-        runtime._run_context.parent_trace_context = ParentTraceContext(
-            parent_workflow_run_id="outer-run-id",
-            parent_node_execution_id="outer-node-execution-id",
-            parent_external_trace_id="caller-trace",
-        )
         node_data = ToolNodeData.model_validate(
             {
                 "type": "tool",
@@ -1181,37 +1175,14 @@ class TestToolNodeRuntimeCases:
                 node_execution_id="node-execution-id",
             )
 
-        chained = ParentTraceContext(
-            parent_workflow_run_id="workflow-run-id",
-            parent_node_execution_id="node-execution-id",
-            parent_app_id="app-id",
-            parent_trace_context=ParentTraceContext(
-                parent_workflow_run_id="outer-run-id",
-                parent_node_execution_id="outer-node-execution-id",
-                parent_external_trace_id="caller-trace",
-            ),
-        )
-        assert tool_runtime.raw.parent_trace_context == chained
+        assert tool_runtime.raw.parent_trace_context.model_dump() == {
+            "parent_workflow_run_id": "workflow-run-id",
+            "parent_node_execution_id": "node-execution-id",
+        }
         assert workflow_runtime.runtime.runtime_parameters == {}
 
-        with (
-            patch.object(ToolEngine, "generic_invoke", return_value=iter([])),
-            patch.object(
-                ToolFileMessageTransformer,
-                "transform_tool_invoke_messages",
-                side_effect=lambda *, messages, **_: messages,
-            ),
-        ):
-            list(
-                runtime.invoke(
-                    tool_runtime=tool_runtime, tool_parameters={}, workflow_call_depth=0, provider_name="provider"
-                )
-            )
-
-        workflow_runtime.set_parent_trace_context.assert_called_once_with(chained)
-
     @staticmethod
-    def test_get_runtime_passes_trace_session_and_caller_trace_to_workflow_tools(
+    def test_get_runtime_stores_trace_session_id_for_workflow_tools(
         runtime: DifyToolNodeRuntime,
     ) -> None:
         variable_pool: VariablePool = build_test_variable_pool(
@@ -1223,7 +1194,6 @@ class TestToolNodeRuntimeCases:
         workflow_runtime = MagicMock()
         workflow_runtime.runtime.runtime_parameters = {}
         runtime._run_context.trace_session_id = "session-1"
-        runtime._run_context.external_trace_id = "caller-trace"
         node_data = ToolNodeData.model_validate(
             {
                 "type": "tool",
@@ -1247,12 +1217,6 @@ class TestToolNodeRuntimeCases:
             )
 
         assert tool_runtime.raw.trace_session_id == "session-1"
-        assert tool_runtime.raw.parent_trace_context == ParentTraceContext(
-            parent_workflow_run_id="workflow-run-id",
-            parent_node_execution_id="node-execution-id",
-            parent_app_id="app-id",
-            parent_external_trace_id="caller-trace",
-        )
         assert workflow_runtime.runtime.runtime_parameters == {}
 
     @staticmethod
@@ -2210,11 +2174,10 @@ class TestNodeRuntimeCases:
         )
 
         assert handle.raw.tool is runtime_tool
-        assert handle.raw.parent_trace_context == ParentTraceContext(
-            parent_workflow_run_id="outer-workflow-run-id",
-            parent_node_execution_id="node-execution-id",
-            parent_app_id="app-id",
-        )
+        assert handle.raw.parent_trace_context.model_dump() == {
+            "parent_workflow_run_id": "outer-workflow-run-id",
+            "parent_node_execution_id": "node-execution-id",
+        }
         assert runtime_tool.runtime.runtime_parameters == {}
         get_runtime.assert_called_once()
 

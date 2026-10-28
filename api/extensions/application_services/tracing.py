@@ -46,9 +46,6 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
     builder = CanonicalTraceBuilder()
     configs = SQLAlchemyAppTracingConfigRepository(session_factory=database_client)
     enterprise_telemetry = is_enterprise_telemetry_enabled()
-    records = TraceRecordRepository(
-        database_client, files_url=dify_config.FILES_URL, enterprise_details=enterprise_telemetry
-    )
     agent_settings = AgentTraceSettings(
         enabled=dify_config.OPS_AGENT_TRACE_ENABLED,
         max_spans=dify_config.OPS_AGENT_TRACE_MAX_SPANS,
@@ -77,8 +74,9 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
             emitter=CeleryTraceEmitter(), policies=configs, enterprise_enabled=is_enterprise_telemetry_enabled
         ),
         delivery=TraceDeliveryService(
-            records=records,
-            outer_runs=records,
+            records=TraceRecordRepository(
+                database_client, files_url=dify_config.FILES_URL, enterprise_details=enterprise_telemetry
+            ),
             destinations=configs,
             providers=providers,
             codec=codec,

@@ -6,7 +6,7 @@ from dify_trace_sdk.model import SpanKind, SpanStatus
 
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from services.tracing.canonical import CanonicalTraceBuilder, root_trace_id
+from services.tracing.canonical import CanonicalTraceBuilder, message_trace_id
 from services.tracing.records import (
     MessageTraceInfo,
     PromptGenerationTraceInfo,
@@ -116,7 +116,6 @@ def _workflow_record(*, message_id: str | None, metadata: dict[str, object]) -> 
         file_list=[],
         invoked_by=None,
         query="hi" if message_id else "",
-        parent=None,
         start_time=STARTED_AT,
         end_time=STARTED_AT + timedelta(seconds=3),
         metadata=metadata,
@@ -145,7 +144,7 @@ def test_message_record_becomes_a_root_span_with_one_llm_child() -> None:
     trace = CanonicalTraceBuilder().build(_message_record(end_user_session_id="customer-42"))
 
     assert trace is not None
-    assert trace.trace_id == root_trace_id(None, MESSAGE_ID) == trace_id_for(MESSAGE_ID)
+    assert trace.trace_id == message_trace_id(None, MESSAGE_ID) == trace_id_for(MESSAGE_ID)
     assert trace.session_id == CONVERSATION_ID
     assert trace.user_id == "customer-42"
     root, llm = trace.spans

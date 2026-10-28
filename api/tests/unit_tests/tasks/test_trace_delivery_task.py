@@ -15,11 +15,8 @@ from extensions.ext_redis import redis_client
 from services.tracing.adapters import payload_key
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.delivery import (
-    CollectedTrace,
     ExportJob,
     ExportRetryQueue,
-    OuterRunQuery,
-    OuterRunRoot,
     StoredTraceDestination,
     TraceCollector,
     TraceDeliveryService,
@@ -28,7 +25,7 @@ from services.tracing.delivery import (
 )
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError
 from services.tracing.providers import ProviderConfigCodec
-from services.tracing.records import BaseTraceInfo, GenerateNameTraceInfo
+from services.tracing.records import BaseTraceInfo, GenerateNameTraceInfo, WorkflowTraceInfo
 from tasks import trace_delivery_task
 from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export, sweep_trace_payloads
 from tests.helpers.unit.services.tracing_ports import InstalledTraceProviders, WorkspaceBoundCipher
@@ -91,20 +88,8 @@ class _UnavailableCollector(TraceCollector):
         raise RuntimeError("ledger unavailable")
 
     @override
-    def collected_trace(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> CollectedTrace | None:
-        raise AssertionError("no nested workflow run is delivered")
-
-
-class _NoOuterRuns(OuterRunQuery):
-    @override
-    def root(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> OuterRunRoot | None:
-        raise AssertionError("no nested workflow run is delivered")
-
-    @override
-    def node_started_at(
-        self, *, tenant_id: str, app_id: str, workflow_run_id: str, node_execution_id: str
-    ) -> datetime | None:
-        raise AssertionError("no nested workflow run is delivered")
+    def link_managed_parent(self, *, tenant_id: str, info: WorkflowTraceInfo) -> WorkflowTraceInfo:
+        return info
 
 
 class _Delivery:
@@ -115,7 +100,6 @@ class _Delivery:
     def service(self, collector: TraceCollector | None) -> TraceDeliveryService:
         return TraceDeliveryService(
             records=self.records,
-            outer_runs=_NoOuterRuns(),
             destinations=self.destinations,
             providers=InstalledTraceProviders(),
             codec=ProviderConfigCodec(WorkspaceBoundCipher()),
@@ -144,7 +128,9 @@ def _event() -> TraceEvent:
         app_id="app-1",
         user_id=None,
         occurred_at=datetime.now(UTC),
-        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
         payload=MessageCompleted(message_id="message-1", conversation_id=None),
     )
 

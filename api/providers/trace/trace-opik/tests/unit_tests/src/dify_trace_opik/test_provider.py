@@ -24,7 +24,6 @@ from dify_trace_sdk.testing import (
     RecordedRequest,
     RecordingEgress,
     message_trace,
-    nested_workflow_fragment,
     response,
     tool_fragment,
     workflow_trace,
@@ -457,7 +456,6 @@ def test_large_units_send_spans_in_batches() -> None:
         session_id=None,
         user_id=None,
         parent=None,
-        trace_root=None,
         spans=(run, *nodes),
     )
     provider, egress = _provider(CREATED, NO_CONTENT, NO_CONTENT)
@@ -514,20 +512,6 @@ def test_span_failures_after_the_trace_was_created_are_outcome_unknown(outcome: 
     with pytest.raises(ExportOutcomeUnknownError):
         provider.send(CONFIG, message_trace())
     assert len(egress.requests) == 2
-
-
-def test_nested_workflow_hangs_from_the_tool_node_span_of_its_outer_trace() -> None:
-    provider, egress = _provider(NO_CONTENT)
-
-    assert provider.send(CONFIG, nested_workflow_fragment()).trace_id == WORKFLOW_TRACE_ID
-
-    (create_spans,) = egress.requests
-    assert create_spans.url == f"{API_URL}v1/private/spans/batch"
-    body = create_spans.json()
-    assert isinstance(body, dict)
-    run, node = body["spans"]
-    assert (run["trace_id"], run["parent_span_id"]) == (WORKFLOW_TRACE_ID, WORKFLOW_TOOL_SPAN_ID)
-    assert (node["trace_id"], node["parent_span_id"]) == (WORKFLOW_TRACE_ID, run["id"])
 
 
 @pytest.mark.parametrize(

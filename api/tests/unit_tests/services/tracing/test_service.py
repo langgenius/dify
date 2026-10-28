@@ -354,7 +354,9 @@ def trace_event(case: _ApplicationTraceCollectionCollection, payload: TracePaylo
         app_id=case.run.app_id,
         user_id=None,
         occurred_at=datetime.now(UTC),
-        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
         payload=payload,
     )
 
@@ -425,7 +427,6 @@ def _application_trace_collection_terminal(collection: _ApplicationTraceCollecti
         session_id=run.session_id,
         user_id=None,
         parent=None,
-        trace_root=None,
         spans=(root,),
     )
     with collection.change() as current:

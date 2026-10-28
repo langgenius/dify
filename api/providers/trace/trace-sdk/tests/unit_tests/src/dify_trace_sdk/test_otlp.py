@@ -10,7 +10,7 @@ from dify_trace_sdk.errors import (
     ExportRetryableError,
 )
 from dify_trace_sdk.otlp import encode_trace, export_otlp_grpc, post_otlp, read_otlp_ack
-from dify_trace_sdk.testing import RecordingEgress, message_trace, nested_workflow_fragment, response, tool_fragment
+from dify_trace_sdk.testing import RecordingEgress, message_trace, response, tool_fragment
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceResponse
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import add_TraceServiceServicer_to_server
 
@@ -24,18 +24,6 @@ def test_otlp_encoding_keeps_ids_and_external_parent() -> None:
     assert fragment.parent is not None
     assert span.parent_span_id.hex() == fragment.parent.span_id
     assert [attribute.key for attribute in span.attributes] == ["a"]
-
-
-def test_otlp_encoding_hangs_a_nested_unit_from_the_span_that_started_it() -> None:
-    fragment = nested_workflow_fragment()
-    assert fragment.parent is not None
-
-    request = encode_trace(fragment, resource={"service.name": "dify"}, attributes=lambda span: {})
-
-    run, node = request.resource_spans[0].scope_spans[0].spans
-    assert run.trace_id.hex() == node.trace_id.hex() == fragment.trace_id
-    assert run.parent_span_id.hex() == fragment.parent.span_id
-    assert node.parent_span_id.hex() == fragment.root.span_id
 
 
 def test_otlp_ack_partial_success_is_outcome_unknown() -> None:

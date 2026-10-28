@@ -98,7 +98,6 @@ def make_workflow_info(**overrides) -> WorkflowTraceInfo:
         "completion_tokens": 40,
         "file_list": [],
         "query": "hello",
-        "parent": None,
         "start_time": _T0,
         "end_time": _T1,
         "metadata": {

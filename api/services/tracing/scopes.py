@@ -16,7 +16,9 @@ from services.app_tracing_config_service import AppTraceSettings
 
 logger = logging.getLogger(__name__)
 
-UNCORRELATED = TraceCorrelation(external_trace_id=None, session_id=None, parent=None)
+UNCORRELATED = TraceCorrelation(
+    external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+)
 """The correlation of an operation that carries no caller-supplied trace context."""
 
 

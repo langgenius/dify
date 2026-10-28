@@ -15,7 +15,6 @@ from dify_trace_sdk.model import Cost, Span, SpanKind, SpanRef, SpanStatus, Toke
 
 MESSAGE_ID = "7b3c6c0e-38a1-4b52-9a7e-3ad8f3a1c001"
 WORKFLOW_RUN_ID = "7b3c6c0e-38a1-4b52-9a7e-3ad8f3a1c002"
-NESTED_WORKFLOW_RUN_ID = "7b3c6c0e-38a1-4b52-9a7e-3ad8f3a1c003"
 STARTED_AT = datetime(2026, 10, 1, 8, 0, 0, tzinfo=UTC)
 
 
@@ -90,7 +89,6 @@ def message_trace() -> Trace:
         session_id="conversation-1",
         user_id="end-user-1",
         parent=None,
-        trace_root=None,
         spans=(
             Span(
                 span_id=message_span_id,
@@ -135,7 +133,6 @@ def workflow_trace() -> Trace:
         session_id=WORKFLOW_RUN_ID,
         user_id="account-1",
         parent=None,
-        trace_root=None,
         spans=(
             Span(
                 span_id=run_span_id,
@@ -190,7 +187,6 @@ def tool_fragment() -> Trace:
         session_id="conversation-1",
         user_id="end-user-1",
         parent=SpanRef(span_id=span_id_for(MESSAGE_ID), start_time=STARTED_AT),
-        trace_root=SpanRef(span_id=span_id_for(MESSAGE_ID), start_time=STARTED_AT),
         spans=(
             Span(
                 span_id=span_id_for("tool-event-1"),
@@ -203,50 +199,6 @@ def tool_fragment() -> Trace:
                 inputs={"city": "Berlin"},
                 outputs="Sunny",
                 attributes={"message_id": MESSAGE_ID},
-            ),
-        ),
-    )
-
-
-def nested_workflow_fragment() -> Trace:
-    """A nested workflow run sent separately and attached under the tool node of ``workflow_trace``."""
-    tool_span_id = span_id_for("node-execution-tool")
-    run_span_id = span_id_for(NESTED_WORKFLOW_RUN_ID)
-    return Trace(
-        trace_id=trace_id_for(WORKFLOW_RUN_ID),
-        external_trace_id=None,
-        session_id=WORKFLOW_RUN_ID,
-        user_id="account-1",
-        parent=SpanRef(span_id=tool_span_id, start_time=STARTED_AT + timedelta(seconds=3)),
-        trace_root=SpanRef(span_id=span_id_for(WORKFLOW_RUN_ID), start_time=STARTED_AT),
-        spans=(
-            Span(
-                span_id=run_span_id,
-                parent_span_id=tool_span_id,
-                name="workflow",
-                kind=SpanKind.CHAIN,
-                start_time=STARTED_AT + timedelta(seconds=3, milliseconds=100),
-                end_time=STARTED_AT + timedelta(seconds=4),
-                status=SpanStatus.OK,
-                inputs={"query": "tracing"},
-                outputs={"answer": "Tracing records execution."},
-                attributes={
-                    "workflow_run_id": NESTED_WORKFLOW_RUN_ID,
-                    "parent_workflow_run_id": WORKFLOW_RUN_ID,
-                    "parent_node_execution_id": "node-execution-tool",
-                },
-            ),
-            Span(
-                span_id=span_id_for("nested-node-execution-code"),
-                parent_span_id=run_span_id,
-                name="code_Lookup",
-                kind=SpanKind.CHAIN,
-                start_time=STARTED_AT + timedelta(seconds=3, milliseconds=200),
-                end_time=STARTED_AT + timedelta(seconds=3, milliseconds=900),
-                status=SpanStatus.OK,
-                inputs={"query": "tracing"},
-                outputs={"answer": "Tracing records execution."},
-                attributes={"node_execution_id": "nested-node-execution-code", "node_type": "code"},
             ),
         ),
     )
