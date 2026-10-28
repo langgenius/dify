@@ -21,6 +21,9 @@ import {
   zConnectionReauthorizationRequiredError,
   zConnectionRequiredError,
   zConnectionRevisionChangedError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
   zCredentialCheckUnavailableError,
   zEmailCodeError,
   zEmailPasswordResetLimitError,
@@ -628,7 +631,14 @@ export const post10 = oc
     }),
   )
   .output(zPostConversationsByCIdNameResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const name = {
   post: post10,
@@ -648,18 +658,22 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdPinPath }))
   .output(zPatchConversationsByCIdPinResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const pin = {
   patch: patch2,
 }
 
 /**
- * Unpin a specific conversation to remove it from the top of the list.
+ * Remove the current user's pin. Succeeds when the conversation is already unpinned.
  */
 export const patch3 = oc
   .route({
-    description: 'Unpin a specific conversation to remove it from the top of the list.',
+    description:
+      "Remove the current user's pin. Succeeds when the conversation is already unpinned.",
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -668,7 +682,10 @@ export const patch3 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
   .output(zPatchConversationsByCIdUnpinResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const unpin = {
   patch: patch3,
@@ -689,7 +706,10 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const byCId = {
   delete: delete2,
@@ -712,7 +732,11 @@ export const get5 = oc
   })
   .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const conversations = {
   get: get5,
@@ -1299,12 +1323,12 @@ export const get13 = oc
   .errors({ end_user_login_required: { status: 401, data: zEndUserLoginRequiredError } })
 
 /**
- * Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.
+ * Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.
  */
 export const post23 = oc
   .route({
     description:
-      'Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.',
+      'Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postPassport',

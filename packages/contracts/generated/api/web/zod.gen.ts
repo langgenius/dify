@@ -548,6 +548,42 @@ export const zConnectionRevisionChangedError = zErrorResponse.and(
 )
 
 /**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * CredentialCheckUnavailableError
  *
  * Credential validation is temporarily unavailable.
@@ -1137,14 +1173,6 @@ export const zPassportAccessTokenResponse = z.object({
 export const zPassportLoginPayload = z.object({
   code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/),
   login_code: z.string().min(1).max(256),
-})
-
-/**
- * PassportLoginResponse
- */
-export const zPassportLoginResponse = z.object({
-  access_token: z.string(),
-  webapp_access_token: z.string(),
 })
 
 /**
@@ -2477,7 +2505,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 })
 
 /**
- * Conversation renamed successfully
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 
@@ -2674,7 +2702,7 @@ export const zPostPassportHeaders = z.object({
 /**
  * Web login completed
  */
-export const zPostPassportResponse = zPassportLoginResponse
+export const zPostPassportResponse = zPassportAccessTokenResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

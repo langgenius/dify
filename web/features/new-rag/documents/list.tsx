@@ -117,7 +117,7 @@ function DocumentStatus({
             aria-label={`${statusLabel}: ${failureReason}`}
             className={cn(
               className,
-              'rounded-sm text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'rounded-sm text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
             )}
           >
             {content}
@@ -162,7 +162,7 @@ function TaskTrigger() {
     <>
       <Button
         aria-label={tasksButtonLabel}
-        className="gap-1 pl-3"
+        className="gap-1 ps-3"
         data-has-error={hasTaskError}
         onClick={() => setTasksOpen(true)}
       >
@@ -234,7 +234,7 @@ function DocumentTitleCell({ document }: { document: LogicalDocument }) {
   const revision = document.activeRevision ?? document.active?.revision
 
   return (
-    <td className="min-w-0 pr-3 align-middle sm:min-w-72 sm:pr-6">
+    <td className="min-w-0 pe-3 align-middle sm:min-w-72 sm:pe-6">
       <div className="flex min-w-0 items-center gap-2.5">
         <span aria-hidden className="i-ri-file-text-line size-4.5 shrink-0 text-text-tertiary" />
         <Link
@@ -261,7 +261,7 @@ function DocumentSourceCell({ documentId }: { documentId: string }) {
   const { pending, source } = useAtomValueRawSync(sourceFactsAtom)
 
   return (
-    <td className="hidden w-58.5 pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
+    <td className="hidden w-58.5 pe-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
       {pending ? (
         <span className="inline-flex items-center gap-2">
           <span
@@ -285,7 +285,7 @@ function DocumentStatusCell({ documentId }: { documentId: string }) {
   const { failureMessageKey, status, statusPending, task } = useAtomValueRawSync(statusFactsAtom)
 
   return (
-    <td className="w-24 pr-2 align-middle sm:w-66 sm:pr-6">
+    <td className="w-24 pe-2 align-middle sm:w-66 sm:pe-6">
       {statusPending ? (
         <span className="inline-flex items-center gap-2">
           <span
@@ -314,7 +314,7 @@ function DocumentUpdatedCell({ updatedAt }: { updatedAt: string }) {
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const updatedTime = Date.parse(updatedAt)
   return (
-    <td className="hidden w-43.5 pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
+    <td className="hidden w-43.5 pe-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
       {Number.isNaN(updatedTime) ? updatedAt : formatTimeFromNow(updatedTime)}
     </td>
   )
@@ -346,15 +346,9 @@ const DocumentRow = memo(
 
 export function DocumentsEmpty() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
-  const setMetadataRequest = useSetAtom(documentMetadataAtom)
-  const setUploadRequest = useSetAtom(documentUploadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
-  const uploading = useAtomValueRawSync(documentUploadingAtom)
-  const { canUpload, restrictionReasonId: uploadRestrictionReasonId } = documentUploadAvailability(
-    canWrite,
-    uploadAvailable,
-  )
+  const { canUpload } = documentUploadAvailability(canWrite, uploadAvailable)
 
   return (
     <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-4 overflow-clip p-6 text-center">
@@ -367,23 +361,6 @@ export function DocumentsEmpty() {
       <p className="w-115 max-w-full text-[13px] leading-4 font-normal text-text-tertiary">
         {t(($) => $.documentsEmptyDescription)}
       </p>
-      <div className="flex items-center gap-2">
-        <Button className="gap-1 pl-3" onClick={() => void setMetadataRequest('1')}>
-          <span aria-hidden className="i-ri-file-text-line size-4" />
-          {t(($) => $.metadata)}
-        </Button>
-        <Button
-          className="gap-1 pl-3"
-          variant="primary"
-          disabled={!canUpload}
-          loading={uploading}
-          aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
-          onClick={() => void setUploadRequest('1')}
-        >
-          <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $.addDocument)}
-        </Button>
-      </div>
       {canUpload && (
         <p className="system-xs-regular text-text-quaternary">
           {t(($) => $.documentsDropHint, { ns: 'knowledgeDocuments' })}
@@ -393,7 +370,7 @@ export function DocumentsEmpty() {
   )
 }
 
-function DocumentsToolbar() {
+export function DocumentsToolbar() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const filter = useAtomValueRawSync(documentFilterAtom)
   const setFilter = useSetAtom(documentFilterAtom)
@@ -401,7 +378,7 @@ function DocumentsToolbar() {
   const setSearch = useSetAtom(documentSearchAtom)
   const setMetadataRequest = useSetAtom(documentMetadataAtom)
   const setUploadRequest = useSetAtom(documentUploadAtom)
-  const { showTasks, statusPending } = useAtomValueRawSync(documentsToolbarFactsAtom)
+  const { showTasks } = useAtomValueRawSync(documentsToolbarFactsAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
   const uploading = useAtomValueRawSync(documentUploadingAtom)
@@ -413,7 +390,6 @@ function DocumentsToolbar() {
   return (
     <div className="mt-4.5 flex flex-col gap-2 @min-[768px]/knowledge-content:flex-row @min-[768px]/knowledge-content:items-center">
       <Select<DocumentFilter>
-        disabled={statusPending}
         value={filter}
         onValueChange={(value) => {
           if (value) void setFilter(value)
@@ -451,12 +427,12 @@ function DocumentsToolbar() {
       />
       <span className="min-w-0 flex-1" />
       {showTasks && <TaskTrigger />}
-      <Button className="gap-1 pl-3" onClick={() => void setMetadataRequest('1')}>
+      <Button className="gap-1 ps-3" onClick={() => void setMetadataRequest('1')}>
         <span aria-hidden className="i-ri-file-text-line size-4" />
         {t(($) => $.metadata)}
       </Button>
       <Button
-        className="gap-1 pl-3"
+        className="gap-1 ps-3"
         variant="primary"
         disabled={!canUpload}
         loading={uploading}
@@ -505,12 +481,12 @@ function DocumentsTableHeader() {
             }}
           />
         </th>
-        <th className="py-2 pr-6 font-normal">{t(($) => $.documentColumn)}</th>
-        <th className="hidden w-58.5 py-2 pr-6 font-normal lg:table-cell">
+        <th className="py-2 pe-6 font-normal">{t(($) => $.documentColumn)}</th>
+        <th className="hidden w-58.5 py-2 pe-6 font-normal lg:table-cell">
           {t(($) => $.sourceColumn)}
         </th>
-        <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">{t(($) => $.statusColumn)}</th>
-        <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
+        <th className="w-24 py-2 pe-2 font-normal sm:w-66 sm:pe-6">{t(($) => $.statusColumn)}</th>
+        <th className="hidden w-43.5 py-2 pe-6 font-normal lg:table-cell">
           {t(($) => $.updatedColumn, { ns: 'knowledgeDocuments' })}
         </th>
         <th className="w-10 py-2 font-normal" aria-label={t(($) => $.actionsColumn)} />
@@ -585,7 +561,7 @@ function DocumentsTable({
         role="region"
         tabIndex={-1}
       >
-        <table className="w-full table-fixed border-collapse text-left lg:table-auto">
+        <table className="w-full table-fixed border-collapse text-start lg:table-auto">
           <DocumentsTableHeader />
           <tbody>
             {visibleDocuments.map((document) => (
@@ -698,7 +674,6 @@ export function DocumentsList({
   return (
     <>
       <div className="min-w-0">
-        <DocumentsToolbar />
         <DocumentsTable onRemove={onRemove} />
       </div>
       <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
@@ -1506,6 +1507,102 @@ class TestKnowledgeFsVectorStoreCases:
             "content_hash": "a" * 64,
             TIDB_POINT_ID_FIELD: _KNOWLEDGE_FS_VECTOR_STORE_A,
         }
+
+    @staticmethod
+    @pytest.mark.parametrize("collection_missing", [False, True])
+    def test_tidb_first_writer_rechecks_schema_after_acquiring_initialization_lock(
+        tidb_client: TidbHarness, collection_missing: bool
+    ) -> None:
+        client, info = tidb_client
+        scope = VectorScope.model_validate(_KNOWLEDGE_FS_VECTOR_STORE_SCOPE)
+        if collection_missing:
+            client.collections.clear()
+        ready = info.model_copy(deep=True)
+        ready.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=0)
+
+        @contextmanager
+        def initialize_elsewhere(*_args: object, **_kwargs: object) -> Generator[None]:
+            client.collections[scope.collection_name] = ready
+            yield
+
+        payload = _knowledge_fs_vector_store_request("upsert", points=[{**POINT, "vector": [1, 0]}])
+        with (
+            patch("extensions.ext_redis.redis_client.lock", side_effect=initialize_elsewhere),
+            patch.object(client, "create_collection", side_effect=RuntimeError("collection creation raced")),
+            patch.object(client, "create_payload_index", side_effect=RuntimeError("index creation raced")),
+        ):
+            client.execute(payload)
+        assert len(client.upserted_points) == 1
+
+    @staticmethod
+    @pytest.mark.parametrize("collection_missing", [False, True])
+    def test_tidb_busy_initialization_does_not_race_schema_or_write_points(
+        tidb_client: TidbHarness, collection_missing: bool
+    ) -> None:
+        from redis.exceptions import LockError
+
+        client, _ = tidb_client
+        if collection_missing:
+            client.collections.clear()
+        payload = _knowledge_fs_vector_store_request("upsert", points=[{**POINT, "vector": [1, 0]}])
+        with patch("extensions.ext_redis.redis_client.lock") as lock:
+            lock.return_value.__enter__.side_effect = LockError("busy")
+            with pytest.raises(VectorStoreUnavailableError, match="initializ"):
+                client.execute(payload)
+        assert client.create_collection_calls == []
+        assert client.create_payload_index_calls == []
+        assert client.upsert_calls == []
+
+    @staticmethod
+    def test_tidb_ready_collection_does_not_serialize_vector_writes(tidb_client: TidbHarness) -> None:
+        client, info = tidb_client
+        info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=1)
+        payload = _knowledge_fs_vector_store_request("upsert", points=[{**POINT, "vector": [1, 0]}])
+        with patch("extensions.ext_redis.redis_client.lock") as lock:
+            client.execute(payload)
+        lock.assert_not_called()
+        assert len(client.upserted_points) == 1
+
+    @staticmethod
+    def test_tidb_initialization_lock_covers_schema_but_releases_before_point_io(tidb_client: TidbHarness) -> None:
+        client, info = tidb_client
+        scope = VectorScope.model_validate(_KNOWLEDGE_FS_VECTOR_STORE_SCOPE)
+        client.collections.clear()
+        held = False
+
+        @contextmanager
+        def initialization_lock(*_args: object, **_kwargs: object) -> Generator[None]:
+            nonlocal held
+            held = True
+            try:
+                yield
+            finally:
+                held = False
+
+        def create_collection(**_kwargs: object) -> None:
+            assert held
+            client.collections[scope.collection_name] = info
+
+        def create_index(**_kwargs: object) -> None:
+            assert held
+            info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=0)
+
+        def write_points(**_kwargs: object) -> None:
+            assert not held
+
+        payload = _knowledge_fs_vector_store_request("upsert", points=[{**POINT, "vector": [1, 0]}])
+        with (
+            patch("extensions.ext_redis.redis_client.lock", side_effect=initialization_lock) as lock,
+            patch.object(client, "create_collection", side_effect=create_collection),
+            patch.object(client, "create_payload_index", side_effect=create_index),
+            patch.object(client, "upsert", side_effect=write_points) as upsert,
+        ):
+            client.execute(payload)
+        assert scope.tenant_id in lock.call_args.args[0]
+        assert scope.collection_name in lock.call_args.args[0]
+        assert lock.call_args.kwargs["blocking_timeout"] == 0
+        upsert.assert_called_once()
+        assert not held
 
     @staticmethod
     @pytest.mark.parametrize("compatible", [False, True])

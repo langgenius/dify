@@ -1139,6 +1139,26 @@ class TestWebhookServiceAdditionalCases:
             result = WebhookService._convert_form_value("param", raw_value, param_type)
             assert result == expected
 
+        @pytest.mark.parametrize(
+            ("raw_value", "expected"),
+            [
+                ("1234567890123456789", 1234567890123456789),
+                ("9007199254740993", 9007199254740993),
+                ("-9007199254740993", -9007199254740993),
+                ("1e3", 1000),
+            ],
+        )
+        def test_convert_form_value_should_keep_integers_exact(self, raw_value: str, expected: int) -> None:
+            result = WebhookService._convert_form_value("param", raw_value, SegmentType.NUMBER)
+
+            assert result == expected
+            assert isinstance(result, int)
+
+        @pytest.mark.parametrize("raw_value", ["nan", "NaN", "inf", "-Infinity", "1e400"])
+        def test_convert_form_value_should_reject_non_finite_numbers(self, raw_value: str) -> None:
+            with pytest.raises(ValueError, match="to number"):
+                WebhookService._convert_form_value("param", raw_value, SegmentType.NUMBER)
+
         def test_convert_form_value_should_raise_for_unsupported_type(self) -> None:
             with pytest.raises(ValueError, match="Unsupported type"):
                 WebhookService._convert_form_value("p", "x", SegmentType.FILE)
