@@ -402,6 +402,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
 
+        pause_state_config = PauseStateLayerConfig(
+            session_factory=session_factory,
+            state_owner_user_id=workflow.created_by,
+        )
         return self._generate(
             workflow=workflow,
             user=user,
@@ -413,6 +417,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
             variable_loader=var_loader,
             session=session,
+            pause_state_config=pause_state_config,
         )
 
     def single_loop_generate(
@@ -495,6 +500,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
 
+        pause_state_config = PauseStateLayerConfig(
+            session_factory=session_factory,
+            state_owner_user_id=workflow.created_by,
+        )
         return self._generate(
             workflow=workflow,
             user=user,
@@ -506,6 +515,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
             variable_loader=var_loader,
             session=session,
+            pause_state_config=pause_state_config,
         )
 
     def _generate(

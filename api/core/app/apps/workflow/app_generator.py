@@ -504,6 +504,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
         )
 
+        pause_state_config = PauseStateLayerConfig(
+            session_factory=session_factory,
+            state_owner_user_id=workflow.created_by,
+        )
         return self._generate(
             app_model=app_model,
             workflow=workflow,
@@ -514,7 +518,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             variable_loader=var_loader,
-            pause_state_config=None,
+            pause_state_config=pause_state_config,
         )
 
     def single_loop_generate(
@@ -595,6 +599,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             tenant_id=application_generate_entity.app_config.tenant_id,
             user_id=user.id,
         )
+        pause_state_config = PauseStateLayerConfig(
+            session_factory=session_factory,
+            state_owner_user_id=workflow.created_by,
+        )
         return self._generate(
             app_model=app_model,
             workflow=workflow,
@@ -605,7 +613,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             variable_loader=var_loader,
-            pause_state_config=None,
+            pause_state_config=pause_state_config,
         )
 
     def _generate_worker(
