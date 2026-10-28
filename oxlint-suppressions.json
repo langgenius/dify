@@ -3936,16 +3936,6 @@
       "count": 1
     }
   },
-  "web/app/components/step-by-step-tour/coachmark.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/step-by-step-tour/mount.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
@@ -6511,11 +6501,6 @@
       "count": 5
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/knowledge/dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/slash.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 30
@@ -6827,11 +6812,6 @@
   "web/features/new-rag/quality/bad-cases-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 10
-    }
-  },
-  "web/features/new-rag/quality/golden-question-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/features/new-rag/quality/golden-questions-panel.tsx": {
