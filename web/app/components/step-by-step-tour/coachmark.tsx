@@ -349,11 +349,10 @@ export function StepByStepTourCoachmark({
                         href={overlay.guide.learnMoreHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={buttonVariants({
-                          variant: 'ghost',
-                          size: 'medium',
-                          className: 'text-text-tertiary',
-                        })}
+                        className={cn(
+                          buttonVariants({ variant: 'ghost', size: 'medium' }),
+                          'text-text-tertiary',
+                        )}
                       >
                         {overlay.guide.learnMoreLabel}
                         <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
