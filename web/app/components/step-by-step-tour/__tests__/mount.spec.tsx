@@ -2,7 +2,7 @@ import type { StepByStepTourStatePatchPayload } from '@dify/contracts/api/consol
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { StepByStepTourSessionState, StepByStepTourTaskId } from '../types'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -1021,6 +1021,42 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
+    } finally {
+      target.remove()
+    }
+  })
+
+  it('opens the coachmark once its target scrolls into view and focuses it', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+    const rect = { height: 180, left: 40, top: 900, width: 360 }
+    const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, rect.top, rect)
+    target.getBoundingClientRect = () => DOMRect.fromRect({ ...rect, x: rect.left, y: rect.top })
+    const scrollIntoView = vi.fn()
+    target.scrollIntoView = scrollIntoView
+
+    try {
+      renderStepByStepTourMount()
+
+      await user.click(await screen.findByRole('button', { name: 'Show me' }))
+
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled())
+      expect(
+        screen.queryByRole('dialog', { name: 'Pick a lesson to see how it works.' }),
+      ).not.toBeInTheDocument()
+
+      rect.top = 120
+      fireEvent.scroll(window)
+
+      const coachmark = await screen.findByRole('dialog', {
+        name: 'Pick a lesson to see how it works.',
+      })
+      await waitFor(() => expect(coachmark).toHaveFocus())
     } finally {
       target.remove()
     }
