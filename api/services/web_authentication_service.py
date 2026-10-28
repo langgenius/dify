@@ -70,7 +70,13 @@ class WebAppAccessGateway(Protocol):
 
 class WebAppSessionGateway(Protocol):
     def verify(
-        self, *, token: str | None, app_code: str, user_id: str | None, account_id: str | None = None
+        self,
+        *,
+        token: str | None,
+        app_code: str,
+        user_id: str | None,
+        account_id: str | None = None,
+        require_account: bool = False,
     ) -> bool: ...
 
 
@@ -178,17 +184,27 @@ class WebAuthenticationService:
         user_id: str | None,
         access_token: str | None,
         app_session_token: str | None,
+        account_login_token: str | None = None,
         mode: LoginMode = LoginMode.CONSOLE,
     ) -> WebLoginStatus:
+        """Require the cookie-only Account proof for Account-linked App sessions.
+
+        Legacy anonymous and Enterprise sessions may omit account_login_token.
+        access_token retains the legacy cookie-or-bearer login contract.
+        """
         if mode == LoginMode.END_USER:
             if app_code and self._app_access.find_app_id_by_code(app_code) is None:
                 raise WebAppAccessAppNotFoundError(f"App with code {app_code} not found")
-            account_id = self._tokens.account_id(access_token)
+            account_id = self._tokens.account_id(account_login_token)
             app_logged_in = bool(
                 account_id
                 and app_code
                 and self._app_sessions.verify(
-                    token=app_session_token, app_code=app_code, user_id=user_id, account_id=account_id
+                    token=app_session_token,
+                    app_code=app_code,
+                    user_id=user_id,
+                    account_id=account_id,
+                    require_account=True,
                 )
             )
             return WebLoginStatus(logged_in=account_id is not None, app_logged_in=app_logged_in)
@@ -200,7 +216,12 @@ class WebAuthenticationService:
             raise WebAppAccessAppNotFoundError(f"App with code {app_code} not found")
         is_public = not self._private_app_access_enabled or not self._app_access.requires_permission_check(app_id)
         logged_in = is_public or self._tokens.verify_access_token(access_token)
-        app_logged_in = self._app_sessions.verify(token=app_session_token, app_code=app_code, user_id=user_id)
+        app_logged_in = self._app_sessions.verify(
+            token=app_session_token,
+            app_code=app_code,
+            user_id=user_id,
+            account_id=self._tokens.account_id(account_login_token),
+        )
         return WebLoginStatus(logged_in=logged_in, app_logged_in=app_logged_in)
 
     def send_email_login_code(self, *, email: str, language: str | None) -> str:

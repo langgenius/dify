@@ -21,7 +21,7 @@ from services.web_passport_service import (
     WebPassportTokenGateway,
     WebPassportUnauthorizedError,
 )
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities
+from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities, webapp_login_claims
 
 APP = WebAppRecord(site_id="site-1", app_id="app-1", tenant_id="tenant-1", app_code="app-code")
 NOW = datetime(2026, 8, 13, 12, 0, tzinfo=UTC)
@@ -335,8 +335,8 @@ def test_public_webapp_does_not_use_incidental_login_to_switch_identity() -> Non
 
 def test_internal_account_issuance_never_exposes_account_identity() -> None:
     service, repository, _, tokens = _service()
-    tokens.claims = {"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": int(NOW.timestamp()) + 120}
-    service.issue_for_account(app_code=APP.app_code, access_token="console-login")
+    tokens.claims = webapp_login_claims(exp=int(NOW.timestamp()) + 120)
+    service.issue_for_account(app_code=APP.app_code, access_token="webapp-login")
     assert repository.account_calls == [(APP, ACCOUNT_ID)]
     assert repository.standard_calls == []
     payload = tokens.issue_calls[0]
@@ -349,8 +349,8 @@ def test_internal_account_issuance_never_exposes_account_identity() -> None:
 
 def test_account_passport_expiration_is_bounded_by_passport_lifetime() -> None:
     service, _, _, tokens = _service()
-    tokens.claims = {"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000}
-    service.issue_for_account(app_code=APP.app_code, access_token="console-login")
+    tokens.claims = webapp_login_claims()
+    service.issue_for_account(app_code=APP.app_code, access_token="webapp-login")
     assert tokens.issue_calls[0]["exp"] == int(NOW.timestamp()) + 3600
 
 
@@ -359,9 +359,9 @@ def test_private_app_rejects_account_before_creating_mapping() -> None:
     auth.enabled = True
     auth.allowed = False
     service, repository, _, tokens = _service(auth=auth)
-    tokens.claims = {"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000}
+    tokens.claims = webapp_login_claims()
     with pytest.raises(WebPassportAccessDeniedError, match="cannot access"):
-        service.issue_for_account(app_code=APP.app_code, access_token="console-login")
+        service.issue_for_account(app_code=APP.app_code, access_token="webapp-login")
     assert repository.account_calls == []
     assert tokens.issue_calls == []
 

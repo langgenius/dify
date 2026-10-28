@@ -59,6 +59,16 @@ class WebIdentityService:
         if account is None or account.status not in {"active", "uninitialized"}:
             raise WebIdentityError("Account is unavailable.")
 
+    def resolve_webapp_account_login(self, decoded: Mapping[str, Any]) -> WebAppLoginClaims:
+        claims = self.resolve_login(decoded)
+        if claims.token_source != "webapp_account_login" or claims.account_id is None:
+            raise WebIdentityError("Web App Account login required.")
+        return claims
+
+    def validate_account_login(self, decoded: Mapping[str, Any], *, account_id: str) -> None:
+        if self.resolve_webapp_account_login(decoded).account_id != account_id:
+            raise WebIdentityError("Web App login belongs to another account.")
+
     def validate_passport(self, decoded: Mapping[str, Any], *, account_id: str | None) -> None:
         if decoded.get("sub") != "Web API Passport":
             raise WebIdentityError("Invalid Passport purpose.")

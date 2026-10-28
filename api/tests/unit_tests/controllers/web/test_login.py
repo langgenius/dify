@@ -129,7 +129,8 @@ class LoginStatusStub:
 def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = LoginStatusStub()
     bind_service(monkeypatch, service)
-    monkeypatch.setattr(login, "extract_web_login_token", lambda: "account-token")
+    monkeypatch.setattr(login, "extract_webapp_access_token", lambda _request: "web-token")
+    monkeypatch.setattr(login, "extract_webapp_cookie_token", lambda _request: "account-token")
     monkeypatch.setattr(login, "extract_webapp_passport", lambda app_code, _request: f"passport:{app_code}")
 
     with app.test_request_context("/login/status?app_code=site-code"):
@@ -144,7 +145,8 @@ def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.Mon
         "mode": LoginMode.CONSOLE,
         "app_code": "site-code",
         "user_id": "session-1",
-        "access_token": "account-token",
+        "access_token": "web-token",
+        "account_login_token": "account-token",
         "app_session_token": "passport:site-code",
     }
 
@@ -372,8 +374,8 @@ def test_webapp_logout_never_revokes_account_or_clears_its_cookies(
     services = SimpleNamespace(web_identity=web_identities(), accounts=SimpleNamespace(authentication=authentication))
     monkeypatch.setattr(login, "application_services", lambda: services)
     token = PassportService().issue({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000})
-    monkeypatch.setattr(login, "extract_web_login_token", lambda: token if valid_login else "invalid-token")
-    with app.test_request_context("/logout", method="POST"):
+    cookie = token if valid_login else "invalid-token"
+    with app.test_request_context("/logout", method="POST", headers={"Cookie": f"access_token={cookie}"}):
         response = unwrap(LogoutApi.post)(LogoutApi(), context)
     authentication.logout.assert_not_called()
     cookies = response.headers.getlist("Set-Cookie")
