@@ -153,6 +153,11 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
 export type ConversationFirstMessageNotFoundError = ErrorResponse & {
   code: 'conversation_first_message_not_found'
   status: 404
@@ -1677,7 +1682,7 @@ export type GetConversationsData = {
 export type GetConversationsErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
