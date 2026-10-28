@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../nodes/start/types'
+import type { InputVar } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +32,7 @@ const InputsPanel = ({ onRun }: Props) => {
   const { checkInputsForm } = useCheckInputsForms()
 
   const initialInputs = useMemo(() => {
-    const result = { ...inputs }
+    const result: Record<string, InputVar['default']> = { ...inputs }
     if (startVariables) {
       startVariables.forEach((variable) => {
         if (variable.default !== undefined) result[variable.variable] = variable.default
@@ -83,8 +84,18 @@ const InputsPanel = ({ onRun }: Props) => {
   const doRun = useCallback(() => {
     if (!canRun) return
     if (!checkInputsForm(initialInputs, variables as any)) return
+    const processedInputs = getProcessedInputs(initialInputs, variables as any)
+    // null selects the backend default; an empty string explicitly clears an optional file.
+    for (const variable of variables) {
+      if (
+        variable.type === InputVarType.singleFile &&
+        !variable.required &&
+        processedInputs[variable.variable] === null
+      )
+        processedInputs[variable.variable] = ''
+    }
     onRun()
-    handleRun({ inputs: getProcessedInputs(initialInputs, variables as any), files })
+    handleRun({ inputs: processedInputs, files })
   }, [canRun, files, handleRun, initialInputs, onRun, variables, checkInputsForm])
 
   return (

@@ -22,7 +22,10 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
 )
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.file_access import DatabaseFileAccessController
+from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.ops.ops_trace_manager import TraceQueueManager
+from graphon.variables.input_entities import VariableEntity
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.enums import ConversationFromSource, EndUserType, MessageStatus
@@ -30,6 +33,7 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _make_app(*, app_id: str = "app", tenant_id: str = "tenant") -> App:
@@ -585,6 +589,19 @@ class TestAdvancedChatAppGeneratorInternals:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         generator._dialogue_count = 0
         app_config = self._build_app_config()
+        default_file = make_upload_file(tenant_id=app_config.tenant_id)
+        app_config.variables = [
+            VariableEntity.model_validate(
+                {
+                    "type": "file",
+                    "variable": "file",
+                    "label": "File",
+                    "default": {"transfer_method": "local_file", "upload_file_id": default_file.id},
+                }
+            )
+        ]
+        file_runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+        monkeypatch.setattr(file_runtime, "_secret_key", lambda: b"test-key")
 
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
@@ -604,7 +621,7 @@ class TestAdvancedChatAppGeneratorInternals:
         workflow = _make_workflow(workflow_id="wf-2")
         conversation = _make_conversation(conversation_id="conv-2")
         message = _make_message(message_id="msg-2", conversation_id=conversation.id)
-        sqlite_session.add_all([app, workflow, conversation, message])
+        sqlite_session.add_all([app, workflow, conversation, message, default_file])
         sqlite_session.commit()
         commit_count = 0
 
@@ -629,7 +646,6 @@ class TestAdvancedChatAppGeneratorInternals:
             "core.app.apps.advanced_chat.app_generator.current_app",
             SimpleNamespace(_get_current_object=lambda: SimpleNamespace(name="flask")),
         )
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.contextvars.copy_context", lambda: "ctx")
 
         class _Thread:
             def __init__(self, *, target, kwargs):
@@ -652,11 +668,14 @@ class TestAdvancedChatAppGeneratorInternals:
             SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
         )
         monkeypatch.setattr(generator, "_get_draft_var_saver_factory", lambda *args, **kwargs: "draft-factory")
-        monkeypatch.setattr(
-            generator,
-            "_handle_advanced_chat_response",
-            lambda **kwargs: {"raw": True},
-        )
+
+        def handle_response(**kwargs):
+            assert file_runtime.resolve_upload_file_uri(upload_file_id=default_file.id).startswith(
+                f"/files/{default_file.id}/file-preview?"
+            )
+            return {"raw": True}
+
+        monkeypatch.setattr(generator, "_handle_advanced_chat_response", handle_response)
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.AdvancedChatAppGenerateResponseConverter.convert",
             lambda response, invoke_from: response,
@@ -664,7 +683,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         response = generator._generate(
             workflow=workflow,
-            user=_make_account(account_id="user"),
+            user=_make_end_user(end_user_id="user"),
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
             session=sqlite_session,
@@ -682,6 +701,11 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["joined"] is True
         assert thread_data["join_timeout"] == 300
         assert commit_count == 0
+        assert (
+            thread_data["kwargs"]["context"]
+            .run(file_runtime.resolve_upload_file_uri, upload_file_id=default_file.id)
+            .startswith(f"/files/{default_file.id}/file-preview?")
+        )
 
     def test_generate_worker_raises_when_workflow_not_found(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine

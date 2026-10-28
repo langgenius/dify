@@ -55,6 +55,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from services.app.file_input_defaults import grant_file_default_access
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -360,6 +361,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
+            grant_file_default_access(application_generate_entity.app_config.variables)
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
                 task_id=application_generate_entity.task_id,
