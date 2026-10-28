@@ -186,6 +186,10 @@ function setup(
     { queryClient, knowledgeFsFeatures: { agent_enabled: enabled } },
   )
 }
+function setupClassic(item: AgentKnowledgeRetrievalItem) {
+  return setup([item], { enabled: false })
+}
+
 const snapshot = () => JSON.parse(screen.getByLabelText('snapshot').textContent ?? '{}')
 const open = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.add/ }))
@@ -201,6 +205,30 @@ const datasetPage = (data = [createDatasetFixture()]) => ({
 })
 async function advanced(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
   await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
+}
+
+async function openDatasetPicker(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
+  await user.click(
+    await within(dialog).findByRole('button', {
+      name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+    }),
+  )
+  return screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+}
+
+async function confirmDatasetPicker(user: ReturnType<typeof userEvent.setup>, picker: HTMLElement) {
+  await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
+  await waitFor(() => expect(picker).not.toBeInTheDocument())
+}
+
+async function toggleDatasets(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  names: RegExp[],
+) {
+  const picker = await openDatasetPicker(user, dialog)
+  for (const name of names) await user.click(await within(picker).findByRole('button', { name }))
+  await confirmDatasetPicker(user, picker)
 }
 
 describe('shared knowledge binding dialog', () => {
@@ -231,9 +259,7 @@ describe('shared knowledge binding dialog', () => {
 
   it('discards Classic selections and advanced edits on cancel', async () => {
     const user = userEvent.setup()
-    setup([{ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] }], {
-      enabled: false,
-    })
+    setupClassic({ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] })
     let dialog = await open(user)
     await advanced(user, dialog)
     const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
@@ -253,31 +279,26 @@ describe('shared knowledge binding dialog', () => {
 
   it('preserves existing dataset groups, retrieval settings and stable prompt references', async () => {
     const user = userEvent.setup()
-    setup(
-      [
-        {
-          id: 'docs',
-          name: 'Product manual',
-          datasetRefs: [{ id: 'dataset-1' }, { id: 'dataset-2' }],
-          queryMode: 'custom',
-          customQuery: 'original question',
-          metadataFilterMode: MetadataFilteringModeEnum.manual,
-          metadataFilteringConditions: {
-            logical_operator: LogicalOperator.and,
-            conditions: [
-              {
-                id: 'condition',
-                name: 'author',
-                comparison_operator: ComparisonOperator.is,
-                value: 'Ada',
-              },
-            ],
+    setupClassic({
+      id: 'docs',
+      name: 'Product manual',
+      datasetRefs: [{ id: 'dataset-1' }, { id: 'dataset-2' }],
+      queryMode: 'custom',
+      customQuery: 'original question',
+      metadataFilterMode: MetadataFilteringModeEnum.manual,
+      metadataFilteringConditions: {
+        logical_operator: LogicalOperator.and,
+        conditions: [
+          {
+            id: 'condition',
+            name: 'author',
+            comparison_operator: ComparisonOperator.is,
+            value: 'Ada',
           },
-          multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
-        },
-      ],
-      { enabled: false },
-    )
+        ],
+      },
+      multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
+    })
     const original = snapshot().knowledge.sets[0]
     const dialog = await open(user)
     await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
@@ -307,7 +328,7 @@ describe('shared knowledge binding dialog', () => {
 
   it('keeps all KnowledgeFS UI and requests hidden while preserving disabled bindings', async () => {
     const user = userEvent.setup()
-    const { queryClient } = setup([{ ...binding, isMissing: true }], { enabled: false })
+    const { queryClient } = setupClassic({ ...binding, isMissing: true })
     queryClient.removeQueries({ queryKey: consoleQuery.knowledgeFs.spaces.get.queryKey() })
     const dialog = await open(user)
     await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
@@ -345,25 +366,20 @@ describe('shared knowledge binding dialog', () => {
 
   it('preserves single retrieval and its model when settings are only inspected', async () => {
     const user = userEvent.setup()
-    setup(
-      [
-        {
-          id: 'classic',
-          name: 'Saved search',
-          selectedDatasets: [createDatasetFixture()],
-          retrievalMode: RETRIEVE_TYPE.oneWay,
-          singleRetrievalConfig: {
-            model: {
-              provider: 'openai',
-              name: 'gpt-4o',
-              mode: 'chat',
-              completion_params: { temperature: 0.2 },
-            },
-          },
+    setupClassic({
+      id: 'classic',
+      name: 'Saved search',
+      selectedDatasets: [createDatasetFixture()],
+      retrievalMode: RETRIEVE_TYPE.oneWay,
+      singleRetrievalConfig: {
+        model: {
+          provider: 'openai',
+          name: 'gpt-4o',
+          mode: 'chat',
+          completion_params: { temperature: 0.2 },
         },
-      ],
-      { enabled: false },
-    )
+      },
+    })
     const original = snapshot().knowledge
     const dialog = await open(user)
     await advanced(user, dialog)
@@ -408,18 +424,10 @@ describe('shared knowledge binding dialog', () => {
     const first = createDatasetFixture()
     const second = createDatasetFixture({ id: 'dataset-2', name: 'Second dataset' })
     getDatasets.mockResolvedValue(datasetPage([first, second]))
-    setup([{ id: 'group', name: 'Saved group', selectedDatasets: [first] }], { enabled: false })
+    setupClassic({ id: 'group', name: 'Saved group', selectedDatasets: [first] })
     const dialog = await open(user)
     await advanced(user, dialog)
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-      }),
-    )
-    const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
-    await user.click(await within(picker).findByRole('button', { name: /Second dataset/ }))
-    await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
-    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    await toggleDatasets(user, dialog, [/Second dataset/])
     expect(snapshot().knowledge.sets[0].datasets).toHaveLength(1)
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.sets).toHaveLength(1)
@@ -502,32 +510,16 @@ describe('shared knowledge binding dialog', () => {
       indexing_technique: 'economy',
     })
     getDatasets.mockResolvedValue(datasetPage([first, second]))
-    setup([{ id: 'group', name: 'Saved group', selectedDatasets: [first] }], { enabled: false })
+    setupClassic({ id: 'group', name: 'Saved group', selectedDatasets: [first] })
     const original = snapshot().knowledge
     const dialog = await open(user)
     await advanced(user, dialog)
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-      }),
-    )
-    const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
-    await user.click(await within(picker).findByRole('button', { name: /Economy docs/ }))
-    await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
-    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    await toggleDatasets(user, dialog, [/Economy docs/])
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(dialog).toBeInTheDocument()
     expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(/rerankModel/)
     expect(snapshot().knowledge).toEqual(original)
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-      }),
-    )
-    const correction = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
-    await user.click(await within(correction).findByRole('button', { name: /Economy docs/ }))
-    await user.click(within(correction).getByRole('button', { name: 'common.operation.add' }))
-    await waitFor(() => expect(correction).not.toBeInTheDocument())
+    await toggleDatasets(user, dialog, [/Economy docs/])
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(snapshot().knowledge.sets[0]).toMatchObject({
@@ -538,17 +530,12 @@ describe('shared knowledge binding dialog', () => {
 
   it('stages retrieval limit edits and discards them when the shared dialog is cancelled', async () => {
     const user = userEvent.setup()
-    setup(
-      [
-        {
-          id: 'classic',
-          name: 'Saved search',
-          selectedDatasets: [createDatasetFixture()],
-          multipleRetrievalConfig: { top_k: 4, score_threshold: null, reranking_enable: false },
-        },
-      ],
-      { enabled: false },
-    )
+    setupClassic({
+      id: 'classic',
+      name: 'Saved search',
+      selectedDatasets: [createDatasetFixture()],
+      multipleRetrievalConfig: { top_k: 4, score_threshold: null, reranking_enable: false },
+    })
     const editLimit = async (dialog: HTMLElement) => {
       await advanced(user, dialog)
       await user.click(within(dialog).getByRole('button', { name: 'dataset.retrievalSettings' }))
@@ -583,19 +570,14 @@ describe('shared knowledge binding dialog', () => {
     const replacement = createDatasetFixture({ id: 'replacement', name: 'Replacement docs' })
     getDataset.mockResolvedValue(unavailable)
     getDatasets.mockResolvedValue(datasetPage([unavailable, replacement]))
-    setup(
-      [
-        {
-          id: 'group',
-          name: 'Saved group',
-          datasetRefs: [{ id: unavailable.id, name: unavailable.name }],
-          queryMode: 'custom',
-          customQuery: 'support question',
-          multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
-        },
-      ],
-      { enabled: false },
-    )
+    setupClassic({
+      id: 'group',
+      name: 'Saved group',
+      datasetRefs: [{ id: unavailable.id, name: unavailable.name }],
+      queryMode: 'custom',
+      customQuery: 'support question',
+      multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
+    })
     const original = snapshot().knowledge
     const dialog = await open(user)
     await advanced(user, dialog)
@@ -604,16 +586,10 @@ describe('shared knowledge binding dialog', () => {
         name: 'common.operation.remove Unavailable docs',
       }),
     )
-    await user.click(
-      within(dialog).getByRole('button', {
-        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-      }),
-    )
-    const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+    const picker = await openDatasetPicker(user, dialog)
     expect(await within(picker).findByRole('button', { name: /Unavailable docs/ })).toBeDisabled()
     await user.click(within(picker).getByRole('button', { name: /Replacement docs/ }))
-    await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
-    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    await confirmDatasetPicker(user, picker)
     expect(snapshot().knowledge).toEqual(original)
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.sets).toEqual([
@@ -635,7 +611,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.contains,
       value: 12,
       valid: false,
-      keepOriginal: false,
     },
     {
       title: 'requires reconfiguration when the field type changes',
@@ -644,7 +619,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.empty,
       value: undefined,
       valid: false,
-      keepOriginal: false,
     },
     {
       title: 'retains compatible empty-value conditions',
@@ -653,7 +627,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.empty,
       value: undefined,
       valid: true,
-      keepOriginal: false,
     },
     {
       title: 'retains compatible timestamp conditions',
@@ -662,7 +635,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.after,
       value: 1700000000,
       valid: true,
-      keepOriginal: false,
     },
     {
       title: 'rejects string operators on a replacement numeric field',
@@ -671,7 +643,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.contains,
       value: 'abc',
       valid: false,
-      keepOriginal: false,
     },
     {
       title: 'rejects nonnumeric values on numeric fields',
@@ -680,7 +651,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.equal,
       value: 'abc',
       valid: false,
-      keepOriginal: false,
     },
     {
       title: 'retains compatible numeric conditions',
@@ -689,7 +659,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.equal,
       value: 12,
       valid: true,
-      keepOriginal: false,
     },
     {
       title: 'retains compatible list membership conditions',
@@ -698,7 +667,6 @@ describe('shared knowledge binding dialog', () => {
       operator: ComparisonOperator.in,
       value: ['abc', 'def'],
       valid: true,
-      keepOriginal: false,
     },
     {
       title: 'rejects same-name fields with conflicting types within a group',
@@ -711,7 +679,7 @@ describe('shared knowledge binding dialog', () => {
     },
   ])(
     '$title when changing datasets',
-    async ({ from, to, operator, value, valid, keepOriginal }) => {
+    async ({ from, to, operator, value, valid, keepOriginal = false }) => {
       const user = userEvent.setup()
       const source = createDatasetFixture({
         name: 'Original docs',
@@ -723,43 +691,32 @@ describe('shared knowledge binding dialog', () => {
         doc_metadata: [{ id: 'new-code', name: 'code', type: to }],
       })
       getDatasets.mockResolvedValue(datasetPage([source, replacement]))
-      setup(
-        [
-          {
-            id: 'group',
-            name: 'Saved group',
-            selectedDatasets: [source],
-            metadataFilterMode: MetadataFilteringModeEnum.manual,
-            metadataFilteringConditions: {
-              logical_operator: LogicalOperator.and,
-              conditions: [
-                {
-                  id: 'condition',
-                  metadata_id: 'old-code',
-                  name: 'code',
-                  comparison_operator: operator,
-                  value,
-                },
-              ],
+      setupClassic({
+        id: 'group',
+        name: 'Saved group',
+        selectedDatasets: [source],
+        metadataFilterMode: MetadataFilteringModeEnum.manual,
+        metadataFilteringConditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition',
+              metadata_id: 'old-code',
+              name: 'code',
+              comparison_operator: operator,
+              value,
             },
-          },
-        ],
-        { enabled: false },
-      )
+          ],
+        },
+      })
       const original = snapshot().knowledge
       const dialog = await open(user)
       await advanced(user, dialog)
-      await user.click(
-        within(dialog).getByRole('button', {
-          name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-        }),
-      )
-      const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+      const picker = await openDatasetPicker(user, dialog)
       if (!keepOriginal)
         await user.click(await within(picker).findByRole('button', { name: /Original docs/ }))
       await user.click(await within(picker).findByRole('button', { name: /Replacement docs/ }))
-      await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
-      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      await confirmDatasetPicker(user, picker)
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       if (valid) {
         expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual([
@@ -784,9 +741,7 @@ describe('shared knowledge binding dialog', () => {
   it('retains Classic bindings when dataset lookup fails and supports retry', async () => {
     const user = userEvent.setup()
     getDataset.mockRejectedValue(new ORPCError('FORBIDDEN', { status: 403 }))
-    setup([{ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] }], {
-      enabled: false,
-    })
+    setupClassic({ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] })
     const dialog = await open(user)
     await advanced(user, dialog)
     expect(await within(dialog).findByRole('alert')).toBeVisible()
@@ -815,35 +770,30 @@ describe('shared knowledge binding dialog', () => {
         return retained
       })
       getDatasets.mockResolvedValue(datasetPage([retained, replacement]))
-      setup(
-        [
-          {
-            id: 'saved-group',
-            name: 'Saved group',
-            datasetRefs: [
-              ...(hasRetainedDataset ? [{ id: retained.id, name: retained.name }] : []),
-              { id: 'deleted', name: 'Deleted docs' },
-              { id: 'deleted-2', name: 'Other missing docs' },
-            ],
-            queryMode: 'custom',
-            customQuery: 'support question',
-            multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
-            metadataFilterMode: MetadataFilteringModeEnum.manual,
-            metadataFilteringConditions: {
-              logical_operator: LogicalOperator.and,
-              conditions: [
-                {
-                  id: 'topic-condition',
-                  name: 'topic',
-                  comparison_operator: ComparisonOperator.is,
-                  value: 'agents',
-                },
-              ],
-            },
-          },
+      setupClassic({
+        id: 'saved-group',
+        name: 'Saved group',
+        datasetRefs: [
+          ...(hasRetainedDataset ? [{ id: retained.id, name: retained.name }] : []),
+          { id: 'deleted', name: 'Deleted docs' },
+          { id: 'deleted-2', name: 'Other missing docs' },
         ],
-        { enabled: false },
-      )
+        queryMode: 'custom',
+        customQuery: 'support question',
+        multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
+        metadataFilterMode: MetadataFilteringModeEnum.manual,
+        metadataFilteringConditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'topic-condition',
+              name: 'topic',
+              comparison_operator: ComparisonOperator.is,
+              value: 'agents',
+            },
+          ],
+        },
+      })
       const original = snapshot().knowledge
       const dialog = await open(user)
       await advanced(user, dialog)
@@ -853,15 +803,7 @@ describe('shared knowledge binding dialog', () => {
       await user.click(
         within(dialog).getByRole('button', { name: 'common.operation.remove Other missing docs' }),
       )
-      await user.click(
-        await within(dialog).findByRole('button', {
-          name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-        }),
-      )
-      const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
-      await user.click(await within(picker).findByRole('button', { name: /Replacement docs/ }))
-      await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
-      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      await toggleDatasets(user, dialog, [/Replacement docs/])
       expect(snapshot().knowledge).toEqual(original)
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       expect(snapshot().knowledge.sets).toEqual([
@@ -913,49 +855,38 @@ describe('shared knowledge binding dialog', () => {
           : [],
       })
       getDatasets.mockResolvedValue(datasetPage([originalDataset, replacement]))
-      setup(
-        [
-          {
-            id: 'group',
-            name: 'Saved group',
-            selectedDatasets: [originalDataset],
-            metadataFilterMode: MetadataFilteringModeEnum.manual,
-            metadataFilteringConditions: {
-              logical_operator: LogicalOperator.and,
-              conditions: [
-                {
-                  id: 'topic-condition',
-                  metadata_id: 'topic-old',
-                  name: 'topic',
-                  comparison_operator: ComparisonOperator.is,
-                  value: 'agents',
-                },
-                {
-                  id: 'language-condition',
-                  metadata_id: 'language-old',
-                  name: 'language',
-                  comparison_operator: ComparisonOperator.is,
-                  value: 'en',
-                },
-              ],
+      setupClassic({
+        id: 'group',
+        name: 'Saved group',
+        selectedDatasets: [originalDataset],
+        metadataFilterMode: MetadataFilteringModeEnum.manual,
+        metadataFilteringConditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'topic-condition',
+              metadata_id: 'topic-old',
+              name: 'topic',
+              comparison_operator: ComparisonOperator.is,
+              value: 'agents',
             },
-          },
-        ],
-        { enabled: false },
-      )
+            {
+              id: 'language-condition',
+              metadata_id: 'language-old',
+              name: 'language',
+              comparison_operator: ComparisonOperator.is,
+              value: 'en',
+            },
+          ],
+        },
+      })
       const original = snapshot().knowledge
       const dialog = await open(user)
       await advanced(user, dialog)
-      await user.click(
-        within(dialog).getByRole('button', {
-          name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
-        }),
-      )
-      const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+      const picker = await openDatasetPicker(user, dialog)
       await user.click(await within(picker).findByRole('button', { name: /Original docs/ }))
       await user.click(within(picker).getByRole('button', { name: /Replacement docs/ }))
-      await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
-      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      await confirmDatasetPicker(user, picker)
       expect(snapshot().knowledge).toEqual(original)
       const conditions = within(dialog).getByRole('button', { name: /metadata.panel.conditions/ })
       await user.click(conditions)
@@ -1005,9 +936,7 @@ describe('shared knowledge binding dialog', () => {
       const dataset = createDatasetFixture({
         doc_metadata: [{ id: 'price', name: 'price', type: 'number' }],
       })
-      setup([{ id: 'classic', name: 'Saved search', selectedDatasets: [dataset] }], {
-        enabled: false,
-      })
+      setupClassic({ id: 'classic', name: 'Saved search', selectedDatasets: [dataset] })
       const original = snapshot().knowledge
       const dialog = await open(user)
       await advanced(user, dialog)
@@ -1061,9 +990,7 @@ describe('shared knowledge binding dialog', () => {
         { id: 'author', name: 'author', type: 'string' },
       ],
     })
-    setup([{ id: 'classic', name: 'Saved search', selectedDatasets: [dataset] }], {
-      enabled: false,
-    })
+    setupClassic({ id: 'classic', name: 'Saved search', selectedDatasets: [dataset] })
     const original = snapshot().knowledge
     const dialog = await open(user)
     await advanced(user, dialog)
@@ -1119,29 +1046,24 @@ describe('shared knowledge binding dialog', () => {
     'saves the %s model and parameters through the shared dialog',
     async (target) => {
       const user = userEvent.setup()
-      const { queryClient } = setup(
-        [
-          {
-            id: 'classic',
-            name: 'Saved search',
-            selectedDatasets: [createDatasetFixture()],
-            ...(target === 'single retrieval'
-              ? {
-                  retrievalMode: RETRIEVE_TYPE.oneWay,
-                  singleRetrievalConfig: {
-                    model: {
-                      provider: 'openai',
-                      name: 'gpt-4',
-                      mode: 'chat',
-                      completion_params: { temperature: 0.7 },
-                    },
-                  },
-                }
-              : {}),
-          },
-        ],
-        { enabled: false },
-      )
+      const { queryClient } = setupClassic({
+        id: 'classic',
+        name: 'Saved search',
+        selectedDatasets: [createDatasetFixture()],
+        ...(target === 'single retrieval'
+          ? {
+              retrievalMode: RETRIEVE_TYPE.oneWay,
+              singleRetrievalConfig: {
+                model: {
+                  provider: 'openai',
+                  name: 'gpt-4',
+                  mode: 'chat',
+                  completion_params: { temperature: 0.7 },
+                },
+              },
+            }
+          : {}),
+      })
       seedModelProviderQueries(queryClient, [
         createModelCatalogFixture({
           models: [

@@ -9,7 +9,7 @@ import type {
   MultipleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
-import type { KnowledgeValidationIssueCode } from '@/features/agent-v2/agent-composer/knowledge-validation'
+import type { KnowledgeValidationResult } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
@@ -21,10 +21,7 @@ import { intersectionBy } from 'es-toolkit/compat'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useCurrentProviderAndModel,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import {
@@ -52,9 +49,7 @@ type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type Props = {
   item: AgentKnowledgeRetrievalItem
   onChange: (patch: Partial<AgentKnowledgeRetrievalItem>) => void
-  errors?: Partial<
-    Record<'name' | 'datasets' | 'query' | 'retrieval' | 'metadata', KnowledgeValidationIssueCode>
-  >
+  errors?: KnowledgeValidationResult['byId'][string]
 }
 const queryModeOptions: KnowledgeRetrievalQueryMode[] = ['agent', 'custom']
 
@@ -74,6 +69,13 @@ const createDefaultRetrievalConfig = (): MultipleRetrievalConfig => ({
 const createDefaultMetadataFilteringConditions = () => ({
   logical_operator: LogicalOperator.and,
   conditions: [] as MetadataFilteringCondition[],
+})
+
+const withModelDefaults = (config: AgentKnowledgeRetrievalItem['metadataModelConfig']) => ({
+  provider: config?.provider ?? '',
+  name: config?.name ?? '',
+  mode: config?.mode ?? 'chat',
+  completion_params: config?.completion_params ?? { temperature: 0.7 },
 })
 
 const getSharedMetadata = (datasets: DatasetDetailWithPartialMembersResponse[]) =>
@@ -110,7 +112,8 @@ const reconcileMetadataConditions = (
   datasets: DatasetDetailWithPartialMembersResponse[],
   previousDatasets: DatasetDetailWithPartialMembersResponse[],
 ) => {
-  if (!conditions) return conditions
+  // Removing all datasets is an intermediate replacement step; keep conditions until selection.
+  if (!conditions || !datasets.length) return conditions
   const metadata = getSharedMetadata(datasets)
   const previousMetadata = getSharedMetadata(previousDatasets)
   return {
@@ -161,18 +164,8 @@ function ClassicSettingsFields({
     retrievalMode = RETRIEVE_TYPE.multiWay,
     singleRetrievalConfig,
   } = item
-  const { modelList: rerankModelList, defaultModel: rerankDefaultModel } =
-    useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
-    useCurrentProviderAndModel(
-      rerankModelList,
-      rerankDefaultModel
-        ? {
-            ...rerankDefaultModel,
-            provider: rerankDefaultModel.provider.provider,
-          }
-        : undefined,
-    )
+    useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const fallbackRerankModel = {
     provider: currentRerankProvider?.provider,
     model: currentRerankModel?.model,
@@ -197,19 +190,21 @@ function ClassicSettingsFields({
     if (!datasetsChanged) return
     onChange({
       selectedDatasets: nextDatasets,
-      metadataFilteringConditions: nextDatasets.length
-        ? reconcileMetadataConditions(
-            item.metadataFilteringConditions,
-            nextDatasets,
-            selectedDatasets,
-          )
-        : item.metadataFilteringConditions,
+      metadataFilteringConditions: reconcileMetadataConditions(
+        item.metadataFilteringConditions,
+        nextDatasets,
+        selectedDatasets,
+      ),
       multipleRetrievalConfig:
         retrievalMode === RETRIEVE_TYPE.multiWay && nextDatasets.length > 0
           ? resolveMultipleRetrievalConfig(multipleRetrievalConfig, nextDatasets)
           : multipleRetrievalConfig,
     })
   }
+  const singleModel = withModelDefaults(singleRetrievalConfig?.model)
+  const metadataModel = withModelDefaults(metadataModelConfig)
+  const updateMetadataConditions = (patch: Partial<typeof metadataFilteringConditions>) =>
+    onChange({ metadataFilteringConditions: { ...metadataFilteringConditions, ...patch } })
   const metadataList = useMemo(() => getSharedMetadata(selectedDatasets), [selectedDatasets])
   const datasetsError = getValidationMessage(errors?.datasets)
   const queryError = getValidationMessage(errors?.query)
@@ -303,23 +298,19 @@ function ClassicSettingsFields({
                   single_retrieval_config: singleRetrievalConfig,
                 }}
                 onRetrievalModeChange={(nextRetrievalMode) => {
-                  const nextMultipleRetrievalConfig =
-                    nextRetrievalMode === RETRIEVE_TYPE.multiWay
-                      ? resolveMultipleRetrievalConfig(multipleRetrievalConfig)
-                      : multipleRetrievalConfig
-
                   onChange({
-                    multipleRetrievalConfig: nextMultipleRetrievalConfig,
+                    multipleRetrievalConfig:
+                      nextRetrievalMode === RETRIEVE_TYPE.multiWay
+                        ? resolveMultipleRetrievalConfig(multipleRetrievalConfig)
+                        : multipleRetrievalConfig,
                     retrievalMode: nextRetrievalMode,
                   })
                 }}
                 onMultipleRetrievalConfigChange={(nextMultipleRetrievalConfig) => {
-                  const normalizedMultipleRetrievalConfig = resolveMultipleRetrievalConfig(
-                    nextMultipleRetrievalConfig,
-                  )
-
                   onChange({
-                    multipleRetrievalConfig: normalizedMultipleRetrievalConfig,
+                    multipleRetrievalConfig: resolveMultipleRetrievalConfig(
+                      nextMultipleRetrievalConfig,
+                    ),
                   })
                 }}
                 singleRetrievalModelConfig={singleRetrievalConfig?.model}
@@ -327,12 +318,10 @@ function ClassicSettingsFields({
                   onChange({
                     singleRetrievalConfig: {
                       model: {
+                        ...singleModel,
                         provider: model.provider,
                         name: model.modelId,
-                        mode: model.mode ?? singleRetrievalConfig?.model.mode ?? 'chat',
-                        completion_params: singleRetrievalConfig?.model.completion_params ?? {
-                          temperature: 0.7,
-                        },
+                        mode: model.mode ?? singleModel.mode,
                       },
                     },
                   })
@@ -340,12 +329,7 @@ function ClassicSettingsFields({
                 onSingleRetrievalModelParamsChange={(completionParams) => {
                   onChange({
                     singleRetrievalConfig: {
-                      model: {
-                        provider: singleRetrievalConfig?.model.provider ?? '',
-                        name: singleRetrievalConfig?.model.name ?? '',
-                        mode: singleRetrievalConfig?.model.mode ?? 'chat',
-                        completion_params: completionParams,
-                      },
+                      model: { ...singleModel, completion_params: completionParams },
                     },
                   })
                 }}
@@ -399,67 +383,50 @@ function ClassicSettingsFields({
           metadataFilterMode={metadataFilterMode}
           metadataFilteringConditions={metadataFilteringConditions}
           handleMetadataFilterModeChange={(nextMode) => onChange({ metadataFilterMode: nextMode })}
-          handleAddCondition={(metadataItem) => {
-            onChange({
-              metadataFilteringConditions: {
-                ...metadataFilteringConditions,
-                conditions: [
-                  ...metadataFilteringConditions.conditions,
-                  createMetadataCondition(metadataItem),
-                ],
-              },
+          handleAddCondition={(metadataItem) =>
+            updateMetadataConditions({
+              conditions: [
+                ...metadataFilteringConditions.conditions,
+                createMetadataCondition(metadataItem),
+              ],
             })
-          }}
-          handleRemoveCondition={(conditionId) => {
-            onChange({
-              metadataFilteringConditions: {
-                ...metadataFilteringConditions,
-                conditions: metadataFilteringConditions.conditions.filter(
-                  (condition) => condition.id !== conditionId,
-                ),
-              },
+          }
+          handleRemoveCondition={(conditionId) =>
+            updateMetadataConditions({
+              conditions: metadataFilteringConditions.conditions.filter(
+                (condition) => condition.id !== conditionId,
+              ),
             })
-          }}
-          handleToggleConditionLogicalOperator={() => {
-            onChange({
-              metadataFilteringConditions: {
-                ...metadataFilteringConditions,
-                logical_operator:
-                  metadataFilteringConditions.logical_operator === LogicalOperator.and
-                    ? LogicalOperator.or
-                    : LogicalOperator.and,
-              },
+          }
+          handleToggleConditionLogicalOperator={() =>
+            updateMetadataConditions({
+              logical_operator:
+                metadataFilteringConditions.logical_operator === LogicalOperator.and
+                  ? LogicalOperator.or
+                  : LogicalOperator.and,
             })
-          }}
-          handleUpdateCondition={(conditionId, nextCondition) => {
-            onChange({
-              metadataFilteringConditions: {
-                ...metadataFilteringConditions,
-                conditions: metadataFilteringConditions.conditions.map((condition) =>
-                  condition.id === conditionId ? nextCondition : condition,
-                ),
-              },
+          }
+          handleUpdateCondition={(conditionId, nextCondition) =>
+            updateMetadataConditions({
+              conditions: metadataFilteringConditions.conditions.map((condition) =>
+                condition.id === conditionId ? nextCondition : condition,
+              ),
             })
-          }}
+          }
           metadataModelConfig={metadataModelConfig}
           handleMetadataModelChange={(model) => {
             onChange({
               metadataModelConfig: {
+                ...metadataModel,
                 provider: model.provider,
                 name: model.modelId,
-                mode: model.mode ?? metadataModelConfig?.mode ?? 'chat',
-                completion_params: metadataModelConfig?.completion_params ?? { temperature: 0.7 },
+                mode: model.mode ?? metadataModel.mode,
               },
             })
           }}
           handleMetadataCompletionParamsChange={(completionParams) => {
             onChange({
-              metadataModelConfig: {
-                provider: metadataModelConfig?.provider ?? '',
-                name: metadataModelConfig?.name ?? '',
-                mode: metadataModelConfig?.mode ?? 'chat',
-                completion_params: completionParams,
-              },
+              metadataModelConfig: { ...metadataModel, completion_params: completionParams },
             })
           }}
         />
@@ -484,6 +451,28 @@ export function ClassicKnowledgeSettings(props: Props) {
   })
   const datasets =
     props.item.selectedDatasets ?? queries.flatMap((query) => (query.data ? [query.data] : []))
+  const removeFailedDataset = (id: string) => {
+    const datasetRefs = props.item.datasetRefs?.filter((dataset) => dataset.id !== id)
+    const remainingDatasets = queries.flatMap((query) =>
+      query.isSuccess && query.data.id !== id ? [query.data] : [],
+    )
+    const allResolved = ids
+      .filter((current) => current !== id)
+      .every((current) => remainingDatasets.some((dataset) => dataset.id === current))
+    props.onChange({
+      datasetRefs,
+      ...(allResolved
+        ? {
+            selectedDatasets: remainingDatasets,
+            metadataFilteringConditions: reconcileMetadataConditions(
+              props.item.metadataFilteringConditions,
+              remainingDatasets,
+              datasets,
+            ),
+          }
+        : {}),
+    })
+  }
   if (queries.some((query) => query.isPending))
     return (
       <div role="status" className="h-16 animate-pulse rounded-lg bg-background-default">
@@ -518,34 +507,7 @@ export function ClassicKnowledgeSettings(props: Props) {
                   <Button
                     size="small"
                     aria-label={`${t(($) => $['operation.remove'])} ${name}`}
-                    onClick={() => {
-                      const datasetRefs = props.item.datasetRefs?.filter(
-                        (dataset) => dataset.id !== id,
-                      )
-                      const remainingDatasets = queries.flatMap((query) =>
-                        query.isSuccess && query.data.id !== id ? [query.data] : [],
-                      )
-                      const allResolved = ids
-                        .filter((current) => current !== id)
-                        .every((current) =>
-                          remainingDatasets.some((dataset) => dataset.id === current),
-                        )
-                      props.onChange({
-                        datasetRefs,
-                        ...(allResolved
-                          ? {
-                              selectedDatasets: remainingDatasets,
-                              metadataFilteringConditions: remainingDatasets.length
-                                ? reconcileMetadataConditions(
-                                    props.item.metadataFilteringConditions,
-                                    remainingDatasets,
-                                    datasets,
-                                  )
-                                : props.item.metadataFilteringConditions,
-                            }
-                          : {}),
-                      })
-                    }}
+                    onClick={() => removeFailedDataset(id)}
                   >
                     {t(($) => $['operation.remove'])}
                   </Button>
