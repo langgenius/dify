@@ -23,6 +23,7 @@ import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { useToolIcon } from '../../hooks/use-tool-icon'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
+import { BuilderEditBorder } from './builder-edit-border'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
@@ -163,8 +164,6 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     <div
       className={cn(
         'relative flex rounded-2xl border',
-        isBuilderEditTarget &&
-          'outline-2 outline-offset-4 outline-state-accent-solid outline-dashed',
         showSelectedBorder
           ? 'border-components-option-card-option-selected-border'
           : 'border-transparent',
@@ -177,6 +176,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         height: isContainerNode(data.type) ? data.height : 'auto',
       }}
     >
+      {isBuilderEditTarget && <BuilderEditBorder />}
       {pluginInstallLocked && (
         <button
           type="button"
