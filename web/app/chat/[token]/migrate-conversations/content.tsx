@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import SignInConfirmation from '@/app/components/share/signin-confirmation'
+import { useParams, useSearchParams } from '@/next/navigation'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { useGetWebAppInfo } from '@/service/use-share'
 
 export default function MigrateConversationsContent() {
   const { t } = useTranslation(['common'])
+  const { token } = useParams<{ token: string }>()
+  const search = useSearchParams().toString()
   const { data: appInfo, error } = useGetWebAppInfo()
 
   if (error) {
@@ -34,5 +37,13 @@ export default function MigrateConversationsContent() {
   }
 
   // Account and history remain preview data until the ownership API is available.
-  return <SignInConfirmation email="evan@dify.ai" conversationCount={3} app={appInfo.site} />
+  return (
+    <SignInConfirmation
+      key={token}
+      email="evan@dify.ai"
+      conversationCount={3}
+      app={appInfo.site}
+      continueHref={`/chat/${encodeURIComponent(token)}${search ? `?${search}` : ''}`}
+    />
+  )
 }

@@ -2,7 +2,7 @@
 
 import type { WebSiteResponse } from '@dify/contracts/api/web/types.gen'
 import type { AppIconProps } from '@/app/components/base/app-icon'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -10,6 +10,7 @@ import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-g
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import Link from '@/next/link'
 
 export type ConversationOwnershipChoice = 'add' | 'delete'
 
@@ -21,8 +22,8 @@ type SignInConfirmationProps = {
     'title' | 'description' | 'icon' | 'icon_type' | 'icon_background' | 'icon_url'
   >
   iconFallback?: AppIconProps['fallback']
+  continueHref: string
   onConfirm?: (choice: ConversationOwnershipChoice) => void
-  onSwitchAccount?: () => void
 }
 
 export default function SignInConfirmation({
@@ -30,8 +31,8 @@ export default function SignInConfirmation({
   conversationCount,
   app,
   iconFallback,
+  continueHref,
   onConfirm,
-  onSwitchAccount,
 }: SignInConfirmationProps) {
   const { t } = useTranslation(['login'])
   const [choice, setChoice] = useState<ConversationOwnershipChoice | null>(null)
@@ -126,7 +127,7 @@ export default function SignInConfirmation({
         <div className="flex flex-col gap-3">
           <Button
             type="submit"
-            disabled={!choice}
+            disabled={!choice || !onConfirm}
             variant="primary"
             size="large"
             tone={choice === 'delete' ? 'destructive' : 'default'}
@@ -138,15 +139,17 @@ export default function SignInConfirmation({
                 ? t(($) => $['history.addAndContinue'], { ns: 'login' })
                 : t(($) => $['history.continue'], { ns: 'login' })}
           </Button>
-          <Button
-            type="button"
-            size="small"
-            variant="ghost"
-            className="h-auto min-h-6 w-full py-1 whitespace-normal text-text-accent"
-            onClick={onSwitchAccount}
+          <Link
+            href={continueHref}
+            replace
+            prefetch={false}
+            className={cn(
+              buttonVariants({ size: 'small', variant: 'ghost' }),
+              'h-auto min-h-6 w-full py-1 whitespace-normal text-text-accent',
+            )}
           >
-            {t(($) => $['history.useDifferentAccount'], { ns: 'login' })}
-          </Button>
+            {t(($) => $['history.notNow'], { ns: 'login' })}
+          </Link>
         </div>
       </form>
       <div
