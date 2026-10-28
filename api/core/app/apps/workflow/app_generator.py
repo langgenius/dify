@@ -55,6 +55,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -97,6 +98,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -116,6 +118,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -135,6 +138,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -153,6 +157,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -223,7 +228,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 file_upload_config=file_extra_config,
                 inputs=inputs,
                 files=list(system_files),
-                user_id=user.id,
+                user_id=execution_identity.user_id,
+                user_from=execution_identity.user_from,
                 stream=streaming,
                 invoke_from=invoke_from,
                 allow_human_input=allow_human_input,
@@ -355,10 +361,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_node_execution_repository: repository for workflow node execution
         :param streaming: is stream
         """
-        # Invocation source does not determine identity: scheduled SERVICE_API runs use an Account.
-        application_generate_entity = application_generate_entity.model_copy(
-            update={"user_from": UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER}
-        )
         with self._bind_file_access_scope(
             tenant_id=application_generate_entity.app_config.tenant_id,
             user=user,
@@ -436,6 +438,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: Mapping[str, Any],
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -464,7 +467,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -530,6 +534,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: LoopNodeRunPayload,
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -558,7 +563,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -656,14 +662,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     )
 
                 user_from = application_generate_entity.user_from
-                if user_from is None:
-                    # Compatibility for callers that construct worker entities directly.
-                    user_from = (
-                        UserFrom.END_USER
-                        if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}
-                        else UserFrom.ACCOUNT
-                    )
-
                 if user_from == UserFrom.END_USER:
                     end_user = session.scalar(
                         select(EndUser).where(

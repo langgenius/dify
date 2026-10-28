@@ -17,7 +17,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -69,6 +74,7 @@ def _build_advanced_chat_generate_entity(conversation_id: str | None) -> Advance
 
 def _build_workflow_generate_entity(stream: bool) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task-id",
         inputs={},
         files=[],

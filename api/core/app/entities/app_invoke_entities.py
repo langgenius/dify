@@ -343,8 +343,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
 
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
-    # Older paused runs omit this field; the generator restores it from the trusted caller.
-    user_from: UserFrom | None = None
+    # Every new execution supplies its actual role. Legacy snapshots are normalized when loaded.
+    user_from: UserFrom
     workflow_execution_id: str
     workflow_execution_timing: WorkflowExecutionTiming = Field(
         default_factory=WorkflowExecutionTiming, exclude=True, repr=False
