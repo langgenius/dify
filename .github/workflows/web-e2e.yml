@@ -17,7 +17,7 @@ jobs:
     name: Prepare Core E2E Web Build
     if: ${{ !inputs.run-external-runtime }}
     runs-on: depot-ubuntu-24.04-4
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
