@@ -13,11 +13,11 @@ import { createDeferred } from '@/test/deferred'
 import { createStepByStepTourService } from '@/test/fixtures/onboarding'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import StepByStepTourMount from '../mount'
-import { stepByStepTourSessionAtom } from '../state'
-import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '../storage'
+import { stepByStepTourChecklistMinimizedAtom, stepByStepTourSessionAtom } from '../state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../target-registry'
 
 let tourSession: StepByStepTourSessionState = {}
+let checklistMinimized = false
 
 type StepByStepTourFixtureState = StepByStepTourSessionState & {
   completedTaskIds: StepByStepTourTaskId[]
@@ -296,12 +296,7 @@ const setStepByStepTourTestState = (state: Partial<StepByStepTourFixtureState>) 
     activeGuideIndexes: state.activeGuideIndexes,
     activeTaskId: state.activeTaskId,
   }
-  if (state.minimized !== undefined) {
-    localStorage.setItem(
-      STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY,
-      state.minimized ? 'collapsed' : 'expanded',
-    )
-  }
+  checklistMinimized = state.minimized ?? false
 }
 
 const renderStepByStepTourMount = (searchParams = '') => {
@@ -329,6 +324,7 @@ const renderStepByStepTourMount = (searchParams = '') => {
   const jotaiStore = createStore()
   jotaiStore.set(queryClientAtom, queryClient)
   jotaiStore.set(stepByStepTourSessionAtom, tourSession)
+  jotaiStore.set(stepByStepTourChecklistMinimizedAtom, checklistMinimized)
   const { wrapper } = createNuqsTestWrapper({ searchParams })
 
   return render(
@@ -579,7 +575,7 @@ describe('StepByStepTourMount', () => {
     expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
   })
 
-  it('persists the collapsed shell mode across remounts', async () => {
+  it('keeps the checklist minimized for the session only', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
@@ -592,24 +588,18 @@ describe('StepByStepTourMount', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Minimize tour' }))
 
-    await waitFor(() => {
-      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('collapsed')
-    })
-    expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
 
+    // A new session, like a reload, starts with the checklist expanded again.
     unmount()
     renderStepByStepTourMount()
 
-    expect(
-      await screen.findByRole('button', { name: 'Open step-by-step tour' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Open step-by-step tour' }))
-
-    await waitFor(() => {
-      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
-    })
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
@@ -658,14 +648,13 @@ describe('StepByStepTourMount', () => {
     await user.click(document.body)
 
     expect(dialog).toBeInTheDocument()
-    expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
   })
 
-  it('shows the completion prompt expanded even when the saved shell mode is collapsed', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+  it('shows the completion prompt expanded even when the checklist is minimized', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
+      minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge', 'integration'],
       skipped: false,
     })
@@ -680,6 +669,33 @@ describe('StepByStepTourMount', () => {
       'aria-expanded',
       'true',
     )
+  })
+
+  it('keeps the checklist open when Escape is pressed elsewhere on the page', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+    const search = document.createElement('input')
+    search.setAttribute('aria-label', 'Search apps')
+    document.body.appendChild(search)
+
+    try {
+      renderStepByStepTourMount()
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Minimize tour' })).toHaveFocus(),
+      )
+      await user.click(search)
+      await user.keyboard('{Escape}')
+
+      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    } finally {
+      search.remove()
+    }
   })
 
   it('minimizes the checklist with Escape and returns focus to its trigger', async () => {
@@ -699,7 +715,6 @@ describe('StepByStepTourMount', () => {
     await waitFor(() =>
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
     )
-    expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('collapsed')
     expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toHaveFocus()
   })
 
@@ -791,7 +806,6 @@ describe('StepByStepTourMount', () => {
 
   it('keeps the minimized tour entry available while a blocking modal is open', async () => {
     mockHasBlockingModalOpen.value = true
-    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
@@ -1355,7 +1369,6 @@ describe('StepByStepTourMount', () => {
       expect(
         mockStepByStepTour.patchState.mock.calls.map(([variables]) => variables.body),
       ).not.toContainEqual(expect.objectContaining({ action: 'complete_task' }))
-      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
         screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),

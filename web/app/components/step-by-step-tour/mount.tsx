@@ -21,7 +21,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { Suspense, useEffect, useRef } from 'react'
 import { Translation } from 'react-i18next'
@@ -56,13 +56,13 @@ import {
   resetStepByStepTourSessionAtom,
   skipStepByStepTourAtom,
   startStepByStepTourTaskAtom,
+  stepByStepTourChecklistMinimizedAtom,
   stepByStepTourEnabledForCurrentWorkspaceAtom,
   stepByStepTourFirstWorkspaceIdAtom,
   stepByStepTourSkippedAtom,
   stepByStepTourSkipRecoveryVisibleAtom,
   uncompleteStepByStepTourTaskAtom,
 } from './state'
-import { useSetStepByStepTourShellMode, useStepByStepTourShellModeValue } from './storage'
 import {
   getStepByStepTourGuideInteractionPolicy,
   getStepByStepTourGuideKind,
@@ -174,10 +174,10 @@ export default function StepByStepTourMount({
   const patchSkipTour = useSetAtom(skipStepByStepTourAtom)
   const startTask = useSetAtom(startStepByStepTourTaskAtom)
   const uncompleteTask = useSetAtom(uncompleteStepByStepTourTaskAtom)
-  const shellMode = useStepByStepTourShellModeValue()
-  const setShellMode = useSetStepByStepTourShellMode()
+  const [checklistMinimized, setChecklistMinimized] = useAtom(stepByStepTourChecklistMinimizedAtom)
   const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
   const restoreTriggerRef = useRef<HTMLButtonElement>(null)
+  const checklistPopupRef = useRef<HTMLDivElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
@@ -224,7 +224,7 @@ export default function StepByStepTourMount({
   const activeGuideIndex = sessionGuideIndex ?? 0
   const activeGuide = activeGuides[activeGuideIndex]
   const hasActiveGuide = Boolean(activeTask && activeGuide)
-  const minimized = Boolean(activeTask) || shellMode === 'collapsed'
+  const minimized = Boolean(activeTask) || checklistMinimized
   const activeGuideIndexes =
     activeGuides.length > 0
       ? getActiveGuideIndexes(activeGuides, sessionGuideIndexes)
@@ -536,7 +536,7 @@ export default function StepByStepTourMount({
             }
 
             resetSession()
-            setShellMode('expanded')
+            setChecklistMinimized(false)
           }
 
           const getNextVisibleActiveGuideIndex = (startIndex: number) => {
@@ -595,7 +595,7 @@ export default function StepByStepTourMount({
                     trackTaskCompleted(completedTaskIds, activeTask.id),
                 })
                 resetSession()
-                setShellMode('expanded')
+                setChecklistMinimized(false)
                 return
               }
 
@@ -611,7 +611,7 @@ export default function StepByStepTourMount({
               onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, activeTask.id),
             })
             resetSession()
-            setShellMode('expanded')
+            setChecklistMinimized(false)
           }
 
           const dismissCompletedTour = () => {
@@ -619,7 +619,7 @@ export default function StepByStepTourMount({
               onSuccess: trackTourSkipped,
             })
             resetSession()
-            setShellMode('expanded')
+            setChecklistMinimized(false)
           }
 
           const progress = {
@@ -668,7 +668,7 @@ export default function StepByStepTourMount({
                 })
               }
               onMinimize={() => {
-                setShellMode('collapsed')
+                setChecklistMinimized(true)
               }}
               onSkip={skipTour}
               onCompleteTask={(taskId) => {
@@ -706,7 +706,7 @@ export default function StepByStepTourMount({
                     onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
                   })
                   resetSession()
-                  setShellMode('expanded')
+                  setChecklistMinimized(false)
                   return
                 }
 
@@ -773,30 +773,40 @@ export default function StepByStepTourMount({
                   open={overlayVisible && expanded}
                   onOpenChange={(open, { event, reason }) => {
                     if (open) {
-                      setShellMode('expanded')
+                      setChecklistMinimized(false)
                       return
                     }
-                    // Outside presses keep the checklist; Tab past it leaves through a focus guard.
+                    // Only the checklist's own keyboard exits minimize it: Escape from inside it or
+                    // its trigger, and Tab past it through a focus guard. Outside presses keep it.
+                    const target = event.target instanceof Element ? event.target : null
+                    const escapedFromChecklist =
+                      reason === 'escape-key' &&
+                      Boolean(
+                        target &&
+                        (checklistPopupRef.current?.contains(target) ||
+                          restoreTriggerRef.current?.contains(target)),
+                      )
                     const tabbedOut =
                       reason === 'focus-out' &&
-                      event.target instanceof Element &&
-                      event.target.hasAttribute('data-base-ui-focus-guard')
-                    if (reason === 'escape-key' || reason === 'trigger-press' || tabbedOut)
-                      setShellMode('collapsed')
+                      Boolean(target?.hasAttribute('data-base-ui-focus-guard'))
+                    if (reason === 'trigger-press' || escapedFromChecklist || tabbedOut)
+                      setChecklistMinimized(true)
                   }}
                 >
-                  <PopoverTrigger
-                    ref={restoreTriggerRef}
-                    aria-label={t(($) => $['stepByStepTour.restore'], { ns: 'onboarding' })}
-                    render={(props) => (
-                      <MinimizedTourPill
-                        {...props}
-                        className={cn(props.className, 'data-popup-open:opacity-0')}
-                        title={title}
-                        progress={progress}
-                      />
-                    )}
-                  />
+                  {(!expanded || overlayVisible) && (
+                    <PopoverTrigger
+                      ref={restoreTriggerRef}
+                      aria-label={t(($) => $['stepByStepTour.restore'], { ns: 'onboarding' })}
+                      render={(props) => (
+                        <MinimizedTourPill
+                          {...props}
+                          className={cn(props.className, 'data-popup-open:opacity-0')}
+                          title={title}
+                          progress={progress}
+                        />
+                      )}
+                    />
+                  )}
                   {overlayVisible && (
                     <PopoverPortal>
                       <PopoverPositioner
@@ -812,6 +822,7 @@ export default function StepByStepTourMount({
                         }}
                       >
                         <PopoverPopup
+                          ref={checklistPopupRef}
                           initialFocus={checklistCloseButtonRef}
                           finalFocus={() =>
                             hasActiveGuide && activeTargetElement

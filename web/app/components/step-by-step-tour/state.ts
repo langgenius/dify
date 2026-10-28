@@ -181,6 +181,8 @@ export const activeStepByStepTourGuideIndexesAtom = atom(
 
 export const stepByStepTourSkipRecoveryVisibleAtom = atom(false)
 
+export const stepByStepTourChecklistMinimizedAtom = atom(false)
+
 export const startStepByStepTourTaskAtom = atom(
   null,
   (
