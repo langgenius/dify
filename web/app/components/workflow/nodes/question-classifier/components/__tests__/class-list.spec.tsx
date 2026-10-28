@@ -19,6 +19,36 @@ const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
 })
 
 describe('question-classifier/class-list', () => {
+  it('adds a category when the browser has getRandomValues but no randomUUID', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const topic = createTopic()
+    vi.stubGlobal('crypto', {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+    })
+    try {
+      render(
+        <ClassList nodeId="node-1" list={[topic]} onChange={onChange} filterVar={() => true} />,
+      )
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflowModels.nodes.questionClassifiers.addClass',
+        }),
+      )
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith([
+        topic,
+        expect.objectContaining({
+          id: expect.stringMatching(/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i),
+          name: '',
+        }),
+      ])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('confirms keyboard sorting through the branch-aware sort callback', async () => {
     const user = userEvent.setup()
     const handleSortTopic = vi.fn()

@@ -4407,11 +4407,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/_base/components/branch-list/class-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/branch-list/node-branches.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
