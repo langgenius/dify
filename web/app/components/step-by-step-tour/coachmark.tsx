@@ -4,7 +4,7 @@ import type { PopoverChangeEventDetails, PopoverPositionerProps } from '@langgen
 import type { KeyboardEvent } from 'react'
 import type { StepByStepTourGuide, StepByStepTourGuideInteractionPolicy } from './target-registry'
 import type { StepByStepTourTargetRect } from './use-target-rect'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -335,7 +335,9 @@ export function StepByStepTourCoachmark({
                 )}
               >
                 <PopoverClose
-                  className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-start system-sm-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  render={
+                    <Button variant="ghost" size="medium" className="-ms-3.5 text-text-tertiary" />
+                  }
                   onKeyDown={
                     overlay.interactionPolicy === 'target-only' ? handleSkipKeyDown : undefined
                   }
@@ -349,7 +351,11 @@ export function StepByStepTourCoachmark({
                         href={overlay.guide.learnMoreHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg px-3 system-sm-medium text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                        className={buttonVariants({
+                          variant: 'ghost',
+                          size: 'medium',
+                          className: 'text-text-tertiary',
+                        })}
                       >
                         {overlay.guide.learnMoreLabel}
                         <span aria-hidden className="i-ri-arrow-right-up-line size-4" />

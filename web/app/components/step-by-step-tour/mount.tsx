@@ -258,8 +258,7 @@ export default function StepByStepTourMount({
     !settingsDestination &&
     !(pathname === '/apps' && educationExpireNotice)
   const completionPromptVisible = visible && allTasksCompleted && !activeTask
-  const checklistMinimized = completionPromptVisible ? false : minimized
-  const expanded = !checklistMinimized
+  const expanded = completionPromptVisible || !minimized
   const activeTargetElement = useStepByStepTourTarget(activeGuide?.target)
   const activeGuidePlacement =
     activeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify
