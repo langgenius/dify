@@ -31,25 +31,20 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
-      # Use the same collector and toolchain setup for both measured revisions.
+      # Keep one collector for both revisions, including when it does not exist on base yet.
       - name: Checkout reporting tools
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Preserve collector and web setup
-        run: |
-          cp web/scripts/bundle-analysis.ts "$RUNNER_TEMP/bundle-analysis.ts"
-          cp .github/actions/setup-web/action.yml "$RUNNER_TEMP/setup-web-action.yml"
+      - name: Preserve collector
+        run: cp web/scripts/bundle-analysis.ts "$RUNNER_TEMP/bundle-analysis.ts"
 
       - name: Checkout measured revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ matrix.sha }}
           persist-credentials: false
-
-      - name: Restore current web setup
-        run: cp "$RUNNER_TEMP/setup-web-action.yml" .github/actions/setup-web/action.yml
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
@@ -109,7 +104,6 @@ jobs:
         uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
-          cache: true
 
       - name: Download size snapshots
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
