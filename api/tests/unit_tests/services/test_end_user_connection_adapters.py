@@ -7,11 +7,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from clients.plugin.errors import PluginNotImplementedError
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.tool_manager import ToolManager
 from services import end_user_connection_adapters as adapters
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionInvalidCredentialsError,
+    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
 from tests.helpers.end_user_api_key import PROVIDER, ScriptedAuth, make_harness, plugin_provider
@@ -63,6 +65,37 @@ def test_gateway_rejects_cross_tenant_provider_cache_entry(monkeypatch: pytest.M
     gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
     with pytest.raises(ConnectionConfigurationError):
         gateway.provider("tenant", PROVIDER)
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        [],
+        [ProviderConfig(name="app", type=ProviderConfigType.APP_SELECTOR)],
+        [ProviderConfig(name="models", type=ProviderConfigType.MODEL_SELECTOR)],
+        [ProviderConfig(name="tools", type=ProviderConfigType.TOOLS_SELECTOR)],
+        [ProviderConfig(name="regions", type=ProviderConfigType.SELECT, multiple=True)],
+    ],
+)
+def test_web_schema_rejects_workspace_selectors_and_unsupported_forms(
+    monkeypatch: pytest.MonkeyPatch, schema: list[ProviderConfig]
+) -> None:
+    controller = plugin_provider("tenant")
+    controller.entity.credentials_schema = schema
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    with pytest.raises(ConnectionConfigurationError):
+        gateway.get_schema("tenant", PROVIDER, plugin_unique_identifier=controller.plugin_unique_identifier)
+
+
+def test_web_schema_rejects_a_provider_upgrade_after_revision_admission(monkeypatch: pytest.MonkeyPatch) -> None:
+    controller = plugin_provider("tenant")
+    admitted_identifier = controller.plugin_unique_identifier
+    controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    with pytest.raises(ConnectionRevisionChangedError):
+        gateway.get_schema("tenant", PROVIDER, plugin_unique_identifier=admitted_identifier)
 
 
 @pytest.mark.parametrize("failure", [PluginNotImplementedError("unsupported"), httpx.ReadTimeout("sensitive-secret")])

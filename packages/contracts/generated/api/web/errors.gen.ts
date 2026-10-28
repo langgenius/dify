@@ -585,6 +585,13 @@ export const getErrors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
 }
 
+export const get2Errors = {
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+  end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+}
+
 export const post6Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_credentials_unavailable: { status: 503, data: zConnectionCredentialsUnavailableError },
@@ -625,7 +632,7 @@ export const post8Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get2Errors = {
+export const get3Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
@@ -639,7 +646,7 @@ export const delete_Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get3Errors = {
+export const get4Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   connection_not_found: { status: 404, data: zConnectionNotFoundError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
@@ -656,7 +663,7 @@ export const patchErrors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get4Errors = {
+export const get5Errors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
@@ -678,7 +685,7 @@ export const patch3Errors = { not_chat_app: { status: 400, data: zNotChatAppErro
 
 export const delete2Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
 
-export const get5Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const get6Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
 
 export const post11Errors = {
   account_banned: { status: 400, data: zAccountBannedError },
@@ -725,7 +732,7 @@ export const post17Errors = {
   web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
 }
 
-export const get6Errors = {
+export const get7Errors = {
   human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
   human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
   web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
@@ -763,7 +770,7 @@ export const post20Errors = {
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
 }
 
-export const get8Errors = {
+export const get9Errors = {
   app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
@@ -772,7 +779,7 @@ export const get8Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get9Errors = {
+export const get10Errors = {
   app_suggested_questions_after_answer_disabled: {
     status: 403,
     data: zAppSuggestedQuestionsAfterAnswerDisabledError,
@@ -784,9 +791,9 @@ export const get9Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get10Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const get11Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
 
-export const get11Errors = { app_unavailable: { status: 400, data: zAppUnavailableError } }
+export const get12Errors = { app_unavailable: { status: 400, data: zAppUnavailableError } }
 
 export const post23Errors = {
   connection_claim_preflight_failed: { status: 400, data: zConnectionClaimPreflightFailedError },
@@ -794,12 +801,12 @@ export const post23Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
-export const get12Errors = {
+export const get13Errors = {
   agent_not_published: { status: 400, data: zAgentNotPublishedError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const get13Errors = {
+export const get14Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
@@ -820,7 +827,7 @@ export const post26Errors = {
   unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
 }
 
-export const get14Errors = {
+export const get15Errors = {
   remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
   remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
   remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
@@ -831,7 +838,7 @@ export const get14Errors = {
 
 export const delete3Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
-export const get15Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
+export const get16Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
 export const post27Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }
 
@@ -843,9 +850,9 @@ export const post28Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get18Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
+export const get19Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
 
-export const get20Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
+export const get21Errors = { invalid_param: { status: 400, data: zInvalidParamError } }
 
 export const post29Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },

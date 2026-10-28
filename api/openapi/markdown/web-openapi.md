@@ -165,6 +165,27 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /connections/credential-schema
+Read API-key form fields for an authorized published tool node; no credential values.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_revision | query | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes | string (uuid) |
+| node_id | query |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API-key form schema | **application/json**: [ConnectionCredentialSchemaResponse](#connectioncredentialschemaresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /connections/oauth/authorization-url
 #### Request Body
 
@@ -1339,6 +1360,12 @@ The 'More like this' feature is disabled. Please refresh your page.
 | ---- | ---- | ----------- | -------- |
 | appId | string | Application ID | Yes |
 
+#### AppSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSelectorScope | string |  |  |
+
 #### AppSuggestedQuestionsAfterAnswerDisabledError
 
 The 'Suggested Questions After Answer' feature is disabled. Please refresh your page.
@@ -1535,6 +1562,12 @@ Connection changed during the operation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConnectionConflictError |  | Connection changed during the operation. |  |
+
+#### ConnectionCredentialSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialSchemaResponse | array |  |  |
 
 #### ConnectionCredentialStatus
 
@@ -2050,6 +2083,17 @@ This form has already been submitted by another user, form_id={form_id}
 | expires_at | integer |  | Yes |
 | upload_token | string |  | Yes |
 
+#### I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
+| zh_Hans | string |  | No |
+
 #### InvalidEmailError
 
 The email address is not valid.
@@ -2209,6 +2253,12 @@ Dify Hosted OpenAI trial currently not support the GPT-4 model.
 | ---- | ---- | ----------- | -------- |
 | ModelCurrentlyNotSupportError |  | Dify Hosted OpenAI trial currently not support the GPT-4 model. |  |
 
+#### ModelSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelSelectorScope | string |  |  |
+
 #### NoAudioUploadedError
 
 Please upload your audio.
@@ -2256,6 +2306,13 @@ Please check if your Workflow app mode matches the right API route.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NotWorkflowAppError |  | Please check if your Workflow app mode matches the right API route. |  |
+
+#### Option
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
 
 #### ParagraphInputConfig
 
@@ -2315,6 +2372,30 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
+
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [ProviderConfigType](#providerconfigtype) | The type of the credentials | Yes |
+| url | string |  | No |
+
+#### ProviderConfigType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderConfigType | string |  |  |
 
 #### ProviderNotInitializeError
 
@@ -2617,6 +2698,12 @@ Only one file is allowed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TooManyFilesError |  | Only one file is allowed. |  |
+
+#### ToolSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolSelectorScope | string |  |  |
 
 #### TriggerWorkflowServiceModeUnavailableError
 
