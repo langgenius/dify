@@ -532,10 +532,11 @@ def test_login_is_exchanged_before_delayed_claim_confirmation(
     )
     assert response.status_code == 200
     assert set(response.get_json()) == {"access_token"}
-    cookie = harness.client.get_cookie("__Host-webapp_access_token", domain="apps.example.net")
-    assert cookie is not None
-    assert cookie.http_only
-    assert harness.signer.verify(cookie.value)["token_source"] == "webapp_account_login"
+    login_cookie = harness.client.get_cookie("__Host-webapp_access_token", domain="apps.example.net")
+    assert login_cookie is not None
+    assert login_cookie.http_only
+    assert login_cookie.secure
+    assert harness.signer.verify(login_cookie.value)["token_source"] == "webapp_account_login"
     assert harness.signer.verify(response.get_json()["access_token"])["app_code"] == login_app_code
     assert harness.client.get_cookie("__Host-access_token", domain="apps.example.net") is None
     assert base.service.get_connection(base.context, selected.id).id == selected.id
