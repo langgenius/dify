@@ -215,8 +215,7 @@ class TestLlmGeneratorCases:
                 correlation=TraceCorrelation(
                     external_trace_id="caller-trace",
                     session_id=None,
-                    parent_workflow_run_id=None,
-                    parent_node_execution_id=None,
+                    parent=None,
                 ),
             )
 

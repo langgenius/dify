@@ -11,7 +11,16 @@ from dify_trace_sdk.errors import (
     VerificationError,
 )
 from dify_trace_sdk.ids import span_uuid
-from dify_trace_sdk.testing import MESSAGE_ID, RecordingEgress, message_trace, response, tool_fragment, workflow_trace
+from dify_trace_sdk.testing import (
+    MESSAGE_ID,
+    WORKFLOW_RUN_ID,
+    RecordingEgress,
+    message_trace,
+    nested_workflow_fragment,
+    response,
+    tool_fragment,
+    workflow_trace,
+)
 
 CONFIG = LangfuseConfig(public_key="pk-lf-1", secret_key="sk-lf-1", host="https://cloud.langfuse.com")
 
@@ -98,6 +107,20 @@ def test_fragment_joins_the_message_trace_without_recreating_it() -> None:
     assert tool["type"] == "span-create"
     assert tool["body"]["traceId"] == MESSAGE_ID
     assert "parentObservationId" not in tool["body"]
+
+
+def test_nested_workflow_hangs_from_the_tool_node_that_started_it() -> None:
+    provider, egress = _provider(response(207, {"successes": [{"id": "x", "status": 201}], "errors": []}))
+    fragment = nested_workflow_fragment()
+    assert fragment.parent is not None
+
+    provider.send(CONFIG, fragment)
+
+    run, node = _sent_events(egress)
+    assert [run["type"], node["type"]] == ["span-create", "span-create"]
+    assert run["body"]["traceId"] == node["body"]["traceId"] == WORKFLOW_RUN_ID
+    assert run["body"]["parentObservationId"] == str(span_uuid(fragment.trace_id, fragment.parent.span_id))
+    assert node["body"]["parentObservationId"] == run["body"]["id"]
 
 
 def test_external_trace_id_is_kept_verbatim() -> None:

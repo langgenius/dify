@@ -13,9 +13,24 @@ from dify_trace_sdk.events import (
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    EndUserType,
+    InvokeFrom,
+    WorkflowRunTriggeredFrom,
+)
 from models.model import App, AppMode, Conversation, EndUser, Message
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing.delivery import OuterRunRoot
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, TracingStoreUnavailableError
 from services.tracing.records import MessageTraceInfo, ModerationTraceInfo, ToolTraceInfo, TraceMessage
 
@@ -23,6 +38,10 @@ TENANT_ID = "tenant-1"
 APP_ID = "app-1"
 MESSAGE_ID = "message-1"
 CREATED_AT = datetime(2026, 1, 1, 8, 0, 0)
+WORKFLOW_APP_ID = "workflow-app"
+OUTER_RUN_ID = "outer-workflow-run"
+CHATFLOW_RUN_ID = "outer-chatflow-run"
+TOOL_NODE_ID = "outer-tool-node"
 
 
 @pytest.fixture
@@ -91,6 +110,77 @@ def records(sqlite_session: Session) -> None:
     sqlite_session.commit()
 
 
+def _workflow_run(run_id: str, app_id: str) -> WorkflowRun:
+    run = WorkflowRun(
+        id=run_id,
+        app_id=app_id,
+        tenant_id=TENANT_ID,
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        outputs="{}",
+        status=WorkflowExecutionStatus.RUNNING,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        finished_at=None,
+        elapsed_time=0,
+        total_tokens=0,
+        total_steps=0,
+    )
+    run.created_at = CREATED_AT + timedelta(seconds=1)
+    return run
+
+
+@pytest.fixture
+def outer_runs(sqlite_session: Session) -> None:
+    """A running workflow run whose tool node starts nested runs, and the chatflow run the message answers."""
+    workflow_app = App(
+        id=WORKFLOW_APP_ID,
+        tenant_id=TENANT_ID,
+        name="Workflow app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=False,
+        enable_api=False,
+    )
+    tool_node = WorkflowNodeExecutionModel(
+        id=TOOL_NODE_ID,
+        node_execution_id=TOOL_NODE_ID,
+        tenant_id=TENANT_ID,
+        app_id=WORKFLOW_APP_ID,
+        workflow_id="workflow-1",
+        workflow_run_id=OUTER_RUN_ID,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        index=1,
+        node_id="tool",
+        node_type="tool",
+        title="Nested workflow",
+        inputs="{}",
+        outputs="{}",
+        process_data="{}",
+        status=WorkflowNodeExecutionStatus.RUNNING,
+        elapsed_time=0,
+        execution_metadata="{}",
+        finished_at=None,
+        created_by="account-1",
+        created_by_role=CreatorUserRole.ACCOUNT,
+    )
+    tool_node.created_at = CREATED_AT + timedelta(seconds=2)
+    chat_app = sqlite_session.get(App, APP_ID)
+    message = sqlite_session.get(Message, MESSAGE_ID)
+    assert chat_app is not None
+    assert message is not None
+    chat_app.mode = AppMode.ADVANCED_CHAT
+    message.workflow_run_id = CHATFLOW_RUN_ID
+    sqlite_session.add_all(
+        [workflow_app, _workflow_run(OUTER_RUN_ID, WORKFLOW_APP_ID), tool_node, _workflow_run(CHATFLOW_RUN_ID, APP_ID)]
+    )
+    sqlite_session.commit()
+
+
 def _assembler(sessions: sessionmaker[Session]) -> TraceRecordRepository:
     return TraceRecordRepository(sessions, files_url="https://files.example.com", enterprise_details=False)
 
@@ -105,8 +195,7 @@ def _event(payload: TracePayload, *, tenant_id: str = TENANT_ID) -> TraceEvent:
         correlation=TraceCorrelation(
             external_trace_id="caller-trace",
             session_id="session-1",
-            parent_workflow_run_id=None,
-            parent_node_execution_id=None,
+            parent=None,
         ),
         payload=payload,
     )
@@ -235,3 +324,51 @@ def test_an_unreachable_database_is_reported_as_unavailable() -> None:
 
     with pytest.raises(TracingStoreUnavailableError):
         _assembler(sessions).assemble(_event(MessageCompleted(message_id=MESSAGE_ID, conversation_id="conversation-1")))
+
+
+@pytest.mark.usefixtures("records", "outer_runs")
+def test_a_workflow_trace_starts_with_its_run_and_a_chatflow_trace_with_its_message(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = _assembler(sqlite_session_factory)
+
+    assert repository.root(tenant_id=TENANT_ID, app_id=WORKFLOW_APP_ID, workflow_run_id=OUTER_RUN_ID) == OuterRunRoot(
+        root_id=OUTER_RUN_ID, started_at=CREATED_AT + timedelta(seconds=1)
+    )
+    assert repository.root(tenant_id=TENANT_ID, app_id=APP_ID, workflow_run_id=CHATFLOW_RUN_ID) == OuterRunRoot(
+        root_id=MESSAGE_ID, started_at=CREATED_AT
+    )
+
+
+@pytest.mark.usefixtures("records", "outer_runs")
+def test_outer_runs_and_their_tool_nodes_are_read_through_their_owners(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = _assembler(sqlite_session_factory)
+
+    def started_at(tenant_id: str, app_id: str, workflow_run_id: str) -> datetime | None:
+        return repository.node_started_at(
+            tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id, node_execution_id=TOOL_NODE_ID
+        )
+
+    assert started_at(TENANT_ID, WORKFLOW_APP_ID, OUTER_RUN_ID) == CREATED_AT + timedelta(seconds=2)
+    assert started_at("other-tenant", WORKFLOW_APP_ID, OUTER_RUN_ID) is None
+    assert started_at(TENANT_ID, APP_ID, OUTER_RUN_ID) is None
+    assert started_at(TENANT_ID, WORKFLOW_APP_ID, CHATFLOW_RUN_ID) is None
+    assert repository.root(tenant_id="other-tenant", app_id=WORKFLOW_APP_ID, workflow_run_id=OUTER_RUN_ID) is None
+    assert repository.root(tenant_id=TENANT_ID, app_id=APP_ID, workflow_run_id=OUTER_RUN_ID) is None
+
+
+@pytest.mark.usefixtures("records", "outer_runs")
+def test_a_chatflow_run_has_no_root_until_its_message_names_it(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
+    message = sqlite_session.get(Message, MESSAGE_ID)
+    assert message is not None
+    message.workflow_run_id = None
+    sqlite_session.commit()
+
+    assert (
+        _assembler(sqlite_session_factory).root(tenant_id=TENANT_ID, app_id=APP_ID, workflow_run_id=CHATFLOW_RUN_ID)
+        is None
+    )

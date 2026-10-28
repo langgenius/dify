@@ -31,6 +31,7 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+from core.helper.trace_id_helper import ParentTraceContext
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.tool_file_manager import ToolFileManager
@@ -83,9 +84,7 @@ def _trace_scope(recorder: _TraceRecorder | _PersistedRunRecorder, *, app: App, 
         tenant_id=app.tenant_id,
         app_id=app.id,
         user_id=end_user.session_id,
-        correlation=TraceCorrelation(
-            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-        ),
+        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
     )
 
 
@@ -399,10 +398,9 @@ class TestWorkflowAppGeneratorCases:
         assert isinstance(application_generate_entity, WorkflowAppGenerateEntity)
         extras = application_generate_entity.extras
         assert extras["external_trace_id"] == "trace-1"
-        assert extras["parent_trace_context"].model_dump() == {
-            "parent_workflow_run_id": "outer-workflow-run-1",
-            "parent_node_execution_id": "outer-node-execution-1",
-        }
+        assert extras["parent_trace_context"] == ParentTraceContext(
+            parent_workflow_run_id="outer-workflow-run-1", parent_node_execution_id="outer-node-execution-1"
+        )
         assert extras["trace_session_id"] == "session-1"
         assert application_generate_entity.trace_scope is trace_scope
         assert scope_requests == [
@@ -718,9 +716,7 @@ def _app_generator_extra_trace_scope() -> TraceScope:
         tenant_id=TENANT_ID,
         app_id=APP_ID,
         user_id="session-id",
-        correlation=TraceCorrelation(
-            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-        ),
+        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
     )
 
 

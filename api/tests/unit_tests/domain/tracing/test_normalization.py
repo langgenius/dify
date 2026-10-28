@@ -179,6 +179,7 @@ def trace_of(*spans: Span) -> Trace:
         session_id="session",
         user_id="user",
         parent=None,
+        trace_root=None,
         spans=spans,
     )
 
@@ -272,6 +273,7 @@ def test_managed_external_parent_is_preserved_as_explicit_link_when_content_off(
         session_id="session",
         user_id=None,
         parent=None,
+        trace_root=None,
         spans=(root,),
     )
     remapped = remap_outer_trace(outer, trace_id="1" * 32, capture_content=False, synthetic_span_ids=frozenset())

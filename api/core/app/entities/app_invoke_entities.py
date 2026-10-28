@@ -17,6 +17,7 @@ from core.credit_usage import (
     normalize_credit_usage_created_by,
 )
 from core.entities.provider_configuration import ProviderModelBundle
+from core.helper.trace_id_helper import ParentTraceContext
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
@@ -102,6 +103,10 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+    external_trace_id: str | None = None
+    """The trace ID the run's caller supplied."""
+    parent_trace_context: ParentTraceContext | None = None
+    """The workflow tool node that started this run; ``None`` unless the run is nested."""
     workflow_tool_invocation_id: str | None = None
 
     @field_validator("created_by", mode="before")
@@ -129,6 +134,8 @@ def build_dify_run_context(
     app_type: CreditUsageAppTypeInput = None,
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
+    external_trace_id: str | None = None,
+    parent_trace_context: ParentTraceContext | None = None,
     extra_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -147,6 +154,8 @@ def build_dify_run_context(
         app_type=normalize_credit_usage_app_type(app_type) if app_type is not None else None,
         created_by=normalize_credit_usage_created_by(created_by) if created_by is not None else None,
         trace_session_id=trace_session_id,
+        external_trace_id=external_trace_id,
+        parent_trace_context=parent_trace_context,
     )
     return run_context
 

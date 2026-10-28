@@ -422,6 +422,7 @@ class TraceRunAgg:
             session_id=self.session_id,
             user_id=None,
             parent=None,
+            trace_root=None,
             spans=(span,),
         )
         self._keep_terminal(trace, now=now)
@@ -638,5 +639,6 @@ class TraceRunAgg:
             session_id=self.session_id,
             user_id=outer.user_id,
             parent=None,
+            trace_root=None,
             spans=order_spans(outer.root.span_id, spans),
         )

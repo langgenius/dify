@@ -12,6 +12,12 @@ class ParentTraceContext(BaseModel):
 
     parent_workflow_run_id: StrictStr
     parent_node_execution_id: StrictStr | None = None
+    parent_app_id: StrictStr | None = None
+    """The app of the outer run; ``None`` in contexts saved before it was recorded."""
+    parent_external_trace_id: StrictStr | None = None
+    """The trace ID the outer run's caller supplied; only an outermost run has one."""
+    parent_trace_context: "ParentTraceContext | None" = None
+    """The outer run's own parent context; ``None`` when the outer run is not nested."""
 
     model_config = ConfigDict(extra="forbid")
 

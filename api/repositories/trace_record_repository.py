@@ -31,13 +31,13 @@ from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus
 from models import Account, App, Tenant
 from models.dataset import Dataset
-from models.model import Conversation, EndUser, Message, MessageFile
+from models.model import AppMode, Conversation, EndUser, Message, MessageFile
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.workflow import WorkflowAppLog, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.tracing_store_errors import tracing_store_errors
-from services.tracing.delivery import TraceRecordSource
+from services.tracing.delivery import OuterRunQuery, OuterRunRoot, TraceRecordSource
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError
 from services.tracing.records import (
     BaseTraceInfo,
@@ -123,7 +123,7 @@ def _streaming_metrics(message: Message) -> dict[str, Any]:
     }
 
 
-class TraceRecordRepository(TraceRecordSource):
+class TraceRecordRepository(TraceRecordSource, OuterRunQuery):
     def __init__(self, session_factory: sessionmaker[Session], *, files_url: str, enterprise_details: bool) -> None:
         self._sessions = session_factory
         self._files_url = files_url
@@ -153,6 +153,38 @@ class TraceRecordRepository(TraceRecordSource):
                 return self._draft_node(event, payload)
 
     # Shared lookups
+
+    @override
+    def root(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> OuterRunRoot | None:
+        runs = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._sessions)
+        with tracing_store_errors():
+            run = runs.get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=workflow_run_id)
+        if run is None:
+            return None
+        with tracing_store_errors(), self._sessions() as session:
+            mode = session.scalar(select(App.mode).where(App.id == app_id, App.tenant_id == tenant_id))
+            if mode is not AppMode.ADVANCED_CHAT:
+                return OuterRunRoot(root_id=run.id, started_at=run.created_at)
+            message = session.execute(
+                select(Message.id, Message.created_at).where(
+                    Message.app_id == app_id, Message.workflow_run_id == run.id
+                )
+            ).first()
+        if message is None:
+            return None
+        message_id, created_at = message
+        return OuterRunRoot(root_id=message_id, started_at=created_at)
+
+    @override
+    def node_started_at(
+        self, *, tenant_id: str, app_id: str, workflow_run_id: str, node_execution_id: str
+    ) -> datetime | None:
+        executions = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(self._sessions)
+        with tracing_store_errors():
+            execution = executions.get_execution_by_id(execution_id=node_execution_id, tenant_id=tenant_id)
+        if execution is None or execution.app_id != app_id or execution.workflow_run_id != workflow_run_id:
+            return None
+        return execution.created_at
 
     def _app(self, session: Session, event: TraceEvent) -> App:
         app = session.scalar(select(App).where(App.id == event.app_id, App.tenant_id == event.tenant_id))
@@ -330,10 +362,10 @@ class TraceRecordRepository(TraceRecordSource):
             "workspace_name": workspace_name,
         }
         correlation = event.correlation
-        if correlation.parent_workflow_run_id:
+        if correlation.parent is not None:
             metadata["parent_trace_context"] = {
-                "parent_workflow_run_id": correlation.parent_workflow_run_id,
-                "parent_node_execution_id": correlation.parent_node_execution_id,
+                "parent_workflow_run_id": correlation.parent.workflow_run_id,
+                "parent_node_execution_id": correlation.parent.node_execution_id,
             }
         return WorkflowTraceInfo(
             trace_id=correlation.external_trace_id,
@@ -360,6 +392,7 @@ class TraceRecordRepository(TraceRecordSource):
             start_time=run.created_at,
             end_time=run.finished_at,
             invoked_by=_user_of(metadata),
+            parent=correlation.parent,
         )
 
     def _node_executions(self, run: WorkflowRun) -> Sequence[WorkflowNodeExecution]:

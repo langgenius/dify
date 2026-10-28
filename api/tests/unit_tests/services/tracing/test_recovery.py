@@ -272,9 +272,7 @@ def trace_event(run: TraceRun, payload: TracePayload) -> TraceEvent:
         app_id=run.app_id,
         user_id=None,
         occurred_at=datetime.now(UTC),
-        correlation=TraceCorrelation(
-            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-        ),
+        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
         payload=payload,
     )
 
@@ -552,9 +550,7 @@ def save_agent_stop(
             tenant_id=case.collection.run.tenant_id,
             app_id=case.collection.run.app_id,
             user_id=identifier("stop-race-user"),
-            correlation=TraceCorrelation(
-                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-            ),
+            correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
         ),
     )
     stop = MessageQueueMessage(

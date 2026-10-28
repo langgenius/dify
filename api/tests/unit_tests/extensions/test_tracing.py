@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Literal, override
 
 from dify_agent.layers.execution_context import ApplicationTracingContext
 from dify_trace_sdk.emitter import TraceScope
-from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent, TraceParent
 from flask import Flask
 
 from core.helper.trace_id_helper import ParentTraceContext
@@ -113,7 +113,17 @@ def test_correlation_reads_the_caller_extras() -> None:
         {
             "external_trace_id": "caller-trace",
             "trace_session_id": "session-1",
-            "parent_trace_context": {"parent_workflow_run_id": "outer-run", "parent_node_execution_id": "outer-node"},
+            "parent_trace_context": {
+                "parent_workflow_run_id": "outer-run",
+                "parent_node_execution_id": "outer-node",
+                "parent_app_id": "outer-app",
+                "parent_trace_context": {
+                    "parent_workflow_run_id": "outermost-run",
+                    "parent_node_execution_id": "outermost-node",
+                    "parent_app_id": "outermost-app",
+                    "parent_external_trace_id": "outermost-caller-trace",
+                },
+            },
         }
     )
     typed = correlation_from_extras(
@@ -123,12 +133,25 @@ def test_correlation_reads_the_caller_extras() -> None:
     assert nested == TraceCorrelation(
         external_trace_id="caller-trace",
         session_id="session-1",
-        parent_workflow_run_id="outer-run",
-        parent_node_execution_id="outer-node",
+        parent=TraceParent(
+            workflow_run_id="outer-run",
+            app_id="outer-app",
+            node_execution_id="outer-node",
+            external_trace_id=None,
+            parent=TraceParent(
+                workflow_run_id="outermost-run",
+                app_id="outermost-app",
+                node_execution_id="outermost-node",
+                external_trace_id="outermost-caller-trace",
+                parent=None,
+            ),
+        ),
     )
-    assert typed.parent_workflow_run_id == "outer-run"
+    assert typed.parent == TraceParent(
+        workflow_run_id="outer-run", app_id=None, node_execution_id=None, external_trace_id=None, parent=None
+    )
     assert correlation_from_extras({"external_trace_id": "", "parent_trace_context": {"x": 1}}) == TraceCorrelation(
-        external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        external_trace_id=None, session_id=None, parent=None
     )
 
 

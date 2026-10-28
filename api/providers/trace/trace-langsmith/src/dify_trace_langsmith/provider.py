@@ -137,7 +137,7 @@ def _trace_run_id(trace: Trace) -> str:
     caller's trace ID groups several of them, since LangSmith keeps one root run per trace."""
     if trace.external_trace_id is None:
         return str(trace_uuid(trace.trace_id))
-    anchor = trace.parent.span_id if trace.parent is not None else trace.root.span_id
+    anchor = trace.trace_root.span_id if trace.trace_root is not None else trace.root.span_id
     return str(span_uuid(trace.trace_id, anchor))
 
 
@@ -251,12 +251,15 @@ class LangSmithProvider(TraceProvider[LangSmithConfig]):
         root_run_id = _trace_run_id(trace)
         run_ids = {span.span_id: str(span_uuid(trace.trace_id, span.span_id)) for span in trace.spans}
         dotted_orders: dict[str, str] = {}
-        if trace.parent is None:
+        if trace.parent is None or trace.trace_root is None:
             run_ids[trace.root.span_id] = root_run_id
         else:
             # The trace root was sent in another unit; its run ID and dotted order are derivable.
-            run_ids[trace.parent.span_id] = root_run_id
-            dotted_orders[trace.parent.span_id] = _dotted_order(root_run_id, trace.parent.start_time, None)
+            # A deeper parent's dotted order names every run above it, so the unit hangs from the root.
+            root_order = _dotted_order(root_run_id, trace.trace_root.start_time, None)
+            for anchor in (trace.trace_root.span_id, trace.parent.span_id):
+                run_ids[anchor] = root_run_id
+                dotted_orders[anchor] = root_order
         client = self._client(config, api_url)
         accepted: list[str] = []
         try:

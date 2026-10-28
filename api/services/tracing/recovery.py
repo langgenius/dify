@@ -39,8 +39,7 @@ def _event(run: TraceRunAgg, payload: TracePayload, user_id: str | None) -> Trac
         correlation=TraceCorrelation(
             external_trace_id=None,
             session_id=run.session_id,
-            parent_workflow_run_id=None,
-            parent_node_execution_id=None,
+            parent=None,
         ),
         payload=payload,
     )

@@ -95,6 +95,7 @@ def business_terminal(run: TraceRunAgg) -> Trace:
         session_id="conversation",
         user_id="user",
         parent=None,
+        trace_root=None,
         spans=(
             Span(
                 span_id=span_id_for(run.source_id),

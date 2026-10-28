@@ -278,10 +278,6 @@ _SAFE_OUTER_ATTRIBUTES = frozenset(
         "message_execution_state",
         "parent_workflow_run_id",
         "parent_node_execution_id",
-        "linked_parent_workflow_run_id",
-        "linked_parent_node_execution_id",
-        "linked_parent_application_trace_id",
-        "linked_parent_trace_id",
     }
 )
 
@@ -317,6 +313,7 @@ def remap_outer_trace(
         session_id=trace.session_id,
         user_id=trace.user_id,
         parent=None,
+        trace_root=None,
         spans=tuple(spans),
     )
 
@@ -363,6 +360,7 @@ def legacy_outer_trace(data: Mapping[str, Any]) -> Trace:
         session_id=data.get("session_id") or None,
         user_id=None,
         parent=None,
+        trace_root=None,
         spans=tuple(spans),
     )
 

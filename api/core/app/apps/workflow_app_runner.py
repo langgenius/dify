@@ -44,6 +44,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.credit_usage import CreditUsageAppType
+from core.helper.trace_id_helper import ParentTraceContext
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord
@@ -239,6 +240,8 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        external_trace_id: str | None = None,
+        parent_trace_context: ParentTraceContext | None = None,
     ) -> Graph:
         """
         Init graph
@@ -254,6 +257,8 @@ class WorkflowBasedAppRunner:
             invoke_from=invoke_from,
             app_type=app_type,
             trace_session_id=trace_session_id,
+            external_trace_id=external_trace_id,
+            parent_trace_context=parent_trace_context,
         )
         graph_init_context = DifyGraphInitContext(
             execution_driver=self._execution_driver,
@@ -290,6 +295,8 @@ class WorkflowBasedAppRunner:
         user_id: str,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        external_trace_id: str | None = None,
+        parent_trace_context: ParentTraceContext | None = None,
     ) -> tuple[Graph, VariablePool, RuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -328,6 +335,8 @@ class WorkflowBasedAppRunner:
                 user_id=user_id,
                 app_type=app_type,
                 trace_session_id=trace_session_id,
+                external_trace_id=external_trace_id,
+                parent_trace_context=parent_trace_context,
             )
         elif single_loop_run:
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
@@ -339,6 +348,8 @@ class WorkflowBasedAppRunner:
                 user_id=user_id,
                 app_type=app_type,
                 trace_session_id=trace_session_id,
+                external_trace_id=external_trace_id,
+                parent_trace_context=parent_trace_context,
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -358,6 +369,8 @@ class WorkflowBasedAppRunner:
         user_id: str = "",
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        external_trace_id: str | None = None,
+        parent_trace_context: ParentTraceContext | None = None,
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
@@ -429,6 +442,8 @@ class WorkflowBasedAppRunner:
             invoke_from=InvokeFrom.DEBUGGER,
             app_type=app_type,
             trace_session_id=trace_session_id,
+            external_trace_id=external_trace_id,
+            parent_trace_context=parent_trace_context,
         )
         graph_init_context = DifyGraphInitContext(
             execution_driver=self._execution_driver,

@@ -55,6 +55,7 @@ def standalone(trace: Trace) -> Trace:
         update={
             "trace_id": trace_id_for(f"{trace.trace_id}:{root.span_id}"),
             "parent": None,
+            "trace_root": None,
             "spans": (detached, *trace.spans[1:]),
         }
     )

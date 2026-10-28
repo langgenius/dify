@@ -334,9 +334,7 @@ class _TracePipeline:
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=user_id,
-            correlation=TraceCorrelation(
-                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-            ),
+            correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
         )
 
     def emit(self, event: TraceEvent) -> None:

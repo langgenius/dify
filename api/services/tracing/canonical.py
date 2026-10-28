@@ -43,8 +43,9 @@ _NODE_KIND: dict[str, SpanKind] = {
 _RETRY_SUMMARY_FIELDS = ("retry_index", "error", "elapsed_time", "created_at", "finished_at")
 
 
-def message_trace_id(external_trace_id: str | None, message_id: str) -> str:
-    return trace_id_for(external_trace_id or message_id)
+def root_trace_id(external_trace_id: str | None, root_id: str) -> str:
+    """The trace ID of a trace rooted at the message or workflow run ``root_id``."""
+    return trace_id_for(external_trace_id or root_id)
 
 
 def _status(error: str | None, status: object) -> SpanStatus:
@@ -179,11 +180,12 @@ class CanonicalTraceBuilder:
         status = _status(error, None)
         attributes = _attributes({**record.metadata, "trace_entity_type": "message"})
         return Trace(
-            trace_id=message_trace_id(record.trace_id, message.id),
+            trace_id=root_trace_id(record.trace_id, message.id),
             external_trace_id=record.trace_id,
             session_id=_session_id(record, message.conversation_id),
             user_id=_user_id(record),
             parent=None,
+            trace_root=None,
             spans=(
                 Span(
                     span_id=root_span_id,
@@ -323,11 +325,12 @@ class CanonicalTraceBuilder:
                 }
             )
         return Trace(
-            trace_id=trace_id_for(record.trace_id or root_logical_id),
+            trace_id=root_trace_id(record.trace_id, root_logical_id),
             external_trace_id=record.trace_id,
             session_id=_session_id(record, record.conversation_id or parent_run_id or record.workflow_run_id),
             user_id=_user_id(record),
             parent=None,
+            trace_root=None,
             spans=tuple(spans),
         )
 
@@ -416,7 +419,7 @@ class CanonicalTraceBuilder:
             parent = None
             parent_span_id = None
         else:
-            trace_id = message_trace_id(record.trace_id, message.id)
+            trace_id = root_trace_id(record.trace_id, message.id)
             parent = SpanRef(span_id=span_id_for(message.id), start_time=message.created_at)
             parent_span_id = parent.span_id
         return Trace(
@@ -425,6 +428,7 @@ class CanonicalTraceBuilder:
             session_id=_session_id(record, message.conversation_id if message is not None else None),
             user_id=_user_id(record),
             parent=parent,
+            trace_root=parent,
             spans=(
                 Span(
                     span_id=span_id,
