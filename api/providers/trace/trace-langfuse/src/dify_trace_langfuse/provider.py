@@ -118,7 +118,7 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
 
     def _events(self, trace: Trace, trace_key: str) -> list[dict[str, object]]:
         events: list[dict[str, object]] = []
-        if trace.trace_root is None:
+        if trace.parent is None:
             root = trace.root
             events.append(
                 self._event(
@@ -140,8 +140,7 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
             trace_level_span_id = root.span_id
             observations: Sequence[Span] = trace.spans[1:]
         else:
-            # Spans under the trace root, which another unit sent, are top-level observations.
-            trace_level_span_id = trace.trace_root.span_id
+            trace_level_span_id = trace.parent.span_id
             observations = trace.spans
         for span in observations:
             parent = (

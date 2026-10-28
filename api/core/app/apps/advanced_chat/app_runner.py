@@ -132,8 +132,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
-                external_trace_id=self.application_generate_entity.extras.get("external_trace_id"),
-                parent_trace_context=self.application_generate_entity.extras.get("parent_trace_context"),
                 call_depth=self.application_generate_entity.call_depth,
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -145,8 +143,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
-                external_trace_id=self.application_generate_entity.extras.get("external_trace_id"),
-                parent_trace_context=self.application_generate_entity.extras.get("parent_trace_context"),
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -220,8 +216,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 root_node_id=root_node_id,
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
-                external_trace_id=self.application_generate_entity.extras.get("external_trace_id"),
-                parent_trace_context=self.application_generate_entity.extras.get("parent_trace_context"),
                 call_depth=self.application_generate_entity.call_depth,
             )
 

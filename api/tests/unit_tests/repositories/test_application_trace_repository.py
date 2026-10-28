@@ -36,7 +36,7 @@ from services.tracing import service as service_module
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AppTracingSnapshot, TraceRun, TraceRunStatus
 from services.tracing.collection_ports import LockedTraceRun
-from services.tracing.delivery import CollectedTrace, StoredTraceDestination, TraceRecordSource
+from services.tracing.delivery import TraceRecordSource
 from services.tracing.errors import (
     TraceCollectionConflictError,
     TraceCollectionError,
@@ -224,7 +224,6 @@ def agent_turn(run: TraceRun, *, root_span_id: str) -> Trace:
         session_id=run.session_id,
         user_id=None,
         parent=None,
-        trace_root=None,
         spans=(root,),
     )
 
@@ -333,7 +332,6 @@ def workflow_info(row: WorkflowRun, parent: WorkflowRun | None) -> WorkflowTrace
         file_list=[],
         invoked_by=None,
         query="",
-        parent=None,
         metadata=metadata,
         start_time=row.created_at,
         end_time=row.finished_at,
@@ -723,22 +721,21 @@ class TestApplicationTraceLogstoreCases:
 
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
-    def test_collected_trace_is_the_frozen_agent_trace_of_the_runs_own_app(stored: StoredSource) -> None:
+    @pytest.mark.parametrize("mismatch", [None, "tenant_id", "app_id"])
+    def test_linked_parent_requires_logstore_run_and_durable_owner_to_agree(
+        stored: StoredSource, mismatch: str | None
+    ) -> None:
         parent = stored.start()
-        service = stored.service()
-
-        collected = service.collected_trace(
-            tenant_id=parent.tenant_id, app_id=parent.app_id, workflow_run_id=parent.source_id
-        )
-        foreign = service.collected_trace(
-            tenant_id=parent.tenant_id, app_id=identifier("foreign"), workflow_run_id=parent.source_id
-        )
-
-        assert collected == CollectedTrace(
-            trace_id=parent.trace_id,
-            destination=StoredTraceDestination(provider_id=parent.provider, config=parent.provider_config),
-        )
-        assert foreign == CollectedTrace(trace_id=None, destination=None)
+        info = workflow_info(_dict_to_workflow_run(stored.row), _dict_to_workflow_run(stored.row))
+        if mismatch:
+            stored.row[mismatch] = identifier("foreign")
+        linked = stored.service().link_managed_parent(tenant_id=stored.case.run.tenant_id, info=info)
+        if mismatch:
+            assert linked is info
+        else:
+            assert linked.resolved_parent_context == (None, None)
+            assert linked.metadata["linked_parent_trace_id"] == parent.trace_id
+            assert linked.metadata["linked_parent_workflow_run_id"] == parent.source_id
 
     @staticmethod
     def test_sql_workflow_source_still_uses_scoped_configured_reader(

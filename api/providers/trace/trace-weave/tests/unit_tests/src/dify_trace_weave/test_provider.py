@@ -22,7 +22,6 @@ from dify_trace_sdk.testing import (
     RecordedRequest,
     RecordingEgress,
     message_trace,
-    nested_workflow_fragment,
     response,
     tool_fragment,
     workflow_trace,
@@ -476,22 +475,6 @@ def test_fragment_joins_the_message_call_without_naming_a_turn() -> None:
         trace_url=f"{CALLS_URL}/{message_start['id']}",
         span_urls={tool.span_id: f"{CALLS_URL}/{tool_call}"},
     )
-
-
-def test_nested_workflow_hangs_from_the_tool_node_call_that_started_it() -> None:
-    fragment = nested_workflow_fragment()
-    assert fragment.parent is not None
-    assert fragment.trace_root is not None
-    provider, egress = _provider(*_acknowledgments(fragment))
-
-    result = provider.send(CONFIG, fragment)
-
-    run_start, node_start = (_body(request)["start"] for request in egress.requests[:2])
-    assert (run_start["trace_id"], node_start["trace_id"]) == (WORKFLOW_RUN_ID, WORKFLOW_RUN_ID)
-    assert run_start["parent_id"] == _call_id(fragment, fragment.parent.span_id)
-    assert node_start["parent_id"] == run_start["id"]
-    assert run_start["turn_id"] is None
-    assert result.trace_url == f"{CALLS_URL}/{_call_id(fragment, fragment.trace_root.span_id)}"
 
 
 def test_unit_without_session_has_no_thread_or_turn() -> None:

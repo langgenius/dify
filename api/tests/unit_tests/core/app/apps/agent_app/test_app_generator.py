@@ -85,7 +85,9 @@ def _trace_scope() -> TraceScope:
         tenant_id="tenant",
         app_id="app1",
         user_id="user",
-        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
     )
 
 
@@ -611,7 +613,9 @@ def _make_entity(query: str) -> AgentAppGenerateEntity:
             tenant_id="tenant-1",
             app_id="app-1",
             user_id="user-1",
-            correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
         ),
         agent_id="agent-1",
         agent_config_snapshot_id="snapshot-1",

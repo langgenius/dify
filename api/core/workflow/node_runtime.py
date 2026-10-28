@@ -610,9 +610,6 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 parent_trace_context = ParentTraceContext(
                     parent_workflow_run_id=outer_workflow_run_id,
                     parent_node_execution_id=node_execution_id,
-                    parent_app_id=self._run_context.app_id,
-                    parent_external_trace_id=self._run_context.external_trace_id,
-                    parent_trace_context=self._run_context.parent_trace_context,
                 )
             if isinstance(self._run_context.trace_session_id, str) and self._run_context.trace_session_id:
                 trace_session_id = self._run_context.trace_session_id
@@ -650,7 +647,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         tool = runtime_binding.tool
         callback = DifyWorkflowCallbackHandler()
         if runtime_binding.parent_trace_context and hasattr(tool, "set_parent_trace_context"):
-            tool.set_parent_trace_context(runtime_binding.parent_trace_context)
+            tool.set_parent_trace_context(
+                parent_workflow_run_id=runtime_binding.parent_trace_context.parent_workflow_run_id,
+                parent_node_execution_id=runtime_binding.parent_trace_context.parent_node_execution_id,
+            )
         elif hasattr(tool, "clear_parent_trace_context"):
             tool.clear_parent_trace_context()
         if runtime_binding.trace_session_id and hasattr(tool, "set_trace_session_id"):

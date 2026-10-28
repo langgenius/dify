@@ -6,7 +6,9 @@ from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from services.app_tracing_config_service import AppTraceSettings
 from services.tracing.scopes import TraceScopes, TracingPolicyQuery
 
-CORRELATION = TraceCorrelation(external_trace_id="caller-trace", session_id=None, parent=None)
+CORRELATION = TraceCorrelation(
+    external_trace_id="caller-trace", session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+)
 ENABLED = AppTraceSettings(enabled=True, tracing_provider="langfuse")
 
 

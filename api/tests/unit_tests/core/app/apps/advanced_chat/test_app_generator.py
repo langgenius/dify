@@ -98,7 +98,9 @@ def _trace_scope() -> TraceScope:
         tenant_id="tenant",
         app_id="app",
         user_id="user-id",
-        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
     )
 
 
@@ -1669,7 +1671,9 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         tenant_id="tenant-id",
         app_id="app-id",
         user_id="user-id",
-        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
     )
     scope_requests: list[dict[str, object]] = []
 

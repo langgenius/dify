@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 from dify_trace_sdk.emitter import TraceScope
-from dify_trace_sdk.events import TraceCorrelation, TraceParent
+from dify_trace_sdk.events import TraceCorrelation
 from flask import Flask, current_app, has_app_context
 
 from core.helper.trace_id_helper import ParentTraceContext
@@ -88,17 +88,6 @@ def _scopes() -> ExecutionTraceScopes | None:
     return cast(ExecutionTraceScopes | None, current_app.extensions.get(_SCOPES_KEY))
 
 
-def _trace_parent(context: ParentTraceContext) -> TraceParent:
-    outer = context.parent_trace_context
-    return TraceParent(
-        workflow_run_id=context.parent_workflow_run_id,
-        app_id=context.parent_app_id,
-        node_execution_id=context.parent_node_execution_id,
-        external_trace_id=context.parent_external_trace_id,
-        parent=_trace_parent(outer) if outer is not None else None,
-    )
-
-
 def correlation_from_extras(extras: Mapping[str, Any]) -> TraceCorrelation:
     """The caller-supplied correlation an execution carries in its ``extras``."""
     parent = extras.get("parent_trace_context")
@@ -111,7 +100,8 @@ def correlation_from_extras(extras: Mapping[str, Any]) -> TraceCorrelation:
     return TraceCorrelation(
         external_trace_id=external_trace_id if isinstance(external_trace_id, str) and external_trace_id else None,
         session_id=session_id if isinstance(session_id, str) and session_id else None,
-        parent=_trace_parent(parent) if isinstance(parent, ParentTraceContext) else None,
+        parent_workflow_run_id=parent.parent_workflow_run_id if isinstance(parent, ParentTraceContext) else None,
+        parent_node_execution_id=parent.parent_node_execution_id if isinstance(parent, ParentTraceContext) else None,
     )
 
 

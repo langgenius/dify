@@ -4,7 +4,9 @@ import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
 
-CORRELATION = TraceCorrelation(external_trace_id="caller-1", session_id=None, parent=None)
+CORRELATION = TraceCorrelation(
+    external_trace_id="caller-1", session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+)
 
 
 class _CollectingEmitter:

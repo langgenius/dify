@@ -13,7 +13,6 @@ from sqlalchemy import Engine, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.helper.trace_id_helper import ParentTraceContext
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -340,15 +339,8 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(
     """Ensure nested workflow runtime metadata is forwarded as parent trace context."""
     tool = _build_tool()
     tool.set_parent_trace_context(
-        ParentTraceContext(
-            parent_workflow_run_id="outer-workflow-run-1",
-            parent_node_execution_id="outer-node-execution-1",
-            parent_trace_context=ParentTraceContext(
-                parent_workflow_run_id="outermost-workflow-run",
-                parent_node_execution_id="outermost-node-execution",
-                parent_external_trace_id="caller-trace",
-            ),
-        )
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
     )
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
@@ -366,15 +358,6 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(
     assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
         "parent_workflow_run_id": "outer-workflow-run-1",
         "parent_node_execution_id": "outer-node-execution-1",
-        "parent_app_id": None,
-        "parent_external_trace_id": None,
-        "parent_trace_context": {
-            "parent_workflow_run_id": "outermost-workflow-run",
-            "parent_node_execution_id": "outermost-node-execution",
-            "parent_app_id": None,
-            "parent_external_trace_id": "caller-trace",
-            "parent_trace_context": None,
-        },
     }
 
 
@@ -431,9 +414,8 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
         ),
     ]
     tool.set_parent_trace_context(
-        ParentTraceContext(
-            parent_workflow_run_id="outer-workflow-run-1", parent_node_execution_id="outer-node-execution-1"
-        )
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
     )
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
@@ -459,9 +441,10 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
     call_kwargs = generate_calls[-1]
     assert call_kwargs["args"]["inputs"]["outer_workflow_run_id"] == "user-workflow-input"
     assert call_kwargs["args"]["inputs"]["outer_node_execution_id"] == "user-node-input"
-    assert call_kwargs["args"]["parent_trace_context"] == ParentTraceContext(
-        parent_workflow_run_id="outer-workflow-run-1", parent_node_execution_id="outer-node-execution-1"
-    )
+    assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-1",
+        "parent_node_execution_id": "outer-node-execution-1",
+    }
 
 
 def test_workflow_tool_can_clear_parent_trace_context(
@@ -471,9 +454,8 @@ def test_workflow_tool_can_clear_parent_trace_context(
     """Ensure reused WorkflowTool instances do not keep stale parent trace context."""
     tool = _build_tool()
     tool.set_parent_trace_context(
-        ParentTraceContext(
-            parent_workflow_run_id="outer-workflow-run-1", parent_node_execution_id="outer-node-execution-1"
-        )
+        parent_workflow_run_id="outer-workflow-run-1",
+        parent_node_execution_id="outer-node-execution-1",
     )
     tool.clear_parent_trace_context()
 
