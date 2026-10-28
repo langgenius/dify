@@ -6,6 +6,7 @@ import {
   expectAgentConfigFileHidden,
   expectAgentConfigFileSaved,
   expectAgentConfigFileVisible,
+  getCurrentAgentId,
   uploadAgentConfigFile,
 } from './configure-helpers.ts'
 
@@ -58,30 +59,32 @@ When(
 )
 
 Then(
-  'the Agent v2 Files upload dialog should reject the multiple-file drop',
+  'the Agent v2 Files upload dialog should queue every dropped file',
   async function (this: DifyWorld) {
-    const page = this.getPage()
-    const dialog = page.getByRole('dialog', { name: 'Upload file' })
-    const notifications = page.getByRole('region', { name: 'Notifications' })
+    const dialog = this.getPage().getByRole('dialog', { name: 'Upload file' })
 
-    await expect(notifications.getByRole('dialog')).toBeVisible()
-    await expect(dialog.getByRole('button', { name: 'Upload' })).toBeDisabled()
-    await expect(
-      dialog.getByText(agentBuilderTestMaterials.smallFile, { exact: true }),
-    ).not.toBeVisible()
-    await expect(
-      dialog.getByText(agentBuilderTestMaterials.emptyFile, { exact: true }),
-    ).not.toBeVisible()
+    for (const fileName of [
+      agentBuilderTestMaterials.smallFile,
+      agentBuilderTestMaterials.emptyFile,
+    ]) {
+      const row = dialog.getByRole('listitem').filter({ hasText: fileName })
+      await expect(row.getByText(fileName, { exact: true })).toBeVisible()
+      await expect(row.getByText('Queued', { exact: true })).toBeVisible()
+    }
+    await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeEnabled()
   },
 )
 
-Then(
-  'I should not see the dropped Agent v2 files in the Files section',
-  async function (this: DifyWorld) {
-    await expectAgentConfigFileHidden(this, 'smallFile')
-    await expectAgentConfigFileHidden(this, 'emptyFile')
-  },
-)
+When('I upload the dropped Agent v2 files', async function (this: DifyWorld) {
+  const dialog = this.getPage().getByRole('dialog', { name: 'Upload file' })
+  await dialog.getByRole('button', { name: 'Upload', exact: true }).click()
+  await expect(dialog).not.toBeVisible({ timeout: 30_000 })
+
+  const agentId = getCurrentAgentId(this)
+  for (const name of [agentBuilderTestMaterials.smallFile, agentBuilderTestMaterials.emptyFile]) {
+    this.createdAgentConfigFiles.push({ agentId, name })
+  }
+})
 
 Then('I should see the small Agent v2 file in the Files section', async function (this: DifyWorld) {
   await expectAgentConfigFileVisible(this, 'smallFile')
