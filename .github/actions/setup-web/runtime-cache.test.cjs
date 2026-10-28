@@ -13,34 +13,32 @@ const readYaml = (file) => load(readFileSync(path.join(root, file), 'utf8'))
 const workflow = readYaml('.github/workflows/web-bundle-size.yml')
 const setup = readYaml('.github/actions/setup-web/action.yml')
 
-test('runtime store reuse is opt-in and refuses write-capable cache credentials', () => {
+test('runtime cache opt-in reaches toolchain setup without runtime-service shell variables', () => {
   assert.equal(setup.inputs['runtime-cache'].default, 'false')
-  const guard = setup.runs.steps.find(
-    (step) => step.env?.RUNTIME_CACHE === '${{ inputs.runtime-cache }}',
-  )
-  assert.ok(guard, 'runtime cache opt-in must validate the effective cache mode')
 
-  for (const [input, mode, succeeds] of [
-    ['true', 'read', true],
-    ['true', 'write', false],
-    ['true', 'write-only', false],
-    ['true', 'none', false],
-    ['true', '', false],
-    ['true', 'invalid', false],
-    ['false', 'write', true],
-    ['false', '', true],
-    ['TRUE', 'read', false],
-    [' true ', 'write', false],
-  ]) {
-    const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', guard.run], {
-      env: { PATH: process.env.PATH, RUNTIME_CACHE: input, ACTIONS_CACHE_MODE: mode },
-      encoding: 'utf8',
-    })
-    assert.equal(
-      result.status === 0,
-      succeeds,
-      `runtime cache: ${input}; cache mode: ${mode || 'unset'}`,
-    )
+  for (const input of ['true', 'false']) {
+    let toolchain
+    for (const step of setup.runs.steps) {
+      if (step.uses?.startsWith('pnpm/setup@')) {
+        toolchain = step
+        break
+      }
+      if (!step.run) continue
+
+      const env = { PATH: process.env.PATH }
+      for (const [name, value] of Object.entries(step.env ?? {})) {
+        env[name] = value === '${{ inputs.runtime-cache }}' ? input : value
+      }
+      // Shell steps do not receive the cache service environment that JS actions get.
+      const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
+        env,
+        encoding: 'utf8',
+      })
+      assert.equal(result.status, 0, result.stdout + result.stderr)
+    }
+    assert.ok(toolchain, 'web setup must reach the runtime installer')
+    assert.equal(toolchain.with.cache, '${{ inputs.runtime-cache }}')
+    assert.equal(toolchain.with['save-cache'], false)
   }
 })
 

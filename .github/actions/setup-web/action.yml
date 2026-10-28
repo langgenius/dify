@@ -15,24 +15,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Require read-only runtime cache credentials
-      shell: bash
-      env:
-        RUNTIME_CACHE: ${{ inputs.runtime-cache }}
-      run: |
-        case "$RUNTIME_CACHE" in
-          false) ;;
-          true)
-            if [[ "${ACTIONS_CACHE_MODE:-}" != read ]]; then
-              echo '::error::Runtime cache consumers must set cache-mode: read.'
-              exit 1
-            fi
-            ;;
-          *)
-            echo '::error::runtime-cache must be true or false.'
-            exit 1
-            ;;
-        esac
+    # Cache service variables are injected into JS actions, not shell steps.
+    # The caller's cache-mode scopes the service token; shell env cannot attest it.
     - name: Setup pnpm and Node.js
       uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
       with:
