@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "將 {{title}} 標記為未完成",
   "stepByStepTour.minimize": "最小化",
   "stepByStepTour.progressAriaValueText": "已完成 {{completed}} / {{total}} 個步驟",
-  "stepByStepTour.restore": "開啟 Step-by-step Tour",
   "stepByStepTour.skip": "略過導覽",
   "stepByStepTour.skipRecovery.dismiss": "知道了",
   "stepByStepTour.skipRecovery.label": "Step-by-step Tour 復原提示",

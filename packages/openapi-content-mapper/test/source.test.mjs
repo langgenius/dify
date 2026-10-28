@@ -200,7 +200,9 @@ if (await load(undefined, {client: (await import('@dify/openapi-content-mapper')
   assert(!after.includes('"pets"'))
 })
 
-test('Vite refreshes command sources when a new backend input is added', async (t) => {
+// Skipped while flaky on CI: Vite sometimes never reloads after the new input is added on Linux
+// runners (Depot and GitHub-hosted), failing unrelated PRs.
+test.skip('Vite refreshes command sources when a new backend input is added', async (t) => {
   const { directory, file, content } = fixture(t)
   writeFileSync(file, JSON.stringify({ ...JSON.parse(content), optionalInputs: ['.env'] }))
   const exporter = join(directory, 'export.mjs')
