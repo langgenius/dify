@@ -67,6 +67,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from extensions.application_services.workflow_run import build_workflow_run_execution_service
 from extensions.storage.storage_type import StorageType
 from graphon.engine.layer import Layer
 from graphon.engine.ready_queue import StartTask
@@ -108,7 +109,6 @@ from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
-from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import (
@@ -1458,13 +1458,17 @@ def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Gene
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
     prepared = PreparedWorkflowRun(entry, WorkflowType.WORKFLOW, "draft", entity, ())
-    return WorkflowRunAgg(
-        prepared,
-        runner,
-        None,
-        workflow_execution_repository=runs,
-        workflow_node_execution_repository=nodes,
-    ).iter_events()
+    return (
+        build_workflow_run_execution_service(database_client=factory)
+        .create_attempt(
+            prepared,
+            runner,
+            None,
+            workflow_execution_repository=runs,
+            workflow_node_execution_repository=nodes,
+        )
+        .iter_events()
+    )
 
 
 class TestWorkflowHumanInputCompletionCases:

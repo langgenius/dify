@@ -23,7 +23,9 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.db.session_factory import get_session_maker
 from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.ext_database import db
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
@@ -39,7 +41,6 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from services.app_task_service import AppTaskService
-from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,6 @@ class _AppRunner:
                 return None
 
         pause_config = PauseStateLayerConfig(
-            session_factory=self._session_factory,
             state_owner_user_id=workflow.created_by,
         )
 
@@ -215,7 +215,9 @@ class _AppRunner:
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            return AdvancedChatAppGenerator(
+                execution_driver=build_workflow_run_driver(database_client=get_session_maker())
+            ).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -227,7 +229,9 @@ class _AppRunner:
                 session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
-            return WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            return WorkflowAppGenerator(
+                execution_driver=build_workflow_run_driver(database_client=get_session_maker())
+            ).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -601,7 +605,6 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     pause_config = PauseStateLayerConfig(
-        session_factory=session_factory,
         state_owner_user_id=workflow.created_by,
     )
 
@@ -680,7 +683,9 @@ def _resume_advanced_chat(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = AdvancedChatAppGenerator(
+        execution_driver=build_workflow_run_driver(database_client=get_session_maker())
+    )
 
     try:
         response = generator.resume(
@@ -749,7 +754,7 @@ def _resume_workflow(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = WorkflowAppGenerator(execution_driver=build_workflow_run_driver(database_client=get_session_maker()))
 
     try:
         response = generator.resume(

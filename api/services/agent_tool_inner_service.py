@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.db.session_factory import get_session_maker
 from core.tools.entities.tool_entities import ToolInvokeFrom, ToolProviderType
 from core.tools.errors import (
     ToolInvokeError,
@@ -33,10 +34,10 @@ from core.tools.errors import (
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from models.model import App
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
-from services.workflow_run_agg import WorkflowRunAgg
 
 
 class AgentToolInnerService:
@@ -74,7 +75,7 @@ class AgentToolInnerService:
                 trace_session_id=request.caller.trace_session_id,
             )
             tool_runtime = ToolManager.get_agent_tool_runtime(
-                execution_driver=WorkflowRunAgg.run,
+                execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
                 tenant_id=request.caller.tenant_id,
                 app_id=request.caller.app_id,
                 agent_tool=agent_tool,

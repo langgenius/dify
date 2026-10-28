@@ -20,6 +20,7 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import WorkflowEntry
+from extensions.application_services.workflow_run import build_workflow_run_execution_service
 from extensions.ext_storage import storage
 from graphon.engine.command import InMemoryChannel, PauseCommand
 from graphon.engine_events import GraphRunFailedEvent, GraphRunPausedEvent, GraphRunStartedEvent, GraphRunSucceededEvent
@@ -34,7 +35,7 @@ from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_run_execution_service import WorkflowRunAttempt
 
 
 @dataclass
@@ -53,7 +54,7 @@ class WorkflowCase:
         total_tokens: int = 0,
         node_run_steps: int = 0,
         pause: bool = True,
-    ) -> tuple[PreparedWorkflowRun, WorkflowRunAgg]:
+    ) -> tuple[PreparedWorkflowRun, WorkflowRunAttempt]:
         entity = WorkflowAppGenerateEntity(
             task_id=str(uuid4()),
             app_config=WorkflowUIBasedAppConfig(
@@ -123,14 +124,17 @@ class WorkflowCase:
             command_channel=commands,
         )
         prepared = PreparedWorkflowRun(entry, WorkflowType.WORKFLOW, self.workflow.version, entity, ())
-        aggregate = WorkflowRunAgg(
+        service = build_workflow_run_execution_service(
+            database_client=sessionmaker(bind=self.engine, expire_on_commit=False)
+        )
+        attempt = service.create_attempt(
             prepared,
             runner,
-            PauseStateLayerConfig(self.engine, self.workflow.created_by),
+            PauseStateLayerConfig(self.workflow.created_by),
             workflow_execution_repository=runs,
             workflow_node_execution_repository=nodes,
         )
-        return prepared, aggregate
+        return prepared, attempt
 
     def stored_pause(self) -> WorkflowPause:
         self.session.expire_all()
@@ -171,8 +175,8 @@ def workflow_case(db_session_with_containers: Session) -> WorkflowCase:
 
 
 def test_complete_pause_flow_with_real_dependencies(workflow_case: WorkflowCase) -> None:
-    prepared, aggregate = workflow_case.prepare(outputs={"result": "intermediate"}, total_tokens=100, node_run_steps=5)
-    with closing(aggregate.iter_events()) as events:
+    prepared, attempt = workflow_case.prepare(outputs={"result": "intermediate"}, total_tokens=100, node_run_steps=5)
+    with closing(attempt.iter_events()) as events:
         assert isinstance(next(events), GraphRunStartedEvent)
         workflow_case.session.expire_all()
         run = workflow_case.session.get(WorkflowRun, workflow_case.run_id)
@@ -201,10 +205,8 @@ def test_complete_pause_flow_with_real_dependencies(workflow_case: WorkflowCase)
 def test_state_persistence_and_retrieval(workflow_case: WorkflowCase) -> None:
     outputs = {"nested": {"key": "value", "number": 42}, "list": [1, 2, 3, {"nested": "item"}], "null": None}
     variables = {("node", "text"): "value", ("node", "object"): {"complex": "object"}, ("node", "list"): [1, 2, 3]}
-    prepared, aggregate = workflow_case.prepare(
-        outputs=outputs, variables=variables, total_tokens=250, node_run_steps=10
-    )
-    events = list(aggregate.iter_events())
+    prepared, attempt = workflow_case.prepare(outputs=outputs, variables=variables, total_tokens=250, node_run_steps=10)
+    events = list(attempt.iter_events())
     assert isinstance(events[-1], GraphRunPausedEvent)
     repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(workflow_case.engine))
     pause = repository.get_workflow_pause(workflow_case.run_id)
@@ -223,8 +225,8 @@ def test_state_persistence_and_retrieval(workflow_case: WorkflowCase) -> None:
 
 
 def test_database_transaction_handling(workflow_case: WorkflowCase) -> None:
-    _, aggregate = workflow_case.prepare(outputs={"test": "transaction"})
-    assert isinstance(list(aggregate.iter_events())[-1], GraphRunPausedEvent)
+    _, attempt = workflow_case.prepare(outputs={"test": "transaction"})
+    assert isinstance(list(attempt.iter_events())[-1], GraphRunPausedEvent)
     with Session(workflow_case.engine) as session:
         run = session.get(WorkflowRun, workflow_case.run_id)
         assert run is not None
@@ -241,8 +243,8 @@ def test_workflow_with_different_creators(workflow_case: WorkflowCase) -> None:
     workflow_case.session.flush()
     workflow_case.workflow.created_by = creator.id
     workflow_case.session.commit()
-    _, aggregate = workflow_case.prepare()
-    assert isinstance(list(aggregate.iter_events())[-1], GraphRunPausedEvent)
+    _, attempt = workflow_case.prepare()
+    assert isinstance(list(attempt.iter_events())[-1], GraphRunPausedEvent)
     pause = workflow_case.stored_pause()
     snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
     run = workflow_case.session.get(WorkflowRun, workflow_case.run_id)
@@ -253,8 +255,8 @@ def test_workflow_with_different_creators(workflow_case: WorkflowCase) -> None:
 
 
 def test_successful_execution_creates_no_pause(workflow_case: WorkflowCase) -> None:
-    _, aggregate = workflow_case.prepare(pause=False)
-    events = list(aggregate.iter_events())
+    _, attempt = workflow_case.prepare(pause=False)
+    events = list(attempt.iter_events())
     assert isinstance(events[-1], GraphRunSucceededEvent)
     assert not any(isinstance(event, GraphRunPausedEvent) for event in events)
     workflow_case.session.expire_all()
@@ -265,9 +267,9 @@ def test_successful_execution_creates_no_pause(workflow_case: WorkflowCase) -> N
 
 
 def test_active_execution_cannot_publish_a_durable_pause(workflow_case: WorkflowCase) -> None:
-    prepared, aggregate = workflow_case.prepare()
+    prepared, attempt = workflow_case.prepare()
     with prepared.entry.graph_engine.runtime_state.graph_execution.track_execution():
-        events = list(aggregate.iter_events())
+        events = list(attempt.iter_events())
     assert isinstance(events[-1], GraphRunFailedEvent)
     assert "during active execution" in events[-1].error
     assert not any(isinstance(event, GraphRunPausedEvent) for event in events)

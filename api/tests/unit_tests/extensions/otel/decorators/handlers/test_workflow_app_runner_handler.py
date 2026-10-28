@@ -12,11 +12,12 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from opentelemetry.trace import StatusCode
 from sqlalchemy import Engine
 
+from core.db.session_factory import get_session_maker
+from extensions.application_services.workflow_run import build_workflow_run_execution_service
 from extensions.otel.decorators.handlers.workflow_app_runner_handler import WorkflowAppRunnerHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
-from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.unit_tests.services.test_workflow_run_agg import make_workflow_runner
+from tests.unit_tests.services.test_workflow_run_execution_service import make_workflow_runner
 
 
 def test_service_driver_emits_workflow_span(sqlite_engine: Engine) -> None:
@@ -25,7 +26,8 @@ def test_service_driver_emits_workflow_span(sqlite_engine: Engine) -> None:
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     try:
-        WorkflowAppRunnerHandler().wrapper(provider.get_tracer(__name__), WorkflowRunAgg.run, runner, None, runs, nodes)
+        service = build_workflow_run_execution_service(database_client=get_session_maker())
+        WorkflowAppRunnerHandler().wrapper(provider.get_tracer(__name__), service.run, runner, None, runs, nodes)
         spans = exporter.get_finished_spans()
         assert len(spans) == 1
         assert spans[0].status.status_code == StatusCode.OK

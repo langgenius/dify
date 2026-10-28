@@ -22,7 +22,9 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueMessageFileEvent
 from core.credit_usage import CreditUsageAppType
+from core.db.session_factory import get_session_maker
 from core.model_manager import ModelInstance
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -36,7 +38,6 @@ from graphon.model_runtime.entities.message_entities import (
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import AppMode, Conversation, Message, StorageType, UploadFile
-from services.workflow_run_agg import WorkflowRunAgg
 
 # ==============================
 # Dummy Helper Classes
@@ -133,7 +134,7 @@ def real_runner(
     assert app_config.agent is not None
     app_config.agent.strategy = AgentEntity.Strategy.FUNCTION_CALLING
     return FunctionCallAgentRunner(
-        execution_driver=WorkflowRunAgg.run,
+        execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
         session=sqlite_session,
         tenant_id=app_config.tenant_id,
         application_generate_entity=agent_generate_entity,
@@ -192,7 +193,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     conversation = _make_conversation()
 
     runner = FunctionCallAgentRunner(
-        execution_driver=WorkflowRunAgg.run,
+        execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=conversation,

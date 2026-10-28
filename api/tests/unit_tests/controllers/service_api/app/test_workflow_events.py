@@ -456,7 +456,6 @@ class TestHitlServiceApi:
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None
-        assert call_kwargs["pause_state_config"].session_factory is sqlite_session_maker
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
 
     # Blocking payload contract

@@ -82,7 +82,7 @@ def iter_dify_graph_engine_events(
     workflow runners and tests.
 
     ``response_stream_filter``, when supplied, must be the same instance a
-    caller intends to persist on pause (see ``WorkflowRunAgg``) so
+    caller intends to persist on pause (see ``WorkflowRunAttempt``) so
     the filter's ``paths_map`` reflects everything the engine has actually
     streamed for this run.
     """

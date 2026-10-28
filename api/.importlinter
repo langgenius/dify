@@ -1278,3 +1278,22 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:workflow-run-execution-service-boundary]
+name = Workflow run execution service reaches storage only through its ports
+type = forbidden
+source_modules =
+    services.workflow_run_execution_service
+forbidden_modules =
+    configs
+    controllers
+    core.db
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+# The service orchestrates the legacy execution kernel, which reaches these modules itself.
+allow_indirect_imports = True

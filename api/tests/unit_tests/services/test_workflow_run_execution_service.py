@@ -21,9 +21,11 @@ from core.app.entities.queue_entities import (
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.trigger_post_layer import TriggerPostLayer
+from core.db.session_factory import get_session_maker
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
+from extensions.application_services.workflow_run import build_workflow_run_execution_service
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.engine_events import (
@@ -56,7 +58,7 @@ from models.workflow import (
 from models.workflow import WorkflowType as ModelWorkflowType
 from services.agent.workspace_service import AgentWorkspaceService
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
-from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_run_execution_service import WorkflowRunAttempt, WorkflowRunExecutionService
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
@@ -70,6 +72,10 @@ from tests.unit_tests.core.workflow.nodes.agent_v2.test_binding_resolver import 
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _install_backend_client
 
 """Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
+
+
+def _service() -> WorkflowRunExecutionService:
+    return build_workflow_run_execution_service(database_client=get_session_maker())
 
 
 def _pipeline_tool_runner(
@@ -175,7 +181,7 @@ class TestPipelineWorkflowToolsCases:
         runner, runs, nodes = _pipeline_tool_runner(sqlite_engine, invoke_from, human_input.model_dump(mode="json"))
 
         with pytest.raises(ValueError, match="Human Input nodes are not supported"):
-            WorkflowRunAgg.run(runner, None, runs, nodes)
+            _service().run(runner, None, runs, nodes)
 
         with Session(sqlite_engine) as session:
             assert session.scalar(select(WorkflowRun)) is None
@@ -244,7 +250,7 @@ class TestPipelineWorkflowToolsCases:
 
         monkeypatch.setattr("tasks.collect_agent_resources_task.collect_agent_resources.delay", collect_task)
 
-        WorkflowRunAgg.run(runner, None, runs, nodes)
+        _service().run(runner, None, runs, nodes)
         list(runner._queue_manager.listen())
 
         with Session(sqlite_engine) as session:
@@ -355,16 +361,16 @@ def make_workflow_runner(
         variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow,
         system_user_id=user_id,
-        execution_driver=WorkflowRunAgg.run,
+        execution_driver=_service().run,
     )
     return runner, workflow_repository, node_repository
 
 
-class TestWorkflowRunAggCases:
+class TestWorkflowRunExecutionServiceCases:
     @staticmethod
     def test_driver_publishes_persisted_start_index_and_success(sqlite_engine: Engine) -> None:
         runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine)
-        WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)
+        _service().run(runner, None, workflow_repository, node_repository)
         events = [message.event for message in runner._queue_manager.listen()]
         starts = [event for event in events if isinstance(event, QueueNodeStartedEvent)]
         assert len(starts) == 1
@@ -385,7 +391,7 @@ class TestWorkflowRunAggCases:
         runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine)
         runner.application_generate_entity.extras["workflow_tool_snapshot"] = snapshot
         with pytest.raises(ValidationError):
-            WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)
+            _service().run(runner, None, workflow_repository, node_repository)
         with Session(sqlite_engine) as session:
             assert session.scalar(select(WorkflowRun)) is None
 
@@ -404,12 +410,8 @@ class TestWorkflowRunAggCases:
         sqlite_engine: Engine, persist_snapshot: bool, caplog: pytest.LogCaptureFixture
     ) -> None:
         runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
-        config = (
-            PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id)
-            if persist_snapshot
-            else None
-        )
-        WorkflowRunAgg.run(runner, config, workflow_repository, node_repository)
+        config = PauseStateLayerConfig(runner.application_generate_entity.user_id) if persist_snapshot else None
+        _service().run(runner, config, workflow_repository, node_repository)
         assert "Failed to enqueue human input email task" not in caplog.text
         events = [message.event for message in runner._queue_manager.listen()]
         assert isinstance(events[-1], QueueWorkflowPausedEvent), events
@@ -488,9 +490,9 @@ class TestWorkflowRunAggCases:
             queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
         )
         runner._graph_engine_layers = (TriggerPostLayer(plan, start_time, trigger_log.id),)
-        WorkflowRunAgg.run(
+        _service().run(
             runner,
-            PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id),
+            PauseStateLayerConfig(runner.application_generate_entity.user_id),
             workflow_repository,
             node_repository,
         )
@@ -567,8 +569,8 @@ class TestWorkflowRunAggCases:
         from models.human_input import HumanInputForm
 
         original, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
-        config = PauseStateLayerConfig(sqlite_engine, original.application_generate_entity.user_id)
-        WorkflowRunAgg.run(original, config, workflow_repository, node_repository)
+        config = PauseStateLayerConfig(original.application_generate_entity.user_id)
+        _service().run(original, config, workflow_repository, node_repository)
         before = [message.event for message in original._queue_manager.listen()]
         assert isinstance(before[-1], QueueWorkflowPausedEvent)
         with Session(sqlite_engine) as session:
@@ -596,9 +598,9 @@ class TestWorkflowRunAggCases:
             system_user_id=entity.user_id,
             graph_runtime_state=RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state),
             response_stream_filter=snapshot.get_response_stream_filter(),
-            execution_driver=WorkflowRunAgg.run,
+            execution_driver=_service().run,
         )
-        WorkflowRunAgg.run(resumed, config, workflow_repository, node_repository)
+        _service().run(resumed, config, workflow_repository, node_repository)
         after = [message.event for message in queue.listen()]
         assert isinstance(after[0], QueueWorkflowStartedEvent)
         assert len(after[0].node_execution_snapshots) == 2
@@ -724,8 +726,8 @@ class TestWorkflowRunAggCases:
         graph["edges"][1]["target"] = "tool"
         graph["edges"].append({"source": "tool", "target": "end"})
         original._workflow.graph = json.dumps(graph)
-        config = PauseStateLayerConfig(sqlite_engine, original_entity.user_id)
-        WorkflowRunAgg.run(original, config, workflow_repository, node_repository)
+        config = PauseStateLayerConfig(original_entity.user_id)
+        _service().run(original, config, workflow_repository, node_repository)
         before = [message.event for message in original._queue_manager.listen()]
         assert isinstance(before[-1], QueueWorkflowPausedEvent)
         assert not any(isinstance(event, QueueNodeStartedEvent) and event.node_id == "tool" for event in before)
@@ -759,9 +761,9 @@ class TestWorkflowRunAggCases:
             system_user_id=entity.user_id,
             graph_runtime_state=RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state),
             response_stream_filter=snapshot.get_response_stream_filter(),
-            execution_driver=WorkflowRunAgg.run,
+            execution_driver=_service().run,
         )
-        WorkflowRunAgg.run(resumed, config, workflow_repository, node_repository)
+        _service().run(resumed, config, workflow_repository, node_repository)
         after = [message.event for message in queue.listen()]
         assert [event.form_id for event in after if isinstance(event, QueueHumanInputFormFilledEvent)] == [form_id]
         assert isinstance(after[-1], QueueWorkflowSucceededEvent), after
@@ -790,9 +792,9 @@ class TestWorkflowRunAggCases:
             variable_loader=DUMMY_VARIABLE_LOADER,
             workflow=original._workflow,
             system_user_id=fresh_entity.user_id,
-            execution_driver=WorkflowRunAgg.run,
+            execution_driver=_service().run,
         )
-        WorkflowRunAgg.run(fresh, None, workflow_repository, node_repository)
+        _service().run(fresh, None, workflow_repository, node_repository)
         fresh_events = [message.event for message in fresh_queue.listen()]
         assert isinstance(fresh_events[-1], QueueWorkflowSucceededEvent), fresh_events
         assert fresh_events[-1].outputs == {"result": [{"marker": "republished"}]}
@@ -804,16 +806,16 @@ class TestWorkflowRunAggCases:
         runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
         prepared = runner.prepare()
         assert prepared is not None
-        aggregate = WorkflowRunAgg(
+        attempt = _service().create_attempt(
             prepared,
             runner,
-            PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id),
+            PauseStateLayerConfig(runner.application_generate_entity.user_id),
             workflow_execution_repository=workflow_repository,
             workflow_node_execution_repository=node_repository,
         )
         # A participant that has not shut down must prevent a resume-ready snapshot.
         with prepared.entry.graph_engine.runtime_state.graph_execution.track_execution():
-            events = list(aggregate.iter_events())
+            events = list(attempt.iter_events())
         assert isinstance(events[-1], GraphRunFailedEvent)
         assert "during active execution" in events[-1].error
         assert not any(isinstance(event, GraphRunPausedEvent) for event in events)
@@ -863,7 +865,7 @@ class TestWorkflowRunAggCases:
         original._workflow.graph = json.dumps(graph)
         runner = original
         run_id = runner.application_generate_entity.workflow_execution_id
-        config = PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id)
+        config = PauseStateLayerConfig(runner.application_generate_entity.user_id)
         account = Account(name="Test", email="test@example.com")
         account.id = runner.application_generate_entity.user_id
         total = 0.0
@@ -871,7 +873,7 @@ class TestWorkflowRunAggCases:
         for index, duration in enumerate([2.0, 3.0, 4.0]):
             prepared = runner.prepare()
             assert prepared is not None
-            aggregate = WorkflowRunAgg(
+            attempt = _service().create_attempt(
                 prepared,
                 runner,
                 config,
@@ -881,7 +883,7 @@ class TestWorkflowRunAggCases:
             is_paused = index < 2
             if is_paused:
                 events = []
-                for event in aggregate.iter_events():
+                for event in attempt.iter_events():
                     if isinstance(event, GraphRunStartedEvent):
                         with Session(sqlite_engine) as session:
                             started = session.get(WorkflowRun, run_id)
@@ -891,9 +893,9 @@ class TestWorkflowRunAggCases:
                     events.append(event)
                 assert isinstance(events[-1], GraphRunPausedEvent), events
             else:
-                aggregate._persistence_layer.on_event(GraphRunStartedEvent())
+                attempt._persistence_layer.on_event(GraphRunStartedEvent())
                 clock[0] += duration
-                aggregate._persistence_layer.on_event(terminal_event)
+                attempt._persistence_layer.on_event(terminal_event)
             total += duration
             with Session(sqlite_engine) as session:
                 execution = session.get(WorkflowRun, run_id)
@@ -958,7 +960,7 @@ class TestWorkflowRunAggCases:
                     system_user_id=entity.user_id,
                     graph_runtime_state=RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state),
                     response_stream_filter=snapshot.get_response_stream_filter(),
-                    execution_driver=WorkflowRunAgg.run,
+                    execution_driver=_service().run,
                 )
             else:
                 response = converter.workflow_finish_to_stream_response(
@@ -1009,17 +1011,15 @@ class TestWorkflowRunAggCases:
 
             monkeypatch.setattr(storage, "save", save)
         else:
-            original_persist = WorkflowRunAgg._persist_pause
+            original_persist = WorkflowRunAttempt._persist_pause
 
-            def persist(aggregate: WorkflowRunAgg, event: GraphRunPausedEvent) -> None:
+            def persist(attempt: WorkflowRunAttempt, event: GraphRunPausedEvent) -> None:
                 request_stop()
-                return original_persist(aggregate, event)
+                return original_persist(attempt, event)
 
-            monkeypatch.setattr(WorkflowRunAgg, "_persist_pause", persist)
+            monkeypatch.setattr(WorkflowRunAttempt, "_persist_pause", persist)
 
-        WorkflowRunAgg.run(
-            runner, PauseStateLayerConfig(sqlite_engine, entity.user_id), workflow_repository, node_repository
-        )
+        _service().run(runner, PauseStateLayerConfig(entity.user_id), workflow_repository, node_repository)
         events = [message.event for message in runner._queue_manager.listen()]
         assert stop_calls
         assert isinstance(events[-1], QueueStopEvent), events
@@ -1042,7 +1042,7 @@ class TestWorkflowRunAggCases:
         runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
         runner.application_generate_entity.allow_human_input = False
         with pytest.raises(ValueError, match="Human Input nodes are not supported"):
-            WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)
+            _service().run(runner, None, workflow_repository, node_repository)
         with Session(sqlite_engine) as session:
             assert session.scalar(select(WorkflowRun)) is None
             assert session.scalar(select(HumanInputForm)) is None

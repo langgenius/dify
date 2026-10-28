@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from graphon.engine.filter import ResponseStreamFilter
@@ -69,5 +67,4 @@ class WorkflowResumptionContext(BaseModel):
 class PauseStateLayerConfig:
     """Persistence configuration for resumable workflow runs."""
 
-    session_factory: Engine | sessionmaker[Session]
     state_owner_user_id: str

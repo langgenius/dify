@@ -14,7 +14,9 @@ import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.db.session_factory import get_session_maker
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
@@ -22,7 +24,6 @@ from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.data_source.provider_service import DatasourceProviderService
-from services.workflow_run_agg import WorkflowRunAgg
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -45,7 +46,7 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 @pytest.fixture
 def generator(mocker: MockerFixture, sqlite_engine: Engine):
     gen = module.PipelineGenerator(
-        execution_driver=WorkflowRunAgg.run,
+        execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
         datasource_providers=DatasourceProviderService(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)

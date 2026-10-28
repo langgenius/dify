@@ -22,6 +22,7 @@ from core.db.session_factory import get_session_maker
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.application_services.data_sources import build_data_source_credentials
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.ext_database import db
 from models import Account, Tenant
 from models.dataset import Pipeline
@@ -29,7 +30,6 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.file_service import FileService
-from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +194,7 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 # Since we're already in a thread pool, no need for nested threading
 
                 pipeline_generator = PipelineGenerator(
-                    execution_driver=WorkflowRunAgg.run,
+                    execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
                     documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
                     datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
                 )

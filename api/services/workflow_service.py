@@ -13,6 +13,7 @@ from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
+from core.db.session_factory import get_session_maker
 from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
@@ -59,6 +60,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -106,7 +108,6 @@ from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
-from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_version_number_service import allocate_version_number
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -1242,7 +1243,7 @@ class WorkflowService:
             enclosing_node_id = None
 
         run = WorkflowEntry.single_step_run(
-            execution_driver=WorkflowRunAgg.run,
+            execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
             workflow=draft_workflow,
             node_id=node_id,
             user_inputs=user_inputs,

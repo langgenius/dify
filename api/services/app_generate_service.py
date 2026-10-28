@@ -22,6 +22,7 @@ from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
@@ -33,7 +34,6 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
-from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -205,7 +205,11 @@ class AppGenerateService:
             case AppMode.AGENT_CHAT:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
-                        AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+                        AgentChatAppGenerator(
+                            execution_driver=build_workflow_run_driver(
+                                database_client=session_factory.get_session_maker()
+                            )
+                        ).generate(
                             session=session,
                             app_model=app_model,
                             user=user,
@@ -281,10 +285,11 @@ class AppGenerateService:
                 # Blocking mode: run synchronously and return JSON instead of SSE
                 # Keep behaviour consistent with WORKFLOW blocking branch.
                 pause_config = PauseStateLayerConfig(
-                    session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
-                advanced_generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+                advanced_generator = AdvancedChatAppGenerator(
+                    execution_driver=build_workflow_run_driver(database_client=session_factory.get_session_maker())
+                )
                 return rate_limit.generate(
                     advanced_generator.convert_to_event_stream(
                         advanced_generator.generate(
@@ -336,12 +341,15 @@ class AppGenerateService:
                     )
 
                 pause_config = PauseStateLayerConfig(
-                    session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
-                        WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+                        WorkflowAppGenerator(
+                            execution_driver=build_workflow_run_driver(
+                                database_client=session_factory.get_session_maker()
+                            )
+                        ).generate(
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
@@ -401,7 +409,9 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
+                    AdvancedChatAppGenerator(
+                        execution_driver=build_workflow_run_driver(database_client=session_factory.get_session_maker())
+                    ).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -414,7 +424,9 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
+                    WorkflowAppGenerator(
+                        execution_driver=build_workflow_run_driver(database_client=session_factory.get_session_maker())
+                    ).single_iteration_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -446,7 +458,9 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
+                    AdvancedChatAppGenerator(
+                        execution_driver=build_workflow_run_driver(database_client=session_factory.get_session_maker())
+                    ).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,
@@ -459,7 +473,9 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
-                    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
+                    WorkflowAppGenerator(
+                        execution_driver=build_workflow_run_driver(database_client=session_factory.get_session_maker())
+                    ).single_loop_generate(
                         app_model=app_model,
                         workflow=workflow,
                         node_id=node_id,

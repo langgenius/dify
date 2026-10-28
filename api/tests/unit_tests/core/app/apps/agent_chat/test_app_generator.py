@@ -19,11 +19,12 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.file_access import get_current_file_access_scope
+from core.db.session_factory import get_session_maker
 from core.ops.ops_trace_manager import TraceQueueManager
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
-from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -75,7 +76,7 @@ def generator(
     assert agent_records[0].id == "conv"
     # Keep trace configuration lookup and initialization real, but do not schedule background timers.
     monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _manager: None)
-    return AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    return AgentChatAppGenerator(execution_driver=build_workflow_run_driver(database_client=get_session_maker()))
 
 
 @pytest.fixture
