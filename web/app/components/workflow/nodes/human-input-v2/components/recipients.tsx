@@ -19,7 +19,7 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { selectIMBindingCentrallyManaged } from '@/features/contacts/im-binding-capability'
+import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
 import { consoleQuery } from '@/service/console'
 import { useContactRecipientOptionProvider } from '../contact-provider'
 import {
@@ -68,7 +68,7 @@ const RecipientsContent = ({
   const [sourceFilter, setSourceFilter] = useState<ContactSourceFilter>('all')
   const centrallyManagedQuery = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: selectIMBindingCentrallyManaged,
+      select: selectIMCentrallyManaged,
       retry: false,
     }),
   )

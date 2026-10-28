@@ -7,23 +7,22 @@ from http import HTTPStatus
 from flask import Response, abort
 from werkzeug.exceptions import Forbidden
 
-from configs import dify_config
 from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
 )
-from enums import DeploymentEdition
 from libs.login import login_required
 from models import Account
 from models.account import TenantAccountRole
+from services.feature_service import FeatureService
 
 
 def workspace_channel_api_admission[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Reject Workspace Channel transport on Enterprise before authentication."""
+    """Reject Workspace Channel transport when IM is centrally managed before authentication."""
 
     @wraps(view)
     def admitted(*args: P.args, **kwargs: P.kwargs) -> R:
-        if dify_config.DEPLOYMENT_EDITION is DeploymentEdition.ENTERPRISE:
+        if FeatureService.is_im_centrally_managed():
             abort(HTTPStatus.NOT_IMPLEMENTED)
         return view(*args, **kwargs)
 

@@ -46,16 +46,16 @@ function CapabilityProbe() {
   return (
     <>
       <output aria-label="Contacts management capability">
-        {context.imBindingCentrallyManaged === undefined
+        {context.imCentrallyManaged === undefined
           ? 'Loading capabilities'
-          : context.imBindingCentrallyManaged
+          : context.imCentrallyManaged
             ? 'Centrally managed'
             : 'Workspace managed'}
       </output>
-      {context.imBindingCapabilityError && (
+      {context.imCapabilityError && (
         <>
-          <p role="alert">{context.imBindingCapabilityError.message}</p>
-          <button type="button" onClick={context.retryIMBindingCapability}>
+          <p role="alert">{context.imCapabilityError.message}</p>
+          <button type="button" onClick={context.retryIMCapability}>
             Retry capabilities
           </button>
         </>
@@ -109,7 +109,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
     async ({ edition, managed, expected }) => {
       const features = {
         ...zGetFeaturesResponse.parse({}),
-        im_binding_centrally_managed: managed,
+        im_centrally_managed: managed,
       }
       service.getFeatures.mockResolvedValue(features)
 
@@ -157,7 +157,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
       'Loading capabilities',
     )
 
-    const features = { ...zGetFeaturesResponse.parse({}), im_binding_centrally_managed: true }
+    const features = { ...zGetFeaturesResponse.parse({}), im_centrally_managed: true }
     service.getFeatures.mockResolvedValue(features)
     await user.click(screen.getByRole('button', { name: 'Retry capabilities' }))
 

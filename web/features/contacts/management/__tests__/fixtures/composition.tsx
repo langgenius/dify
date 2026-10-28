@@ -17,7 +17,7 @@ export function ContactsManagementMockProvider({
   const context = useMemo<ContactsFeatureContextValue>(
     () => ({
       deployment: scenario.deployment,
-      imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+      imCentrallyManaged: scenario.imCentrallyManaged,
       permissions: scenario.permissions,
       workspaceId: scenario.workspaceId,
     }),

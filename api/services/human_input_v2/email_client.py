@@ -6,12 +6,11 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.human_input_v2.shared.values import TenantId
-from enums import DeploymentEdition
 from extensions.ext_mail import mail
 from repositories.human_input_v2.email_channel.entities import EmailChannelConfiguration, ResendCandidate
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
+from services.feature_service import FeatureService
 from services.human_input_v2.email_credential_codec import load_email_credentials
 from services.human_input_v2.resend_channel import ResendProviderGateway
 
@@ -42,7 +41,7 @@ class _ResendEmailClient:
 
 
 def build_email_client(*, tenant_id: TenantId, session_factory: Callable[[], Session]) -> EmailClient | None:
-    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+    if not FeatureService.use_tenant_scoped_email_config():
         return mail if mail.is_inited() else None
     with session_factory() as session:
         configuration = SQLAlchemyEmailChannelRepository(session).load(tenant_id)

@@ -36,7 +36,6 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.shared.values import IMBindingId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import Initiator
-from enums import DeploymentEdition
 from extensions.ext_key_provider import key_provider_manager
 from models.model import EndUser
 from repositories.human_input_v2.contact import ContactType
@@ -74,6 +73,7 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
 )
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+from services.feature_service import FeatureService
 from services.human_input_v2.email_client import EmailClient
 from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
@@ -242,7 +242,7 @@ class HumanInputDeliveryService:
                         # TODO(QuantumGhost): maybe the channel creation logic below should be unified?
                         channel = (
                             DeploymentIMChannelReader(session).get()
-                            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+                            if FeatureService.is_im_centrally_managed()
                             else WorkspaceIMChannelReader(session, form.tenant_id).get()
                         )
                         if channel is not None and channel.status == IMChannelStatus.CONNECTED:
@@ -334,7 +334,7 @@ class HumanInputDeliveryService:
             if self._im_adapter_factory is not None:
                 adapter = self._im_adapter_factory(channel)
             else:
-                if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+                if FeatureService.is_im_centrally_managed():
                     # TODO(QuantumGhost): Dify EE Adapter creation.
                     raise IMCredentialError("The deployment's credential-bound adapter factory is required")
                 cipher = TenantBoundCredentialCipher(key_provider_manager.provider, str(context.form.tenant_id))

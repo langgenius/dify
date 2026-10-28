@@ -27,7 +27,7 @@ import {
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { env } from '@/env'
-import { selectIMBindingCentrallyManaged } from '@/features/contacts/im-binding-capability'
+import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
 import { ContactsImPlatformAccountSettingPage } from '@/features/contacts/im-platform/account-setting-page'
 import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
 import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
@@ -94,7 +94,7 @@ export default function AccountSetting({
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   const canViewContactsImPlatform =
     featuresQuery.isSuccess &&
-    isContactsImPlatformEnabled(selectIMBindingCentrallyManaged(featuresQuery.data))
+    isContactsImPlatformEnabled(selectIMCentrallyManaged(featuresQuery.data))
   const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
   const activeMenu = (() => {
     if (activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES && !canViewIpPolicies)

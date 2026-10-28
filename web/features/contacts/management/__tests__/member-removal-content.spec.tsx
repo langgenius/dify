@@ -28,11 +28,11 @@ const member: Member = {
 function renderDialog(
   scenarioName: ContactsMockScenario,
   wait?: () => Promise<void>,
-  imBindingCentrallyManaged?: boolean,
+  imCentrallyManaged?: boolean,
   capabilityState: Partial<
     Pick<
       ContactsFeatureContextValue,
-      'imBindingCentrallyManaged' | 'imBindingCapabilityError' | 'retryIMBindingCapability'
+      'imCentrallyManaged' | 'imCapabilityError' | 'retryIMCapability'
     >
   > = {},
 ) {
@@ -44,7 +44,7 @@ function renderDialog(
   const baseScenario = createContactsMockScenario(scenarioName)
   const scenario = {
     ...baseScenario,
-    imBindingCentrallyManaged: imBindingCentrallyManaged ?? baseScenario.imBindingCentrallyManaged,
+    imCentrallyManaged: imCentrallyManaged ?? baseScenario.imCentrallyManaged,
   }
   const repository = createContactsMockRepository({ scenario, wait })
   const removeMember = vi.spyOn(repository, 'removeMember')
@@ -77,7 +77,7 @@ function renderDialog(
       <ContactsManagementProvider
         context={{
           deployment: scenario.deployment,
-          imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+          imCentrallyManaged: scenario.imCentrallyManaged,
           permissions: scenario.permissions,
           workspaceId: scenario.workspaceId,
           ...capabilityState,
@@ -99,7 +99,7 @@ describe('MemberRemovalContactImpactContent', () => {
       undefined,
       undefined,
       {
-        imBindingCentrallyManaged: undefined,
+        imCentrallyManaged: undefined,
       },
     )
     const remove = screen.getByRole('button', { name: 'contacts.memberRemoval.remove' })
@@ -119,9 +119,9 @@ describe('MemberRemovalContactImpactContent', () => {
       undefined,
       undefined,
       {
-        imBindingCentrallyManaged: undefined,
-        imBindingCapabilityError: new Error('Features unavailable'),
-        retryIMBindingCapability: retry,
+        imCentrallyManaged: undefined,
+        imCapabilityError: new Error('Features unavailable'),
+        retryIMCapability: retry,
       },
     )
 

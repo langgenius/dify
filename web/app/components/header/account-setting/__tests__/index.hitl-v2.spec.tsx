@@ -205,7 +205,7 @@ describe('AccountSetting', () => {
     onTabChange?: (tab: AccountSettingTab) => void
     rbacEnabled?: boolean
     deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
-    imBindingCentrallyManaged?: boolean | 'missing' | 'pending'
+    imCentrallyManaged?: boolean | 'missing' | 'pending'
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
@@ -213,18 +213,18 @@ describe('AccountSetting', () => {
       onTabChange = mockOnTabChange,
       rbacEnabled = true,
       deploymentEdition = 'CLOUD',
-      imBindingCentrallyManaged = false,
+      imCentrallyManaged = false,
     } = props ?? {}
     const queryClient = createConsoleQueryClient()
-    if (imBindingCentrallyManaged !== 'pending') {
+    if (imCentrallyManaged !== 'pending') {
       const features = seedFeatures(queryClient, {
         billing: { subscription: { plan: 'sandbox' } },
         can_replace_logo: canReplaceLogo,
       })
-      if (imBindingCentrallyManaged !== 'missing') {
+      if (imCentrallyManaged !== 'missing') {
         const featuresWithIMBinding = {
           ...features,
-          im_binding_centrally_managed: imBindingCentrallyManaged,
+          im_centrally_managed: imCentrallyManaged,
         }
         queryClient.setQueryData(consoleQuery.features.get.queryKey(), featuresWithIMBinding)
       }
@@ -275,7 +275,7 @@ describe('AccountSetting', () => {
 
   describe('Rendering', () => {
     it('hides workspace channels when centrally managed even in Community edition', () => {
-      renderAccountSetting({ deploymentEdition: 'COMMUNITY', imBindingCentrallyManaged: true })
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY', imCentrallyManaged: true })
 
       expect(
         screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
@@ -286,7 +286,7 @@ describe('AccountSetting', () => {
       renderAccountSetting({
         initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
         deploymentEdition: 'ENTERPRISE',
-        imBindingCentrallyManaged: false,
+        imCentrallyManaged: false,
       })
 
       expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
@@ -294,7 +294,7 @@ describe('AccountSetting', () => {
     })
 
     it('keeps workspace channels available for older successful features responses', () => {
-      renderAccountSetting({ imBindingCentrallyManaged: 'missing' })
+      renderAccountSetting({ imCentrallyManaged: 'missing' })
 
       expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
     })
@@ -302,7 +302,7 @@ describe('AccountSetting', () => {
     it('does not open workspace channels before features have loaded', () => {
       renderAccountSetting({
         initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
-        imBindingCentrallyManaged: 'pending',
+        imCentrallyManaged: 'pending',
       })
 
       expect(
@@ -342,7 +342,7 @@ describe('AccountSetting', () => {
       renderAccountSetting({
         initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
         deploymentEdition: 'COMMUNITY',
-        imBindingCentrallyManaged: true,
+        imCentrallyManaged: true,
       })
 
       expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()

@@ -42,7 +42,7 @@ function renderDirectory(
             <ContactsManagementProvider
               context={{
                 deployment: scenario.deployment,
-                imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+                imCentrallyManaged: scenario.imCentrallyManaged,
                 permissions: scenario.permissions,
                 workspaceId: scenario.workspaceId,
                 ...contextOverrides,
@@ -82,7 +82,7 @@ describe('ContactsDirectoryPage', () => {
       scenario,
       '?contact_kind=platform&contact_pages=2',
       repository,
-      { imBindingCentrallyManaged: undefined },
+      { imCentrallyManaged: undefined },
     )
 
     expect(screen.getByRole('status', { name: 'contacts.directory.loading' })).toBeInTheDocument()
@@ -100,11 +100,11 @@ describe('ContactsDirectoryPage', () => {
   it('offers a capability retry after failure without treating the workspace as CE', async () => {
     const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
     const repository = createContactsMockRepository({ scenario })
-    const retryIMBindingCapability = vi.fn()
+    const retryIMCapability = vi.fn()
     const { onUrlUpdate } = renderDirectory(scenario, '?contact_kind=platform', repository, {
-      imBindingCentrallyManaged: undefined,
-      imBindingCapabilityError: new Error('offline'),
-      retryIMBindingCapability,
+      imCentrallyManaged: undefined,
+      imCapabilityError: new Error('offline'),
+      retryIMCapability,
     })
     const user = userEvent.setup()
 
@@ -113,7 +113,7 @@ describe('ContactsDirectoryPage', () => {
       screen.queryByRole('status', { name: 'contacts.directory.loading' }),
     ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'contacts.action.retry' }))
-    expect(retryIMBindingCapability).toHaveBeenCalledOnce()
+    expect(retryIMCapability).toHaveBeenCalledOnce()
     expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 
@@ -123,7 +123,7 @@ describe('ContactsDirectoryPage', () => {
       const scenario = {
         ...createContactsMockScenario(ContactsMockScenario.EeMixed),
         deployment,
-        imBindingCentrallyManaged: true,
+        imCentrallyManaged: true,
       }
       renderDirectory(scenario)
       const user = userEvent.setup()
@@ -143,7 +143,7 @@ describe('ContactsDirectoryPage', () => {
   it('hides Platform controls on EE when centrally managed binding is disabled', async () => {
     renderDirectory({
       ...createContactsMockScenario(ContactsMockScenario.EeMixed),
-      imBindingCentrallyManaged: false,
+      imCentrallyManaged: false,
     })
     await screen.findByText('Ralph Edwards')
 
@@ -162,7 +162,7 @@ describe('ContactsDirectoryPage', () => {
   it('normalizes a stale Platform URL to All before querying when the capability is disabled', async () => {
     const scenario = {
       ...createContactsMockScenario(ContactsMockScenario.EeMixed),
-      imBindingCentrallyManaged: false,
+      imCentrallyManaged: false,
     }
     const repository = createContactsMockRepository({ scenario })
     const listContacts = vi.spyOn(repository, 'listContacts')
@@ -841,7 +841,7 @@ describe('Contact IM binding controls', () => {
   function setup(scope?: 'organization' | 'workspace', centrallyManaged = true) {
     const scenario = {
       ...createContactsMockScenario(ContactsMockScenario.CeMixed),
-      imBindingCentrallyManaged: centrallyManaged,
+      imCentrallyManaged: centrallyManaged,
     }
     let contact: ContactView = {
       ...scenario.contacts.find((item) => item.type === 'workspace')!,
@@ -927,7 +927,7 @@ describe('Contact IM binding controls', () => {
         <ContactsManagementProvider
           context={{
             deployment: scenario.deployment,
-            imBindingCentrallyManaged: capability,
+            imCentrallyManaged: capability,
             permissions: scenario.permissions,
             workspaceId: scenario.workspaceId,
           }}

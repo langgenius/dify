@@ -14,7 +14,7 @@ export type FeatureModel = {
   education: EducationModel
   enable_skill: boolean
   human_input_email_delivery_enabled: boolean
-  im_binding_centrally_managed: boolean
+  im_centrally_managed: boolean
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline
   members: LimitationModel

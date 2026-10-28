@@ -7,13 +7,11 @@ from contextlib import closing
 from kombu.exceptions import OperationalError
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.human_input_v2.im_integration.adapters import factory as im_adapter_factory_module
 from core.human_input_v2.im_integration.adapters.entities import ReplacementErrorKind, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from enums import DeploymentEdition
 from extensions.ext_key_provider import key_provider_manager
 from factories.human_input_v2_form_presentation import render_filled_content
 from repositories.human_input_v2.delivery_repository import IMMessageType, IMUserTargetSnapshot
@@ -25,6 +23,7 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
     DeploymentIMChannelReader,
     WorkspaceIMChannelReader,
 )
+from services.feature_service import FeatureService
 from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
@@ -90,7 +89,7 @@ class HumanInputIMCardService:
                 return
             channel = (
                 DeploymentIMChannelReader(session).get()
-                if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+                if FeatureService.is_im_centrally_managed()
                 else WorkspaceIMChannelReader(session, tenant_id).get()
             )
         if (
@@ -133,7 +132,7 @@ class HumanInputIMCardService:
                 raise IMCardUpdateRetryableError(f"Human Input IM card update failed delivery_id={delivery_id}")
 
     def _build_adapter(self, tenant_id: TenantId, channel: IMChannel) -> IMProviderAdapter:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+        if FeatureService.is_im_centrally_managed():
             # Deployment credentials must never be decrypted with a workspace key.
             raise IMCredentialError("Deployment IM credentials are unavailable")
         cipher = TenantBoundCredentialCipher(key_provider_manager.provider, str(tenant_id))

@@ -201,7 +201,7 @@ function ContactIMBindingEditor({
   onUnbind?: () => void
 }) {
   const { t } = useTranslation(['contacts'])
-  const { imBindingCentrallyManaged: centrallyManaged } = useContactsFeatureContext()
+  const { imCentrallyManaged: centrallyManaged } = useContactsFeatureContext()
   const providerLabel = getContactChannelLabel(provider)
   const boundIdentity = getBoundIMIdentity(contact, binding)
   const organizationIdentity = binding?.scope === 'organization' ? boundIdentity : undefined
@@ -484,7 +484,7 @@ function ContactIMChannels({
   const unbind = useUnbindContactIMBinding()
   const canBind =
     canManage &&
-    context.imBindingCentrallyManaged !== undefined &&
+    context.imCentrallyManaged !== undefined &&
     repository.supportsIMBindings === true &&
     contact.type !== 'external'
   const configured = useContactIMChannels(canBind)
@@ -554,7 +554,7 @@ function ContactIMChannels({
                         ? identity.display_name || identity.email || identity.provider_user_id
                         : t(($) => $['imBinding.identityUnavailable'])}
                     </span>
-                    {context.imBindingCentrallyManaged && binding?.scope === 'workspace' && (
+                    {context.imCentrallyManaged && binding?.scope === 'workspace' && (
                       <span className="shrink-0 rounded-[5px] px-1 system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
                         {t(($) => $['imBinding.customized'])}
                       </span>
@@ -610,7 +610,7 @@ function ContactIMChannels({
           </Button>
         </div>
       )}
-      {context.imBindingCentrallyManaged && contact.type !== 'external' && (
+      {context.imCentrallyManaged && contact.type !== 'external' && (
         <p className="mt-2 system-xs-regular text-text-tertiary">
           {t(($) => $['imBinding.enterpriseReadOnly'])}
         </p>
@@ -624,7 +624,7 @@ function ContactIMChannels({
         <DialogContent className="w-140">
           {editingProvider && (
             <ContactIMBindingEditor
-              key={`${editingProvider}:${context.imBindingCentrallyManaged}`}
+              key={`${editingProvider}:${context.imCentrallyManaged}`}
               contact={contact}
               provider={editingProvider}
               binding={editingBinding}
@@ -632,7 +632,7 @@ function ContactIMChannels({
               unbinding={unbind.isPending}
               error={save.error || remove.error || unbind.error}
               onUnbind={
-                context.imBindingCentrallyManaged === false && editingBinding
+                context.imCentrallyManaged === false && editingBinding
                   ? () => {
                       if (!canBind || busy) return
                       save.reset()
@@ -642,20 +642,17 @@ function ContactIMChannels({
                   : undefined
               }
               onSave={(identityId) => {
-                if (!canBind || context.imBindingCentrallyManaged === undefined) return
+                if (!canBind || context.imCentrallyManaged === undefined) return
                 unbind.reset()
                 save.mutate(
                   {
                     contactId: contact.id,
                     identityId,
-                    override: context.imBindingCentrallyManaged,
+                    override: context.imCentrallyManaged,
                   },
                   {
                     onSuccess: () => {
-                      if (
-                        !context.imBindingCentrallyManaged &&
-                        editingBinding?.scope === 'workspace'
-                      ) {
+                      if (!context.imCentrallyManaged && editingBinding?.scope === 'workspace') {
                         remove.mutate(
                           { contactId: contact.id, binding: editingBinding },
                           { onSuccess: () => setOpen(false) },
@@ -668,7 +665,7 @@ function ContactIMChannels({
               onRestore={() => {
                 if (
                   canBind &&
-                  context.imBindingCentrallyManaged &&
+                  context.imCentrallyManaged &&
                   editingBinding?.scope === 'workspace'
                 ) {
                   remove.mutate(

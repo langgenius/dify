@@ -46,7 +46,7 @@ export function PlatformContactPickerDialog({
   const resetMutation = addPlatformContacts.reset
   const canImport = Boolean(
     context.workspaceId &&
-    context.imBindingCentrallyManaged &&
+    context.imCentrallyManaged &&
     context.permissions.canManageContacts &&
     repository.supportsPlatformImport !== false,
   )
