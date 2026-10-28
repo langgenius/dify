@@ -21,20 +21,28 @@ import { generateCompatibilitySources } from './scripts/generate-compatibility-s
 const root = import.meta.dirname
 
 describe('compatible contracts exports', () => {
-  it('generates descriptors for new modules, preserves no-op mtimes and removes obsolete descriptors', () => {
+  it('generates descriptors for new modules, preserves no-op mtimes and removes obsolete descriptors', async () => {
     const directory = mkdtempSync(resolve(tmpdir(), 'dify-contracts-descriptors-'))
     try {
       const generated = resolve(directory, 'generated/api/console/new-feature')
       const descriptor = resolve(directory, 'mapper/console/new-feature.openapi-types')
       mkdirSync(generated, { recursive: true })
       writeFileSync(resolve(generated, 'types.gen.ts'), 'export type NewFeature = string')
-      generateCompatibilitySources(directory, resolve(directory, 'mapper'))
+      await generateCompatibilitySources(directory, resolve(directory, 'mapper'))
       expect(JSON.parse(readFileSync(descriptor, 'utf8')).args[0]).toBe('api/console/new-feature')
-      const timestamp = statSync(descriptor).mtimeMs
-      generateCompatibilitySources(directory, resolve(directory, 'mapper'))
-      expect(statSync(descriptor).mtimeMs).toBe(timestamp)
+      const files = [
+        descriptor,
+        resolve(directory, 'mapper/community.source.json'),
+        resolve(directory, 'mapper/enterprise.source.json'),
+      ]
+      const timestamps = files.map((file) => statSync(file).mtimeMs)
+      expect(readFileSync(files[1]!, 'utf8')).toContain(
+        '"command": ["node", "packages/contracts/scripts/export-compatibility-types.ts"]',
+      )
+      await generateCompatibilitySources(directory, resolve(directory, 'mapper'))
+      expect(files.map((file) => statSync(file).mtimeMs)).toEqual(timestamps)
       rmSync(resolve(generated, 'types.gen.ts'))
-      generateCompatibilitySources(directory, resolve(directory, 'mapper'))
+      await generateCompatibilitySources(directory, resolve(directory, 'mapper'))
       expect(existsSync(descriptor)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })

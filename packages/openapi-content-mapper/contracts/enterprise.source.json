@@ -1,8 +1,5 @@
 {
-  "command": [
-    "node",
-    "packages/contracts/scripts/export-compatibility-types.ts"
-  ],
+  "command": ["node", "packages/contracts/scripts/export-compatibility-types.ts"],
   "cwd": "../../..",
   "inputs": [
     "packages/contracts/api-documents.ts",

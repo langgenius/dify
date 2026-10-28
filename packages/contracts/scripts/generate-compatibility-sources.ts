@@ -1,8 +1,14 @@
 import { existsSync, globSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
+import { format } from 'vite-plus/fmt'
 
-function writeDescriptor(file: string, value: unknown) {
-  const content = `${JSON.stringify(value, null, 2)}\n`
+async function writeDescriptor(file: string, value: unknown) {
+  let content = `${JSON.stringify(value, null, 2)}\n`
+  if (file.endsWith('.json')) {
+    const formatted = await format(file, content)
+    if (formatted.errors.length) throw new Error(`Failed to format ${file}`)
+    content = formatted.code
+  }
   mkdirSync(dirname(file), { recursive: true })
   const existing = existsSync(file) ? readFileSync(file, 'utf8') : undefined
   // No-op generation must not restart the language server.
@@ -10,7 +16,7 @@ function writeDescriptor(file: string, value: unknown) {
 }
 
 /** Thin mapper subpaths share one exporter configuration per backend source. */
-export function generateCompatibilitySources(
+export async function generateCompatibilitySources(
   root = resolve(import.meta.dirname, '..'),
   output = resolve(root, '../openapi-content-mapper/contracts'),
 ) {
@@ -21,7 +27,7 @@ export function generateCompatibilitySources(
   }
   for (const [name, file] of Object.entries(sharedSources)) {
     const enterprise = name === 'enterprise'
-    writeDescriptor(file, {
+    await writeDescriptor(file, {
       command: ['node', 'packages/contracts/scripts/export-compatibility-types.ts'],
       cwd: relative(output, repo),
       inputs: [
@@ -59,7 +65,7 @@ export function generateCompatibilitySources(
     const subpath = module.replace(/^api\//, '')
     const file = resolve(output, `${subpath}.openapi-types`)
     expected.add(file)
-    writeDescriptor(file, {
+    await writeDescriptor(file, {
       extends: relative(
         dirname(file),
         sharedSources[module.startsWith('enterprise') ? 'enterprise' : 'community'],
@@ -78,4 +84,4 @@ export function generateCompatibilitySources(
   return modules
 }
 
-if (import.meta.main) generateCompatibilitySources()
+if (import.meta.main) await generateCompatibilitySources()
