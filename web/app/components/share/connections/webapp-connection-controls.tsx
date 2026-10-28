@@ -9,15 +9,17 @@ import { useOptionalWebAppConnections } from './use-connections'
 
 export default function WebAppConnectionControls({
   isResponding = false,
+  showSignIn = true,
 }: {
   isResponding?: boolean
+  showSignIn?: boolean
 }) {
   const state = useOptionalWebAppConnections()
   const [handle] = useState(() => createDialogHandle())
   if (!state) return null
   return (
     <div className="flex items-center gap-2">
-      <SignIn />
+      {showSignIn && <SignIn />}
       {state.status !== 'inactive' && state.status !== 'sign-in-required' && (
         <>
           <DialogTrigger

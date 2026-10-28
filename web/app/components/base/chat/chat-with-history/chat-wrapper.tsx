@@ -312,52 +312,63 @@ const ChatWrapper = () => {
   const [descExpanded, setDescExpanded] = useState(false)
 
   const description = appData?.site.description
-  const showIntroduction = !!description && !currentConversationId && !hasSent
+  const showConnectionSetup = Boolean(
+    connections &&
+    connections.status !== 'inactive' &&
+    !currentConversationId &&
+    !connectionSetupComplete,
+  )
+  const signInRequired = connections?.status === 'sign-in-required'
+  const showConnectionSignIn = showConnectionSetup && signInRequired
+  const showIntroduction =
+    (!!description || showConnectionSetup) && !currentConversationId && !hasSent
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
 
   const descriptionNode = showIntroduction ? (
-    <div className="px-4">
+    <div className={showConnectionSignIn ? undefined : 'px-4'}>
       <div className="mx-auto flex w-full max-w-150 flex-col items-start gap-3">
         <AppIcon size="xxl" icon={appData?.site} className="shadow-xs" />
         <div className="flex w-full min-w-0 flex-col gap-2">
           <h1 className="system-xl-semibold wrap-anywhere text-text-primary">
             {appData?.site.title}
           </h1>
-          <div>
-            <div
-              ref={handleDescRef}
-              className={cn(
-                'system-xs-regular wrap-anywhere whitespace-pre-wrap text-text-tertiary',
-                !descExpanded && 'line-clamp-3',
-                descExpanded && 'max-h-32 overflow-y-auto',
-              )}
-            >
-              {description}
-            </div>
-            {showDescToggle && (
-              <button
-                type="button"
-                aria-expanded={descExpanded}
-                className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                onClick={() => setDescExpanded((v) => !v)}
-              >
-                {descExpanded ? (
-                  <>
-                    <RiArrowUpSLine className="size-3" />
-                    {t(($) => $['chat.collapse'], { ns: 'share' })}
-                  </>
-                ) : (
-                  <>
-                    <RiArrowDownSLine className="size-3" />
-                    {t(($) => $['chat.expand'], { ns: 'share' })}
-                  </>
+          {description && (
+            <div>
+              <div
+                ref={handleDescRef}
+                className={cn(
+                  'system-xs-regular wrap-anywhere whitespace-pre-wrap text-text-tertiary',
+                  !descExpanded && 'line-clamp-3',
+                  descExpanded && 'max-h-32 overflow-y-auto',
                 )}
-              </button>
-            )}
-          </div>
+              >
+                {description}
+              </div>
+              {showDescToggle && (
+                <button
+                  type="button"
+                  aria-expanded={descExpanded}
+                  className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+                  onClick={() => setDescExpanded((v) => !v)}
+                >
+                  {descExpanded ? (
+                    <>
+                      <RiArrowUpSLine className="size-3" />
+                      {t(($) => $['chat.collapse'], { ns: 'share' })}
+                    </>
+                  ) : (
+                    <>
+                      <RiArrowDownSLine className="size-3" />
+                      {t(($) => $['chat.expand'], { ns: 'share' })}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -435,12 +446,7 @@ const ChatWrapper = () => {
         ? { type: 'app' as const, appId, appSourceType }
         : undefined
 
-  if (
-    connections &&
-    connections.status !== 'inactive' &&
-    !currentConversationId &&
-    !connectionSetupComplete
-  )
+  if (showConnectionSetup && !showConnectionSignIn)
     return (
       <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
         {descriptionNode}
@@ -457,7 +463,7 @@ const ChatWrapper = () => {
         appData={appData ?? undefined}
         config={appConfig}
         speechToTextTarget={speechToTextTarget}
-        chatList={messageList}
+        chatList={showConnectionSignIn ? [] : messageList}
         isResponding={respondingState}
         chatContainerClassName={showIntroduction ? 'flex flex-col' : undefined}
         chatContainerInnerClassName={cn(
@@ -465,8 +471,12 @@ const ChatWrapper = () => {
           !showIntroduction && 'pt-6',
           isMobile && 'px-4',
         )}
-        chatFooterClassName="pb-4"
-        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
+        chatFooterClassName={showConnectionSignIn ? 'pb-2' : 'pb-4'}
+        chatFooterInnerClassName={
+          showConnectionSignIn
+            ? 'mx-auto w-full max-w-196 px-2'
+            : `mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`
+        }
         onSend={doSend}
         inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
         inputsForm={inputsForms}
@@ -474,11 +484,20 @@ const ChatWrapper = () => {
         onStopResponding={handleStop}
         onHumanInputFormSubmit={handleSubmitHumanInputForm}
         chatNode={
-          <div className={cn(showIntroduction && 'my-auto w-full shrink-0 py-6')}>
-            {descriptionNode}
-            {chatNode}
-            {welcome}
-          </div>
+          showConnectionSignIn ? (
+            <div className="my-auto w-full shrink-0 px-4 py-6">
+              <div className="mx-auto flex w-full max-w-150 flex-col gap-6">
+                {descriptionNode}
+                <WebAppConnectionSetup onStart={() => setConnectionSetupComplete(true)} />
+              </div>
+            </div>
+          ) : (
+            <div className={cn(showIntroduction && 'my-auto w-full shrink-0 py-6')}>
+              {descriptionNode}
+              {chatNode}
+              {welcome}
+            </div>
+          )
         }
         allToolIcons={appMeta?.tool_icons || {}}
         onFeedback={handleFeedback}
@@ -488,6 +507,11 @@ const ChatWrapper = () => {
         theme={theme}
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled || Boolean(connections && !connections.canRun)}
+        inputPlaceholder={
+          signInRequired
+            ? t(($) => $['connections.required.inputPlaceholder'], { ns: 'share' })
+            : undefined
+        }
         sidebarCollapseState={sidebarCollapseState}
         renderAgentContent={renderAgentContent}
         questionIcon={

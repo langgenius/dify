@@ -6,12 +6,14 @@ type Props = Readonly<{
   handleResetChat: () => void
   handleViewChatSettings: () => void
   hideViewChatSettings?: boolean
+  resetDisabled?: boolean
 }>
 
 const MobileOperationMenu = ({
   handleResetChat,
   handleViewChatSettings,
   hideViewChatSettings = false,
+  resetDisabled = false,
 }: Props) => {
   const { t } = useTranslation(['common', 'share'])
   const handleMenuAction = (callback: () => void) => {
@@ -32,7 +34,11 @@ const MobileOperationMenu = ({
         }
       />
       <MenuContent align="end" className="min-w-40">
-        <MenuItem className="system-md-regular" onClick={() => handleMenuAction(handleResetChat)}>
+        <MenuItem
+          disabled={resetDisabled}
+          className="system-md-regular"
+          onClick={() => handleMenuAction(handleResetChat)}
+        >
           <span className="grow">{t(($) => $['chat.resetChat'], { ns: 'share' })}</span>
         </MenuItem>
         {!hideViewChatSettings && (

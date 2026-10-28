@@ -97,10 +97,11 @@ export function createChatConnections(overrides: Partial<ConnectionsState> = {})
 export function withChatConnections({
   state,
   children,
-}: PropsWithChildren<{ state?: ConnectionsState }>) {
+  entry = chatConnectionEntry,
+}: PropsWithChildren<{ state?: ConnectionsState; entry?: WebAppEntryState }>) {
   if (!state) return <>{children}</>
   return (
-    <WebAppEntryContext value={chatConnectionEntry}>
+    <WebAppEntryContext value={entry}>
       <ConnectionsContext value={state}>{children}</ConnectionsContext>
     </WebAppEntryContext>
   )

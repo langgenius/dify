@@ -50,6 +50,12 @@ describe('Operation', () => {
     await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
     expect(onShowVoiceInput).toHaveBeenCalledTimes(1)
 
+    rerender(<Operation {...props} disabled />)
+    const disabledVoice = screen.getByRole('button', { name: 'common.voiceInput.start' })
+    expect(disabledVoice).toBeDisabled()
+    await user.click(disabledVoice)
+    expect(onShowVoiceInput).toHaveBeenCalledTimes(1)
+
     rerender(<Operation {...props} readonly />)
     const voice = screen.getByRole('button', { name: 'common.voiceInput.start' })
     expect(voice).toBeDisabled()

@@ -1034,11 +1034,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/chat/chat-with-history/sidebar/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/base/chat/chat-with-history/sidebar/item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -1083,16 +1078,6 @@
     },
     "eslint-react/set-state-in-effect": {
       "count": 1
-    }
-  },
-  "web/app/components/base/chat/chat/chat-input-area/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/base/chat/chat/chat-input-area/operation.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/base/chat/chat/check-input-forms-hooks.ts": {
@@ -1345,16 +1330,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/base/file-uploader/file-uploader-in-chat-input/file-image-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/file-uploader/file-uploader-in-chat-input/file-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/base/file-uploader/index.ts": {

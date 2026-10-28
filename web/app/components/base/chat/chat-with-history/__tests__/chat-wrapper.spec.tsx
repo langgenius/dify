@@ -2,6 +2,7 @@ import type { ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
+import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import type { AppData } from '@/models/share'
 import type { WorkflowFinishedResponse, WorkflowPausedResponse } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
@@ -24,6 +25,7 @@ import {
 import ChatWrapper from '../chat-wrapper'
 import { ChatWithHistoryContext } from '../context'
 import {
+  chatConnectionEntry,
   checkedRevision,
   createChatConnections,
   selectedConnectionId,
@@ -123,12 +125,14 @@ const createHistoryContextValue = (
 function renderChat(
   overrides: Partial<ChatWithHistoryContextValue> = {},
   initialConnections?: ConnectionsState,
+  entry?: WebAppEntryState,
 ) {
   let connections = initialConnections
   let context = createHistoryContextValue(overrides)
   const tree = () =>
     withChatConnections({
       state: connections,
+      entry,
       children: (
         <ChatWithHistoryContext.Provider value={context}>
           <ChatWrapper />
@@ -868,6 +872,42 @@ it('requires confirmation of restored connections without sending, then sends th
     screen.queryByRole('button', { name: 'share.connections.setup.startUsingApp' }),
   ).not.toBeInTheDocument()
 })
+
+it.each(['Research prospects and prepare follow-up emails.', undefined])(
+  'keeps app information and a disabled composer visible when sign-in is required (description: %s)',
+  async (description) => {
+    const user = userEvent.setup()
+    if (!('parameters' in chatConnectionEntry)) throw new Error('Ready entry required')
+    const state = createChatConnections({
+      status: 'sign-in-required',
+      canRun: false,
+      runConfiguration: null,
+    })
+    renderChat(
+      {
+        currentConversationId: '',
+        appData: createAppData({ site: { title: 'Sales Follow-up Assistant', description } }),
+        appParams: createChatConfigFixture({ speech_to_text: { enabled: true } }),
+      },
+      state,
+      { ...chatConnectionEntry, account: 'anonymous', showSignIn: true },
+    )
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Sales Follow-up Assistant' }),
+    ).toBeVisible()
+    if (description) expect(screen.getByText(description)).toBeVisible()
+    expect(screen.getByRole('region', { name: 'share.connections.required.title' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'share.connections.required.signIn' })).toBeEnabled()
+    const input = screen.getByPlaceholderText('share.connections.required.inputPlaceholder')
+    expect(input).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeDisabled()
+    await user.type(input, 'This cannot run{Enter}')
+    expect(input).toHaveValue('')
+    expect(ssePost).not.toHaveBeenCalled()
+  },
+)
 
 it('preserves an existing draft and blocks Enter and regeneration while connections are not ready', async () => {
   const user = userEvent.setup()

@@ -20,7 +20,10 @@ import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
+import SignIn from '@/app/components/share/sign-in'
 import TextGenerationMenu from '@/app/components/share/text-generation/text-generation-menu'
+import { useWebAppEntry } from '@/app/components/share/webapp-entry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
@@ -32,6 +35,8 @@ type Props = Readonly<{
 
 const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
   const { t } = useTranslation(['common', 'layout', 'share'])
+  const entry = useWebAppEntry()
+  const signInRequired = useOptionalWebAppConnections()?.status === 'sign-in-required'
   const {
     isInstalledApp,
     appData,
@@ -95,7 +100,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
           'rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg shadow-lg',
       )}
     >
-      <div className={cn('flex shrink-0 items-center gap-3 p-3 pr-2')}>
+      <div className={cn('flex shrink-0 items-center gap-3 p-3 pe-2')}>
         <div className="shrink-0">
           <AppIcon size="large" icon={appData?.site} />
         </div>
@@ -125,7 +130,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
       <div className="shrink-0 px-3 py-4">
         <Button
           variant="secondary-accent"
-          disabled={isResponding}
+          disabled={isResponding || signInRequired}
           className="w-full justify-center"
           onClick={handleNewConversation}
         >
@@ -134,6 +139,11 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         </Button>
       </div>
       <div className="h-0 grow space-y-2 overflow-y-auto px-3 pt-4">
+        {signInRequired && !pinnedConversationList.length && !conversationList.length && (
+          <p className="text-center system-xs-regular text-text-tertiary">
+            {t(($) => $['chat.emptyConversation'], { ns: 'share' })}
+          </p>
+        )}
         {/* pinned list */}
         {!!pinnedConversationList.length && (
           <div className="mb-4">
@@ -162,12 +172,16 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
         )}
       </div>
       <div className="flex shrink-0 items-center justify-between p-3">
-        <TextGenerationMenu
-          hideLogout={isInstalledApp}
-          side="top"
-          align="start"
-          data={appData?.site}
-        />
+        {!isInstalledApp && entry?.showSignIn ? (
+          <SignIn />
+        ) : (
+          <TextGenerationMenu
+            hideLogout={isInstalledApp}
+            side="top"
+            align="start"
+            data={appData?.site}
+          />
+        )}
         {/* powered by */}
         <div className="shrink-0">
           {!appData?.custom_config?.remove_webapp_brand && (

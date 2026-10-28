@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import { useChatWithHistoryContext } from './context'
 import MobileOperationMenu from './header/mobile-operation-menu'
@@ -32,6 +33,7 @@ import Operation from './header/operation'
 import Sidebar from './sidebar'
 
 const HeaderInMobile = () => {
+  const signInRequired = useOptionalWebAppConnections()?.status === 'sign-in-required'
   const {
     appData,
     currentConversationId,
@@ -123,11 +125,12 @@ const HeaderInMobile = () => {
               />
             )}
           </div>
-          <WebAppConnectionControls isResponding={isResponding} />
+          <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
           <MobileOperationMenu
             handleResetChat={handleNewConversation}
             handleViewChatSettings={() => setShowChatSettings(true)}
             hideViewChatSettings={inputsForms.length < 1}
+            resetDisabled={signInRequired}
           />
         </div>
         <DialogPortal>
