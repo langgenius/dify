@@ -1243,6 +1243,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 class WorkflowNodeExecutionOffload(TypeBase):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
+        sa.Index("workflow_node_execution_offload_file_id_idx", "file_id"),
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
         # allowing multiple records with NULL values for the same column combination.
         #
@@ -2073,6 +2074,7 @@ class WorkflowDraftVariableFile(TypeBase):
     """
 
     __tablename__ = "workflow_draft_variable_files"
+    __table_args__ = (sa.Index("workflow_draft_variable_files_upload_file_id_idx", "upload_file_id"),)
 
     # Primary key
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
