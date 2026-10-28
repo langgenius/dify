@@ -137,6 +137,8 @@ export function loadCommunityDocuments(consoleOnly: boolean): Record<string, Swa
       'import contextlib, json, sys',
       'sys.path.insert(0, "api")',
       'with contextlib.redirect_stdout(sys.stderr):',
+      '    from dev.cached_console_openapi import source_imports',
+      '    source_imports()',
       '    from dev.export_console_openapi import export_all_with_sources',
       '    documents = export_all_with_sources()',
       'json.dump(documents, sys.stdout)',

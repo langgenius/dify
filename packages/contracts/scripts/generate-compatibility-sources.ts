@@ -50,6 +50,8 @@ export async function generateCompatibilitySources(
           : [
               'packages/contracts/generated/api/**/types.gen.ts',
               'api/**/*.py',
+              'dify-agent/src/**/*.py',
+              'dify-agent/pyproject.toml',
               'api/pyproject.toml',
               'api/uv.lock',
             ]),

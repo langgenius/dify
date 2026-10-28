@@ -196,7 +196,9 @@ model dependencies preloaded. Changing a preloaded dependency, adding/removing a
 Python file, changing `.env`, or changing the environment invalidates that state.
 Python bytecode caches are bypassed to handle rapid same-size edits. Export errors
 are surfaced rather than serving the old contract. Refreshes interrupted by more
-source edits are retried. Backend tests are excluded from Console source inputs.
+source edits are retried. Console and Community type descriptors track Python
+sources in `api/` and the editable `dify-agent/src/` dependency, together with their
+package configuration. Backend tests are excluded from Console source inputs.
 Native threads are checked before forking; unsafe snapshots and platforms without
 fork use a fresh-process export instead. Those refreshes still incur cold startup.
 
