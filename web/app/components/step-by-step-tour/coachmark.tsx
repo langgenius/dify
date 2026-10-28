@@ -25,9 +25,6 @@ const HIGHLIGHT_PADDING = 4
 // The vertical arrow's dot sits this far from the target's left edge, as in the Figma frame.
 const VERTICAL_ARROW_DOT_LEFT = 28
 const STEP_GLIDE_DURATION = 400
-// A target missing for longer than this, such as one in a dialog that is still loading, closes the
-// coachmark; a shorter gap while the next step's page renders keeps it up so it glides.
-const MISSING_TARGET_GRACE = 200
 const STEP_GLIDE_CLASS_NAME =
   'data-gliding:duration-300 data-gliding:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
 const TARGET_TABBABLE_SELECTOR =
@@ -148,13 +145,8 @@ export function StepByStepTourCoachmark({
       : undefined
 
   const [awaitingTarget, setAwaitingTarget] = useState(!targetElement)
+  if (!targetElement && !awaitingTarget) setAwaitingTarget(true)
   if (currentOverlay && awaitingTarget) setAwaitingTarget(false)
-  useEffect(() => {
-    if (targetElement) return
-
-    const timeout = window.setTimeout(() => setAwaitingTarget(true), MISSING_TARGET_GRACE)
-    return () => window.clearTimeout(timeout)
-  }, [targetElement])
 
   useLayoutEffect(() => {
     if (currentOverlay) lastOverlayRef.current = currentOverlay

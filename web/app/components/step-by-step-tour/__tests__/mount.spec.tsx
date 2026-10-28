@@ -9,6 +9,7 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { createRef } from 'react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createDeferred } from '@/test/deferred'
 import { createStepByStepTourService } from '@/test/fixtures/onboarding'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -327,7 +328,7 @@ const renderStepByStepTourMount = (searchParams = '') => {
   jotaiStore.set(stepByStepTourChecklistMinimizedAtom, checklistMinimized)
   const { wrapper } = createNuqsTestWrapper({ searchParams })
 
-  return render(
+  const view = render(
     <JotaiProvider store={jotaiStore}>
       <QueryClientProvider client={queryClient}>
         <div>
@@ -340,6 +341,7 @@ const renderStepByStepTourMount = (searchParams = '') => {
     </JotaiProvider>,
     { wrapper },
   )
+  return { ...view, queryClient }
 }
 
 const expectStepByStepTourPatch = async (body: StepByStepTourStatePatchPayload) => {
@@ -869,6 +871,37 @@ describe('StepByStepTourMount', () => {
     })
   })
 
+  it('adds the Update Settings guide once plugin preference permission loads after the task starts', async () => {
+    setPathname('/integrations/model-provider')
+    mockWorkspacePermissionKeys.value = mockWorkspacePermissionKeys.value.filter(
+      (key) => key !== 'plugin.plugin_preferences',
+    )
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: ['home', 'studio', 'knowledge'],
+      skipped: false,
+    })
+    const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav)
+
+    try {
+      const { queryClient } = renderStepByStepTourMount()
+
+      await user.click(await screen.findByRole('button', { name: 'Take a look' }))
+      expect(await screen.findByText('1 of 5')).toBeInTheDocument()
+
+      seedWorkspacePermissionsQuery(queryClient, [
+        ...mockWorkspacePermissionKeys.value,
+        'plugin.plugin_preferences',
+      ])
+
+      expect(await screen.findByText('1 of 6')).toBeInTheDocument()
+    } finally {
+      target.remove()
+    }
+  })
+
   it('uses limited access integration guides when the workspace cannot manage integrations', async () => {
     mockCurrentWorkspaceRole.value = 'normal'
     mockWorkspacePermissionKeys.value = [
@@ -1202,8 +1235,7 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('dialog', { name: 'Model Provider' })).toBeInTheDocument()
       expect(screen.getByText('1 of 6')).toBeInTheDocument()
 
-      // The Tool Plugin section renders the Update Settings target.
-      targets.push(createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings, 144))
+      // The Tool Plugin section renders the Update Settings target later than its nav item.
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Tool Plugin' })).toBeInTheDocument()
       expect(screen.getByText('2 of 6')).toBeInTheDocument()
@@ -1220,6 +1252,7 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('dialog', { name: 'Trigger' })).toBeInTheDocument()
       expect(screen.getByText('5 of 6')).toBeInTheDocument()
 
+      targets.push(createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings, 144))
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Update Settings' })).toBeInTheDocument()
       expect(screen.getByText('6 of 6')).toBeInTheDocument()
@@ -1312,7 +1345,8 @@ describe('StepByStepTourMount', () => {
       renderStepByStepTourMount()
 
       expect(await screen.findByRole('dialog', { name: 'Import a DSL file' })).toBeInTheDocument()
-      expect(screen.getByText('3 of 3')).toBeInTheDocument()
+      // An optional guide counts until the tour reaches it and finds no target.
+      expect(screen.getByText('3 of 4')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Got it' }))
 
@@ -1349,7 +1383,7 @@ describe('StepByStepTourMount', () => {
       renderStepByStepTourMount()
 
       expect(await screen.findByRole('dialog', { name: 'Create a new app' })).toBeInTheDocument()
-      expect(screen.getByText('1 of 1')).toBeInTheDocument()
+      expect(screen.getByText('1 of 2')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       await expectStepByStepTourPatch({ action: 'complete_task', task_id: 'studio' })

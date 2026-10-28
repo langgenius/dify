@@ -228,9 +228,9 @@ export default function StepByStepTourMount({
   const minimized = Boolean(activeTask) || checklistMinimized
   const activeGuideIndexes =
     activeGuides.length > 0
-      ? getActiveGuideIndexes(activeGuides, sessionGuideIndexes)
-          .filter((index) => isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences))
-          .filter((index) => isOptionalGuideTargetAvailable(activeGuides[index]!, pathname))
+      ? getActiveGuideIndexes(activeGuides, sessionGuideIndexes).filter((index) =>
+          isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences),
+        )
       : []
   const activeGuidePlanIndex = activeGuideIndexes.findIndex((index) => index === activeGuideIndex)
   const activeStepIndex =
@@ -721,15 +721,7 @@ export default function StepByStepTourMount({
                   return
                 }
 
-                const guides = getStepByStepTourGuides(taskId, guideGroup)
-                const guideIndexes = createGuideIndexes(guides).filter((index) =>
-                  isGuideEligibleForPlan(guides[index]!, canSetPluginPreferences),
-                )
-                startTask({
-                  taskId,
-                  guideGroup,
-                  guideIndexes: guideIndexes.length > 0 ? guideIndexes : undefined,
-                })
+                startTask({ taskId, guideGroup })
                 router.push(task.route)
               }}
               onUncompleteTask={(taskId) => {
