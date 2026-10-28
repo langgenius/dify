@@ -1407,3 +1407,61 @@ class TestPersistenceLayerCases:
 
             with pytest.raises(ValueError, match="workflow execution not initialized"):
                 layer._get_workflow_execution()
+
+
+class _FlakySaveRepo(_RepoRecorder):
+    """Fails the terminal-status save the first ``failures`` attempts, then
+    records. Non-terminal saves (e.g. the run's initial ``running`` row)
+    always succeed."""
+
+    _TERMINAL_STATUSES = {
+        WorkflowExecutionStatus.SUCCEEDED,
+        WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        WorkflowExecutionStatus.FAILED,
+        WorkflowExecutionStatus.STOPPED,
+    }
+
+    def __init__(self, failures: int) -> None:
+        super().__init__()
+        self.failures = failures
+        self.attempts = 0
+
+    def save_synchronously(self, entity):
+        if entity.status in self._TERMINAL_STATUSES:
+            self.attempts += 1
+            if self.attempts <= self.failures:
+                raise ConnectionError("database connection dropped")
+        super().save_synchronously(entity)
+
+
+class TestTerminalStatusSaveRetry:
+    """A dropped terminal-status write must not leave a finished run
+    "running" forever: the save is retried with a bounded backoff (#44912)."""
+
+    @staticmethod
+    def test_transient_terminal_save_failure_is_retried(monkeypatch):
+        monkeypatch.setattr("services.workflow_persistence.time.sleep", lambda _: None)
+        repo = _FlakySaveRepo(failures=2)
+        layer, _, _, _ = _make_layer(workflow_execution_repo=repo)
+        layer.on_graph_start()
+        layer.on_event(GraphRunStartedEvent())
+
+        layer.on_event(GraphRunSucceededEvent(outputs={"ok": True}))
+
+        assert repo.attempts == 3
+        # The initial ``running`` save plus the retried terminal save.
+        assert len(repo.synchronously_saved) == 2
+        assert repo.synchronously_saved[-1].status == WorkflowExecutionStatus.SUCCEEDED
+
+    @staticmethod
+    def test_terminal_save_reraises_after_bounded_attempts(monkeypatch):
+        monkeypatch.setattr("services.workflow_persistence.time.sleep", lambda _: None)
+        repo = _FlakySaveRepo(failures=10)
+        layer, _, _, _ = _make_layer(workflow_execution_repo=repo)
+        layer.on_graph_start()
+        layer.on_event(GraphRunStartedEvent())
+
+        with pytest.raises(ConnectionError, match="database connection dropped"):
+            layer.on_event(GraphRunSucceededEvent(outputs={"ok": True}))
+
+        assert repo.attempts == 3

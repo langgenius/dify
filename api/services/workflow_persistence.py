@@ -4,6 +4,8 @@ The aggregate constructs this observer and supplies its repositories, indexes,
 and history before the engine starts. Engine events remain storage-agnostic.
 """
 
+import logging
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -55,6 +57,16 @@ from services.workflow.inspector_events import (
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+
+logger = logging.getLogger(__name__)
+
+# graphon's layer dispatcher catches and only logs a layer exception, so one
+# failed terminal-status write would leave a finished run "running" forever
+# while the user already holds the answer (#44912). The write is a
+# tenant-scoped upsert in its own transaction, so retrying a transient
+# failure is safe; re-raise only after the bounded attempts are spent.
+_TERMINAL_SAVE_MAX_ATTEMPTS = 3
+_TERMINAL_SAVE_RETRY_BASE_DELAY_SECONDS = 0.5
 
 
 @dataclass(slots=True)
@@ -241,9 +253,29 @@ class WorkflowPersistenceLayer(Layer):
         self._populate_completion_statistics(execution)
         if execution.status in (WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.STOPPED):
             self._fail_running_node_executions(error_message=execution.error_message or "")
-        self._workflow_execution_repository.save_synchronously(execution)
+        self._save_terminal_execution(execution)
         self._enqueue_trace_task(execution)
         _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
+
+    def _save_terminal_execution(self, execution: WorkflowExecution) -> None:
+        last_error: Exception | None = None
+        for attempt in range(1, _TERMINAL_SAVE_MAX_ATTEMPTS + 1):
+            try:
+                self._workflow_execution_repository.save_synchronously(execution)
+                return
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Failed to persist terminal status for workflow run %s (attempt %d/%d): %s",
+                    execution.id_,
+                    attempt,
+                    _TERMINAL_SAVE_MAX_ATTEMPTS,
+                    exc,
+                )
+                if attempt < _TERMINAL_SAVE_MAX_ATTEMPTS:
+                    time.sleep(_TERMINAL_SAVE_RETRY_BASE_DELAY_SECONDS * attempt)
+        assert last_error is not None
+        raise last_error
 
     # ------------------------------------------------------------------
     # Node-level handlers
