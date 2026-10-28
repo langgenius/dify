@@ -1,35 +1,20 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useMutation } from '@tanstack/react-query'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import AssignRolesContent from './assign-roles-content'
 import TransferOwnershipContent from './transfer-ownership-content'
 
 type MemberMenuProps = {
   member: AccountWithRoleResponse
+  onRemove: () => void
   isCurrentUser: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
@@ -37,17 +22,15 @@ type MemberMenuProps = {
 
 const MemberMenu = ({
   member,
+  onRemove,
   isCurrentUser,
   canTransferOwnership = false,
   allowMultipleRoles = true,
 }: MemberMenuProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
-  const queryClient = useQueryClient()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [transferOpen, setTransferOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
-  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
-  const [removing, setRemoving] = useState(false)
 
   const isOwner = member.role === 'owner'
   const canAssignRoles = !isOwner && !isCurrentUser
@@ -91,32 +74,12 @@ const MemberMenu = ({
     )
   }
 
-  const handleOpenRemoveConfirm = useCallback(() => {
-    setRemoveConfirmOpen(true)
-  }, [])
-
-  const handleRemove = useCallback(async () => {
-    setRemoving(true)
-    try {
-      await consoleClient.workspaces.current.members.byMemberId.delete({
-        params: { member_id: member.id },
-      })
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.members.get.key(),
-      })
-      setRemoveConfirmOpen(false)
-    } catch {
-    } finally {
-      setRemoving(false)
-    }
-  }, [member.id, queryClient])
-
   if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
 
   return (
     <div>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               size="lg"
@@ -127,67 +90,37 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <DropdownMenuContent className="min-w-45 rounded-xl">
+        <MenuContent align="end" className="min-w-45 rounded-xl">
           {canAssignRoles && (
-            <DropdownMenuItem
+            <MenuItem
               className="system-sm-medium text-text-secondary"
               disabled={isSavingRoles}
               onClick={handleOpenAssignRoles}
             >
               {assignRolesLabel}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {showTransferOwnership && (
-            <DropdownMenuItem
+            <MenuItem
               className="system-sm-medium text-text-secondary"
               onClick={() => setTransferOpen(true)}
             >
               {t(($) => $['members.transferOwnership'], { ns: 'workspaceMembers' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-          {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
+          {(canAssignRoles || showTransferOwnership) && canRemove && <MenuSeparator />}
           {canRemove && (
-            <DropdownMenuItem
-              variant="destructive"
-              className="system-sm-medium"
-              onClick={handleOpenRemoveConfirm}
-            >
+            <MenuItem variant="destructive" className="system-sm-medium" onClick={onRemove}>
               {t(($) => $['members.removeFromTeam'], { ns: 'workspaceMembers' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       {roleSaveFailed && !assignModalOpen && (
         <p role="alert" className="mt-1 system-xs-regular text-text-destructive">
           {t(($) => $['api.actionFailed'], { ns: 'common' })}
         </p>
       )}
-      <AlertDialog
-        open={removeConfirmOpen}
-        onOpenChange={(open) => !open && setRemoveConfirmOpen(false)}
-      >
-        <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $['members.removeFromTeamConfirmTitle'], {
-                ns: 'workspaceMembers',
-                memberName,
-              })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'workspaceMembers' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={removing} onClick={handleRemove}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
         <DialogContent
           className="h-121"

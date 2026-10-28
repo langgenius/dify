@@ -105,7 +105,7 @@ export function RetrievalSettingsSection() {
   return (
     <>
       {settings.configuration_state !== 'pending-validation' &&
-        (settings.configuration_state !== 'active' || settings.issues.length > 0) && (
+        settings.configuration_state !== 'active' && (
           <KnowledgeModelReadinessNotice
             className="mb-3"
             description={

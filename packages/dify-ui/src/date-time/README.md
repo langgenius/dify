@@ -1,6 +1,6 @@
 # Date and time pickers
 
-These three families share field anatomy, a non-modal popover and keyboard navigation. Choose
+These three families share field anatomy, a focus-trapped popover and keyboard navigation. Choose
 from the value's meaning; they do not accept free-form text or arbitrary collection values.
 
 | Public subpath                         | Value / `onValueChange`                  | Native form value   | Selection commits |
@@ -94,10 +94,11 @@ Unchanged values do not emit duplicate callbacks. Open/close events remain Popov
 successful confirmation, Clear or reset closes through its `imperative-action` mechanism.
 
 Time and date-time edits, including Now, stay in the open session until OK. Switching date/time
-views preserves the draft. Dismissal discards it; reopening starts from the committed value.
-Changing the controlled value or time zone starts a fresh draft. Unchanged confirmation does not
-emit a duplicate value change. In DatePicker, a day selection commits immediately. The month/year
-selector only changes the displayed month when confirmed; it does not select a date.
+views preserves the draft. Close, Escape and outside press discard it; reopening starts from the
+committed value. Changing the controlled value or time zone starts a fresh draft. Unchanged
+confirmation does not emit a duplicate value change. In DatePicker, a day selection commits
+immediately. The month/year selector only changes the displayed month when confirmed; it does not
+select a date.
 
 The calendar uses DayPicker's grid navigation. Adjacent-month dates remain selectable and, while
 the popup remains open, switch the view to their month. `minDate`, `maxDate` and
@@ -110,8 +111,12 @@ Selection follows focus within the draft, not the committed field value:
 - Up/Down move one option; Page Up/Down move five; Home/End reach the endpoints. Navigation clamps
   at the ends; no `loopFocus` API is exposed.
 - Numeric locating accepts ASCII and localized digits. Month names also support typeahead.
-- Tab moves between columns and actions, not every option. Escape leaves month/year selection
-  first; Escape from the main picker dismisses and restores trigger focus. Tab can leave the popup.
+- Tab moves between columns and actions, not every option. Tab and Shift+Tab wrap within the
+  popup, keeping the selection session active until confirmation or dismissal. A visually hidden Close
+  button lets screen-reader users dismiss the entire picker without adding a Tab stop. Cancel and
+  Escape in month/year selection discard those edits and return to the calendar; Escape from the
+  main picker dismisses. Keyboard dismissal restores trigger focus; outside press keeps
+  focus on the clicked focusable control. The popup does not lock page scrolling.
 - Hover does not select. Keyboard changes scroll immediately; pointer selection may scroll
   smoothly, respecting reduced motion. Wheel/touch scrolling updates the draft and aligns the
   nearest option at the top when it settles.
@@ -127,9 +132,10 @@ instant. Business rules can further restrict it through `isTimeUnavailable`.
 DatePicker and DateTimePicker accept DayPicker locale objects; TimePicker accepts Intl locale
 identifiers. Locale controls formatting and digits, not the calendar system or serialized values.
 Action labels and validation copy have English defaults; consumers translate `labels`, field and
-clear labels, placeholders, `requiredLabel` and `validationMessage`. Direction inherits
-`DirectionProvider` or a local `direction` override and reaches the portaled popup independently of
-locale. Set HTML `dir` for the surrounding layout too.
+clear labels, placeholders, `requiredLabel` and `validationMessage`. Direction comes from the
+nearest `DirectionProvider`, independently of locale, and drives keyboard navigation and layout.
+Pickers do not write `dir`: globally the portaled popup inherits `<html dir>`; for a local RTL
+region, set `dir` on the wrapper and on the portaled content.
 
 With `name`, the committed value participates in native FormData; an empty field submits `''`.
 `form` can associate an external form. Required/invalid fields block native validated submission

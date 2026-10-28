@@ -8,7 +8,6 @@ import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -18,14 +17,8 @@ import {
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
@@ -34,13 +27,12 @@ import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppMetadataForm } from '@/app/components/app/app-metadata'
-import { DeleteAppForm } from '@/app/components/app/delete-app-form'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
-  getStepByStepTourDropdownMenuContentProps,
-  useStepByStepTourControlledDropdown,
-} from '@/app/components/step-by-step-tour/dropdown-menu'
+  getStepByStepTourMenuContentProps,
+  useStepByStepTourControlledMenu,
+} from '@/app/components/step-by-step-tour/menu'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -76,7 +68,7 @@ function requiresPublishedWorkflowInExplore(app: AppPartial) {
 
 type AppCardOperationsMenuItemsProps = {
   app: AppPartial
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   shouldShowEditOption: boolean
   shouldShowDuplicateOption: boolean
   shouldShowExportOption: boolean
@@ -127,8 +119,8 @@ function AppCardOperationsMenuItems({
   const hasCreateExportGroup = shouldShowDuplicateOption || shouldShowExportOption
   const hasSwitchOrExploreGroup = shouldShowSwitchOption || shouldShowOpenInExploreOption
   const hasAccessDeleteGroup = shouldShowAccessConfigOption || shouldShowDeleteOption
-  const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
-  const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
+  const ActionItem = kind === 'context' ? ContextMenuItem : MenuItem
+  const ActionSeparator = kind === 'context' ? ContextMenuSeparator : MenuSeparator
 
   function handleMenuAction(event: MouseEvent<HTMLElement>, action: () => void) {
     event.stopPropagation()
@@ -169,25 +161,28 @@ function AppCardOperationsMenuItems({
   return (
     <>
       {shouldShowEditOption && (
-        <MenuItem className="gap-2 px-3" onClick={(event) => handleMenuAction(event, onEdit)}>
+        <ActionItem className="gap-2 px-3" onClick={(event) => handleMenuAction(event, onEdit)}>
           <span className="system-sm-regular text-text-secondary">
             {t(($) => $.editApp, { ns: 'app' })}
           </span>
-        </MenuItem>
+        </ActionItem>
       )}
       {hasEditGroup &&
         (hasCreateExportGroup || hasSwitchOrExploreGroup || hasAccessDeleteGroup) && (
-          <MenuSeparator />
+          <ActionSeparator />
         )}
       {shouldShowDuplicateOption && (
-        <MenuItem className="gap-2 px-3" onClick={(event) => handleMenuAction(event, onDuplicate)}>
+        <ActionItem
+          className="gap-2 px-3"
+          onClick={(event) => handleMenuAction(event, onDuplicate)}
+        >
           <span className="system-sm-regular text-text-secondary">
             {t(($) => $.duplicate, { ns: 'app' })}
           </span>
-        </MenuItem>
+        </ActionItem>
       )}
       {shouldShowExportOption && (
-        <MenuItem
+        <ActionItem
           className="gap-2 px-3"
           disabled={isExporting}
           onClick={(event) => handleMenuAction(event, onExport)}
@@ -195,37 +190,37 @@ function AppCardOperationsMenuItems({
           <span className="system-sm-regular text-text-secondary">
             {t(($) => $.exportApp, { ns: 'app' })}
           </span>
-        </MenuItem>
+        </ActionItem>
       )}
       {hasCreateExportGroup && (hasSwitchOrExploreGroup || hasAccessDeleteGroup) && (
-        <MenuSeparator />
+        <ActionSeparator />
       )}
       {shouldShowSwitchOption && (
-        <MenuItem className="gap-2 px-3" onClick={(event) => handleMenuAction(event, onSwitch)}>
+        <ActionItem className="gap-2 px-3" onClick={(event) => handleMenuAction(event, onSwitch)}>
           <span className="text-sm/5 text-text-secondary">{t(($) => $.switch, { ns: 'app' })}</span>
-        </MenuItem>
+        </ActionItem>
       )}
       {shouldShowOpenInExploreOption && (
-        <MenuItem className="gap-2 px-3" onClick={handleOpenInstalledApp}>
+        <ActionItem className="gap-2 px-3" onClick={handleOpenInstalledApp}>
           <span className="system-sm-regular text-text-secondary">
             {t(($) => $.openInExplore, { ns: 'app' })}
           </span>
-        </MenuItem>
+        </ActionItem>
       )}
-      {hasSwitchOrExploreGroup && hasAccessDeleteGroup && <MenuSeparator />}
+      {hasSwitchOrExploreGroup && hasAccessDeleteGroup && <ActionSeparator />}
       {shouldShowAccessConfigOption && (
-        <MenuItem
+        <ActionItem
           className="gap-2 px-3"
           onClick={(event) => handleMenuAction(event, onAccessConfig)}
         >
           <span className="text-sm/5 text-text-secondary">
             {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
           </span>
-        </MenuItem>
+        </ActionItem>
       )}
-      {shouldShowAccessConfigOption && shouldShowDeleteOption && <MenuSeparator />}
+      {shouldShowAccessConfigOption && shouldShowDeleteOption && <ActionSeparator />}
       {shouldShowDeleteOption && (
-        <MenuItem
+        <ActionItem
           variant="destructive"
           className="gap-2 px-3"
           onClick={(event) => handleMenuAction(event, onDelete)}
@@ -233,7 +228,7 @@ function AppCardOperationsMenuItems({
           <span className="system-sm-regular">
             {t(($) => $['operation.delete'], { ns: 'common' })}
           </span>
-        </MenuItem>
+        </ActionItem>
       )}
     </>
   )
@@ -242,6 +237,7 @@ function AppCardOperationsMenuItems({
 type AppCardInteractionsProps = {
   app: AppPartial
   children: ReactElement
+  onDelete: () => void
   stepByStepTourActionMenuOpen?: boolean
   stepByStepTourActionMenuHighlightPart?: string
 }
@@ -249,6 +245,7 @@ type AppCardInteractionsProps = {
 export function AppCardInteractions({
   app,
   children,
+  onDelete,
   stepByStepTourActionMenuOpen = false,
   stepByStepTourActionMenuHighlightPart,
 }: AppCardInteractionsProps) {
@@ -262,9 +259,6 @@ export function AppCardInteractions({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
   const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
-  const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
-  )
   const { mutate: starApp, isPending: isStarring } = useMutation(
     consoleQuery.apps.byAppId.star.post.mutationOptions(),
   )
@@ -277,15 +271,12 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
   )
   const editNameRef = useRef<HTMLInputElement>(null)
-  const [activeDialog, setActiveDialog] = useState<
-    'delete' | 'duplicate' | 'edit' | 'switch' | null
-  >(null)
-  const operationsMenu = useStepByStepTourControlledDropdown({
+  const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | 'switch' | null>(null)
+  const operationsMenu = useStepByStepTourControlledMenu({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
   })
   const isOperationsMenuOpen = operationsMenu.open
-  const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
   const {
     exportAppDsl,
@@ -312,39 +303,6 @@ export function AppCardInteractions({
     [app.permission_keys, maintainerPermissionOptions],
   )
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-
-  const handleShowEditModal = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('edit')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleShowDuplicateModal = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('duplicate')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleShowSwitchModal = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('switch')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleShowDeleteConfirm = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    queueMicrotask(() => {
-      setActiveDialog('delete')
-    })
-  }, [setIsOperationsMenuOpen])
-
-  const handleOpenAccessConfig = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-    push(`/app/${app.id}/access-config`)
-  }, [app.id, push, setIsOperationsMenuOpen])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = ({
     name,
@@ -401,7 +359,6 @@ export function AppCardInteractions({
     if (isExporting) return
 
     resetExport()
-    setIsOperationsMenuOpen(false)
     const isWorkflowApp = app.mode === 'workflow' || app.mode === 'advanced-chat'
     const result = isWorkflowApp
       ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
@@ -460,12 +417,12 @@ export function AppCardInteractions({
     shouldShowAccessConfigOption,
     shouldShowDeleteOption,
     isExporting,
-    onEdit: handleShowEditModal,
-    onDuplicate: handleShowDuplicateModal,
+    onEdit: () => setActiveDialog('edit'),
+    onDuplicate: () => setActiveDialog('duplicate'),
     onExport: exportCheck,
-    onSwitch: handleShowSwitchModal,
-    onDelete: handleShowDeleteConfirm,
-    onAccessConfig: handleOpenAccessConfig,
+    onSwitch: () => setActiveDialog('switch'),
+    onDelete,
+    onAccessConfig: () => push(`/app/${app.id}/access-config`),
   }
 
   return (
@@ -521,12 +478,12 @@ export function AppCardInteractions({
             <TooltipContent>{starToggleLabel}</TooltipContent>
           </Tooltip>
           {shouldShowOperationsMenu && (
-            <DropdownMenu
+            <Menu
               modal={false}
               open={isOperationsMenuOpen}
-              onOpenChange={setIsOperationsMenuOpen}
+              onOpenChange={operationsMenu.onOpenChange}
             >
-              <DropdownMenuTrigger
+              <MenuTrigger
                 render={
                   <IconButton
                     size="lg"
@@ -540,16 +497,17 @@ export function AppCardInteractions({
                   </IconButton>
                 }
               />
-              <DropdownMenuContent
-                {...getStepByStepTourDropdownMenuContentProps({
+              <MenuContent
+                align="end"
+                {...getStepByStepTourMenuContentProps({
                   highlightPart: stepByStepTourActionMenuHighlightPart,
                   interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
                   className: OPERATIONS_MENU_POPUP_CLASS_NAME,
                 })}
               >
-                <AppCardOperationsMenuItems kind="dropdown" {...operationsMenuItemsProps} />
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <AppCardOperationsMenuItems kind="menu" {...operationsMenuItemsProps} />
+              </MenuContent>
+            </Menu>
           )}
         </div>
       </div>
@@ -607,37 +565,6 @@ export function AppCardInteractions({
           }}
         />
       )}
-      <AlertDialog
-        open={activeDialog === 'delete'}
-        onOpenChange={(open, details) => {
-          if (!open && deletion.isPending) details.cancel()
-          else if (!open) setActiveDialog(null)
-        }}
-        onOpenChangeComplete={(open) => {
-          if (!open) deletion.reset()
-        }}
-      >
-        <AlertDialogContent>
-          <DeleteAppForm
-            appName={app.name}
-            isPending={deletion.isPending}
-            error={
-              deletion.isError
-                ? `${t(($) => $.appDeleteFailed, { ns: 'app' })}: ${deletion.error.message}`
-                : undefined
-            }
-            onSubmit={() => {
-              if (deletion.isPending) return
-              deletion.mutate(
-                { params: { app_id: app.id } },
-                {
-                  onSuccess: () => setActiveDialog(null),
-                },
-              )
-            }}
-          />
-        </AlertDialogContent>
-      </AlertDialog>
       {secretEnvList.length > 0 && (
         <AppExportConfirmModal
           envList={secretEnvList}

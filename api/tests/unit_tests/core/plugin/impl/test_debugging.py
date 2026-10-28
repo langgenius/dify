@@ -6,7 +6,7 @@ from core.plugin.impl.debugging import PluginDebuggingClient
 
 
 class TestPluginDebuggingClient:
-    def test_get_debugging_key(self, mocker: MockerFixture):
+    def test_get_debugging_key(self, mocker: MockerFixture) -> None:
         client = PluginDebuggingClient()
         request_mock = mocker.patch.object(
             client,

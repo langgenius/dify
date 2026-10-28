@@ -719,7 +719,7 @@ class TestAppPreviewQueryRepositoryCases:
                 type=WorkflowType.CHAT,
                 version="published",
                 graph='{"nodes":[],"edges":[]}',
-                features=stored_features,
+                _features=stored_features,
                 created_by=author.id,
                 updated_by=updater.id,
                 marked_name="Release",

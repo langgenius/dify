@@ -42,6 +42,11 @@ export type AgentThought = {
   tool_labels: AnyJsonValue
 }
 
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
 export type AnyJsonValue = unknown
 
 export type AppAccessModeQuery = {
@@ -143,6 +148,16 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -154,6 +169,11 @@ export type ConversationListQuery = {
   limit?: number
   pinned?: boolean | null
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+}
+
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
 }
 
 export type ConversationRenamePayload = (
@@ -459,6 +479,11 @@ export type MalformedUploadTokenError = ErrorResponse & {
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
 }
 
 export type MessageFile = {
@@ -1474,7 +1499,7 @@ export type GetConversationsData = {
 export type GetConversationsErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1499,7 +1524,7 @@ export type DeleteConversationsByCIdData = {
 export type DeleteConversationsByCIdErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1529,7 +1554,8 @@ export type PostConversationsByCIdNameData = {
 export type PostConversationsByCIdNameErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationFirstMessageNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1556,7 +1582,7 @@ export type PatchConversationsByCIdPinData = {
 export type PatchConversationsByCIdPinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1583,7 +1609,7 @@ export type PatchConversationsByCIdUnpinData = {
 export type PatchConversationsByCIdUnpinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1940,7 +1966,7 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1968,8 +1994,9 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   401: ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -1998,6 +2025,7 @@ export type GetMessagesByMessageIdMoreLikeThisData = {
 
 export type GetMessagesByMessageIdMoreLikeThisErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotCompletionAppError
@@ -2032,6 +2060,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsData = {
 
 export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
@@ -2040,7 +2069,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

@@ -44,17 +44,6 @@ export const createEmptyDataset = ({ name }: { name: string }) => {
   return consoleClient.datasets.post({ body: { name } })
 }
 
-export const checkIsUsedInApp = (id: string) => {
-  return consoleClient.datasets.byDatasetId.useCheck.get(
-    { params: { dataset_id: id } },
-    { context: { silent: true } },
-  )
-}
-
-export const deleteDataset = (datasetID: string) => {
-  return consoleClient.datasets.byDatasetId.delete({ params: { dataset_id: datasetID } })
-}
-
 export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
   return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get({
     params: { external_knowledge_api_id: apiTemplateId },

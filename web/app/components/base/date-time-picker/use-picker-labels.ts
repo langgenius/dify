@@ -26,6 +26,7 @@ export function usePickerLabels() {
       unavailable: t(($) => $['picker.unavailable']),
       backToDate: t(($) => $['operation.pickDate']),
       cancel: t(($) => $['operation.cancel']),
+      close: t(($) => $['operation.close']),
       apply: t(($) => $['operation.ok']),
       now: t(($) => $['operation.now']),
       title: t(($) => $['title.pickTime']),

@@ -1,18 +1,18 @@
-import type { NodeActionsMenuProps } from './types'
+import type { NodeActionsMenuProps as NodeActionsContentProps } from './types'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import {
   Popover,
   PopoverBackdrop,
@@ -33,7 +33,7 @@ import {
 } from './shared'
 import { useNodeActionsMenuModel } from './use-node-actions-menu-model'
 
-type NodeActionsDropdownProps = {
+type NodeActionsMenuProps = {
   id: string
   data: Node['data']
   triggerClassName?: string
@@ -41,13 +41,13 @@ type NodeActionsDropdownProps = {
   showHelpLink?: boolean
 }
 
-export function NodeActionsDropdown({
+export function NodeActionsMenu({
   id,
   data,
   triggerClassName,
   onOpenChange,
   showHelpLink = true,
-}: NodeActionsDropdownProps) {
+}: NodeActionsMenuProps) {
   const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
@@ -65,8 +65,8 @@ export function NodeActionsDropdown({
   }, [onOpenChange])
 
   return (
-    <DropdownMenu modal={false} open={open} onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger
+    <Menu modal={false} open={open} onOpenChange={handleOpenChange}>
+      <MenuTrigger
         render={
           <IconButton
             size="md"
@@ -77,19 +77,19 @@ export function NodeActionsDropdown({
           </IconButton>
         }
       />
-      <DropdownMenuPortal>
-        <NodeActionsDropdownContent
+      <MenuPortal>
+        <NodeActionsMenuContent
           id={id}
           data={data}
           onClose={closeMenu}
           showHelpLink={showHelpLink}
         />
-      </DropdownMenuPortal>
-    </DropdownMenu>
+      </MenuPortal>
+    </Menu>
   )
 }
 
-function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
+function NodeActionsMenuContent(props: NodeActionsContentProps) {
   const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const model = useNodeActionsMenuModel(props)
   const flowStore = useStoreApi()
@@ -107,8 +107,8 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
   }
 
   return (
-    <DropdownMenuPositioner align="end">
-      <DropdownMenuPopup
+    <MenuPositioner sideOffset={4} align="end">
+      <MenuPopup
         finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
         className={`${NODE_ACTIONS_MENU_WIDTH_CLASS_NAME} border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 shadow-lg backdrop-blur-[5px]`}
         onKeyDown={(event) =>
@@ -120,13 +120,11 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
         }
       >
         {hasRunGroup && (
-          <DropdownMenuGroup>
-            {model.canRun && (
-              <DropdownMenuItem onClick={model.handleRun}>{singleRunActionLabel}</DropdownMenuItem>
-            )}
+          <MenuGroup>
+            {model.canRun && <MenuItem onClick={model.handleRun}>{singleRunActionLabel}</MenuItem>}
             {model.canChangeBlock && (
               <Popover modal="trap-focus">
-                <DropdownMenuItem
+                <MenuItem
                   closeOnClick={false}
                   // The menu row owns the focus treatment, so the trigger adds no ring.
                   render={
@@ -139,7 +137,7 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
                   className="data-popup-open:bg-state-base-hover"
                 >
                   {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
-                </DropdownMenuItem>
+                </MenuItem>
                 <PopoverPortal>
                   <PopoverBackdrop />
                   <PopoverPositioner side="right" align="start" positionMethod="fixed">
@@ -153,38 +151,38 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
                 </PopoverPortal>
               </Popover>
             )}
-          </DropdownMenuGroup>
+          </MenuGroup>
         )}
         {hasRunGroup &&
           (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
-            <DropdownMenuSeparator />
+            <MenuSeparator />
           )}
         {hasEditGroup && (
-          <DropdownMenuGroup>
-            <DropdownMenuItem
+          <MenuGroup>
+            <MenuItem
               className={NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME}
               onClick={model.handleCopy}
             >
               <NodeActionsMenuItemContent shortcut="workflow.copy">
                 {t(($) => $['common.copy'], { ns: 'workflow' })}
               </NodeActionsMenuItemContent>
-            </DropdownMenuItem>
-            <DropdownMenuItem
+            </MenuItem>
+            <MenuItem
               className={NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME}
               onClick={model.handleDuplicate}
             >
               <NodeActionsMenuItemContent shortcut="workflow.duplicate">
                 {t(($) => $['common.duplicate'], { ns: 'workflow' })}
               </NodeActionsMenuItemContent>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
+            </MenuItem>
+          </MenuGroup>
         )}
         {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
-          <DropdownMenuSeparator />
+          <MenuSeparator />
         )}
         {hasDeleteGroup && (
-          <DropdownMenuGroup>
-            <DropdownMenuItem
+          <MenuGroup>
+            <MenuItem
               variant="destructive"
               className={NODE_ACTIONS_MENU_ITEM_WITH_SHORTCUT_CLASS_NAME}
               onClick={handleDelete}
@@ -192,42 +190,32 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
               <NodeActionsMenuItemContent shortcut="workflow.delete">
                 {t(($) => $['operation.delete'], { ns: 'common' })}
               </NodeActionsMenuItemContent>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
+            </MenuItem>
+          </MenuGroup>
         )}
-        {hasDeleteGroup && (model.workflowAppHref || model.helpLinkUri) && (
-          <DropdownMenuSeparator />
-        )}
+        {hasDeleteGroup && (model.workflowAppHref || model.helpLinkUri) && <MenuSeparator />}
         {model.workflowAppHref && (
-          <DropdownMenuGroup>
-            <DropdownMenuLinkItem
-              href={model.workflowAppHref}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+          <MenuGroup>
+            <MenuLinkItem href={model.workflowAppHref} target="_blank" rel="noopener noreferrer">
               {t(($) => $['panel.openWorkflow'], { ns: 'workflow' })}
-            </DropdownMenuLinkItem>
-          </DropdownMenuGroup>
+            </MenuLinkItem>
+          </MenuGroup>
         )}
-        {model.workflowAppHref && model.helpLinkUri && <DropdownMenuSeparator />}
+        {model.workflowAppHref && model.helpLinkUri && <MenuSeparator />}
         {model.helpLinkUri && (
-          <DropdownMenuGroup>
-            <DropdownMenuLinkItem
-              href={model.helpLinkUri}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+          <MenuGroup>
+            <MenuLinkItem href={model.helpLinkUri} target="_blank" rel="noopener noreferrer">
               {t(($) => $['panel.helpLink'], { ns: 'workflow' })}
-            </DropdownMenuLinkItem>
-          </DropdownMenuGroup>
+            </MenuLinkItem>
+          </MenuGroup>
         )}
-        <DropdownMenuSeparator />
+        <MenuSeparator />
         <NodeActionsMenuAbout
           title={t(($) => $['panel.about'], { ns: 'workflow' })}
           description={model.about.description}
           author={`${t(($) => $['panel.createdBy'], { ns: 'workflow' })} ${model.about.author}`}
         />
-      </DropdownMenuPopup>
-    </DropdownMenuPositioner>
+      </MenuPopup>
+    </MenuPositioner>
   )
 }

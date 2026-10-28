@@ -4,13 +4,13 @@ import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { memo, useId } from 'react'
@@ -22,7 +22,7 @@ import {
   useDetailHeaderState,
   usePluginOperations,
 } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginSource } from '@/app/components/plugins/types'
@@ -126,7 +126,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <DropdownMenu
+      <Menu
         open={
           !!displayVersion &&
           versionPicker.isShow &&
@@ -137,7 +137,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
         onOpenChange={versionPicker.setIsShow}
       >
         {!!displayVersion && (
-          <DropdownMenuTrigger
+          <MenuTrigger
             render={
               <Button
                 variant="ghost"
@@ -158,18 +158,18 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
             }
           />
         )}
-        <DropdownMenuContent
+        <MenuContent
           className="max-h-[min(16rem,var(--available-height))]"
           align="start"
           aria-labelledby={versionMenuLabelId}
         >
-          <DropdownMenuGroup>
-            <DropdownMenuGroupLabel id={versionMenuLabelId}>
+          <MenuGroup>
+            <MenuGroupLabel id={versionMenuLabelId}>
               {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
-            </DropdownMenuGroupLabel>
+            </MenuGroupLabel>
             {versionsQuery.data && autoUpgradeSettings.data ? (
               versionsQuery.data.data.versions.map((item) => (
-                <DropdownMenuItem
+                <MenuItem
                   key={item.unique_identifier}
                   disabled={detail.version === item.version}
                   onClick={() => handleVersionSelect(item)}
@@ -181,10 +181,10 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
                   <span className="ms-auto text-text-tertiary">
                     {formatDate(item.created_at, dateFormat)}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               ))
             ) : (
-              <DropdownMenuItem
+              <MenuItem
                 closeOnClick={false}
                 onClick={() => {
                   if (versionsQuery.isError) void versionsQuery.refetch()
@@ -192,11 +192,11 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
                 }}
               >
                 {t(($) => $['operation.retry'], { ns: 'common' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
       {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
         <Tooltip>
           <TooltipTrigger
@@ -218,7 +218,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
           </TooltipContent>
         </Tooltip>
       )}
-      <OperationDropdown
+      <OperationMenu
         triggerAriaLabel={t(($) => $['operation.moreActionsFor'], {
           ns: 'common',
           name: pluginLabel,

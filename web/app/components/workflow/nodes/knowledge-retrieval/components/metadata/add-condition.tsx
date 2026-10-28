@@ -1,16 +1,16 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuEmpty,
-  DropdownMenuFilterProvider,
-  DropdownMenuInput,
-  DropdownMenuInputGroup,
-  DropdownMenuItem,
-  DropdownMenuList,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuEmpty,
+  MenuFilterProvider,
+  MenuInput,
+  MenuInputGroup,
+  MenuItem,
+  MenuList,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import MetadataIcon from './metadata-icon'
 
@@ -24,24 +24,24 @@ const AddCondition = ({
   })
 
   return (
-    <DropdownMenuFilterProvider>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button size="small" variant="secondary" />}>
+    <MenuFilterProvider>
+      <Menu>
+        <MenuTrigger render={<Button size="small" variant="secondary" />}>
           <span aria-hidden="true" className="i-ri-add-line size-3.5" />
           {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.add'], { ns: 'workflowModels' })}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={12} className="w-80">
-          <DropdownMenuInputGroup>
+        </MenuTrigger>
+        <MenuContent align="start" sideOffset={12} className="w-80">
+          <MenuInputGroup>
             <span
               aria-hidden="true"
               className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             />
-            <DropdownMenuInput aria-label={searchLabel} placeholder={searchLabel} />
-          </DropdownMenuInputGroup>
-          <DropdownMenuEmpty>{t(($) => $.noData, { ns: 'common' })}</DropdownMenuEmpty>
-          <DropdownMenuList>
+            <MenuInput aria-label={searchLabel} placeholder={searchLabel} />
+          </MenuInputGroup>
+          <MenuEmpty>{t(($) => $.noData, { ns: 'common' })}</MenuEmpty>
+          <MenuList>
             {metadataList?.map((metadata) => (
-              <DropdownMenuItem
+              <MenuItem
                 key={metadata.name}
                 label={metadata.name}
                 onClick={() => handleAddCondition?.(metadata)}
@@ -53,12 +53,12 @@ const AddCondition = ({
                 <span className="shrink-0 system-xs-regular text-text-tertiary">
                   {metadata.type}
                 </span>
-              </DropdownMenuItem>
+              </MenuItem>
             ))}
-          </DropdownMenuList>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </DropdownMenuFilterProvider>
+          </MenuList>
+        </MenuContent>
+      </Menu>
+    </MenuFilterProvider>
   )
 }
 
