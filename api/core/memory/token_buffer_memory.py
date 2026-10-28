@@ -83,11 +83,16 @@ class HistoryPrompt:
 class PreparedHistory:
     """Detached history that can restore attachments and count tokens without its read session.
 
+    Each turn belongs to one database Message, including its restored agent/tool messages.
     File factories retain ownership of their short metadata lookups. Rendering may
     perform storage/network I/O, so callers should first close the history session.
     """
 
-    prompts: tuple[HistoryPrompt | PromptMessage, ...]
+    turns: tuple[tuple[HistoryPrompt | PromptMessage, ...], ...]
+
+    @property
+    def prompts(self) -> tuple[HistoryPrompt | PromptMessage, ...]:
+        return tuple(prompt for turn in self.turns for prompt in turn)
 
     def to_prompt_messages(self) -> list[PromptMessage]:
         return [prompt.to_prompt_message() if isinstance(prompt, HistoryPrompt) else prompt for prompt in self.prompts]
@@ -262,12 +267,13 @@ class TokenBufferMemory:
             ).all():
                 assistant_files_by_message[message_file.message_id].append(message_file)
 
-        prompts: list[HistoryPrompt | PromptMessage] = []
+        turns: list[tuple[HistoryPrompt | PromptMessage, ...]] = []
         for message in messages:
             if message_loader is not None:
                 restored = message_loader(message)
                 if restored is not None:
-                    prompts.extend(restored)
+                    if restored:
+                        turns.append(tuple(restored))
                     continue
             user_files = user_files_by_message.get(message.id, [])
             assistant_files = assistant_files_by_message.get(message.id, [])
@@ -291,6 +297,7 @@ class TokenBufferMemory:
                 if user_files or assistant_files
                 else None
             )
+            prompts: list[HistoryPrompt | PromptMessage] = []
             for files, text_content, is_user_message in (
                 (user_files, message.query, True),
                 (assistant_files, message.answer, False),
@@ -304,7 +311,8 @@ class TokenBufferMemory:
                         file_config=file_config,
                     )
                 )
-        return PreparedHistory(prompts=tuple(prompts))
+            turns.append(tuple(prompts))
+        return PreparedHistory(turns=tuple(turns))
 
     def get_history_prompt_messages(
         self, max_token_limit: int = 2000, message_limit: int | None = None

@@ -1354,7 +1354,7 @@ dependencies = [
 requires-dist = [
     { name = "e2b", marker = "extra == 'server'", specifier = ">=2.55.1,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", git = "https://github.com/langgenius/graphon?rev=bfeca97726f91eab257e513357b72d456de851b2" },
+    { name = "graphon", marker = "extra == 'server'", git = "https://github.com/langgenius/graphon?rev=86f1e11b199bb8ad9111ed49d42edea82a16b7fa" },
     { name = "grpcio", marker = "extra == 'server'", specifier = ">=1.60.0,<2.0.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "httpx2", specifier = ">=2.5.0,<3.0.0" },
@@ -1706,7 +1706,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.201.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=2.3.0,<3.0.0" },
-    { name = "graphon", git = "https://github.com/langgenius/graphon?rev=bfeca97726f91eab257e513357b72d456de851b2" },
+    { name = "graphon", git = "https://github.com/langgenius/graphon?rev=86f1e11b199bb8ad9111ed49d42edea82a16b7fa" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -3085,7 +3085,7 @@ httpx = [
 [[package]]
 name = "graphon"
 version = "0.8.0"
-source = { git = "https://github.com/langgenius/graphon?rev=bfeca97726f91eab257e513357b72d456de851b2#bfeca97726f91eab257e513357b72d456de851b2" }
+source = { git = "https://github.com/langgenius/graphon?rev=86f1e11b199bb8ad9111ed49d42edea82a16b7fa#86f1e11b199bb8ad9111ed49d42edea82a16b7fa" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "defusedxml" },

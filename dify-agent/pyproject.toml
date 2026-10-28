@@ -37,7 +37,7 @@ server = [
 
 [tool.uv.sources]
 # shortcut: pin the joint replay candidate until Graphon releases incremental accumulation and container output fixes.
-graphon = { git = "https://github.com/langgenius/graphon", rev = "bfeca97726f91eab257e513357b72d456de851b2" }
+graphon = { git = "https://github.com/langgenius/graphon", rev = "86f1e11b199bb8ad9111ed49d42edea82a16b7fa" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

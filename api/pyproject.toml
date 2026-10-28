@@ -64,7 +64,7 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 dify-agent = { path = "../dify-agent", editable = true }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "27758e26f8f740d7525d5039c51a9e524b6e2b68" }
 # shortcut: pin the joint replay candidate until Graphon releases incremental accumulation and container output fixes.
-graphon = { git = "https://github.com/langgenius/graphon", rev = "bfeca97726f91eab257e513357b72d456de851b2" }
+graphon = { git = "https://github.com/langgenius/graphon", rev = "86f1e11b199bb8ad9111ed49d42edea82a16b7fa" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }

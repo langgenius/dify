@@ -12,3 +12,5 @@ Dify model responses retain their original content blocks and provider state in
 can replay signed or encrypted content without rebuilding it from display text.
 Replay metadata is reused only when both the provider and model match the saved response.
 Older history without this field continues to use its native message parts.
+Model streams carry complete tool calls once each, with nonempty IDs unique within the response.
+The Dify adapter preserves those IDs and rejects invalid batches before creating native tool events.

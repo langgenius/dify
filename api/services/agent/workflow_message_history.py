@@ -23,7 +23,9 @@ def get_workflow_agent_history(
     provider: str,
     model: str,
     message_limit: int | None,
+    max_token_limit: int = 2000,
 ) -> list[PromptMessage]:
+    """Trim oldest complete turns using the model's configured token counter."""
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
@@ -60,4 +62,9 @@ def get_workflow_agent_history(
             message_limit=message_limit,
             message_loader=load_message,
         )
-    return history.to_prompt_messages()
+    prompt_messages = history.to_prompt_messages()
+    for turn in history.turns:
+        if memory.model_instance.get_llm_num_tokens(prompt_messages) <= max_token_limit:
+            break
+        del prompt_messages[: len(turn)]
+    return prompt_messages
