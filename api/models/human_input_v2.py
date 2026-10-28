@@ -597,6 +597,7 @@ class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
             "length(trim(provider_user_id)) > 0",
             name="human_input_im_identities_provider_user_nonblank",
         ),
+        sa.Index("hiimi_channel_id_idx", "channel_id", "id"),
         sa.Index("hiimi_channel_email_idx", "channel_id", "normalized_email"),
         sa.Index("hiimi_channel_name_idx", "channel_id", "normalized_name"),
         {
@@ -1131,6 +1132,7 @@ class HumanInputForm(DefaultFieldsDCMixin, TypeBase):
             "node_execution_id",
             name="hitlv2_forms_execution_uq",
         ),
+        sa.Index("hitlv2_forms_run_id_idx", "workflow_run_id", "id"),
         # Equality predicates precede the ID cursor used by expiration scans.
         sa.Index("hitlv2_forms_expiration_scan_idx", "tenant_id", "app_id", "form_kind", "status", "id"),
         sa.Index("hitlv2_forms_node_deadline_idx", "form_kind", "status", "expiration_time", "id"),
@@ -1251,6 +1253,7 @@ class HumanInputDelivery(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "hitlv2_deliveries"
     __table_args__ = (
         sa.Index("hitlv2_deliveries_token_idx", "token_hash"),
+        sa.Index("hitlv2_deliveries_form_id_idx", "form_id", "id"),
         sa.Index("hitlv2_deliveries_form_target_idx", "form_id", "target_type"),
     )
 
