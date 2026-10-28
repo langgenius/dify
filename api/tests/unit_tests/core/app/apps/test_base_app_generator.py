@@ -15,7 +15,8 @@ from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.file import File
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, UploadFile, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import CreatorUserRole, UploadFile, Workflow, WorkflowRun, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -25,7 +26,7 @@ def _workflow_run(*, graph: str | None) -> WorkflowRun:
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         graph=graph,

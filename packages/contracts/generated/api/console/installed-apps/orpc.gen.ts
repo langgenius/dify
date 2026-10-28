@@ -395,6 +395,7 @@ export const post7 = oc
   .output(zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse)
   .errors({
     access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
     message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
     message_not_found: { status: 404, data: zMessageNotFoundError },
@@ -497,6 +498,7 @@ export const get4 = oc
   .output(zGetInstalledAppsByInstalledAppIdMessagesResponse)
   .errors({
     access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     conversation_not_found: { status: 404, data: zConversationNotFoundError },
     installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
     message_cursor_not_found: { status: 404, data: zMessageCursorNotFoundError },

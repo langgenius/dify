@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Ресурси",
   "resourceAccessToken.searchPlaceholder": "Пошук токенів…",
   "resourceAccessToken.searchResourcesPlaceholder": "Пошук застосунків і баз знань…",
-  "resourceAccessToken.tabAll": "Усі",
+  "resourceAccessToken.tabAllTypes": "Усі типи",
   "resourceAccessToken.tabApps": "Застосунки",
   "resourceAccessToken.tabKnowledgeBases": "Бази знань",
   "resourceAccessToken.token": "Токен",

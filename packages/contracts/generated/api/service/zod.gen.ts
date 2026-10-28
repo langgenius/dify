@@ -945,6 +945,66 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AppAbnormalStatusError
+ *
+ * The app's status is abnormal.
+ */
+export const zAppAbnormalStatusError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_abnormal_status'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppApiDisabledError
+ *
+ * The app's API service has been disabled.
+ */
+export const zAppApiDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_api_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppNotFoundError
+ *
+ * The app no longer exists.
+ */
+export const zAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_not_found'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * The 'Suggested Questions After Answer' feature is disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AppUnavailableError
  *
  * App unavailable, please check your app configurations.
@@ -989,6 +1049,30 @@ export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
   }),
 )
 
@@ -1164,6 +1248,18 @@ export const zFilenameNotExistsError = zErrorResponse.and(
   z.object({
     code: z.literal('filename_not_exists_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
   }),
 )
 
@@ -3902,6 +3998,18 @@ export const zMessageFeedbackPayloadWithUser = z.object({
 })
 
 /**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * MessageFile
  */
 export const zMessageFile = z.object({
@@ -5867,6 +5975,30 @@ export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
 )
 
 /**
+ * WorkspaceArchivedError
+ *
+ * The workspace's status is archived.
+ */
+export const zWorkspaceArchivedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_archived'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * WorkspaceNotFoundError
+ *
+ * Tenant does not exist.
+ */
+export const zWorkspaceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_not_found'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
@@ -6088,7 +6220,7 @@ export const zPostConversationsByConversationIdNamePath = z.object({
 })
 
 /**
- * Conversation renamed successfully.
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 

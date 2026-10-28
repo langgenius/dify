@@ -11,7 +11,7 @@ export const processOpeningStatement = (
 
   return openingStatement.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
     const name = inputs[key]
-    if (name) {
+    if (name !== undefined && name !== null && name !== '') {
       // has set value
       return name
     }

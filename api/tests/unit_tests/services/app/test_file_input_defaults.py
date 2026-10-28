@@ -25,7 +25,7 @@ def test_defaults_are_prepared_without_changing_inputs_or_configuration(cleared:
         VariableEntity(variable="file", label="File", type=VariableEntityType.FILE, default=editor_file),
         VariableEntity(variable="files", label="Files", type=VariableEntityType.FILE_LIST, default=[api_file]),
     ]
-    inputs = {"file": "", "files": []} if cleared else {"file": None}
+    inputs: dict[str, object] = {"file": "", "files": []} if cleared else {"file": None}
     original_inputs = deepcopy(inputs)
     original_variables = deepcopy(variables)
     scope = FileAccessScope(
