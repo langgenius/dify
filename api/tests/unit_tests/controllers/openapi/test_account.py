@@ -33,7 +33,7 @@ def test_revoke_by_id_hides_a_session_the_caller_does_not_own(
     _stub_account_service(monkeypatch)
     with app.test_request_context(f"/openapi/v1/account/sessions/{session_id}", method="DELETE"):
         with pytest.raises(NotFound, match="session not found"):
-            api.delete.__handler__(api, _ctx(), session_id=session_id)
+            api.delete.__handler__(api, _ctx(), session_id=session_id)  # type: ignore[attr-defined]
 
 
 # --- GET /account/sessions query validation. The application service is replaced
@@ -66,7 +66,7 @@ def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch
     api = AccountSessionsApi()
     _stub_account_service(monkeypatch)
     with app.test_request_context("/openapi/v1/account/sessions?page=2&limit=5"):
-        result = api.get.__handler__(api, _ctx(), query=SessionListQuery(page=2, limit=5))
+        result = api.get.__handler__(api, _ctx(), query=SessionListQuery(page=2, limit=5))  # type: ignore[attr-defined]
     assert result.page == 2
     assert result.limit == 5
     assert result.total == 0

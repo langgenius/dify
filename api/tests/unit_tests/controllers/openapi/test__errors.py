@@ -100,12 +100,22 @@ class TestErrorBodyModel:
         assert body.code == "some_future_code"
 
 
+class _DataCarryingUnprocessableEntity(UnprocessableEntity):
+    """flask_restx attaches ``abort(422, ...)`` kwargs as ``e.data`` at runtime.
+
+    Declaring the attribute keeps the type checker honest without an ignore, and
+    the instance is still the real ``UnprocessableEntity`` the framework raises.
+    """
+
+    data: dict[str, object]
+
+
 class TestOpenApiErrorFormatter:
     def test_flask_restx_abort_data_path_yields_canonical_body(self, fmt: OpenApiErrorFormatter) -> None:
         # Simulates _contract.py's abort(422, message=..., errors=...): flask_restx
         # attaches kwargs to e.data, which handle_error would otherwise put on the
         # wire verbatim (no code/status).
-        e = UnprocessableEntity()
+        e = _DataCarryingUnprocessableEntity()
         e.data = {
             "message": "Request validation failed",
             "errors": [{"type": "int_parsing", "loc": ["page"], "msg": "must be >= 1", "extra": "drop me"}],
@@ -122,7 +132,7 @@ class TestOpenApiErrorFormatter:
         assert e.data == wire
 
     def test_finalize_is_idempotent(self, fmt: OpenApiErrorFormatter) -> None:
-        e = UnprocessableEntity()
+        e = _DataCarryingUnprocessableEntity()
         e.data = {
             "message": "Request validation failed",
             "errors": [{"type": "int_parsing", "loc": ["page"], "msg": "must be >= 1"}],
@@ -137,7 +147,7 @@ class TestOpenApiErrorFormatter:
     def test_malformed_canonical_details_falls_back_instead_of_raising(self, fmt: OpenApiErrorFormatter) -> None:
         # finalize runs inside the framework error handler; a ValidationError
         # escaping it would replace the response with an unformatted 500
-        e = UnprocessableEntity()
+        e = _DataCarryingUnprocessableEntity()
         e.data = {"message": "broken", "details": [{"bad": "shape"}]}
         data = {"code": "unprocessable_entity", "message": "broken", "status": 422}
 
@@ -196,7 +206,7 @@ class TestOpenApiErrorFormatter:
 class TestQuotaExceptions:
     @pytest.mark.parametrize("exc_class", [MemberLimitExceeded, MemberLicenseExceeded])
     def test_quota_exception_carries_declared_code_and_message(
-        self, fmt: OpenApiErrorFormatter, exc_class: type[Exception]
+        self, fmt: OpenApiErrorFormatter, exc_class: type[OpenApiError]
     ) -> None:
         # Single source: assertions read the class attributes, no re-typed strings.
         e = exc_class()
