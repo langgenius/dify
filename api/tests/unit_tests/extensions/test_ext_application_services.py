@@ -115,6 +115,7 @@ from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_variable_updater import ConversationVariableUpdater
 from services.data_source.auth.api_key_service import DataSourceApiKeyAuthService
 from services.data_source.binding_application_service import DataSourceBindingApplicationService
 from services.data_source.credential_gateway import ActorAwareDatasourceCredentialGateway
@@ -171,6 +172,7 @@ from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_execution_service import WorkflowRunExecutionService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workflow_tool_source_service import WorkflowToolSourceService
 from tasks.delete_conversation_task import delete_conversation_related_data
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
@@ -466,6 +468,8 @@ def test_build_application_services_wires_one_traced_workflow_run_driver(
     assert isinstance(run, MethodType)
     assert isinstance(run.__self__, WorkflowRunExecutionService)
     assert isinstance(run.__self__._tasks, WorkflowRunTaskRepository)
+    assert isinstance(run.__self__._tool_sources, WorkflowToolSourceService)
+    assert isinstance(run.__self__._conversation_variables, ConversationVariableUpdater)
     assert services.knowledge.pipeline_generator._execution_driver is services.workflow_run_driver
 
 

@@ -7,10 +7,10 @@ It reaches storage only through the ports below; the composition root supplies t
 """
 
 import logging
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import closing
 from dataclasses import replace
-from typing import Protocol
+from typing import Any, Protocol
 
 from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
@@ -55,10 +55,10 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
 from graphon.runtime.container_state import CustomContainerRunState
-from services.conversation_variable_updater import ConversationVariableUpdater
+from graphon.variables.variables import VariableBase
+from services.entities.workflow_tool_source_entities import MaterializedWorkflowTools, WorkflowToolSnapshot
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
-from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +107,35 @@ class PipelineDocumentFailures(Protocol):
     def mark_failed(self, *, workspace_id: str, dataset_id: str, document_id: str, error: str) -> None: ...
 
 
+class WorkflowRunToolSources(Protocol):
+    """Read-only lookup of the Workflow Tool definitions, in one tenant, that a run pins before it starts."""
+
+    def load(
+        self,
+        *,
+        tenant_id: str,
+        graph_config: Mapping[str, Any],
+        allow_human_input: bool,
+        suspended_tools: Sequence[WorkflowToolContainerPayload],
+        snapshot: WorkflowToolSnapshot | None,
+    ) -> MaterializedWorkflowTools:
+        """Restore the snapshot's definitions, or materialize the current providers when there is none.
+
+        A present snapshot is authoritative: mutable provider records are never read for it.
+        Raise ``ValueError`` when a pinned source no longer exists in the tenant, or when ``allow_human_input``
+        is false and the graph or a Workflow Tool graph it reaches contains a human input node.
+        """
+        ...
+
+
+class WorkflowRunConversationVariables(Protocol):
+    """Conversation variables that an advanced chat run updates, scoped to one conversation."""
+
+    def update(self, conversation_id: str, variable: VariableBase) -> None:
+        """Save the variable's new value in one bounded write; raise when the conversation has no such variable."""
+        ...
+
+
 class WorkflowRunAttempt:
     """Own one execution attempt's persistence, form refresh, indexes, and durable pause."""
 
@@ -118,8 +147,8 @@ class WorkflowRunAttempt:
         *,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        tool_sources: WorkflowToolSourceService,
-        conversation_variables: ConversationVariableUpdater,
+        tool_sources: WorkflowRunToolSources,
+        conversation_variables: WorkflowRunConversationVariables,
         forms: WorkflowRunForms,
         tasks: WorkflowRunTasks,
     ) -> None:
@@ -376,8 +405,8 @@ class WorkflowRunExecutionService:
     def __init__(
         self,
         *,
-        tool_sources: WorkflowToolSourceService,
-        conversation_variables: ConversationVariableUpdater,
+        tool_sources: WorkflowRunToolSources,
+        conversation_variables: WorkflowRunConversationVariables,
         forms: WorkflowRunForms,
         tasks: WorkflowRunTasks,
         documents: PipelineDocumentFailures,

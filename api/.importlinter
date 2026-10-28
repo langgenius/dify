@@ -1292,6 +1292,8 @@ forbidden_modules =
     flask
     models
     repositories
+    services.conversation_variable_updater
+    services.workflow_tool_source_service
     sqlalchemy
     tasks
     werkzeug
