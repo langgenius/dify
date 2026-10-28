@@ -6829,11 +6829,6 @@
       "count": 10
     }
   },
-  "web/features/new-rag/quality/golden-question-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/new-rag/quality/golden-questions-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 16
