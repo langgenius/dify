@@ -132,6 +132,10 @@ def _end_user() -> EndUser:
     )
 
 
+def _end_users() -> _EndUserServiceStub:
+    return _EndUserServiceStub(_end_user())
+
+
 class TestWebhookServiceCases:
     class TestWebhookServiceLookup:
         def test_debug_lookup_scopes_draft_workflow_to_trigger_owner(
@@ -346,7 +350,7 @@ class TestWebhookServiceCases:
                 json={"message": "hello", "count": 42},
             ):
                 webhook_trigger = _webhook_trigger()
-                webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
+                webhook_data = WebhookService.extract_webhook_data(webhook_trigger, end_users=_end_users())
 
                 assert webhook_data["method"] == "POST"
                 assert webhook_data["headers"]["Authorization"] == "Bearer token"
@@ -368,7 +372,7 @@ class TestWebhookServiceCases:
                 query_string="count=42&threshold=3.14&enabled=true&note=text",
             ):
                 webhook_trigger = _webhook_trigger()
-                webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
+                webhook_data = WebhookService.extract_webhook_data(webhook_trigger, end_users=_end_users())
 
                 # After refactoring, raw extraction keeps query params as strings
                 assert webhook_data["query_params"]["count"] == "42"
@@ -387,7 +391,7 @@ class TestWebhookServiceCases:
                 data={"username": "test", "password": "secret"},
             ):
                 webhook_trigger = _webhook_trigger()
-                webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
+                webhook_data = WebhookService.extract_webhook_data(webhook_trigger, end_users=_end_users())
 
                 assert webhook_data["method"] == "POST"
                 assert webhook_data["body"]["username"] == "test"
@@ -413,7 +417,7 @@ class TestWebhookServiceCases:
                 with patch.object(WebhookService, "_process_file_uploads", autospec=True) as mock_process_files:
                     mock_process_files.return_value = {"file": "mocked_file_obj"}
 
-                    webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
+                    webhook_data = WebhookService.extract_webhook_data(webhook_trigger, end_users=_end_users())
 
                     assert webhook_data["method"] == "POST"
                     assert webhook_data["body"]["message"] == "test"
@@ -428,7 +432,7 @@ class TestWebhookServiceCases:
                 "/webhook", method="POST", headers={"Content-Type": "text/plain"}, data="raw text content"
             ):
                 webhook_trigger = _webhook_trigger()
-                webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
+                webhook_data = WebhookService.extract_webhook_data(webhook_trigger, end_users=_end_users())
 
                 assert webhook_data["method"] == "POST"
                 assert webhook_data["body"]["raw"] == "raw text content"
@@ -442,6 +446,8 @@ class TestWebhookServiceCases:
                 "/webhook", method="POST", headers={"Content-Type": "application/octet-stream"}, data=binary_content
             ):
                 webhook_trigger = _webhook_trigger()
+                end_user = _end_user()
+                end_users = _EndUserServiceStub(end_user)
                 mock_file = MagicMock()
                 mock_file.to_dict.return_value = {"file": "data"}
 
@@ -452,7 +458,7 @@ class TestWebhookServiceCases:
                     patch.object(WebhookService, "_create_file_from_binary", autospec=True) as mock_create,
                 ):
                     mock_create.return_value = mock_file
-                    body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
+                    body, files = WebhookService._extract_octet_stream_body(webhook_trigger, end_users)
 
                 assert body["raw"] == {"file": "data"}
                 assert files == {}
@@ -462,6 +468,8 @@ class TestWebhookServiceCases:
                 assert args[0] == binary_content
                 assert args[1] == "text/plain"
                 assert args[2] is webhook_trigger
+                assert args[3] is end_user
+                assert end_users.calls == [(EndUserType.TRIGGER, "tenant-123", "app-123", None)]
 
         def test_detect_binary_mimetype_uses_magic(self, monkeypatch: pytest.MonkeyPatch):
             """python-magic output should be used when available."""
@@ -510,7 +518,7 @@ class TestWebhookServiceCases:
             ):
                 webhook_trigger = _webhook_trigger()
                 with pytest.raises(ValueError, match="Invalid JSON body"):
-                    WebhookService.extract_webhook_data(webhook_trigger)
+                    WebhookService.extract_webhook_data(webhook_trigger, end_users=_end_users())
 
         def test_generate_webhook_response_default(self):
             """Test webhook response generation with default values."""
@@ -596,8 +604,9 @@ class TestWebhookServiceCases:
 
             webhook_trigger = _webhook_trigger()
             webhook_trigger.tenant_id = "test_tenant"
+            end_users = _end_users()
 
-            result = WebhookService._process_file_uploads(files, webhook_trigger)
+            result = WebhookService._process_file_uploads(files, webhook_trigger, end_users)
 
             assert len(result) == 2
             assert "file1" in result
@@ -606,6 +615,10 @@ class TestWebhookServiceCases:
             # Verify file processing was called for each file
             assert mock_tool_file_manager.call_count == 2
             assert mock_file_factory.build_from_mapping.call_count == 2
+            # Both files belong to the trigger end user, resolved once per request
+            assert end_users.calls == [(EndUserType.TRIGGER, "test_tenant", "app-123", None)]
+            create_calls = mock_tool_file_instance.create_file_by_raw.call_args_list
+            assert [call.kwargs["user_id"] for call in create_calls] == ["end-user-123", "end-user-123"]
 
         @patch("services.trigger.webhook_service.ToolFileManager", autospec=True)
         @patch("services.trigger.webhook_service.file_factory", autospec=True)
@@ -631,7 +644,7 @@ class TestWebhookServiceCases:
             webhook_trigger = _webhook_trigger()
             webhook_trigger.tenant_id = "test_tenant"
 
-            result = WebhookService._process_file_uploads(files, webhook_trigger)
+            result = WebhookService._process_file_uploads(files, webhook_trigger, _end_users())
 
             # Should process the good file and skip the bad one
             assert len(result) == 1
@@ -648,7 +661,7 @@ class TestWebhookServiceCases:
             webhook_trigger = _webhook_trigger()
             webhook_trigger.tenant_id = "test_tenant"
 
-            result = WebhookService._process_file_uploads(files, webhook_trigger)
+            result = WebhookService._process_file_uploads(files, webhook_trigger, _end_users())
 
             # Should skip files without filenames
             assert len(result) == 0
@@ -806,7 +819,9 @@ class TestWebhookServiceCases:
                     }
                 }
 
-                result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+                result = WebhookService.extract_and_validate_webhook_data(
+                    webhook_trigger, node_config, end_users=_end_users()
+                )
 
                 # Check that types are correctly converted
                 assert result["query_params"]["count"] == 42  # Converted to int
@@ -833,7 +848,9 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="Invalid JSON body"):
-                    WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+                    WebhookService.extract_and_validate_webhook_data(
+                        webhook_trigger, node_config, end_users=_end_users()
+                    )
 
         def test_extract_and_validate_webhook_data_validation_error(self):
             """Test unified data extraction with validation error."""
@@ -853,7 +870,9 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="HTTP method mismatch"):
-                    WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+                    WebhookService.extract_and_validate_webhook_data(
+                        webhook_trigger, node_config, end_users=_end_users()
+                    )
 
         def test_extract_and_validate_webhook_request_missing_required_header(self) -> None:
             app = Flask(__name__)
@@ -871,7 +890,9 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="Required header missing: Authorization"):
-                    WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+                    WebhookService.extract_and_validate_webhook_data(
+                        _webhook_trigger(), node_config, end_users=_end_users()
+                    )
 
         def test_extract_and_validate_webhook_request_case_insensitive_headers(self) -> None:
             app = Flask(__name__)
@@ -890,7 +911,9 @@ class TestWebhookServiceCases:
                     }
                 }
 
-                result = WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+                result = WebhookService.extract_and_validate_webhook_data(
+                    _webhook_trigger(), node_config, end_users=_end_users()
+                )
 
             assert result["headers"].get("Authorization") == "Bearer token"
 
@@ -912,7 +935,9 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="Required parameter missing: version"):
-                    WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+                    WebhookService.extract_and_validate_webhook_data(
+                        _webhook_trigger(), node_config, end_users=_end_users()
+                    )
 
         def test_extract_and_validate_webhook_request_missing_required_body_param(self) -> None:
             app = Flask(__name__)
@@ -931,7 +956,9 @@ class TestWebhookServiceCases:
                 }
 
                 with pytest.raises(ValueError, match="Required body parameter missing: message"):
-                    WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+                    WebhookService.extract_and_validate_webhook_data(
+                        _webhook_trigger(), node_config, end_users=_end_users()
+                    )
 
         def test_extract_and_validate_webhook_request_missing_required_file(self) -> None:
             app = Flask(__name__)
@@ -949,7 +976,9 @@ class TestWebhookServiceCases:
                     }
                 }
 
-                result = WebhookService.extract_and_validate_webhook_data(_webhook_trigger(), node_config)
+                result = WebhookService.extract_and_validate_webhook_data(
+                    _webhook_trigger(), node_config, end_users=_end_users()
+                )
 
             assert result["files"] == {}
 
@@ -961,6 +990,7 @@ class TestWebhookServiceCases:
             with (
                 patch.object(WebhookService, "get_webhook_trigger_and_workflow", autospec=True) as mock_get_trigger,
                 patch.object(WebhookService, "extract_and_validate_webhook_data", autospec=True) as mock_extract,
+                patch("controllers.trigger.webhook.application_services", autospec=True),
             ):
                 webhook_trigger = _webhook_trigger()
                 workflow = _workflow()
@@ -1014,7 +1044,7 @@ class TestWebhookServiceAdditionalCases:
                     headers={"Content-Type": "application/vnd.custom"},
                     data="plain content",
                 ):
-                    result = WebhookService.extract_webhook_data(webhook_trigger)
+                    result = WebhookService.extract_webhook_data(webhook_trigger, end_users=_end_users())
 
                 assert result["body"] == {"raw": "plain content"}
                 assert any(r.levelno >= logging.WARNING for r in caplog.records)
@@ -1030,13 +1060,13 @@ class TestWebhookServiceAdditionalCases:
 
             with flask_app.test_request_context("/webhook", method="POST", data="ab"):
                 with pytest.raises(RequestEntityTooLarge):
-                    WebhookService.extract_webhook_data(_workflow_trigger())
+                    WebhookService.extract_webhook_data(_workflow_trigger(), end_users=_end_users())
 
         def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
             webhook_trigger = _workflow_trigger()
 
             with flask_app.test_request_context("/webhook", method="POST", data=b""):
-                body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
+                body, files = WebhookService._extract_octet_stream_body(webhook_trigger, _end_users())
 
             assert body == {"raw": None}
             assert files == {}
@@ -1053,7 +1083,7 @@ class TestWebhookServiceAdditionalCases:
             monkeypatch.setattr(WebhookService, "_create_file_from_binary", MagicMock(side_effect=RuntimeError("boom")))
 
             with flask_app.test_request_context("/webhook", method="POST", data=b"abc"):
-                body, files = WebhookService._extract_octet_stream_body(webhook_trigger)
+                body, files = WebhookService._extract_octet_stream_body(webhook_trigger, _end_users())
 
             assert body == {"raw": None}
             assert files == {}
@@ -1098,7 +1128,7 @@ class TestWebhookServiceAdditionalCases:
             uploaded.content_type = None
             uploaded.read.return_value = b"content"
 
-            result = WebhookService._process_file_uploads({"f": uploaded}, webhook_trigger)
+            result = WebhookService._process_file_uploads({"f": uploaded}, webhook_trigger, _end_users())
 
             assert result == {"f": {"id": "f-1"}}
 
@@ -1115,10 +1145,11 @@ class TestWebhookServiceAdditionalCases:
                 service_module.file_factory, "build_from_mapping", MagicMock(return_value=expected_file)
             )
 
-            result = WebhookService._create_file_from_binary(b"abc", "text/plain", webhook_trigger)
+            result = WebhookService._create_file_from_binary(b"abc", "text/plain", webhook_trigger, _end_user())
 
             assert result is expected_file
             manager.create_file_by_raw.assert_called_once()
+            assert manager.create_file_by_raw.call_args.kwargs["user_id"] == "end-user-123"
 
     class TestWebhookServiceValidationAndConversion:
         @pytest.mark.parametrize(
