@@ -33,6 +33,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -507,6 +508,131 @@ class TestAdvancedChatAppGeneratorInternals:
         assert captured["session"] is session
         assert captured["application_generate_entity"].single_loop_run.node_id == "node-2"
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
+
+    def test_single_iteration_generate_persists_pause_state(
+        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
+    ):
+
+        class _Repo:
+            pass
+
+        class _Db:
+            engine = sqlite_engine
+            session = unbound_session
+
+        class _DraftVarService:
+            def __init__(self, session):
+                pass
+
+            def prefill_conversation_variable_default_values(self, workflow, user_id):
+                pass
+
+        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        app_config = self._build_app_config()
+        captured: dict[str, object] = {}
+        workflow = _app_generator_make_workflow()
+        session = unbound_session
+
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
+            lambda **kwargs: app_config,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            lambda **kwargs: _Repo(),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            lambda **kwargs: _Repo(),
+        )
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: _Repo())
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.db", _Db)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.WorkflowDraftVariableService", _DraftVarService)
+
+        def _fake_generate(**kwargs):
+            captured.update(kwargs)
+            return {"ok": True}
+
+        monkeypatch.setattr(generator, "_generate", _fake_generate)
+
+        generator.single_iteration_generate(
+            app_model=_app_generator_make_app(),
+            workflow=workflow,
+            node_id="node-1",
+            user=_app_generator_make_account(),
+            args={"inputs": {"foo": "bar"}},
+            streaming=False,
+            session=session,
+        )
+
+        config = captured["pause_state_config"]
+        assert isinstance(config, PauseStateLayerConfig)
+        assert config.state_owner_user_id == workflow.created_by
+        assert config.session_factory.kw["bind"] is sqlite_engine
+
+    def test_single_loop_generate_persists_pause_state(
+        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session, sqlite_engine: _app_generator_Engine
+    ):
+        class _Args:
+            def __init__(self, inputs):
+                self.inputs = inputs
+
+        class _Repo:
+            pass
+
+        class _Db:
+            engine = sqlite_engine
+            session = unbound_session
+
+        class _DraftVarService:
+            def __init__(self, session):
+                pass
+
+            def prefill_conversation_variable_default_values(self, workflow, user_id):
+                pass
+
+        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        app_config = self._build_app_config()
+        captured: dict[str, object] = {}
+        workflow = _app_generator_make_workflow()
+        session = unbound_session
+
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
+            lambda **kwargs: app_config,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            lambda **kwargs: _Repo(),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            lambda **kwargs: _Repo(),
+        )
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: _Repo())
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.db", _Db)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.WorkflowDraftVariableService", _DraftVarService)
+
+        def _fake_generate(**kwargs):
+            captured.update(kwargs)
+            return {"ok": True}
+
+        monkeypatch.setattr(generator, "_generate", _fake_generate)
+
+        generator.single_loop_generate(
+            app_model=_app_generator_make_app(),
+            workflow=workflow,
+            node_id="node-2",
+            user=_app_generator_make_account(),
+            args=_Args(inputs={"foo": "bar"}),
+            streaming=False,
+            session=session,
+        )
+
+        config = captured["pause_state_config"]
+        assert isinstance(config, PauseStateLayerConfig)
+        assert config.state_owner_user_id == workflow.created_by
+        assert config.session_factory.kw["bind"] is sqlite_engine
 
     def test_generate_internal_flow_initial_conversation_with_pause_layer(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine

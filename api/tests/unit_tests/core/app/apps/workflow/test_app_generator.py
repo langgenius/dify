@@ -997,16 +997,138 @@ class TestAppGeneratorExtraCases:
             assert len(draft_sessions) == 1
             assert draft_sessions[0] is sqlite_session
 
-            with pytest.raises(ValueError, match="inputs is required"):
-                generator.single_loop_generate(
-                    app_model=_app(),
-                    workflow=_app_generator_extra_workflow(),
-                    node_id="node",
-                    user=_end_user(),
-                    args=SimpleNamespace(inputs=None),
-                    streaming=False,
-                    session=sqlite_session,
-                )
+        @pytest.mark.usefixtures("sqlite_generator_session")
+        def test_single_iteration_generate_persists_pause_state(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            sqlite_session: Session,
+        ):
+
+            class _Repo:
+                pass
+
+            class _VarLoader:
+                pass
+
+            class _DraftVarService:
+                def __init__(self, session):
+                    pass
+
+                def prefill_conversation_variable_default_values(self, workflow, user_id):
+                    pass
+
+            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            app = _persist_app(sqlite_session)
+            workflow = _persist_workflow(sqlite_session)
+            user = _persist_end_user(sqlite_session)
+            app_config = WorkflowUIBasedAppConfig(
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                app_mode=AppMode.WORKFLOW,
+                additional_features=AppAdditionalFeatures(),
+                variables=[],
+                workflow_id=WORKFLOW_ID,
+            )
+            captured: dict[str, object] = {}
+
+            monkeypatch.setattr(
+                "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+                lambda **kwargs: app_config,
+            )
+            monkeypatch.setattr(
+                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+                lambda **kwargs: _Repo(),
+            )
+            monkeypatch.setattr(
+                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                lambda **kwargs: _Repo(),
+            )
+            monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: _VarLoader())
+            monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowDraftVariableService", _DraftVarService)
+            monkeypatch.setattr(generator, "_generate", lambda **kwargs: captured.update(kwargs) or {"ok": True})
+
+            generator.single_iteration_generate(
+                app_model=app,
+                workflow=workflow,
+                node_id="node-1",
+                user=user,
+                args={"inputs": {"foo": "bar"}},
+                streaming=False,
+                session=sqlite_session,
+            )
+
+            config = captured["pause_state_config"]
+            assert isinstance(config, PauseStateLayerConfig)
+            assert config.state_owner_user_id == workflow.created_by
+            assert config.session_factory.kw["bind"] is sqlite_session.get_bind()
+
+        @pytest.mark.usefixtures("sqlite_generator_session")
+        def test_single_loop_generate_persists_pause_state(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            sqlite_session: Session,
+        ):
+            class _Args:
+                def __init__(self, inputs):
+                    self.inputs = inputs
+
+            class _Repo:
+                pass
+
+            class _VarLoader:
+                pass
+
+            class _DraftVarService:
+                def __init__(self, session):
+                    pass
+
+                def prefill_conversation_variable_default_values(self, workflow, user_id):
+                    pass
+
+            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            app = _persist_app(sqlite_session)
+            workflow = _persist_workflow(sqlite_session)
+            user = _persist_end_user(sqlite_session)
+            app_config = WorkflowUIBasedAppConfig(
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                app_mode=AppMode.WORKFLOW,
+                additional_features=AppAdditionalFeatures(),
+                variables=[],
+                workflow_id=WORKFLOW_ID,
+            )
+            captured: dict[str, object] = {}
+
+            monkeypatch.setattr(
+                "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+                lambda **kwargs: app_config,
+            )
+            monkeypatch.setattr(
+                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+                lambda **kwargs: _Repo(),
+            )
+            monkeypatch.setattr(
+                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                lambda **kwargs: _Repo(),
+            )
+            monkeypatch.setattr("core.app.apps.workflow.app_generator.DraftVarLoader", lambda **kwargs: _VarLoader())
+            monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowDraftVariableService", _DraftVarService)
+            monkeypatch.setattr(generator, "_generate", lambda **kwargs: captured.update(kwargs) or {"ok": True})
+
+            generator.single_loop_generate(
+                app_model=app,
+                workflow=workflow,
+                node_id="node-2",
+                user=user,
+                args=_Args(inputs={"foo": "bar"}),
+                streaming=False,
+                session=sqlite_session,
+            )
+
+            config = captured["pause_state_config"]
+            assert isinstance(config, PauseStateLayerConfig)
+            assert config.state_owner_user_id == workflow.created_by
+            assert config.session_factory.kw["bind"] is sqlite_session.get_bind()
 
     class TestWorkflowAppGeneratorHandleResponse:
         def test_handle_response_closed_file_raises_stopped(self, monkeypatch: pytest.MonkeyPatch):
