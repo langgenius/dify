@@ -242,13 +242,17 @@ test('Vite refreshes command sources when a new backend input is added', async (
   const url = '/pets.openapi-source?openapi-router=%5B%5D'
   assert.match((await server.transformRequest(url)).code, /pets/)
   const extra = join(directory, 'extra.txt')
+  // Keep watcher and HMR traffic so a CI-only miss explains itself.
+  const events = []
+  server.watcher.on('all', (event, path) => events.push(`${event} ${path}`))
   const refreshed = new Promise((resolve, reject) => {
     const timeout = setTimeout(
-      () => reject(new Error('No Vite reload after adding a backend input')),
+      () => reject(new Error(`No Vite reload after adding a backend input:\n${events.join('\n')}`)),
       10000,
     )
     const send = server.ws.send.bind(server.ws)
     server.ws.send = (...args) => {
+      events.push(`ws ${JSON.stringify(args[0])}`)
       if (args[0]?.type === 'full-reload' && args[0].triggeredBy === extra) {
         clearTimeout(timeout)
         resolve()
