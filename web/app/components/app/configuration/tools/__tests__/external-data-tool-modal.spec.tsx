@@ -1,7 +1,10 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
+import { mockEmojiData, renderWithEmoji } from '@/test/emoji-picker'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import ExternalDataToolModal from '../external-data-tool-modal'
+
+const render = createNuqsTestRenderer(renderWithEmoji)
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -9,6 +12,15 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apiBasedExtension.get': () =>
+        Promise.resolve([
+          {
+            id: 'extension-1',
+            name: 'Search endpoint',
+            api_endpoint: 'https://search.example.com',
+            api_key: 'secret',
+          },
+        ]),
       'codeBasedExtension.get': () =>
         Promise.resolve({
           module: 'external_data_tool',
@@ -52,23 +64,12 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: () => mockLocale,
 }))
 
-vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
-  ApiBasedExtensionSelector: ({
-    onChange,
-    value,
-  }: {
-    onChange: (value: string) => void
-    value: string
-  }) => <button onClick={() => onChange('extension-1')}>{value || 'pick-extension'}</button>,
-}))
-
 describe('ExternalDataToolModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSave = vi.fn()
   const mockOnValidateBeforeSave = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
     mockLocale = 'en-US'
   })
 
@@ -117,7 +118,15 @@ describe('ExternalDataToolModal', () => {
       ),
       'search_api',
     )
-    await user.click(screen.getByText('pick-extension'))
+    await user.click(
+      screen.getByRole('button', { name: 'common.apiBasedExtension.selector.placeholder' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Search endpoint https://search.example.com' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Search endpoint https://search.example.com' }),
+    ).toHaveAttribute('aria-expanded', 'false')
     await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
