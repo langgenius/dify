@@ -196,7 +196,7 @@ class AppQueueManager(ABC):
             return False
 
         user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
-        if result.decode("utf-8") != f"{user_prefix}-{user_id}":
+        if result.decode("utf-8").split("|", 1)[0] != f"{user_prefix}-{user_id}":
             return False
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)

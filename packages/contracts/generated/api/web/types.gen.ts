@@ -136,6 +136,7 @@ export type ClaimablePassportResponse = {
   app_code: string
   app_name: string
   connection_count: number
+  conversation_count: number
   index: number
 }
 
@@ -170,6 +171,7 @@ export type ConnectionClaimErrorResponse = {
     | 'connection_claim_unavailable'
     | 'connection_conflict'
     | 'end_user_login_required'
+    | 'migration_run_in_progress'
     | 'unauthorized'
     | 'web_app_access_denied'
   message: string
@@ -204,6 +206,7 @@ export type ConnectionClaimSuccessResponse = {
   access_token: string
   app_code: string
   claimed_connections: number
+  claimed_conversations: number
   index: number
   status: 'success'
 }

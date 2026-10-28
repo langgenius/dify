@@ -1,4 +1,6 @@
-"""Explicit Guest credential ownership transfer after Account authentication."""
+"""Whole-Guest resource migration after Account Web authentication."""
+
+from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
@@ -22,17 +24,26 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class ConnectionClaimSource:
+class GuestMigrationSource:
     context: WebConnectionContext
     app_code: str
     app_name: str
     connection_count: int
+    conversation_count: int
 
 
-class ConnectionClaimStore(Protocol):
-    def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> ConnectionClaimSource | None: ...
+class GuestMigrationStore(Protocol):
+    def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> GuestMigrationSource | None: ...
 
-    def claim_connections(self, guest: WebConnectionContext, *, account_end_user_id: str) -> int: ...
+    def preflight_guest(self, source: GuestMigrationSource) -> None: ...
+
+    def claim_guest(self, source: GuestMigrationSource, *, account_end_user_id: str) -> MigrationCounts: ...
+
+
+@dataclass(frozen=True)
+class MigrationCounts:
+    connections: int
+    conversations: int
 
 
 @dataclass(frozen=True)
@@ -41,11 +52,21 @@ class ConnectionClaimResult:
     app_code: str
     access_token: str
     claimed_connections: int
+    claimed_conversations: int
 
 
 class ConnectionClaimUnavailableError(ConnectionError):
     def __init__(self) -> None:
-        super().__init__("Connection claim is temporarily unavailable. Please retry.")
+        super().__init__("Guest migration is temporarily unavailable. Please retry.")
+
+
+class MigrationRunInProgressError(ConnectionConflictError):
+    def __init__(self) -> None:
+        super().__init__()
+        self.args = (
+            "Guest execution must finish starting; "
+            "runs with personal Connections must finish or be cancelled before migration.",
+        )
 
 
 @dataclass(frozen=True)
@@ -64,15 +85,15 @@ class ConnectionClaimFailure:
 
 class ConnectionClaimPreflightError(ConnectionError):
     def __init__(self, failures: Sequence[ConnectionClaimFailure]) -> None:
-        super().__init__("Connection claim preflight failed. No Connections were transferred.")
+        super().__init__("Guest migration preflight failed. No resources were transferred.")
         self.failures = tuple(failures)
 
 
-class ConnectionClaimService:
+class WebMigrationService:
     def __init__(
         self,
         *,
-        store: ConnectionClaimStore,
+        store: GuestMigrationStore,
         passports: WebPassportService,
         tokens: WebPassportTokenGateway,
         identities: WebIdentityService,
@@ -82,7 +103,7 @@ class ConnectionClaimService:
         self._tokens = tokens
         self._identities = identities
 
-    def _source(self, passport: str) -> ConnectionClaimSource:
+    def _source(self, passport: str) -> GuestMigrationSource:
         try:
             claims = self._tokens.verify(passport)
         except WebPassportUnauthorizedError as exc:
@@ -105,8 +126,8 @@ class ConnectionClaimService:
             raise WebPassportNotFoundError()
         return source
 
-    def claimable_passports(self, passports: Sequence[str]) -> list[tuple[int, ConnectionClaimSource]]:
-        result: list[tuple[int, ConnectionClaimSource]] = []
+    def claimable_passports(self, passports: Sequence[str]) -> list[tuple[int, GuestMigrationSource]]:
+        result: list[tuple[int, GuestMigrationSource]] = []
         seen: set[WebConnectionContext] = set()
         for index, passport in enumerate(passports):
             try:
@@ -134,7 +155,9 @@ class ConnectionClaimService:
             try:
                 source = self._source(token)
                 self._passports.authorize_account(app_code=source.app_code, access_token=access_token)
+                self._store.preflight_guest(source)
             except (
+                ConnectionConflictError,
                 ConnectionIdentityError,
                 WebPassportUnauthorizedError,
                 WebPassportNotFoundError,
@@ -158,8 +181,12 @@ class ConnectionClaimService:
                 target_id = claims.get("end_user_id")
                 if claims.get("app_id") != source.context.app_id or not isinstance(target_id, str):
                     raise ConnectionIdentityError()
-                count = self._store.claim_connections(source.context, account_end_user_id=target_id)
-                results.append(ConnectionClaimResult(index, source.app_code, passport.access_token, count))
+                counts = self._store.claim_guest(source, account_end_user_id=target_id)
+                results.append(
+                    ConnectionClaimResult(
+                        index, source.app_code, passport.access_token, counts.connections, counts.conversations
+                    )
+                )
             except (
                 ConnectionIdentityError,
                 ConnectionConflictError,

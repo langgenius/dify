@@ -139,6 +139,7 @@ export const zClaimablePassportResponse = z.object({
   app_code: z.string(),
   app_name: z.string(),
   connection_count: z.int().gte(0),
+  conversation_count: z.int().gte(0),
   index: z.int().gte(0),
 })
 
@@ -176,6 +177,7 @@ export const zConnectionClaimErrorResponse = z.object({
     'connection_claim_unavailable',
     'connection_conflict',
     'end_user_login_required',
+    'migration_run_in_progress',
     'unauthorized',
     'web_app_access_denied',
   ]),
@@ -213,6 +215,7 @@ export const zConnectionClaimSuccessResponse = z.object({
   access_token: z.string(),
   app_code: z.string(),
   claimed_connections: z.int().gte(0),
+  claimed_conversations: z.int().gte(0),
   index: z.int().gte(0),
   status: z.literal('success'),
 })
@@ -515,7 +518,7 @@ export const zCompletionRequestError = zErrorResponse.and(
 /**
  * ConnectionClaimPreflightFailedError
  *
- * Connection claim preflight failed. No Connections were transferred.
+ * Guest migration preflight failed. No resources were transferred.
  */
 export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
   z.object({
@@ -528,7 +531,7 @@ export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
 /**
  * ConnectionClaimUnavailableError
  *
- * Connection claim is temporarily unavailable. Please retry.
+ * Guest migration is temporarily unavailable. Please retry.
  */
 export const zConnectionClaimUnavailableError = zErrorResponse.and(
   z.object({
@@ -2817,7 +2820,7 @@ export const zGetMetaResponse = zAppMetaResponse
 export const zPostMigrationClaimBody = zConnectionClaimPayload
 
 /**
- * Guest Connection claim results
+ * Whole Guest migration results
  */
 export const zPostMigrationClaimResponse = zConnectionClaimResponse
 

@@ -1542,6 +1542,17 @@ def _account() -> _advanced_chat_app_generator_Account:
 
 
 def test_init_generate_records_sets_conversation_metadata(sqlite_session: Session):
+    app = _app()
+    app.enable_site = True
+    sqlite_session.add_all(
+        [
+            app,
+            EndUser(
+                id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session-id"
+            ),
+        ]
+    )
+    sqlite_session.commit()
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
@@ -1559,6 +1570,17 @@ def test_init_generate_records_sets_conversation_metadata(sqlite_session: Sessio
 
 
 def test_init_generate_records_marks_existing_conversation(sqlite_session: Session):
+    app = _app()
+    app.enable_site = True
+    sqlite_session.add_all(
+        [
+            app,
+            EndUser(
+                id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session-id"
+            ),
+        ]
+    )
+    sqlite_session.commit()
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 

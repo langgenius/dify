@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.file_access import DatabaseFileAccessController
+from core.app.file_access import DatabaseFileAccessController, get_current_file_access_scope
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
@@ -24,6 +24,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessageContent
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.conversation_access import execution_history_scope
 from repositories.factory import DifyAPIRepositoryFactory
 
 _file_access_controller = DatabaseFileAccessController()
@@ -214,6 +215,12 @@ class TokenBufferMemory:
         app keeps text-only legacy history available; workflow attachments still
         require the app. An omitted workflow repository uses the configured factory.
         """
+        scope = get_current_file_access_scope()
+        actor = (
+            (scope.user_id if scope.requires_user_ownership else None)
+            if scope is not None
+            else conversation.from_end_user_id
+        )
         # fetch limited messages, and return reversed
         # Load only the columns used to rebuild history. Message.message stores the full prompt of each turn,
         # earlier history included, so loading it makes memory grow quadratically with conversation length.
@@ -230,7 +237,10 @@ class TokenBufferMemory:
                     Message.created_at,
                 )
             )
-            .where(Message.conversation_id == conversation.id)
+            .where(
+                Message.conversation_id == conversation.id,
+                execution_history_scope(conversation.app_id, conversation.id, actor),
+            )
             .order_by(Message.created_at.desc())
         )
 

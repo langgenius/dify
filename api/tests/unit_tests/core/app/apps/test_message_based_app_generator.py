@@ -17,7 +17,8 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from models.account import Account
-from models.model import App, AppMode, Conversation, Message
+from models.enums import EndUserType
+from models.model import App, AppMode, Conversation, EndUser, Message
 from services.errors.app_model_config import AppModelConfigBrokenError
 from tests.helpers.unit.model_factories import make_account, make_app
 
@@ -95,6 +96,11 @@ def _make_chat_generate_entity(app_config: EasyUIBasedAppConfig) -> ChatAppGener
 
 
 def test_init_generate_records_skips_conversation_fields_for_non_conversation_entity(sqlite_session: Session):
+    sqlite_session.add(make_app(app_id="app-id", tenant_id="tenant-id"))
+    sqlite_session.add(
+        EndUser(id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session")
+    )
+    sqlite_session.commit()
     app_config = _make_app_config(AppMode.COMPLETION)
     entity = DummyCompletionGenerateEntity(app_config=app_config)
 
@@ -113,6 +119,11 @@ def test_init_generate_records_skips_conversation_fields_for_non_conversation_en
 
 
 def test_init_generate_records_sets_conversation_fields_for_chat_entity(sqlite_session: Session):
+    sqlite_session.add(make_app(app_id="app-id", tenant_id="tenant-id"))
+    sqlite_session.add(
+        EndUser(id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session")
+    )
+    sqlite_session.commit()
     app_config = _make_app_config(AppMode.CHAT)
     entity = _make_chat_generate_entity(app_config)
 

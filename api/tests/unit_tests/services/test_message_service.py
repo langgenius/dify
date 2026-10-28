@@ -25,6 +25,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import (
     ConversationFromSource,
+    ConversationStatus,
     EndUserType,
     FeedbackFromSource,
     FeedbackRating,
@@ -138,7 +139,7 @@ class MessageServiceTestDataFactory:
             override_model_configs=override_model_configs,
             mode=AppMode.CHAT,
             name="Test conversation",
-            status="normal",
+            status=ConversationStatus.NORMAL,
             from_source=ConversationFromSource.API,
             from_end_user_id="user-456",
         )
@@ -228,6 +229,22 @@ def empty_extra_content_repository(monkeypatch: pytest.MonkeyPatch) -> MagicMock
 
 
 def _persist(session: Session, *records: object) -> None:
+    explicit = {row.id for row in records if isinstance(row, Conversation)}
+    for message in (row for row in records if isinstance(row, Message)):
+        if message.conversation_id not in explicit and session.get(Conversation, message.conversation_id) is None:
+            session.add(
+                Conversation(
+                    id=message.conversation_id,
+                    app_id=message.app_id,
+                    mode=AppMode.CHAT,
+                    name="Message history",
+                    _inputs={},
+                    from_source=message.from_source,
+                    from_end_user_id=message.from_end_user_id,
+                    from_account_id=message.from_account_id,
+                )
+            )
+            session.flush()
     session.add_all(records)
     session.commit()
 

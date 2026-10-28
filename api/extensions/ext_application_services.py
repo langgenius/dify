@@ -91,6 +91,7 @@ from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourSt
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.web_migration_repository import WebMigrationRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
@@ -138,7 +139,6 @@ from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
-from services.end_user_connections.claim import ConnectionClaimService
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
@@ -223,6 +223,7 @@ from services.web_authentication_service import WebAuthenticationService
 from services.web_identity_service import WebIdentityService
 from services.web_login_handoff import WebLoginHandoffService
 from services.web_login_handoff_adapters import RedisWebLoginGrantStore
+from services.web_migration_service import WebMigrationService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
@@ -348,7 +349,7 @@ class ApplicationServices:
     connection_selections: ConnectionSelectionService
     end_user_connection_execution: ConnectionExecutionService
     end_user_connection_runtime: ConnectionRuntimeService
-    end_user_connection_claims: ConnectionClaimService
+    web_migration: WebMigrationService
     end_user_connections: ConnectionService
     end_user_connection_oauth: OAuthConnectionService
     end_user_connection_preflight: ConnectionPreflightService
@@ -807,8 +808,8 @@ def build_application_services(
         end_user_connection_runtime=build_end_user_connection_runtime(
             database_client=database_client, connections=end_user_connections
         ),
-        end_user_connection_claims=ConnectionClaimService(
-            store=EndUserConnectionRepository(session_factory=database_client),
+        web_migration=WebMigrationService(
+            store=WebMigrationRepository(session_factory=database_client),
             passports=web_passport,
             tokens=web_passport_tokens,
             identities=web_identity,

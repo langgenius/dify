@@ -16,7 +16,6 @@ from constants.end_user_connections import (
     OAuthClientSource,
 )
 from context.connection_execution import ConnectionExecutionContext
-from core.app.public_runtime import published_app_filter
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import (
@@ -27,11 +26,10 @@ from models.end_user_connection import (
     SessionConnection,
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
-from models.model import App, AppMode, Conversation, EndUser, Site
+from models.model import App, AppMode, Conversation, EndUser
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
-from services.end_user_connections.claim import ConnectionClaimSource
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
@@ -259,91 +257,33 @@ class EndUserConnectionRepository:
                 raise ConnectionIdentityError()
         return app
 
-    def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> ConnectionClaimSource | None:
-        with self._sessions() as session:
-            row = session.execute(
-                sa.select(App.tenant_id, App.name, sa.func.count(EndUserConnection.id))
-                .select_from(App)
-                .join(Site, Site.app_id == App.id)
-                .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
-                .outerjoin(
-                    EndUserConnection,
-                    sa.and_(
-                        EndUserConnection.tenant_id == App.tenant_id,
-                        EndUserConnection.end_user_id == EndUser.id,
-                        EndUserConnection.account_id.is_(None),
-                    ),
+    @classmethod
+    def transfer_guest_connections(
+        cls, session: Session, guest: WebConnectionContext, account: WebConnectionContext
+    ) -> int:
+        """Transfer credentials/defaults inside the caller's validated identity transaction."""
+        transferred = cast(
+            CursorResult,
+            session.execute(
+                sa.update(EndUserConnection)
+                .where(EndUserConnection.tenant_id == guest.tenant_id, *cls._owner(guest.owner))
+                .values(
+                    {
+                        "account_id": account.account_id,
+                        "end_user_id": None,
+                        "revision": EndUserConnection.revision + 1,
+                        "updated_at": naive_utc_now(),
+                    }
                 )
-                .where(
-                    App.id == app_id,
-                    published_app_filter(),
-                    App.status == AppStatus.NORMAL,
-                    App.enable_site.is_(True),
-                    App.mode.in_((AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)),
-                    Site.code == app_code,
-                    Site.status == AppStatus.NORMAL,
-                    EndUser.id == end_user_id,
-                    EndUser.type == EndUserType.BROWSER,
-                    EndUser.account_id.is_(None),
-                )
-                .group_by(App.id, App.tenant_id, App.name)
-            ).one_or_none()
-            if row is None:
-                return None
-            tenant_id, name, count = row
-            return ConnectionClaimSource(
-                context=WebConnectionContext(tenant_id, app_id, end_user_id, None),
-                app_code=app_code,
-                app_name=name,
-                connection_count=count,
+            ),
+        ).rowcount
+        if session.scalar(sa.select(AppConnection.id).where(*cls._app_selection_scope(account)).limit(1)):
+            session.execute(sa.delete(AppConnection).where(*cls._app_selection_scope(guest)))
+        else:
+            session.execute(
+                sa.update(AppConnection).where(*cls._app_selection_scope(guest)).values(end_user_id=account.end_user_id)
             )
-
-    def claim_connections(self, guest: WebConnectionContext, *, account_end_user_id: str) -> int:
-        if guest.account_id is not None:
-            raise ConnectionIdentityError()
-        with self._sessions.begin() as session:
-            # Use the same stable App/EndUser lock as credential mutations and
-            # selection saves, including when either default set is empty.
-            self._require_context(session, guest, lock=True)
-            target = session.scalar(
-                sa.select(EndUser).where(
-                    EndUser.id == account_end_user_id,
-                    EndUser.tenant_id == guest.tenant_id,
-                    EndUser.app_id == guest.app_id,
-                    EndUser.type == EndUserType.BROWSER,
-                    EndUser.account_id.is_not(None),
-                )
-            )
-            if target is None or target.account_id is None:
-                raise ConnectionIdentityError()
-            account = WebConnectionContext(guest.tenant_id, guest.app_id, target.id, target.account_id)
-            self._require_context(session, account, lock=True)
-            transferred = cast(
-                CursorResult,
-                session.execute(
-                    sa.update(EndUserConnection)
-                    .where(EndUserConnection.tenant_id == guest.tenant_id, *self._owner(guest.owner))
-                    .values(
-                        {
-                            "account_id": target.account_id,
-                            "end_user_id": None,
-                            "revision": EndUserConnection.revision + 1,
-                            "updated_at": naive_utc_now(),
-                        }
-                    )
-                ),
-            ).rowcount
-            if transferred == 0:
-                return 0
-            if session.scalar(sa.select(AppConnection.id).where(*self._app_selection_scope(account)).limit(1)):
-                session.execute(sa.delete(AppConnection).where(*self._app_selection_scope(guest)))
-            else:
-                session.execute(
-                    sa.update(AppConnection).where(*self._app_selection_scope(guest)).values(end_user_id=target.id)
-                )
-            # Session selections and immutable Run references keep their IDs.
-            # Their authoritative Conversation owner migrates independently.
-            return transferred
+        return transferred
 
     def published_graph(self, context: WebConnectionContext) -> tuple[str, Mapping[str, Any]]:
         return self.preflight_graph(context, None, None)

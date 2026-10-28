@@ -4,8 +4,9 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import CreatorUserRole
-from models.model import Message
+from models.model import Conversation, Message
 from models.web import SavedMessage
+from repositories.conversation_access import conversation_actor_scope, message_actor_scope
 from services.errors.message import LastMessageNotExistsError, MessageNotExistsError
 from services.saved_message_service import (
     SavedMessageActor,
@@ -44,7 +45,15 @@ class SQLAlchemySavedMessageRepository(SavedMessageStore):
             if not message_ids:
                 return SavedMessagePage(limit=limit, has_more=False, data=())
 
-            stmt = select(Message).where(Message.id.in_(message_ids))
+            stmt = select(Message).where(
+                Message.id.in_(message_ids),
+                Message.app_id == app_id,
+                message_actor_scope(
+                    app_id,
+                    end_user_id=actor.id if actor.role == "end_user" else None,
+                    account_id=actor.id if actor.role == "account" else None,
+                ),
+            )
             fetch_limit = limit + 1
             if last_id:
                 last_message = session.scalar(stmt.where(Message.id == last_id).limit(1))
@@ -88,13 +97,17 @@ class SQLAlchemySavedMessageRepository(SavedMessageStore):
 
             message = session.scalar(
                 select(Message)
+                .join(Conversation, Conversation.id == Message.conversation_id)
                 .where(
                     Message.id == message_id,
                     Message.app_id == app_id,
-                    Message.from_source == ("console" if actor.role == "account" else "api"),
-                    Message.from_end_user_id == (actor.id if actor.role == "end_user" else None),
-                    Message.from_account_id == (actor.id if actor.role == "account" else None),
+                    *conversation_actor_scope(
+                        app_id,
+                        end_user_id=actor.id if actor.role == "end_user" else None,
+                        account_id=actor.id if actor.role == "account" else None,
+                    ),
                 )
+                .with_for_update(of=Conversation)
                 .limit(1)
             )
             if message is None:
@@ -113,6 +126,24 @@ class SQLAlchemySavedMessageRepository(SavedMessageStore):
     @override
     def delete(self, *, app_id: str, actor: SavedMessageActor, message_id: str) -> None:
         with self._session_factory() as session:
+            if (
+                session.scalar(
+                    select(Message.id)
+                    .join(Conversation, Conversation.id == Message.conversation_id)
+                    .where(
+                        Message.id == message_id,
+                        Message.app_id == app_id,
+                        *conversation_actor_scope(
+                            app_id,
+                            end_user_id=actor.id if actor.role == "end_user" else None,
+                            account_id=actor.id if actor.role == "account" else None,
+                        ),
+                    )
+                    .with_for_update(of=Conversation)
+                )
+                is None
+            ):
+                return
             saved_message = session.scalar(
                 select(SavedMessage)
                 .where(

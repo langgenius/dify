@@ -46,6 +46,7 @@ from models.enums import (
     InvokeFrom as ModelInvokeFrom,
 )
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from repositories.conversation_access import ConversationAccessDeniedError, lock_web_message_acceptance
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -175,6 +176,17 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         created_new_conversation = conversation is None
         try:
+            if application_generate_entity.invoke_from == InvokeFrom.WEB_APP:
+                try:
+                    lock_web_message_acceptance(
+                        session,
+                        tenant_id=app_config.tenant_id,
+                        app_id=app_config.app_id,
+                        end_user_id=application_generate_entity.user_id,
+                        conversation_id=conversation.id if conversation is not None else None,
+                    )
+                except ConversationAccessDeniedError as exc:
+                    raise ConversationNotExistsError() from exc
             if not conversation:
                 conversation = Conversation(
                     app_id=app_config.app_id,
@@ -207,6 +219,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 conversation_id=conversation.id,
+                workflow_run_id=(
+                    application_generate_entity.workflow_run_id
+                    if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+                    else None
+                ),
                 _inputs=dict(application_generate_entity.inputs),
                 query=application_generate_entity.query,
                 message="",
