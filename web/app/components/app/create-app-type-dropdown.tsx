@@ -63,7 +63,13 @@ function AppTypeItem({
       <span id={descriptionId} className="sr-only">
         {description}
       </span>
-      <TooltipContent role="tooltip" side="left" align="start" sideOffset={8} className="w-60">
+      <TooltipContent
+        role="tooltip"
+        side="inline-start"
+        align="start"
+        sideOffset={8}
+        className="w-60"
+      >
         {description}
       </TooltipContent>
     </Tooltip>

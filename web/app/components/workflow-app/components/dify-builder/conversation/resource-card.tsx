@@ -32,7 +32,7 @@ export const ResourceCard = memo(
           return (
             <label
               key={resource.id}
-              className="flex cursor-pointer items-start gap-2 rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-text-secondary transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover has-data-checked:border-state-accent-solid/30 has-data-checked:bg-util-colors-blue-brand-blue-brand-50 has-data-checked:text-text-primary has-data-checked:hover:border-state-accent-solid/30 has-data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 has-data-disabled:cursor-not-allowed has-data-disabled:opacity-50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-state-accent-solid"
+              className="flex cursor-pointer items-start gap-2 rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-text-secondary transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid has-data-checked:border-state-accent-solid/30 has-data-checked:bg-util-colors-blue-brand-blue-brand-50 has-data-checked:text-text-primary has-data-checked:hover:border-state-accent-solid/30 has-data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 has-data-disabled:cursor-not-allowed has-data-disabled:opacity-50"
             >
               <span className="min-w-0 flex-1">
                 <span id={labelId} className="block system-sm-medium wrap-break-word">

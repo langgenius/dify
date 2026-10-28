@@ -21,7 +21,7 @@ const TEMPLATE_PREVIEW_FIXTURES: { app: TemplatePreviewApp; className: string }[
       author_name: 'Evan',
     },
     className:
-      'top-8.25 left-4.5 bg-workflow-block-wrapper-bg-1 motion-safe:group-hover/template:-translate-y-11.5 motion-safe:group-hover/template:-rotate-[3.17deg] motion-safe:group-focus-within/template:-translate-y-11.5 motion-safe:group-focus-within/template:-rotate-[3.17deg]',
+      'inset-s-4.5 top-8.25 bg-workflow-block-wrapper-bg-1 motion-safe:group-hover/template:-translate-y-11.5 motion-safe:group-hover/template:rotate-[-3.17deg] motion-safe:group-focus-within/template:-translate-y-11.5 motion-safe:group-focus-within/template:rotate-[-3.17deg]',
   },
   {
     app: {
@@ -33,7 +33,7 @@ const TEMPLATE_PREVIEW_FIXTURES: { app: TemplatePreviewApp; className: string }[
       icon_background: 'var(--color-components-icon-bg-pink-soft)',
     },
     className:
-      'top-12.5 left-14.5 rotate-[2.9deg] bg-workflow-block-wrapper-bg-1 motion-safe:group-hover/template:-translate-y-6.5 motion-safe:group-hover/template:rotate-[4.29deg] motion-safe:group-focus-within/template:-translate-y-6.5 motion-safe:group-focus-within/template:rotate-[4.29deg]',
+      'inset-s-14.5 top-12.5 rotate-[2.9deg] bg-workflow-block-wrapper-bg-1 motion-safe:group-hover/template:-translate-y-6.5 motion-safe:group-hover/template:rotate-[4.29deg] motion-safe:group-focus-within/template:-translate-y-6.5 motion-safe:group-focus-within/template:rotate-[4.29deg]',
   },
   {
     app: {
@@ -44,7 +44,7 @@ const TEMPLATE_PREVIEW_FIXTURES: { app: TemplatePreviewApp; className: string }[
       icon: '\u{1F9B8}\u{1F3FB}',
       icon_background: 'var(--color-components-icon-bg-yellow-soft)',
     },
-    className: 'top-15.5 left-0 -rotate-[1.32deg] bg-components-card-bg',
+    className: 'inset-s-0 top-15.5 rotate-[-1.32deg] bg-components-card-bg',
   },
 ]
 
@@ -70,7 +70,7 @@ function TemplatePreviewCard({ app, className }: (typeof TEMPLATE_PREVIEW_FIXTUR
           />
           <AppTypeIcon
             type={app.mode}
-            wrapperClassName="absolute -right-0.5 -bottom-0.5 size-3 rounded-xs border-components-panel-on-panel-item-bg"
+            wrapperClassName="absolute -inset-e-0.5 -bottom-0.5 size-3 rounded-xs border-components-panel-on-panel-item-bg"
             className="size-2"
           />
         </div>

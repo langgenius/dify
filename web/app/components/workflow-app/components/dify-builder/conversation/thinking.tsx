@@ -33,12 +33,12 @@ const ThinkingDetails = ({
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary className="flex h-8 cursor-pointer list-none items-center gap-2 text-[13px] leading-4 font-medium text-text-tertiary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid">
-        <span aria-hidden className="i-custom-public-app-builder-thinking size-[18px] shrink-0" />
+        <span aria-hidden className="i-custom-public-app-builder-thinking size-4.5 shrink-0" />
         <span>{label}</span>
         <span className="grow" />
         <span
           aria-hidden
-          className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90"
+          className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90 motion-reduce:transition-none [&:dir(rtl)]:-scale-x-100 [&:dir(rtl)]:group-open:-rotate-90"
         />
       </summary>
       {open && (

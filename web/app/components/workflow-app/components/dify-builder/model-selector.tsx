@@ -36,7 +36,7 @@ const DifyBuilderModelSelector = ({
       modelId={model?.name ?? ''}
       completionParams={(model?.completion_params ?? {}) as FormValue}
       modelList={modelList}
-      popupClassName="w-[340px]! max-w-[340px]!"
+      popupClassName="w-85! max-w-85!"
       side="top"
       align="start"
       isAdvancedMode
