@@ -259,7 +259,8 @@ function TourTaskRow({
       <div className={cn('flex min-w-0 flex-1 gap-3', completed ? 'items-center' : 'items-start')}>
         <div
           className={cn(
-            'flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg text-text-accent-light-mode-only',
+            'flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg',
+            current ? 'text-text-accent-light-mode-only' : 'text-text-secondary',
             completed && 'opacity-50',
           )}
         >
