@@ -11,6 +11,46 @@ import { transformSpec } from '../dist/tooling/transform.js'
 const root = resolve(import.meta.dirname, '..')
 const compiler = join(root, 'node_modules/typescript/bin/tsc')
 
+test('package sources merge with explicit sources and track shared inputs and module additions', (t) => {
+  const dir = mkdtempSync(join(import.meta.dirname, '.package-sources-'))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const bundled = join(dir, 'contracts')
+  mkdirSync(join(bundled, 'console'), { recursive: true })
+  const input = join(dir, 'schema.txt')
+  writeFileSync(input, 'string')
+  const config = {
+    command: ['node', '-e', 'throw new Error("Registration must not run exporters")'],
+    cwd: '..',
+    inputs: ['schema.txt'],
+  }
+  const shared = join(bundled, 'shared.json')
+  writeFileSync(shared, JSON.stringify(config))
+  const descriptor = JSON.stringify({ extends: '../shared.json', args: ['first'] })
+  const first = join(bundled, 'console/first.openapi-types')
+  writeFileSync(first, descriptor)
+  const custom = join(dir, 'custom.openapi-types')
+  writeFileSync(custom, JSON.stringify({ ...config, cwd: '.' }))
+  const configPath = join(dir, 'tsconfig.json')
+  const options = { sources: ['./custom.openapi-types'] }
+  const inspect = () => sourceProject(configPath, options, bundled)
+  const initial = inspect()
+  assert.deepEqual([...initial.registered].sort(), [first, custom].sort())
+  for (const file of [bundled, join(bundled, 'console'), first, shared, input, custom])
+    assert(initial.watchedFiles.includes(file), file)
+  writeFileSync(input, 'number')
+  const changed = inspect()
+  assert.notEqual(changed.configIdentity, initial.configIdentity)
+  writeFileSync(shared, JSON.stringify({ ...config, timeoutMs: 10000 }))
+  assert.notEqual(inspect().configIdentity, changed.configIdentity)
+  const added = join(bundled, 'console/second.openapi-types')
+  writeFileSync(added, descriptor)
+  assert(inspect().registered.has(added))
+  rmSync(first)
+  assert(!inspect().registered.has(first))
+  const standalone = sourceProject(configPath, options, join(dir, 'missing-contracts'))
+  assert.deepEqual([...standalone.registered], [custom])
+})
+
 test('thin type sources inherit cwd and watched inputs and invalidate when shared configuration changes', (t) => {
   const dir = mkdtempSync(join(import.meta.dirname, '.inherited-source-'))
   t.after(() => rmSync(dir, { recursive: true, force: true }))

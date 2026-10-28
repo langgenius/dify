@@ -123,12 +123,6 @@ const wrong: PostDatasetsResponses[201] = 'wrong';
               {
                 package: root,
                 extensions: ['.openapi-types'],
-                options: {
-                  sources: [
-                    join(root, 'contracts/console/datasets.openapi-types'),
-                    join(root, 'contracts/enterprise.openapi-types'),
-                  ],
-                },
               },
             ]
           : [],

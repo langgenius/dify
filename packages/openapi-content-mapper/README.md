@@ -342,27 +342,28 @@ import { AccessMode as AccessModes } from '@dify/contracts/enterprise/types.gen'
 const mode: AccessMode = AccessModes.ACCESS_MODE_PRIVATE
 ```
 
-Register the type source descriptors in the consuming project's mapper settings.
-For a `tsconfig.json` in `web/`, merge this into the existing configuration:
+Enable `.openapi-types` in the consuming project's mapper settings. The mapper
+automatically registers the contract sources shipped in its workspace package:
 
 ```json
 {
   "contentMappers": [
     {
       "package": "@dify/openapi-content-mapper",
-      "extensions": [".openapi", ".openapi-source", ".openapi-types"],
-      "options": {
-        "sources": ["../packages/openapi-content-mapper/contracts/**/*.openapi-types"]
-      }
+      "extensions": [".openapi", ".openapi-source", ".openapi-types"]
     }
   ]
 }
 ```
 
-Source paths are relative to that project's tsconfig. A glob registers all
-modules; listing only the descriptors used by a small project reduces startup
-work. Run TypeScript 7.1 with `--runExternalCode`, and enable content mappers in the
-editor. The [repository compatibility example]
+No `options.sources` or `paths` entries are needed for these package subpaths.
+Registration watches descriptors and backend inputs without running exporters;
+exporters run when their modules are imported. Modules sharing inputs reuse one
+filesystem scan per registration. Custom `.openapi-source` and `.openapi-types`
+files outside the package's `contracts/` directory still require `options.sources`,
+with paths relative to the consuming tsconfig. Explicit sources are combined with
+the automatic sources. Run TypeScript 7.1 with `--runExternalCode`, and enable
+content mappers in the editor. The [repository compatibility example]
 and its tsconfig already use these subpaths:
 
 ```sh
@@ -393,7 +394,7 @@ names are discovered automatically. No additional OpenAPI snapshots are written.
 Package exports resolve through these standard `.d.ts` entries so TypeScript 7's
 language service does not report a missing-declaration hint for the custom source
 extension. Consumers need no `compilerOptions.paths` overrides or ambient module
-declarations; they only register the mapper and sources as shown above.
+declarations; they only enable the mapper and extension as shown above.
 
 Dify-specific subpaths require the repository's Python and JavaScript development
 dependencies, but no running API or database. They are workspace integrations and
