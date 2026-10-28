@@ -1,4 +1,5 @@
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type {
   MetadataFilteringConditions,
   MetadataFilteringModeEnum,
@@ -56,7 +57,7 @@ export type PromptVariable = {
   key: string
   name: string
   type: string // "string" | "number" | "select",
-  default?: string | number | boolean
+  default?: string | number | boolean | FileEntity | FileEntity[]
   required?: boolean
   options?: string[]
   max_length?: number

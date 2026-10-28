@@ -1,4 +1,5 @@
 import type { InputValueTypes } from '../../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -343,6 +344,53 @@ describe('RunOnce', () => {
         })
       })
       expect(screen.getByText('File List Input'))!.toBeInTheDocument()
+    })
+
+    it('should initialize file inputs from configured defaults and clear them explicitly', async () => {
+      const defaultFile: FileEntity = {
+        id: 'default-file',
+        name: 'default.xlsx',
+        size: 10,
+        type: 'application/vnd.ms-excel',
+        progress: 100,
+        transferMethod: TransferMethod.local_file,
+        supportFileType: 'document',
+        uploadedId: 'default-upload',
+      }
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'fileInput',
+            name: 'File Input',
+            type: 'file',
+            required: false,
+            default: defaultFile,
+          }),
+          createPromptVariable({
+            key: 'fileListInput',
+            name: 'File List Input',
+            type: 'file-list',
+            default: [defaultFile],
+          }),
+        ],
+      }
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          fileInput: defaultFile,
+          fileListInput: [defaultFile],
+        })
+      })
+      expect(screen.getAllByText('1 files')).toHaveLength(2)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+      expect(onInputsChange).toHaveBeenLastCalledWith({ fileInput: '', fileListInput: [] })
+      expect(screen.getAllByText('0 files')).toHaveLength(2)
     })
   })
 

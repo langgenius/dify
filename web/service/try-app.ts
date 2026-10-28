@@ -1,4 +1,5 @@
 import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING } from '@/config'
 import { PromptMode } from '@/models/debug'
@@ -169,6 +170,10 @@ const normalizeTextInputForm = (value: Record<string, unknown>) => {
 const normalizeFileInputForm = (value: Record<string, unknown>) => {
   return {
     ...normalizeBaseInputForm(value),
+    default:
+      isRecord(value.default) || (Array.isArray(value.default) && value.default.every(isRecord))
+        ? (value.default as FileEntity | FileEntity[])
+        : getString(value.default),
     max_length: getNumber(value.max_length, 1),
     allowed_file_upload_methods: getTransferMethods(value.allowed_file_upload_methods, [
       TransferMethod.local_file,
