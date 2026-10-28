@@ -1,6 +1,8 @@
 import type { ChatWithHistoryContextValue } from '../../context'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ConnectionsContext } from '@/app/components/share/connections/use-connections'
+import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import {
   AppSourceType,
   delConversation,
@@ -14,6 +16,7 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { renderChatHistory } from '../../__tests__/chat-history-test-env'
+import { chatConnectionEntry, createChatConnections } from '../../__tests__/connection-fixture'
 import { ChatWithHistoryContext, useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
 
@@ -29,6 +32,7 @@ vi.mock('@/service/share', async (importOriginal) => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/chat/app-1',
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 const conversation = (id: string, name: string) => ({ id, name, inputs: {}, introduction: '' })
@@ -81,6 +85,19 @@ function selectedConversation() {
   return JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)!)['app-1']['user-1']
 }
 
+function anonymousEntry(allowAnonymous = false) {
+  if (!('parameters' in chatConnectionEntry)) throw new Error('Connection entry required')
+  return {
+    ...chatConnectionEntry,
+    account: 'anonymous' as const,
+    showSignIn: true,
+    parameters: {
+      ...chatConnectionEntry.parameters,
+      allow_anonymous_end_user_auth: allowAnonymous,
+    },
+  }
+}
+
 // Branding is a display contract with caller-supplied application metadata.
 function renderBranding(
   overrides: Partial<ChatWithHistoryContextValue>,
@@ -114,6 +131,45 @@ async function operate(
 }
 
 describe('Conversation sidebar', () => {
+  it('offers sign-in in place of the footer menu and blocks new chat while personal connections require login', async () => {
+    const user = userEvent.setup()
+    renderChatHistory(
+      <WebAppEntryContext value={anonymousEntry()}>
+        <ConnectionsContext
+          value={createChatConnections({ status: 'sign-in-required', canRun: false })}
+        >
+          <Sidebar />
+        </ConnectionsContext>
+      </WebAppEntryContext>,
+      { currentConversationId: '1', conversations: [], pinnedConversations: [] },
+    )
+
+    const start = screen.getByRole('button', { name: 'share.chat.newChat' })
+    expect(start).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'share.auth.signIn' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+    expect(screen.getByText('share.chat.emptyConversation')).toBeVisible()
+    await user.click(start)
+    expect(selectedConversation()).toBe('1')
+  })
+
+  it('keeps new chat available for an anonymous user allowed to configure connections', async () => {
+    const user = userEvent.setup()
+    renderChatHistory(
+      <WebAppEntryContext value={anonymousEntry(true)}>
+        <ConnectionsContext value={createChatConnections({ status: 'ready' })}>
+          <Sidebar />
+        </ConnectionsContext>
+      </WebAppEntryContext>,
+      { currentConversationId: '1', conversations: [], pinnedConversations: [] },
+    )
+
+    const start = screen.getByRole('button', { name: 'share.chat.newChat' })
+    expect(start).toBeEnabled()
+    await user.click(start)
+    expect(selectedConversation()).toBe('')
+  })
+
   it('selects conversations from both lists and keeps operations separate from selection', async () => {
     const { user, queryClient, listKey } = renderSidebar()
     expect(screen.getByText('share.chat.pinnedTitle')).toBeInTheDocument()

@@ -8,6 +8,7 @@ import RequiredConnectionSetup from '@/app/components/share/connections/required
 import RequiredConnections from '@/app/components/share/connections/required-connections'
 import SignIn from '@/app/components/share/sign-in'
 import ConfigureConnectionsDemo from './configure-connections-demo'
+import { validateDemoApiKey } from './validate-demo-api-key'
 import WorkspaceOAuthDemo from './workspace-oauth-demo'
 
 const demoConnections: readonly RequiredConnection[] = [
@@ -77,6 +78,7 @@ export default function ConnectionsDemo() {
     method: RequiredConnectionService['methods'][number],
     values?: ApiKeyValues,
   ) => {
+    if (method === 'api-key') validateDemoApiKey(values)
     const connection: RequiredConnectionService['availableConnections'][number] = {
       id:
         method === 'api-key'
@@ -168,7 +170,10 @@ export default function ConnectionsDemo() {
           onConnect={handleConnect}
           onConnectionChange={handleConnectionChange}
           onReconnect={handleReconnect}
-          onReplace={handleReconnect}
+          onReplace={(serviceId, connectionId, values) => {
+            validateDemoApiKey(values)
+            handleReconnect(serviceId, connectionId, values)
+          }}
           onRemove={handleRemove}
         />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />

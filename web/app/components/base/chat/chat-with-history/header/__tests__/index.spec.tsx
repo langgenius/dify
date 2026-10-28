@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ConnectionsContext } from '@/app/components/share/connections/use-connections'
 import {
   AppSourceType,
   delConversation,
@@ -12,6 +13,7 @@ import {
 import { createChatConfigFixture } from '@/test/fixtures/chat'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { conversation, renderChatHistory } from '../../__tests__/chat-history-test-env'
+import { createChatConnections } from '../../__tests__/connection-fixture'
 import Header from '../index'
 
 vi.mock('@/service/share', async (importOriginal) => ({
@@ -44,6 +46,24 @@ async function operate(user: ReturnType<typeof userEvent.setup>, action: string)
     await screen.findByRole('menuitem', { name: `explore.sidebar.action.${action}` }),
   )
 }
+
+it('blocks collapsed-header new chat and reset commands while connections require sign-in', async () => {
+  const user = userEvent.setup()
+  renderChatHistory(
+    <ConnectionsContext
+      value={createChatConnections({ status: 'sign-in-required', canRun: false })}
+    >
+      <Header />
+    </ConnectionsContext>,
+  )
+  const start = screen.getByRole('button', { name: 'share.chat.newChatTip' })
+  const reset = screen.getByRole('button', { name: 'share.chat.resetChat' })
+  expect(start).toBeDisabled()
+  expect(reset).toBeDisabled()
+  await user.click(reset)
+  expect(screen.getByRole('button', { name: 'My Chat' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
+})
 
 it('resets the selected conversation and persists New Chat from the reset button', async () => {
   const user = userEvent.setup()

@@ -31,6 +31,33 @@ describe('SocialAuth', () => {
   })
 
   describe('OAuth params', () => {
+    it('preserves the complete PKCE return context through social authentication', () => {
+      const target = {
+        is_end_user: '1',
+        app_code: 'my-webapp',
+        code_challenge: 'a'.repeat(43),
+        code_challenge_method: 'S256',
+        redirect_url:
+          'https://agent-app.dify.dev/web-prefix/workflow/my-webapp?input=hello%20world#history',
+      }
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(target) as ReturnType<typeof useSearchParams>,
+      )
+      render(<SocialAuth />)
+
+      for (const name of ['login.withGitHub', 'login.withGoogle']) {
+        const oauth = new URL(
+          screen.getByRole('link', { name }).getAttribute('href')!,
+          window.location.origin,
+        )
+        expect(oauth.searchParams.get('mode')).toBe('end_user')
+        const resume = new URL(oauth.searchParams.get('redirect_url')!, window.location.origin)
+        expect(resume.origin).toBe(window.location.origin)
+        expect(resume.pathname).toBe('/signin')
+        expect(Object.fromEntries(resume.searchParams)).toEqual(target)
+      }
+    })
+
     it('should include browser timezone and locale in oauth links', () => {
       render(<SocialAuth />)
 

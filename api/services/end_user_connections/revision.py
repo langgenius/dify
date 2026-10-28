@@ -1,25 +1,20 @@
 """Content-addressed authorization contracts, independent of workflow publications."""
 
 import json
-from collections.abc import Mapping
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import Any, NamedTuple, Protocol
+from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
 from constants.end_user_connections import ConnectionRevisionAcceptanceReason, OAuthClientSource
 from libs.uuid_validation import UUIDStr
 from services.end_user_connections.entities import WebConnectionContext
+from services.entities import tool_connection_entities
 
 ConnectionRevision = UUIDStr
-
-
-class ConnectionProviderMetadata(NamedTuple):
-    provider: str
-    plugin_unique_identifier: str
-    icon: str
-    icon_dark: str | None
+ConnectionProviderMetadata = tool_connection_entities.ConnectionProviderMetadata
+ConnectionRevisions = tool_connection_entities.ConnectionRevisions
 
 
 class OAuthClientContractSnapshot(BaseModel):
@@ -95,12 +90,6 @@ class ConnectionRevisionSnapshots(Protocol):
     def save_revision(self, snapshot: ConnectionContractSnapshot) -> str: ...
 
     def get_revision(self, tenant_id: str, app_id: str, revision: str) -> ConnectionContractSnapshot | None: ...
-
-
-class ConnectionRevisions(Protocol):
-    def resolve(
-        self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
-    ) -> tuple[str, tuple[ConnectionProviderMetadata, ...]]: ...
 
 
 class ConnectionProviderRevisions(Protocol):

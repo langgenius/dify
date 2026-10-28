@@ -135,6 +135,20 @@ describe('Reset Password Set Password Page', () => {
   })
 
   describe('Post-reset navigation', () => {
+    it('preserves the End User handshake when returning to sign in after resetting a password', async () => {
+      const target = {
+        is_end_user: '1',
+        redirect_url: 'https://app.example/chat/my-webapp?conversation=existing',
+      }
+      setSearchParams({ ...target, token: 'reset-token' })
+      await completePasswordChange()
+
+      const link = screen.getByRole('link', { name: /login\.passwordChanged/ })
+      const resume = new URL(link.getAttribute('href')!, window.location.origin)
+      expect(resume.pathname).toBe('/signin')
+      expect(Object.fromEntries(resume.searchParams)).toEqual(target)
+    })
+
     it('should preserve redirect_url when the user returns to sign in manually', async () => {
       setSearchParams({ token: 'reset-token', redirect_url: redirectUrl })
       await completePasswordChange()

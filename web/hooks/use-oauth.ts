@@ -34,14 +34,22 @@ export const useOAuthCallback = (): OAuthCallbackState => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const subscriptionId = urlParams.get('subscription_id')
+    const connectionId = urlParams.get('connection_id')?.trim()
     const error = urlParams.get('error')
     const errorDescription = urlParams.get('error_description')
     const opener = window.opener
 
     if (!opener) return
 
-    // Use window.opener.origin instead of '*' for security.
-    const targetOrigin = opener.origin || '*'
+    let targetOrigin: string
+    try {
+      targetOrigin = opener.origin || '*'
+    } catch {
+      // The connection popup owner validates both the callback origin and window.
+      // Other OAuth consumers do not yet own that cross-origin message contract.
+      if (!connectionId || subscriptionId || error) return
+      targetOrigin = '*'
+    }
 
     if (subscriptionId) {
       opener.postMessage({ type: 'oauth_callback', success: true, subscriptionId }, targetOrigin)
@@ -50,6 +58,8 @@ export const useOAuthCallback = (): OAuthCallbackState => {
         { type: 'oauth_callback', success: false, error, errorDescription },
         targetOrigin,
       )
+    } else if (connectionId) {
+      opener.postMessage({ type: 'oauth_callback', success: true, connectionId }, targetOrigin)
     } else {
       opener.postMessage({ type: 'oauth_callback' }, targetOrigin)
     }
@@ -68,6 +78,7 @@ type OAuthCallbackMessage = {
   type: 'oauth_callback'
   success?: boolean
   subscriptionId?: string
+  connectionId?: string
   error?: string
   errorDescription?: string
 }

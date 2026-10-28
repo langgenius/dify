@@ -10,6 +10,7 @@ import { useState } from 'react'
 import ConfigureConnectionsButton from '@/app/components/share/connections/configure-connections-button'
 import ConfigureConnectionsDialog from '@/app/components/share/connections/configure-connections-dialog'
 import ManageConnectionButton from '@/app/components/share/connections/manage-connection-button'
+import { validateDemoApiKey } from './validate-demo-api-key'
 
 const initialServices: readonly RequiredConnectionService[] = [
   {
@@ -71,6 +72,7 @@ export default function ConfigureConnectionsDemo() {
   const [dialogHandle] = useState(() => createDialogHandle())
 
   const handleConnect = (serviceId: string, method: ConnectionMethod, values?: ApiKeyValues) => {
+    if (method === 'api-key') validateDemoApiKey(values)
     const connection: RequiredConnectionService['availableConnections'][number] = {
       id:
         method === 'api-key'
@@ -167,7 +169,10 @@ export default function ConfigureConnectionsDemo() {
         onConnect={handleConnect}
         onConnectionChange={handleConnectionChange}
         onReconnect={handleRestoreConnection}
-        onReplace={handleRestoreConnection}
+        onReplace={(serviceId, connectionId, values) => {
+          validateDemoApiKey(values)
+          handleRestoreConnection(serviceId, connectionId, values)
+        }}
         onRemove={handleRemove}
       />
     </>

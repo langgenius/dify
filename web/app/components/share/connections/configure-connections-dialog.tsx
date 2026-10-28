@@ -2,6 +2,7 @@
 
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { ComponentProps } from 'react'
+import type { ConnectionLoadStateProps } from './connection-load-state'
 import {
   Dialog,
   DialogBody,
@@ -14,6 +15,7 @@ import {
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ApiKeyDialog from './api-key-dialog'
+import ConnectionLoadState from './connection-load-state'
 import RequiredServices from './required-services'
 
 type Props = Omit<
@@ -22,6 +24,8 @@ type Props = Omit<
 > & {
   handle: DialogHandle<unknown>
   isResponding?: boolean
+  disabled?: boolean
+  loadState?: ConnectionLoadStateProps
 }
 
 type ApiKeyEditor = {
@@ -38,31 +42,40 @@ export default function ConfigureConnectionsDialog({
   onReplace,
   onRemove,
   isResponding = false,
+  isMutating = false,
+  disabled = false,
+  loadState,
 }: Props) {
   const { t } = useTranslation(['share', 'common'])
   const [open, setOpen] = useState(false)
   const [apiKeyEditor, setApiKeyEditor] = useState<ApiKeyEditor | null>(null)
   const [apiKeyEditorOpen, setApiKeyEditorOpen] = useState(false)
   const configurationTitleRef = useRef<HTMLHeadingElement>(null)
+  const actionsDisabled = isResponding || isMutating || disabled
   const requestReplacement = (serviceId: string, connectionId: string) => {
-    if (isResponding || !onReplace) return
+    if (actionsDisabled || !onReplace) return
     const service = services.find((item) => item.id === serviceId)
-    const connection = service?.availableConnections.find((item) => item.id === connectionId)
-    if (!connection) return
+    if (!service?.methods.includes('api-key')) return
+    const connection = service.availableConnections.find((item) => item.id === connectionId)
+    if (!connection || connection.method !== 'api-key') return
     setApiKeyEditor({
       mode: 'replace',
       serviceId,
       connectionId,
       name: connection.name,
-      readmeUrl: service?.readmeUrl,
+      readmeUrl: service.readmeUrl,
     })
     setApiKeyEditorOpen(true)
   }
   const requestAddApiKey = (serviceId: string) => {
-    if (isResponding) return
+    if (actionsDisabled) return
     const service = services.find((item) => item.id === serviceId)
     if (!service?.methods.includes('api-key')) return
-    setApiKeyEditor({ mode: 'add', serviceId, readmeUrl: service.readmeUrl })
+    setApiKeyEditor({
+      mode: 'add',
+      serviceId,
+      readmeUrl: service.readmeUrl,
+    })
     setApiKeyEditorOpen(true)
   }
 
@@ -96,13 +109,15 @@ export default function ConfigureConnectionsDialog({
               services={services}
               onConnect={onConnect}
               onConnectionChange={onConnectionChange}
-              disabled={isResponding}
+              disabled={isResponding || disabled}
+              isMutating={isMutating}
               onReconnect={onReconnect}
               onReplace={onReplace}
               onRequestReplace={requestReplacement}
               onRequestAddApiKey={requestAddApiKey}
               onRemove={onRemove}
             />
+            {loadState && <ConnectionLoadState {...loadState} />}
           </div>
         </DialogBody>
       </DialogContent>
@@ -121,7 +136,7 @@ export default function ConfigureConnectionsDialog({
               : onReplace?.(apiKeyEditor.serviceId, apiKeyEditor.connectionId, values)
           }
           finalFocus={configurationTitleRef}
-          disabled={isResponding || (apiKeyEditor.mode === 'replace' && !onReplace)}
+          disabled={actionsDisabled || (apiKeyEditor.mode === 'replace' && !onReplace)}
         />
       )}
     </Dialog>

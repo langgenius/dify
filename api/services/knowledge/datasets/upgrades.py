@@ -57,14 +57,13 @@ class KnowledgeUpgradeApplicationService:
         dataset_ids = list(dict.fromkeys(job.old_dataset_id for job in jobs))
         if not dataset_ids:
             return []
-        accessible_ids, include_own = self._datasets.visibility(context).list_scope(rbac_enabled=self._rbac_enabled)
+        accessible_ids = self._datasets.visibility(context).list_scope(rbac_enabled=self._rbac_enabled)
         with self._sessions() as session:
             datasets, _ = DatasetService.get_datasets_by_ids(
                 dataset_ids,
                 workspace_id,
                 user=load_actor(session, context),
                 accessible_dataset_ids=accessible_ids,
-                include_own_datasets=include_own,
                 session=session,
             )
             visible_ids = [str(dataset.id) for dataset in datasets]

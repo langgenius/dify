@@ -15,6 +15,7 @@ type FileListProps = {
   showDeleteAction?: boolean
   showDownloadAction?: boolean
   canPreview?: boolean
+  disabled?: boolean
 }
 export const FileList = ({
   className,
@@ -24,6 +25,7 @@ export const FileList = ({
   showDeleteAction = true,
   showDownloadAction = false,
   canPreview = true,
+  disabled = false,
 }: FileListProps) => {
   return (
     <div className={cn('flex flex-wrap gap-2', className)} data-testid="file-list">
@@ -38,6 +40,7 @@ export const FileList = ({
               onRemove={onRemove}
               onReUpload={onReUpload}
               canPreview={canPreview}
+              disabled={disabled}
             />
           )
         }
@@ -51,6 +54,7 @@ export const FileList = ({
             onRemove={onRemove}
             onReUpload={onReUpload}
             canPreview={canPreview}
+            disabled={disabled}
           />
         )
       })}
@@ -60,10 +64,18 @@ export const FileList = ({
 
 type FileListInChatInputProps = {
   fileConfig: FileUpload
+  disabled?: boolean
 }
-export const FileListInChatInput = ({ fileConfig }: FileListInChatInputProps) => {
+export const FileListInChatInput = ({ fileConfig, disabled }: FileListInChatInputProps) => {
   const files = useStore((s) => s.files)
   const { handleRemoveFile, handleReUploadFile } = useFile(fileConfig)
 
-  return <FileList files={files} onReUpload={handleReUploadFile} onRemove={handleRemoveFile} />
+  return (
+    <FileList
+      files={files}
+      onReUpload={handleReUploadFile}
+      onRemove={handleRemoveFile}
+      disabled={disabled}
+    />
+  )
 }

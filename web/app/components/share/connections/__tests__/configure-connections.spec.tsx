@@ -130,7 +130,7 @@ describe('ConfigureConnections', () => {
     await user.click(save)
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Shared Notion key',
-      apiKey: 'sk-notion',
+      credentials: { api_key: 'sk-notion' },
     })
     await act(async () => pendingAdd.resolve())
     expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
@@ -170,7 +170,7 @@ describe('ConfigureConnections', () => {
     await user.click(within(replaceForm).getByRole('button', { name: 'common.operation.save' }))
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('search', 'key', {
       name: 'Restored Search key',
-      apiKey: 'sk-search',
+      credentials: { api_key: 'sk-search' },
     })
     expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
       configuredDialog,
@@ -279,7 +279,7 @@ describe('ConfigureConnections', () => {
     expect(resumed).toBe(configuration)
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Notion key',
-      apiKey: 'sk-notion-secret',
+      credentials: { api_key: 'sk-notion-secret' },
     })
     expect(within(resumed).getByRole('button', { name: 'Notion' })).toHaveTextContent('Notion key')
     expect(within(resumed).getByRole('button', { name: 'Gmail' })).toHaveTextContent(
@@ -426,7 +426,7 @@ describe('ConfigureConnections', () => {
 
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('search', 'key', {
       name: 'Replacement key',
-      apiKey: 'sk-replacement-key',
+      credentials: { api_key: 'sk-replacement-key' },
     })
     const resumed = await screen.findByRole('dialog', {
       name: 'share.connections.configure.title',
@@ -615,7 +615,7 @@ describe('ConfigureConnections', () => {
     await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Notion key',
-      apiKey: 'sk-notion-secret',
+      credentials: { api_key: 'sk-notion-secret' },
     })
     expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
       dialog,

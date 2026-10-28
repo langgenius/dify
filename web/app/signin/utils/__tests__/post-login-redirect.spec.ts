@@ -30,6 +30,26 @@ describe('post-login redirect utilities', () => {
     })
   })
 
+  it('returns to the Account sign-in origin with PKCE context after End User authentication', () => {
+    const context = {
+      is_end_user: '1',
+      app_code: 'my-webapp',
+      code_challenge: 'a'.repeat(43),
+      code_challenge_method: 'S256',
+      redirect_url:
+        'https://agent-app.dify.dev/web-prefix/chat/my-webapp?conversation=a%26b#history',
+    }
+    const result = resolvePostLoginRedirect(
+      new ReadonlyURLSearchParams(new URLSearchParams(context)),
+    )
+
+    expect(result.kind).toBe('absolute')
+    const resume = new URL(result.href)
+    expect(resume.origin).toBe(window.location.origin)
+    expect(resume.pathname).toBe('/signin')
+    expect(Object.fromEntries(resume.searchParams)).toEqual(context)
+  })
+
   it('should allow a trusted Dify absolute query target', () => {
     const searchParams = new URLSearchParams({
       redirect_url: 'https://docs.eu.dify.ai/getting-started',

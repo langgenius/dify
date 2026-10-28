@@ -1,4 +1,5 @@
-import type { AppMode } from '@dify/contracts/api/web/types.gen'
+import type { AppMode, WebAppParametersResponse } from '@dify/contracts/api/web/types.gen'
+import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { Locale } from '@/i18n'
 import type { AppIconType } from '@/types/app'
 
@@ -33,6 +34,17 @@ export type ToolIcon = string | Record<string, unknown>
 export type AppMeta = {
   tool_icons: Record<string, ToolIcon>
 }
+
+export type WebAppParameters = ChatConfig &
+  Pick<
+    WebAppParametersResponse,
+    | 'account_login_enabled'
+    | 'account_login_url'
+    | 'allow_anonymous_end_user_auth'
+    | 'connection_revision'
+    | 'requires_end_user_connections'
+    | 'connection_requirements'
+  >
 
 export type CustomConfigValueType = string | number | boolean | null | undefined
 export type AppData = {

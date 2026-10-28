@@ -8,8 +8,8 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import pytest
 from pydantic import JsonValue
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import inspect, select
+from sqlalchemy.orm import Session, configure_mappers
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
@@ -34,6 +34,7 @@ from graphon.variables.segments import IntegerSegment, Segment
 from models import ConversationVariable
 from models import Workflow as _workflow_feature_compatibility_Workflow
 from models.account import Account
+from models.base import Base, TypeBase
 from models.enums import CreatorUserRole, EndUserType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from models.model import EndUser, UploadFile
 from models.tools import WorkflowToolProvider
@@ -52,8 +53,10 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowType,
+    WorkflowVersionCounter,
     is_system_variable_editable,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 
 
 class TestConversationVariableCases:
@@ -107,13 +110,13 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
-            features="{}",
+            _features="{}",
             created_by="account_id",
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         # Create some EnvironmentVariable instances
@@ -138,13 +141,13 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
-            features="{}",
+            _features="{}",
             created_by="account_id",
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
         variable = LLMEnvironmentVariable(
             name="for_research",
@@ -167,13 +170,13 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
-            features="{}",
+            _features="{}",
             created_by="account_id",
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         # Create some EnvironmentVariable instances
@@ -220,13 +223,13 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
-            features="{}",
+            _features="{}",
             created_by="account_id",
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         # Create some EnvironmentVariable instances
@@ -261,13 +264,13 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
-            features="{}",
+            _features="{}",
             created_by="created-account-id",
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
             updated_by="updated-account-id",
         )
         sqlite_session.add_all([decoy_account, updated_account, workflow, created_account])
@@ -282,13 +285,13 @@ class TestWorkflowCases:
         workflow = _workflow_Workflow(
             tenant_id="tenant_id",
             app_id="app_id",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph="{}",
-            features="{}",
+            _features="{}",
             created_by="account_id",
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
         matching_provider = WorkflowToolProvider(
             name="matching-provider",
@@ -656,10 +659,10 @@ class TestWorkflowFeatureCompatibilityCases:
             type="",
             version="",
             graph="",
-            features=json.dumps(OLD_VERSION_WORKFLOW_FEATURES),
+            _features=json.dumps(OLD_VERSION_WORKFLOW_FEATURES),
             created_by="",
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         assert workflow.features_dict == NEW_VERSION_WORKFLOW_FEATURES
@@ -1716,7 +1719,7 @@ def _execution(role: CreatorUserRole, created_by: str) -> WorkflowNodeExecutionM
         inputs=None,
         process_data=None,
         outputs=None,
-        status="succeeded",
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
         error=None,
         elapsed_time=0.0,
         execution_metadata=None,
@@ -2001,7 +2004,7 @@ def _run(role: CreatorUserRole, created_by: str) -> WorkflowRun:
         tenant_id="00000000-0000-0000-0000-000000000001",
         app_id="00000000-0000-0000-0000-000000000002",
         workflow_id=str(uuid4()),
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1.0",
         status="succeeded",
@@ -2086,3 +2089,90 @@ class TestWorkflowRunAccessorsCases:
             assert payload["limit"] == 20
             assert payload["has_more"] is False
             assert [item.created_by_account.id for item in payload["data"]] == [account.id, account.id]
+
+
+@pytest.mark.parametrize(
+    ("features", "expected"),
+    [
+        pytest.param({}, {}, id="missing-upload"),
+        pytest.param({"file_upload": None}, {"file_upload": None}, id="null-upload"),
+        pytest.param({"file_upload": False}, {"file_upload": False}, id="non-object-upload"),
+        pytest.param({"file_upload": {}}, {"file_upload": {}}, id="missing-image"),
+        pytest.param({"file_upload": {"image": None}}, {"file_upload": {"image": None}}, id="null-image"),
+        pytest.param({"file_upload": {"image": False}}, {"file_upload": {"image": False}}, id="non-object-image"),
+        pytest.param(
+            {"file_upload": {"enabled": False, "image": {"enabled": False}}},
+            {"file_upload": {"enabled": False, "image": {"enabled": False}}},
+            id="disabled-image",
+        ),
+        pytest.param(OLD_VERSION_WORKFLOW_FEATURES, NEW_VERSION_WORKFLOW_FEATURES, id="legacy-image"),
+        pytest.param(NEW_VERSION_WORKFLOW_FEATURES, NEW_VERSION_WORKFLOW_FEATURES, id="modern-upload"),
+    ],
+)
+def test_normalized_features_preserves_stored_payload_without_dirtying_workflow(
+    sqlite_session: Session,
+    features: dict[str, JsonValue],
+    expected: dict[str, JsonValue],
+) -> None:
+    stored_features = json.dumps(features)
+    workflow = _workflow_feature_compatibility_Workflow(
+        tenant_id=str(uuid4()),
+        app_id=str(uuid4()),
+        type=WorkflowType.CHAT,
+        version="published",
+        graph="{}",
+        _features=stored_features,
+        created_by=str(uuid4()),
+    )
+    sqlite_session.add(workflow)
+    sqlite_session.commit()
+
+    assert workflow.normalized_features_dict == expected
+    assert workflow.serialized_features == stored_features
+    assert workflow not in sqlite_session.dirty
+
+    sqlite_session.expire(workflow)
+    assert workflow.serialized_features == stored_features
+
+
+class TestWorkflowTypeBaseCases:
+    @staticmethod
+    def test_workflow_models_use_typebase_registry_and_generated_defaults() -> None:
+        models = (
+            _workflow_Workflow,
+            WorkflowVersionCounter,
+            WorkflowRun,
+            WorkflowNodeExecutionModel,
+            WorkflowDraftVariable,
+        )
+
+        typebase_models = {mapper.class_ for mapper in TypeBase.registry.mappers}
+        base_models = {mapper.class_ for mapper in Base.registry.mappers}
+
+        assert all(model in typebase_models for model in models)
+        assert all(model not in base_models for model in models)
+
+        instances = (_workflow_Workflow(), WorkflowRun(), WorkflowNodeExecutionModel(), WorkflowDraftVariable())
+        assert all(instance.id for instance in instances)
+        assert len({instance.id for instance in instances}) == len(instances)
+        assert isinstance(instances[0].created_at, datetime)
+        assert isinstance(instances[-1].created_at, datetime)
+
+    @staticmethod
+    def test_workflow_constructor_serializes_variable_collections_and_configures_offload_relationship() -> None:
+        workflow = _workflow_Workflow(
+            _features="{}",
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
+        )
+
+        assert workflow._features == "{}"
+        assert json.loads(workflow._environment_variables) == {}
+        assert json.loads(workflow._conversation_variables) == {}
+        assert json.loads(workflow._rag_pipeline_variables) == {}
+
+        configure_mappers()
+        relationship = inspect(WorkflowNodeExecutionModel).relationships["offload_data"]
+        assert relationship.mapper.class_ is WorkflowNodeExecutionOffload
+        assert relationship.back_populates == "execution"

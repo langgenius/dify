@@ -13,6 +13,8 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
+import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
 import { AccessMode } from '@/models/access-control'
 import RunBatch from './run-batch'
@@ -22,6 +24,10 @@ import TextGenerationMenu from './text-generation-menu'
 type TextGenerationSidebarProps = {
   accessMode: AccessMode
   allTasksRun: boolean
+  connectionsReady?: boolean
+  isConfiguringConnections?: boolean
+  onStartUsingApp?: () => void
+  isResponding?: boolean
   currentTab: string
   customConfig: TextGenerationCustomConfig | null
   inputs: Record<string, InputValueTypes>
@@ -48,6 +54,10 @@ type TextGenerationSidebarProps = {
 const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   accessMode,
   allTasksRun,
+  connectionsReady = true,
+  isConfiguringConnections = false,
+  onStartUsingApp,
+  isResponding = false,
   currentTab,
   customConfig,
   inputs,
@@ -84,7 +94,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       className={cn(
         'relative flex h-full shrink-0 flex-col',
         isPC ? 'w-150 max-w-[50%]' : resultExisted ? 'h-[calc(100%-64px)]' : '',
-        isInstalledApp && 'rounded-l-2xl',
+        isInstalledApp && 'rounded-s-2xl',
       )}
     >
       <div
@@ -102,6 +112,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           <div className="grow truncate system-md-semibold text-text-secondary">
             {siteInfo.title}
           </div>
+          <WebAppConnectionControls isResponding={isResponding} />
           <TextGenerationMenu
             hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC}
             data={siteInfo}
@@ -143,21 +154,25 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             )}
           </div>
         )}
-        <TabsList className="w-full">
-          <TabsTab value="create">
-            <span className="ml-2">{t(($) => $['generation.tabs.create'], { ns: 'share' })}</span>
-          </TabsTab>
-          <TabsTab value="batch">
-            <span className="ml-2">{t(($) => $['generation.tabs.batch'], { ns: 'share' })}</span>
-          </TabsTab>
-          {!isWorkflow && (
-            <TabsTab value="saved" className="ml-auto">
-              <span aria-hidden className="i-ri-bookmark-3-line size-4" />
-              <span className="ml-2">{t(($) => $['generation.tabs.saved'], { ns: 'share' })}</span>
-              {savedMessages.length > 0 && <Badge className="ml-1">{savedMessages.length}</Badge>}
+        {!isConfiguringConnections && (
+          <TabsList className="w-full">
+            <TabsTab value="create">
+              <span className="ms-2">{t(($) => $['generation.tabs.create'], { ns: 'share' })}</span>
             </TabsTab>
-          )}
-        </TabsList>
+            <TabsTab value="batch">
+              <span className="ms-2">{t(($) => $['generation.tabs.batch'], { ns: 'share' })}</span>
+            </TabsTab>
+            {!isWorkflow && (
+              <TabsTab value="saved" className="ms-auto">
+                <span aria-hidden className="i-ri-bookmark-3-line size-4" />
+                <span className="ms-2">
+                  {t(($) => $['generation.tabs.saved'], { ns: 'share' })}
+                </span>
+                {savedMessages.length > 0 && <Badge className="ms-1">{savedMessages.length}</Badge>}
+              </TabsTab>
+            )}
+          </TabsList>
+        )}
       </div>
       <div
         className={cn(
@@ -169,36 +184,44 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             'rounded-b-2xl border-b-[0.5px] border-divider-regular',
         )}
       >
-        <TabsPanel value="create" keepMounted>
-          <RunOnce
-            siteInfo={siteInfo}
-            inputs={inputs}
-            inputsRef={inputsRef}
-            onInputsChange={onInputsChange}
-            promptConfig={promptConfig}
-            onSend={onRunOnceSend}
-            visionConfig={visionConfig}
-            onVisionFilesChange={onVisionFilesChange}
-            runControl={runControl}
-          />
-        </TabsPanel>
-        <TabsPanel value="batch" keepMounted>
-          <RunBatch
-            vars={promptConfig.prompt_variables}
-            onSend={onBatchSend}
-            isAllFinished={allTasksRun}
-          />
-        </TabsPanel>
-        {!isWorkflow && (
-          <TabsPanel value="saved">
-            <SavedItems
-              className={cn(isPC ? 'mt-6' : 'mt-4')}
-              isShowTextToSpeech={textToSpeechConfig?.enabled}
-              list={savedMessages}
-              onRemove={onRemoveSavedMessage}
-              onStartCreateContent={() => onTabChange('create')}
-            />
-          </TabsPanel>
+        {isConfiguringConnections && onStartUsingApp ? (
+          <WebAppConnectionSetup onStart={onStartUsingApp} className="py-6" />
+        ) : (
+          <>
+            <TabsPanel value="create" keepMounted>
+              <RunOnce
+                siteInfo={siteInfo}
+                inputs={inputs}
+                inputsRef={inputsRef}
+                onInputsChange={onInputsChange}
+                promptConfig={promptConfig}
+                onSend={onRunOnceSend}
+                visionConfig={visionConfig}
+                onVisionFilesChange={onVisionFilesChange}
+                runControl={runControl}
+                disabled={!connectionsReady || (isResponding && !runControl)}
+              />
+            </TabsPanel>
+            <TabsPanel value="batch" keepMounted>
+              <RunBatch
+                vars={promptConfig.prompt_variables}
+                onSend={onBatchSend}
+                isAllFinished={allTasksRun}
+                disabled={!connectionsReady || isResponding}
+              />
+            </TabsPanel>
+            {!isWorkflow && (
+              <TabsPanel value="saved">
+                <SavedItems
+                  className={cn(isPC ? 'mt-6' : 'mt-4')}
+                  isShowTextToSpeech={textToSpeechConfig?.enabled}
+                  list={savedMessages}
+                  onRemove={onRemoveSavedMessage}
+                  onStartCreateContent={() => onTabChange('create')}
+                />
+              </TabsPanel>
+            )}
+          </>
         )}
       </div>
       {!customConfig?.remove_webapp_brand && (

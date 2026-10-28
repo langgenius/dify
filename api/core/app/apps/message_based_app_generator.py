@@ -35,7 +35,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
 from libs.datetime_utils import naive_utc_now
-from models import Account
 from models.enums import (
     ConversationFromSource,
     ConversationStatus,
@@ -45,7 +44,7 @@ from models.enums import (
 from models.enums import (
     InvokeFrom as ModelInvokeFrom,
 )
-from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -60,7 +59,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-        user: Account | EndUser,
         stream: bool = False,
     ) -> (
         ChatbotAppBlockingResponse
@@ -73,7 +71,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :param conversation: conversation
         :param message: message
-        :param user: user
         :param stream: is stream
         :return:
         """

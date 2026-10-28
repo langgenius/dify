@@ -1,6 +1,8 @@
 import type { ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
+import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import type { AppData } from '@/models/share'
 import type { WorkflowFinishedResponse, WorkflowPausedResponse } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
@@ -22,6 +24,13 @@ import {
 } from '@/test/fixtures/workflow-process'
 import ChatWrapper from '../chat-wrapper'
 import { ChatWithHistoryContext } from '../context'
+import {
+  chatConnectionEntry,
+  checkedRevision,
+  createChatConnections,
+  selectedConnectionId,
+  withChatConnections,
+} from './connection-fixture'
 
 const { sseGet, ssePost } = vi.hoisted(() => ({
   sseGet: vi.fn<typeof import('@/service/base').sseGet>(),
@@ -113,17 +122,31 @@ const createHistoryContextValue = (
   ...overrides,
 })
 
-function renderChat(overrides: Partial<ChatWithHistoryContextValue> = {}) {
+function renderChat(
+  overrides: Partial<ChatWithHistoryContextValue> = {},
+  initialConnections?: ConnectionsState,
+  entry?: WebAppEntryState,
+) {
+  let connections = initialConnections
   let context = createHistoryContextValue(overrides)
-  const tree = () => (
-    <ChatWithHistoryContext.Provider value={context}>
-      <ChatWrapper />
-    </ChatWithHistoryContext.Provider>
-  )
+  const tree = () =>
+    withChatConnections({
+      state: connections,
+      entry,
+      children: (
+        <ChatWithHistoryContext.Provider value={context}>
+          <ChatWrapper />
+        </ChatWithHistoryContext.Provider>
+      ),
+    })
   const view = renderWithConsoleQuery(tree())
   return {
     ...view,
     context,
+    updateConnections: (next: ConnectionsState) => {
+      connections = next
+      view.rerender(tree())
+    },
     updateContext: (next: Partial<ChatWithHistoryContextValue>) => {
       context = { ...context, ...next }
       view.rerender(tree())
@@ -150,7 +173,16 @@ const question = (
   id,
   content,
   isAnswer: false,
-  children: [{ id: answerId, content: answer, isAnswer: true, parentMessageId: id, siblingIndex }],
+  children: [
+    {
+      id: answerId,
+      content: answer,
+      isAnswer: true,
+      parentMessageId: id,
+      siblingIndex,
+      children: [],
+    },
+  ],
 })
 const uploadedFile = (id = 'file-1', uploadedId?: string): FileEntity =>
   createChatFileFixture({
@@ -796,4 +828,134 @@ it.each([
     appPrevChatTree: [question('q1', 'Question', 'a1', 'Answer')],
   })
   expect(screen.getByRole('img', { name: label })).toHaveTextContent(initial)
+})
+
+it('requires confirmation of restored connections without sending, then sends the checked snapshot', async () => {
+  const user = userEvent.setup()
+  const connections = createChatConnections()
+  const { updateContext } = renderChat({ currentConversationId: '' }, connections)
+
+  expect(screen.queryByPlaceholderText(/common.chat.inputPlaceholder/)).not.toBeInTheDocument()
+  expect(ssePost).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' }))
+  expect(chatInput()).toBeEnabled()
+  expect(ssePost).not.toHaveBeenCalled()
+
+  await sendMessage(user, 'Find repository examples')
+  expect(ssePost).toHaveBeenCalledWith(
+    'chat-messages',
+    {
+      body: expect.objectContaining({
+        connection_revision: checkedRevision,
+        connections: { 'github-node': selectedConnectionId },
+        conversation_id: '',
+        query: 'Find repository examples',
+      }),
+    },
+    expect.objectContaining({ isPublicAPI: true }),
+  )
+
+  connections.runConfiguration!.connections['github-node'] = 'later-selection'
+  expect(ssePost.mock.calls[0]![1]).toMatchObject({
+    body: { connections: { 'github-node': selectedConnectionId } },
+  })
+  await act(async () => {
+    stream().onData?.('Repository examples', true, {
+      messageId: 'answer',
+      conversationId: 'created-conversation',
+    })
+    await stream().onCompleted?.()
+  })
+  updateContext({ currentConversationId: 'created-conversation' })
+  expect(screen.getByText('Repository examples')).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: 'share.connections.setup.startUsingApp' }),
+  ).not.toBeInTheDocument()
+})
+
+it.each(['Research prospects and prepare follow-up emails.', undefined])(
+  'keeps app information and a disabled composer visible when sign-in is required (description: %s)',
+  async (description) => {
+    const user = userEvent.setup()
+    if (!('parameters' in chatConnectionEntry)) throw new Error('Ready entry required')
+    const state = createChatConnections({
+      status: 'sign-in-required',
+      canRun: false,
+      runConfiguration: null,
+    })
+    renderChat(
+      {
+        currentConversationId: '',
+        appData: createAppData({ site: { title: 'Sales Follow-up Assistant', description } }),
+        appParams: createChatConfigFixture({ speech_to_text: { enabled: true } }),
+      },
+      state,
+      { ...chatConnectionEntry, account: 'anonymous', showSignIn: true },
+    )
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Sales Follow-up Assistant' }),
+    ).toBeVisible()
+    if (description) expect(screen.getByText(description)).toBeVisible()
+    expect(screen.getByRole('region', { name: 'share.connections.required.title' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'share.connections.required.signIn' })).toBeEnabled()
+    const input = screen.getByPlaceholderText('share.connections.required.inputPlaceholder')
+    expect(input).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeDisabled()
+    await user.type(input, 'This cannot run{Enter}')
+    expect(input).toHaveValue('')
+    expect(ssePost).not.toHaveBeenCalled()
+  },
+)
+
+it('preserves an existing draft and blocks Enter and regeneration while connections are not ready', async () => {
+  const user = userEvent.setup()
+  const state = createChatConnections()
+  const { updateConnections } = renderChat(
+    {
+      appPrevChatTree: [question('q1', 'Previous question', 'a1', 'Previous answer')],
+    },
+    state,
+  )
+  await user.type(chatInput(), 'Unsent draft')
+
+  updateConnections({
+    ...state,
+    canRun: false,
+    runConfiguration: null,
+    preflight: { ...state.preflight, status: 'checking', response: null },
+  })
+  expect(chatInput()).toBeDisabled()
+  expect(chatInput()).toHaveValue('Unsent draft')
+  await user.keyboard('{Enter}')
+  await user.click(screen.getByRole('button', { name: 'common.operation.regenerate' }))
+  expect(ssePost).not.toHaveBeenCalled()
+
+  updateConnections(state)
+  expect(chatInput()).toBeEnabled()
+  expect(chatInput()).toHaveValue('Unsent draft')
+  await user.click(chatInput())
+  expect(chatInput()).toHaveFocus()
+  await user.keyboard('{Enter}')
+  await waitFor(() => expect(ssePost).toHaveBeenCalled())
+  expect(ssePost.mock.calls[0]![1].body).toMatchObject({
+    query: 'Unsent draft',
+    conversation_id: '1',
+    connection_revision: checkedRevision,
+    connections: { 'github-node': selectedConnectionId },
+  })
+})
+
+it('omits connection fields when an App no longer has personal connection requirements', async () => {
+  const state = createChatConnections({
+    status: 'inactive',
+    services: [],
+    selections: {},
+    runConfiguration: null,
+  })
+  renderChat({ currentConversationId: '' }, state)
+  await sendMessage(userEvent.setup(), 'Use workspace credentials')
+  expect(ssePost.mock.calls[0]![1].body).not.toHaveProperty('connection_revision')
+  expect(ssePost.mock.calls[0]![1].body).not.toHaveProperty('connections')
 })

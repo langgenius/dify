@@ -54,6 +54,7 @@ const mockAppData = {
 } as unknown as AppData
 
 const defaultHookReturn: HookReturn = {
+  conversationSession: 0,
   isInstalledApp: false,
   appId: 'test-app-id',
   currentConversationId: '',

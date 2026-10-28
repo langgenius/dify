@@ -68,7 +68,7 @@ export default function CheckCode() {
           appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
         })
-        setWebAppPassport(loginRedirect.address, access_token)
+        setWebAppPassport(loginRedirect.address, access_token, 'authenticated')
         navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       }
     } catch (error) {
@@ -161,7 +161,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full p-1">
           <span aria-hidden className="i-ri-arrow-left-line block size-3" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

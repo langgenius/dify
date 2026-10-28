@@ -15,6 +15,7 @@ import { FormItemValidateStatusEnum } from '@/app/components/base/form/types'
 import { BaseField } from '.'
 
 export type BaseFormProps = {
+  id?: string
   formSchemas?: FormSchema[]
   defaultValues?: Record<string, any>
   formClassName?: string
@@ -31,6 +32,7 @@ export type BaseFormProps = {
 >
 
 const BaseForm = ({
+  id,
   formSchemas = [],
   defaultValues,
   formClassName,
@@ -207,7 +209,7 @@ const BaseForm = ({
   }
 
   return (
-    <form ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
+    <form id={id} ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
       {formSchemas.map(renderFieldWrapper)}
     </form>
   )

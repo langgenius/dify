@@ -67,7 +67,7 @@ describe('API Key connection management', () => {
     await user.click(save)
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('google-search', 'invalid-key', {
       name: 'Replacement key',
-      apiKey: 'sk-new-api-key',
+      credentials: { api_key: 'sk-new-api-key' },
     })
     await waitFor(() => expect(replacement).not.toBeInTheDocument())
     await waitFor(() => expect(trigger).toHaveFocus())
@@ -113,7 +113,7 @@ describe('API Key connection management', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Google Search' }))
-    const popover = await screen.findByRole('dialog', { name: popoverName })
+    let popover = await screen.findByRole('dialog', { name: popoverName })
     expect(
       within(popover).queryByRole('button', { name: 'share.connections.accounts.addAccount' }),
     ).not.toBeInTheDocument()
@@ -129,7 +129,14 @@ describe('API Key connection management', () => {
       await user.click(
         within(menu).getByRole('menuitem', { name: 'share.connections.apiKeys.remove' }),
       )
+      const confirmation = await screen.findByRole('alertdialog', {
+        name: 'app.endUser.disconnectConnectionTitle',
+      })
+      await user.click(within(confirmation).getByRole('button', { name: 'app.endUser.disconnect' }))
       expect(onRemove).toHaveBeenLastCalledWith('google-search', id)
+      await waitFor(() => expect(confirmation).not.toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Google Search' }))
+      popover = await screen.findByRole('dialog', { name: popoverName })
     }
     expect(onRemove).toHaveBeenCalledTimes(2)
     expect(onReconnect).not.toHaveBeenCalled()
@@ -152,7 +159,7 @@ describe('API Key connection management', () => {
     await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('google-search', 'api-key', {
       name: 'Search key',
-      apiKey: 'sk-search-secret',
+      credentials: { api_key: 'sk-search-secret' },
     })
   })
 

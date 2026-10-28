@@ -26,6 +26,7 @@ import {
   zInvalidRosterAgentPackageError,
   zInvalidTracingConfigError,
   zMaxKeysExceededError,
+  zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
   zNoActiveBindingError,
   zNoAudioUploadedError,
@@ -1764,6 +1765,7 @@ export const get26 = oc
   .input(z.object({ params: zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
@@ -1824,7 +1826,10 @@ export const get27 = oc
     z.object({ params: zGetAppsByAppIdChatMessagesPath, query: zGetAppsByAppIdChatMessagesQuery }),
   )
   .output(zGetAppsByAppIdChatMessagesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const chatMessages = {
   get: get27,
@@ -2067,7 +2072,11 @@ export const post23 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdFeedbacksBody, params: zPostAppsByAppIdFeedbacksPath }))
   .output(zPostAppsByAppIdFeedbacksResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
   post: post23,
@@ -2106,7 +2115,10 @@ export const get32 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdMessagesByMessageIdPath }))
   .output(zGetAppsByAppIdMessagesByMessageIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const byMessageId2 = {
   get: get32,

@@ -1,6 +1,9 @@
 import type { RequiredConnection } from '../required-connections'
-import { render, screen, within } from '@testing-library/react'
+import { webcrypto } from 'node:crypto'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import RequiredConnections from '../required-connections'
 
 const navigation = vi.hoisted(() => ({ pathname: '/connections-demo', query: '' }))
@@ -22,9 +25,19 @@ const github: RequiredConnection = {
   iconClassName: 'i-ri-github-fill',
 }
 describe('RequiredConnections', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
     navigation.pathname = '/connections-demo'
     navigation.query = ''
+    window.history.replaceState({}, '', '/connections-demo')
+    vi.stubGlobal('crypto', webcrypto)
+    vi.spyOn(window.location, 'assign').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    window.history.replaceState({}, '', originalUrl)
+    sessionStorage.clear()
   })
 
   it('shows the connections required by the current app and updates when they change', () => {
@@ -50,36 +63,51 @@ describe('RequiredConnections', () => {
     expect(within(list).getByText('GitHub')).toBeVisible()
   })
 
-  it('encodes the current page and special query characters once in the sign-in return URL', () => {
+  it('encodes a demo page and special query characters once in the sign-in return URL', async () => {
+    const user = userEvent.setup()
     navigation.query = new URLSearchParams({
       prompt: 'Hello 世界 & more',
       conversation: 'a&b',
     }).toString()
+    window.history.replaceState({}, '', `/connections-demo?${navigation.query}`)
     render(<RequiredConnections connections={[gmail]} />)
 
-    const link = screen.getByRole('link', { name: 'share.connections.required.signIn' })
-    const destination = new URL(link.getAttribute('href')!, 'https://app.example')
+    await user.click(screen.getByRole('button', { name: 'share.connections.required.signIn' }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledOnce())
+    const destination = new URL(
+      vi.mocked(window.location.assign).mock.calls[0]![0],
+      window.location.origin,
+    )
     expect(destination.pathname).toBe('/signin')
     expect(destination.searchParams.get('redirect_url')).toBe(
       `/connections-demo?${navigation.query}`,
     )
-    const returnUrl = new URL(destination.searchParams.get('redirect_url')!, 'https://app.example')
+    const returnUrl = new URL(destination.searchParams.get('redirect_url')!, window.location.origin)
     expect(returnUrl.searchParams.get('prompt')).toBe('Hello 世界 & more')
     expect(returnUrl.searchParams.get('conversation')).toBe('a&b')
   })
 
-  it('updates the sign-in return URL when the current path or query changes', () => {
+  it('starts PKCE for the current App after navigating away from the demo', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(<RequiredConnections connections={[gmail]} />)
-    const link = screen.getByRole('link', { name: 'share.connections.required.signIn' })
-    expect(link).toHaveAttribute('href', '/signin?redirect_url=%2Fconnections-demo')
+    await user.click(screen.getByRole('button', { name: 'share.connections.required.signIn' }))
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledTimes(1))
 
     navigation.pathname = '/workflow/another-app'
     navigation.query = 'conversation=current'
+    window.history.replaceState({}, '', '/workflow/another-app?conversation=current')
     rerender(<RequiredConnections connections={[gmail]} />)
+    await user.click(screen.getByRole('button', { name: 'share.connections.required.signIn' }))
 
-    const destination = new URL(link.getAttribute('href')!, 'https://app.example')
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledTimes(2))
+    const destination = new URL(vi.mocked(window.location.assign).mock.calls[1]![0])
+    expect(destination.searchParams.get('app_code')).toBe('another-app')
+    expect(destination.searchParams.get('code_challenge_method')).toBe('S256')
+    expect(destination.searchParams.get('code_challenge')).toMatch(/^[\w-]{43}$/)
+    expect(destination.searchParams.has('code_verifier')).toBe(false)
     expect(destination.searchParams.get('redirect_url')).toBe(
-      '/workflow/another-app?conversation=current',
+      new URL('/workflow/another-app?conversation=current', window.location.origin).href,
     )
   })
 
@@ -92,7 +120,7 @@ describe('RequiredConnections', () => {
       screen.queryByRole('region', { name: 'share.connections.required.title' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: 'share.connections.required.signIn' }),
+      screen.queryByRole('button', { name: 'share.connections.required.signIn' }),
     ).not.toBeInTheDocument()
   })
 })

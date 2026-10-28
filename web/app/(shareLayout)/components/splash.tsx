@@ -22,16 +22,20 @@ import { getHttpErrorStatus } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
+  getWebAppAccessToken,
+  getWebAppLoginMode,
   setWebAppAccessToken,
   setWebAppPassport,
   webAppLoginStatus,
   webAppLogout,
 } from '@/service/webapp-auth'
+import { restoreWebAppAccountSession } from '@/service/webapp/account-session'
+import { isWebAppAccountCallback } from '@/service/webapp/login'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
-function Splash({ children }: PropsWithChildren) {
+function WebAppBootstrap({ children }: PropsWithChildren) {
   const { t } = useTranslation(['common', 'share'])
   const shareCode = useWebAppStore((s) => s.shareCode)
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
@@ -120,6 +124,15 @@ function Splash({ children }: PropsWithChildren) {
 
     const initialize = async () => {
       try {
+        if (
+          !isSigninRoute &&
+          address.kind === 'default' &&
+          getWebAppAccessToken() &&
+          getWebAppLoginMode() === 'end_user'
+        ) {
+          if (await restoreWebAppAccountSession(address, canContinue)) redirectOrFinish()
+          return
+        }
         // Public apps still need a valid app passport even when user login is not required.
         const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
           effectiveShareCode,
@@ -139,7 +152,11 @@ function Splash({ children }: PropsWithChildren) {
             })
             if (!canContinue()) return
 
-            setWebAppPassport(address, access_token)
+            setWebAppPassport(
+              address,
+              access_token,
+              getWebAppAccessToken() ? 'authenticated' : 'anonymous',
+            )
             redirectOrFinish()
           } catch (error) {
             if (!canContinue() || isAppAccessError(error)) return
@@ -229,4 +246,12 @@ function Splash({ children }: PropsWithChildren) {
   return <>{children}</>
 }
 
-export default Splash
+export default function Splash({ children }: PropsWithChildren) {
+  const pathname = usePathname()
+  const params = useSearchParams()
+  return isWebAppAccountCallback(pathname, params) ? (
+    children
+  ) : (
+    <WebAppBootstrap>{children}</WebAppBootstrap>
+  )
+}

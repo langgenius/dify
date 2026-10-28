@@ -69,6 +69,7 @@ const createHookReturn = (
   overrides: Partial<EmbeddedChatbotHookReturn> = {},
 ): EmbeddedChatbotHookReturn => {
   const base: EmbeddedChatbotHookReturn = {
+    conversationSession: 0,
     appSourceType: 'webApp' as EmbeddedChatbotHookReturn['appSourceType'],
     isInstalledApp: false,
     appId: 'app-1',

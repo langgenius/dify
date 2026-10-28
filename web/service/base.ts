@@ -52,8 +52,11 @@ import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
   beginWebAppAuthorizationRecovery,
+  captureWebAppAuthSession,
   clearWebAppPassport,
   completeWebAppAuthorizationRecovery,
+  getWebAppAccessToken,
+  getWebAppLoginMode,
   getWebAppPassport,
 } from './webapp-auth'
 
@@ -65,21 +68,25 @@ const canRecoverWebAppAuthorization = (guard: RequestGuard | undefined) =>
 const isWebAppAuthorizationEndpoint = (url: string) =>
   /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
 
-const recoverEnvironmentWebAppAuthorization = (
+const recoverWebAppAuthorization = (
   error: { code?: string | number; message?: string; reason?: unknown },
   url?: string,
 ) => {
   const address = resolveWebAppAddress()
   if (
-    address?.kind !== 'environment' ||
+    !address ||
+    (address.kind !== 'environment' && getWebAppLoginMode() !== 'end_user') ||
     (error.reason !== 'APPDEPLOY_UNAUTHORIZED' && error.code !== 'unauthorized') ||
     (url && isWebAppAuthorizationEndpoint(url))
   )
     return false
 
   if (!beginWebAppAuthorizationRecovery(address)) {
-    requiredWebSSOLogin(error.message, 403)
-    return true
+    if (address.kind === 'environment') {
+      requiredWebSSOLogin(error.message, 403)
+      return true
+    }
+    return false
   }
 
   clearWebAppPassport(address)
@@ -98,7 +105,12 @@ const handleWebAppAuthorizationError = (
     requiredWebSSOLogin(error.message, 403)
     return true
   }
-  return recoverEnvironmentWebAppAuthorization(error, url)
+  return recoverWebAppAuthorization(error, url)
+}
+
+function webAppAccountHeaders(isPublicAPI: boolean | undefined): Record<string, string> {
+  const token = isPublicAPI ? getWebAppAccessToken() : ''
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 const isAbortError = (error: unknown) => {
@@ -132,7 +144,8 @@ export type IOnError = (msg: string, code?: string, identity?: IOnDataMoreInfo) 
 const reportStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
-  onNotifyError?: IOnError,
+  onNotifyError: IOnError | undefined,
+  isRequestCurrent: () => boolean,
 ) => {
   let errorMessage = 'Server Error'
   let errorCode: string | undefined
@@ -148,6 +161,7 @@ const reportStreamResponseError = async (
     }
   } catch {}
 
+  if (!isRequestCurrent()) return
   if (errorCode) {
     onError?.(errorMessage, errorCode)
     onNotifyError?.(errorMessage, errorCode)
@@ -162,12 +176,14 @@ const handleGuardedStreamResponseError = async (
   guard: RequestGuard | undefined,
   onError: IOnError | undefined,
   onCompleted: IOnCompleted | undefined,
+  isRequestCurrent: () => boolean,
 ) => {
   if (!guard) return false
   const data = await response
     .clone()
     .json()
     .catch(() => undefined)
+  if (!isRequestCurrent()) return true
   if (!guard.handleError(response.status, data, response) && canRecoverWebAppAuthorization(guard))
     return false
   const message =
@@ -184,12 +200,14 @@ const handlePublicStreamResponseError = async (
   silent: boolean | undefined,
   requestGuard: RequestGuard | undefined,
   onCompleted: IOnCompleted | undefined,
+  isRequestCurrent: () => boolean,
 ) => {
   let data: { code?: string; message?: string; reason?: unknown } | undefined
   try {
     data = (await response.clone().json()) as typeof data
   } catch {}
 
+  if (!isRequestCurrent()) return
   if (data && requestGuard?.handleError(response.status, data, response)) {
     const message = data.message || 'Server Error'
     if (onError) onError(message, data.code)
@@ -204,16 +222,25 @@ const handlePublicStreamResponseError = async (
   }
   if (data) {
     if (handleWebAppAuthorizationError(data)) return
-    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
+    if (
+      data.code === 'web_sso_auth_required' ||
+      (data.code === 'unauthorized' && getWebAppLoginMode() !== 'end_user')
+    ) {
       requiredWebSSOLogin()
       return
     }
   }
 
-  if (onNotifyError && !silent) await reportStreamResponseError(response, onError, onNotifyError)
+  if (onNotifyError && !silent)
+    await reportStreamResponseError(response, onError, onNotifyError, isRequestCurrent)
   else if (!silent)
-    await reportStreamResponseError(response, onError, (message) => toast.error(message))
-  else await reportStreamResponseError(response, onError)
+    await reportStreamResponseError(
+      response,
+      onError,
+      (message) => toast.error(message),
+      isRequestCurrent,
+    )
+  else await reportStreamResponseError(response, onError, undefined, isRequestCurrent)
 }
 
 type UnhandledEventError = {
@@ -441,6 +468,7 @@ export const handleStream = (
   onDataSourceNodeError?: IOnDataSourceNodeError,
   onReasoning?: IOnReasoning,
   onUnhandledEvent?: IOnUnhandledEvent,
+  isActive?: () => boolean,
 ) => {
   if (!response.ok) throw new Error('Network response was not ok')
 
@@ -463,6 +491,10 @@ export const handleStream = (
     let hasError = false
     reader?.read().then(
       (result: ReadableStreamReadResult<Uint8Array>) => {
+        if (isActive?.() === false) {
+          reader?.cancel().catch(() => {})
+          return
+        }
         if (result.done) {
           onCompleted?.()
           return
@@ -472,7 +504,7 @@ export const handleStream = (
         buffer = lines.pop() ?? ''
         try {
           lines.forEach((message) => {
-            if (hasError) return
+            if (hasError || isActive?.() === false) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -607,6 +639,7 @@ export const handleStream = (
         if (!hasError) read()
       },
       (e: unknown) => {
+        if (isActive?.() === false) return
         completeWithError(String(e), 'stream_read_error')
       },
     )
@@ -643,6 +676,7 @@ export const upload = async (
     options.method || 'POST',
   )
   requestGuard?.beforeRequest()
+  const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
   const address = resolveWebAppAddress()
   const shareCode = address?.code
   const publicApiPrefix = PUBLIC_API_PREFIX
@@ -655,6 +689,7 @@ export const upload = async (
         : `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, '/files/upload') : '/files/upload'}`) +
       (searchParams || ''),
     headers: {
+      ...webAppAccountHeaders(isPublicAPI),
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
       [PASSPORT_HEADER_NAME]: getWebAppPassport(address),
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
@@ -675,6 +710,10 @@ export const upload = async (
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4 && xhr.status !== 0) {
+        if (!isAuthSessionCurrent()) {
+          reject(new DOMException('The Web App account changed.', 'AbortError'))
+          return
+        }
         if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
         else {
           const error = httpErrorFromXhr(xhr)
@@ -752,11 +791,14 @@ export const ssePost = async (
     silent,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, 'POST')
+  const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
   if (requestGuard?.isActive() === false) {
     onCompleted?.(true, 'The request is no longer active.')
     return
   }
   const abortController = new AbortController()
+  const isRequestCurrent = () =>
+    isAuthSessionCurrent() && (!isPublicAPI || !abortController.signal.aborted)
 
   // No need to get token from localStorage, cookies will be sent automatically
 
@@ -769,6 +811,7 @@ export const ssePost = async (
       method: 'POST',
       signal: abortController.signal,
       headers: new Headers({
+        ...webAppAccountHeaders(isPublicAPI),
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
         [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
         [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
@@ -777,6 +820,14 @@ export const ssePost = async (
     fetchOptions,
   )
   options.headers = new Headers(options.headers)
+  if (isPublicAPI) {
+    options.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode || '')
+    options.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(resolveWebAppAddress()))
+  }
+  if (isPublicAPI && !options.headers.has('Authorization')) {
+    const token = getWebAppAccessToken()
+    if (token) options.headers.set('Authorization', `Bearer ${token}`)
+  }
 
   const contentType = options.headers.get('Content-Type')
   if (!contentType) options.headers.set('Content-Type', ContentType.json)
@@ -791,8 +842,19 @@ export const ssePost = async (
   globalThis
     .fetch(urlWithPrefix, options as RequestInit)
     .then(async (res) => {
+      if (!isAuthSessionCurrent()) return
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
+        if (
+          await handleGuardedStreamResponseError(
+            res,
+            requestGuard,
+            onError,
+            onCompleted,
+            isRequestCurrent,
+          )
+        )
+          return
+        if (!isRequestCurrent()) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             void handlePublicStreamResponseError(
@@ -802,6 +864,7 @@ export const ssePost = async (
               silent,
               requestGuard,
               onCompleted,
+              isRequestCurrent,
             )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
@@ -815,10 +878,16 @@ export const ssePost = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          if (onNotifyError && !silent)
+            void reportStreamResponseError(res, onError, onNotifyError, isRequestCurrent)
           else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
+            void reportStreamResponseError(
+              res,
+              onError,
+              (message) => toast.error(message),
+              isRequestCurrent,
+            )
+          else void reportStreamResponseError(res, onError, undefined, isRequestCurrent)
         }
         return
       }
@@ -868,9 +937,11 @@ export const ssePost = async (
         onDataSourceNodeError,
         onReasoning,
         onUnhandledEvent,
+        isAuthSessionCurrent,
       )
     })
     .catch((e) => {
+      if (!isAuthSessionCurrent()) return
       const errorMessage = String(e)
       if (!silent && shouldNotifyStreamError(e)) {
         if (onNotifyError) onNotifyError(errorMessage)
@@ -927,11 +998,14 @@ export const sseGet = async (
     silent,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, 'GET')
+  const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
   if (requestGuard?.isActive() === false) {
     onCompleted?.(true, 'The request is no longer active.')
     return
   }
   const abortController = new AbortController()
+  const isRequestCurrent = () =>
+    isAuthSessionCurrent() && (!isPublicAPI || !abortController.signal.aborted)
 
   const baseOptions = getBaseOptions()
   const shareCode = resolveWebAppAddress()?.code
@@ -941,6 +1015,7 @@ export const sseGet = async (
     {
       signal: abortController.signal,
       headers: new Headers({
+        ...webAppAccountHeaders(isPublicAPI),
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
         [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
         [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
@@ -949,6 +1024,14 @@ export const sseGet = async (
     fetchOptions,
   )
   options.headers = new Headers(options.headers)
+  if (isPublicAPI) {
+    options.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode || '')
+    options.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(resolveWebAppAddress()))
+  }
+  if (isPublicAPI && !options.headers.has('Authorization')) {
+    const token = getWebAppAccessToken()
+    if (token) options.headers.set('Authorization', `Bearer ${token}`)
+  }
 
   const contentType = options.headers.get('Content-Type')
   if (!contentType) options.headers.set('Content-Type', ContentType.json)
@@ -960,8 +1043,19 @@ export const sseGet = async (
   globalThis
     .fetch(urlWithPrefix, options as RequestInit)
     .then(async (res) => {
+      if (!isAuthSessionCurrent()) return
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
+        if (
+          await handleGuardedStreamResponseError(
+            res,
+            requestGuard,
+            onError,
+            onCompleted,
+            isRequestCurrent,
+          )
+        )
+          return
+        if (!isRequestCurrent()) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             void handlePublicStreamResponseError(
@@ -971,6 +1065,7 @@ export const sseGet = async (
               silent,
               requestGuard,
               onCompleted,
+              isRequestCurrent,
             )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
@@ -984,10 +1079,16 @@ export const sseGet = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          if (onNotifyError && !silent)
+            void reportStreamResponseError(res, onError, onNotifyError, isRequestCurrent)
           else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
+            void reportStreamResponseError(
+              res,
+              onError,
+              (message) => toast.error(message),
+              isRequestCurrent,
+            )
+          else void reportStreamResponseError(res, onError, undefined, isRequestCurrent)
         }
         return
       }
@@ -1037,9 +1138,11 @@ export const sseGet = async (
         onDataSourceNodeError,
         onReasoning,
         onUnhandledEvent,
+        isAuthSessionCurrent,
       )
     })
     .catch((e) => {
+      if (!isAuthSessionCurrent()) return
       const errorMessage = String(e)
       if (!silent && shouldNotifyStreamError(e)) {
         if (onNotifyError) onNotifyError(errorMessage)
@@ -1168,13 +1271,17 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       isPublicAPI,
       otherOptions?.request?.method || (options as RequestInit).method,
     )
+    const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
+    if (!isAuthSessionCurrent())
+      return Promise.reject(new DOMException('The Web App account changed.', 'AbortError'))
     if (err === null) {
       const address = resolveWebAppAddress()
       if (
         isPublicAPI &&
         canRecoverWebAppAuthorization(requestGuard) &&
-        address?.kind === 'environment' &&
+        address &&
+        (address.kind === 'environment' || getWebAppLoginMode() === 'end_user') &&
         !isWebAppAuthorizationEndpoint(url)
       )
         completeWebAppAuthorizationRecovery(address)
@@ -1188,13 +1295,14 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
 
       const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
       if (!err.data) {
-        if (err.status === 401) {
+        if (err.status === 401 && !isPublicAPI) {
           discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
           window.location.href = buildSigninUrlWithRedirect()
         }
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(err)
+      if (isPublicAPI && err.code === 'end_user_login_required') return Promise.reject(err)
       if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
       // special code
       const { code, message } = errRespData
@@ -1210,7 +1318,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (isPublicAPI && code === 'unauthorized') {
-        requiredWebSSOLogin()
+        if (getWebAppLoginMode() !== 'end_user') requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'init_validate_failed' && !silent) {
@@ -1225,6 +1333,10 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
+
+      // Web account proofs have no Console refresh-token flow. The Webapp owner
+      // checks end_user login status and prepares a new App Passport when needed.
+      if (isPublicAPI) return Promise.reject(err)
 
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))

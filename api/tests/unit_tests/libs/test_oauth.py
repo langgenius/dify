@@ -1,7 +1,6 @@
 import urllib.parse
 from collections.abc import Callable
 from unittest.mock import MagicMock, patch
-from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
@@ -439,7 +438,7 @@ class TestOAuthUserInfo:
 def test_provider_authorization_preserves_protected_state(provider: type[OAuth]) -> None:
     oauth = provider(client_id="client", client_secret="secret", redirect_uri="https://api.example.com/callback")
     url = oauth.get_authorization_url(state="end_user.signed-context", redirect_url="/ignored-legacy-target")
-    assert parse_qs(urlsplit(url).query)["state"] == ["end_user.signed-context"]
+    assert urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)["state"] == ["end_user.signed-context"]
 
 
 def test_account_oauth_state_is_signed_and_expires(

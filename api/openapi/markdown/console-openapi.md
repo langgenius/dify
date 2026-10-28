@@ -732,6 +732,7 @@ Get Agent App chat messages for a conversation with pagination
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1192,6 +1193,7 @@ Create or update Agent App message feedback
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1278,6 +1280,7 @@ Get Agent App message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2958,6 +2961,7 @@ Get chat messages for a conversation with pagination
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2979,7 +2983,7 @@ Get suggested questions for a message
 | 400 | App or model provider unavailable, or generation failed | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Account authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | App, message, or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App, message, or conversation not found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3219,6 +3223,8 @@ Create or update message feedback (like/dislike)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3260,6 +3266,7 @@ Get message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7986,7 +7993,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ExploreMessageInfiniteScrollPagination](#exploremessageinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -8011,7 +8018,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -13802,6 +13809,7 @@ Remove one or more tag bindings from a target.
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/parameters

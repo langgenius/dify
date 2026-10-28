@@ -1,16 +1,17 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { queryOptions, skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -19,6 +20,11 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
+import {
+  getAccountLoginCallbackUrl,
+  getEndUserLoginContext,
+  isEndUserSignIn,
+} from './utils/end-user-login'
 import { isInvitationForAccount } from './utils/invitation-account'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
@@ -28,6 +34,19 @@ function NormalForm() {
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
+  const isEndUser = isEndUserSignIn(searchParams)
+  const accountInput = getEndUserLoginContext(searchParams)
+  const accountSession = useQuery(
+    consoleQuery.login.get.queryOptions({
+      input: accountInput ? { query: accountInput } : skipToken,
+      context: { silent: true },
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
+  const accountCallback = getAccountLoginCallbackUrl(accountSession.data?.redirect_url)
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
@@ -41,6 +60,7 @@ function NormalForm() {
     ...userProfileQueryOptions(),
     throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
+    enabled: !isEndUser,
   })
   const isLoggedIn = !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')
@@ -51,18 +71,20 @@ function NormalForm() {
     systemFeatures.deployment_edition === 'ENTERPRISE'
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(null)
 
-  const isInviteLink = Boolean(inviteToken && inviteToken !== 'null')
+  const isInviteLink = !isEndUser && Boolean(inviteToken && inviteToken !== 'null')
   const {
     data: invitationCheckResp,
     isPending: isInviteCheckLoading,
     isError: isInviteCheckError,
-  } = useQuery({
-    queryKey: ['signin', 'invite-check', inviteToken],
-    queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
-    enabled: isInviteLink,
-    retry: false,
-    refetchOnWindowFocus: false,
-  })
+  } = useQuery(
+    queryOptions({
+      queryKey: ['signin', 'invite-check', inviteToken],
+      queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
+      enabled: isInviteLink,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
 
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
   const isInvitationForCurrentAccount = isInvitationForAccount(
@@ -71,7 +93,7 @@ function NormalForm() {
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
   const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
-  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
+  const hasSsoLogin = !isEndUser && systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
@@ -86,11 +108,20 @@ function NormalForm() {
   const noLoginMethodsConfigured =
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
+  const shouldRedirectLoggedInUser = isEndUser
+    ? Boolean(accountSession.data?.logged_in && accountCallback)
+    : isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
-    isCheckLoading || shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
+    (isEndUser ? Boolean(accountInput) && accountSession.isPending : isCheckLoading) ||
+    shouldRedirectLoggedInUser ||
+    (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
+    if (isEndUser) {
+      if (accountSession.data?.logged_in && accountCallback)
+        globalThis.location.replace(accountCallback)
+      return
+    }
     if (!isLoggedIn) return
 
     if (isInviteLink) {
@@ -100,11 +131,28 @@ function NormalForm() {
     }
 
     replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
-  }, [isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
+  }, [
+    accountSession.data,
+    accountCallback,
+    isEndUser,
+    isInvitationForCurrentAccount,
+    isInviteLink,
+    isLoggedIn,
+    router,
+    searchParams,
+  ])
 
   useEffect(() => {
     if (message) toast.error(message)
   }, [message])
+
+  if (
+    isEndUser &&
+    (!accountInput ||
+      accountSession.isError ||
+      (accountSession.data?.logged_in && !accountCallback))
+  )
+    return <AppUnavailable isUnknownReason />
 
   if (isLoading) {
     return (
@@ -122,7 +170,7 @@ function NormalForm() {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseLost, { ns: 'login' })}
@@ -142,7 +190,7 @@ function NormalForm() {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseExpired, { ns: 'login' })}
@@ -162,7 +210,7 @@ function NormalForm() {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseInactive, { ns: 'login' })}
@@ -271,7 +319,7 @@ function NormalForm() {
             </>
           )}
 
-          {systemFeatures.is_allow_register && authType === 'password' && (
+          {!isEndUser && systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
               <Link className="text-text-accent" href={signupHref}>

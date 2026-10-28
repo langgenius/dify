@@ -1,13 +1,12 @@
 'use client'
 
 import type { AppIconProps } from '@/app/components/base/app-icon'
-import { buttonVariants } from '@langgenius/dify-ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Link from '@/next/link'
-import useSignInUrl from '../use-sign-in-url'
+import useWebAppSignIn from '../use-webapp-sign-in'
 
 export type RequiredConnection = {
   id: string
@@ -19,12 +18,13 @@ export type RequiredConnection = {
 type Props = {
   connections: readonly RequiredConnection[]
   className?: string
+  showSignIn?: boolean
 }
 
-export default function RequiredConnections({ connections, className }: Props) {
-  const { t } = useTranslation(['share'])
+export default function RequiredConnections({ connections, className, showSignIn = true }: Props) {
+  const { t } = useTranslation(['share', 'common'])
   const titleId = useId()
-  const signInUrl = useSignInUrl()
+  const { signIn, pending, error } = useWebAppSignIn()
 
   if (connections.length === 0) return null
 
@@ -37,9 +37,11 @@ export default function RequiredConnections({ connections, className }: Props) {
         <h2 id={titleId} className="system-md-semibold text-text-primary">
           {t(($) => $['connections.required.title'], { ns: 'share' })}
         </h2>
-        <p className="min-h-5 system-xs-regular text-text-tertiary">
-          {t(($) => $['connections.required.signInDescription'], { ns: 'share' })}
-        </p>
+        {showSignIn && (
+          <p className="min-h-5 system-xs-regular text-text-tertiary">
+            {t(($) => $['connections.required.signInDescription'], { ns: 'share' })}
+          </p>
+        )}
         <ul className="flex w-full flex-wrap gap-x-4 gap-y-2">
           {connections.map((connection) => (
             <li key={connection.id} className="flex max-w-full min-w-0 items-center gap-1.5">
@@ -67,15 +69,20 @@ export default function RequiredConnections({ connections, className }: Props) {
           ))}
         </ul>
       </div>
-      <Link
-        href={signInUrl}
-        className={cn(
-          buttonVariants({ variant: 'primary', size: 'large' }),
-          'h-auto min-h-9 w-36 max-w-full py-2 text-center whitespace-normal',
-        )}
-      >
-        {t(($) => $['connections.required.signIn'], { ns: 'share' })}
-      </Link>
+      {showSignIn && (
+        <Button
+          variant="primary"
+          size="large"
+          onClick={signIn}
+          loading={pending}
+          className={cn('h-auto min-h-9 w-36 max-w-full py-2 text-center whitespace-normal')}
+        >
+          {t(($) => $['connections.required.signIn'], { ns: 'share' })}
+        </Button>
+      )}
+      {showSignIn && error && (
+        <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+      )}
     </section>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import type { ConnectionPreflightStatus } from '@dify/contracts/api/web/types.gen'
 import type { ApiKeyValues } from './api-key-dialog'
 import type { RequiredConnection } from './required-connections'
 import type { ConnectionActions } from './service-connection-selector'
@@ -8,13 +9,19 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import useTheme from '@/hooks/use-theme'
+import { reportClientError } from '@/service/client-error'
+import { Theme } from '@/types/app'
 import ApiKeyDialog from './api-key-dialog'
+import { getServiceConnectionStatus } from './connection-status'
+import RemoveConnectionDialog from './remove-connection-dialog'
 import ServiceConnectionSelector from './service-connection-selector'
 
 export type ConnectionMethod = 'oauth' | 'api-key'
 
 export type RequiredConnectionService = RequiredConnection & {
   description: string
+  iconDark?: RequiredConnection['icon']
   readmeUrl?: string
   availableConnections: readonly {
     id: string
@@ -23,6 +30,7 @@ export type RequiredConnectionService = RequiredConnection & {
     status?: 'active' | 'expired' | 'invalid'
   }[]
   selectedConnectionId?: string
+  preflight?: ConnectionPreflightStatus
   methods: readonly ConnectionMethod[]
 }
 
@@ -35,6 +43,7 @@ type Props = ConnectionActions & {
   ) => void | Promise<void>
   onConnectionChange: (serviceId: string, connectionId: string) => void
   disabled?: boolean
+  isMutating?: boolean
   className?: string
 }
 
@@ -61,20 +70,29 @@ function ServiceItem({
   | 'onRequestAddApiKey'
   | 'onRemove'
 >) {
-  const { t } = useTranslation(['share'])
+  const { t } = useTranslation(['share', 'common'])
+  const { theme } = useTheme()
   const nameId = useId()
   const descriptionId = useId()
   const warningId = useId()
   const rowRef = useRef<HTMLLIElement>(null)
   const addApiKeyTriggerRef = useRef<HTMLButtonElement>(null)
   const [addApiKeyOpen, setAddApiKeyOpen] = useState(false)
+  const [removal, setRemoval] = useState<
+    RequiredConnectionService['availableConnections'][number] | null
+  >(null)
+  const [removeOpen, setRemoveOpen] = useState(false)
   const canOAuth = service.methods.includes('oauth')
   const canApiKey = service.methods.includes('api-key')
   const selectedConnection = service.availableConnections.find(
     (connection) => connection.id === service.selectedConnectionId,
   )
-  const isExpired = selectedConnection?.status === 'expired'
-  const isInvalid = selectedConnection?.status === 'invalid'
+  const connectionStatus = getServiceConnectionStatus(service, selectedConnection)
+  const isExpired = connectionStatus === 'reconnect_required'
+  const isInvalid = connectionStatus === 'invalid'
+  const isDisconnected = Boolean(selectedConnection && connectionStatus === 'disconnected')
+  const checkUnavailable = connectionStatus === null
+  const hasWarning = isExpired || isInvalid || isDisconnected || checkUnavailable
 
   return (
     <li
@@ -85,7 +103,7 @@ function ServiceItem({
     >
       <AppIcon
         size="small"
-        icon={service.icon}
+        icon={theme === Theme.dark && service.iconDark ? service.iconDark : service.icon}
         fallback={{
           content: (
             <span
@@ -106,11 +124,17 @@ function ServiceItem({
         <span id={descriptionId} className="system-xs-regular wrap-anywhere text-text-tertiary">
           {service.description}
         </span>
-        {(isExpired || isInvalid) && (
+        {hasWarning && (
           <span id={warningId} className="system-xs-regular wrap-anywhere text-text-warning">
-            {isInvalid
-              ? t(($) => $['connections.apiKeys.warning'], { ns: 'share' })
-              : t(($) => $['connections.accounts.expired'], { ns: 'share' })}
+            {checkUnavailable
+              ? t(($) => $['api.actionFailed'], { ns: 'common' })
+              : isDisconnected
+                ? t(($) => $['connections.setup.selectConnection'], { ns: 'share' })
+                : isInvalid
+                  ? selectedConnection?.method === 'api-key'
+                    ? t(($) => $['connections.apiKeys.warning'], { ns: 'share' })
+                    : t(($) => $['connections.accounts.reconnectRequired'], { ns: 'share' })
+                  : t(($) => $['connections.accounts.expired'], { ns: 'share' })}
           </span>
         )}
       </div>
@@ -119,7 +143,7 @@ function ServiceItem({
           <ServiceConnectionSelector
             service={service}
             labelledBy={nameId}
-            describedBy={isExpired || isInvalid ? `${descriptionId} ${warningId}` : descriptionId}
+            describedBy={hasWarning ? `${descriptionId} ${warningId}` : descriptionId}
             disabled={disabled}
             onConnect={onConnect}
             onConnectionChange={onConnectionChange}
@@ -128,6 +152,15 @@ function ServiceItem({
             onRequestReplace={onRequestReplace}
             onRequestAddApiKey={onRequestAddApiKey}
             onRemove={onRemove}
+            onRequestRemove={(connectionId) => {
+              if (disabled || !onRemove) return
+              const connection = service.availableConnections.find(
+                (item) => item.id === connectionId,
+              )
+              if (!connection) return
+              setRemoval(connection)
+              setRemoveOpen(true)
+            }}
           />
         ) : (
           <>
@@ -136,7 +169,13 @@ function ServiceItem({
                 disabled={disabled}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}
-                onClick={() => onConnect(service.id, 'oauth')}
+                onClick={async () => {
+                  try {
+                    await onConnect(service.id, 'oauth')
+                  } catch (error) {
+                    reportClientError(error)
+                  }
+                }}
               >
                 {t(($) => $['connections.setup.connect'], { ns: 'share' })}
               </Button>
@@ -174,6 +213,20 @@ function ServiceItem({
         finalFocus={() => addApiKeyTriggerRef.current ?? rowRef.current}
         disabled={disabled}
       />
+      {removal && (
+        <RemoveConnectionDialog
+          key={removal.id}
+          name={removal.name}
+          method={removal.method}
+          open={removeOpen}
+          onOpenChange={setRemoveOpen}
+          onConfirm={() => onRemove?.(service.id, removal.id)}
+          finalFocus={() =>
+            rowRef.current?.querySelector<HTMLElement>('button:not(:disabled)') ?? rowRef.current
+          }
+          disabled={disabled || !onRemove}
+        />
+      )}
     </li>
   )
 }
@@ -189,7 +242,9 @@ export default function RequiredServices({
   onRequestAddApiKey,
   onRemove,
   className,
+  isMutating = false,
 }: Props) {
+  const actionsDisabled = disabled || isMutating
   if (services.length === 0) return null
 
   return (
@@ -200,7 +255,7 @@ export default function RequiredServices({
           service={service}
           onConnect={onConnect}
           onConnectionChange={onConnectionChange}
-          disabled={disabled}
+          disabled={actionsDisabled}
           onReconnect={onReconnect}
           onReplace={onReplace}
           onRequestReplace={onRequestReplace}

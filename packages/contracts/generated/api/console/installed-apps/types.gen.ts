@@ -1383,7 +1383,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404:
     | ConversationNotFoundError
@@ -1415,7 +1415,7 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
-  400: MessageFeedbackRatingRequiredError | ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse

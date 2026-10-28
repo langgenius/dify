@@ -5,8 +5,10 @@ import type { ChatProps } from '../chat'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { createTheme } from '../embedded-chatbot/theme/theme'
 import ChatWrapper from './chat-wrapper'
 import { ChatWithHistoryContext, useChatWithHistoryContext } from './context'
@@ -19,8 +21,14 @@ type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
-  const { appData, appChatListDataLoading, chatShouldReloadKey, isMobile, sidebarCollapseState } =
-    useChatWithHistoryContext()
+  const {
+    appData,
+    appChatListDataLoading,
+    chatShouldReloadKey,
+    conversationSession,
+    isMobile,
+    sidebarCollapseState,
+  } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const site = appData?.site
 
@@ -57,7 +65,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
         <div
           inert={isSidebarCollapsed}
           className={cn(
-            'flex w-59 flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
+            'flex w-59 flex-col p-1 pe-0 transition-all duration-200 ease-in-out',
             isSidebarCollapsed && 'w-0 overflow-hidden p-0!',
           )}
         >
@@ -70,7 +78,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
-              showSidePanel ? 'left-0' : '-left-62',
+              showSidePanel ? 'inset-s-0' : '-inset-s-62',
             )}
             onMouseEnter={() => {
               sidePanelHoveredRef.current = true
@@ -111,7 +119,9 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
             <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
           )}
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
-          {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
+          {!appChatListDataLoading && (
+            <ChatWrapper key={JSON.stringify([chatShouldReloadKey, conversationSession])} />
+          )}
         </div>
       </div>
     </div>
@@ -157,6 +167,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     handleRenameConversation,
     handleNewConversationCompleted,
     chatShouldReloadKey,
+    conversationSession,
     isInstalledApp,
     appId,
     handleFeedback,
@@ -176,6 +187,14 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appData?.site?.chat_color_theme ?? null,
     appData?.site?.chat_color_theme_inverted ?? false,
   )
+
+  const address = resolveWebAppAddress()
+  const chat = <ChatWithHistory className={className} />
+  const supportsConnections =
+    !isInstalledApp &&
+    !isNewAgent &&
+    appData?.mode === 'advanced-chat' &&
+    address?.kind === 'default'
 
   return (
     <ChatWithHistoryContext.Provider
@@ -203,6 +222,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         handleRenameConversation,
         handleNewConversationCompleted,
         chatShouldReloadKey,
+        conversationSession: supportsConnections ? conversationSession : undefined,
         isMobile,
         isInstalledApp,
         appId,
@@ -223,7 +243,17 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         renderAgentContent,
       }}
     >
-      <ChatWithHistory className={className} />
+      {supportsConnections ? (
+        <WebAppConnectionsProvider
+          address={address}
+          conversationId={currentConversationId || undefined}
+          selectionSession={conversationSession}
+        >
+          {chat}
+        </WebAppConnectionsProvider>
+      ) : (
+        chat
+      )}
     </ChatWithHistoryContext.Provider>
   )
 }
