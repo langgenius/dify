@@ -9,9 +9,9 @@ once complete through the same provider interface as every other trace.
 import json
 import logging
 import threading
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any, Literal, override
 from uuid import uuid4
 
@@ -20,46 +20,37 @@ from dify_agent.protocol.tracing import AgentTraceBatch
 from dify_trace_sdk.egress import Egress
 from dify_trace_sdk.errors import ExportOutcomeUnknownError, ExportRejectedError, ExportRetryableError
 from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
-from dify_trace_sdk.ids import span_id_for
-from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
 from dify_trace_sdk.provider import TraceProvider
 from pydantic import ValidationError
 
+from domain.tracing.errors import TraceRunConflictError, TraceRunError, TraceRunLimitError, TraceRunNotFoundError
+from domain.tracing.sources import SourceNodeExecution
+from domain.tracing.trace_run_agg import TraceRunAgg, TraceRunState, TraceSourceKind
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import (
-    CLOSED_STATES,
     AgentTraceSettings,
-    ApplicationTraceStore,
-    ScheduleTraceExport,
     SourceMessage,
-    SourceNodeExecution,
     TraceApp,
     TraceAppMode,
     TraceRun,
-    TraceRunState,
     TraceRunStatus,
     TraceSource,
-    TraceSourceKind,
     workflow_has_agent_v2,
 )
+from services.tracing.collection_ports import ScheduleTraceExport, TraceRunQuery, TraceRunRepository, TraceSourceQuery
 from services.tracing.delivery import TraceCollector, TraceRecordSource
 from services.tracing.errors import (
     ProviderConfigUnreadableError,
+    TraceCollectionConflictError,
     TraceCollectionError,
+    TraceCollectionLimitError,
     TraceCollectionNotFoundError,
     TraceProviderUnavailableError,
     UnknownTraceProviderError,
 )
-from services.tracing.normalization import (
-    legacy_outer_trace,
-    normalize_agent_span,
-    order_spans,
-    remap_outer_trace,
-    sanitize,
-)
-from services.tracing.provider_configs import TraceProviderSupport, support_of
-from services.tracing.providers import ProviderConfigCodec, TraceProviderCatalog
+from services.tracing.providers import ProviderConfigCodec, TraceProviderCatalog, TraceProviderSupport, support_of
 from services.tracing.records import BaseTraceInfo, MessageTraceInfo, TraceMessage, WorkflowTraceInfo
 from services.tracing.recovery import recover_terminal
 
@@ -79,11 +70,55 @@ def _message_inputs_are_empty(inputs: object) -> bool:
     return inputs is None or isinstance(inputs, (str, dict, list)) and not inputs
 
 
+@contextmanager
+def _collection_errors() -> Generator[None]:
+    """Report a run's rejection as the collection error its handlers map."""
+    try:
+        yield
+    except TraceRunNotFoundError as error:
+        raise TraceCollectionNotFoundError(error.code) from error
+    except TraceRunConflictError as error:
+        raise TraceCollectionConflictError(error.code) from error
+    except TraceRunLimitError as error:
+        raise TraceCollectionLimitError(error.code) from error
+    except TraceRunError as error:
+        raise TraceCollectionError(error.code) from error
+
+
+def _record(run: TraceRunAgg) -> TraceRun:
+    return TraceRun(
+        id=run.id,
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        source_kind=run.source_kind,
+        source_id=run.source_id,
+        provider=run.provider,
+        config_revision=run.config_revision,
+        provider_config=run.provider_config,
+        trace_id=run.trace_id,
+        root_span_id=run.root_span_id,
+        session_id=run.session_id,
+        capture_content=run.capture_content,
+        capture_agent=run.capture_agent,
+        state=run.state,
+        outer_trace=run.outer_trace,
+        span_count=run.span_count,
+        attempts=run.attempts,
+        error_code=run.error_code,
+        trace_url=run.trace_url,
+        provider_trace_id=run.provider_trace_id,
+        span_urls=run.span_urls,
+        accepted_at=run.accepted_at,
+    )
+
+
 class ApplicationTracingService(TraceCollector):
     def __init__(
         self,
         *,
-        traces: ApplicationTraceStore,
+        runs: TraceRunRepository,
+        run_query: TraceRunQuery,
+        sources: TraceSourceQuery,
         records: TraceRecordSource,
         builder: CanonicalTraceBuilder,
         providers: TraceProviderCatalog,
@@ -92,7 +127,9 @@ class ApplicationTracingService(TraceCollector):
         schedule_export: ScheduleTraceExport,
         settings: AgentTraceSettings,
     ) -> None:
-        self._traces = traces
+        self._runs = runs
+        self._run_query = run_query
+        self._sources = sources
         self._records = records
         self._builder = builder
         self._providers = providers
@@ -111,10 +148,13 @@ class ApplicationTracingService(TraceCollector):
         session_id: str,
         workflow_id: str | None,
     ) -> TraceRun | None:
-        """Freeze collection for a source; ``None`` when the source is not collected."""
+        """Freeze collection for a source once; ``None`` when the source is not collected.
+
+        ``workflow_id`` lets a trusted workflow builder reserve a run before its source row is saved.
+        """
         if not self._settings.enabled:
             return None
-        run = self._traces.start(
+        run = self._freeze(
             tenant_id=tenant_id,
             app_id=app_id,
             source_kind=source_kind,
@@ -123,6 +163,83 @@ class ApplicationTracingService(TraceCollector):
             workflow_id=workflow_id,
         )
         return run if run is not None and run.state is not TraceRunState.NOT_COLLECTED else None
+
+    def _freeze(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        source_kind: TraceSourceKind,
+        source_id: str,
+        session_id: str,
+        workflow_id: str | None,
+    ) -> TraceRun | None:
+        """The source's frozen run; ``None`` when the source or its owner does not exist."""
+        # Re-entry uses the already validated, frozen source. It must not depend
+        # on LogStore availability or indexing latency after collection began.
+        if self._sources.app(tenant_id=tenant_id, app_id=app_id) is None:
+            return None
+        frozen = self._run_query.source_run(
+            tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id
+        )
+        if frozen is not None:
+            return frozen
+        if self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id) is None:
+            # A single-node preview allocates its execution ID before the node row
+            # is saved. Only the trusted workflow builder may reserve it, after
+            # its persisted owner workflow is checked.
+            if source_kind not in {"node", "workflow"} or workflow_id is None:
+                return None
+            if self._sources.app_workflow_graph(tenant_id=tenant_id, app_id=app_id, workflow_id=workflow_id) is None:
+                return None
+        tracing = self._sources.app_tracing(tenant_id=tenant_id, app_id=app_id)
+        if tracing is None:
+            return None
+        return self._add(
+            TraceRunAgg.freeze(
+                run_id=str(uuidv7()),
+                trace_id=uuidv7().hex,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                source_kind=source_kind,
+                source_id=source_id,
+                session_id=session_id,
+                policy=tracing.policy,
+                stored_config=tracing.config,
+                now=naive_utc_now(),
+            )
+        )
+
+    def _add(self, run: TraceRunAgg) -> TraceRun | None:
+        if self._runs.add(run):
+            return _record(run)
+        # The first frozen destination wins, so one execution never exports to two providers.
+        return self._run_query.source_run(
+            tenant_id=run.tenant_id, app_id=run.app_id, source_kind=run.source_kind, source_id=run.source_id
+        )
+
+    def _fail_initialization(
+        self, *, tenant_id: str, app_id: str, source_kind: TraceSourceKind, source_id: str
+    ) -> TraceRun | None:
+        """Close a source whose start snapshot is missing; ``None`` when the source does not exist."""
+        if self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id) is None:
+            return None
+        frozen = self._run_query.source_run(
+            tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id
+        )
+        if frozen is not None:
+            return frozen
+        return self._add(
+            TraceRunAgg.initialization_failed(
+                run_id=str(uuidv7()),
+                trace_id=uuidv7().hex,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                source_kind=source_kind,
+                source_id=source_id,
+                now=naive_utc_now(),
+            )
+        )
 
     def prepare_invocation(
         self,
@@ -148,9 +265,12 @@ class ApplicationTracingService(TraceCollector):
         )
         if run is None or not run.capture_agent:
             return None
-        invocation = self._traces.invocation(
-            run_id=run.id, agent_id=agent_id, node_execution_id=node_execution_id, attempt=attempt, call_key=call_key
-        )
+        with _collection_errors(), self._runs.change(run.id) as locked:
+            if locked is None:
+                raise TraceCollectionConflictError("tracing_run_not_collecting")
+            invocation = locked.run.open_invocation(
+                agent_id=agent_id, node_execution_id=node_execution_id, attempt=attempt, call_key=call_key
+            )
         return ApplicationTracingContext(
             run_id=run.id,
             invocation_id=invocation.id,
@@ -161,9 +281,25 @@ class ApplicationTracingService(TraceCollector):
         )
 
     def ingest(self, batch: AgentTraceBatch) -> int:
-        accepted, run_id = self._traces.ingest(
-            batch, max_spans=self._settings.max_spans, max_bytes=self._settings.max_bytes
-        )
+        """Store a runtime batch and return how many spans the run accepted.
+
+        Raises:
+            TraceCollectionNotFoundError: The run, its owner, or the invocation does not exist.
+            TraceCollectionConflictError: The batch conflicts with the run or the run stopped collecting.
+            TraceCollectionLimitError: The batch exceeds the run's limits.
+        """
+        run_id = str(batch.run_id)
+        with _collection_errors(), self._runs.change(run_id) as locked:
+            if locked is None:
+                raise TraceCollectionNotFoundError("tracing_run_not_found")
+            if not locked.owner_exists:
+                raise TraceCollectionNotFoundError("tracing_owner_not_found")
+            accepted = locked.run.ingest(
+                batch.model_dump(mode="json"),
+                max_spans=self._settings.max_spans,
+                max_bytes=self._settings.max_bytes,
+                now=naive_utc_now(),
+            )
         # Persistence commits before scheduling. Beat reconciles a broker outage.
         self._schedule(run_id)
         return accepted
@@ -183,10 +319,12 @@ class ApplicationTracingService(TraceCollector):
         This handoff is made only after the runner observes a terminal result or
         finishes handling an explicit stop, and it does not rewrite Message data.
         """
-        source = self._traces.message(tenant_id=tenant_id, app_id=app_id, message_id=message_id)
+        source = self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=message_id)
         if source is None:
             raise TraceCollectionNotFoundError("tracing_source_not_found")
-        run = self._traces.source_run(tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id)
+        run = self._run_query.source_run(
+            tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id
+        )
         if run is not None and run.state is TraceRunState.NOT_COLLECTED:
             return
         info = self._records.assemble(
@@ -229,9 +367,9 @@ class ApplicationTracingService(TraceCollector):
 
     def reconcile(self) -> None:
         """Schedule unfinished runs again, behind a broker outage, and purge runs past their retention."""
-        for run_id in self._traces.pending_ids(_RECONCILE_BATCH):
+        for run_id in self._run_query.pending_ids(_RECONCILE_BATCH):
             self._schedule(run_id)
-        self._traces.purge(retention_days=self._settings.retention_days, limit=_RECONCILE_BATCH)
+        self._runs.purge(retention_days=self._settings.retention_days, limit=_RECONCILE_BATCH)
 
     def _schedule(self, run_id: str) -> None:
         try:
@@ -239,14 +377,22 @@ class ApplicationTracingService(TraceCollector):
         except Exception:
             logger.warning("Application trace is persisted; scheduling deferred: run_id=%s", run_id)
 
+    def _change(self, run_id: str, change: Callable[[TraceRunAgg], object]) -> None:
+        """Apply ``change`` to a run that may have been purged since it was read."""
+        with self._runs.change(run_id) as locked:
+            if locked is not None:
+                change(locked.run)
+
     def _run_for_source(
         self, *, tenant_id: str, app_id: str, source_kind: TraceSourceKind, source_id: str
     ) -> TraceRun | None:
-        run = self._traces.source_run(tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id)
+        run = self._run_query.source_run(
+            tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id
+        )
         if run is None and source_kind == "message":
-            message = self._traces.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
+            message = self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
             if message is not None and message.workflow_run_id:
-                run = self._traces.source_run(
+                run = self._run_query.source_run(
                     tenant_id=tenant_id, app_id=app_id, source_kind="workflow", source_id=message.workflow_run_id
                 )
         return run
@@ -264,11 +410,11 @@ class ApplicationTracingService(TraceCollector):
         if app.mode is TraceAppMode.AGENT:
             return True
         if workflow_run_id:
-            if self._traces.source_run(
+            if self._run_query.source_run(
                 tenant_id=app.tenant_id, app_id=app.id, source_kind="workflow", source_id=workflow_run_id
             ):
                 return True
-            workflow = self._traces.workflow_run(
+            workflow = self._sources.workflow_run(
                 tenant_id=app.tenant_id, app_id=app.id, workflow_run_id=workflow_run_id
             )
             if workflow is not None:
@@ -278,7 +424,7 @@ class ApplicationTracingService(TraceCollector):
             # the owned app workflow; an unknown snapshot fails closed. The same
             # applies to a Workflow whose run is not yet indexed by LogStore.
             graph = (
-                self._traces.app_workflow_graph(tenant_id=app.tenant_id, app_id=app.id, workflow_id=app.workflow_id)
+                self._sources.app_workflow_graph(tenant_id=app.tenant_id, app_id=app.id, workflow_id=app.workflow_id)
                 if app.workflow_id
                 else None
             )
@@ -291,10 +437,10 @@ class ApplicationTracingService(TraceCollector):
         parent_run_id, parent_node_id = info.resolved_parent_context
         if not parent_run_id:
             return info
-        parent = self._traces.workflow_run_trace(tenant_id=tenant_id, workflow_run_id=parent_run_id)
+        parent = self._run_query.workflow_run_trace(tenant_id=tenant_id, workflow_run_id=parent_run_id)
         if parent is None:
             return info
-        if self._traces.workflow_run(tenant_id=tenant_id, app_id=parent.app_id, workflow_run_id=parent_run_id) is None:
+        if self._sources.workflow_run(tenant_id=tenant_id, app_id=parent.app_id, workflow_run_id=parent_run_id) is None:
             return info
         metadata = dict(info.metadata)
         metadata.pop("parent_trace_context", None)
@@ -321,16 +467,16 @@ class ApplicationTracingService(TraceCollector):
             message_data = info.message_data
             owner_app_id = message_data.app_id if message_data is not None else info.metadata.get("app_id")
             owner = (
-                self._traces.app(tenant_id=tenant_id, app_id=owner_app_id)
+                self._sources.app(tenant_id=tenant_id, app_id=owner_app_id)
                 if isinstance(owner_app_id, str) and owner_app_id
                 else None
             )
             return owner is not None and self._managed_owner(owner, message_data, None)
-        app = self._traces.app(tenant_id=tenant_id, app_id=app_id)
+        app = self._sources.app(tenant_id=tenant_id, app_id=app_id)
         if app is None:
             return False
         message = (
-            self._traces.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
+            self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
             if source_kind == "message"
             else None
         )
@@ -342,11 +488,8 @@ class ApplicationTracingService(TraceCollector):
         if run is None:
             if not managed:
                 return False
-            run = self._traces.record_initialization_failure(
-                tenant_id=app.tenant_id,
-                app_id=app.id,
-                source_kind=source_kind,
-                source_id=source_id,
+            run = self._fail_initialization(
+                tenant_id=app.tenant_id, app_id=app.id, source_kind=source_kind, source_id=source_id
             )
             # A missing start snapshot must never fall back to an exporter without its capture policy.
             logger.warning(
@@ -354,7 +497,7 @@ class ApplicationTracingService(TraceCollector):
             )
             if run is None:
                 return True
-        if run.state is TraceRunState.NOT_COLLECTED or run.state in CLOSED_STATES:
+        if not run.state.accepts_terminal:
             return True
         if (
             app.mode is TraceAppMode.AGENT
@@ -369,120 +512,33 @@ class ApplicationTracingService(TraceCollector):
         trace = self._builder.build(info)
         if trace is None:
             raise TraceCollectionError("tracing_terminal_not_supported")
-        synthetic = frozenset({span_id_for(f"{source_id}:llm")}) if source_kind == "message" else frozenset()
-        trace = remap_outer_trace(
-            trace, trace_id=run.trace_id, capture_content=run.capture_content, synthetic_span_ids=synthetic
-        )
-        trace = trace.model_copy(update={"session_id": run.session_id})
-        self._traces.terminal(run.id, trace.model_dump(mode="json"), trace.root.span_id)
+        self._change(run.id, lambda current: current.capture_terminal(trace, now=naive_utc_now()))
         self._schedule(run.id)
         return True
 
-    def _settle_preview(self, run: TraceRun) -> None:
-        if run.source_kind != "node" or run.outer_trace is not None:
+    def _settle_preview(self, run: TraceRunAgg) -> None:
+        if run.source_kind != "node" or not run.awaits_terminal:
             return
-        node = self._traces.node_execution(tenant_id=run.tenant_id, app_id=run.app_id, node_execution_id=run.source_id)
-        if node is None or node.status in {"running", "pending", "paused"}:
-            return
-        error = node.error
-        started_at = node.created_at.replace(tzinfo=UTC)
-        ended_at = started_at + timedelta(seconds=node.elapsed_time or 0)
-        span = Span(
-            span_id=run.root_span_id,
-            parent_span_id=None,
-            name=node.title or "Agent preview",
-            kind=SpanKind.AGENT,
-            start_time=started_at,
-            end_time=ended_at,
-            status=SpanStatus.ERROR if error else SpanStatus.OK,
-            error=error if run.capture_content else "Node execution failed" if error else None,
-            inputs=sanitize(node.inputs) if run.capture_content else None,
-            outputs=sanitize(node.outputs) if run.capture_content else None,
-            attributes={"node_execution_id": node.id, "node_id": node.node_id, "source": "single_step"},
-        )
-        trace = Trace(
-            trace_id=run.trace_id,
-            external_trace_id=None,
-            session_id=run.session_id,
-            user_id=None,
-            parent=None,
-            spans=(span,),
-        )
-        self._traces.terminal(run.id, trace.model_dump(mode="json"), run.root_span_id)
+        node = self._sources.node_execution(tenant_id=run.tenant_id, app_id=run.app_id, node_execution_id=run.source_id)
+        if node is not None:
+            self._change(run.id, lambda current: current.settle_preview(node, now=naive_utc_now()))
 
-    def _assemble(self, run: TraceRun) -> Trace:
-        if run.outer_trace is None:
-            raise TraceCollectionError("tracing_terminal_missing")
-        # Runs captured before the upgrade stored the previous trace shape, named by its root span.
-        outer = (
-            legacy_outer_trace(run.outer_trace)
-            if "root_span_id" in run.outer_trace
-            else Trace.model_validate(run.outer_trace)
-        )
-        invocations, batches = self._traces.collected(run.id)
-        invocation_by_id = {inv.id: inv for inv in invocations}
-        spans = list(outer.spans)
-        internal_by_invocation: dict[str, dict[str, Span]] = {inv.id: {} for inv in invocations}
-        for batch in batches:
-            if batch.invocation_id not in invocation_by_id:
-                raise TraceCollectionError("tracing_invocation_not_found")
-            for data in batch.spans:
-                span = normalize_agent_span(data, capture_content=run.capture_content)
-                current = internal_by_invocation[batch.invocation_id].get(span.span_id)
-                if current is not None and current != span:
-                    raise TraceCollectionError("tracing_span_conflict")
-                internal_by_invocation[batch.invocation_id][span.span_id] = span
-        for invocation in invocations:
-            children = list(internal_by_invocation[invocation.id].values())
-            if not children:
-                raise TraceCollectionError("tracing_invocation_empty")
-            valid_ids = {child.span_id for child in children}
-            if any(
-                child.parent_span_id not in valid_ids and child.parent_span_id != invocation.span_id
-                for child in children
+    def _claim(self, run_id: str) -> tuple[TraceRunAgg, str] | None:
+        token = str(uuidv7())
+        with self._runs.change(run_id) as locked:
+            if locked is None or not locked.run.claim_export(
+                token=token,
+                owner_exists=locked.owner_exists,
+                collection_timeout=self._settings.collection_timeout_seconds,
+                lease_seconds=self._settings.export_lease_seconds,
+                now=naive_utc_now(),
             ):
-                raise TraceCollectionError("tracing_invocation_parent_invalid")
-            root_children = [child for child in children if child.parent_span_id == invocation.span_id]
-            if not root_children:
-                raise TraceCollectionError("tracing_invocation_root_missing")
-            errors = [child.error for child in root_children if child.status is SpanStatus.ERROR]
-            spans.append(
-                Span(
-                    span_id=invocation.span_id,
-                    parent_span_id=invocation.parent_span_id,
-                    name=f"Agent attempt {invocation.attempt + 1}",
-                    kind=SpanKind.AGENT,
-                    start_time=min(child.start_time for child in children),
-                    end_time=max(child.end_time for child in children),
-                    status=SpanStatus.ERROR if errors else SpanStatus.OK,
-                    error=errors[0] if errors else None,
-                    attributes={
-                        "agent_id": invocation.agent_id,
-                        "attempt": invocation.attempt,
-                        "node_execution_id": invocation.node_execution_id,
-                        "invocation_id": invocation.id,
-                    },
-                )
-            )
-            spans.extend(children)
-        trusted: dict[str, Any] = {
-            "tenant_id": run.tenant_id,
-            "app_id": run.app_id,
-            "session_id": run.session_id,
-            "dify.tenant_id": run.tenant_id,
-            "dify.app_id": run.app_id,
-            "dify.tracing.run_id": run.id,
-            "dify.source.id": run.source_id,
-        }
-        spans = [span.model_copy(update={"attributes": {**span.attributes, **trusted}}) for span in spans]
-        return Trace(
-            trace_id=run.trace_id,
-            external_trace_id=None,
-            session_id=run.session_id,
-            user_id=outer.user_id,
-            parent=None,
-            spans=order_spans(outer.root.span_id, spans),
-        )
+                return None
+            return locked.run, token
+
+    def _renew_export_lease(self, run_id: str, token: str) -> bool:
+        with self._runs.change(run_id) as locked:
+            return locked is not None and locked.run.renew_export_lease(token, now=naive_utc_now())
 
     @contextmanager
     def _export_lease_heartbeat(self, run_id: str, token: str) -> Generator[None]:
@@ -498,7 +554,7 @@ class ApplicationTracingService(TraceCollector):
         def heartbeat() -> None:
             while not stopped.wait(interval):
                 try:
-                    if not self._traces.renew_export_lease(run_id, token):
+                    if not self._renew_export_lease(run_id, token):
                         return
                 except Exception as error:
                     logger.warning(
@@ -526,59 +582,51 @@ class ApplicationTracingService(TraceCollector):
                     logger.warning("Application trace heartbeat shutdown pending: run_id=%s", run_id)
 
     def deliver(self, run_id: str) -> None:
-        record = self._traces.get(run_id)
-        if record is None:
+        run = self._runs.load(run_id)
+        if run is None:
             return
         recover_terminal(
-            record,
-            traces=self._traces,
+            run,
+            runs=self._runs,
+            sources=self._sources,
             records=self._records,
             collector=self,
             collection_timeout=self._settings.collection_timeout_seconds,
             now=naive_utc_now(),
         )
-        record = self._traces.get(run_id)
-        if record is None:
+        run = self._runs.load(run_id)
+        if run is None:
             return
-        self._settle_preview(record)
-        claim = self._traces.claim(
-            run_id,
-            collection_timeout=self._settings.collection_timeout_seconds,
-            lease_seconds=self._settings.export_lease_seconds,
-        )
+        self._settle_preview(run)
+        claim = self._claim(run_id)
         if claim is None:
             return
         run, token = claim
         with self._export_lease_heartbeat(run_id, token):
             try:
                 try:
-                    trace = self._assemble(run)
+                    trace = run.exported_trace(self._run_query.batches(run.id))
                 except (ValueError, KeyError, TypeError) as error:
                     # Invalid persisted trees cannot be repaired by retrying a
                     # provider request. ValidationError also inherits ValueError.
                     raise TraceCollectionError("tracing_payload_invalid") from error
-                provider = self._frozen_provider(run)
+                provider = self._frozen_provider(run.provider)
                 result = provider.send(self._codec.decode(run.tenant_id, type(provider), run.provider_config), trace)
             except ExportOutcomeUnknownError:
-                self._complete_failed(run_id, token, TraceRunState.UNCERTAIN, "provider_acceptance_unknown")
+                self._change(run_id, lambda current: current.export_uncertain(token, now=naive_utc_now()))
             except ExportRetryableError:
-                if run.attempts >= self._settings.max_export_attempts:
-                    self._complete_failed(run_id, token, TraceRunState.FAILED, "provider_retry_exhausted")
-                else:
-                    self._traces.complete(
-                        run_id,
-                        token,
-                        state=TraceRunState.RETRYING,
-                        error_code="provider_temporarily_unavailable",
-                        result=None,
-                        retry_delay=min(300, 5 * 2 ** min(run.attempts - 1, 6)),
-                    )
-            except TraceCollectionError as error:
-                self._complete_failed(run_id, token, TraceRunState.FAILED, error.code)
+                self._change(
+                    run_id,
+                    lambda current: current.export_deferred(
+                        token, max_attempts=self._settings.max_export_attempts, now=naive_utc_now()
+                    ),
+                )
+            except (TraceCollectionError, TraceRunError) as error:
+                self._export_failed(run_id, token, error.code)
             except ProviderConfigUnreadableError:
-                self._complete_failed(run_id, token, TraceRunState.FAILED, "tracing_config_unreadable")
+                self._export_failed(run_id, token, "tracing_config_unreadable")
             except ExportRejectedError:
-                self._complete_failed(run_id, token, TraceRunState.FAILED, "provider_export_rejected")
+                self._export_failed(run_id, token, "provider_export_rejected")
             except Exception as error:
                 logger.warning(
                     "Application trace export failed: run_id=%s provider=%s error_type=%s",
@@ -586,18 +634,25 @@ class ApplicationTracingService(TraceCollector):
                     run.provider,
                     type(error).__name__,
                 )
-                self._complete_failed(run_id, token, TraceRunState.FAILED, "provider_export_rejected")
+                self._export_failed(run_id, token, "provider_export_rejected")
             else:
-                self._traces.complete(
-                    run_id, token, state=TraceRunState.ACCEPTED, error_code=None, result=result, retry_delay=None
+                self._change(
+                    run_id,
+                    lambda current: current.export_accepted(
+                        token,
+                        provider_trace_id=result.trace_id,
+                        trace_url=result.trace_url,
+                        span_urls=result.span_urls,
+                        now=naive_utc_now(),
+                    ),
                 )
 
-    def _complete_failed(self, run_id: str, token: str, state: TraceRunState, error_code: str) -> None:
-        self._traces.complete(run_id, token, state=state, error_code=error_code, result=None, retry_delay=None)
+    def _export_failed(self, run_id: str, token: str, error_code: str) -> None:
+        self._change(run_id, lambda current: current.export_failed(token, error_code, now=naive_utc_now()))
 
-    def _frozen_provider(self, run: TraceRun) -> TraceProvider[Any]:
+    def _frozen_provider(self, provider_id: str) -> TraceProvider[Any]:
         try:
-            return self._providers.resolve(run.provider)(self._egress)
+            return self._providers.resolve(provider_id)(self._egress)
         except (UnknownTraceProviderError, TraceProviderUnavailableError):
             raise TraceCollectionError("tracing_provider_unavailable") from None
 
@@ -636,11 +691,11 @@ class ApplicationTracingService(TraceCollector):
     def _source(self, *, tenant_id: str, app_id: str, kind: TraceSourceKind, source_id: str) -> TraceSource | None:
         match kind:
             case "message":
-                return self._traces.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
+                return self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
             case "workflow":
-                return self._traces.workflow_run(tenant_id=tenant_id, app_id=app_id, workflow_run_id=source_id)
+                return self._sources.workflow_run(tenant_id=tenant_id, app_id=app_id, workflow_run_id=source_id)
             case "node":
-                return self._traces.node_execution(tenant_id=tenant_id, app_id=app_id, node_execution_id=source_id)
+                return self._sources.node_execution(tenant_id=tenant_id, app_id=app_id, node_execution_id=source_id)
 
     def _resolve_status_source(
         self,
@@ -661,12 +716,12 @@ class ApplicationTracingService(TraceCollector):
         # A standalone preview (including a frozen disabled decision) owns its
         # status even if its source later carries a workflow run reference.
         if run is None and isinstance(source, SourceNodeExecution) and source.workflow_run_id:
-            workflow = self._traces.workflow_run(
+            workflow = self._sources.workflow_run(
                 tenant_id=tenant_id, app_id=app_id, workflow_run_id=source.workflow_run_id
             )
             if workflow is None or not source.workflow_id or workflow.workflow_id != source.workflow_id:
                 raise TraceCollectionNotFoundError("tracing_source_not_found")
-            run = self._traces.source_run(
+            run = self._run_query.source_run(
                 tenant_id=tenant_id, app_id=app_id, source_kind="workflow", source_id=workflow.id
             )
             node_execution_id = source.id
@@ -694,7 +749,7 @@ class ApplicationTracingService(TraceCollector):
                 accepted_at=None,
                 capabilities=None,
             )
-        invocations = self._traces.invocations(run.id)
+        invocations = self._run_query.invocations(run.id)
         selected = (
             [inv for inv in invocations if inv.node_execution_id == node_execution_id] if node_execution_id else []
         )
@@ -739,6 +794,11 @@ class ApplicationTracingService(TraceCollector):
         if run is None:
             raise TraceCollectionNotFoundError("tracing_run_not_found")
         self._status_for_run(run, source_kind, source_id, node_execution_id)
-        self._traces.retry(run_id=run.id, acknowledge_possible_duplicates=acknowledge_possible_duplicates)
+        with _collection_errors(), self._runs.change(run.id) as locked:
+            if locked is None:
+                raise TraceCollectionNotFoundError("tracing_run_not_found")
+            locked.run.release_for_retry(
+                acknowledge_possible_duplicates=acknowledge_possible_duplicates, now=naive_utc_now()
+            )
         self._schedule(run.id)
-        return self._status_for_run(self._traces.get(run.id), source_kind, source_id, node_execution_id)
+        return self._status_for_run(self._run_query.get(run.id), source_kind, source_id, node_execution_id)

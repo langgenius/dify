@@ -11,6 +11,7 @@ from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper import ssrf_proxy
+from domain.tracing.trace_run_agg import TraceRunState
 from extensions.application_services.tracing import build_tracing_services
 from extensions.ext_application_services import ApplicationServices
 from libs.datetime_utils import naive_utc_now
@@ -19,7 +20,7 @@ from models.enums import ConversationFromSource
 from models.model import AppMode, Message
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.canonical import CanonicalTraceBuilder
-from services.tracing.collection import AgentTraceSettings, TraceRunState
+from services.tracing.collection import AgentTraceSettings
 from services.tracing.egress import SSRFEgress
 from services.tracing.providers import ProviderConfigCodec
 from services.tracing.records import MessageTraceInfo
@@ -48,7 +49,9 @@ def bind_worker(
 ) -> None:
     """Hand the tasks a worker over the seeded ledger with the installed providers and the SSRF egress."""
     worker = ApplicationTracingService(
-        traces=collection.repository,
+        runs=collection.repository,
+        run_query=collection.repository,
+        sources=collection.repository,
         records=TraceRecordRepository(collection.sessions, files_url="https://files.test", enterprise_details=False),
         builder=CanonicalTraceBuilder(),
         providers=EntryPointTraceProviderCatalog(),

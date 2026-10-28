@@ -1,6 +1,7 @@
 import json
 import threading
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -23,6 +24,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from core.helper.encrypter import obfuscated_token
+from domain.tracing.errors import TraceRunConflictError
+from domain.tracing.trace_run_agg import TraceInvocation, TraceRunAgg, TraceRunState, TraceSourceKind
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
     _dict_to_workflow_node_execution_model,
@@ -36,20 +39,14 @@ from models.application_trace import ApplicationTraceBatch, ApplicationTraceRun
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Message, TraceAppConfig
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories import application_trace_repository as repository_module
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
 from repositories.trace_record_repository import TraceRecordRepository
 from services.app_tracing_config_service import AppTracingConfigService
+from services.tracing import service as service_module
 from services.tracing.canonical import CanonicalTraceBuilder
-from services.tracing.collection import (
-    AgentTraceSettings,
-    TraceInvocation,
-    TraceRun,
-    TraceRunState,
-    TraceRunStatus,
-    TraceSourceKind,
-)
+from services.tracing.collection import AgentTraceSettings, TraceRun, TraceRunStatus
+from services.tracing.collection_ports import LockedTraceRun
 from services.tracing.errors import (
     TraceCollectionConflictError,
     TraceCollectionLimitError,
@@ -85,14 +82,28 @@ class _ApplicationTraceCollectionCollection:
     sessions: sessionmaker[Session]
     run: TraceRun
 
+    @contextmanager
+    def change(self) -> Generator[TraceRunAgg]:
+        """The run under its row lock, in its own transaction; it is saved when the block exits without an error."""
+        with self.repository.change(self.run.id) as locked:
+            assert locked is not None
+            yield locked.run
+
     def invocation(self, name: str = "first") -> TraceInvocation:
-        return self.repository.invocation(
-            run_id=self.run.id,
+        return self.open_invocation(
             agent_id=_application_trace_collection_identifier("agent"),
             node_execution_id=None,
             attempt=0,
             call_key=name,
         )
+
+    def open_invocation(
+        self, *, agent_id: str, node_execution_id: str | None, attempt: int, call_key: str
+    ) -> TraceInvocation:
+        with self.change() as run:
+            return run.open_invocation(
+                agent_id=agent_id, node_execution_id=node_execution_id, attempt=attempt, call_key=call_key
+            )
 
 
 class ScriptedProvider(TraceProvider[LangfuseConfig]):
@@ -189,7 +200,7 @@ def trace_records(sessions: sessionmaker[Session]) -> TraceRecordRepository:
 
 @dataclass
 class ServicePorts:
-    """The service's collaborators besides its ledger; a test replaces those it constrains.
+    """The service's collaborators besides its repository; a test replaces those it constrains.
 
     ``scheduled`` lists the runs the service scheduled for export.
     """
@@ -201,9 +212,17 @@ class ServicePorts:
     scheduled: list[str] = field(default_factory=list[str])
 
     def service(self, case: _ApplicationTraceCollectionCollection) -> ApplicationTracingService:
+        return self.service_on(case.repository, case.sessions)
+
+    def service_on(
+        self, repository: ApplicationTraceRepository, sessions: sessionmaker[Session]
+    ) -> ApplicationTracingService:
+        """The service whose runs, run queries, and source queries all go through ``repository``."""
         return ApplicationTracingService(
-            traces=case.repository,
-            records=trace_records(case.sessions),
+            runs=repository,
+            run_query=repository,
+            sources=repository,
+            records=trace_records(sessions),
             builder=CanonicalTraceBuilder(),
             providers=self.providers,
             codec=ProviderConfigCodec(self.cipher),
@@ -284,7 +303,7 @@ def _application_trace_collection_seed(
             )
         )
     repository = ApplicationTraceRepository(sessions)
-    run = repository.start(
+    ServicePorts(_application_trace_collection_no_egress()).service_on(repository, sessions).start(
         tenant_id=tenant_id,
         app_id=app_id,
         source_kind="message",
@@ -292,6 +311,8 @@ def _application_trace_collection_seed(
         session_id="session-original",
         workflow_id=None,
     )
+    # ``start`` returns no run for a source frozen as not collected, so read the frozen run itself.
+    run = repository.source_run(tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id)
     assert run is not None
     return _ApplicationTraceCollectionCollection(repository, sessions, run)
 
@@ -383,8 +404,10 @@ def _application_trace_collection_batch_for(
 
 def _application_trace_collection_ingest(
     collection: _ApplicationTraceCollectionCollection, batch: AgentTraceBatch
-) -> tuple[int, str]:
-    return collection.repository.ingest(batch, max_spans=100, max_bytes=1_000_000)
+) -> tuple[int, list[str]]:
+    """Ingest through the service; returns the spans it accepted and the runs it then scheduled for export."""
+    ports = ServicePorts(_application_trace_collection_no_egress())
+    return ports.service(collection).ingest(batch), ports.scheduled
 
 
 def _application_trace_collection_terminal(collection: _ApplicationTraceCollectionCollection) -> None:
@@ -406,13 +429,39 @@ def _application_trace_collection_terminal(collection: _ApplicationTraceCollecti
         parent=None,
         spans=(root,),
     )
-    collection.repository.terminal(run.id, trace.model_dump(mode="json"), root.span_id)
+    with collection.change() as current:
+        current.capture_terminal(trace, now=naive_utc_now())
+
+
+def _claim_at(
+    collection: _ApplicationTraceCollectionCollection, *, lease_seconds: int, now: datetime
+) -> tuple[TraceRunAgg, str] | None:
+    """Lease the run for one export attempt; returns the claimed run and the token that fences the attempt."""
+    token = str(uuid4())
+    with collection.repository.change(collection.run.id) as locked:
+        assert locked is not None
+        claimed = locked.run.claim_export(
+            token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=lease_seconds, now=now
+        )
+        return (locked.run, token) if claimed else None
 
 
 def _application_trace_collection_claim(
     collection: _ApplicationTraceCollectionCollection,
-) -> tuple[TraceRun, str] | None:
-    return collection.repository.claim(collection.run.id, collection_timeout=60, lease_seconds=30)
+) -> tuple[TraceRunAgg, str] | None:
+    return _claim_at(collection, lease_seconds=30, now=naive_utc_now())
+
+
+def _accept_export(collection: _ApplicationTraceCollectionCollection, token: str, accepted: SendResult) -> None:
+    """Record the destination's acceptance of the export attempt ``token``."""
+    with collection.change() as run:
+        run.export_accepted(
+            token,
+            provider_trace_id=accepted.trace_id,
+            trace_url=accepted.trace_url,
+            span_urls=accepted.span_urls,
+            now=naive_utc_now(),
+        )
 
 
 class TestApplicationTraceCollectionCases:
@@ -427,20 +476,13 @@ class TestApplicationTraceCollectionCases:
     ) -> None:
         invocation = collection.invocation()
         batch = _application_trace_collection_batch_for(collection.run, invocation)
-        assert _application_trace_collection_ingest(collection, batch) == (1, collection.run.id)
-        assert _application_trace_collection_ingest(collection, batch) == (1, collection.run.id)
+        assert _application_trace_collection_ingest(collection, batch) == (1, [collection.run.id])
+        assert _application_trace_collection_ingest(collection, batch) == (1, [collection.run.id])
         _application_trace_collection_terminal(collection)
         leased = _application_trace_collection_claim(collection)
         assert leased is not None
-        collection.repository.complete(
-            collection.run.id,
-            leased[1],
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=SendResult(trace_id="provider-id", trace_url=None, span_urls={}),
-            retry_delay=None,
-        )
-        assert _application_trace_collection_ingest(collection, batch) == (1, collection.run.id)
+        _accept_export(collection, leased[1], SendResult(trace_id="provider-id", trace_url=None, span_urls={}))
+        assert _application_trace_collection_ingest(collection, batch) == (1, [collection.run.id])
         stored = collection.repository.get(collection.run.id)
         assert stored is not None
         assert stored.span_count == 1
@@ -456,7 +498,7 @@ class TestApplicationTraceCollectionCases:
         changed = batch.model_copy(update={"final": True})
         with pytest.raises(TraceCollectionConflictError, match="tracing_batch_conflict"):
             _application_trace_collection_ingest(collection, changed)
-        invocations, _ = collection.repository.collected(collection.run.id)
+        invocations = collection.repository.invocations(collection.run.id)
         assert invocations[0].finalized is False
         with collection.sessions() as session:
             assert session.scalar(select(ApplicationTraceBatch.final)) is False
@@ -474,11 +516,12 @@ class TestApplicationTraceCollectionCases:
     @staticmethod
     def test_payload_limits_reject_whole_transaction(collection: _ApplicationTraceCollectionCollection) -> None:
         batch = _application_trace_collection_batch_for(collection.run, collection.invocation())
+        limits = replace(AGENT_TRACE_SETTINGS, max_spans=100, max_bytes=1)
+        limited = ServicePorts(_application_trace_collection_no_egress(), settings=limits).service(collection)
         with pytest.raises(TraceCollectionLimitError, match="tracing_payload_limit"):
-            collection.repository.ingest(batch, max_spans=100, max_bytes=1)
-        invocations, batches = collection.repository.collected(collection.run.id)
-        assert not batches
-        assert invocations[0].finalized is False
+            limited.ingest(batch)
+        assert not collection.repository.batches(collection.run.id)
+        assert collection.repository.invocations(collection.run.id)[0].finalized is False
         stored = collection.repository.get(collection.run.id)
         assert stored is not None
         assert stored.span_count == 0
@@ -489,8 +532,7 @@ class TestApplicationTraceCollectionCases:
         altered = batch.model_copy(update={"spans": [batch.spans[0].model_copy(update={"trace_id": "f" * 32})]})
         with pytest.raises(TraceCollectionConflictError, match="tracing_trace_id_mismatch"):
             _application_trace_collection_ingest(collection, altered)
-        _, batches = collection.repository.collected(collection.run.id)
-        assert not batches
+        assert not collection.repository.batches(collection.run.id)
 
     @staticmethod
     def test_content_off_cleans_the_durable_batch_not_only_the_export(
@@ -518,7 +560,7 @@ class TestApplicationTraceCollectionCases:
         )
         batch = original.model_copy(update={"spans": [observation]})
         _application_trace_collection_ingest(collection, batch)
-        _, batches = collection.repository.collected(collection.run.id)
+        batches = collection.repository.batches(collection.run.id)
         assert "private" not in json.dumps(batches[0].spans)
         assert batches[0].spans[0]["events"] == []
         assert batches[0].spans[0]["status"] == "error"
@@ -538,9 +580,8 @@ class TestApplicationTraceCollectionCases:
         original = collection.invocation()
         repeated = collection.invocation()
         assert original.id == repeated.id
-        with pytest.raises(TraceCollectionConflictError, match="tracing_invocation_conflict"):
-            collection.repository.invocation(
-                run_id=collection.run.id,
+        with pytest.raises(TraceRunConflictError, match="tracing_invocation_conflict"):
+            collection.open_invocation(
                 agent_id=_application_trace_collection_identifier("different-agent"),
                 node_execution_id=_application_trace_collection_identifier("different-node"),
                 attempt=2,
@@ -582,14 +623,7 @@ class TestApplicationTraceCollectionCases:
         current = collection.repository.get(collection.run.id)
         assert current is not None
         assert current.state is TraceRunState.UNCERTAIN
-        collection.repository.complete(
-            collection.run.id,
-            leased[1],
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=SendResult(trace_id="late", trace_url=None, span_urls={}),
-            retry_delay=None,
-        )
+        _accept_export(collection, leased[1], SendResult(trace_id="late", trace_url=None, span_urls={}))
         accepted = collection.repository.get(collection.run.id)
         assert accepted is not None
         assert accepted.state is TraceRunState.ACCEPTED
@@ -624,7 +658,8 @@ class TestApplicationTraceCollectionCases:
             config = session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == original.app_id))
             assert config is not None
             config.tracing_config = {"secret_key": "encrypted-new"}
-        repeated = collection.repository.start(
+        service = ServicePorts(_application_trace_collection_no_egress()).service(collection)
+        repeated = service.start(
             tenant_id=original.tenant_id,
             app_id=original.app_id,
             source_kind="message",
@@ -679,9 +714,11 @@ class TestApplicationTraceCollectionCases:
     @staticmethod
     def test_source_owner_checks_app_and_tenant(collection: _ApplicationTraceCollectionCollection) -> None:
         run = collection.run
+        service = ServicePorts(_application_trace_collection_no_egress()).service(collection)
+        foreign_tenant = _application_trace_collection_identifier("foreign-tenant")
         assert (
-            collection.repository.start(
-                tenant_id=_application_trace_collection_identifier("foreign-tenant"),
+            service.start(
+                tenant_id=foreign_tenant,
                 app_id=run.app_id,
                 source_kind="message",
                 source_id=run.source_id,
@@ -690,15 +727,28 @@ class TestApplicationTraceCollectionCases:
             )
             is None
         )
+        # ``start`` also returns no run for a source frozen as not collected; no run may be frozen at all.
+        assert (
+            collection.repository.source_run(
+                tenant_id=foreign_tenant, app_id=run.app_id, source_kind="message", source_id=run.source_id
+            )
+            is None
+        )
         other = _application_trace_collection_seed(collection.sessions, "second-app")
         assert (
-            collection.repository.start(
+            service.start(
                 tenant_id=run.tenant_id,
                 app_id=other.run.app_id,
                 source_kind="message",
                 source_id=run.source_id,
                 session_id="x",
                 workflow_id=None,
+            )
+            is None
+        )
+        assert (
+            collection.repository.source_run(
+                tenant_id=run.tenant_id, app_id=other.run.app_id, source_kind="message", source_id=run.source_id
             )
             is None
         )
@@ -765,8 +815,7 @@ class TestApplicationTraceCollectionCases:
         assert "private" not in json.dumps(stored.outer_trace)
         # The message's synthetic model call is left to the Agent runtime, which reports none here.
         assert len(stored.outer_trace["spans"]) == 1
-        invocations, _ = case.repository.collected(case.run.id)
-        assert invocations == []
+        assert case.repository.invocations(case.run.id) == []
 
     @staticmethod
     def test_deleting_selected_configuration_keeps_historical_destination(
@@ -929,8 +978,7 @@ class TestApplicationTraceServiceBoundariesCases:
             assert config is not None
             config.tracing_config = {**FROZEN_LANGFUSE, "host": "https://new.example", "project_key": "new"}
         node_id = _application_trace_service_boundaries_identifier("selected-node")
-        invocation = case.repository.invocation(
-            run_id=case.run.id,
+        invocation = case.open_invocation(
             agent_id=_application_trace_service_boundaries_identifier("agent"),
             node_execution_id=node_id,
             attempt=1,
@@ -942,17 +990,14 @@ class TestApplicationTraceServiceBoundariesCases:
         _application_trace_service_boundaries_terminal(case)
         lease = _application_trace_service_boundaries_claim(case)
         assert lease is not None
-        case.repository.complete(
-            case.run.id,
+        _accept_export(
+            case,
             lease[1],
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=SendResult(
+            SendResult(
                 trace_id="provider-trace",
                 trace_url="https://frozen.example/trace",
                 span_urls={invocation.span_id: "https://frozen.example/span"},
             ),
-            retry_delay=None,
         )
         service = ServicePorts(
             _application_trace_service_boundaries_no_egress(),
@@ -1001,7 +1046,8 @@ class TestApplicationTraceServiceBoundariesCases:
                     from_source=message.from_source,
                 )
             )
-        new_run = case.repository.start(
+        service = ServicePorts(_application_trace_service_boundaries_no_egress()).service(case)
+        new_run = service.start(
             tenant_id=case.run.tenant_id,
             app_id=case.run.app_id,
             source_kind="message",
@@ -1010,7 +1056,6 @@ class TestApplicationTraceServiceBoundariesCases:
             workflow_id=None,
         )
         assert new_run is not None
-        service = ServicePorts(_application_trace_service_boundaries_no_egress()).service(case)
         previous = service.status(**source(case.run), node_execution_id=None)
         assert previous.project_url == "https://langfuse.test/project/original"
         assert (
@@ -1109,14 +1154,8 @@ class TestApplicationTraceServiceBoundariesCases:
         _application_trace_service_boundaries_terminal(case)
         lease = _application_trace_service_boundaries_claim(case)
         assert lease is not None
-        case.repository.complete(
-            case.run.id,
-            lease[1],
-            state=TraceRunState.UNCERTAIN,
-            error_code="provider_acceptance_unknown",
-            result=None,
-            retry_delay=None,
-        )
+        with case.change() as run:
+            run.export_uncertain(lease[1], now=naive_utc_now())
         ports = ServicePorts(_application_trace_service_boundaries_no_egress())
         service = ports.service(case)
         with pytest.raises(TraceCollectionConflictError, match="tracing_duplicate_acknowledgement_required"):
@@ -1198,14 +1237,15 @@ class TestApplicationTraceServiceBoundariesCases:
             freeze_config(case, "langfuse", {**FROZEN_LANGFUSE, "host": "private-host-without-scheme"})
         cipher = UnreadableSecretCipher() if unreadable == "decryption" else StoredSecretCipher()
         destination = RecordingEgress([], grpc_target=None)
-        ServicePorts(destination, cipher=cipher).service(case).deliver(case.run.id)
+        service = ServicePorts(destination, cipher=cipher).service(case)
+        service.deliver(case.run.id)
         current = case.repository.get(case.run.id)
         assert current is not None
         assert (current.state, current.error_code) == (TraceRunState.FAILED, "tracing_config_unreadable")
         assert destination.requests == []
         assert "private-" not in caplog.text
         with pytest.raises(TraceCollectionConflictError, match="tracing_retry_not_allowed"):
-            case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
+            service.retry(**source(case.run), acknowledge_possible_duplicates=True, node_execution_id=None)
 
     @staticmethod
     def test_unavailable_frozen_provider_fails_before_decryption(
@@ -1267,7 +1307,9 @@ class TestApplicationTraceServiceBoundariesCases:
             )
             node_record.created_at = datetime(2026, 1, 1)
             session.add(node_record)
-        run = case.repository.start(
+        destination = _application_trace_service_boundaries_accepted("preview-trace")
+        service = ServicePorts(destination).service(case)
+        run = service.start(
             tenant_id=case.run.tenant_id,
             app_id=case.run.app_id,
             source_kind="node",
@@ -1276,8 +1318,7 @@ class TestApplicationTraceServiceBoundariesCases:
             session_id="preview-session",
         )
         assert run is not None
-        destination = _application_trace_service_boundaries_accepted("preview-trace")
-        ServicePorts(destination).service(case).deliver(run.id)
+        service.deliver(run.id)
         current = case.repository.get(run.id)
         assert current is not None
         if status == WorkflowNodeExecutionStatus.RUNNING:
@@ -1437,8 +1478,11 @@ class TestInvalidTraceDeliveryCases:
         assert current.state is TraceRunState.FAILED
         assert current.error_code == "tracing_payload_invalid"
         assert current.attempts == 1
+        # A retry reports the run's status, which resolves its frozen provider; the forbidden ports guard only delivery.
         with pytest.raises(TraceCollectionConflictError, match="tracing_retry_not_allowed"):
-            case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
+            ServicePorts(_invalid_trace_delivery_no_egress()).service(case).retry(
+                **source(case.run), acknowledge_possible_duplicates=True, node_execution_id=None
+            )
 
 
 """Node logs resolve the caller's trace using SQL or configured LogStore ownership."""
@@ -1478,8 +1522,7 @@ class NodeAlias:
     def accept(self, *, spans: bool = True) -> tuple[str, str]:
         span_urls: dict[str, str] = {}
         for attempt in (0, 1):
-            invocation = self.case.repository.invocation(
-                run_id=self.case.run.id,
+            invocation = self.case.open_invocation(
                 agent_id=_application_trace_node_alias_identifier("referenced-agent"),
                 node_execution_id=str(self.node["id"]),
                 attempt=attempt,
@@ -1493,17 +1536,14 @@ class NodeAlias:
         _application_trace_node_alias_terminal(self.case)
         lease = _application_trace_node_alias_claim(self.case)
         assert lease is not None
-        self.case.repository.complete(
-            self.case.run.id,
+        _accept_export(
+            self.case,
             lease[1],
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=SendResult(
+            SendResult(
                 trace_id="provider-trace",
                 trace_url="https://provider.test/trace",
                 span_urls=span_urls if spans else {},
             ),
-            retry_delay=None,
         )
         return "https://provider.test/trace", "https://provider.test/span/1"
 
@@ -1627,7 +1667,8 @@ class TestApplicationTraceNodeAliasCases:
         event.listen(sqlite_engine, "commit", ended)
         event.listen(sqlite_engine, "rollback", ended)
         try:
-            run = case.repository.start(
+            service = ServicePorts(_application_trace_node_alias_no_egress()).service(case)
+            run = service.start(
                 tenant_id=case.run.tenant_id,
                 app_id=case.run.app_id,
                 source_kind="workflow",
@@ -1679,13 +1720,10 @@ class TestApplicationTraceNodeAliasCases:
             _application_trace_node_alias_terminal(alias.case)
             lease = _application_trace_node_alias_claim(alias.case)
             assert lease is not None
-            alias.case.repository.complete(
-                alias.case.run.id,
+            _accept_export(
+                alias.case,
                 lease[1],
-                state=TraceRunState.ACCEPTED,
-                error_code=None,
-                result=SendResult(trace_id="outer-only", trace_url="https://provider.test/outer", span_urls={}),
-                retry_delay=None,
+                SendResult(trace_id="outer-only", trace_url="https://provider.test/outer", span_urls={}),
             )
         status = alias.status()
         assert status.status is (TraceRunState.ACCEPTED if accepted else TraceRunState.COLLECTING)
@@ -1697,7 +1735,7 @@ class TestApplicationTraceNodeAliasCases:
     @pytest.mark.parametrize("state", [TraceRunState.COLLECTING, TraceRunState.NOT_COLLECTED])
     def test_standalone_node_snapshot_wins_over_parent(alias: NodeAlias, state: TraceRunState) -> None:
         alias.accept()
-        node_run = alias.case.repository.start(
+        node_run = alias.service().start(
             tenant_id=alias.case.run.tenant_id,
             app_id=alias.case.run.app_id,
             source_kind="node",
@@ -1719,8 +1757,7 @@ class TestApplicationTraceNodeAliasCases:
 
     @staticmethod
     def test_explicit_other_node_filter_cannot_select_sibling_span(alias: NodeAlias) -> None:
-        sibling = alias.case.repository.invocation(
-            run_id=alias.case.run.id,
+        sibling = alias.case.open_invocation(
             agent_id=_application_trace_node_alias_identifier("referenced-agent"),
             node_execution_id=_application_trace_node_alias_identifier("sibling-node"),
             attempt=0,
@@ -1861,8 +1898,18 @@ class _SlowDestination(RecordingEgress):
         )
 
 
+def _export_lease(locked: LockedTraceRun | None) -> str | None:
+    """The token of the export attempt that holds the run; ``None`` when no attempt holds it."""
+    if locked is None or locked.run.state is not TraceRunState.EXPORTING:
+        return None
+    return locked.run.export_token
+
+
 class _RenewalRecordingRepository(ApplicationTraceRepository):
-    """Records the thread of every lease renewal; the first one can fail like a dropped connection."""
+    """Records the thread of every lease renewal; the first one can fail like a dropped connection.
+
+    A renewal is a change after which the export attempt that held the run still holds it.
+    """
 
     def __init__(self, sessions: sessionmaker[Session], *, transient_failure: bool) -> None:
         super().__init__(sessions)
@@ -1871,34 +1918,47 @@ class _RenewalRecordingRepository(ApplicationTraceRepository):
         self.renewed = threading.Event()
 
     @override
-    def renew_export_lease(self, run_id: str, token: str) -> bool:
-        self.renewal_threads.append(threading.get_ident())
-        if self._transient_failure and len(self.renewal_threads) == 1:
-            raise RuntimeError("private-provider-value")
-        renewal = super().renew_export_lease(run_id, token)
-        self.renewed.set()
-        return renewal
+    @contextmanager
+    def change(self, run_id: str) -> Generator[LockedTraceRun | None]:
+        renewal = False
+        with super().change(run_id) as locked:
+            lease = _export_lease(locked)
+            yield locked
+            renewal = lease is not None and _export_lease(locked) == lease
+            if renewal:
+                self.renewal_threads.append(threading.get_ident())
+                if self._transient_failure and len(self.renewal_threads) == 1:
+                    raise RuntimeError("private-provider-value")
+        if renewal:
+            self.renewed.set()
 
 
 class _UnavailableCompletionRepository(ApplicationTraceRepository):
     """Loses the database when the export outcome is recorded."""
 
     @override
-    def complete(
-        self,
-        run_id: str,
-        token: str,
-        *,
-        state: TraceRunState,
-        error_code: str | None,
-        result: SendResult | None,
-        retry_delay: int | None,
-    ) -> None:
-        raise TracingStoreUnavailableError("database unavailable")
+    @contextmanager
+    def change(self, run_id: str) -> Generator[LockedTraceRun | None]:
+        with super().change(run_id) as locked:
+            lease = _export_lease(locked)
+            yield locked
+            if lease is not None and _export_lease(locked) is None:
+                raise TracingStoreUnavailableError("database unavailable")
 
 
 def result(trace_id: str) -> SendResult:
     return SendResult(trace_id=trace_id, trace_url=None, span_urls={})
+
+
+def _renew_export_lease(case: _ExportLeaseCollection, token: str, now: datetime) -> bool:
+    with case.change() as run:
+        return run.renew_export_lease(token, now=now)
+
+
+def _release_for_retry(case: _ExportLeaseCollection) -> None:
+    """An operator's retry that acknowledges possible duplicates."""
+    with case.change() as run:
+        run.release_for_retry(acknowledge_possible_duplicates=True, now=naive_utc_now())
 
 
 def _stored(case: _ExportLeaseCollection) -> ApplicationTraceRun:
@@ -1932,30 +1992,27 @@ class TestExportLeaseCases:
         return collection
 
     @staticmethod
-    def test_renewal_keeps_long_export_alive_then_missing_heartbeat_expires(
-        case: _ExportLeaseCollection, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        clock = [naive_utc_now()]
-        monkeypatch.setattr(repository_module, "naive_utc_now", lambda: clock[0])
-        leased = _export_lease_claim(case)
+    def test_renewal_keeps_long_export_alive_then_missing_heartbeat_expires(case: _ExportLeaseCollection) -> None:
+        now = naive_utc_now()
+        leased = _claim_at(case, lease_seconds=30, now=now)
         assert leased is not None
         token = leased[1]
-        clock[0] += timedelta(seconds=20)
-        assert case.repository.renew_export_lease(case.run.id, token)
-        clock[0] += timedelta(seconds=20)
-        assert _export_lease_claim(case) is None
+        now += timedelta(seconds=20)
+        assert _renew_export_lease(case, token, now)
+        now += timedelta(seconds=20)
+        assert _claim_at(case, lease_seconds=30, now=now) is None
         current = _stored(case)
         assert current.state == TraceRunState.EXPORTING
         assert current.attempts == 1
         assert current.export_started_at is not None
-        assert current.export_started_at + timedelta(seconds=30) < clock[0]
-        clock[0] += timedelta(seconds=11)
-        assert _export_lease_claim(case) is None
+        assert current.export_started_at + timedelta(seconds=30) < now
+        now += timedelta(seconds=11)
+        assert _claim_at(case, lease_seconds=30, now=now) is None
         expired = _stored(case)
         assert expired.state == TraceRunState.UNCERTAIN
         assert expired.error_code == "export_lease_expired"
         assert expired.export_token == token
-        assert not case.repository.renew_export_lease(case.run.id, token)
+        assert not _renew_export_lease(case, token, now)
 
     @staticmethod
     def test_old_rows_without_heartbeat_use_started_at(case: _ExportLeaseCollection) -> None:
@@ -1976,15 +2033,8 @@ class TestExportLeaseCases:
         leased = _export_lease_claim(case)
         assert leased is not None
         before = _stored(case)
-        assert not case.repository.renew_export_lease(case.run.id, "other-token")
-        case.repository.complete(
-            case.run.id,
-            "other-token",
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=result("wrong"),
-            retry_delay=None,
-        )
+        assert not _renew_export_lease(case, "other-token", naive_utc_now())
+        _accept_export(case, "other-token", result("wrong"))
         current = _stored(case)
         assert current.export_token == leased[1]
         assert current.export_heartbeat_at == before.export_heartbeat_at
@@ -1999,9 +2049,7 @@ class TestExportLeaseCases:
             trace_url="https://example.com/trace",
             span_urls={"a" * 16: "https://example.com/span"},
         )
-        case.repository.complete(
-            case.run.id, token, state=TraceRunState.ACCEPTED, error_code=None, result=confirmed, retry_delay=None
-        )
+        _accept_export(case, token, confirmed)
         current = _stored(case)
         assert current.state == TraceRunState.ACCEPTED
         assert current.error_code is None
@@ -2009,57 +2057,29 @@ class TestExportLeaseCases:
         assert current.accepted_at is not None
         assert current.trace_url == confirmed.trace_url
         assert current.span_urls == {"a" * 16: "https://example.com/span"}
-        case.repository.complete(
-            case.run.id,
-            token,
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=result("duplicate-ack"),
-            retry_delay=None,
-        )
+        _accept_export(case, token, result("duplicate-ack"))
         assert _stored(case).provider_trace_id == "confirmed"
-        with pytest.raises(TraceCollectionConflictError, match="tracing_already_accepted"):
-            case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
+        with pytest.raises(TraceRunConflictError, match="tracing_already_accepted"):
+            _release_for_retry(case)
 
     @staticmethod
     def test_manual_retry_revokes_old_heartbeat_and_ack_before_and_after_new_claim(
         case: _ExportLeaseCollection,
     ) -> None:
         old_token = _expire(case)
-        case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
-        assert not case.repository.renew_export_lease(case.run.id, old_token)
-        case.repository.complete(
-            case.run.id,
-            old_token,
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=result("old"),
-            retry_delay=None,
-        )
+        _release_for_retry(case)
+        assert not _renew_export_lease(case, old_token, naive_utc_now())
+        _accept_export(case, old_token, result("old"))
         assert _stored(case).state == TraceRunState.READY
         second = _export_lease_claim(case)
         assert second is not None
         assert second[1] != old_token
-        case.repository.complete(
-            case.run.id,
-            old_token,
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=result("old"),
-            retry_delay=None,
-        )
+        _accept_export(case, old_token, result("old"))
         current = _stored(case)
         assert current.state == TraceRunState.EXPORTING
         assert current.export_token == second[1]
         assert current.provider_trace_id is None
-        case.repository.complete(
-            case.run.id,
-            second[1],
-            state=TraceRunState.ACCEPTED,
-            error_code=None,
-            result=result("new"),
-            retry_delay=None,
-        )
+        _accept_export(case, second[1], result("new"))
         assert _stored(case).provider_trace_id == "new"
 
     @staticmethod
@@ -2068,9 +2088,14 @@ class TestExportLeaseCases:
         case: _ExportLeaseCollection, late_state: TraceRunState
     ) -> None:
         token = _expire(case)
-        case.repository.complete(
-            case.run.id, token, state=late_state, error_code="late-failure", result=None, retry_delay=None
-        )
+        now = naive_utc_now()
+        with case.change() as run:
+            if late_state is TraceRunState.FAILED:
+                run.export_failed(token, "late-failure", now=now)
+            elif late_state is TraceRunState.RETRYING:
+                run.export_deferred(token, max_attempts=AGENT_TRACE_SETTINGS.max_export_attempts, now=now)
+            else:
+                run.export_uncertain(token, now=now)
         current = _stored(case)
         assert current.state == TraceRunState.UNCERTAIN
         assert current.error_code == "export_lease_expired"
@@ -2082,9 +2107,7 @@ class TestExportLeaseCases:
             row = session.get(ApplicationTraceRun, case.run.id)
             assert row is not None
             row.error_code = "provider_acceptance_unknown"
-        case.repository.complete(
-            case.run.id, token, state=TraceRunState.ACCEPTED, error_code=None, result=result("late"), retry_delay=None
-        )
+        _accept_export(case, token, result("late"))
         assert _stored(case).state == TraceRunState.UNCERTAIN
 
     @staticmethod
@@ -2105,7 +2128,8 @@ class TestExportLeaseCases:
         reply: EgressResponse | Exception,
     ) -> None:
         clock = [naive_utc_now()]
-        monkeypatch.setattr(repository_module, "naive_utc_now", lambda: clock[0])
+        # The service dates its claim, renewals, and outcome; the second claimant below passes the same clock.
+        monkeypatch.setattr(service_module, "naive_utc_now", lambda: clock[0])
         renewals = _RenewalRecordingRepository(case.sessions, transient_failure=transient_failure)
         observed: list[tuple[bool, bool, str]] = []
 
@@ -2114,7 +2138,7 @@ class TestExportLeaseCases:
             # transaction can prevent a second claimant from marking it uncertain.
             clock[0] += timedelta(seconds=3)
             heartbeat_committed = renewals.renewed.wait(3)
-            second_claim = case.repository.claim(case.run.id, collection_timeout=60, lease_seconds=1)
+            second_claim = _claim_at(case, lease_seconds=1, now=clock[0])
             observed.append((heartbeat_committed, second_claim is None, _stored(case).state))
 
         ports = ServicePorts(
@@ -2131,8 +2155,11 @@ class TestExportLeaseCases:
     @staticmethod
     def test_heartbeat_stops_even_when_completion_database_write_raises(case: _ExportLeaseCollection) -> None:
         unavailable = replace(case, repository=_UnavailableCompletionRepository(case.sessions))
+        destination = _export_lease_accepted("ack")
         with pytest.raises(TracingStoreUnavailableError, match="database unavailable"):
-            ServicePorts(_export_lease_accepted("ack")).service(unavailable).deliver(case.run.id)
+            ServicePorts(destination).service(unavailable).deliver(case.run.id)
+        # The database is lost only once the destination answered, so the export ran under its heartbeat.
+        assert len(destination.requests) == 1
         assert not any(thread.name == f"application-trace-lease-{case.run.id}" for thread in threading.enumerate())
 
 

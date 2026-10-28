@@ -43,7 +43,11 @@ def test_agent_collection_shares_the_providers_and_schedules_exports_on_the_trac
     tracing = build_tracing_services(database_client=sqlite_session_factory)
     agent_traces = tracing.agent_traces
 
-    assert isinstance(agent_traces._traces, ApplicationTraceRepository)
+    # One repository persists the run aggregates and answers the run and source queries.
+    assert isinstance(agent_traces._runs, ApplicationTraceRepository)
+    assert agent_traces._run_query is agent_traces._runs
+    assert agent_traces._sources is agent_traces._runs
+    assert agent_traces._runs._sessions is sqlite_session_factory
     assert isinstance(agent_traces._records, TraceRecordRepository)
     # Agent traces never carry the enterprise telemetry dimensions.
     assert agent_traces._records._enterprise_details is False

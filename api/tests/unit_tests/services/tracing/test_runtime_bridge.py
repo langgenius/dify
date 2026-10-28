@@ -33,9 +33,11 @@ from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuild
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
+from domain.tracing.trace_run_agg import TraceRunState, TraceSourceKind
 from extensions.tracing import application_tracing_hooks, bind_tracing
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import VariablePool
+from libs.datetime_utils import naive_utc_now
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
@@ -62,17 +64,9 @@ from repositories.application_trace_repository import ApplicationTraceRepository
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
-from services.tracing.collection import (
-    AgentTraceSettings,
-    ApplicationTraceStore,
-    TraceRun,
-    TraceRunState,
-    TraceSourceKind,
-    workflow_has_agent_v2,
-)
+from services.tracing.collection import AgentTraceSettings, AppTracingSnapshot, TraceRun, workflow_has_agent_v2
 from services.tracing.delivery import ExportJob, ExportRetryQueue, TraceDeliveryService
 from services.tracing.errors import TraceCollectorUnavailableError, TracingStoreUnavailableError
-from services.tracing.normalization import remap_outer_trace
 from services.tracing.providers import ProviderConfigCodec
 from services.tracing.records import WorkflowTraceInfo
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
@@ -132,23 +126,14 @@ class _SingleAttempt(ExportRetryQueue):
 
 
 class _FreezeFails(ApplicationTraceRepository):
-    """The real ledger, except that freezing a run fails with ``failure``."""
+    """The real ledger, except that reading the tracing snapshot a run freezes fails with ``failure``."""
 
     def __init__(self, sessions: sessionmaker[Session], failure: Exception) -> None:
         super().__init__(sessions)
         self._failure = failure
 
     @override
-    def start(
-        self,
-        *,
-        tenant_id: str,
-        app_id: str,
-        source_kind: TraceSourceKind,
-        source_id: str,
-        session_id: str,
-        workflow_id: str | None,
-    ) -> TraceRun | None:
+    def app_tracing(self, *, tenant_id: str, app_id: str) -> AppTracingSnapshot | None:
         raise self._failure
 
 
@@ -158,14 +143,16 @@ def record_source(sessions: sessionmaker[Session]) -> TraceRecordRepository:
 
 def tracing_service(
     sessions: sessionmaker[Session],
-    traces: ApplicationTraceStore,
+    traces: ApplicationTraceRepository,
     egress: Egress,
     scheduled: list[str],
     settings: AgentTraceSettings,
 ) -> ApplicationTracingService:
     """Agent trace collection exporting to Langfuse; scheduled exports are recorded instead of enqueued."""
     return ApplicationTracingService(
-        traces=traces,
+        runs=traces,
+        run_query=traces,
+        sources=traces,
         records=record_source(sessions),
         builder=CanonicalTraceBuilder(),
         providers=InstalledTraceProviders(LangfuseProvider),
@@ -272,7 +259,7 @@ def seed(sessions: sessionmaker[Session], name: str) -> Collection:
             )
         )
     repository = ApplicationTraceRepository(sessions)
-    run = repository.start(
+    run = tracing_service(sessions, repository, no_egress(), [], AGENT_TRACE_SETTINGS).start(
         tenant_id=tenant_id,
         app_id=app_id,
         source_kind="message",
@@ -330,6 +317,20 @@ def trace_event(run: TraceRun, payload: TracePayload) -> TraceEvent:
     )
 
 
+def capture(traces: ApplicationTraceRepository, run_id: str, trace: Trace) -> None:
+    """Keep a business terminal in its run without scheduling the run's export."""
+    with traces.change(run_id) as locked:
+        assert locked is not None
+        locked.run.capture_terminal(trace, now=naive_utc_now())
+
+
+def ingest(traces: ApplicationTraceRepository, batch: AgentTraceBatch, *, max_spans: int, max_bytes: int) -> None:
+    """Store a runtime batch in its run without scheduling the run's export."""
+    with traces.change(str(batch.run_id)) as locked:
+        assert locked is not None
+        locked.run.ingest(batch.model_dump(mode="json"), max_spans=max_spans, max_bytes=max_bytes, now=naive_utc_now())
+
+
 def terminal(collection: Collection) -> None:
     """Persist a root-only business terminal for the collection's run."""
     run = collection.run
@@ -350,7 +351,7 @@ def terminal(collection: Collection) -> None:
         parent=None,
         spans=(root,),
     )
-    collection.repository.terminal(run.id, trace.model_dump(mode="json"), root.span_id)
+    capture(collection.repository, run.id, trace)
 
 
 @dataclass(frozen=True)
@@ -360,7 +361,7 @@ class Case:
     scheduled: list[str]
 
 
-def handoff(collection: Collection, traces: ApplicationTraceStore, egress: Egress) -> Case:
+def handoff(collection: Collection, traces: ApplicationTraceRepository, egress: Egress) -> Case:
     """The Agent collector over ``traces``, exporting through ``egress``."""
     scheduled: list[str] = []
     return Case(
@@ -462,7 +463,7 @@ def workflow(case: Case, name: str, *, has_agent: bool, snapshot: bool) -> tuple
         row.created_at = now
         session.add(row)
     trace_run = (
-        case.collection.repository.start(
+        case.service.start(
             tenant_id=row.tenant_id,
             app_id=row.app_id,
             source_kind="workflow",
@@ -768,13 +769,11 @@ class TestApplicationTraceHandoffCases:
                 )
                 node_record.created_at = row.created_at
                 session.add(node_record)
-        invocation = case.collection.repository.invocation(
-            run_id=managed.id,
-            agent_id=identifier("agent"),
-            node_execution_id=agent_node_id,
-            attempt=0,
-            call_key="agent:0",
-        )
+        with case.collection.repository.change(managed.id) as locked:
+            assert locked is not None
+            invocation = locked.run.open_invocation(
+                agent_id=identifier("agent"), node_execution_id=agent_node_id, attempt=0, call_key="agent:0"
+            )
         spans = [
             AgentTraceSpan(
                 trace_id=managed.trace_id,
@@ -807,7 +806,8 @@ class TestApplicationTraceHandoffCases:
             )
             for key in ("b", "c")
         )
-        case.collection.repository.ingest(
+        ingest(
+            case.collection.repository,
             AgentTraceBatch(
                 run_id=UUID(managed.id), invocation_id=UUID(invocation.id), batch_id=uuid4(), final=True, spans=spans
             ),
@@ -848,7 +848,7 @@ class Bridge:
 
 
 def bridge_hooks(
-    sessions: sessionmaker[Session], traces: ApplicationTraceStore, settings: AgentTraceSettings
+    sessions: sessionmaker[Session], traces: ApplicationTraceRepository, settings: AgentTraceSettings
 ) -> RuntimeApplicationTracingHooks:
     return RuntimeApplicationTracingHooks(tracing_service(sessions, traces, no_egress(), [], settings))
 
@@ -1085,7 +1085,7 @@ class TestRuntimeBridgeCases:
     def test_worker_terminal_handoff_preserves_outcome_without_sse(
         bridge: Bridge, outcome: Literal["succeeded", "failed", "cancelled"]
     ) -> None:
-        started = bridge.traces.start(
+        started = tracing_service(bridge.sessions, bridge.traces, no_egress(), [], AGENT_TRACE_SETTINGS).start(
             tenant_id="tenant",
             app_id="agent-app",
             source_kind="message",
@@ -1420,10 +1420,10 @@ class TestWorkflowToolTracingBoundaryCases:
         )
         outer = CanonicalTraceBuilder().build(info)
         assert outer is not None
-        outer = remap_outer_trace(outer, trace_id=run.trace_id, capture_content=False, synthetic_span_ids=frozenset())
-        traces.terminal(run.id, outer.model_dump(mode="json"), outer.root.span_id)
+        capture(traces, run.id, outer)
         [invocation] = traces.invocations(run.id)
-        traces.ingest(
+        ingest(
+            traces,
             AgentTraceBatch(
                 run_id=UUID(run.id),
                 invocation_id=UUID(invocation.id),

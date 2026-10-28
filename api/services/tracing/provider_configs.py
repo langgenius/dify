@@ -9,7 +9,7 @@ deliver traces and are never presented back.
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, override
+from typing import Any, override
 
 from dify_trace_sdk.config import ProviderConfig
 from dify_trace_sdk.egress import Egress
@@ -35,7 +35,9 @@ from services.tracing.providers import (
     SUPPORTED_PROVIDERS,
     ProviderConfigCodec,
     TraceProviderCatalog,
+    TraceProviderSupport,
     configured_secrets,
+    support_of,
 )
 
 logger = logging.getLogger(__name__)
@@ -176,34 +178,10 @@ class ProviderConfigGateway(TracingConfigProviderGateway):
 
 
 @dataclass(frozen=True, slots=True)
-class TraceProviderSupport:
-    """What a provider's mapping supports. Describes the adapter, not delivery health."""
-
-    provider: str
-    native_cost: bool
-    trace_url: bool
-    span_url: bool
-    agent_spans: Literal[True] = True
-    session: Literal[True] = True
-    native_usage: Literal[True] = True
-    export_ack: Literal["accepted"] = "accepted"
-    """An exporter acknowledgement does not confirm that the destination can query the trace."""
-
-
-@dataclass(frozen=True, slots=True)
 class TraceProviderCapabilities:
     support: TraceProviderSupport
     api_collection_enabled: bool
     """Whether this deployment collects Agent runtime spans; it does not probe the Agent runtime."""
-
-
-def support_of(provider: type[TraceProvider[Any]]) -> TraceProviderSupport:
-    return TraceProviderSupport(
-        provider=provider.id,
-        native_cost=provider.capabilities.native_cost,
-        trace_url=provider.capabilities.trace_url,
-        span_url=provider.capabilities.span_url,
-    )
 
 
 class TraceProviderCapabilitiesQuery:

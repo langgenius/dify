@@ -55,8 +55,11 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
         max_export_attempts=dify_config.OPS_AGENT_TRACE_MAX_ATTEMPTS,
         retention_days=dify_config.OPS_AGENT_TRACE_RETENTION_DAYS,
     )
+    agent_trace_runs = ApplicationTraceRepository(database_client)
     agent_traces = ApplicationTracingService(
-        traces=ApplicationTraceRepository(database_client),
+        runs=agent_trace_runs,
+        run_query=agent_trace_runs,
+        sources=agent_trace_runs,
         # App, workspace, and credential names are enterprise telemetry dimensions only.
         records=TraceRecordRepository(database_client, files_url=dify_config.FILES_URL, enterprise_details=False),
         builder=builder,

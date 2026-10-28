@@ -6,12 +6,8 @@ from dify_trace_sdk.testing import RecordingEgress, response
 
 from core.helper.encrypter import obfuscated_token
 from services import app_tracing_config_service as config_service
-from services.tracing.provider_configs import (
-    ProviderConfigGateway,
-    TraceProviderCapabilitiesQuery,
-    TraceProviderSupport,
-)
-from services.tracing.providers import ProviderConfigCodec, configured_secrets
+from services.tracing.provider_configs import ProviderConfigGateway, TraceProviderCapabilitiesQuery
+from services.tracing.providers import ProviderConfigCodec, TraceProviderSupport, configured_secrets
 from tests.helpers.unit.services.tracing_ports import InstalledTraceProviders, WorkspaceBoundCipher
 
 WORKSPACE = "tenant-1"

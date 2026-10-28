@@ -15,7 +15,8 @@ from extensions.ext_application_services import ApplicationServices
 from models.application_trace import ApplicationTraceBatch
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.canonical import CanonicalTraceBuilder
-from services.tracing.collection import AgentTraceSettings, ScheduleTraceExport
+from services.tracing.collection import AgentTraceSettings
+from services.tracing.collection_ports import ScheduleTraceExport
 from services.tracing.providers import ProviderConfigCodec
 from services.tracing.service import ApplicationTracingService
 from tests.helpers.unit.config_override import config_overrides_context
@@ -49,7 +50,9 @@ def bind_collector(
 ) -> None:
     """Make the app's composition root hand the ingestion handler a collector over the seeded ledger."""
     collector = ApplicationTracingService(
-        traces=collection.repository,
+        runs=collection.repository,
+        run_query=collection.repository,
+        sources=collection.repository,
         records=TraceRecordRepository(collection.sessions, files_url="https://files.test", enterprise_details=False),
         builder=CanonicalTraceBuilder(),
         providers=InstalledTraceProviders(),
