@@ -1,9 +1,11 @@
 import { ORPCError } from '@orpc/client'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { testApiKeySchema } from '@/test/webapp-credential-schema'
 import ApiKeyDialog from '../api-key-dialog'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
@@ -21,7 +23,16 @@ describe('ApiKeyDialog', () => {
     const user = userEvent.setup()
     const onSave = vi.fn().mockRejectedValue(error)
     const onOpenChange = vi.fn()
-    render(<ApiKeyDialog mode="add" open onSave={onSave} onOpenChange={onOpenChange} />)
+    render(
+      <ApiKeyDialog
+        serviceId="research"
+        schemas={testApiKeySchema}
+        mode="add"
+        open
+        onSave={onSave}
+        onOpenChange={onOpenChange}
+      />,
+    )
     const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
     await user.type(
       within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
@@ -47,13 +58,15 @@ describe('ApiKeyDialog', () => {
       connectionName: 'Original key',
     },
   ])(
-    'requires both fixed fields and accepts a non-sk secret for $mode without provider configuration',
+    'requires the name and schema-defined key and accepts a non-sk secret for $mode',
     async ({ mode, title, connectionName }) => {
       const user = userEvent.setup()
       const onSave = vi.fn()
       const onOpenChange = vi.fn()
       render(
         <ApiKeyDialog
+          serviceId="research"
+          schemas={testApiKeySchema}
           mode={mode}
           connectionName={connectionName}
           open
@@ -97,7 +110,16 @@ describe('ApiKeyDialog', () => {
       .mockRejectedValueOnce(new ORPCError('connection_credentials_unavailable', { status: 503 }))
       .mockResolvedValueOnce(undefined)
     const onOpenChange = vi.fn()
-    render(<ApiKeyDialog mode="add" open onSave={onSave} onOpenChange={onOpenChange} />)
+    render(
+      <ApiKeyDialog
+        serviceId="research"
+        schemas={testApiKeySchema}
+        mode="add"
+        open
+        onSave={onSave}
+        onOpenChange={onOpenChange}
+      />,
+    )
     const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
     const name = within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
     const token = within(dialog).getByLabelText(/share\.connections\.setup\.apiKey/)
@@ -140,6 +162,8 @@ describe('ApiKeyDialog', () => {
     const onOpenChange = vi.fn()
     render(
       <ApiKeyDialog
+        serviceId="research"
+        schemas={testApiKeySchema}
         mode="replace"
         open
         connectionName="Original key"

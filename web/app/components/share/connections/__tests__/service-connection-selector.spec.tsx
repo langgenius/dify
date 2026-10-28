@@ -1,9 +1,11 @@
 import type { RequiredConnectionService } from '../required-services'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { testApiKeySchema } from '@/test/webapp-credential-schema'
 import RequiredServices from '../required-services'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
@@ -13,6 +15,7 @@ const service: RequiredConnectionService = {
   name: 'Gmail',
   description: 'Read messages to draft replies.',
   methods: ['oauth', 'api-key'],
+  apiKeySchema: testApiKeySchema,
   availableConnections: [
     { id: 'personal', name: 'alex@example.com', method: 'oauth' },
     { id: 'expired', name: 'expired@example.com', method: 'oauth', status: 'expired' },

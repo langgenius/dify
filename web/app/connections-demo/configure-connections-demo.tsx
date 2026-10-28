@@ -1,6 +1,6 @@
 'use client'
 
-import type { ApiKeyValues } from '@/app/components/share/connections/api-key-dialog'
+import type { ApiKeyValues } from '@/app/components/share/connections/api-key-form'
 import type {
   ConnectionMethod,
   RequiredConnectionService,
@@ -10,6 +10,7 @@ import { useState } from 'react'
 import ConfigureConnectionsButton from '@/app/components/share/connections/configure-connections-button'
 import ConfigureConnectionsDialog from '@/app/components/share/connections/configure-connections-dialog'
 import ManageConnectionButton from '@/app/components/share/connections/manage-connection-button'
+import { demoApiKeySchema } from './api-key-schema'
 import { validateDemoApiKey } from './validate-demo-api-key'
 
 const initialServices: readonly RequiredConnectionService[] = [
@@ -64,6 +65,7 @@ const initialServices: readonly RequiredConnectionService[] = [
     ],
     selectedConnectionId: 'google-search-personal',
     methods: ['oauth', 'api-key'],
+    apiKeySchema: demoApiKeySchema,
   },
 ]
 

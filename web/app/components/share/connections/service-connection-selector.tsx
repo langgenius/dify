@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type { ApiKeyValues } from './api-key-dialog'
+import type { ApiKeyValues } from './api-key-form'
 import type { RequiredConnectionService } from './required-services'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -397,6 +397,8 @@ export default function ServiceConnectionSelector({
       </Popover>
       {editor && (
         <ApiKeyDialog
+          serviceId={service.id}
+          schemas={service.apiKeySchema}
           key={editor.mode === 'replace' ? editor.connection.id : 'add'}
           mode={editor.mode}
           connectionName={editor.mode === 'replace' ? editor.connection.name : undefined}

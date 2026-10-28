@@ -1,9 +1,11 @@
 import type { RequiredConnectionService } from '../required-services'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { testApiKeySchema } from '@/test/webapp-credential-schema'
 import ConfigureConnections from './configure-connections-fixture'
 
 const services: readonly RequiredConnectionService[] = [
@@ -12,6 +14,7 @@ const services: readonly RequiredConnectionService[] = [
     name: 'Gmail',
     description: 'Read messages to draft replies.',
     methods: ['oauth', 'api-key'],
+    apiKeySchema: testApiKeySchema,
     availableConnections: [
       { id: 'gmail-personal', name: 'alex@example.com', method: 'oauth' },
       { id: 'gmail-key', name: 'Personal key', method: 'api-key' },
@@ -23,6 +26,7 @@ const services: readonly RequiredConnectionService[] = [
     name: 'Notion',
     description: 'Search workspace documentation.',
     methods: ['oauth', 'api-key'],
+    apiKeySchema: testApiKeySchema,
     availableConnections: [],
   },
 ]
@@ -32,6 +36,7 @@ const invalidService: RequiredConnectionService = {
   name: 'Google Search',
   description: 'Search the web.',
   methods: ['api-key'],
+  apiKeySchema: testApiKeySchema,
   availableConnections: [{ id: 'key', name: 'Personal key', method: 'api-key', status: 'invalid' }],
   selectedConnectionId: 'key',
 }
@@ -458,6 +463,7 @@ describe('ConfigureConnections', () => {
       name: id,
       description: 'Connection required by this app.',
       methods: ['oauth', 'api-key'],
+      apiKeySchema: testApiKeySchema,
       availableConnections: [],
       ...overrides,
     })

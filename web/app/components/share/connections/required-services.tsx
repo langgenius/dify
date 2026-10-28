@@ -1,7 +1,7 @@
 'use client'
 
-import type { ConnectionPreflightStatus } from '@dify/contracts/api/web/types.gen'
-import type { ApiKeyValues } from './api-key-dialog'
+import type { ConnectionPreflightStatus, ProviderConfig } from '@dify/contracts/api/web/types.gen'
+import type { ApiKeyValues } from './api-key-form'
 import type { RequiredConnection } from './required-connections'
 import type { ConnectionActions } from './service-connection-selector'
 import { Button } from '@langgenius/dify-ui/button'
@@ -23,6 +23,7 @@ export type RequiredConnectionService = RequiredConnection & {
   description: string
   iconDark?: RequiredConnection['icon']
   readmeUrl?: string
+  apiKeySchema?: ProviderConfig[]
   availableConnections: readonly {
     id: string
     name: string
@@ -205,6 +206,8 @@ function ServiceItem({
         )}
       </div>
       <ApiKeyDialog
+        serviceId={service.id}
+        schemas={service.apiKeySchema}
         mode="add"
         readmeUrl={service.readmeUrl}
         open={addApiKeyOpen}
