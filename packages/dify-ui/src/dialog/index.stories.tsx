@@ -130,12 +130,64 @@ type ApiExtensionFormValues = {
   endpoint: string
 }
 
+class ApiExtensionRequestError extends Error {
+  readonly code: string
+
+  constructor(code: string) {
+    super(code)
+    this.code = code
+  }
+}
+
+function saveApiExtension({ name, endpoint }: ApiExtensionFormValues) {
+  return new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+      if (name === 'Production API') reject(new ApiExtensionRequestError('name_taken'))
+      else if (endpoint.includes('unreachable')) reject(new ApiExtensionRequestError('unknown'))
+      else resolve()
+    }, 300)
+  })
+}
+
 function FormDialogDemo() {
   const actionsRef = React.useRef<DialogActions>(null)
   const nameInputRef = React.useRef<HTMLInputElement>(null)
+  const [isPending, setIsPending] = React.useState(false)
+  const [errorCode, setErrorCode] = React.useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>()
+
+  const handleSubmit = async (values: ApiExtensionFormValues) => {
+    if (isPending) return
+
+    setIsPending(true)
+    setErrorCode(null)
+    try {
+      await saveApiExtension(values)
+      actionsRef.current?.close()
+    } catch (error) {
+      const code = error instanceof ApiExtensionRequestError ? error.code : 'unknown'
+      setErrorCode(code)
+      setFieldErrors(
+        code === 'name_taken' ? { name: 'An extension with this name already exists.' } : undefined,
+      )
+    } finally {
+      setIsPending(false)
+    }
+  }
 
   return (
-    <Dialog actionsRef={actionsRef} disablePointerDismissal>
+    <Dialog
+      actionsRef={actionsRef}
+      disablePointerDismissal
+      onOpenChange={(open, details) => {
+        if (!open && isPending && details.reason !== 'imperative-action') details.cancel()
+      }}
+      onOpenChangeComplete={(open) => {
+        if (open) return
+        setErrorCode(null)
+        setFieldErrors(undefined)
+      }}
+    >
       <DialogTrigger render={<Button />}>Add API extension</DialogTrigger>
       <DialogContent initialFocus={nameInputRef}>
         <DialogHeader>
@@ -147,24 +199,48 @@ function FormDialogDemo() {
         </DialogHeader>
         <Form<ApiExtensionFormValues>
           className="contents"
-          onFormSubmit={() => actionsRef.current?.close()}
+          errors={fieldErrors}
+          onFormSubmit={handleSubmit}
         >
           <DialogBody className="flex flex-col gap-4">
-            <Field name="name">
+            <Field
+              name="name"
+              validate={(value) =>
+                typeof value === 'string' && value.trim() ? null : 'Name is required.'
+              }
+            >
               <FieldLabel>Name</FieldLabel>
-              <Input ref={nameInputRef} required placeholder="Production API" />
-              <FieldError match="valueMissing">Name is required.</FieldError>
+              <Input
+                ref={nameInputRef}
+                aria-required
+                readOnly={isPending}
+                autoComplete="off"
+                placeholder="Production API"
+              />
+              <FieldError />
             </Field>
             <Field name="endpoint">
               <FieldLabel>Endpoint</FieldLabel>
-              <Input type="url" required placeholder="https://api.example.com" />
+              <Input
+                type="url"
+                required
+                readOnly={isPending}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="https://api.example.com"
+              />
               <FieldError match="valueMissing">Endpoint is required.</FieldError>
               <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
             </Field>
+            {errorCode && !fieldErrors && (
+              <p role="alert" className="body-xs-regular text-text-destructive">
+                Couldn’t save the extension. Try again.
+              </p>
+            )}
           </DialogBody>
           <DialogFooter>
             <DialogClose render={<Button />}>Cancel</DialogClose>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" loading={isPending}>
               Save
             </Button>
           </DialogFooter>
@@ -179,32 +255,57 @@ export const FormDialog: Story = {
     docs: {
       description: {
         story:
-          '`initialFocus` lands on the first field, `disablePointerDismissal` keeps typed input safe from a stray outside click, and the confirming action is the form submit: Enter or the submit button runs `onFormSubmit`, which closes through `actionsRef`.',
+          '`initialFocus` lands on the first field and `disablePointerDismissal` keeps typed input safe from a stray outside click. Enter or the submit button runs `onFormSubmit`; while the save is pending the button shows `loading`, the fields are read-only, and `onOpenChange` cancels every close except the `actionsRef` close on success. A failed save maps its error code to a field through `Form` `errors`, which focuses that field and clears on edit; an unmapped code shows a form-level alert. Session errors reset in `onOpenChangeComplete`, after the exit transition. Save "Production API" to see the field error, or an endpoint containing "unreachable" to see the alert.',
       },
     },
   },
   render: () => <FormDialogDemo />,
   play: async ({ canvas, canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'Add API extension' })
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Add API extension' }))
-    const nameInput = await body.findByRole('textbox', { name: 'Name' })
+    await userEvent.click(trigger)
+    const dialog = await body.findByRole('dialog', { name: 'Add API extension' })
+    const nameInput = within(dialog).getByRole('textbox', { name: 'Name' })
     await waitFor(async () => {
       await expect(nameInput).toHaveFocus()
     })
 
     await userEvent.type(nameInput, 'Production API')
     await userEvent.click(canvasElement.ownerDocument.body)
-    await expect(body.getByRole('dialog', { name: 'Add API extension' })).toHaveAttribute(
-      'data-open',
-    )
+    await expect(dialog).toHaveAttribute('data-open')
     await expect(nameInput).toHaveValue('Production API')
 
-    await userEvent.type(body.getByRole('textbox', { name: 'Endpoint' }), 'https://api.example.com')
+    await userEvent.type(
+      within(dialog).getByRole('textbox', { name: 'Endpoint' }),
+      'https://api.example.com',
+    )
+    await userEvent.keyboard('{Enter}')
+    const saveButton = within(dialog).getByRole('button', { name: 'Save' })
+    await expect(saveButton).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(dialog).toHaveAttribute('data-open')
+
+    await expect(
+      await within(dialog).findByText('An extension with this name already exists.'),
+    ).toBeVisible()
+    await expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    await expect(nameInput).toHaveFocus()
+
+    await userEvent.keyboard('Staging API')
+    await expect(
+      within(dialog).queryByText('An extension with this name already exists.'),
+    ).not.toBeInTheDocument()
     await userEvent.keyboard('{Enter}')
     await waitFor(async () => {
       await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
     })
+    await expect(trigger).toHaveFocus()
+
+    await userEvent.click(trigger)
+    const reopened = await body.findByRole('dialog', { name: 'Add API extension' })
+    await expect(within(reopened).getByRole('textbox', { name: 'Name' })).toHaveValue('')
+    await expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument()
   },
 }
 
