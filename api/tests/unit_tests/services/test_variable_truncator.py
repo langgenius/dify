@@ -561,8 +561,7 @@ class TestVariableTruncatorCases:
 
         def test_truncate_json_primitives_file_type_in_object(self, truncator: VariableTruncator, file: File) -> None:
             """Test File objects in objects are handled correctly."""
-            obj_with_files: dict[str, object] = {"file1": file, "file2": file}
-            result = truncator._truncate_json_primitives(obj_with_files, 1000)
+            result = truncator._truncate_json_primitives({"file1": file, "file2": file}, 1000)
 
             assert isinstance(result.value, dict)
             assert len(result.value) == 2
