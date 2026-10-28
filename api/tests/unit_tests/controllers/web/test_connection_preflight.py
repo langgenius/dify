@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from clients.plugin.auth_entities import CredentialCheckResult
 from controllers.web import app as app_controller
 from controllers.web import bp, connection_preflight, wraps
-from models.model import App, AppMode, EndUser
+from models.model import App, AppMode, EndUser, Site
 from models.workflow import Workflow
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -67,6 +67,11 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
 def test_explicit_version_and_selection_response(client: FlaskClient, harness: OAuthHarness) -> None:
     from core.plugin.plugin_service import PluginService
 
+    harness.providers.controller.entity.identity.label.pt_BR = "Calendario"
+    with harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(Site).where(Site.app_id == harness.base.context.app_id).values(default_language="pt-BR")
+        )
     parameters = client.get("/api/parameters")
     assert parameters.status_code == 200
     version = parameters.get_json()["connection_revision"]
@@ -79,6 +84,7 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
             "title": "tool-1",
             "purpose": "Read calendar",
             "provider": "vendor/calendar/calendar",
+            "provider_label": "Calendario",
             "plugin_unique_identifier": harness.providers.controller.plugin_unique_identifier,
             "icon": PluginService.get_plugin_icon_url(tenant_id=harness.base.context.tenant_id, filename="icon.svg"),
             "icon_dark": None,

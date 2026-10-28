@@ -116,6 +116,7 @@ def test_revision_identifier_bypasses_the_request_controller_cache(monkeypatch: 
     assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@first"
     metadata = gateway.provider_metadata("tenant", PROVIDER)
     assert metadata.plugin_unique_identifier == "vendor/calendar:1.0@rebuilt"
+    assert metadata.provider_label == controller.entity.identity.label
     assert parse_qs(urlsplit(metadata.icon).query) == {"tenant_id": ["tenant"], "filename": ["icon.svg"]}
     assert metadata.icon_dark is not None
     assert parse_qs(urlsplit(metadata.icon_dark).query) == {"tenant_id": ["tenant"], "filename": ["icon-dark.svg"]}

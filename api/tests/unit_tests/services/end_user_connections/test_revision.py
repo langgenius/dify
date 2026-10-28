@@ -9,6 +9,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.tools.entities.common_entities import I18nObject
 from models.end_user_connection import EndUserConnection
 from models.workflow import Workflow
 from repositories.end_user_connection_repository import EndUserConnectionRepository
@@ -27,7 +28,13 @@ class InstalledPlugins:
     icon: str = "/plugin-icon.svg"
 
     def provider_metadata(self, tenant_id: str, provider: str) -> ConnectionProviderMetadata:
-        return ConnectionProviderMetadata(provider, self.plugin_unique_identifier(tenant_id, provider), self.icon, None)
+        return ConnectionProviderMetadata(
+            provider=provider,
+            provider_label=I18nObject(en_US="Calendar"),
+            plugin_unique_identifier=self.plugin_unique_identifier(tenant_id, provider),
+            icon=self.icon,
+            icon_dark=None,
+        )
 
     def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
         assert tenant_id

@@ -9,6 +9,7 @@ from typing import Any, NamedTuple, Protocol
 from pydantic import BaseModel, ConfigDict
 
 from constants.end_user_connections import ConnectionRevisionAcceptanceReason, OAuthClientSource
+from core.tools.entities.common_entities import I18nObject
 from libs.helper import UUIDStr
 from services.end_user_connections.entities import WebConnectionContext
 
@@ -17,6 +18,7 @@ ConnectionRevision = UUIDStr
 
 class ConnectionProviderMetadata(NamedTuple):
     provider: str
+    provider_label: I18nObject
     plugin_unique_identifier: str
     icon: str
     icon_dark: str | None

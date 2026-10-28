@@ -131,6 +131,7 @@ class TestProviders(PluginApiKeyCredentialGateway):
         identity = controller.entity.identity
         return ConnectionProviderMetadata(
             provider=provider,
+            provider_label=identity.label,
             plugin_unique_identifier=controller.plugin_unique_identifier,
             icon=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon),
             icon_dark=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon_dark)
