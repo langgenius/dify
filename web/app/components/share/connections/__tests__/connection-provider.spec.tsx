@@ -4,12 +4,13 @@ import type {
   EndUserConnectionPreflightPayload,
   EndUserConnectionPreflightResponse,
   EndUserConnectionResponse,
+  ProviderConfig,
   WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
 import type { WebAppEntryState } from '../../webapp-entry'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { captureAppAccessScope } from '@/features/app-access-error/state'
@@ -80,6 +81,64 @@ function connection(overrides: Partial<EndUserConnectionResponse> = {}): EndUser
 const personal = connection()
 const work = connection({ id: secondId, name: 'Work GitHub', account_label: 'work@example.com' })
 
+const credentialSchema: ProviderConfig[] = [
+  { name: 'access_token', type: 'secret-input', label: { en_US: 'Access token' }, required: true },
+  { name: 'name', type: 'text-input', label: { en_US: 'Provider user name' }, required: true },
+  { name: 'sandbox', type: 'boolean', label: { en_US: 'Sandbox' }, required: true, default: false },
+]
+
+function mockCredentialRequests({
+  initialConnection,
+  loadSchema = () => Response.json(credentialSchema),
+}: {
+  initialConnection?: EndUserConnectionResponse
+  loadSchema?: (request: Request) => Response | Promise<Response>
+} = {}) {
+  const requests: Request[] = []
+  let savedConnection = initialConnection
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const request = new Request(input, init)
+    requests.push(request.clone())
+    const path = new URL(request.url).pathname
+    if (path.endsWith('/connections/preflight')) {
+      if (savedConnection?.credential_status === 'invalid') {
+        return Response.json({
+          connection_revision: connectionRevision,
+          connections: [
+            {
+              node_id: 'source-a',
+              connection_id: savedConnection.id,
+              status: 'invalid',
+              check: null,
+            },
+            { node_id: 'source-b', connection_id: null, status: 'disconnected', check: null },
+          ],
+          ready: false,
+        } satisfies EndUserConnectionPreflightResponse)
+      }
+      return replyToPreflight(request)
+    }
+    if (path.endsWith('/connections/credential-schema')) return loadSchema(request)
+    if (path.endsWith('/revision'))
+      return Response.json({ connection_revision: connectionRevision })
+    if (request.method === 'POST' || request.method === 'PATCH') {
+      const payload = await request.json()
+      savedConnection = connection({
+        id: initialConnection?.id ?? firstId,
+        name: payload.name,
+        credential_type: 'api-key',
+        account_label: null,
+      })
+      return Response.json(savedConnection)
+    }
+    if (path.endsWith('/configuration')) {
+      return Response.json({ connections: savedConnection ? { 'source-a': savedConnection } : {} })
+    }
+    return Response.json(page(savedConnection ? [savedConnection] : []))
+  })
+  return requests
+}
+
 function entry(overrides: Partial<ReadyEntry> = {}): ReadyEntry {
   return {
     status: 'connections-pending',
@@ -128,8 +187,6 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-const onConnect = vi.fn()
-
 function Consumer() {
   const state = useWebAppConnections()
   return (
@@ -169,7 +226,8 @@ function Consumer() {
       </button>
       <RequiredServices
         services={state.services}
-        onConnect={onConnect}
+        onConnect={state.onConnect}
+        onReplace={state.onReplace}
         onConnectionChange={state.onConnectionChange}
       />
     </>
@@ -230,6 +288,240 @@ describe('WebAppConnectionsProvider', () => {
     window.history.replaceState({}, '', '/')
     captureAppAccessScope()
   })
+
+  it.each(['authenticated', 'anonymous'] as const)(
+    'loads the provider schema and sends every credential using the %s App session',
+    async (account) => {
+      const user = userEvent.setup()
+      const schemaResponse = deferred<Response>()
+      const requests = mockCredentialRequests({ loadSchema: () => schemaResponse.promise })
+      const currentEntry = entry({ account })
+      if (account === 'anonymous') {
+        expireWebAppAccountSession()
+        setWebAppPassport(address, 'anonymous-passport')
+        currentEntry.parameters = {
+          ...currentEntry.parameters,
+          allow_anonymous_end_user_auth: true,
+        }
+      }
+      render(tree({ address, entry: currentEntry }))
+      await waitFor(() =>
+        expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+      )
+      expect(requests.some((request) => request.url.includes('/credential-schema'))).toBe(false)
+
+      await user.click(screen.getByRole('button', { name: 'share.connections.setup.addApiKey' }))
+      const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+      expect(within(dialog).getByRole('status')).toHaveTextContent('common.loading')
+      expect(
+        within(dialog).queryByRole('button', { name: 'common.operation.save' }),
+      ).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(requests.some((request) => request.url.includes('/credential-schema'))).toBe(true),
+      )
+      const schemaRequest = requests.find((request) => request.url.includes('/credential-schema'))!
+      expect(schemaRequest.method).toBe('GET')
+      expect(Object.fromEntries(new URL(schemaRequest.url).searchParams)).toEqual({
+        connection_revision: connectionRevision,
+        node_id: 'source-a',
+      })
+      expect(schemaRequest.headers.get('X-App-Code')).toBe(address.code)
+      expect(schemaRequest.headers.get('X-App-Passport')).toBe(
+        account === 'anonymous' ? 'anonymous-passport' : 'app-passport',
+      )
+
+      await act(async () => {
+        schemaResponse.resolve(Response.json(credentialSchema))
+      })
+      await user.type(
+        await within(dialog).findByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+        '  Research  ',
+      )
+      await user.type(within(dialog).getByLabelText('Access token'), '  provider-secret  ')
+      const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+      expect(save).toBeDisabled()
+      await user.type(
+        within(dialog).getByRole('textbox', { name: 'Provider user name' }),
+        'provider-user',
+      )
+      expect(within(dialog).getByRole('radio', { name: 'False' })).toBeChecked()
+      await user.click(save)
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const created = requests.find(
+        (request) =>
+          request.method === 'POST' && new URL(request.url).pathname.endsWith('/connections'),
+      )!
+      expect(await created.json()).toEqual({
+        connection_revision: connectionRevision,
+        node_id: 'source-a',
+        name: 'Research',
+        credentials: { access_token: '  provider-secret  ', name: 'provider-user', sandbox: false },
+      })
+      expect(selections()['source-a']).toBe(firstId)
+      expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
+        'Research',
+      )
+    },
+  )
+
+  it('loads the same provider fields when replacing a key and patches the complete credentials', async () => {
+    const user = userEvent.setup()
+    const requests = mockCredentialRequests({
+      initialConnection: connection({
+        name: 'Old key',
+        account_label: null,
+        credential_type: 'api-key',
+        credential_status: 'invalid',
+      }),
+    })
+    render(tree({ address, entry: entry() }))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+    )
+    await user.click(selectedAccount('Read repositories for the research brief.'))
+    await user.click(
+      await screen.findByRole('button', { name: 'share.connections.apiKeys.replace' }),
+    )
+    const dialog = screen.getByRole('dialog', { name: 'share.connections.apiKeys.replaceTitle' })
+    const name = await within(dialog).findByRole('textbox', {
+      name: 'plugin.auth.authorizationName',
+    })
+    expect(name).toHaveValue('Old key')
+    await user.clear(name)
+    await user.type(name, 'Replacement')
+    await user.type(within(dialog).getByLabelText('Access token'), 'replacement-secret')
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'Provider user name' }),
+      'replacement-user',
+    )
+    await user.click(within(dialog).getByRole('radio', { name: 'True' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(requests.filter((request) => request.url.includes('/credential-schema'))).toHaveLength(1)
+    expect(
+      requests.some((request) =>
+        new URL(request.url).pathname.endsWith(`/connections/${firstId}/revision`),
+      ),
+    ).toBe(true)
+    const updated = requests.find((request) => request.method === 'PATCH')!
+    expect(new URL(updated.url).pathname).toMatch(new RegExp(`/connections/${firstId}$`))
+    expect(await updated.json()).toEqual({
+      connection_revision: connectionRevision,
+      name: 'Replacement',
+      credentials: { access_token: 'replacement-secret', name: 'replacement-user', sandbox: true },
+    })
+    expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
+      'Replacement',
+    )
+  })
+
+  it('keeps credential submission unavailable after a schema failure until an explicit retry succeeds', async () => {
+    const user = userEvent.setup()
+    let schemaAttempts = 0
+    const requests = mockCredentialRequests({
+      loadSchema: () => {
+        schemaAttempts++
+        return schemaAttempts === 1
+          ? Response.json(
+              {
+                code: 'connection_credentials_unavailable',
+                message: 'Schema unavailable',
+                status: 503,
+              },
+              { status: 503 },
+            )
+          : Response.json(credentialSchema)
+      },
+    })
+    render(tree({ address, entry: entry() }))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+    )
+    await user.click(screen.getByRole('button', { name: 'share.connections.setup.addApiKey' }))
+    const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(
+      within(dialog).queryByRole('button', { name: 'common.operation.save' }),
+    ).not.toBeInTheDocument()
+    expect(schemaAttempts).toBe(1)
+    expect(
+      requests.some(
+        (request) =>
+          request.method === 'POST' && new URL(request.url).pathname.endsWith('/connections'),
+      ),
+    ).toBe(false)
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.retry' }))
+    expect(await within(dialog).findByLabelText('Access token')).toBeInTheDocument()
+    expect(schemaAttempts).toBe(2)
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+  })
+
+  it.each(['App', 'account'] as const)(
+    'fetches a fresh schema after changing %s and ignores the previous pending schema',
+    async (changedScope) => {
+      const user = userEvent.setup()
+      const previousSchema = deferred<Response>()
+      let schemaAttempts = 0
+      const requests = mockCredentialRequests({
+        loadSchema: () => {
+          schemaAttempts++
+          return schemaAttempts === 1
+            ? previousSchema.promise
+            : Response.json([
+                {
+                  name: 'next_token',
+                  type: 'secret-input',
+                  label: { en_US: 'Current access token' },
+                  required: true,
+                },
+              ] satisfies ProviderConfig[])
+        },
+      })
+      const originalScope = { address, entry: entry() }
+      const view = render(tree(originalScope))
+      await waitFor(() =>
+        expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+      )
+      await user.click(screen.getByRole('button', { name: 'share.connections.setup.addApiKey' }))
+      await waitFor(() => expect(schemaAttempts).toBe(1))
+
+      const nextScope: Scope = { address, entry: entry() }
+      if (changedScope === 'App') {
+        nextScope.address = { kind: 'default', code: 'another-app' }
+        window.history.replaceState({}, '', '/chat/another-app')
+        setWebAppPassport(nextScope.address, 'next-passport')
+      } else {
+        act(() => {
+          setWebAppAccessToken('account-b', 'end_user')
+          setWebAppPassport(address, 'next-passport')
+        })
+      }
+      view.rerender(tree(nextScope))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() =>
+        expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+      )
+      await user.click(screen.getByRole('button', { name: 'share.connections.setup.addApiKey' }))
+      const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+      expect(await within(dialog).findByLabelText('Current access token')).toBeInTheDocument()
+      expect(schemaAttempts).toBe(2)
+      const latestSchemaRequest = requests
+        .filter((request) => request.url.includes('/credential-schema'))
+        .at(-1)!
+      expect(latestSchemaRequest.headers.get('X-App-Code')).toBe(nextScope.address.code)
+      expect(latestSchemaRequest.headers.get('X-App-Passport')).toBe('next-passport')
+
+      await act(async () => {
+        previousSchema.resolve(Response.json(credentialSchema))
+      })
+      expect(within(dialog).getByLabelText('Current access token')).toBeInTheDocument()
+      expect(within(dialog).queryByLabelText('Access token')).not.toBeInTheDocument()
+    },
+  )
 
   it('preserves the draft message when the first response assigns a real conversation ID', async () => {
     const user = userEvent.setup()
@@ -465,7 +757,6 @@ describe('WebAppConnectionsProvider', () => {
     expect(selectedAccount('Read documentation for the answer.')).toHaveTextContent(
       'work@example.com',
     )
-    expect(onConnect).not.toHaveBeenCalled()
   })
 
   it('leaves missing and inaccessible saved selections unselected even when a connection is available', async () => {

@@ -3,7 +3,9 @@ import type { ConnectionsState } from '../use-connections'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { webAppQuery } from '@/service/webapp'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { testApiKeySchema } from '@/test/webapp-credential-schema'
 import { WebAppEntryContext } from '../../webapp-entry'
 import { ConnectionsContext } from '../use-connections'
 import WebAppConnectionControls from '../webapp-connection-controls'
@@ -38,6 +40,12 @@ function entry(showSignIn = false): WebAppEntryState {
 
 function state(overrides: Partial<ConnectionsState> = {}): ConnectionsState {
   return {
+    getApiKeySchemaOptions: (nodeId) => ({
+      ...webAppQuery.connections.credentialSchema.get.queryOptions({
+        input: { query: { connection_revision: revision, node_id: nodeId } },
+      }),
+      queryFn: async () => testApiKeySchema,
+    }),
     services: [
       {
         id: 'source-a',

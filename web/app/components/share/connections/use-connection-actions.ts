@@ -1,13 +1,15 @@
 'use client'
 
 import type {
+  ConnectionCredentialSchemaResponse,
   EndUserConnectionResponse,
   WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
-import type { ApiKeyValues } from './api-key-dialog'
+import type { UseQueryOptions } from '@tanstack/react-query'
+import type { ApiKeyValues } from './api-key-form'
 import type { ConnectionMethod, RequiredConnectionService } from './required-services'
 import type { WebAppAddress } from '@/service/webapp-address'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -125,11 +127,35 @@ export default function useConnectionActions({
     return source
   }
   const getApiKeyValues = (values: ApiKeyValues | undefined) => {
-    const apiKey = values?.credentials.api_key
-    if (!values?.name.trim() || typeof apiKey !== 'string' || !apiKey.trim())
-      throw new Error('Connection configuration is incomplete.')
-    return { name: values.name.trim(), credentials: { api_key: apiKey } }
+    if (!values?.name.trim()) throw new Error('Connection configuration is incomplete.')
+    return { name: values.name.trim(), credentials: values.credentials }
   }
+  const getApiKeySchemaOptions = (
+    nodeId: string,
+  ): UseQueryOptions<ConnectionCredentialSchemaResponse> => {
+    const source = requirements.find(
+      (item) => item.node_id === nodeId || item.node_ids.includes(nodeId),
+    )
+    return webAppQuery.connections.credentialSchema.get.queryOptions({
+      input:
+        !disabled && connectionRevision && source?.allowed_credential_types.includes('api-key')
+          ? { query: { connection_revision: connectionRevision, node_id: source.node_id } }
+          : skipToken,
+      queryKey: [
+        ...webAppQuery.connections.credentialSchema.get.key(),
+        address,
+        authSession,
+        connectionRevision,
+        nodeId,
+      ],
+      context,
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+      refetchOnWindowFocus: false,
+    })
+  }
+
   const requireConnection = (nodeId: string, connectionId: string, method?: ConnectionMethod) => {
     const source = findSource(nodeId)
     const connection = services
@@ -266,5 +292,5 @@ export default function useConnectionActions({
     }).catch(reportOAuthFailure)
   }
 
-  return { onConnect, onReplace, onRemove, onReconnect, isMutating }
+  return { onConnect, onReplace, onRemove, onReconnect, isMutating, getApiKeySchemaOptions }
 }

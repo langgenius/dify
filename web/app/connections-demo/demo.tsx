@@ -1,12 +1,13 @@
 'use client'
 
-import type { ApiKeyValues } from '@/app/components/share/connections/api-key-dialog'
+import type { ApiKeyValues } from '@/app/components/share/connections/api-key-form'
 import type { RequiredConnection } from '@/app/components/share/connections/required-connections'
 import type { RequiredConnectionService } from '@/app/components/share/connections/required-services'
 import { useState } from 'react'
 import RequiredConnectionSetup from '@/app/components/share/connections/required-connection-setup'
 import RequiredConnections from '@/app/components/share/connections/required-connections'
 import SignIn from '@/app/components/share/sign-in'
+import { demoApiKeySchema } from './api-key-schema'
 import ConfigureConnectionsDemo from './configure-connections-demo'
 import { validateDemoApiKey } from './validate-demo-api-key'
 import WorkspaceOAuthDemo from './workspace-oauth-demo'
@@ -60,6 +61,7 @@ const initialServices: readonly RequiredConnectionService[] = [
     iconClassName: 'i-custom-public-plugins-google',
     availableConnections: [],
     methods: ['oauth', 'api-key'],
+    apiKeySchema: demoApiKeySchema,
   },
 ]
 

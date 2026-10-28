@@ -1,6 +1,7 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ConfigureConnectionsDemo from '../configure-connections-demo'
 
 describe('Connections configuration demo', () => {
@@ -37,7 +38,7 @@ describe('Connections configuration demo', () => {
       const name = within(editor).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
       await user.clear(name)
       await user.type(name, '  Research demo key  ')
-      const apiKey = within(editor).getByLabelText(/share\.connections\.setup\.apiKey/)
+      const apiKey = within(editor).getByLabelText('API Key')
       await user.type(apiKey, 'provider-secret')
       const save = within(editor).getByRole('button', { name: 'common.operation.save' })
       expect(save).toBeEnabled()

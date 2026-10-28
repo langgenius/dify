@@ -3,6 +3,8 @@ import type { ConnectionsState } from '@/app/components/share/connections/use-co
 import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import { ConnectionsContext } from '@/app/components/share/connections/use-connections'
 import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
+import { webAppQuery } from '@/service/webapp'
+import { testApiKeySchema } from '@/test/webapp-credential-schema'
 
 export const checkedRevision = '55555555-5555-4555-8555-555555555555'
 export const selectedConnectionId = '11111111-1111-4111-8111-111111111111'
@@ -37,6 +39,12 @@ export const chatConnectionEntry: WebAppEntryState = {
 
 export function createChatConnections(overrides: Partial<ConnectionsState> = {}): ConnectionsState {
   return {
+    getApiKeySchemaOptions: (nodeId) => ({
+      ...webAppQuery.connections.credentialSchema.get.queryOptions({
+        input: { query: { connection_revision: checkedRevision, node_id: nodeId } },
+      }),
+      queryFn: async () => testApiKeySchema,
+    }),
     services: [
       {
         id: 'github-node',

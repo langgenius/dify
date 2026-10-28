@@ -1,4 +1,4 @@
-import type { ApiKeyValues } from '@/app/components/share/connections/api-key-dialog'
+import type { ApiKeyValues } from '@/app/components/share/connections/api-key-form'
 import { ORPCError } from '@orpc/client'
 
 export function validateDemoApiKey(values: ApiKeyValues | undefined) {

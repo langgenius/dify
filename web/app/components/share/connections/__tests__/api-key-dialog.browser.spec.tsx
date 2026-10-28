@@ -1,7 +1,10 @@
 import { ORPCError } from '@orpc/client'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createTestQueryClient } from '@/test/query-client'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { testApiKeySchema } from '@/test/webapp-credential-schema'
 import ApiKeyDialog from '../api-key-dialog'
 
 it('submits on Enter through the external footer button and blocks a rejected key until it changes', async ({
@@ -14,7 +17,16 @@ it('submits on Enter through the external footer button and blocks a rejected ke
     .mockRejectedValueOnce(new ORPCError('connection_credentials_invalid', { status: 400 }))
     .mockResolvedValue(undefined)
   const screen = await render(
-    <ApiKeyDialog mode="add" open onSave={onSave} onOpenChange={vi.fn()} />,
+    <QueryClientProvider client={createTestQueryClient()}>
+      <ApiKeyDialog
+        serviceId="research"
+        schemas={testApiKeySchema}
+        mode="add"
+        open
+        onSave={onSave}
+        onOpenChange={vi.fn()}
+      />
+    </QueryClientProvider>,
   )
   const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
   await dialog.getByRole('textbox', { name: 'plugin.auth.authorizationName' }).fill('Research')

@@ -1,9 +1,11 @@
 import type { RequiredConnectionService } from '../required-services'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { testApiKeySchema } from '@/test/webapp-credential-schema'
 import { getConnectionData } from '../connection-data'
 import RequiredServices from '../required-services'
 
@@ -41,6 +43,7 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Search workspace documentation.',
     availableConnections: [],
     methods: ['api-key'],
+    apiKeySchema: testApiKeySchema,
   },
   {
     id: 'youtube',
@@ -48,6 +51,7 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Find videos related to your questions.',
     availableConnections: [],
     methods: ['oauth', 'api-key'],
+    apiKeySchema: testApiKeySchema,
   },
 ]
 
@@ -188,6 +192,7 @@ describe('RequiredServices', () => {
             name: 'Provider',
             description: 'Read documents.',
             methods: ['oauth', 'api-key'],
+            apiKeySchema: testApiKeySchema,
             availableConnections: [],
           },
         ]}

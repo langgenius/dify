@@ -133,7 +133,7 @@ register_response_schema_models(
 class ConnectionClaimApi(Resource):
     @web_ns.doc(
         description="Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. "
-        "Submit Guest Passports in passports, with one Account Web login proof in Authorization. "
+        "Submit Guest Passports in passports with the Account Web login cookie established by /api/passport. "
         "Complete the login handoff through /api/passport before asking the user to confirm Claim. "
         "Validate every source Passport and Account App admission before any transfer or identity creation. "
         "Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. "

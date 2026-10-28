@@ -123,6 +123,8 @@ export default function ConfigureConnectionsDialog({
       </DialogContent>
       {apiKeyEditor && (
         <ApiKeyDialog
+          serviceId={apiKeyEditor.serviceId}
+          schemas={services.find((service) => service.id === apiKeyEditor.serviceId)?.apiKeySchema}
           key={`${apiKeyEditor.mode}:${apiKeyEditor.serviceId}:${apiKeyEditor.mode === 'replace' ? apiKeyEditor.connectionId : ''}`}
           mode={apiKeyEditor.mode}
           connectionName={apiKeyEditor.mode === 'replace' ? apiKeyEditor.name : ''}
