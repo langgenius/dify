@@ -12,18 +12,25 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup pnpm and Node.js
-      uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+    # Reuse the runner tool cache or GitHub's Node builds before falling back to nodejs.org.
+    - name: Setup Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
-        install: false
+        node-version-file: package.json
+        package-manager-cache: false
     - name: Setup Vite+
       uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
       with:
         node-manager: false
         package-manager: |
-          pnpm: false
+          pnpm: true
           npm: false
         cache: true
         # Nested composite post actions can evaluate inputs in the outer scope.
         cache-save: ${{ inputs.cache-save || 'true' }}
-        run-install: ${{ inputs.run-install }}
+        run-install: false
+    - name: Install web dependencies
+      if: inputs.run-install == 'true'
+      shell: bash
+      # setup-node already provides the pinned runtime; pnpm must not download it again.
+      run: pnpm install --frozen-lockfile --no-runtime
