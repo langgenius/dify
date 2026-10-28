@@ -1444,3 +1444,18 @@ def test_workflow_execution_task_runs_when_claim_backend_is_unavailable(monkeypa
 
     assert workflow_based_app_execution_task.run(payload) == {"answer": "ok"}
     assert runner.run.call_count == 1
+
+
+def test_workflow_execution_task_does_not_replay_failed_execution(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _build_execution_payload("workflow-run-id")
+    runner = MagicMock()
+    runner.run.side_effect = RuntimeError("execution failed")
+    monkeypatch.setattr(workflow_execute_task_module, "redis_client", _ClaimRedis())
+    monkeypatch.setattr(workflow_execute_task_module, "_AppRunner", MagicMock(return_value=runner))
+    monkeypatch.setattr(workflow_execute_task_module, "db", SimpleNamespace(engine=MagicMock()))
+
+    with pytest.raises(RuntimeError, match="execution failed"):
+        workflow_based_app_execution_task.run(payload)
+
+    assert workflow_based_app_execution_task.run(payload) is None
+    assert runner.run.call_count == 1

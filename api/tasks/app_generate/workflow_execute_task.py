@@ -482,7 +482,10 @@ def _claim_workflow_run_execution(workflow_run_id: str) -> bool:
     Celery retries publishing when the broker connection drops after a message was
     delivered, so the same payload can reach a worker more than once. The claim is
     left to expire instead of being released because a duplicate delivery can still
-    be queued. If Redis is unavailable the run executes without a claim so that a
+    be queued. It is also kept when execution fails: this task has no automatic
+    retry, and a redelivery is the same execution attempt, so replaying it would
+    duplicate side effects that already happened. Retrying a failed flow requires a
+    new run id. If Redis is unavailable the run executes without a claim so that a
     message is never dropped.
     """
     try:
