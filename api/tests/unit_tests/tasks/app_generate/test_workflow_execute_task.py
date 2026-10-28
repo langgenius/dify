@@ -1411,7 +1411,7 @@ class TestWorkflowBasedAppExecutionTaskDeduplication:
         # Restore the default truthy MagicMock return afterwards so later
         # tests that go through the task entry are unaffected.
         yield redis_client
-        redis_client.set.reset_mock(return_value=True)
+        redis_client.set.reset_mock(return_value=True, side_effect=True)
 
     def test_runs_when_claim_succeeds(self, redis_claim: MagicMock):
         redis_claim.set.return_value = True
@@ -1436,6 +1436,26 @@ class TestWorkflowBasedAppExecutionTaskDeduplication:
 
         assert result is None
         runner_cls.assert_not_called()
+
+    def test_redelivery_after_runner_failure_is_still_skipped(self, redis_claim: MagicMock):
+        # The claim is deliberately not released when the runner crashes: the
+        # failed attempt may already have produced partial external side
+        # effects, so replaying is worse than blocking the duplicate until
+        # the claim TTL expires. Pin that recovery semantic.
+        redis_claim.set.side_effect = [True, None]
+        with (
+            patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls,
+            patch("tasks.app_generate.workflow_execute_task.db"),
+        ):
+            runner_cls.return_value.run.side_effect = RuntimeError("worker crashed")
+            with pytest.raises(RuntimeError, match="worker crashed"):
+                workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+            # Redelivery of the same payload must not start a second run.
+            result = workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        assert result is None
+        assert runner_cls.return_value.run.call_count == 1
 
     def test_distinct_run_ids_are_not_deduplicated(self, redis_claim: MagicMock):
         # Two genuine user messages must both run; only the same
