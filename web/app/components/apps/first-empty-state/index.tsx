@@ -90,14 +90,14 @@ function FirstEmptyState({
                   <div className="flex items-center gap-2 text-text-tertiary">
                     <span
                       aria-hidden
-                      className="h-px min-w-0 flex-1 bg-linear-to-r from-transparent to-divider-regular"
+                      className="h-px min-w-0 flex-1 bg-linear-to-r from-transparent to-divider-regular rtl:bg-linear-to-l"
                     />
                     <span className="system-xs-medium-uppercase">
                       {t(($) => $['firstEmpty.or'], { ns: 'app' })}
                     </span>
                     <span
                       aria-hidden
-                      className="h-px min-w-0 flex-1 bg-linear-to-l from-transparent to-divider-regular"
+                      className="h-px min-w-0 flex-1 bg-linear-to-l from-transparent to-divider-regular rtl:bg-linear-to-r"
                     />
                   </div>
                   <div className="flex flex-col gap-2">
@@ -136,8 +136,8 @@ function FirstEmptyState({
                         <span
                           aria-hidden
                           className={cn(
-                            'i-ri-arrow-right-s-line size-4 transition-transform',
-                            moreTypesExpanded && 'rotate-90',
+                            'i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none [&:dir(rtl)]:-scale-x-100',
+                            moreTypesExpanded && 'rotate-90 [&:dir(rtl)]:-rotate-90',
                           )}
                         />
                         {t(($) => $['newApp.menu.moreTypes'], { ns: 'app' })}

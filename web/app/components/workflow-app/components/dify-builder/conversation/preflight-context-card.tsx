@@ -53,7 +53,7 @@ export const PreflightContextCard = memo(
                     <h4 className="min-w-0 flex-1 truncate system-sm-medium text-text-primary">
                       {issue.title}
                     </h4>
-                    <span className="max-w-24 shrink-0 truncate rounded-md bg-components-badge-bg-gray-soft px-1.5 py-0.5 font-mono text-[10px] leading-3 text-text-tertiary">
+                    <span className="max-w-24 shrink-0 truncate rounded-md bg-components-badge-bg-gray-soft px-1.5 py-0.5 font-mono text-2xs leading-3 text-text-tertiary">
                       {issue.node_type}
                     </span>
                   </div>
