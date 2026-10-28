@@ -365,6 +365,36 @@ def test_list_skills_keyword_matches_display_name() -> None:
     assert [item["name"] for item in result["data"]] == ["employee-onboarding"]
 
 
+@pytest.mark.parametrize("field", ["display_name", "description"])
+@pytest.mark.parametrize(
+    ("keyword", "matching", "nonmatching"),
+    [
+        ("%", "Report % growth", "Report growth"),
+        ("my_key", "prefix my_key suffix", "prefix my key suffix"),
+        ("\\", r"path\file", "path/file"),
+        (r"\%_", r"prefix \%_ suffix", "prefix %_ suffix"),
+        ("  MY_KEY  ", "prefix my_key suffix", "prefix my key suffix"),
+        ("  GROWTH  ", "Report growth figures", "Report figures"),
+    ],
+)
+def test_list_skills_keyword_matches_literal_substrings(
+    field: str, keyword: str, matching: str, nonmatching: str
+) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    for name, value in [("matching-skill", matching), ("other-skill", nonmatching)]:
+        service.create_skill(
+            tenant_id=TENANT,
+            user_id=USER,
+            payload=SkillCreatePayload.model_validate({"name": name, field: value}),
+        )
+
+    result = service.list_skills(tenant_id=TENANT, keyword=keyword, limit=1)
+
+    assert [item["name"] for item in result["data"]] == ["matching-skill"]
+    assert result["total"] == 1
+    assert result["has_more"] is False
+
+
 def test_list_skills_returns_pagination_metadata() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     for name in ["alpha-skill", "beta-skill", "gamma-skill"]:
