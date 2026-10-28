@@ -2450,20 +2450,6 @@ export const zPostConnectionsBody = zEndUserConnectionCreatePayload
  */
 export const zPostConnectionsResponse = zEndUserConnectionResponse
 
-export const zPostConnectionsClaimBody = zConnectionClaimPayload
-
-/**
- * Guest Connection claim results
- */
-export const zPostConnectionsClaimResponse = zConnectionClaimResponse
-
-export const zPostConnectionsClaimablePassportsBody = zClaimablePassportsPayload
-
-/**
- * Claimable browser Passports
- */
-export const zPostConnectionsClaimablePassportsResponse = zClaimablePassportsResponse
-
 export const zGetConnectionsConfigurationQuery = z.object({
   conversation_id: z.uuid().optional(),
 })
@@ -2744,6 +2730,20 @@ export const zGetMessagesByMessageIdSuggestedQuestionsResponse = zSuggestedQuest
  * Success
  */
 export const zGetMetaResponse = zAppMetaResponse
+
+export const zPostMigrationClaimBody = zConnectionClaimPayload
+
+/**
+ * Guest Connection claim results
+ */
+export const zPostMigrationClaimResponse = zConnectionClaimResponse
+
+export const zPostMigrationClaimablePassportsBody = zClaimablePassportsPayload
+
+/**
+ * Claimable browser Passports
+ */
+export const zPostMigrationClaimablePassportsResponse = zClaimablePassportsResponse
 
 /**
  * Success

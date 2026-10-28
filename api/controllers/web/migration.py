@@ -1,4 +1,4 @@
-"""Claim browser Guest Connections in independent transactions for one Account."""
+"""Web entry points for Guest resource migration; currently transfers personal Connections."""
 
 from typing import Annotated, Literal
 
@@ -129,7 +129,7 @@ register_response_schema_models(
 )
 
 
-@web_ns.route("/connections/claim")
+@web_ns.route("/migration/claim")
 class ConnectionClaimApi(Resource):
     @web_ns.doc(
         description="Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. "
@@ -222,7 +222,7 @@ register_schema_models(web_ns, ClaimablePassportsPayload)
 register_response_schema_models(web_ns, ClaimablePassportResponse, ClaimablePassportsResponse)
 
 
-@web_ns.route("/connections/claimable-passports")
+@web_ns.route("/migration/claimable-passports")
 class ClaimablePassportsApi(Resource):
     @web_ns.doc(
         description="Check anonymous Passports held by this browser across Web Apps without changing identity or data. "

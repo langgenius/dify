@@ -1,4 +1,4 @@
-"""Guest Claim through real Passport verification and transactional persistence."""
+"""Guest migration through real Passport verification and transactional persistence."""
 
 import base64
 import hashlib
@@ -23,7 +23,7 @@ from context.connection_execution import ConnectionExecutionContext, ExecutionCo
 from controllers.console import bp as console_bp
 from controllers.console import wraps as console_wraps
 from controllers.console.auth import login as console_login
-from controllers.web import bp, connection_claim, connections, passport, wraps
+from controllers.web import bp, connections, migration, passport, wraps
 from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from models.account import Account, AccountStatus
@@ -71,7 +71,7 @@ class ClaimHarness:
 
     def claim(self) -> TestResponse:
         return self.client.post(
-            "/api/connections/claim",
+            "/api/migration/claim",
             headers={"Authorization": f"Bearer {self.proof}"},
             json={"passports": [self.guest_passport]},
         )
@@ -149,7 +149,7 @@ def harness(
             store=oauth.base.repository, passports=passports, tokens=tokens, identities=identity
         ),
     )
-    for module in (wraps, connection_claim, connections, passport, console_login):
+    for module in (wraps, migration, connections, passport, console_login):
         monkeypatch.setattr(module, "application_services", lambda: services)
     monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
@@ -241,7 +241,7 @@ def test_claim_preserves_credentials_ids_and_independent_choices(
         ]
     checks, exchanges = len(base.auth.calls), harness.oauth.handler.exchanges
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
-    preview = harness.client.post("/api/connections/claimable-passports", json={"passports": [harness.guest_passport]})
+    preview = harness.client.post("/api/migration/claimable-passports", json={"passports": [harness.guest_passport]})
     assert preview.status_code == 200
     assert preview.get_json()["data"][0]["connection_count"] == 2
     response = harness.claim()
@@ -320,7 +320,7 @@ def test_retries_and_other_accounts_cannot_reclaim_transferred_connections(harne
     assert harness.claim().get_json()["data"][0]["claimed_connections"] == 1
     assert harness.claim().get_json()["data"][0]["claimed_connections"] == 0
     response = harness.client.post(
-        "/api/connections/claim",
+        "/api/migration/claim",
         json={"passports": [harness.guest_passport]},
         headers={"Authorization": f"Bearer {account_proof(harness.signer, other_id)}"},
     )
@@ -387,7 +387,7 @@ def test_claim_requires_both_valid_scoped_identities(harness: ClaimHarness, fail
         payload.update(login_code="untrusted-secret", code_verifier="v" * 43)
     else:
         payload["account_id"] = "untrusted-secret"
-    response = harness.client.post("/api/connections/claim", headers=headers, json=payload)
+    response = harness.client.post("/api/migration/claim", headers=headers, json=payload)
     if failure in {"authority_payload", "handoff_payload"}:
         assert response.status_code == 422
     elif failure in {"expired_guest", "account_as_guest", "wrong_app"}:
@@ -538,7 +538,7 @@ def test_login_is_exchanged_before_delayed_claim_confirmation(
     assert base.service.get_connection(base.context, selected.id).id == selected.id
     clock[0] += timedelta(minutes=5)
     response = harness.client.post(
-        "/api/connections/claim",
+        "/api/migration/claim",
         base_url="https://apps.example.net",
         headers={"Authorization": f"Bearer {proof}"},
         json={"passports": [harness.guest_passport, harness.guest_passport]},
@@ -681,7 +681,7 @@ def test_discovery_and_batch_claim_are_scoped_across_apps(
             harness.guest_passport,
         ]
     }
-    response = harness.client.post("/api/connections/claimable-passports", json=payload)
+    response = harness.client.post("/api/migration/claimable-passports", json=payload)
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
     data = response.get_json()["data"]
@@ -694,7 +694,7 @@ def test_discovery_and_batch_claim_are_scoped_across_apps(
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUser)) == before
     assert base.service.get_connection(base.context, selected.id).id == selected.id
     response = harness.client.post(
-        "/api/connections/claim",
+        "/api/migration/claim",
         headers={"Authorization": f"Bearer {harness.proof}"},
         json={"passports": [harness.guest_passport, "invalid", other_token, expired]},
     )
@@ -717,7 +717,7 @@ def test_discovery_and_batch_claim_are_scoped_across_apps(
         )
         patch.setattr(auth, "is_account_allowed", lambda _app, _account: False)
         response = harness.client.post(
-            "/api/connections/claim",
+            "/api/migration/claim",
             headers={"Authorization": f"Bearer {harness.proof}"},
             json={"passports": [harness.guest_passport, other_token]},
         )
@@ -731,7 +731,7 @@ def test_discovery_and_batch_claim_are_scoped_across_apps(
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUser)) == before
 
     response = harness.client.post(
-        "/api/connections/claim",
+        "/api/migration/claim",
         headers={"Authorization": f"Bearer {harness.proof}"},
         json={"passports": [harness.guest_passport, other_token, harness.guest_passport]},
     )
@@ -753,7 +753,7 @@ def test_discovery_and_batch_claim_are_scoped_across_apps(
         assert other.account_id == harness.account.account_id
         assert other.end_user_id is None
     assert harness.client.post(
-        "/api/connections/claimable-passports", json={"passports": [harness.guest_passport]}
+        "/api/migration/claimable-passports", json={"passports": [harness.guest_passport]}
     ).get_json() == {
         "data": [{"index": 0, "app_code": harness.oauth.app_code, "app_name": "App", "connection_count": 0}]
     }
@@ -778,14 +778,14 @@ def test_zero_connection_guest_remains_claimable_for_future_conversation_migrati
         conversation_id = conversation.id
     payload = {"passports": [harness.guest_passport, harness.guest_passport]}
     expected = {"data": [{"index": 0, "app_code": harness.oauth.app_code, "app_name": "App", "connection_count": 0}]}
-    response = harness.client.post("/api/connections/claimable-passports", json=payload)
+    response = harness.client.post("/api/migration/claimable-passports", json=payload)
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
     assert response.get_json() == expected
     result = harness.claim()
     assert result.status_code == 200
     assert result.get_json()["data"][0]["claimed_connections"] == 0
-    assert harness.client.post("/api/connections/claimable-passports", json=payload).get_json() == expected
+    assert harness.client.post("/api/migration/claimable-passports", json=payload).get_json() == expected
     with base.sessions() as session:
         stored = session.get(Conversation, conversation_id)
         assert stored is not None
@@ -857,7 +857,7 @@ def test_claimable_passports_omit_ineligible_identities(harness: ClaimHarness, u
                 session.execute(
                     sa.update(EndUser).where(EndUser.id == base.context.end_user_id).values(tenant_id=str(uuid4()))
                 )
-    response = harness.client.post("/api/connections/claimable-passports", json={"passports": [token]})
+    response = harness.client.post("/api/migration/claimable-passports", json={"passports": [token]})
     assert response.status_code == 200
     assert response.get_json() == {"data": []}
 
@@ -866,13 +866,13 @@ def test_claimable_passports_validate_batch_and_capability(
     harness: ClaimHarness, config_overrides: Callable[..., None]
 ) -> None:
     assert (
-        harness.client.post("/api/connections/claimable-passports", json={"passports": ["candidate"] * 51}).status_code
+        harness.client.post("/api/migration/claimable-passports", json={"passports": ["candidate"] * 51}).status_code
         == 422
     )
     config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=False)
     assert (
         harness.client.post(
-            "/api/connections/claimable-passports", json={"passports": [harness.guest_passport]}
+            "/api/migration/claimable-passports", json={"passports": [harness.guest_passport]}
         ).status_code
         == 403
     )
@@ -908,7 +908,7 @@ def test_batch_retry_transfers_remaining_connections_only(harness: ClaimHarness)
     event.listen(engine, "before_cursor_execute", fail_second)
     try:
         response = harness.client.post(
-            "/api/connections/claim",
+            "/api/migration/claim",
             headers={"Authorization": f"Bearer {harness.proof}"},
             json=payload,
         )
@@ -924,7 +924,7 @@ def test_batch_retry_transfers_remaining_connections_only(harness: ClaimHarness)
     assert base.service.get_connection(harness.account, first.id).id == first.id
     assert base.service.get_connection(second_context, second.id).id == second.id
     retry = harness.client.post(
-        "/api/connections/claim",
+        "/api/migration/claim",
         headers={"Authorization": f"Bearer {harness.proof}"},
         json=payload,
     )
@@ -932,7 +932,7 @@ def test_batch_retry_transfers_remaining_connections_only(harness: ClaimHarness)
     assert base.service.get_connection(harness.account, second.id).id == second.id
     newest = base.service.create_api_key(base.context, base.command("new-guest-secret"))
     again = harness.client.post(
-        "/api/connections/claim", headers={"Authorization": f"Bearer {harness.proof}"}, json=payload
+        "/api/migration/claim", headers={"Authorization": f"Bearer {harness.proof}"}, json=payload
     )
     assert [item["claimed_connections"] for item in again.get_json()["data"]] == [1, 0, 0]
     assert base.service.get_connection(harness.account, newest.id).id == newest.id
@@ -942,7 +942,7 @@ def test_batch_retry_transfers_remaining_connections_only(harness: ClaimHarness)
 def test_claim_rejects_invalid_batch_sizes(harness: ClaimHarness, payload: dict[str, object]) -> None:
     assert (
         harness.client.post(
-            "/api/connections/claim", headers={"Authorization": f"Bearer {harness.proof}"}, json=payload
+            "/api/migration/claim", headers={"Authorization": f"Bearer {harness.proof}"}, json=payload
         ).status_code
         == 422
     )

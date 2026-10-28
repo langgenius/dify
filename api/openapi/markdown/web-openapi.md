@@ -148,41 +148,6 @@ Stop a running completion message task.
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [POST] /connections/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ConnectionClaimPayload](#connectionclaimpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
-| 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /connections/claimable-passports
-Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ClaimablePassportsPayload](#claimablepassportspayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Claimable browser Passports | **application/json**: [ClaimablePassportsResponse](#claimablepassportsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [GET] /connections/configuration
 Read saved App or Conversation choices without validating or refreshing credentials.
 
@@ -865,6 +830,41 @@ Retrieve the metadata for a specific app.
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /migration/claim
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConnectionClaimPayload](#connectionclaimpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /migration/claimable-passports
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ClaimablePassportsPayload](#claimablepassportspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Claimable browser Passports | **application/json**: [ClaimablePassportsResponse](#claimablepassportsresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /parameters

@@ -129,10 +129,6 @@ import {
   zPostConnectionsByConnectionIdReauthorizeBody,
   zPostConnectionsByConnectionIdReauthorizePath,
   zPostConnectionsByConnectionIdReauthorizeResponse,
-  zPostConnectionsClaimablePassportsBody,
-  zPostConnectionsClaimablePassportsResponse,
-  zPostConnectionsClaimBody,
-  zPostConnectionsClaimResponse,
   zPostConnectionsOauthAuthorizationUrlBody,
   zPostConnectionsOauthAuthorizationUrlResponse,
   zPostConnectionsPreflightBody,
@@ -166,6 +162,10 @@ import {
   zPostMessagesByMessageIdFeedbacksPath,
   zPostMessagesByMessageIdFeedbacksQuery,
   zPostMessagesByMessageIdFeedbacksResponse,
+  zPostMigrationClaimablePassportsBody,
+  zPostMigrationClaimablePassportsResponse,
+  zPostMigrationClaimBody,
+  zPostMigrationClaimResponse,
   zPostPassportBody,
   zPostPassportHeaders,
   zPostPassportResponse,
@@ -341,51 +341,6 @@ export const completionMessages = {
 }
 
 /**
- * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
- */
-export const post6 = oc
-  .route({
-    description:
-      "Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.",
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postConnectionsClaim',
-    path: '/connections/claim',
-    tags: ['web'],
-  })
-  .input(z.object({ body: zPostConnectionsClaimBody }))
-  .output(zPostConnectionsClaimResponse)
-  .errors({
-    connection_claim_preflight_failed: { status: 400, data: zConnectionClaimPreflightFailedError },
-    connection_claim_unavailable: { status: 503, data: zConnectionClaimUnavailableError },
-    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
-  })
-
-export const claim = {
-  post: post6,
-}
-
-/**
- * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
- */
-export const post7 = oc
-  .route({
-    description:
-      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postConnectionsClaimablePassports',
-    path: '/connections/claimable-passports',
-    tags: ['web'],
-  })
-  .input(z.object({ body: zPostConnectionsClaimablePassportsBody }))
-  .output(zPostConnectionsClaimablePassportsResponse)
-
-export const claimablePassports = {
-  post: post7,
-}
-
-/**
  * Read saved App or Conversation choices without validating or refreshing credentials.
  */
 export const get = oc
@@ -408,7 +363,7 @@ export const configuration = {
   get,
 }
 
-export const post8 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -435,14 +390,14 @@ export const post8 = oc
   })
 
 export const authorizationUrl = {
-  post: post8,
+  post: post6,
 }
 
 export const oauth = {
   authorizationUrl,
 }
 
-export const post9 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -469,10 +424,10 @@ export const post9 = oc
   })
 
 export const preflight = {
-  post: post9,
+  post: post7,
 }
 
-export const post10 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -505,7 +460,7 @@ export const post10 = oc
   })
 
 export const reauthorize = {
-  post: post10,
+  post: post8,
 }
 
 /**
@@ -625,7 +580,7 @@ export const get4 = oc
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   })
 
-export const post11 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -650,9 +605,7 @@ export const post11 = oc
 
 export const connections = {
   get: get4,
-  post: post11,
-  claim,
-  claimablePassports,
+  post: post9,
   configuration,
   oauth,
   preflight,
@@ -662,7 +615,7 @@ export const connections = {
 /**
  * Rename a specific conversation with a custom name or auto-generate one.
  */
-export const post12 = oc
+export const post10 = oc
   .route({
     description: 'Rename a specific conversation with a custom name or auto-generate one.',
     inputStructure: 'detailed',
@@ -682,7 +635,7 @@ export const post12 = oc
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const name = {
-  post: post12,
+  post: post10,
 }
 
 /**
@@ -773,7 +726,7 @@ export const conversations = {
 /**
  * Verify email code and complete login
  */
-export const post13 = oc
+export const post11 = oc
   .route({
     description: 'Verify email code and complete login',
     inputStructure: 'detailed',
@@ -792,13 +745,13 @@ export const post13 = oc
   })
 
 export const validity = {
-  post: post13,
+  post: post11,
 }
 
 /**
  * Send email verification code for login
  */
-export const post14 = oc
+export const post12 = oc
   .route({
     description: 'Send email verification code for login',
     inputStructure: 'detailed',
@@ -812,7 +765,7 @@ export const post14 = oc
   .errors({ authentication_failed: { status: 401, data: zAuthenticationFailedError } })
 
 export const emailCodeLogin = {
-  post: post14,
+  post: post12,
   validity,
 }
 
@@ -843,7 +796,7 @@ export const emailCodeLogin = {
  * UnsupportedFileTypeError: File type not supported
  * BlockedFileExtensionError: File extension is blocked
  */
-export const post15 = oc
+export const post13 = oc
   .route({
     description:
       'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported\n    BlockedFileExtensionError: File extension is blocked',
@@ -866,7 +819,7 @@ export const post15 = oc
   })
 
 export const upload = {
-  post: post15,
+  post: post13,
 }
 
 export const files = {
@@ -876,7 +829,7 @@ export const files = {
 /**
  * Reset user password with verification token
  */
-export const post16 = oc
+export const post14 = oc
   .route({
     description: 'Reset user password with verification token',
     inputStructure: 'detailed',
@@ -894,13 +847,13 @@ export const post16 = oc
   })
 
 export const resets = {
-  post: post16,
+  post: post14,
 }
 
 /**
  * Verify password reset token validity
  */
-export const post17 = oc
+export const post15 = oc
   .route({
     description: 'Verify password reset token validity',
     inputStructure: 'detailed',
@@ -919,13 +872,13 @@ export const post17 = oc
   })
 
 export const validity2 = {
-  post: post17,
+  post: post15,
 }
 
 /**
  * Send password reset email
  */
-export const post18 = oc
+export const post16 = oc
   .route({
     description: 'Send password reset email',
     inputStructure: 'detailed',
@@ -943,7 +896,7 @@ export const post18 = oc
   })
 
 export const forgotPassword = {
-  post: post18,
+  post: post16,
   resets,
   validity: validity2,
 }
@@ -954,7 +907,7 @@ export const forgotPassword = {
  * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post19 = oc
+export const post17 = oc
   .route({
     description:
       'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
@@ -974,7 +927,7 @@ export const post19 = oc
   })
 
 export const uploadToken = {
-  post: post19,
+  post: post17,
 }
 
 /**
@@ -1016,7 +969,7 @@ export const get6 = oc
  * "action": "Approve"
  * }
  */
-export const post20 = oc
+export const post18 = oc
   .route({
     description:
       'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -1043,7 +996,7 @@ export const post20 = oc
 
 export const byFormToken = {
   get: get6,
-  post: post20,
+  post: post18,
   uploadToken,
 }
 
@@ -1058,7 +1011,7 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post21 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1090,7 +1043,7 @@ export const post21 = oc
   })
 
 export const files2 = {
-  post: post21,
+  post: post19,
 }
 
 export const humanInputForms = {
@@ -1121,7 +1074,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post22 = oc
+export const post20 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -1139,14 +1092,14 @@ export const post22 = oc
   })
 
 export const login = {
-  post: post22,
+  post: post20,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post23 = oc
+export const post21 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -1158,13 +1111,13 @@ export const post23 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post23,
+  post: post21,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post24 = oc
+export const post22 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -1183,7 +1136,7 @@ export const post24 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post24,
+  post: post22,
 }
 
 /**
@@ -1295,6 +1248,56 @@ export const get11 = oc
 
 export const meta = {
   get: get11,
+}
+
+/**
+ * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+ */
+export const post23 = oc
+  .route({
+    description:
+      "Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postMigrationClaim',
+    path: '/migration/claim',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostMigrationClaimBody }))
+  .output(zPostMigrationClaimResponse)
+  .errors({
+    connection_claim_preflight_failed: { status: 400, data: zConnectionClaimPreflightFailedError },
+    connection_claim_unavailable: { status: 503, data: zConnectionClaimUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
+
+export const claim = {
+  post: post23,
+}
+
+/**
+ * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+ */
+export const post24 = oc
+  .route({
+    description:
+      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postMigrationClaimablePassports',
+    path: '/migration/claimable-passports',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostMigrationClaimablePassportsBody }))
+  .output(zPostMigrationClaimablePassportsResponse)
+
+export const claimablePassports = {
+  post: post24,
+}
+
+export const migration = {
+  claim,
+  claimablePassports,
 }
 
 /**
@@ -1783,6 +1786,7 @@ export const contract = {
   logout,
   messages,
   meta,
+  migration,
   parameters,
   passport,
   remoteFiles,

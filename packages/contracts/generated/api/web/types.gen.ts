@@ -1798,50 +1798,6 @@ export type PostConnectionsResponses = {
 
 export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
 
-export type PostConnectionsClaimData = {
-  body: ConnectionClaimPayload
-  path?: never
-  query?: never
-  url: '/connections/claim'
-}
-
-export type PostConnectionsClaimErrors = {
-  400: ConnectionClaimPreflightFailedError | ErrorResponse
-  401: EndUserLoginRequiredError | ErrorResponse
-  503: ConnectionClaimUnavailableError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostConnectionsClaimError = PostConnectionsClaimErrors[keyof PostConnectionsClaimErrors]
-
-export type PostConnectionsClaimResponses = {
-  200: ConnectionClaimResponse
-}
-
-export type PostConnectionsClaimResponse =
-  PostConnectionsClaimResponses[keyof PostConnectionsClaimResponses]
-
-export type PostConnectionsClaimablePassportsData = {
-  body: ClaimablePassportsPayload
-  path?: never
-  query?: never
-  url: '/connections/claimable-passports'
-}
-
-export type PostConnectionsClaimablePassportsErrors = {
-  default: ErrorResponse
-}
-
-export type PostConnectionsClaimablePassportsError =
-  PostConnectionsClaimablePassportsErrors[keyof PostConnectionsClaimablePassportsErrors]
-
-export type PostConnectionsClaimablePassportsResponses = {
-  200: ClaimablePassportsResponse
-}
-
-export type PostConnectionsClaimablePassportsResponse =
-  PostConnectionsClaimablePassportsResponses[keyof PostConnectionsClaimablePassportsResponses]
-
 export type GetConnectionsConfigurationData = {
   body?: never
   path?: never
@@ -2675,6 +2631,50 @@ export type GetMetaResponses = {
 }
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses]
+
+export type PostMigrationClaimData = {
+  body: ConnectionClaimPayload
+  path?: never
+  query?: never
+  url: '/migration/claim'
+}
+
+export type PostMigrationClaimErrors = {
+  400: ConnectionClaimPreflightFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  503: ConnectionClaimUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostMigrationClaimError = PostMigrationClaimErrors[keyof PostMigrationClaimErrors]
+
+export type PostMigrationClaimResponses = {
+  200: ConnectionClaimResponse
+}
+
+export type PostMigrationClaimResponse =
+  PostMigrationClaimResponses[keyof PostMigrationClaimResponses]
+
+export type PostMigrationClaimablePassportsData = {
+  body: ClaimablePassportsPayload
+  path?: never
+  query?: never
+  url: '/migration/claimable-passports'
+}
+
+export type PostMigrationClaimablePassportsErrors = {
+  default: ErrorResponse
+}
+
+export type PostMigrationClaimablePassportsError =
+  PostMigrationClaimablePassportsErrors[keyof PostMigrationClaimablePassportsErrors]
+
+export type PostMigrationClaimablePassportsResponses = {
+  200: ClaimablePassportsResponse
+}
+
+export type PostMigrationClaimablePassportsResponse =
+  PostMigrationClaimablePassportsResponses[keyof PostMigrationClaimablePassportsResponses]
 
 export type GetParametersData = {
   body?: never
