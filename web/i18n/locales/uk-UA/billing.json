@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "учасника",
   "plansCommon.messageRequest.title": "{{count,number}} кредитів повідомлень",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} повідомлень/місяць",
-  "plansCommon.messageRequest.tooltip": "Квоти на виклик повідомлень для різних планів з використанням моделей OpenAI (крім gpt4). Повідомлення понад ліміт використовуватимуть ваш ключ API OpenAI.",
+  "plansCommon.messageRequest.tooltip": "Кредити на повідомлення допомагають легко випробувати в Dify різні моделі від OpenAI, Anthropic, Gemini, xAI, DeepSeek і Tongyi. Кредити витрачаються залежно від типу моделі. Коли вони закінчаться, ви зможете перейти на власний API-ключ.",
   "plansCommon.modelProviders": "Постачальники моделей",
   "plansCommon.month": "місяць",
   "plansCommon.mostPopular": "Найпопулярніший",

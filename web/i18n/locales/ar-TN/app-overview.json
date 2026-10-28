@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "تعبئة مسبقة للحقول المخفية",
   "overview.status.disable": "تعطيل",
   "overview.triggerInfo.learnAboutTriggers": "تعرّف على المزيد حول المشغلات",
-  "overview.triggerInfo.triggerStatusDescription": "تظهر المشغلات هنا بعد نشر الإصدار الذي يحتوي عليها."
+  "overview.triggerInfo.triggerStatusDescription": "تظهر المشغلات هنا بعد النشر."
 }

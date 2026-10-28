@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Ausgeblendete Felder vorausfüllen",
   "overview.status.disable": "Deaktivieren",
   "overview.triggerInfo.learnAboutTriggers": "Erfahren Sie mehr über Auslöser",
-  "overview.triggerInfo.triggerStatusDescription": "Auslöser werden hier angezeigt, nachdem Sie die Version veröffentlicht haben, in der sie enthalten sind."
+  "overview.triggerInfo.triggerStatusDescription": "Trigger werden hier angezeigt, nachdem Sie veröffentlicht haben."
 }

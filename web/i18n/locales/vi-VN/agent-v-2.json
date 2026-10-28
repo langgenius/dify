@@ -165,7 +165,7 @@
   "agentDetail.configure.preview.chatFeatures": "Tính năng trò chuyện",
   "agentDetail.configure.preview.empty.defaultAgentName": "Tác nhân",
   "agentDetail.configure.preview.empty.description": "Chạy tác nhân như một cuộc trò chuyện hoàn chỉnh, đúng như người dùng sẽ trải nghiệm sau khi xuất bản.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Lần chạy Agent này đã dừng sau khi đạt số lượng yêu cầu mô hình tối đa. Hãy thử lại hoặc chia tác vụ thành các bước nhỏ hơn.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Lượt chạy agent này đã dừng do đạt giới hạn yêu cầu mô hình. Hãy thử lại hoặc chia nhiệm vụ thành các bước nhỏ hơn.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Lần chạy Agent này đã bị dừng do đạt giới hạn thời gian. Hãy thử lại hoặc chia tác vụ thành các bước nhỏ hơn.",
   "agentDetail.configure.preview.inputPlaceholder": "Nhắn cho {{name}}",
   "agentDetail.configure.preview.restart": "Bắt đầu mới",

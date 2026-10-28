@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "عضو",
   "plansCommon.messageRequest.title": "{{count,number}} اعتبار پیام",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} پیام در ماه",
-  "plansCommon.messageRequest.tooltip": "سهمیه‌های فراخوانی پیام برای طرح‌های مختلف با استفاده از مدل‌های OpenAI (به جز gpt4). پیام‌های بیش از حد محدودیت از کلید API OpenAI شما استفاده می‌کنند.",
+  "plansCommon.messageRequest.tooltip": "اعتبارهای پیام به شما کمک می‌کنند مدل‌های مختلف OpenAI، Anthropic، Gemini، xAI، DeepSeek و Tongyi را به‌راحتی در Dify امتحان کنید. اعتبارها بر اساس نوع مدل مصرف می‌شوند. پس از اتمام آن‌ها، می‌توانید به کلید API خودتان تغییر دهید.",
   "plansCommon.modelProviders": "ارائه‌دهندگان مدل",
   "plansCommon.month": "ماه",
   "plansCommon.mostPopular": "محبوب‌ترین",

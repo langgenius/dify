@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "預填隱藏欄位",
   "overview.status.disable": "已停用",
   "overview.triggerInfo.learnAboutTriggers": "進一步了解觸發器",
-  "overview.triggerInfo.triggerStatusDescription": "發布包含觸發器的版本後，觸發器會顯示在這裡。"
+  "overview.triggerInfo.triggerStatusDescription": "發佈後，觸發器會顯示在這裡。"
 }

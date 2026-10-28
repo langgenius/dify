@@ -15,7 +15,7 @@
   "inputField.manage": "Gestionar",
   "publishToast.desc": "Cuando la canalización no se publica, puede modificar la estructura de fragmentos en el nodo de la base de conocimiento y la orquestación y los cambios de la canalización se guardarán automáticamente como borrador.",
   "publishToast.title": "Este pipeline aún no se ha publicado",
-  "ragToolSuggestions.noRecommendationPlugins": "No hay complementos recomendados, encuentra más en <CustomLink>Marketplace</CustomLink>",
+  "ragToolSuggestions.noRecommendationPlugins": "No hay integraciones recomendadas; encuentra más en <CustomLink>Marketplace</CustomLink>",
   "ragToolSuggestions.title": "Sugerencias para el GAR",
   "result.resultPreview.error": "Error ocurrido durante la ejecución",
   "result.resultPreview.footerTip": "En modo de prueba, previsualiza hasta {{count}} fragmentos",

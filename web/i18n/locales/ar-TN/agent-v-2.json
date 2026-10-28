@@ -165,7 +165,7 @@
   "agentDetail.configure.preview.chatFeatures": "ميزات الدردشة",
   "agentDetail.configure.preview.empty.defaultAgentName": "وكيل",
   "agentDetail.configure.preview.empty.description": "شغّل الوكيل كمحادثة مكتملة، تمامًا كما سيختبرها المستخدمون بعد النشر.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "تم إيقاف تشغيل هذا الوكيل بعد بلوغ الحد الأقصى لعدد طلبات النموذج. حاول مرة أخرى، أو قسّم المهمة إلى خطوات أصغر.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "تم إيقاف تشغيل هذا الوكيل عند بلوغ الحد الأقصى لطلبات النموذج. حاول مرة أخرى، أو قسّم المهمة إلى خطوات أصغر.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "تم إيقاف تشغيل هذا الوكيل بسبب بلوغ الحد الزمني. حاول مرة أخرى، أو قسّم المهمة إلى خطوات أصغر.",
   "agentDetail.configure.preview.inputPlaceholder": "إرسال رسالة إلى {{name}}",
   "agentDetail.configure.preview.restart": "ابدأ من جديد",

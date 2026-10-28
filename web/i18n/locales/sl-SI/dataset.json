@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "Vhodna točka API storitve",
   "serviceApi.card.title": "API storitev za zaledje",
   "serviceApi.disabled": "Onemogočeno",
-  "serviceApi.enabled": "V storitvi",
+  "serviceApi.enabled": "Omogočeno",
   "serviceApi.title": "Storitveni API",
   "unavailable": "Ni na voljo",
   "unknownError": "Neznana napaka",

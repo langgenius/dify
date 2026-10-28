@@ -107,7 +107,7 @@
   "mcp.configured": "已配置",
   "mcp.create.cardLink": "了解更多关于 MCP 服务集成的信息",
   "mcp.create.cardTitle": "添加 MCP 服务 (HTTP)",
-  "mcp.delete": "删除 MCP 服务",
+  "mcp.delete": "删除 MCP 服务器",
   "mcp.deleteConfirmTitle": "你想要删除 {{mcp}} 吗？",
   "mcp.getTools": "获取工具",
   "mcp.gettingTools": "获取工具中...",

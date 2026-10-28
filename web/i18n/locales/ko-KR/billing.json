@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "멤버",
   "plansCommon.messageRequest.title": "{{count,number}} 메시지 크레딧",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} 메시지/월",
-  "plansCommon.messageRequest.tooltip": "GPT 제외 다양한 요금제에서의 메시지 호출 쿼터 (gpt4 제외). 제한을 초과하는 메시지는 OpenAI API 키를 사용합니다.",
+  "plansCommon.messageRequest.tooltip": "메시지 크레딧은 Dify에서 OpenAI, Anthropic, Gemini, xAI, DeepSeek, Tongyi의 다양한 모델을 쉽게 사용해 볼 수 있도록 제공됩니다. 크레딧은 모델 유형에 따라 소모됩니다. 모두 사용한 후에는 자체 API 키로 전환할 수 있습니다.",
   "plansCommon.modelProviders": "모델 제공자",
   "plansCommon.month": "월",
   "plansCommon.mostPopular": "가장 인기 있는",

@@ -165,7 +165,7 @@
   "agentDetail.configure.preview.chatFeatures": "Sohbet Özellikleri",
   "agentDetail.configure.preview.empty.defaultAgentName": "Ajan",
   "agentDetail.configure.preview.empty.description": "Aracıyı yayınlandıktan sonra kullanıcıların deneyimleyeceği tamamlanmış sohbet olarak çalıştırın.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Bu Agent çalışması, maksimum model isteği sayısına ulaştığı için durduruldu. Tekrar deneyin veya görevi daha küçük adımlara bölün.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Bu ajan çalıştırması model isteği sınırına ulaşıldığı için durduruldu. Tekrar deneyin veya görevi daha küçük adımlara bölün.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Bu Agent çalışması süre sınırına ulaştığı için durduruldu. Tekrar deneyin veya görevi daha küçük adımlara bölün.",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} ile mesajlaş",
   "agentDetail.configure.preview.restart": "Baştan başla",

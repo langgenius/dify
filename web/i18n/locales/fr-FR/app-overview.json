@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Pré-remplir les champs masqués",
   "overview.status.disable": "Désactiver",
   "overview.triggerInfo.learnAboutTriggers": "En savoir plus sur les déclencheurs",
-  "overview.triggerInfo.triggerStatusDescription": "Les déclencheurs apparaissent ici après la publication de la version qui les contient."
+  "overview.triggerInfo.triggerStatusDescription": "Les déclencheurs apparaissent ici après la publication."
 }

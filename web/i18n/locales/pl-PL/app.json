@@ -85,7 +85,7 @@
   "gotoAnything.allCommands": "Pokaż wszystkie polecenia",
   "gotoAnything.emptyState.noAppsFound": "Nie znaleziono aplikacji",
   "gotoAnything.emptyState.noKnowledgeBasesFound": "Nie znaleziono baz wiedzy",
-  "gotoAnything.emptyState.noPluginsFound": "Nie znaleziono wtyczek",
+  "gotoAnything.emptyState.noPluginsFound": "Nie znaleziono integracji",
   "gotoAnything.emptyState.noWorkflowNodesFound": "Nie znaleziono węzłów przepływu pracy",
   "gotoAnything.emptyState.tryDifferentTerm": "Spróbuj innego terminu wyszukiwania",
   "gotoAnything.emptyState.trySpecificSearch": "Spróbuj {{shortcuts}} dla konkretnych wyszukiwań",

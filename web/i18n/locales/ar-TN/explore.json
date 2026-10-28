@@ -3,7 +3,7 @@
   "appCustomize.nameRequired": "اسم التطبيق مطلوب",
   "appCustomize.subTitle": "أيقونة التطبيق واسمه",
   "appCustomize.title": "إنشاء تطبيق من {{name}}",
-  "apps.allCategories": "موصى به",
+  "apps.allCategories": "الكل",
   "apps.description": "قوالب جاهزة للاستخدام من المجتمع وفريق Dify.",
   "apps.resultNum": "{{num}} نتائج",
   "apps.title": "قوالب",

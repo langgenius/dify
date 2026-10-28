@@ -165,7 +165,7 @@
   "agentDetail.configure.preview.chatFeatures": "ຟີເຈີການສົນທະນາ",
   "agentDetail.configure.preview.empty.defaultAgentName": "ຕົວແທນ",
   "agentDetail.configure.preview.empty.description": "ທົດລອງໃຊ້ຕົວແທນໃນຮູບແບບການສົນທະນາທີ່ສຳເລັດແລ້ວ ຄືກັນກັບທີ່ຜູ້ໃຊ້ຈະໄດ້ຮັບຮູ້ເມື່ອຖືກເຜີຍແຜ່.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດຫຼັງຈາກຮອດຈຳນວນຄຳຮ້ອງຂໍໂມເດວສູງສຸດ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "ການແລ່ນ Agent ນີ້ຖືກຢຸດເມື່ອຮອດຂີດຈຳກັດການຮ້ອງຂໍໂມເດວ. ລອງໃໝ່ອີກຄັ້ງ ຫຼື ແບ່ງໜ້າວຽກອອກເປັນຂັ້ນຕອນທີ່ນ້ອຍລົງ.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດເພາະຮອດຂີດຈຳກັດເວລາ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
   "agentDetail.configure.preview.inputPlaceholder": "ສົ່ງຂໍ້ຄວາມຫາ {{name}}",
   "agentDetail.configure.preview.restart": "ເລີ່ມຕົວຢ່າງໃໝ່",

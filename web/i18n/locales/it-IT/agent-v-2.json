@@ -165,7 +165,7 @@
   "agentDetail.configure.preview.chatFeatures": "Funzionalità chat",
   "agentDetail.configure.preview.empty.defaultAgentName": "Agente",
   "agentDetail.configure.preview.empty.description": "Esegui l’agente come una chat completa, esattamente come verrà vissuta dopo la pubblicazione.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Questa esecuzione dell'Agent è stata interrotta dopo aver raggiunto il numero massimo di richieste al modello. Riprova oppure suddividi l'attività in passaggi più piccoli.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Questa esecuzione dell'agente è stata interrotta al limite di richieste al modello. Riprova oppure suddividi l'attività in passaggi più piccoli.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Questa esecuzione dell'Agent è stata interrotta perché ha raggiunto il limite di tempo. Riprova oppure suddividi l'attività in passaggi più piccoli.",
   "agentDetail.configure.preview.inputPlaceholder": "Invia un messaggio a {{name}}",
   "agentDetail.configure.preview.restart": "Ricomincia",

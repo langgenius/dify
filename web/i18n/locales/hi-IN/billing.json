@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "सदस्य",
   "plansCommon.messageRequest.title": "{{count,number}} संदेश क्रेडिट्स",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} संदेश/महीना",
-  "plansCommon.messageRequest.tooltip": "विभिन्न योजनाओं के लिए संदेश आह्वान कोटा OpenAI मॉडलों का उपयोग करके (gpt4 को छोड़कर)। सीमा से अधिक संदेश आपके OpenAI API कुंजी का उपयोग करेंगे।",
+  "plansCommon.messageRequest.tooltip": "संदेश क्रेडिट आपको Dify में OpenAI, Anthropic, Gemini, xAI, DeepSeek और Tongyi के विभिन्न मॉडल आसानी से आज़माने में मदद करते हैं। क्रेडिट मॉडल प्रकार के आधार पर खर्च होते हैं। इनके समाप्त होने पर आप अपनी स्वयं की API कुंजी पर स्विच कर सकते हैं।",
   "plansCommon.modelProviders": "मॉडल प्रदाता",
   "plansCommon.month": "महीना",
   "plansCommon.mostPopular": "सबसे लोकप्रिय",

@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "सेवा एपीआई एंडपॉइंट",
   "serviceApi.card.title": "बैकएंड सेवा एपीआई",
   "serviceApi.disabled": "अक्षम",
-  "serviceApi.enabled": "सेवा में",
+  "serviceApi.enabled": "सक्षम",
   "serviceApi.title": "सेवा एपीआई",
   "unavailable": "उपलब्ध नहीं",
   "unknownError": "अज्ञात त्रुटि",

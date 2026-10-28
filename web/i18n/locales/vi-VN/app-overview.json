@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Điền sẵn trường ẩn",
   "overview.status.disable": "Đã tắt",
   "overview.triggerInfo.learnAboutTriggers": "Tìm hiểu thêm về trình kích hoạt",
-  "overview.triggerInfo.triggerStatusDescription": "Các trình kích hoạt sẽ xuất hiện ở đây sau khi bạn xuất bản phiên bản có chứa chúng."
+  "overview.triggerInfo.triggerStatusDescription": "Trình kích hoạt sẽ xuất hiện ở đây sau khi bạn xuất bản."
 }
