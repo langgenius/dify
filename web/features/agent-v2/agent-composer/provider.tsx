@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import type { AgentSoulConfigFormState } from './form-state'
 import { ScopeProvider } from 'jotai-scope'
-import { agentConfigFileUploadSyncAtom } from './config-file-upload-sync'
 import { defaultAgentSoulConfigFormState } from './form-state'
 import { agentComposerDraftAtom, agentComposerSavedDraftAtom } from './store'
 
@@ -19,7 +18,6 @@ export function AgentComposerProvider({
   return (
     <ScopeProvider
       atoms={[
-        agentConfigFileUploadSyncAtom,
         [agentComposerDraftAtom, draft],
         [agentComposerSavedDraftAtom, draft],
       ]}

@@ -4,12 +4,11 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { debounce } from 'es-toolkit/compat'
+import { debounce, omit } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
-import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -76,7 +75,6 @@ export function useWorkflowInlineAgentConfigureSync({
   const queryClient = useQueryClient()
   const resource = useAtomValue(editorResourceAtom)
   const store = useJotaiStore()
-  const fileUploadSync = useAtomValue(agentConfigFileUploadSyncAtom)
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
@@ -107,15 +105,19 @@ export function useWorkflowInlineAgentConfigureSync({
     [store],
   )
 
-  const runSaveComposer = useSerialAsyncCallback(
-    async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
+  const saveComposer = useSerialAsyncCallback(
+    async (
+      configSnapshot: AgentSoulConfig,
+      fileUpdate: 'preserve' | 'replace' = 'preserve',
+    ): Promise<WorkflowAgentComposerResponse | undefined> => {
       if (resource.kind !== 'app' && resource.kind !== 'snippet') return
 
       const savedDraftKey = JSON.stringify(configSnapshot)
       const body = {
         variant: 'workflow' as const,
         save_strategy: 'node_job_only' as const,
-        agent_soul: configSnapshot,
+        agent_soul:
+          fileUpdate === 'replace' ? configSnapshot : omit(configSnapshot, ['config_files']),
       }
       const composerState =
         resource.kind === 'snippet'
@@ -167,11 +169,6 @@ export function useWorkflowInlineAgentConfigureSync({
       return composerState
     },
   )
-  const saveComposer = useCallback(
-    (...args: Parameters<typeof runSaveComposer>) =>
-      fileUploadSync.trackSave(runSaveComposer(...args)),
-    [fileUploadSync, runSaveComposer],
-  )
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
   useEffect(() => {
@@ -183,29 +180,12 @@ export function useWorkflowInlineAgentConfigureSync({
   const debouncedSaveDraft = useMemo(
     () =>
       debounce(() => {
-        if (!fileUploadSync.isUploading) latestDraftSaveRef.current()
+        latestDraftSaveRef.current()
       }, DRAFT_AUTOSAVE_WAIT),
-    [fileUploadSync],
-  )
-
-  useEffect(
-    () =>
-      fileUploadSync.register({
-        pause: () => debouncedSaveDraft.cancel?.(),
-        saveLatest: async () => {
-          if (!enabledRef.current || !store.get(isAgentComposerDirtyAtom)) return
-          await saveComposer(getAgentSoulDraft())
-        },
-        resume: () => {
-          if (enabledRef.current && autoSaveEnabled && store.get(isAgentComposerDirtyAtom))
-            debouncedSaveDraft()
-        },
-      }),
-    [autoSaveEnabled, debouncedSaveDraft, fileUploadSync, getAgentSoulDraft, saveComposer, store],
+    [],
   )
 
   const saveDraft = useCallback(async () => {
-    if (fileUploadSync.isUploading) await fileUploadSync.waitForUpload()
     if (!enabledRef.current) return
 
     const configSnapshot = getAgentSoulDraft()
@@ -214,14 +194,13 @@ export function useWorkflowInlineAgentConfigureSync({
     if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange) return
 
     return saveComposer(configSnapshot)
-  }, [debouncedSaveDraft, fileUploadSync, getAgentSoulDraft, saveComposer, store])
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
   const saveAgentSoulConfig = useCallback(
     async (agentSoulConfig: AgentSoulConfig) => {
-      if (fileUploadSync.isUploading) await fileUploadSync.waitForUpload()
       debouncedSaveDraft.cancel?.()
-      return saveComposer(agentSoulConfig)
+      return saveComposer(agentSoulConfig, 'replace')
     },
-    [debouncedSaveDraft, fileUploadSync, saveComposer],
+    [debouncedSaveDraft, saveComposer],
   )
 
   useEffect(() => {
@@ -232,7 +211,6 @@ export function useWorkflowInlineAgentConfigureSync({
       if (
         !enabledRef.current ||
         !autoSaveEnabled ||
-        fileUploadSync.isUploading ||
         !store.get(isAgentComposerDirtyAtom) ||
         lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
@@ -241,13 +219,13 @@ export function useWorkflowInlineAgentConfigureSync({
 
       debouncedSaveDraft()
     })
-  }, [autoSaveEnabled, debouncedSaveDraft, fileUploadSync, getAgentSoulDraft, store])
+  }, [autoSaveEnabled, debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     return () => {
-      if (autoSaveEnabled && !fileUploadSync.isUploading) debouncedSaveDraft.flush?.()
+      if (autoSaveEnabled) debouncedSaveDraft.flush?.()
     }
-  }, [autoSaveEnabled, debouncedSaveDraft, fileUploadSync])
+  }, [autoSaveEnabled, debouncedSaveDraft])
 
   return {
     saveAgentSoulConfig,

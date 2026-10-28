@@ -3,10 +3,8 @@ import type { AgentConfigApiContext } from '../../config-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createStore, Provider } from 'jotai'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import { consoleQuery } from '@/service/console'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AgentFileUploadDialog } from '../upload-dialog'
@@ -15,27 +13,27 @@ type UploadInput = { body: { file: File } }
 type CommitInput = {
   params: { agent_id?: string; app_id?: string }
   query: { draft_type?: string; version_id?: string; node_id?: string }
-  body: { upload_file_id: string }
+  body: { upload_file_ids: string[] }
 }
 
 const mocks = vi.hoisted(() => ({
   uploadConfig: vi.fn<() => Promise<UploadConfig>>(),
   upload: vi.fn(async ({ body }: UploadInput) => ({ id: `upload-${body.file.name}` })),
   commitAgent: vi.fn(async ({ body }: CommitInput) => ({
-    file: {
-      name: body.upload_file_id.replace('upload-', ''),
-      file_id: body.upload_file_id,
+    files: body.upload_file_ids.map((id) => ({
+      name: id.replace('upload-', ''),
+      file_id: id,
       mime_type: 'text/markdown',
       size: 5,
-    },
+    })),
   })),
   commitWorkflow: vi.fn(async ({ body }: CommitInput) => ({
-    file: {
-      name: body.upload_file_id.replace('upload-', ''),
-      file_id: body.upload_file_id,
+    files: body.upload_file_ids.map((id) => ({
+      name: id.replace('upload-', ''),
+      file_id: id,
       mime_type: 'text/markdown',
       size: 5,
-    },
+    })),
   })),
 }))
 
@@ -47,8 +45,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'files.upload.get': mocks.uploadConfig,
       'files.upload.post': mocks.upload,
-      'agent.byAgentId.config.files.post': mocks.commitAgent,
-      'apps.byAppId.agent.config.files.post': mocks.commitWorkflow,
+      'agent.byAgentId.config.files.batch.post': mocks.commitAgent,
+      'apps.byAppId.agent.config.files.batch.post': mocks.commitWorkflow,
     }),
   }
 })
@@ -74,7 +72,6 @@ function renderUploadDialog({
 } = {}) {
   const onUploaded = vi.fn()
   const onOpenChange = vi.fn()
-  const store = createStore()
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity },
@@ -105,12 +102,10 @@ function renderUploadDialog({
 
   render(
     <QueryClientProvider client={queryClient}>
-      <Provider store={store}>
-        <Harness />
-      </Provider>
+      <Harness />
     </QueryClientProvider>,
   )
-  return { onUploaded, onOpenChange, fileUploadSync: store.get(agentConfigFileUploadSyncAtom) }
+  return { onUploaded, onOpenChange }
 }
 
 function markdownFile(name: string) {
@@ -140,12 +135,12 @@ describe('AgentFileUploadDialog batch uploads', () => {
     mocks.commitWorkflow.mockReset()
     mocks.upload.mockImplementation(async ({ body }) => ({ id: `upload-${body.file.name}` }))
     const commit = async ({ body }: CommitInput) => ({
-      file: {
-        name: body.upload_file_id.replace('upload-', ''),
-        file_id: body.upload_file_id,
+      files: body.upload_file_ids.map((id) => ({
+        name: id.replace('upload-', ''),
+        file_id: id,
         mime_type: 'text/markdown',
         size: 5,
-      },
+      })),
     })
     mocks.commitAgent.mockImplementation(commit)
     mocks.commitWorkflow.mockImplementation(commit)
@@ -183,30 +178,14 @@ describe('AgentFileUploadDialog batch uploads', () => {
     expect(mocks.commitAgent).toHaveBeenCalledOnce()
   })
 
-  it('waits for an existing composer save before starting a batch', async () => {
-    const user = userEvent.setup()
-    const pendingSave = deferred<void>()
-    const { fileUploadSync, onUploaded } = renderUploadDialog()
-    fileUploadSync.trackSave(pendingSave.promise)
-    await user.upload(fileInput(), markdownFile('after-save.md'))
-    await user.click(uploadButton())
-
-    expect(mocks.upload).not.toHaveBeenCalled()
-    expect(mocks.commitAgent).not.toHaveBeenCalled()
-    expect(fileInput()).toBeDisabled()
-    await act(async () => pendingSave.resolve())
-
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
-    expect(mocks.upload).toHaveBeenCalledOnce()
-    expect(mocks.commitAgent).toHaveBeenCalledOnce()
-  })
-
-  it('uploads and binds each selected file before starting the next, and protects the running batch from dismissal or duplicate submission', async () => {
+  it('uploads selected files in parallel and binds them together after all uploads finish, while protecting the running batch', async () => {
     const user = userEvent.setup()
     const firstUpload = deferred<{ id: string }>()
-    const firstCommit = deferred<Awaited<ReturnType<typeof mocks.commitAgent>>>()
+    const secondUpload = deferred<{ id: string }>()
+    const batchCommit = deferred<Awaited<ReturnType<typeof mocks.commitAgent>>>()
     mocks.upload.mockImplementationOnce(() => firstUpload.promise)
-    mocks.commitAgent.mockImplementationOnce(() => firstCommit.promise)
+    mocks.upload.mockImplementationOnce(() => secondUpload.promise)
+    mocks.commitAgent.mockImplementationOnce(() => batchCommit.promise)
     const { onUploaded, onOpenChange } = renderUploadDialog()
 
     const first = markdownFile('first.md')
@@ -216,8 +195,9 @@ describe('AgentFileUploadDialog batch uploads', () => {
     expect(screen.getByText('second.md')).toBeInTheDocument()
     await user.click(uploadButton())
 
-    await waitFor(() => expect(mocks.upload).toHaveBeenCalledOnce())
-    expect(mocks.upload).toHaveBeenCalledWith({ body: { file: first } })
+    await waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(2))
+    expect(mocks.upload).toHaveBeenNthCalledWith(1, { body: { file: first } })
+    expect(mocks.upload).toHaveBeenNthCalledWith(2, { body: { file: second } })
     expect(mocks.commitAgent).not.toHaveBeenCalled()
     expect(fileInput()).toBeDisabled()
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
@@ -226,21 +206,28 @@ describe('AgentFileUploadDialog batch uploads', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await user.click(uploadButton())
     expect(onOpenChange).not.toHaveBeenCalled()
-    expect(mocks.upload).toHaveBeenCalledOnce()
+    expect(mocks.upload).toHaveBeenCalledTimes(2)
 
+    await act(async () => secondUpload.resolve({ id: 'upload-second.md' }))
+    expect(mocks.commitAgent).not.toHaveBeenCalled()
     await act(async () => firstUpload.resolve({ id: 'upload-first.md' }))
     await waitFor(() => expect(mocks.commitAgent).toHaveBeenCalledOnce())
     expect(mocks.commitAgent).toHaveBeenCalledWith({
       params: { agent_id: 'agent-1' },
       query: { draft_type: 'draft', version_id: undefined },
-      body: { upload_file_id: 'upload-first.md' },
+      body: { upload_file_ids: ['upload-first.md', 'upload-second.md'] },
     })
-    expect(mocks.upload).toHaveBeenCalledOnce()
+    expect(mocks.upload).toHaveBeenCalledTimes(2)
     expect(onUploaded).not.toHaveBeenCalled()
 
     await act(async () =>
-      firstCommit.resolve({
-        file: { name: 'first.md', file_id: 'upload-first.md', mime_type: 'text/markdown', size: 5 },
+      batchCommit.resolve({
+        files: ['first.md', 'second.md'].map((name) => ({
+          name,
+          file_id: `upload-${name}`,
+          mime_type: 'text/markdown',
+          size: 5,
+        })),
       }),
     )
     await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(2))
@@ -248,10 +235,7 @@ describe('AgentFileUploadDialog batch uploads', () => {
       'first.md',
       'second.md',
     ])
-    expect(mocks.commitAgent.mock.calls.map(([input]) => input.body.upload_file_id)).toEqual([
-      'upload-first.md',
-      'upload-second.md',
-    ])
+    expect(mocks.commitAgent).toHaveBeenCalledOnce()
     expect(onUploaded.mock.calls.map(([file]) => file.name)).toEqual(['first.md', 'second.md'])
     expect(mocks.commitWorkflow).not.toHaveBeenCalled()
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
@@ -278,13 +262,13 @@ describe('AgentFileUploadDialog batch uploads', () => {
       'ready.md',
       'retry.md',
     ])
-    expect(mocks.commitAgent.mock.calls.map(([input]) => input.body.upload_file_id)).toEqual([
-      'upload-ready.md',
-      'upload-retry.md',
+    expect(mocks.commitAgent.mock.calls.map(([input]) => input.body.upload_file_ids)).toEqual([
+      ['upload-ready.md'],
+      ['upload-retry.md'],
     ])
   })
 
-  it('retries a failed workflow binding with its existing upload and preserves the workflow node context', async () => {
+  it('retries an atomic workflow binding with all existing uploads and preserves the workflow node context', async () => {
     const user = userEvent.setup()
     mocks.commitWorkflow.mockRejectedValueOnce(new Error('Binding failed'))
     const { onUploaded } = renderUploadDialog({
@@ -295,23 +279,50 @@ describe('AgentFileUploadDialog batch uploads', () => {
         workflow: { appId: 'workflow-1', nodeId: 'node-1' },
       },
     })
-    await user.upload(fileInput(), markdownFile('workflow.md'))
+    await user.upload(fileInput(), [markdownFile('first.md'), markdownFile('second.md')])
     await user.click(uploadButton())
-    const retry = await within(fileRow('workflow.md')).findByRole('button', {
-      name: 'common.operation.retry',
-    })
+    await within(fileRow('first.md')).findByRole('button', { name: 'common.operation.retry' })
+    expect(
+      within(fileRow('second.md')).getByRole('button', { name: 'common.operation.retry' }),
+    ).toBeEnabled()
     expect(onUploaded).not.toHaveBeenCalled()
-    await user.click(retry)
+    await user.click(uploadButton())
 
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
-    expect(mocks.upload).toHaveBeenCalledOnce()
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(2))
+    expect(mocks.upload).toHaveBeenCalledTimes(2)
     expect(mocks.commitAgent).not.toHaveBeenCalled()
     expect(mocks.commitWorkflow).toHaveBeenCalledTimes(2)
     expect(mocks.commitWorkflow).toHaveBeenLastCalledWith({
       params: { app_id: 'workflow-1' },
       query: { draft_type: 'debug_build', version_id: 'build-1', node_id: 'node-1' },
-      body: { upload_file_id: 'upload-workflow.md' },
+      body: { upload_file_ids: ['upload-first.md', 'upload-second.md'] },
     })
+  })
+
+  it('inserts only the final file returned for duplicate names in a successful batch', async () => {
+    const user = userEvent.setup()
+    mocks.upload
+      .mockResolvedValueOnce({ id: 'earlier-upload' })
+      .mockResolvedValueOnce({ id: 'latest-upload' })
+    mocks.commitAgent.mockResolvedValueOnce({
+      files: [{ name: 'same.md', file_id: 'latest-upload', mime_type: 'text/markdown', size: 5 }],
+    })
+    const { onUploaded, onOpenChange } = renderUploadDialog()
+    await user.upload(fileInput(), [markdownFile('same.md'), markdownFile('same.md')])
+    await user.click(uploadButton())
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(mocks.commitAgent).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: { upload_file_ids: ['earlier-upload', 'latest-upload'] },
+      }),
+    )
+    expect(onUploaded).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        name: 'same.md',
+        fileId: 'latest-upload',
+      }),
+    )
   })
 
   it('accepts a drop containing multiple files and keeps an oversized file error separate from valid queued files', async () => {
@@ -339,6 +350,11 @@ describe('AgentFileUploadDialog batch uploads', () => {
       'first.md',
       'second.md',
     ])
+    expect(mocks.commitAgent).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: { upload_file_ids: ['upload-first.md', 'upload-second.md'] },
+      }),
+    )
     expect(screen.getByText('large.md')).toBeInTheDocument()
   })
 })

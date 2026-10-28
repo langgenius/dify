@@ -1,7 +1,6 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
-import { useStore as useJotaiStore, useSetAtom } from 'jotai'
-import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
+import { useSetAtom } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentScope } from '@/features/agent-v2/analytics'
@@ -472,87 +471,6 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     vi.clearAllMocks()
   })
 
-  afterEach(() => vi.useRealTimers())
-
-  it('pauses partial batch autosave and resumes with the latest successful files when the upload session ends', async () => {
-    vi.useFakeTimers()
-    const { result } = renderWorkflowHook(
-      () => ({
-        ...useWorkflowInlineAgentConfigureSync({ nodeId: 'node-1', enabled: true }),
-        setDraft: useSetAtom(agentComposerDraftAtom),
-        uploads: useJotaiStore().get(agentConfigFileUploadSyncAtom),
-      }),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
-    )
-    const release = await result.current.uploads.beginUpload()
-    act(() =>
-      result.current.setDraft({
-        ...defaultAgentSoulConfigFormState,
-        files: [{ id: 'first.md', name: 'first.md', icon: 'markdown', fileId: 'first-upload' }],
-        prompt: 'First file uploaded; second is still pending',
-      }),
-    )
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(6000)
-    })
-    expect(mockComposerMutationFn).not.toHaveBeenCalled()
-
-    // A failed later file does not remove the successful file or leave autosave paused.
-    await act(async () => {
-      result.current.setDraft((draft) => ({ ...draft, prompt: 'Use the successful file' }))
-      await release()
-    })
-    expect(mockComposerMutationFn).toHaveBeenCalledOnce()
-    expect(mockComposerMutationFn).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          agent_soul: expect.objectContaining({
-            prompt: { system_prompt: 'Use the successful file' },
-            config_files: [expect.objectContaining({ name: 'first.md', file_id: 'first-upload' })],
-          }),
-        }),
-      }),
-    )
-
-    act(() => result.current.setDraft((draft) => ({ ...draft, prompt: 'A later edit' })))
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000)
-    })
-    expect(mockComposerMutationFn).toHaveBeenCalledTimes(2)
-    expect(mockComposerMutationFn).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        body: expect.objectContaining({
-          agent_soul: expect.objectContaining({
-            prompt: { system_prompt: 'A later edit' },
-            config_files: [expect.objectContaining({ name: 'first.md', file_id: 'first-upload' })],
-          }),
-        }),
-      }),
-    )
-  })
-
-  it('does not flush the workflow composer with an unfinished upload snapshot on unmount', async () => {
-    vi.useFakeTimers()
-    const { result, unmount } = renderWorkflowHook(
-      () => ({
-        ...useWorkflowInlineAgentConfigureSync({ nodeId: 'node-1', enabled: true }),
-        setDraft: useSetAtom(agentComposerDraftAtom),
-        uploads: useJotaiStore().get(agentConfigFileUploadSyncAtom),
-      }),
-      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
-    )
-    const release = await result.current.uploads.beginUpload()
-    act(() => {
-      result.current.setDraft({ ...defaultAgentSoulConfigFormState, prompt: 'Unfinished batch' })
-      unmount()
-    })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(6000)
-    })
-    expect(mockComposerMutationFn).not.toHaveBeenCalled()
-    await release()
-  })
-
   it('saves inline agent composer changes through the workflow node composer API', async () => {
     const queryClient = createTestQueryClient()
     const { result } = renderWorkflowHook(
@@ -580,6 +498,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Workflow inline prompt',
+        files: [{ id: 'stale.md', name: 'stale.md', icon: 'markdown', fileId: 'stale-upload' }],
       })
     })
 
@@ -613,6 +532,25 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
           schema_version: 1,
         }),
       }),
+    )
+    expect(mockComposerMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
+      'body.agent_soul.config_files',
+    )
+  })
+
+  it('preserves explicit file replacement when applying a complete Agent configuration', async () => {
+    const { result } = renderWorkflowHook(
+      () => useWorkflowInlineAgentConfigureSync({ nodeId: 'node-1', enabled: true }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    )
+
+    await act(async () => {
+      await result.current.saveAgentSoulConfig({ schema_version: 1, config_files: [] })
+    })
+
+    expect(mockComposerMutationFn.mock.calls[0]?.[0]).toHaveProperty(
+      'body.agent_soul.config_files',
+      [],
     )
   })
 

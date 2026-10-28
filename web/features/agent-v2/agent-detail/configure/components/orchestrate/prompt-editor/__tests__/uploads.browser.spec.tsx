@@ -17,17 +17,17 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'files.upload.post': async ({ body }: { body: { file: File } }) => ({ id: body.file.name }),
-      'agent.byAgentId.config.files.post': async ({
+      'agent.byAgentId.config.files.batch.post': async ({
         body,
       }: {
-        body: { upload_file_id: string }
+        body: { upload_file_ids: string[] }
       }) => ({
-        file: {
-          name: body.upload_file_id,
-          file_id: body.upload_file_id,
+        files: body.upload_file_ids.map((id) => ({
+          name: id,
+          file_id: id,
           mime_type: 'text/markdown',
           size: 5,
-        },
+        })),
       }),
     }),
   }
