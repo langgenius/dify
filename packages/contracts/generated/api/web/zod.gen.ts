@@ -128,6 +128,30 @@ export const zChatMessagePayload = z.object({
 })
 
 /**
+ * ClaimablePassportResponse
+ */
+export const zClaimablePassportResponse = z.object({
+  app_code: z.string(),
+  app_name: z.string(),
+  connection_count: z.int().gte(0),
+  index: z.int().gte(0),
+})
+
+/**
+ * ClaimablePassportsPayload
+ */
+export const zClaimablePassportsPayload = z.object({
+  passports: z.array(z.string().min(1).max(8192)).max(50),
+})
+
+/**
+ * ClaimablePassportsResponse
+ */
+export const zClaimablePassportsResponse = z.object({
+  data: z.array(zClaimablePassportResponse),
+})
+
+/**
  * CompletionMessagePayload
  */
 export const zCompletionMessagePayload = z.object({
@@ -136,6 +160,63 @@ export const zCompletionMessagePayload = z.object({
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
+})
+
+/**
+ * ConnectionClaimErrorResponse
+ */
+export const zConnectionClaimErrorResponse = z.object({
+  code: z.enum([
+    'app_not_found',
+    'connection_claim_unavailable',
+    'connection_conflict',
+    'end_user_login_required',
+    'unauthorized',
+    'web_app_access_denied',
+  ]),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
+ * ConnectionClaimFailureResponse
+ */
+export const zConnectionClaimFailureResponse = z.object({
+  error: zConnectionClaimErrorResponse,
+  index: z.int().gte(0),
+  status: z.literal('failed'),
+})
+
+/**
+ * ConnectionClaimPayload
+ */
+export const zConnectionClaimPayload = z.object({
+  passports: z.array(z.string().min(1).max(8192)).min(1).max(50),
+})
+
+/**
+ * ConnectionClaimPreflightDetails
+ */
+export const zConnectionClaimPreflightDetails = z.object({
+  failures: z.array(zConnectionClaimFailureResponse),
+})
+
+/**
+ * ConnectionClaimSuccessResponse
+ */
+export const zConnectionClaimSuccessResponse = z.object({
+  access_token: z.string(),
+  app_code: z.string(),
+  claimed_connections: z.int().gte(0),
+  index: z.int().gte(0),
+  status: z.literal('success'),
+})
+
+/**
+ * ConnectionClaimResponse
+ */
+export const zConnectionClaimResponse = z.object({
+  data: z.array(z.union([zConnectionClaimSuccessResponse, zConnectionClaimFailureResponse])),
 })
 
 /**
@@ -423,6 +504,31 @@ export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionClaimPreflightFailedError
+ *
+ * Connection claim preflight failed. No Connections were transferred.
+ */
+export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_claim_preflight_failed'),
+    details: zConnectionClaimPreflightDetails.optional(),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionClaimUnavailableError
+ *
+ * Connection claim is temporarily unavailable. Please retry.
+ */
+export const zConnectionClaimUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_claim_unavailable'),
+    status: z.literal(503),
   }),
 )
 
@@ -2625,6 +2731,20 @@ export const zGetMessagesByMessageIdSuggestedQuestionsResponse = zSuggestedQuest
  * Success
  */
 export const zGetMetaResponse = zAppMetaResponse
+
+export const zPostMigrationClaimBody = zConnectionClaimPayload
+
+/**
+ * Guest Connection claim results
+ */
+export const zPostMigrationClaimResponse = zConnectionClaimResponse
+
+export const zPostMigrationClaimablePassportsBody = zClaimablePassportsPayload
+
+/**
+ * Claimable browser Passports
+ */
+export const zPostMigrationClaimablePassportsResponse = zClaimablePassportsResponse
 
 /**
  * Success

@@ -832,6 +832,41 @@ Retrieve the metadata for a specific app.
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /migration/claim
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConnectionClaimPayload](#connectionclaimpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /migration/claimable-passports
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ClaimablePassportsPayload](#claimablepassportspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Claimable browser Passports | **application/json**: [ClaimablePassportsResponse](#claimablepassportsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /parameters
 **Retrieve app parameters**
 
@@ -1380,6 +1415,27 @@ Button styles for user actions.
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
+#### ClaimablePassportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| app_name | string |  | Yes |
+| connection_count | integer | Current Guest Connection count; does not determine Passport eligibility | Yes |
+| index | integer | Index of the candidate in the request's passports list | Yes |
+
+#### ClaimablePassportsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passports | [ string ] |  | Yes |
+
+#### ClaimablePassportsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ClaimablePassportResponse](#claimablepassportresponse) ] |  | Yes |
+
 #### CompletionMessagePayload
 
 | Name | Type | Description | Required |
@@ -1397,6 +1453,66 @@ Completion request failed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
+
+#### ConnectionClaimErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_login_required", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_login_required"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### ConnectionClaimFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [ConnectionClaimErrorResponse](#connectionclaimerrorresponse) |  | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
+
+#### ConnectionClaimPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passports | [ string ] |  | Yes |
+
+#### ConnectionClaimPreflightDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| failures | [ [ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+
+#### ConnectionClaimPreflightFailedError
+
+Connection claim preflight failed. No Connections were transferred.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimPreflightFailedError |  | Connection claim preflight failed. No Connections were transferred. |  |
+
+#### ConnectionClaimResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConnectionClaimSuccessResponse](#connectionclaimsuccessresponse)<br>[ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+
+#### ConnectionClaimSuccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| app_code | string |  | Yes |
+| claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
+
+#### ConnectionClaimUnavailableError
+
+Connection claim is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimUnavailableError |  | Connection claim is temporarily unavailable. Please retry. |  |
 
 #### ConnectionConfigurationInvalidError
 
