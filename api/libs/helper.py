@@ -26,6 +26,7 @@ from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.datetime_utils import to_utc_timestamp
 
 if TYPE_CHECKING:
     from models import Account
@@ -175,7 +176,9 @@ class TimestampField(fields.Raw):
 
     @override
     def format(self, value) -> int:
-        return int(value.timestamp())
+        timestamp = to_timestamp(value)
+        assert timestamp is not None
+        return timestamp
 
 
 class OptionalTimestampField(fields.Raw):
@@ -185,9 +188,7 @@ class OptionalTimestampField(fields.Raw):
 
     @override
     def format(self, value) -> int | None:
-        if value is None:
-            return None
-        return int(value.timestamp())
+        return to_timestamp(value)
 
 
 @overload
@@ -203,9 +204,13 @@ def to_timestamp(value: None) -> None: ...
 
 
 def to_timestamp(value: datetime | int | None) -> int | None:
-    """Normalize API response timestamp values to epoch seconds."""
+    """Normalize API response timestamp values to epoch seconds.
+
+    Datetimes persisted by Dify are naive UTC, so naive values must be
+    interpreted as UTC rather than in the host timezone.
+    """
     if isinstance(value, datetime):
-        return int(value.timestamp())
+        return to_utc_timestamp(value)
     return value
 
 

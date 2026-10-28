@@ -1,6 +1,6 @@
 import json
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, create_autospec
@@ -18,12 +18,14 @@ from libs import rate_limit as rate_limit_module
 from libs.helper import (
     OptionalTimestampField,
     RateLimiter,
+    TimestampField,
     TokenManager,
     alphanumeric,
     email,
     escape_like_pattern,
     extract_remote_ip,
     extract_tenant_id,
+    to_timestamp,
 )
 from models.account import Account
 from models.model import EndUser
@@ -187,11 +189,42 @@ class TestOptionalTimestampField:
 
         assert field.format(None) is None
 
-    def test_format_returns_unix_timestamp_for_datetime(self):
+    def test_format_treats_naive_datetime_as_utc(self):
+        # Dify persists naive UTC datetimes; the epoch value must not depend on the host timezone.
         field = OptionalTimestampField()
         value = datetime(2024, 1, 2, 3, 4, 5)
 
-        assert field.format(value) == int(value.timestamp())
+        assert field.format(value) == 1704164645
+
+    def test_format_converts_aware_datetime_to_utc_epoch(self):
+        field = OptionalTimestampField()
+        value = datetime(2024, 1, 2, 11, 4, 5, tzinfo=timezone(timedelta(hours=8)))
+
+        assert field.format(value) == 1704164645
+
+
+class TestTimestampField:
+    def test_format_treats_naive_datetime_as_utc(self):
+        field = TimestampField()
+        value = datetime(2024, 1, 2, 3, 4, 5)
+
+        assert field.format(value) == 1704164645
+
+
+class TestToTimestamp:
+    def test_treats_naive_datetime_as_utc(self):
+        assert to_timestamp(datetime(2024, 1, 2, 3, 4, 5)) == 1704164645
+
+    def test_converts_aware_datetime_to_utc_epoch(self):
+        value = datetime(2024, 1, 2, 11, 4, 5, tzinfo=timezone(timedelta(hours=8)))
+
+        assert to_timestamp(value) == 1704164645
+
+    def test_passes_int_through(self):
+        assert to_timestamp(1234567890) == 1234567890
+
+    def test_passes_none_through(self):
+        assert to_timestamp(None) is None
 
 
 class TestEscapeLikePattern:
