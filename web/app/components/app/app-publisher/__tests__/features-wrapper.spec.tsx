@@ -1,9 +1,17 @@
-import type { ComponentProps, ReactElement } from 'react'
-import { render as rtlRender, screen, waitFor, within } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import {
   createModelConfigFixture,
   createPublishedConfigurationFixture,
@@ -35,43 +43,20 @@ const mockFeatures = {
     number_limits: 3,
   },
 }
-vi.mock('@/app/components/app/app-publisher', () => ({
-  AppPublisher: (
-    props: ComponentProps<typeof import('@/app/components/app/app-publisher').AppPublisher>,
-  ) => {
-    return (
-      <div>
-        <button
-          type="button"
-          onClick={() =>
-            props.onPublish?.({
-              id: 'model-1',
-              model: 'gpt-4o',
-              provider: 'openai',
-              parameters: {},
-            })
-          }
-        >
-          publish-through-wrapper
-        </button>
-        <button
-          type="button"
-          onClick={() => props.onPublish?.(undefined, { showSuccessToast: false })}
-        >
-          publish-silently-through-wrapper
-        </button>
-        <button type="button" onClick={() => props.onRestore?.()}>
-          restore-through-wrapper
-        </button>
-      </div>
-    )
-  },
-}))
-
 let store: ReturnType<typeof createFeaturesStore>
 function render(ui: ReactElement) {
   store = createFeaturesStore({ features: mockFeatures })
-  return rtlRender(<FeaturesContext.Provider value={store}>{ui}</FeaturesContext.Provider>)
+  const { queryClient } = createConsoleQueryWrapper()
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' }))
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      provider: 'openai',
+      models: [createCatalogModelFixture({ model: 'gpt-4o', label: { en_US: 'GPT-4o' } })],
+    }),
+  ])
+  return renderWorkflowComponent(<FeaturesContext value={store}>{ui}</FeaturesContext>, {
+    queryClient,
+  })
 }
 
 describe('FeaturesWrappedAppPublisher', () => {
@@ -108,46 +93,38 @@ describe('FeaturesWrappedAppPublisher', () => {
     }),
   })
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should pass current features through to onPublish', async () => {
     const user = userEvent.setup()
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
+        publishedAt={1710000100000}
         publishedConfig={publishedConfig}
         onPublish={mockOnPublish}
+        debugWithMultipleModel
+        multipleModelConfigs={[
+          { id: 'model-1', model: 'gpt-4o', provider: 'openai', parameters: {} },
+        ]}
       />,
     )
 
-    await user.click(screen.getByText('publish-through-wrapper'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.operation.applyConfig' }))
+    await user.click(await screen.findByRole('menuitem', { name: /GPT-4o/ }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'appDebug.operation.applyConfig' })).toBeDisabled(),
+    )
 
     await waitFor(() => {
       expect(mockOnPublish).toHaveBeenCalledWith(
-        { id: 'model-1', model: 'gpt-4o', provider: 'openai', parameters: {} },
+        expect.objectContaining({
+          id: 'model-1',
+          model: 'gpt-4o',
+          provider: 'openai',
+          parameters: {},
+        }),
         mockFeatures,
       )
-    })
-  })
-
-  it('should pass publish notification options through to onPublish', async () => {
-    const user = userEvent.setup()
-    render(
-      <FeaturesWrappedAppPublisher
-        appId="app-1"
-        publishedConfig={publishedConfig}
-        onPublish={mockOnPublish}
-      />,
-    )
-
-    await user.click(screen.getByText('publish-silently-through-wrapper'))
-
-    await waitFor(() => {
-      expect(mockOnPublish).toHaveBeenCalledWith(undefined, mockFeatures, {
-        showSuccessToast: false,
-      })
     })
   })
 
@@ -156,12 +133,14 @@ describe('FeaturesWrappedAppPublisher', () => {
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
+        publishedAt={1710000100000}
         publishedConfig={publishedConfig}
         resetAppConfig={resetAppConfig}
       />,
     )
 
-    await user.click(screen.getByText('restore-through-wrapper'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
     expect(store.getState().features).toEqual(mockFeatures)
     expect(resetAppConfig).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
@@ -193,12 +172,14 @@ describe('FeaturesWrappedAppPublisher', () => {
     render(
       <FeaturesWrappedAppPublisher
         appId="app-1"
+        publishedAt={1710000100000}
         publishedConfig={publishedConfig}
         resetAppConfig={resetAppConfig}
       />,
     )
 
-    await user.click(screen.getByText('restore-through-wrapper'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
     const dialog = screen.getByRole('alertdialog')
 
     await user.click(

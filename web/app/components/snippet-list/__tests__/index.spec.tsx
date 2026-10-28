@@ -1,19 +1,21 @@
+import type { SnippetListItemResponse as Snippet } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import * as React from 'react'
 import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-detail-top'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import SnippetList from '..'
 
-const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
-vi.mock('@/service/use-snippets', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-snippets')>()),
-  useInfiniteSnippetList: (params: unknown, options: unknown) =>
-    mockUseInfiniteSnippetList(params, options),
-}))
+type SnippetListResponse = Awaited<
+  ReturnType<typeof consoleClient.workspaces.current.customizedSnippets.get>
+>
 
+const listSnippets = vi.hoisted(() =>
+  vi.fn<typeof consoleClient.workspaces.current.customizedSnippets.get>(),
+)
 const mockBindTags = vi.hoisted(() => vi.fn())
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -23,6 +25,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'tagBindings.post': mockBindTags,
+      'workspaces.current.customizedSnippets.get': listSnippets,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.members.get': async () => ({
@@ -39,58 +42,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    userProfile: { id: 'creator-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    userProfile: { id: 'creator-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
-
+let workspacePermissionKeys = ['snippets.create_and_modify']
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(''),
-}))
-
-vi.mock('next/dynamic', () => ({
-  default: () => {
-    return function MockDynamicComponent(props: {
-      show: boolean
-      onClose: () => void
-      onTagsChange: () => void
-    }) {
-      return React.createElement(
-        'div',
-        {
-          'data-testid': 'tag-management-modal',
-          'data-show': String(props.show),
-        },
-        React.createElement(
-          'button',
-          { type: 'button', onClick: props.onClose },
-          'close tag modal',
-        ),
-        React.createElement(
-          'button',
-          { type: 'button', onClick: props.onTagsChange },
-          'refresh tags',
-        ),
-      )
-    }
-  },
 }))
 
 let intersectionCallback: IntersectionObserverCallback | undefined
@@ -116,56 +71,65 @@ beforeEach(() => {
     } as unknown as typeof IntersectionObserver,
   )
 })
-afterEach(() => vi.unstubAllGlobals())
 
-const mockRefetch = vi.fn()
-const mockFetchNextPage = vi.fn()
-
-const mockSnippetListState = {
-  data: {
-    pages: [
-      {
-        data: [
-          {
-            id: 'snippet-1',
-            name: 'Sales Snippet',
-            description: 'Builds a sales follow-up.',
-            type: 'node',
-            is_published: true,
-            use_count: 12,
-            tags: [],
-            created_at: 1704067200,
-            created_by: 'creator-1',
-            updated_at: 1704153600,
-            updated_by: 'creator-2',
-          },
-        ],
-        page: 1,
-        limit: 30,
-        total: 1,
-        has_more: false,
-      },
-    ],
-  },
-  isLoading: false,
-  isFetching: false,
-  isFetchingNextPage: false,
-  hasNextPage: false,
-  error: null as Error | null,
-}
+const snippet = (overrides: Partial<Snippet> = {}): Snippet => ({
+  id: 'snippet-1',
+  name: 'Sales Snippet',
+  description: 'Builds a sales follow-up.',
+  type: 'node',
+  is_published: true,
+  use_count: 12,
+  tags: [],
+  author_name: null,
+  icon_info: null,
+  version: 1,
+  created_at: 1704067200,
+  created_by: 'creator-1',
+  updated_at: 1704153600,
+  updated_by: 'creator-2',
+  ...overrides,
+})
+const page = (
+  data = [snippet()],
+  overrides: Partial<SnippetListResponse> = {},
+): SnippetListResponse => ({
+  data,
+  page: 1,
+  limit: 30,
+  total: data.length,
+  has_more: false,
+  ...overrides,
+})
+const fullPage = () =>
+  page(
+    Array.from({ length: 30 }, (_, index) =>
+      snippet({
+        id: `snippet-${index + 1}`,
+        name: index ? `Snippet ${index + 1}` : 'Sales Snippet',
+      }),
+    ),
+    { total: 31, has_more: true },
+  )
 
 const renderList = ({
   searchParams = '',
 }: {
   searchParams?: string
 } = {}) => {
-  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+  const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'creator-1' },
+    workspacePermissionKeys,
   })
   const onUrlUpdate = vi.fn()
   const createRoute = (path: string, params: string, content: ReactNode) => (
     <ConsoleQueryWrapper>
-      <NuqsTestingAdapter key={path} searchParams={params} hasMemory onUrlUpdate={onUrlUpdate}>
+      <NuqsTestingAdapter
+        rateLimitFactor={0}
+        key={path}
+        searchParams={params}
+        hasMemory
+        onUrlUpdate={onUrlUpdate}
+      >
         {content}
       </NuqsTestingAdapter>
     </ConsoleQueryWrapper>
@@ -175,6 +139,7 @@ const renderList = ({
 
   return {
     ...rendered,
+    queryClient,
     onUrlUpdate,
     rerenderList: () => rendered.rerender(createList()),
     showDetail: () =>
@@ -184,485 +149,303 @@ const renderList = ({
   }
 }
 
-describe('SnippetList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockBindTags.mockResolvedValue({ result: 'success' })
-    mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-    intersectionCallback = undefined
+beforeEach(() => {
+  listSnippets.mockReset().mockResolvedValue(page())
+  mockBindTags.mockReset().mockResolvedValue({ result: 'success' })
+  workspacePermissionKeys = ['snippets.create_and_modify']
+})
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
+
+const salesCard = () => screen.findByRole('link', { name: /Sales Snippet/ })
+const searchParams = (query: Record<string, unknown>) => ({
+  query: { page: 1, limit: 30, ...query },
+})
+
+it('renders the snippet layout and links after the request resolves', async () => {
+  renderList()
+  expect(await salesCard()).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
+  expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
+  const path = within(screen.getByRole('navigation', { name: 'workflow.tabs.snippets' }))
+  expect(path.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute('href', '/apps')
+  expect(path.getByText('workflow.tabs.snippets')).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
+})
+
+it('combines URL search and tags with the selected creator in the service request', async () => {
+  const user = userEvent.setup()
+  renderList({ searchParams: '?tagIDs=tag-1;tag-2&keywords=sales' })
+  await salesCard()
+  await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+  await user.click(await screen.findByRole('option', { name: /Bob/ }))
+  await waitFor(() =>
+    expect(listSnippets).toHaveBeenLastCalledWith(
+      searchParams({ keyword: 'sales', tag_ids: ['tag-1', 'tag-2'], creators: ['creator-2'] }),
+    ),
+  )
+})
+
+it('retains creator, tag and publication selections through the snippet return link', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate, showDetail, showList } = renderList()
+  await salesCard()
+  await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+  await user.click(await screen.findByRole('option', { name: /Alice/ }))
+  await user.click(screen.getByRole('option', { name: /Bob/ }))
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
+  await user.click(await screen.findByRole('option', { name: 'Sales' }))
+  await user.keyboard('{Escape}')
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.common.published / snippet.draft' }),
+  )
+  await user.click(await screen.findByRole('menuitemradio', { name: 'snippet.draft' }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('publishStatus')).toBe('draft'),
+  )
+  showDetail()
+  const href = screen.getByRole('link', { name: 'workflow.tabs.snippets' }).getAttribute('href')!
+  const params = new URLSearchParams(href.split('?')[1])
+  expect(params.get('creatorIDs')).toBe('creator-1;creator-2')
+  expect(params.get('tagIDs')).toBe('tag-1')
+  expect(params.get('publishStatus')).toBe('draft')
+  showList(href)
+  await salesCard()
+  expect(screen.getByRole('button', { name: 'snippet.draft' })).toBeInTheDocument()
+  expect(await screen.findByRole('combobox', { name: 'Sales' })).toBeInTheDocument()
+  await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+  expect(await screen.findByRole('option', { name: /Alice/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  expect(screen.getByRole('option', { name: /Bob/ })).toHaveAttribute('aria-selected', 'true')
+  expect(listSnippets).toHaveBeenLastCalledWith(
+    searchParams({ creators: ['creator-1', 'creator-2'], tag_ids: ['tag-1'], is_published: false }),
+  )
+})
+
+it('does not restore cleared creators, tags or publication status', async () => {
+  const user = userEvent.setup()
+  const { onUrlUpdate, showDetail, showList } = renderList({
+    searchParams: '?creatorIDs=creator-1&tagIDs=tag-1&publishStatus=published',
   })
+  await salesCard()
+  await user.click(screen.getByRole('button', { name: 'app.studio.filters.reset' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+  await user.click(screen.getByRole('button', { name: 'workflow.common.published' }))
+  await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.all' }))
+  await waitFor(() => expect(onUrlUpdate.mock.lastCall?.[0].searchParams.toString()).toBe(''))
+  showDetail()
+  expect(screen.getByRole('link', { name: 'workflow.tabs.snippets' })).toHaveAttribute(
+    'href',
+    '/snippets',
+  )
+  showList('/snippets')
+  await salesCard()
+  expect(screen.queryByRole('button', { name: 'app.studio.filters.reset' })).not.toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'common.tag.placeholder' })).toBeInTheDocument()
+  expect(listSnippets).toHaveBeenLastCalledWith(searchParams({}))
+})
 
-  it('renders the dedicated snippets list layout', () => {
-    renderList()
+it.each([
+  { label: 'workflow.common.published', published: true },
+  { label: 'snippet.draft', published: false },
+])('filters $label and returns to all statuses', async ({ label, published }) => {
+  const user = userEvent.setup()
+  listSnippets.mockImplementation(
+    async ({ query }: NonNullable<Parameters<typeof listSnippets>[0]> = {}) =>
+      page([
+        snippet({
+          name: typeof query?.is_published === 'boolean' ? 'Filtered snippet' : 'Sales Snippet',
+        }),
+      ]),
+  )
+  renderList()
+  await salesCard()
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.common.published / snippet.draft' }),
+  )
+  await user.click(await screen.findByRole('menuitemradio', { name: label }))
+  expect(await screen.findByRole('link', { name: /Filtered snippet/ })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+  expect(listSnippets).toHaveBeenLastCalledWith(searchParams({ is_published: published }))
+  await user.click(screen.getByRole('button', { name: label }))
+  await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.all' }))
+  expect(await salesCard()).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: /Filtered snippet/ })).not.toBeInTheDocument()
+})
 
-    expect(screen.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
-      'href',
-      '/apps',
-    )
-    expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
-    const path = within(screen.getByRole('navigation', { name: 'workflow.tabs.snippets' }))
-    expect(path.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
-      'href',
-      '/apps',
-    )
-    expect(path.getByText('workflow.tabs.snippets')).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('workflow.tabs.searchSnippets')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toHaveAttribute(
-      'href',
-      '/snippets/snippet-1/orchestrate',
-    )
-    expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
+it('searches and clears the filter through actual query state', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  vi.stubGlobal('jest', { advanceTimersByTime: vi.advanceTimersByTime })
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  listSnippets.mockImplementation(
+    async ({ query }: NonNullable<Parameters<typeof listSnippets>[0]> = {}) =>
+      page([snippet({ name: query?.keyword ? 'Summary snippet' : 'Sales Snippet' })]),
+  )
+  const { onUrlUpdate } = renderList()
+  await salesCard()
+  const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
+  await user.type(search, 'summary')
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
   })
-
-  it('combines URL search and tags with the selected creator when requesting snippets', async () => {
-    const user = userEvent.setup()
-    renderList({ searchParams: '?tagIDs=tag-1;tag-2&keywords=sales' })
-    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
-    await user.click(await screen.findByRole('option', { name: /Bob/ }))
-    await waitFor(() =>
-      expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-        {
-          page: 1,
-          limit: 30,
-          keyword: 'sales',
-          tag_ids: ['tag-1', 'tag-2'],
-          creator_ids: ['creator-2'],
-        },
-        { enabled: true },
-      ),
-    )
+  expect(await screen.findByRole('link', { name: /Summary snippet/ })).toBeInTheDocument()
+  expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('keywords')).toBe('summary')
+  expect(listSnippets).toHaveBeenLastCalledWith(searchParams({ keyword: 'summary' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(500)
   })
+  expect(await salesCard()).toBeInTheDocument()
+  expect(search).toHaveValue('')
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has('keywords')).toBe(false),
+  )
+})
 
-  it('restores creator, tag and publication filters from the URL', () => {
-    renderList({
-      searchParams:
-        '?creatorIDs=creator-1;creator-2&tagIDs=tag-1;tag-2&keywords=sales&publishStatus=draft',
-    })
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-      {
-        page: 1,
-        limit: 30,
-        keyword: 'sales',
-        creator_ids: ['creator-1', 'creator-2'],
-        tag_ids: ['tag-1', 'tag-2'],
-        is_published: false,
-      },
-      { enabled: true },
-    )
-    expect(screen.getByRole('button', { name: 'snippet.draft' })).toBeInTheDocument()
-  })
+it('fetches snippets without create action for users with management permission', async () => {
+  workspacePermissionKeys = ['snippets.management']
+  renderList()
+  expect(await salesCard()).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
+})
 
-  it('retains creator, tag and publication selections through the snippet return link', async () => {
-    const user = userEvent.setup()
-    const { onUrlUpdate, showDetail, showList } = renderList()
-    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
-    await user.click(await screen.findByRole('option', { name: /Alice/ }))
-    await user.click(screen.getByRole('option', { name: /Bob/ }))
-    await user.keyboard('{Escape}')
-    await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
-    await user.click(await screen.findByRole('option', { name: 'Sales' }))
-    await user.keyboard('{Escape}')
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.common.published / snippet.draft' }),
-    )
-    await user.click(await screen.findByRole('menuitemradio', { name: 'snippet.draft' }))
-    await waitFor(() =>
-      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('publishStatus')).toBe('draft'),
-    )
+it('does not fetch or register infinite scroll without list permissions', () => {
+  workspacePermissionKeys = []
+  renderList()
+  expect(listSnippets).not.toHaveBeenCalled()
+  expect(intersectionCallback).toBeUndefined()
+  expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('workflow.tabs.noSnippetsFound')
+})
 
-    showDetail()
-    const href = screen.getByRole('link', { name: 'workflow.tabs.snippets' }).getAttribute('href')!
-    const params = new URLSearchParams(href.split('?')[1])
-    expect(params.get('creatorIDs')).toBe('creator-1;creator-2')
-    expect(params.get('tagIDs')).toBe('tag-1')
-    expect(params.get('publishStatus')).toBe('draft')
-    showList(href)
-    expect(screen.getByRole('button', { name: 'snippet.draft' })).toBeInTheDocument()
-    expect(await screen.findByRole('combobox', { name: 'Sales' })).toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
-    expect(await screen.findByRole('option', { name: /Alice/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-    expect(screen.getByRole('option', { name: /Bob/ })).toHaveAttribute('aria-selected', 'true')
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        creator_ids: ['creator-1', 'creator-2'],
-        tag_ids: ['tag-1'],
-        is_published: false,
-      }),
-      { enabled: true },
-    )
-  })
+it('announces an empty result after the request resolves', async () => {
+  listSnippets.mockResolvedValue(page([]))
+  renderList()
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.tabs.noSnippetsFound'),
+  )
+  expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+})
 
-  it('does not restore cleared creators, tags or publication status', async () => {
-    const user = userEvent.setup()
-    const { onUrlUpdate, showDetail, showList } = renderList({
-      searchParams: '?creatorIDs=creator-1&tagIDs=tag-1&publishStatus=published',
-    })
-    await user.click(screen.getByRole('button', { name: 'app.studio.filters.reset' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    await user.click(screen.getByRole('button', { name: 'workflow.common.published' }))
-    await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.all' }))
-    await waitFor(() => expect(onUrlUpdate.mock.lastCall?.[0].searchParams.toString()).toBe(''))
-    showDetail()
-    expect(screen.getByRole('link', { name: 'workflow.tabs.snippets' })).toHaveAttribute(
-      'href',
-      '/snippets',
-    )
-    showList('/snippets')
-    expect(
-      screen.queryByRole('button', { name: 'app.studio.filters.reset' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'common.tag.placeholder' })).toBeInTheDocument()
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-      { page: 1, limit: 30, keyword: '' },
-      { enabled: true },
-    )
-  })
+it('announces request and retry failures through the real query lifecycle', async () => {
+  const user = userEvent.setup()
+  const retry = createDeferred<SnippetListResponse>()
+  listSnippets.mockRejectedValueOnce(new Error('Request failed')).mockReturnValueOnce(retry.promise)
+  renderList()
+  const retryButton = await screen.findByRole('button', { name: 'common.operation.retry' })
+  const status = screen.getByRole('status')
+  expect(status).toHaveTextContent('common.errorBoundary.title')
+  await user.click(retryButton)
+  await waitFor(() => expect(listSnippets).toHaveBeenCalledTimes(2))
+  expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+  await act(async () => retry.reject(new Error('Retry failed')))
+  await waitFor(() => expect(status).toHaveTextContent('common.errorBoundary.title'))
+  expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
+})
 
-  it.each([
-    { label: 'workflow.common.published', published: true },
-    { label: 'snippet.draft', published: false },
-  ])('filters $label and returns to all statuses', async ({ label, published }) => {
-    const user = userEvent.setup()
-    renderList()
-    await user.click(
-      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
-    )
-    await user.click(await screen.findByRole('menuitemradio', { name: label }))
-    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-      expect.objectContaining({ is_published: published }),
-      { enabled: true },
-    )
-    await user.click(screen.getByRole('button', { name: label }))
-    await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.all' }))
-    expect(
-      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
-    ).toBeInTheDocument()
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-      expect.not.objectContaining({ is_published: expect.any(Boolean) }),
-      { enabled: true },
-    )
-  })
-
-  it('searches and clears the filter through actual query state', async () => {
-    const user = userEvent.setup()
-    const { onUrlUpdate } = renderList()
-    const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
-    await user.type(search, 'summary')
-    expect(search).toHaveValue('summary')
-    await waitFor(() =>
-      expect(mockUseInfiniteSnippetList.mock.lastCall?.[0].keyword).toBe('summary'),
-    )
-    await waitFor(() =>
-      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('keywords')).toBe('summary'),
-    )
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    expect(search).toHaveValue('')
-    await waitFor(() =>
-      expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-        expect.objectContaining({ keyword: '' }),
-        { enabled: true },
-      ),
-    )
-    await waitFor(() =>
-      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('keywords')).toBe(false),
-    )
-  })
-
-  it('fetches snippets without create action for users with snippet management permission', () => {
-    mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
-
-    renderList()
-
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
-      enabled: true,
-    })
-    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
-  })
-
-  it('does not fetch or render snippets without snippet list permissions', () => {
-    mockWorkspacePermissionKeys.mockReturnValue([])
-
-    const { container } = renderList()
-    const list = container.querySelector<HTMLElement>('[aria-busy]')
-    if (!list) throw new Error('Snippet list did not render its result owner')
-
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
-      enabled: false,
-    })
-    expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
-    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
-  })
-
-  it('shows an empty state when no snippets are returned', () => {
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      data: {
-        pages: [
-          {
-            data: [],
-            page: 1,
-            limit: 30,
-            total: 0,
-            has_more: false,
-          },
-        ],
-      },
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-
-    const { container } = renderList()
-    const list = container.querySelector<HTMLElement>('[aria-busy]')
-    if (!list) throw new Error('Snippet list did not render its result owner')
-
-    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('workflow.tabs.noSnippetsFound')
-  })
-
-  it('announces request failures and preserves retry focus while refetching', async () => {
-    const user = userEvent.setup()
-    const requestError = new Error('Request failed')
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      data: { pages: [] },
-      error: requestError,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-
-    const { rerenderList } = renderList()
-    const status = screen.getByRole('status')
-    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
-
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(status).toHaveTextContent('common.errorBoundary.title')
-    expect(status).not.toHaveTextContent('workflow.tabs.noSnippetsFound')
-
-    await user.click(retryButton)
-
-    expect(mockRefetch).toHaveBeenCalledTimes(1)
-    expect(retryButton).toHaveFocus()
-
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      data: { pages: [] },
-      error: requestError,
-      isFetching: true,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-    rerenderList()
-
-    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
-    expect(retryButton).toHaveFocus()
-    expect(status).toHaveTextContent('common.loading')
-
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      data: { pages: [] },
-      error: requestError,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-    rerenderList()
-
-    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
-    expect(retryButton).toHaveFocus()
-    expect(status).toHaveTextContent('common.errorBoundary.title')
-  })
-
-  it('announces the total result count when only the first page is loaded', () => {
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      data: {
-        pages: [
-          {
-            ...mockSnippetListState.data.pages[0]!,
-            total: 80,
-            has_more: true,
-          },
-        ],
-      },
-      hasNextPage: true,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-
-    renderList()
-
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'common.operation.searchCount:{"count":80,"content":"workflow.tabs.snippets"}',
-    )
-  })
-
-  it('announces kept-data refreshes when the result count stays the same', () => {
-    const { rerenderList } = renderList()
-    const status = screen.getByRole('status')
-    const grid = screen.getByRole('link', { name: /Sales Snippet/ }).closest('[aria-busy]')
-
-    expect(status.closest('[aria-busy]')).toBeNull()
-    expect(status).toHaveTextContent(
-      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
-    )
-
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      isFetching: true,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-    rerenderList()
-
-    expect(screen.getByRole('status')).toBe(status)
-    expect(status).toHaveTextContent('common.loading')
-    expect(grid).toHaveAttribute('aria-busy', 'true')
-
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      data: {
-        pages: [
-          {
-            ...mockSnippetListState.data.pages[0]!,
-            data: [
-              {
-                ...mockSnippetListState.data.pages[0]!.data[0]!,
-                id: 'snippet-2',
-                name: 'Support Snippet',
-              },
-            ],
-          },
-        ],
-      },
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-    rerenderList()
-
-    expect(screen.getByRole('status')).toBe(status)
-    expect(status).toHaveTextContent(
-      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
-    )
-    expect(screen.getByRole('link', { name: /Support Snippet/ })).toBeInTheDocument()
-    expect(grid).toHaveAttribute('aria-busy', 'false')
-  })
-
-  it('mounts an empty live region before announcing initial results', () => {
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      data: { pages: [] },
-      isFetching: true,
-      isLoading: true,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-
-    const { container, rerenderList } = renderList()
-    const status = screen.getByRole('status')
-
-    expect(status).toBeEmptyDOMElement()
-    expect(status.closest('[aria-busy]')).toBeNull()
-    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
-
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-    rerenderList()
-
-    expect(screen.getByRole('status')).toBe(status)
-    expect(status).toHaveTextContent(
-      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
-    )
-  })
-
-  it('keeps current results available while the next page is loading', () => {
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      isFetchingNextPage: true,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-
-    renderList()
-    const card = screen.getByRole('link', { name: /Sales Snippet/ })
-    const list = card.closest('[aria-busy]')
-
-    expect(card).toBeInTheDocument()
-    expect(list).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
-  })
-
-  it('fetches the next page when the scroll anchor intersects', () => {
-    mockUseInfiniteSnippetList.mockReturnValue({
-      ...mockSnippetListState,
-      hasNextPage: true,
-      refetch: mockRefetch,
-      fetchNextPage: mockFetchNextPage,
-    })
-
-    renderList()
-
-    intersectionCallback?.(
+it('keeps the first page while loading the next and appends the new results on intersection', async () => {
+  const next = createDeferred<SnippetListResponse>()
+  listSnippets.mockResolvedValueOnce(fullPage()).mockReturnValueOnce(next.promise)
+  renderList()
+  await salesCard()
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'common.operation.searchCount:{"count":31,"content":"workflow.tabs.snippets"}',
+  )
+  expect(intersectionCallback).toBeDefined()
+  act(() =>
+    intersectionCallback!(
       [{ isIntersecting: true } as IntersectionObserverEntry],
       {} as IntersectionObserver,
-    )
+    ),
+  )
+  await waitFor(() =>
+    expect(listSnippets).toHaveBeenLastCalledWith({ query: { page: 2, limit: 30 } }),
+  )
+  expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
+  await act(async () =>
+    next.resolve(
+      page([snippet({ id: 'snippet-31', name: 'Final snippet' })], { page: 2, total: 31 }),
+    ),
+  )
+  expect(await screen.findByRole('link', { name: /Final snippet/ })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Snippet 30/ })).toBeInTheDocument()
+})
 
-    expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
+it('announces kept-data refreshes when the result count stays the same', async () => {
+  const refresh = createDeferred<SnippetListResponse>()
+  listSnippets.mockResolvedValueOnce(page()).mockReturnValueOnce(refresh.promise)
+  const { queryClient } = renderList()
+  await salesCard()
+  const status = screen.getByRole('status')
+  act(() => {
+    void queryClient.invalidateQueries({ queryKey: ['snippets', 'list'] })
   })
+  await waitFor(() => expect(status).toHaveTextContent('common.loading'))
+  expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
+  await act(async () => refresh.resolve(page([snippet({ name: 'Support Snippet' })])))
+  expect(await screen.findByRole('link', { name: /Support Snippet/ })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+  expect(status).toHaveTextContent(
+    'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+  )
+})
 
-  it('does not register infinite scroll without snippet list permissions', () => {
-    mockWorkspacePermissionKeys.mockReturnValue([])
+it('mounts an empty live region before announcing initial results', async () => {
+  const initial = createDeferred<SnippetListResponse>()
+  listSnippets.mockReturnValue(initial.promise)
+  renderList()
+  const status = screen.getByRole('status')
+  expect(status).toBeEmptyDOMElement()
+  expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
+  await act(async () => initial.resolve(page()))
+  expect(await salesCard()).toBeInTheDocument()
+  expect(status).toHaveTextContent(
+    'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+  )
+})
 
-    renderList()
-
-    intersectionCallback?.(
-      [{ isIntersecting: true } as IntersectionObserverEntry],
-      {} as IntersectionObserver,
-    )
-    expect(mockFetchNextPage).not.toHaveBeenCalled()
+it('opens real tag management from filters and cards and refreshes after a binding change', async () => {
+  const user = userEvent.setup()
+  workspacePermissionKeys = ['snippets.create_and_modify', 'snippets.management']
+  let tagged = false
+  mockBindTags.mockImplementation(async () => {
+    tagged = true
+    return { result: 'success' }
   })
-
-  it('opens tag management from real filters and cards and refreshes after a binding change', async () => {
-    const user = userEvent.setup()
-    mockWorkspacePermissionKeys.mockReturnValue([
-      'snippets.create_and_modify',
-      'snippets.management',
-    ])
-    renderList()
-    await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
-    await user.click(await screen.findByRole('button', { name: 'common.tag.manageTags' }))
-    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
-    await user.click(screen.getByRole('button', { name: 'close tag modal' }))
-    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'false')
-    await user.click(screen.getByRole('combobox', { name: 'common.tag.addTag: Sales Snippet' }))
-    await user.click(await screen.findByRole('option', { name: 'Sales' }))
-    await user.click(screen.getByRole('button', { name: 'common.tag.manageTags' }))
-    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
-    await waitFor(() =>
-      expect(mockBindTags).toHaveBeenCalledExactlyOnceWith({
-        body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
+  listSnippets.mockImplementation(async () =>
+    page([
+      snippet({
+        name: tagged ? 'Tagged snippet' : 'Sales Snippet',
+        tags: tagged ? [{ id: 'tag-1', name: 'Sales', type: 'snippet' }] : [],
       }),
-    )
-    await waitFor(() => expect(mockRefetch).toHaveBeenCalledOnce())
-    await user.click(screen.getByRole('button', { name: 'refresh tags' }))
-    expect(mockRefetch).toHaveBeenCalledTimes(2)
+    ]),
+  )
+  renderList()
+  await salesCard()
+  await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
+  await user.click(await screen.findByRole('button', { name: 'common.tag.manageTags' }))
+  const dialog = await screen.findByRole('dialog', { name: 'common.tag.manageTags' })
+  expect(within(dialog).getByRole('textbox', { name: 'common.tag.addNew' })).toBeInTheDocument()
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('combobox', { name: 'common.tag.addTag: Sales Snippet' }))
+  await user.click(await screen.findByRole('option', { name: 'Sales' }))
+  await user.keyboard('{Escape}')
+  expect(await screen.findByRole('combobox', { name: 'Sales: Tagged snippet' })).toBeInTheDocument()
+  expect(mockBindTags).toHaveBeenCalledExactlyOnceWith({
+    body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
   })
+  await user.click(screen.getByRole('combobox', { name: 'Sales: Tagged snippet' }))
+  expect(await screen.findByRole('option', { name: 'Sales' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.tag.manageTags' }))
+  expect(await screen.findByRole('dialog', { name: 'common.tag.manageTags' })).toBeInTheDocument()
 })
