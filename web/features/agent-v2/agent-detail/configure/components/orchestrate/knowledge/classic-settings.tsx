@@ -41,7 +41,10 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DATASET_DEFAULT } from '@/config'
-import { useKnowledgeValidationMessage } from '@/features/agent-v2/agent-composer/knowledge-validation'
+import {
+  getMetadataConditionsMissingValues,
+  useKnowledgeValidationMessage,
+} from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { consoleQuery } from '@/service/console'
 import { RETRIEVE_TYPE } from '@/types/app'
 
@@ -211,7 +214,12 @@ function ClassicSettingsFields({
   const datasetsError = getValidationMessage(errors?.datasets)
   const queryError = getValidationMessage(errors?.query)
   const retrievalError = getValidationMessage(errors?.retrieval)
-  const metadataError = getValidationMessage(errors?.metadata)
+  const metadataError = getValidationMessage(
+    errors?.metadata,
+    getMetadataConditionsMissingValues(item)
+      .map((condition) => condition.name)
+      .join(', '),
+  )
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
       <div className="flex flex-col gap-1 px-4 py-2">

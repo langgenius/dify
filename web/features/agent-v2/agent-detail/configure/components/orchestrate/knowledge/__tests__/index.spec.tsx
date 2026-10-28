@@ -998,6 +998,61 @@ describe('shared knowledge binding dialog', () => {
     },
   )
 
+  it.each(['zero', 'empty operator'])(
+    'blocks an unfilled metadata value and accepts correction with %s',
+    async (correction) => {
+      const user = userEvent.setup()
+      const dataset = createDatasetFixture({
+        doc_metadata: [{ id: 'price', name: 'price', type: 'number' }],
+      })
+      setup([{ id: 'classic', name: 'Saved search', selectedDatasets: [dataset] }], {
+        enabled: false,
+      })
+      const original = snapshot().knowledge
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      await user.click(
+        within(dialog).getByRole('button', { name: /metadata.options.disabled.title/ }),
+      )
+      await user.click(screen.getByRole('menuitemradio', { name: /metadata.options.manual.title/ }))
+      const conditions = within(dialog).getByRole('button', { name: /metadata.panel.conditions/ })
+      await user.click(conditions)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflowModels.nodes.knowledgeRetrieval.metadata.panel.add',
+        }),
+      )
+      await user.click(
+        within(await screen.findByRole('menu')).getByRole('menuitem', { name: /price/ }),
+      )
+      await user.click(conditions)
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      expect(dialog).toBeInTheDocument()
+      expect(within(dialog).getByText(/valueOfVarRequired.*price/)).toBeVisible()
+      expect(snapshot().knowledge).toEqual(original)
+      await user.click(conditions)
+      const price = within(screen.getByRole('group', { name: 'price' }))
+      if (correction === 'zero') {
+        await user.type(price.getByRole('textbox'), '0')
+        await user.tab()
+      } else {
+        await user.click(price.getByRole('button', { name: '=' }))
+        await user.click(screen.getByText('workflowLogic.nodes.ifElse.comparisonOperator.empty'))
+      }
+      await user.click(conditions)
+      expect(within(dialog).queryByText(/valueOfVarRequired.*price/)).not.toBeInTheDocument()
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual([
+        expect.objectContaining({
+          name: 'price',
+          comparison_operator: correction === 'zero' ? '=' : 'empty',
+          ...(correction === 'zero' ? { value: 0 } : {}),
+        }),
+      ])
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
+
   it('saves edited metadata conditions and their logical operator only on confirmation', async () => {
     const user = userEvent.setup()
     const dataset = createDatasetFixture({

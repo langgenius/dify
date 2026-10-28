@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 import {
+  ComparisonOperator,
   LogicalOperator,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
@@ -9,6 +10,35 @@ import { RETRIEVE_TYPE } from '@/types/app'
 import { validateKnowledgeRetrievals } from '../knowledge-validation'
 
 describe('validateKnowledgeRetrievals', () => {
+  it.each([
+    { operator: ComparisonOperator.equal, value: undefined, valid: false },
+    { operator: ComparisonOperator.equal, value: null, valid: false },
+    { operator: ComparisonOperator.is, value: '', valid: false },
+    { operator: ComparisonOperator.contains, value: '   ', valid: false },
+    { operator: ComparisonOperator.in, value: [], valid: false },
+    { operator: ComparisonOperator.equal, value: 0, valid: true },
+    { operator: ComparisonOperator.empty, value: undefined, valid: true },
+    { operator: ComparisonOperator.notEmpty, value: null, valid: true },
+  ])('validates every manual condition value: $operator / $value', ({ operator, value, valid }) => {
+    const result = validateKnowledgeRetrievals([
+      {
+        id: 'classic',
+        name: 'Saved search',
+        datasetRefs: [{ id: 'dataset' }],
+        metadataFilterMode: MetadataFilteringModeEnum.manual,
+        metadataFilteringConditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            { id: 'first', name: 'stock', comparison_operator: ComparisonOperator.equal, value: 1 },
+            { id: 'second', name: 'price', comparison_operator: operator, value },
+          ],
+        },
+      },
+    ])
+    expect(result.isValid).toBe(valid)
+    if (!valid) expect(result.byId.classic).toEqual({ metadata: 'metadata_value_required' })
+  })
+
   it('rejects an enabled reranker without a model even before dataset details load', () => {
     const binding = {
       id: 'classic',
