@@ -23,7 +23,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { mergeRegister } from '@lexical/utils'
 import { useQuery } from '@tanstack/react-query'
 import { useClipboard } from 'foxact/use-clipboard'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom, useStore } from 'jotai'
 import {
   $getRoot,
   $getSelection,
@@ -427,6 +427,7 @@ export function AgentPromptEditor() {
     }),
   )
   const [value, setValue] = useAtom(agentComposerPromptAtom)
+  const promptStore = useStore()
   const { skills: embeddedSkills } = useAgentConfigSkills()
   const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
   const skills = useMemo<AgentSkill[]>(() => {
@@ -772,19 +773,23 @@ export function AgentPromptEditor() {
   }
 
   const handleSlashSelect = (token: string) => {
+    const currentValue = promptStore.get(agentComposerPromptAtom)
     const slashRange = pendingSlashInsertRangeRef.current
     let insertionResult
     if (slashRange) {
-      insertionResult = insertTokenAtTextRange(value, slashRange, token)
+      insertionResult = insertTokenAtTextRange(currentValue, slashRange, token)
     } else {
-      const nextValue = replaceTrailingSlashWithToken(value, token)
+      const nextValue = replaceTrailingSlashWithToken(currentValue, token)
       insertionResult = {
         value: nextValue,
         cursorOffset: nextValue.length,
       }
     }
     setValue(insertionResult.value)
-    pendingSlashInsertRangeRef.current = null
+    pendingSlashInsertRangeRef.current = {
+      start: insertionResult.cursorOffset,
+      end: insertionResult.cursorOffset,
+    }
     selectionRestoreRequestIdRef.current += 1
     setSelectionRestoreRequest({
       id: selectionRestoreRequestIdRef.current,
@@ -794,6 +799,7 @@ export function AgentPromptEditor() {
   }
 
   const handleInsertSlash = () => {
+    pendingSlashInsertRangeRef.current = null
     setValue(`${value}/`)
     openSlashMenu({ autoFocus: true })
   }

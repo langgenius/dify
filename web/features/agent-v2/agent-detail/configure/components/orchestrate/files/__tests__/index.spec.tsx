@@ -5,7 +5,6 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { toast } from '@/app/notifications'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -56,13 +55,6 @@ const mocks = vi.hoisted(() => ({
     audio_file_size_limit: 50,
     video_file_size_limit: 100,
     workflow_file_upload_limit: 10,
-  },
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
   },
 }))
 
@@ -441,7 +433,7 @@ describe('AgentFiles', () => {
         size: 5,
       }),
     ])
-    expect(toast.success).toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should show the configured size limit for every supported file type', async () => {
@@ -486,9 +478,11 @@ describe('AgentFiles', () => {
     const file = new File([new Uint8Array(1024 * 1024 + 1)], fileName, { type: mimeType })
     await user.upload(input, file)
 
-    expect(toast.error).toHaveBeenCalledWith(
-      `common.fileUploader.uploadFromComputerLimit:{"type":"${fileType}","size":"1.00 MB"}`,
-    )
+    expect(
+      screen.getByText(
+        `common.fileUploader.uploadFromComputerLimit:{"type":"${fileType}","size":"1.00 MB"}`,
+      ),
+    ).toBeVisible()
     expect(mocks.uploadFileMutationFn).not.toHaveBeenCalled()
     expect(
       screen.getByRole('button', {
@@ -545,6 +539,7 @@ describe('AgentFiles', () => {
       )
     })
 
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'diagram.png' }))
 
     await waitFor(() => {
