@@ -23,7 +23,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useEffect, useRef, useState, useTransition } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -149,7 +149,6 @@ export default function StepByStepTourMount({
 }: StepByStepTourMountProps) {
   const [pricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const router = useRouter()
-  const [isAdvancingGuide, startGuideTransition] = useTransition()
   const pathname = usePathname()
   const docLink = useDocLink()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
@@ -332,7 +331,7 @@ export default function StepByStepTourMount({
     if (lastRequestedIntegrationRouteRef.current === activeGuideRoute) return
 
     lastRequestedIntegrationRouteRef.current = activeGuideRoute
-    router.push(activeGuideRoute)
+    router.replace(activeGuideRoute)
   }, [activeGuide?.integrationSection, activeTask?.id, pathname, router])
 
   useEffect(() => {
@@ -626,13 +625,14 @@ export default function StepByStepTourMount({
                   ? activeGuides[nextActiveGuide.activeGuideIndex]?.integrationSection
                   : undefined
               const nextGuideRoute = nextGuideSection && buildIntegrationPath(nextGuideSection)
-              // One transition: the next step commits together with the page it points into.
-              startGuideTransition(() => {
-                if (nextGuideRoute && nextGuideRoute !== pathname) router.push(nextGuideRoute)
-                advanceGuide({
-                  guideIndex: nextActiveGuide.activeGuideIndex,
-                  guideIndexes: nextActiveGuide.activeGuideIndexes,
-                })
+              // The Integrations page stays mounted across sections, so the step only needs the URL.
+              if (nextGuideRoute && nextGuideRoute !== pathname) {
+                lastRequestedIntegrationRouteRef.current = nextGuideRoute
+                window.history.replaceState(null, '', nextGuideRoute)
+              }
+              advanceGuide({
+                guideIndex: nextActiveGuide.activeGuideIndex,
+                guideIndexes: nextActiveGuide.activeGuideIndexes,
               })
               return
             }
@@ -801,7 +801,6 @@ export default function StepByStepTourMount({
                   )}
                   onSkip={skipActiveGuide}
                   onComplete={completeActiveGuide}
-                  completing={isAdvancingGuide}
                 />
               )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (

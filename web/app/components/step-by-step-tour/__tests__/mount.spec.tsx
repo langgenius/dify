@@ -31,7 +31,8 @@ type StepByStepTourFixtureState = StepByStepTourSessionState & {
 
 const mockRouterPush = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
-let mockPathname = '/apps'
+const mockRouterReplace = vi.fn()
+const setPathname = (pathname: string) => window.history.replaceState(null, '', pathname)
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: [
     'app.create_and_management',
@@ -80,8 +81,8 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
-  useRouter: () => ({ push: mockRouterPush }),
+  usePathname: () => window.location.pathname,
+  useRouter: () => ({ push: mockRouterPush, replace: mockRouterReplace }),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -375,7 +376,7 @@ describe('StepByStepTourMount', () => {
     mockEnableStepByStepTour.value = true
     mockHasBlockingModalOpen.value = false
     mockEducationExpireNotice.value = false
-    mockPathname = '/apps'
+    setPathname('/apps')
     localStorage.clear()
     mockStepByStepTour.reset()
     tourSession = {}
@@ -750,7 +751,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('does not block the tour outside the Apps route for an unmounted Education notice', async () => {
-    mockPathname = '/datasets'
+    setPathname('/datasets')
     mockEducationExpireNotice.value = true
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -1028,7 +1029,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('walks through Integration guides and syncs the Integrations section route', async () => {
-    mockPathname = '/integrations/model-provider'
+    setPathname('/integrations/model-provider')
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
@@ -1072,7 +1073,9 @@ describe('StepByStepTourMount', () => {
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Tool Plugin' })).toBeInTheDocument()
       expect(screen.getByText('2 of 6')).toBeInTheDocument()
-      expect(mockRouterPush).toHaveBeenLastCalledWith('/integrations/tools/built-in')
+      expect(window.location.pathname).toBe('/integrations/tools/built-in')
+      expect(mockRouterPush).not.toHaveBeenCalled()
+      expect(mockRouterReplace).not.toHaveBeenCalled()
       expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
         action: 'guide_completed',
         guide_id: 'integration.model_provider',
@@ -1082,24 +1085,24 @@ describe('StepByStepTourMount', () => {
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'MCP' })).toBeInTheDocument()
       expect(screen.getByText('3 of 6')).toBeInTheDocument()
-      expect(mockRouterPush).toHaveBeenLastCalledWith('/integrations/tools/mcp')
+      expect(window.location.pathname).toBe('/integrations/tools/mcp')
 
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Data Source' })).toBeInTheDocument()
       expect(screen.getByText('4 of 6')).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
-      expect(mockRouterPush).toHaveBeenLastCalledWith('/integrations/data-source')
+      expect(window.location.pathname).toBe('/integrations/data-source')
 
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Trigger' })).toBeInTheDocument()
       expect(screen.getByText('5 of 6')).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
-      expect(mockRouterPush).toHaveBeenLastCalledWith('/integrations/trigger')
+      expect(window.location.pathname).toBe('/integrations/trigger')
 
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Update Settings' })).toBeInTheDocument()
       expect(screen.getByText('6 of 6')).toBeInTheDocument()
-      expect(mockRouterPush).toHaveBeenLastCalledWith('/integrations/tools/built-in')
+      expect(window.location.pathname).toBe('/integrations/tools/built-in')
 
       await user.click(screen.getByRole('button', { name: 'Got it' }))
 
@@ -1114,7 +1117,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('keeps the Integration update settings guide in the plan until its section target is rendered', async () => {
-    mockPathname = '/integrations/model-provider'
+    setPathname('/integrations/model-provider')
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
@@ -1138,6 +1141,8 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('dialog', { name: 'Model Provider' })).toBeInTheDocument()
       expect(screen.getByText('1 of 6')).toBeInTheDocument()
 
+      // The Tool Plugin section renders the Update Settings target.
+      targets.push(createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings, 144))
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Tool Plugin' })).toBeInTheDocument()
       expect(screen.getByText('2 of 6')).toBeInTheDocument()
@@ -1154,13 +1159,6 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('dialog', { name: 'Trigger' })).toBeInTheDocument()
       expect(screen.getByText('5 of 6')).toBeInTheDocument()
 
-      const updateSettingsTarget = createTourTarget(
-        STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings,
-        144,
-      )
-      targets.push(updateSettingsTarget)
-      mockPathname = '/integrations/tools/built-in'
-
       await user.click(screen.getByRole('button', { name: 'Got it' }))
       expect(await screen.findByRole('dialog', { name: 'Update Settings' })).toBeInTheDocument()
       expect(screen.getByText('6 of 6')).toBeInTheDocument()
@@ -1170,7 +1168,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('skips the optional Integration update settings guide when plugin preferences permission is unavailable', async () => {
-    mockPathname = '/integrations/model-provider'
+    setPathname('/integrations/model-provider')
     mockWorkspacePermissionKeys.value = [
       'app.create_and_management',
       'dataset.create_and_management',
@@ -1232,7 +1230,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('skips the optional Learn Dify guide when the Studio empty section is not rendered', async () => {
-    mockPathname = '/apps'
+    setPathname('/apps')
     setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 2,
@@ -1264,7 +1262,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('skips the optional app card action guide when no app card action target is rendered', async () => {
-    mockPathname = '/apps'
+    setPathname('/apps')
     setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
@@ -1301,7 +1299,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('skips the active walkthrough without completing the task', async () => {
-    mockPathname = '/integrations/model-provider'
+    setPathname('/integrations/model-provider')
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 1,
@@ -1347,7 +1345,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('focuses the primary action and skips the active walkthrough with Escape', async () => {
-    mockPathname = '/integrations/model-provider'
+    setPathname('/integrations/model-provider')
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 1,
@@ -1428,7 +1426,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('closes the coachmark while its target is missing and opens it once the target renders', async () => {
-    mockPathname = '/integrations/model-provider'
+    setPathname('/integrations/model-provider')
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 1,
@@ -1464,7 +1462,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('keeps the minimized tour control visible when an active guide target is unavailable', async () => {
-    mockPathname = '/app/test-app/overview'
+    setPathname('/app/test-app/overview')
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       manuallyEnabledWorkspaceIds: ['workspace-1'],

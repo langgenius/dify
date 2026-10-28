@@ -25,6 +25,9 @@ const HIGHLIGHT_PADDING = 4
 // The vertical arrow's dot sits this far from the target's left edge, as in the Figma frame.
 const VERTICAL_ARROW_DOT_LEFT = 28
 const STEP_GLIDE_DURATION = 400
+// A target missing for longer than this, such as one in a dialog that is still loading, closes the
+// coachmark; a shorter gap while the next step's page renders keeps it up so it glides.
+const MISSING_TARGET_GRACE = 200
 const STEP_GLIDE_CLASS_NAME =
   'data-gliding:duration-300 data-gliding:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
 const TARGET_TABBABLE_SELECTOR =
@@ -100,12 +103,11 @@ type StepByStepTourCoachmarkProps = {
   interactionPolicy: StepByStepTourGuideInteractionPolicy
   onSkip: () => void
   onComplete: () => void
-  completing?: boolean
 }
 
 type StepByStepTourCoachmarkOverlay = Omit<
   StepByStepTourCoachmarkProps,
-  'completing' | 'onComplete' | 'onSkip' | 'targetElement'
+  'onComplete' | 'onSkip' | 'targetElement'
 > & {
   anchorRect: StepByStepTourTargetRect
   highlightRect: StepByStepTourTargetRect
@@ -121,7 +123,6 @@ export function StepByStepTourCoachmark({
   interactionPolicy,
   onSkip,
   onComplete,
-  completing = false,
 }: StepByStepTourCoachmarkProps) {
   const targetRects = useStepByStepTourTargetRect(targetElement, guide.highlightPartSelectors)
   const portalRef = useRef<HTMLDivElement>(null)
@@ -147,15 +148,20 @@ export function StepByStepTourCoachmark({
       : undefined
 
   const [awaitingTarget, setAwaitingTarget] = useState(!targetElement)
-  if (!targetElement && !awaitingTarget) setAwaitingTarget(true)
   if (currentOverlay && awaitingTarget) setAwaitingTarget(false)
+  useEffect(() => {
+    if (targetElement) return
+
+    const timeout = window.setTimeout(() => setAwaitingTarget(true), MISSING_TARGET_GRACE)
+    return () => window.clearTimeout(timeout)
+  }, [targetElement])
 
   useLayoutEffect(() => {
     if (currentOverlay) lastOverlayRef.current = currentOverlay
   })
 
   const overlay = currentOverlay ?? lastOverlayRef.current
-  const open = Boolean(targetElement && !awaitingTarget && overlay)
+  const open = Boolean(!awaitingTarget && overlay)
   const gliding = useStepGliding(open ? overlay?.guide.id : undefined)
   const isActionGuide = overlay ? getStepByStepTourGuideKind(overlay.guide) === 'action' : false
   const overlayPlacement = overlay?.placement
@@ -362,7 +368,6 @@ export function StepByStepTourCoachmark({
                       variant="primary"
                       size="medium"
                       className="min-w-20 px-3"
-                      loading={completing}
                       onClick={currentOverlay ? onComplete : undefined}
                     >
                       {overlay.guide.primaryActionLabel}
