@@ -24,12 +24,7 @@
   "contentMappers": [
     {
       "package": "@dify/openapi-content-mapper",
-      "extensions": [".openapi", ".openapi-source", ".openapi-types"],
-      "options": {
-        "sources": [
-          "../packages/openapi-content-mapper/contracts/enterprise-app-deploy.openapi-types"
-        ]
-      }
+      "extensions": [".openapi", ".openapi-source"]
     }
   ]
 }
