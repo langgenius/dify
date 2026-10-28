@@ -14,10 +14,9 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
-from sqlalchemy import asc, desc, event
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, ConversationVariable
@@ -391,134 +390,6 @@ def test_cleanup_propagates_agent_enqueue_failure_before_conversation_enqueue(mo
         )
 
     delete_related.assert_not_called()
-
-
-class TestConversationServicePagination:
-    """Test conversation pagination operations."""
-
-    def test_pagination_with_empty_include_ids(self, sqlite_session: Session):
-        """
-        Test that empty include_ids returns empty result.
-
-        When include_ids is an empty list, the service should short-circuit
-        and return empty results without querying the database.
-        """
-        # Arrange - Set up test data
-        app_model = ConversationServiceTestDataFactory.create_app()
-        user = ConversationServiceTestDataFactory.create_account()
-
-        # Act - Call the service method with empty include_ids
-        result = ConversationService.pagination_by_last_id(
-            session=sqlite_session,
-            app_model=app_model,
-            user=user,
-            last_id=None,
-            limit=20,
-            invoke_from=InvokeFrom.WEB_APP,
-            include_ids=[],  # Empty list should trigger early return
-            exclude_ids=None,
-        )
-
-        # Assert - Verify empty result without database query
-        assert result.data == []  # No conversations returned
-        assert result.has_more is False  # No more pages available
-        assert result.limit == 20  # Limit preserved in response
-        assert not sqlite_session.in_transaction()
-
-    def test_pagination_returns_empty_when_user_is_none(self, sqlite_session: Session):
-        """
-        Test that pagination returns empty result when user is None.
-
-        This ensures proper handling of unauthenticated requests.
-        """
-        # Arrange
-        app_model = ConversationServiceTestDataFactory.create_app()
-
-        # Act
-        result = ConversationService.pagination_by_last_id(
-            session=sqlite_session,
-            app_model=app_model,
-            user=None,  # No user provided
-            last_id=None,
-            limit=20,
-            invoke_from=InvokeFrom.WEB_APP,
-        )
-
-        # Assert - should return empty result without querying database
-        assert result.data == []
-        assert result.has_more is False
-        assert result.limit == 20
-        assert not sqlite_session.in_transaction()
-
-
-class TestConversationServiceHelpers:
-    """Test helper methods in ConversationService."""
-
-    def test_get_sort_params_with_descending_sort(self):
-        """
-        Test _get_sort_params with descending sort prefix.
-
-        When sort_by starts with '-', should return field name and desc function.
-        """
-        # Act
-        field, direction = ConversationService._get_sort_params("-updated_at")
-
-        # Assert
-        assert field == "updated_at"
-        assert direction == desc
-
-    def test_get_sort_params_with_ascending_sort(self):
-        """
-        Test _get_sort_params with ascending sort.
-
-        When sort_by doesn't start with '-', should return field name and asc function.
-        """
-        # Act
-        field, direction = ConversationService._get_sort_params("created_at")
-
-        # Assert
-        assert field == "created_at"
-        assert direction == asc
-
-    def test_build_filter_condition_with_descending_sort(self):
-        """
-        Test _build_filter_condition with descending sort direction.
-
-        Should create a less-than filter condition.
-        """
-        # Arrange
-        conversation = ConversationServiceTestDataFactory.create_conversation()
-
-        # Act
-        condition = ConversationService._build_filter_condition(
-            sort_field="updated_at",
-            sort_direction=desc,
-            reference_conversation=conversation,
-        )
-
-        # Assert
-        # The condition should be a comparison expression
-        assert condition is not None
-
-    def test_build_filter_condition_with_ascending_sort(self):
-        """
-        Test _build_filter_condition with ascending sort direction.
-
-        Should create a greater-than filter condition.
-        """
-        # Arrange
-        conversation = ConversationServiceTestDataFactory.create_conversation()
-
-        # Act
-        condition = ConversationService._build_filter_condition(
-            sort_field="created_at",
-            sort_direction=asc,
-            reference_conversation=conversation,
-        )
-
-        # Assert
-        # The condition should be a comparison expression
-        assert condition is not None
 
 
 class TestConversationServiceConversationalVariable:

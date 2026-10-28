@@ -507,6 +507,11 @@ export type Condition = {
   value?: string | Array<string> | number | null
 }
 
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
 export type ConversationFirstMessageNotFoundError = ErrorResponse & {
   code: 'conversation_first_message_not_found'
   status: 404
@@ -4983,8 +4988,16 @@ export type GetConversationsData = {
 export type GetConversationsErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 

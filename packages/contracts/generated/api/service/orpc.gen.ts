@@ -13,6 +13,7 @@ import {
   zArchivedDocumentImmutableError,
   zAudioTooLargeError,
   zCompletionRequestError,
+  zConversationCursorNotFoundError,
   zConversationFirstMessageNotFoundError,
   zConversationNotFoundError,
   zDatasetNameDuplicateError,
@@ -1051,7 +1052,17 @@ export const get6 = oc
   })
   .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const conversations = {
   get: get6,
