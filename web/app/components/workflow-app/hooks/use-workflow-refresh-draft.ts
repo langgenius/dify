@@ -140,10 +140,8 @@ export const useWorkflowRefreshDraft = () => {
                 const applied = handleUpdateWorkflowCanvas(graph, {
                   syncToCollaboration: syncToCollaboration && !useServerWriter,
                   features: response.features,
-                  preserveViewport:
-                    options?.preserveViewport ??
-                    (options?.builderRefresh &&
-                      workflowStore.getState().builderViewportManuallyChanged),
+                  // Builder also refreshes after automatic node-follow navigation during a test.
+                  preserveViewport: options?.preserveViewport ?? options?.builderRefresh,
                 })
                 if (!applied) return 'failed'
                 // The hash is a baseline for this graph, never for a metadata-only refresh.

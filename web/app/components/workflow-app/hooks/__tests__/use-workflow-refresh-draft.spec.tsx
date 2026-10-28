@@ -12,7 +12,15 @@ import {
   createNode,
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  baseRunningData,
+  renderWorkflowComponent,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  containerParams,
+  createNodeStartedResponse,
+} from '@/app/components/workflow/hooks/use-workflow-run-event/__tests__/test-helpers'
+import { useWorkflowNodeStarted } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-node-started'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
@@ -108,11 +116,14 @@ function setup(mode: AppMode = 'advanced-chat') {
 
   const refresh = createRef<ReturnType<typeof useWorkflowRefreshDraft>>()
   const flow = createRef<ReactFlowInstance>()
+  const nodeEvents = createRef<ReturnType<typeof useWorkflowNodeStarted>>()
   function RefreshProbe() {
     const hook = useWorkflowRefreshDraft()
     const canvas = useReactFlow()
+    const events = useWorkflowNodeStarted()
     useImperativeHandle(refresh, () => hook, [hook])
     useImperativeHandle(flow, () => canvas, [canvas])
+    useImperativeHandle(nodeEvents, () => events, [events])
     return null
   }
 
@@ -137,7 +148,7 @@ function setup(mode: AppMode = 'advanced-chat') {
     },
   )
 
-  return { ...rendered, flow, refresh }
+  return { ...rendered, flow, refresh, nodeEvents }
 }
 
 async function expectGraph(
@@ -218,6 +229,31 @@ describe('useWorkflowRefreshDraft', () => {
       environmentVariables: [],
       conversationVariables: [],
     })
+  })
+
+  it('preserves the automatic node-follow view when refreshing the Builder draft', async () => {
+    const { flow, refresh, store, nodeEvents } = setup()
+    await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
+    const started = createNodeStartedResponse()
+    started.data.node_id = 'local-code'
+    act(() => {
+      store.getState().setWorkflowDraftSyncPhase('builder')
+      store.getState().setCanvasReadOnly(true)
+      store.getState().setWorkflowRunningData(baseRunningData())
+      nodeEvents.current!.handleWorkflowNodeStarted(started, containerParams)
+    })
+    await waitFor(() => expect(flow.current!.getViewport()).not.toEqual(localViewport))
+    const followedViewport = flow.current!.getViewport()
+    expect(store.getState().builderViewportManuallyChanged).toBe(false)
+
+    await act(async () => {
+      expect(
+        await refresh.current!.handleRefreshWorkflowDraft(false, { builderRefresh: true }),
+      ).toBe('refreshed')
+    })
+
+    await expectGraph(flow, ['saved-start', 'saved-code'], ['saved-edge'], followedViewport)
+    expect(store.getState().workflowDraftSyncPhase).toBe('idle')
   })
 
   it('keeps the syncing guard active until the newest overlapping refresh completes', async () => {
