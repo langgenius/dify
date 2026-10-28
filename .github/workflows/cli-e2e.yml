@@ -96,9 +96,6 @@ jobs:
 
       - name: Install CLI dependencies
         working-directory: cli
-        env:
-          # See .github/actions/setup-web: nodejs.org/download/release is slow on CI runners.
-          PNPM_CONFIG_NODE_DOWNLOAD_MIRRORS: '{"release":"https://nodejs.org/dist/"}'
         run: pnpm install --frozen-lockfile
 
       - name: Mint token & provision apps
