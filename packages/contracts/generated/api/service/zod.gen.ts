@@ -1053,6 +1053,18 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * ConversationFirstMessageNotFoundError
  *
  * The conversation has no message from which to generate a name.
@@ -6198,7 +6210,7 @@ export const zGetConversationsQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversations list.
+ * Conversations retrieved successfully.
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 

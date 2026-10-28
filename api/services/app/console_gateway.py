@@ -201,12 +201,7 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
     def inherit_access(self, source_app_id: str, app_id: str) -> None:
         if not SystemFeatureService.is_webapp_auth_enabled():
             return
-        try:
-            access_mode = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app_id).access_mode
-        except Exception:
-            # Old apps without settings default to public, matching the access fallback.
-            access_mode = "public"
-        EnterpriseService.WebAppAuth.update_app_access_mode(app_id, access_mode)
+        EnterpriseService.WebAppAuth.inherit_app_access_mode(source_app_id, app_id)
 
     def __init__(self, *, members: MemberService) -> None:
         self._members = members
