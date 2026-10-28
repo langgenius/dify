@@ -173,7 +173,7 @@ export function MinimizedTourPill({
       {...props}
       type="button"
       className={cn(
-        'inline-flex h-8 w-45.75 max-w-[calc(100vw-16px)] items-center gap-2 overflow-hidden rounded-full border-[0.5px] border-components-panel-border bg-background-section px-3 py-2 text-saas-dify-blue-inverted transition-colors hover:bg-state-base-hover',
+        'inline-flex h-8 w-45.75 max-w-[calc(100vw-16px)] items-center gap-2 overflow-hidden rounded-full border-[0.5px] border-components-panel-border bg-background-section px-3 py-2 text-saas-dify-blue-inverted transition-[background-color,opacity] hover:bg-state-base-hover motion-reduce:transition-none',
         className,
       )}
     >
@@ -247,26 +247,17 @@ function TourTaskRow({
 
   return (
     <div
+      data-status={task.status}
       aria-current={current ? 'step' : undefined}
       aria-disabled={disabled || undefined}
-      className={cn(
-        'group flex w-full gap-1 rounded-xl p-2 transition-colors',
-        completed ? 'items-center' : 'items-start',
-        current && 'bg-state-base-hover-subtle',
-        disabled && 'cursor-not-allowed opacity-60',
-      )}
+      className="group flex w-full items-start gap-1 rounded-xl p-2 transition-colors data-[status=completed]:items-center data-[status=current]:bg-state-base-hover-subtle data-[status=disabled]:cursor-not-allowed data-[status=disabled]:opacity-60"
     >
-      <div className={cn('flex min-w-0 flex-1 gap-3', completed ? 'items-center' : 'items-start')}>
-        <div
-          className={cn(
-            'flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg text-text-accent-light-mode-only',
-            completed && 'opacity-50',
-          )}
-        >
+      <div className="flex min-w-0 flex-1 items-start gap-3 group-data-[status=completed]:items-center">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-components-panel-border-subtle bg-components-panel-bg text-text-secondary group-data-[status=completed]:opacity-50 group-data-[status=current]:text-text-accent-light-mode-only">
           <span aria-hidden className={cn('size-4', task.iconClassName)} />
         </div>
-        <div className={cn('min-w-0 flex-1', completed && 'opacity-50')}>
-          <div className={cn('system-md-medium text-text-secondary', completed && 'line-through')}>
+        <div className="min-w-0 flex-1 group-data-[status=completed]:opacity-50">
+          <div className="system-md-medium text-text-secondary group-data-[status=completed]:line-through">
             {task.title}
           </div>
           {!completed && (
@@ -333,7 +324,7 @@ function TaskStatusIndicator({
         type="button"
         aria-label={incompleteLabel}
         disabled={disabled}
-        className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-hidden hover:bg-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-saas-dify-blue-accessible"
+        className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-state-accent-solid hover:bg-saas-dify-blue-inverted focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-saas-dify-blue-accessible"
         onClick={onUncomplete}
       >
         <span aria-hidden className="i-ri-check-line size-3" />
@@ -346,7 +337,7 @@ function TaskStatusIndicator({
       type="button"
       aria-label={completeLabel}
       disabled={disabled}
-      className="flex size-4.5 shrink-0 items-center justify-center rounded-full border border-components-checkbox-border bg-components-checkbox-bg-unchecked outline-hidden hover:border-state-accent-solid focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:border-components-checkbox-border"
+      className="flex size-4.5 shrink-0 items-center justify-center rounded-full border border-components-checkbox-border bg-components-checkbox-bg-unchecked outline-state-accent-solid hover:border-state-accent-solid focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:hover:border-components-checkbox-border"
       onClick={onComplete}
     />
   )

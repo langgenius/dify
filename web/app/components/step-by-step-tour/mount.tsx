@@ -21,9 +21,9 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -56,13 +56,13 @@ import {
   resetStepByStepTourSessionAtom,
   skipStepByStepTourAtom,
   startStepByStepTourTaskAtom,
+  stepByStepTourChecklistMinimizedAtom,
   stepByStepTourEnabledForCurrentWorkspaceAtom,
   stepByStepTourFirstWorkspaceIdAtom,
   stepByStepTourSkippedAtom,
   stepByStepTourSkipRecoveryVisibleAtom,
   uncompleteStepByStepTourTaskAtom,
 } from './state'
-import { useSetStepByStepTourShellMode, useStepByStepTourShellModeValue } from './storage'
 import {
   getStepByStepTourGuideInteractionPolicy,
   getStepByStepTourGuideKind,
@@ -174,18 +174,15 @@ export default function StepByStepTourMount({
   const patchSkipTour = useSetAtom(skipStepByStepTourAtom)
   const startTask = useSetAtom(startStepByStepTourTaskAtom)
   const uncompleteTask = useSetAtom(uncompleteStepByStepTourTaskAtom)
-  const shellMode = useStepByStepTourShellModeValue()
-  const setShellMode = useSetStepByStepTourShellMode()
-  const anchorRef = useRef<HTMLDivElement>(null)
+  const [checklistMinimized, setChecklistMinimized] = useAtom(stepByStepTourChecklistMinimizedAtom)
   const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
   const restoreTriggerRef = useRef<HTMLButtonElement>(null)
+  const checklistPopupRef = useRef<HTMLDivElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
   const shownAnalyticsKeyRef = useRef<string | undefined>(undefined)
-  const skipTimeoutRef = useRef<number | undefined>(undefined)
   const stepShownAnalyticsKeyRef = useRef<string | undefined>(undefined)
-  const [checklistExiting, setChecklistExiting] = useState(false)
   const currentWorkspaceId = currentWorkspace.id
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const homeGuideGroup: Extract<StepByStepTourGuideGroup, 'homeNoCreate'> | undefined = canCreateApp
@@ -202,13 +199,6 @@ export default function StepByStepTourMount({
     | Extract<StepByStepTourGuideGroup, 'integrationLimitedAccess'>
     | undefined = isCurrentWorkspaceManager ? undefined : 'integrationLimitedAccess'
   const hasIntegrationWalkthroughPermissions = !integrationGuideGroup
-
-  useEffect(
-    () => () => {
-      if (skipTimeoutRef.current) window.clearTimeout(skipTimeoutRef.current)
-    },
-    [],
-  )
 
   const learnDifyEnabled = systemFeatures.enable_learn_app
   const stepByStepTourFeatureEnabled = systemFeatures.enable_step_by_step_tour
@@ -234,7 +224,7 @@ export default function StepByStepTourMount({
   const activeGuideIndex = sessionGuideIndex ?? 0
   const activeGuide = activeGuides[activeGuideIndex]
   const hasActiveGuide = Boolean(activeTask && activeGuide)
-  const minimized = Boolean(activeTask) || shellMode === 'collapsed'
+  const minimized = Boolean(activeTask) || checklistMinimized
   const activeGuideIndexes =
     activeGuides.length > 0
       ? getActiveGuideIndexes(activeGuides, sessionGuideIndexes)
@@ -268,14 +258,13 @@ export default function StepByStepTourMount({
     !settingsDestination &&
     !(pathname === '/apps' && educationExpireNotice)
   const completionPromptVisible = visible && allTasksCompleted && !activeTask
-  const checklistMinimized = completionPromptVisible ? false : minimized
-  const expanded = !checklistMinimized
+  const expanded = completionPromptVisible || !minimized
   const activeTargetElement = useStepByStepTourTarget(activeGuide?.target)
   const activeGuidePlacement =
     activeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify
       ? 'top'
       : activeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.integration
-        ? 'right'
+        ? 'inline-end'
         : 'bottom'
   const getPermissionVariant = (taskId: StepByStepTourTaskId) =>
     getStepByStepTourPermissionVariant({
@@ -529,21 +518,11 @@ export default function StepByStepTourMount({
           })
 
           const skipTour = () => {
-            if (checklistExiting) return
-
-            setChecklistExiting(true)
-
-            skipTimeoutRef.current = window.setTimeout(() => {
-              patchSkipTour({
-                onSuccess: trackTourSkipped,
-                onError: () => {
-                  setChecklistExiting(false)
-                  setSkipRecoveryVisible(false)
-                },
-              })
-              setChecklistExiting(false)
-              if (recoveryAnchorRef) setSkipRecoveryVisible(true)
-            }, 160)
+            patchSkipTour({
+              onSuccess: trackTourSkipped,
+              onError: () => setSkipRecoveryVisible(false),
+            })
+            if (recoveryAnchorRef) setSkipRecoveryVisible(true)
           }
 
           const skipActiveGuide = () => {
@@ -557,7 +536,7 @@ export default function StepByStepTourMount({
             }
 
             resetSession()
-            setShellMode('expanded')
+            setChecklistMinimized(false)
           }
 
           const getNextVisibleActiveGuideIndex = (startIndex: number) => {
@@ -616,7 +595,7 @@ export default function StepByStepTourMount({
                     trackTaskCompleted(completedTaskIds, activeTask.id),
                 })
                 resetSession()
-                setShellMode('expanded')
+                setChecklistMinimized(false)
                 return
               }
 
@@ -632,7 +611,7 @@ export default function StepByStepTourMount({
               onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, activeTask.id),
             })
             resetSession()
-            setShellMode('expanded')
+            setChecklistMinimized(false)
           }
 
           const dismissCompletedTour = () => {
@@ -640,7 +619,7 @@ export default function StepByStepTourMount({
               onSuccess: trackTourSkipped,
             })
             resetSession()
-            setShellMode('expanded')
+            setChecklistMinimized(false)
           }
 
           const progress = {
@@ -689,7 +668,7 @@ export default function StepByStepTourMount({
                 })
               }
               onMinimize={() => {
-                setShellMode('collapsed')
+                setChecklistMinimized(true)
               }}
               onSkip={skipTour}
               onCompleteTask={(taskId) => {
@@ -727,7 +706,7 @@ export default function StepByStepTourMount({
                     onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
                   })
                   resetSession()
-                  setShellMode('expanded')
+                  setChecklistMinimized(false)
                   return
                 }
 
@@ -756,65 +735,74 @@ export default function StepByStepTourMount({
                   },
                 })
               }}
-              className={cn(
-                'transition-opacity duration-150 ease-out motion-reduce:transition-none',
-                checklistExiting && 'opacity-0',
-              )}
             />
           )
 
           return (
             <div className={cn('relative', className)}>
-              {overlayVisible &&
-                !allTasksCompleted &&
-                activeTask &&
-                activeGuide &&
-                activeTargetElement && (
-                  <StepByStepTourCoachmark
-                    guide={{
-                      ...activeGuide,
-                      description: t(($) => $[activeGuide.description]),
-                      learnMoreHref: activeGuide.learnMoreDocPath
-                        ? docLink(activeGuide.learnMoreDocPath)
-                        : undefined,
-                      learnMoreLabel: t(($) => $[activeGuide.learnMoreLabel]),
-                      primaryActionLabel: t(($) => $[activeGuide.primaryActionLabel]),
-                      title: t(($) => $[activeGuide.title]),
-                    }}
-                    targetElement={activeTargetElement}
-                    placement={activeGuidePlacement}
-                    stepLabel={t(($) => $['stepByStepTour.stepLabel'], {
-                      ns: 'onboarding',
-                      current: activeStepIndex + 1,
-                      total: activeStepTotal,
-                    })}
-                    skipLabel={t(($) => $['stepByStepTour.skip'], { ns: 'onboarding' })}
-                    interactionPolicy={getStepByStepTourGuideInteractionPolicy(
-                      activeGuide,
-                      activeTask.canClickThrough,
-                    )}
-                    onSkip={skipActiveGuide}
-                    onComplete={completeActiveGuide}
-                  />
-                )}
+              {overlayVisible && !allTasksCompleted && activeTask && activeGuide && (
+                <StepByStepTourCoachmark
+                  guide={{
+                    ...activeGuide,
+                    description: t(($) => $[activeGuide.description]),
+                    learnMoreHref: activeGuide.learnMoreDocPath
+                      ? docLink(activeGuide.learnMoreDocPath)
+                      : undefined,
+                    learnMoreLabel: t(($) => $[activeGuide.learnMoreLabel]),
+                    primaryActionLabel: t(($) => $[activeGuide.primaryActionLabel]),
+                    title: t(($) => $[activeGuide.title]),
+                  }}
+                  targetElement={activeTargetElement}
+                  placement={activeGuidePlacement}
+                  stepLabel={t(($) => $['stepByStepTour.stepLabel'], {
+                    ns: 'onboarding',
+                    current: activeStepIndex + 1,
+                    total: activeStepTotal,
+                  })}
+                  skipLabel={t(($) => $['stepByStepTour.skip'], { ns: 'onboarding' })}
+                  interactionPolicy={getStepByStepTourGuideInteractionPolicy(
+                    activeGuide,
+                    activeTask.canClickThrough,
+                  )}
+                  onSkip={skipActiveGuide}
+                  onComplete={completeActiveGuide}
+                />
+              )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (
                 <Popover
                   open={overlayVisible && expanded}
-                  onOpenChange={(open) => {
-                    if (open) setShellMode('expanded')
+                  onOpenChange={(open, { event, reason }) => {
+                    if (open) {
+                      setChecklistMinimized(false)
+                      return
+                    }
+                    // Only the checklist's own keyboard exits minimize it: Escape from inside it or
+                    // its trigger, and Tab past it through a focus guard. Outside presses keep it.
+                    const target = event.target instanceof Element ? event.target : null
+                    const escapedFromChecklist =
+                      reason === 'escape-key' &&
+                      Boolean(
+                        target &&
+                        (checklistPopupRef.current?.contains(target) ||
+                          restoreTriggerRef.current?.contains(target)),
+                      )
+                    const tabbedOut =
+                      reason === 'focus-out' &&
+                      Boolean(target?.hasAttribute('data-base-ui-focus-guard'))
+                    if (reason === 'trigger-press' || escapedFromChecklist || tabbedOut)
+                      setChecklistMinimized(true)
                   }}
                 >
-                  <div
-                    ref={anchorRef}
-                    aria-hidden="true"
-                    className="pointer-events-none absolute bottom-0 left-0 h-0 w-full"
-                  />
-                  {checklistMinimized && (
+                  {(!expanded || overlayVisible) && (
                     <PopoverTrigger
                       ref={restoreTriggerRef}
-                      aria-label={t(($) => $['stepByStepTour.restore'], { ns: 'onboarding' })}
                       render={(props) => (
-                        <MinimizedTourPill {...props} title={title} progress={progress} />
+                        <MinimizedTourPill
+                          {...props}
+                          className={cn(props.className, 'data-popup-open:opacity-0')}
+                          title={title}
+                          progress={progress}
+                        />
                       )}
                     />
                   )}
@@ -823,8 +811,8 @@ export default function StepByStepTourMount({
                       <PopoverPositioner
                         side="top"
                         align="start"
-                        sideOffset={0}
-                        anchor={anchorRef}
+                        // The expanded checklist covers its pill.
+                        sideOffset={({ anchor }) => -anchor.height}
                         collisionPadding={8}
                         collisionAvoidance={{
                           side: 'shift',
@@ -833,8 +821,13 @@ export default function StepByStepTourMount({
                         }}
                       >
                         <PopoverPopup
+                          ref={checklistPopupRef}
                           initialFocus={checklistCloseButtonRef}
-                          finalFocus={restoreTriggerRef}
+                          finalFocus={() =>
+                            hasActiveGuide && activeTargetElement
+                              ? false
+                              : restoreTriggerRef.current
+                          }
                         >
                           {floatingChecklist}
                         </PopoverPopup>

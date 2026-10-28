@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "Đánh dấu {{title}} là chưa hoàn thành",
   "stepByStepTour.minimize": "Thu nhỏ",
   "stepByStepTour.progressAriaValueText": "Đã hoàn thành {{completed}} / {{total}} bước",
-  "stepByStepTour.restore": "Mở hướng dẫn từng bước",
   "stepByStepTour.skip": "Bỏ qua hướng dẫn",
   "stepByStepTour.skipRecovery.dismiss": "Đã hiểu",
   "stepByStepTour.skipRecovery.label": "Mẹo khôi phục Step-by-step Tour",
