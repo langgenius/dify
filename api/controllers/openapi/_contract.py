@@ -40,10 +40,23 @@ from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect,
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
 
-__all__ = ["CapRequestBody", "Effect", "Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+__all__ = [
+    "MULTIPART_HEADER_BYTES_PER_PART",
+    "CapRequestBody",
+    "Effect",
+    "Example",
+    "Kind",
+    "accepts",
+    "endpoint",
+    "multipart_header_allowance",
+    "op_of",
+    "paginated",
+    "returns",
+]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 _BYTES_PER_MIB: Final = 1024 * 1024
+MULTIPART_HEADER_BYTES_PER_PART: Final = 1024
 
 
 def paginated(op: str) -> Callable:
@@ -80,6 +93,10 @@ class CapRequestBody(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         request.max_content_length = self.max_bytes()
         request.max_form_parts = self.max_parts()
+
+
+def multipart_header_allowance(parts: int) -> int:
+    return parts * MULTIPART_HEADER_BYTES_PER_PART
 
 
 def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:

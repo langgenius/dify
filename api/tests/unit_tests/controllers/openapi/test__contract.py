@@ -18,7 +18,14 @@ from werkzeug.exceptions import RequestEntityTooLarge, UnprocessableEntity
 
 from controllers.common.schema import register_response_schema_model, register_schema_model
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import CapRequestBody, accepts, paginated, returns
+from controllers.openapi._contract import (
+    MULTIPART_HEADER_BYTES_PER_PART,
+    CapRequestBody,
+    accepts,
+    multipart_header_allowance,
+    paginated,
+    returns,
+)
 from controllers.openapi._errors import RequestOverRouteLimits
 from controllers.openapi._models import Hint, PaginationEnvelope
 from controllers.openapi._upload import UploadPart
@@ -295,3 +302,8 @@ def test_an_uncapped_route_keeps_the_generic_413(app: Flask, view: Callable[[], 
     with _post(app, 1, extra="y"), pytest.raises(RequestEntityTooLarge) as exc:
         view()
     assert not isinstance(exc.value, RequestOverRouteLimits)
+
+
+def test_multipart_header_allowance_scales_with_the_part_count() -> None:
+    assert multipart_header_allowance(0) == 0
+    assert multipart_header_allowance(5002) == 5002 * MULTIPART_HEADER_BYTES_PER_PART

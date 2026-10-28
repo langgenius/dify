@@ -27,7 +27,7 @@ from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPer
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._contract import op_of
+from controllers.openapi._contract import CapRequestBody, op_of
 from controllers.openapi._errors import (
     OpenApiErrorCode,
     OpenApiErrorFormatter,
@@ -704,6 +704,12 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
+        "skills.import",
+        "POST",
+        "/workspaces/{workspace_id}/skills/imports",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
         "app_dsl.import",
         "POST",
         "/workspaces/{workspace_id}/apps/imports",
@@ -1349,6 +1355,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.check": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1446,6 +1453,15 @@ _REQ_SKILL_PUBLISH = (
     CheckRBACPermission(RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())),
     CheckWorkspaceRole(_EDITOR_UP),
     CheckSkillEnabled(),
+)
+_REQ_SKILL_IMPORT = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckRBACPermission(RBACCheck(RBACPermission.SKILL_EDIT, Workspace())),
+    CheckWorkspaceRole(_EDITOR_UP),
+    CheckSkillEnabled(),
+    CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
 )
 _REQ_MEMBER_MANAGE = (
     CheckSubject(allowed=_ACCOUNT),
@@ -1657,6 +1673,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "skills.versions": _REQ_SKILL_READ,
     "skills.export": _REQ_SKILL_READ,
     "skills.publish": _REQ_SKILL_PUBLISH,
+    "skills.import": _REQ_SKILL_IMPORT,
     "knowledge_bases.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
@@ -2200,6 +2217,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/archive"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/skills/{skill_id}:publish"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/skills/imports"): frozenset({"201", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/models"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials"): frozenset(
         {"201", "422", "default"}
