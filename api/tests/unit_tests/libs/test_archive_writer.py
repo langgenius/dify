@@ -1,8 +1,8 @@
 import hashlib
 import io
+import time
 import unicodedata
 import zipfile
-from contextlib import closing
 
 import pytest
 
@@ -33,15 +33,16 @@ def _options(max_entries: int = 10, max_bytes: int = 1_000_000) -> ArchiveOption
     return ArchiveOptions(StrictPathPolicy(), ArchiveLimits(max_entries, max_bytes))
 
 
-def test_entries_are_sorted_hashed_and_written_deterministically() -> None:
-    first = write_archive([_entry("b", b"bb"), _entry("a")], _options())
-    second = write_archive([_entry("a"), _entry("b", b"bb")], _options())
-    assert [(e.path, e.size, e.sha256) for e in first.entries] == [
+def test_entries_are_sorted_hashed_and_stamped_with_the_write_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(time, "localtime", lambda: time.struct_time((2026, 10, 28, 9, 30, 16, 0, 0, 0)))
+    result = write_archive([_entry("b", b"bb"), _entry("a")], _options())
+    assert [(e.path, e.size, e.sha256) for e in result.entries] == [
         ("a", 0, hashlib.sha256(b"").hexdigest()),
         ("b", 2, hashlib.sha256(b"bb").hexdigest()),
     ]
-    with closing(first.file), closing(second.file):
-        assert first.file.read() == second.file.read()
+    with result.file, zipfile.ZipFile(result.file) as archive:
+        infos = archive.infolist()
+    assert {(info.date_time, info.external_attr >> 16) for info in infos} == {((2026, 10, 28, 9, 30, 16), 0o100644)}
 
 
 def test_empty_and_oversized_archives_are_rejected() -> None:

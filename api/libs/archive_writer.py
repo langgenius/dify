@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import stat
 import tempfile
+import time
 import unicodedata
 import zipfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -12,7 +13,6 @@ from typing import BinaryIO, Final, Protocol, cast, override
 
 _COPY_CHUNK_SIZE = 1024 * 1024
 _SPOOL_MAX_MEMORY = 16 * 1024 * 1024
-_FIXED_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 _FILE_MODE = stat.S_IFREG | 0o644
 _EXTERNAL_ATTR_SHIFT = 16
 _PATH_SEPARATOR = "/"
@@ -188,9 +188,11 @@ def write_archive(entries: Iterable[ArchiveEntry], options: ArchiveOptions) -> A
         raise ArchiveTooLargeError(ArchiveLimitKind.ENTRIES, limits.max_entries)
     admitted = sorted(options.path_policy.admit(items), key=lambda entry: entry.path)
 
+    now = time.localtime()
+    date_time = (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec)
     spool = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_MEMORY, mode="w+b"))  # noqa: SIM115
     try:
-        written = _write_entries(spool, admitted, options)
+        written = _write_entries(spool, admitted, options, date_time)
         spool.seek(0)
     except BaseException:
         spool.close()
@@ -198,12 +200,17 @@ def write_archive(entries: Iterable[ArchiveEntry], options: ArchiveOptions) -> A
     return ArchiveResult(file=spool, entries=written)
 
 
-def _write_entries(spool: BinaryIO, entries: Sequence[ArchiveEntry], options: ArchiveOptions) -> list[WrittenEntry]:
+def _write_entries(
+    spool: BinaryIO,
+    entries: Sequence[ArchiveEntry],
+    options: ArchiveOptions,
+    date_time: tuple[int, int, int, int, int, int],
+) -> list[WrittenEntry]:
     max_bytes = options.limits.max_bytes
     written: list[WrittenEntry] = []
     with zipfile.ZipFile(spool, "w", allowZip64=True) as archive:
         for entry in entries:
-            info = zipfile.ZipInfo(entry.path, date_time=_FIXED_DATE_TIME)
+            info = zipfile.ZipInfo(entry.path, date_time=date_time)
             info.compress_type = options.compression.zip_method
             info.external_attr = _FILE_MODE << _EXTERNAL_ATTR_SHIFT
             digest = hashlib.sha256()
