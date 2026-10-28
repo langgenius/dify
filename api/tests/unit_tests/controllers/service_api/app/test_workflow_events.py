@@ -23,7 +23,12 @@ from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedA
 from core.app.apps.advanced_chat.generate_task_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
@@ -158,6 +163,7 @@ def _persist_human_input_form(
 
 def _build_service_api_pause_converter() -> WorkflowResponseConverter:
     application_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         workflow_execution_id="run-id",
         user_id="user",
@@ -317,6 +323,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_id="workflow-1",
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=task_id,
         app_config=app_config,
         inputs={},

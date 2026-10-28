@@ -343,3 +343,20 @@ def test_trace_settings_preserve_stored_json_validation(
 ) -> None:
     app = persist_app(sqlite_session, tracing='{"enabled": "false", "obsolete_field": true}')
     assert repository.get_trace(CONTEXT, app.id) == AppTraceSettings()
+
+
+@pytest.mark.parametrize("empty_whitelist", [True, False])
+def test_app_list_includes_maintained_apps_outside_whitelist(
+    repository: ConsoleAppRepository, sqlite_session: Session, empty_whitelist: bool
+) -> None:
+    own = persist_app(sqlite_session, maintainer=ACTOR, created_by="other")
+    allowed = persist_app(sqlite_session, maintainer="other")
+    persist_app(sqlite_session, maintainer="other", created_by=ACTOR)
+    persist_app(sqlite_session, maintainer=ACTOR, tenant_id=str(uuid4()))
+    params = AppListParams(accessible_app_ids=[] if empty_whitelist else [allowed.id])
+
+    page = repository.list_apps(CONTEXT, params)
+
+    expected = {own.id} if empty_whitelist else {own.id, allowed.id}
+    assert {app.id for app in page.data} == expected
+    assert page.total == len(expected)
