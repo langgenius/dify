@@ -13,9 +13,12 @@ runs:
   using: composite
   steps:
     - name: Setup pnpm and Node.js
-      uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
       with:
         install: false
+        # Restore the pnpm store before installing Node.js to reuse its runtime download.
+        cache: true
+        save-cache: ${{ inputs.cache-save || 'true' }}
     - name: Setup Vite+
       uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
       with:
