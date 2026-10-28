@@ -108,7 +108,13 @@ class ChatMessagePayload(ConnectionRunInput):
     parent_message_id: str | None = Field(default=None, description="Parent message ID")
     retriever_from: str = Field(default="web_app", description="Source of retriever")
 
-    @field_validator("conversation_id", "parent_message_id")
+    @field_validator("conversation_id")
+    @classmethod
+    def validate_conversation_id(cls, value: str | None) -> str | None:
+        # An empty ID starts a new conversation, including connection preflight and queued execution.
+        return uuid_value(value) if value else None
+
+    @field_validator("parent_message_id")
     @classmethod
     def validate_uuid(cls, value: str | None) -> str | None:
         if value is None:
