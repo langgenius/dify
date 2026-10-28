@@ -13,7 +13,8 @@ jobs:
   openapi-sdk-test:
     name: OpenAPI SDK and Next.js adapters
     runs-on: depot-ubuntu-24.04-4
-    timeout-minutes: 15
+    # Leave time for contract checks after a cold toolchain installation.
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -21,6 +22,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup web environment
+        timeout-minutes: 15
         uses: ./.github/actions/setup-web
 
       - name: Setup Python for in-memory Console schema export
