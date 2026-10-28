@@ -89,7 +89,6 @@ vi.mock('react-i18next', async () => {
       'onboarding.stepByStepTour.duration': 'A quick tour — about 5 minutes',
       'onboarding.stepByStepTour.skip': 'Skip tour',
       'onboarding.stepByStepTour.minimize': 'Minimize tour',
-      'onboarding.stepByStepTour.restore': 'Open step-by-step tour',
       'onboarding.stepByStepTour.learnMore': 'Learn more',
       'onboarding.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
       'onboarding.stepByStepTour.skipRecovery.message':

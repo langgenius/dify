@@ -196,7 +196,6 @@ vi.mock('react-i18next', async () => {
       'onboarding.stepByStepTour.completion.label': 'Step-by-step Tour completed',
       'onboarding.stepByStepTour.completion.title': 'You’re all set',
       'onboarding.stepByStepTour.minimize': 'Minimize tour',
-      'onboarding.stepByStepTour.restore': 'Open step-by-step tour',
       'onboarding.stepByStepTour.learnMore': 'Learn more',
       'onboarding.stepByStepTour.markTaskComplete': 'Mark {{title}} complete',
       'onboarding.stepByStepTour.markTaskIncomplete': 'Mark {{title}} incomplete',
@@ -591,7 +590,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() =>
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
     )
-    expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveAttribute(
       'aria-expanded',
       'false',
     )
@@ -625,12 +624,12 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => expect(minimizeButton).toHaveFocus())
     await user.keyboard('{Enter}')
 
-    const restoreButton = await screen.findByRole('button', { name: 'Open step-by-step tour' })
+    const restoreButton = await screen.findByRole('button', { name: /^Get to know Dify/ })
 
     await waitFor(() => {
       expect(restoreButton).toHaveFocus()
     })
-    expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: /^Get to know Dify/ })).toHaveLength(1)
   })
 
   it('keeps the expanded checklist open after an outside pointer interaction', async () => {
@@ -665,7 +664,7 @@ describe('StepByStepTourMount', () => {
       await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveAttribute(
       'aria-expanded',
       'true',
     )
@@ -698,6 +697,33 @@ describe('StepByStepTourMount', () => {
     }
   })
 
+  it('minimizes the checklist when Tab moves past it', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    const checklist = await screen.findByRole('dialog', { name: 'Get to know Dify' })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Minimize tour' })).toHaveFocus())
+    const tabbables = checklist.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]')
+    tabbables[tabbables.length - 1]!.focus()
+
+    await user.tab()
+
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
   it('minimizes the checklist with Escape and returns focus to its trigger', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -715,7 +741,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() =>
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
     )
-    expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: /^Get to know Dify/ })).toHaveFocus()
   })
 
   it('hides expanded tour overlays while a blocking modal is open', async () => {
@@ -734,6 +760,7 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Get to know Dify/ })).not.toBeInTheDocument()
   })
 
   it('hides expanded tour overlays while settings is open', async () => {
@@ -816,9 +843,7 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(
-      await screen.findByRole('button', { name: 'Open step-by-step tour' }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Get to know Dify/ })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
@@ -1090,11 +1115,9 @@ describe('StepByStepTourMount', () => {
 
       expect(await screen.findByRole('dialog', { name: 'Model Provider' })).toBeInTheDocument()
       // A blocked step traps focus in the coachmark and hides the page behind it.
-      expect(
-        screen.queryByRole('button', { name: 'Open step-by-step tour' }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Get to know Dify/ })).not.toBeInTheDocument()
       const [minimizedTourButton] = screen.getAllByRole('button', {
-        name: 'Open step-by-step tour',
+        name: /^Get to know Dify/,
         hidden: true,
       })
       expect(minimizedTourButton).toBeInTheDocument()
@@ -1480,9 +1503,7 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(
-        await screen.findByRole('button', { name: 'Open step-by-step tour' }),
-      ).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /^Get to know Dify/ })).toBeInTheDocument()
       expect(screen.queryByRole('dialog', { name: 'Tool Plugin' })).not.toBeInTheDocument()
 
       target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav)
@@ -1513,8 +1534,6 @@ describe('StepByStepTourMount', () => {
 
     renderStepByStepTourMount()
 
-    expect(
-      await screen.findAllByRole('button', { name: 'Open step-by-step tour' }),
-    ).not.toHaveLength(0)
+    expect(await screen.findAllByRole('button', { name: /^Get to know Dify/ })).not.toHaveLength(0)
   })
 })

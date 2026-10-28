@@ -796,7 +796,6 @@ export default function StepByStepTourMount({
                   {(!expanded || overlayVisible) && (
                     <PopoverTrigger
                       ref={restoreTriggerRef}
-                      aria-label={t(($) => $['stepByStepTour.restore'], { ns: 'onboarding' })}
                       render={(props) => (
                         <MinimizedTourPill
                           {...props}
