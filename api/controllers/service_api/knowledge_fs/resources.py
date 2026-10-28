@@ -1432,7 +1432,7 @@ class KnowledgeFSServiceLogicalDocumentApi(Resource):
         ),
         params={
             "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
-        }
+        },
     )
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
