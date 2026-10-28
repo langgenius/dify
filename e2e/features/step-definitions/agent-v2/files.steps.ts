@@ -6,7 +6,7 @@ import {
   expectAgentConfigFileHidden,
   expectAgentConfigFileSaved,
   expectAgentConfigFileVisible,
-  getCurrentAgentId,
+  submitAgentConfigFiles,
   uploadAgentConfigFile,
 } from './configure-helpers.ts'
 
@@ -31,11 +31,12 @@ When(
     const page = this.getPage()
 
     await page.getByRole('button', { name: 'Add file' }).click()
-    const dialog = page.getByRole('dialog', { name: 'Upload file' })
+    const dialog = page.getByRole('dialog', { name: 'Upload files', exact: true })
     await expect(dialog).toBeVisible()
 
-    const dropZone = dialog.getByRole('group', { name: 'Upload file' })
+    const dropZone = dialog.getByRole('group', { name: 'Upload files', exact: true })
     await expect(dropZone).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'browse', exact: true })).toBeEnabled()
 
     const droppedFileNames: [string, string] = [
       agentBuilderTestMaterials.smallFile,
@@ -61,7 +62,7 @@ When(
 Then(
   'the Agent v2 Files upload dialog should queue every dropped file',
   async function (this: DifyWorld) {
-    const dialog = this.getPage().getByRole('dialog', { name: 'Upload file' })
+    const dialog = this.getPage().getByRole('dialog', { name: 'Upload files', exact: true })
 
     for (const fileName of [
       agentBuilderTestMaterials.smallFile,
@@ -76,14 +77,11 @@ Then(
 )
 
 When('I upload the dropped Agent v2 files', async function (this: DifyWorld) {
-  const dialog = this.getPage().getByRole('dialog', { name: 'Upload file' })
-  await dialog.getByRole('button', { name: 'Upload', exact: true }).click()
-  await expect(dialog).not.toBeVisible({ timeout: 30_000 })
-
-  const agentId = getCurrentAgentId(this)
-  for (const name of [agentBuilderTestMaterials.smallFile, agentBuilderTestMaterials.emptyFile]) {
-    this.createdAgentConfigFiles.push({ agentId, name })
-  }
+  const dialog = this.getPage().getByRole('dialog', { name: 'Upload files', exact: true })
+  await submitAgentConfigFiles(this, dialog, [
+    agentBuilderTestMaterials.smallFile,
+    agentBuilderTestMaterials.emptyFile,
+  ])
 })
 
 Then('I should see the small Agent v2 file in the Files section', async function (this: DifyWorld) {
