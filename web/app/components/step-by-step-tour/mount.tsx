@@ -23,7 +23,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useTransition } from 'react'
 import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -149,6 +149,7 @@ export default function StepByStepTourMount({
 }: StepByStepTourMountProps) {
   const [pricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const router = useRouter()
+  const [isAdvancingGuide, startGuideTransition] = useTransition()
   const pathname = usePathname()
   const docLink = useDocLink()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
@@ -599,9 +600,18 @@ export default function StepByStepTourMount({
                 return
               }
 
-              advanceGuide({
-                guideIndex: nextActiveGuide.activeGuideIndex,
-                guideIndexes: nextActiveGuide.activeGuideIndexes,
+              const nextGuideSection =
+                activeTask.id === 'integration'
+                  ? activeGuides[nextActiveGuide.activeGuideIndex]?.integrationSection
+                  : undefined
+              const nextGuideRoute = nextGuideSection && buildIntegrationPath(nextGuideSection)
+              // One transition: the next step commits together with the page it points into.
+              startGuideTransition(() => {
+                if (nextGuideRoute && nextGuideRoute !== pathname) router.push(nextGuideRoute)
+                advanceGuide({
+                  guideIndex: nextActiveGuide.activeGuideIndex,
+                  guideIndexes: nextActiveGuide.activeGuideIndexes,
+                })
               })
               return
             }
@@ -766,6 +776,7 @@ export default function StepByStepTourMount({
                   )}
                   onSkip={skipActiveGuide}
                   onComplete={completeActiveGuide}
+                  completing={isAdvancingGuide}
                 />
               )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (

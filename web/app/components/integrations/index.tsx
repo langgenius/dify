@@ -26,7 +26,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useId, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -188,13 +188,11 @@ export default function IntegrationsPage({
   const sectionTitle = integrationHeader?.title ?? activeItem?.label ?? integrationsTitle
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
-  useEffect(() => {
-    if (!isToolSection) return undefined
-
-    const animationFrame = window.requestAnimationFrame(() => setIsToolsExpanded(true))
-
-    return () => window.cancelAnimationFrame(animationFrame)
-  }, [isToolSection])
+  const [wasToolSection, setWasToolSection] = useState(isToolSection)
+  if (wasToolSection !== isToolSection) {
+    setWasToolSection(isToolSection)
+    if (isToolSection) setIsToolsExpanded(true)
+  }
   const useFillLayout =
     section === 'provider' ||
     section === 'data-source' ||
