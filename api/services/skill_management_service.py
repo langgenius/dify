@@ -55,6 +55,7 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
+from libs.archive_writer import is_os_junk
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from models.account import Account
@@ -400,6 +401,13 @@ class SkillImportPayload(BaseModel):
 
     content: bytes
     filename: str
+
+
+class SkillOverwritePayload(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+
+    content: bytes
+    expected_updated_at: int | None = None
 
 
 class SkillRestorePayload(BaseModel):
@@ -1739,26 +1747,75 @@ class SkillManagementService:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             files = self._build_draft_rows_from_tree(skill=skill, payload=payload, strict_frontmatter=False)
-            session.execute(delete(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id))
-            session.flush()
-            for file in files:
-                session.add(file)
-            skill.updated_by = user_id
-            skill.updated_at = naive_utc_now()
-            session.flush()
-            try:
-                session.commit()
-            except IntegrityError as exc:
-                session.rollback()
-                raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
-            return {
-                **self._serialize_skill(
-                    skill,
-                    tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
-                    accounts=self._skill_accounts(session, skill=skill),
-                ),
-                "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
-            }
+            self._replace_draft_rows(session, skill=skill, files=files, user_id=user_id)
+            return self._serialize_skill_with_files(session, tenant_id=tenant_id, skill=skill, files=files)
+
+    def overwrite_skill(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str,
+        skill_id: str,
+        payload: SkillOverwritePayload,
+    ) -> dict[str, Any]:
+        with self._session_scope() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            self._check_expected_updated_at(skill, payload.expected_updated_at)
+            max_archive_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
+            if len(payload.content) > max_archive_bytes:
+                raise SkillManagementServiceError("archive_too_large", "skill archive exceeds size limit")
+            draft_payload, metadata, _skill_md_content = self._draft_payload_from_zip(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                archive_bytes=payload.content,
+            )
+            name = validate_skill_name(str(metadata.get("name") or ""))
+            if name != skill.name:
+                raise SkillManagementServiceError(
+                    "skill_name_mismatch",
+                    "skill package name does not match the existing skill",
+                    details={"expected": skill.name, "got": name},
+                )
+            files = self._build_draft_rows_from_tree(
+                skill=skill,
+                payload=draft_payload,
+                sync_frontmatter_name=True,
+                strict_frontmatter=True,
+            )
+            self._replace_draft_rows(session, skill=skill, files=files, user_id=user_id)
+            return self._serialize_skill_with_files(session, tenant_id=tenant_id, skill=skill, files=files)
+
+    def _serialize_skill_with_files(
+        self,
+        session,
+        *,
+        tenant_id: str,
+        skill: Skill,
+        files: list[SkillDraftFile],
+    ) -> dict[str, Any]:
+        return {
+            **self._serialize_skill(
+                skill,
+                tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
+                accounts=self._skill_accounts(session, skill=skill),
+            ),
+            "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
+        }
+
+    @staticmethod
+    def _replace_draft_rows(session, *, skill: Skill, files: list[SkillDraftFile], user_id: str) -> None:
+        session.execute(delete(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id))
+        session.flush()
+        for file in files:
+            session.add(file)
+        skill.updated_by = user_id
+        skill.updated_at = naive_utc_now()
+        session.flush()
+        try:
+            session.commit()
+        except IntegrityError as exc:
+            session.rollback()
+            raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
 
     def apply_draft_file_operation(
         self,
@@ -2212,13 +2269,7 @@ class SkillManagementService:
                 skill=skill,
                 archive_bytes=archive_bytes,
             )
-            session.execute(delete(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id))
-            session.flush()
-            for file in draft_files:
-                session.add(file)
-            skill.updated_by = user_id
-            skill.updated_at = naive_utc_now()
-            session.commit()
+            self._replace_draft_rows(session, skill=skill, files=draft_files, user_id=user_id)
 
         # Restore only replaces the editable draft. Publishing remains an explicit
         # follow-up action so restoring history cannot unexpectedly activate it.
@@ -2252,6 +2303,18 @@ class SkillManagementService:
                 )
             tool_file_id = version.archive_tool_file_id
             filename = f"{skill.name}.zip"
+        return PublishedSkillArchive(
+            filename=filename,
+            mime_type="application/zip",
+            payload=self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id),
+        )
+
+    def export_version_archive(self, *, tenant_id: str, skill_id: str, version_id: str) -> PublishedSkillArchive:
+        with self._session_scope() as session:
+            skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
+            version = self._require_version(session, skill_id=skill.id, version_id=version_id)
+            tool_file_id = version.archive_tool_file_id
+            filename = f"{skill.name}-v{version.version_number}.zip"
         return PublishedSkillArchive(
             filename=filename,
             mime_type="application/zip",
@@ -3818,7 +3881,11 @@ class SkillManagementService:
     ) -> tuple[SkillDraftTreePayload, dict[str, Any], str]:
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-                infos = self._validate_archive_limits(archive)
+                infos = [
+                    info
+                    for info in self._validate_archive_limits(archive)
+                    if not is_os_junk(normalize_skill_file_path(info.filename.strip("/")))
+                ]
                 raw_paths = [normalize_skill_file_path(info.filename.strip("/")) for info in infos]
                 path_map = self._strip_single_root(raw_paths)
                 if _SKILL_MD not in set(path_map.values()):
