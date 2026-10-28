@@ -64,7 +64,9 @@ const StatusPanel: FC<ResultProps> = ({
       paused_nodes.forEach((node) => {
         if (node.pause_type.type === 'human_input' && node.pause_type.backstage_input_url) {
           inputURLs.push(
-            resolveConsoleHumanInputFormURL(node.pause_type.backstage_input_url, basePath),
+            node.pause_type.form_version === '2'
+              ? resolveConsoleHumanInputFormURL(node.pause_type.backstage_input_url, basePath)
+              : node.pause_type.backstage_input_url,
           )
         }
       })

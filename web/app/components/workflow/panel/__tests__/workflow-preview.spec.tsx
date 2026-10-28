@@ -226,6 +226,7 @@ it('loads the approval URL for the live run after it pauses and details are open
         pause_type: {
           type: 'human_input',
           form_id: 'approval-form',
+          form_version: '2',
           backstage_input_url: 'https://approval.example.com/form/live-approval-token',
         },
       },

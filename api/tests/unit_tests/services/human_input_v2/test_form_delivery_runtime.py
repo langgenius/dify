@@ -1778,9 +1778,15 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
     assert result is not None
     assert result.paused_at == pause.paused_at
     assert result.paused_nodes == (
-        WorkflowRunPausedNode(node_id="approval", node_title="Frozen", form_id=created.form.id, form_token=token),
         WorkflowRunPausedNode(
-            node_id="legacy-node", node_title="Legacy title", form_id=legacy_id, form_token="legacy-token"
+            node_id="approval", node_title="Frozen", form_id=created.form.id, form_version="2", form_token=token
+        ),
+        WorkflowRunPausedNode(
+            node_id="legacy-node",
+            node_title="Legacy title",
+            form_id=legacy_id,
+            form_version="1",
+            form_token="legacy-token",
         ),
     )
     other_workspace = request._replace(active_workspace_id=str(uuid4()))

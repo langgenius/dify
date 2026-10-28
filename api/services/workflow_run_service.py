@@ -1,7 +1,7 @@
 import threading
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -41,6 +41,7 @@ class WorkflowRunPausedNode:
     node_id: str
     node_title: str
     form_id: str
+    form_version: Literal["1", "2"]
     form_token: str | None
 
 
@@ -290,6 +291,7 @@ class WorkflowRunService:
                     node_id=reason.node_id,
                     node_title=reason.node_title,
                     form_id=reason.form_id,
+                    form_version=reason.form_version,
                     form_token=form_tokens.get(reason.form_id),
                 )
                 for reason in human_input_reasons

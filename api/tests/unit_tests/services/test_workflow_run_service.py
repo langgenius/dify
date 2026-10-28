@@ -407,6 +407,7 @@ def test_get_pause_details_maps_human_input_and_token(
                 node_id="node-1",
                 node_title="Approval",
                 form_id="form-1",
+                form_version="1",
                 form_token="form-token",
             ),
         ),

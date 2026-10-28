@@ -26792,6 +26792,7 @@ Human Input node data.
 | ---- | ---- | ----------- | -------- |
 | backstage_input_url | string |  | No |
 | form_id | string |  | Yes |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | type | string |  | Yes |
 
 #### I18nObject
