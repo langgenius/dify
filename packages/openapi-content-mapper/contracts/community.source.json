@@ -1,5 +1,8 @@
 {
-  "command": ["node", "packages/contracts/scripts/export-compatibility-types.ts"],
+  "command": [
+    "node",
+    "packages/contracts/scripts/export-compatibility-types.ts"
+  ],
   "cwd": "../../..",
   "inputs": [
     "packages/contracts/api-documents.ts",
@@ -12,8 +15,14 @@
     "api/pyproject.toml",
     "api/uv.lock"
   ],
-  "env": ["UV_PROJECT_ENVIRONMENT"],
-  "exclude": ["api/tests/**"],
-  "optionalInputs": [".env"],
+  "env": [
+    "UV_PROJECT_ENVIRONMENT"
+  ],
+  "exclude": [
+    "api/tests/**"
+  ],
+  "optionalInputs": [
+    ".env"
+  ],
   "timeoutMs": 120000
 }
