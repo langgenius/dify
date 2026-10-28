@@ -31,7 +31,7 @@ console.error('Exporter diagnostic');
 console.log(JSON.stringify({openapi:'3.1.0',info:{title:'Pets',version:'1'},paths:{
   '/pets':{get:{'x-source-location':{file:'./backend.py',line:7},responses:{200:{description:'OK',content:{'application/json':{schema:{type:readFileSync('schema.txt','utf8')}}}}}}},
   '/unused':{get:{responses:{204:{description:'OK'}}}}
-}}));
+},components:{schemas:{Pet:{type:readFileSync('schema.txt','utf8')}}}}));
 `,
   )
   const content = JSON.stringify({
@@ -119,7 +119,12 @@ test('TS incremental checks invalidate when backend input changes without touchi
   const { directory, schema, config } = fixture(t)
   writeFileSync(
     join(directory, 'index.ts'),
-    "import { api } from './pets.openapi-source'; const result: string = await api.pets.get();",
+    `import { api } from './pets.openapi-source';
+import type { Schemas, Inputs, Outputs } from './pets.openapi-source';
+const input: Inputs['pets']['get'] = undefined;
+const result: string = await api.pets.get(input);
+const schema: string = null! as Schemas['Pet'];
+const output: string = null! as Outputs['pets']['get'];`,
   )
   const compile = () =>
     spawnSync(process.execPath, [compiler, '--runExternalCode', '-p', directory], {
