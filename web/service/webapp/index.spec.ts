@@ -148,6 +148,33 @@ describe('generated Web App client', () => {
     expect(new Headers(options?.headers).get('X-App-Passport')).toBe('environment-passport')
   })
 
+  it.each(['App', 'account'])(
+    'does not send an environment body after its %s changes while buffering',
+    async (change) => {
+      window.history.replaceState({}, '', '/environment/chat/shared-code')
+      let resolveBody!: (body: Blob) => void
+      const body = new Promise<Blob>((resolve) => {
+        resolveBody = resolve
+      })
+      const readBody = vi.spyOn(Request.prototype, 'blob').mockReturnValueOnce(body)
+      const fetch = vi.spyOn(globalThis, 'fetch')
+      const result = webAppClient.passport
+        .post({
+          headers: { 'X-App-Code': 'shared-code' },
+          body: { login_code: 'one-use-code', code_verifier: 'a'.repeat(43) },
+        })
+        .catch((error: unknown) => error)
+      await waitFor(() => expect(readBody).toHaveBeenCalledOnce())
+
+      if (change === 'App') window.history.replaceState({}, '', '/environment/chat/another-code')
+      else setWebAppAccessToken('new-account', 'end_user')
+      resolveBody(new Blob(['{}'], { type: 'application/json' }))
+
+      expect(await result).toMatchObject({ name: 'AbortError' })
+      expect(fetch).not.toHaveBeenCalled()
+    },
+  )
+
   it('isolates cached responses by App address and identity session', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch')
     const scopes = [

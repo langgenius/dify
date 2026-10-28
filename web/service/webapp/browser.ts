@@ -33,7 +33,26 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
     const url = new URL(input.url)
     const basePath = baseURL.pathname.replace(/\/$/, '')
     url.pathname = basePath + getWebAppPublicApiPath(address, url.pathname.slice(basePath.length))
-    const scopedRequest = new Request(url, input)
+    let scopedRequest = input
+    if (url.href !== input.url) {
+      // Passing input.body directly turns buffered JSON or files into streaming uploads.
+      const body = input.body ? await input.blob() : undefined
+      assertCurrentApp()
+      scopedRequest = new Request(url, {
+        body,
+        method: input.method,
+        headers: input.headers,
+        signal: input.signal,
+        credentials: input.credentials,
+        mode: input.mode,
+        cache: input.cache,
+        redirect: input.redirect,
+        referrer: input.referrer,
+        referrerPolicy: input.referrerPolicy,
+        integrity: input.integrity,
+        keepalive: input.keepalive,
+      })
+    }
     // oxlint-disable-next-line typescript/no-deprecated -- Generated Web calls must retain public passport, auth recovery, and access guard handling.
     const response = await request<Response>(url.href, init, {
       isPublicAPI: true,
