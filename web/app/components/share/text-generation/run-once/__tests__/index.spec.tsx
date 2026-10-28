@@ -1,4 +1,5 @@
 import type { InputValueTypes } from '../../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -6,7 +7,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { buildResultRequestData, validateResultRequest } from '../../result/result-request'
 import RunOnce from '../index'
+
+const { mockClearUploader } = vi.hoisted(() => ({ mockClearUploader: vi.fn() }))
 
 vi.mock('@/hooks/use-breakpoints', () => {
   const MediaType = {
@@ -39,18 +44,48 @@ vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', (
   }
 })
 
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({ value, onChange }: { value: object[], onChange: (files: object[]) => void }) => (
-    <div data-testid="file-uploader-mock">
-      <button onClick={() => onChange([{ id: 'test-file' }])}>Upload</button>
-      <span>
-        {value?.length || 0}
-        {' '}
-        files
-      </span>
-    </div>
-  ),
-}))
+vi.mock('@/app/components/base/file-uploader', async () => {
+  const { useImperativeHandle } = await import('react')
+  const FileUploaderInAttachmentWrapper = ({ ref, value, onChange }: {
+    ref?: React.Ref<{ clear: () => void }>
+    value: object[]
+    onChange: (files: object[]) => void
+  }) => {
+    useImperativeHandle(ref, () => ({ clear: mockClearUploader }), [])
+    return (
+      <div data-testid="file-uploader-mock">
+        <button onClick={() => onChange([{ id: 'test-file' }])}>Upload</button>
+        <button onClick={() => onChange([])}>Remove all</button>
+        <span>
+          {value?.length || 0}
+          {' '}
+          files
+        </span>
+      </div>
+    )
+  }
+  return { FileUploaderInAttachmentWrapper }
+})
+
+const createFileEntity = (overrides: Partial<FileEntity> = {}): FileEntity => ({
+  id: 'default-file',
+  name: 'default.txt',
+  size: 128,
+  type: 'text/plain',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: 'document',
+  uploadedId: 'default-upload',
+  ...overrides,
+})
+
+const createFileDefaultsPromptConfig = (required: boolean): PromptConfig => ({
+  prompt_template: '',
+  prompt_variables: userInputsFormToPromptVariables([
+    { file: { variable: 'attachment', label: 'Attachment', required, default: createFileEntity() } },
+    { 'file-list': { variable: 'attachments', label: 'Attachments', required, default: [createFileEntity()], max_length: 2 } },
+  ] as unknown as Parameters<typeof userInputsFormToPromptVariables>[0]),
+})
 
 const createPromptVariable = (overrides: Partial<PromptVariable>): PromptVariable => ({
   key: 'input',
@@ -314,6 +349,77 @@ describe('RunOnce', () => {
         })
       })
       expect(screen.getByText('File List Input')).toBeInTheDocument()
+    })
+  })
+
+  describe('file input defaults', () => {
+    const expectedFile = {
+      type: 'document',
+      transfer_method: TransferMethod.local_file,
+      upload_file_id: 'default-upload',
+      url: '',
+    }
+
+    it('should initialize, display and submit configured file defaults', async () => {
+      const promptConfig = createFileDefaultsPromptConfig(true)
+      const { getInputsRef } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+
+      await waitFor(() => {
+        expect(getInputsRef()?.current).toEqual({
+          attachment: createFileEntity(),
+          attachments: [createFileEntity()],
+        })
+      })
+      expect(screen.getAllByText('1 files')).toHaveLength(2)
+      expect(buildResultRequestData({
+        completionFiles: [],
+        inputs: getInputsRef()!.current,
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      }).inputs).toEqual({ attachment: expectedFile, attachments: [expectedFile] })
+    })
+
+    it.each([true, false])('should clear file defaults explicitly (required: %s)', async (required) => {
+      mockClearUploader.mockClear()
+      const promptConfig = createFileDefaultsPromptConfig(required)
+      const { getInputsRef } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => expect(screen.getAllByText('1 files')).toHaveLength(2))
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+      expect(mockClearUploader).toHaveBeenCalledTimes(2)
+      expect(screen.getAllByText('0 files')).toHaveLength(2)
+      const inputs = getInputsRef()!.current
+      expect(inputs).toEqual({ attachment: required ? undefined : '', attachments: [] })
+      const validation = validateResultRequest({
+        completionFiles: [],
+        inputs,
+        isCallBatchAPI: false,
+        promptConfig,
+        t: ((key: string) => key) as unknown as Parameters<typeof validateResultRequest>[0]['t'],
+      })
+      expect(validation.canSend).toBe(!required)
+      if (!required) {
+        expect(JSON.stringify(buildResultRequestData({
+          completionFiles: [],
+          inputs,
+          promptConfig,
+          visionConfig: { ...baseVisionConfig, enabled: false },
+        }).inputs)).toBe('{"attachment":"","attachments":[]}')
+      }
+    })
+
+    it.each([
+      { required: true, expected: undefined },
+      { required: false, expected: '' },
+    ])('should store $expected after removing the single file default (required: $required)', async ({ required, expected }) => {
+      const promptConfig = createFileDefaultsPromptConfig(required)
+      const { getInputsRef } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      await waitFor(() => expect(screen.getAllByText('1 files')).toHaveLength(2))
+
+      fireEvent.click(screen.getAllByRole('button', { name: 'Remove all' })[0])
+
+      expect(getInputsRef()!.current).toEqual({ attachment: expected, attachments: [createFileEntity()] })
     })
   })
 

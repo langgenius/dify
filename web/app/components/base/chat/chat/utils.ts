@@ -41,12 +41,16 @@ export const getProcessedInputs = (inputs: Record<string, any>, inputsForm: Inpu
       return
 
     if (item.type === InputVarType.singleFile) {
+      if (inputValue === '')
+        return
       if ('transfer_method' in inputValue)
         processedInputs[item.variable] = processInputFileFromServer(inputValue)
       else
         processedInputs[item.variable] = getProcessedFiles([inputValue])[0]
     }
     else if (item.type === InputVarType.multiFiles) {
+      if (inputValue.length === 0)
+        return
       if ('transfer_method' in inputValue[0])
         processedInputs[item.variable] = inputValue.map(processInputFileFromServer)
       else

@@ -9,6 +9,7 @@ import BoolInput from '@/app/components/workflow/nodes/_base/components/before-r
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import { AppSourceType } from '@/service/share'
 import { useEmbeddedChatbotContext } from '../context'
 
 type Props = {
@@ -19,6 +20,8 @@ const InputsFormContent = ({ showTip }: Props) => {
   const { t } = useTranslation()
   const {
     appParams,
+    appSourceType,
+    clearChatList,
     inputsForms,
     currentConversationId,
     currentConversationInputs,
@@ -27,7 +30,18 @@ const InputsFormContent = ({ showTip }: Props) => {
     newConversationInputsRef,
     handleNewConversationInputsChange,
   } = useEmbeddedChatbotContext()
+  const resettingFiles = clearChatList && appSourceType !== AppSourceType.tryApp
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputs
+  const fileInputsFormValue = currentConversationId
+    ? inputsFormValue
+    : {
+        ...Object.fromEntries(
+          inputsForms
+            .filter(form => form.type === InputVarType.singleFile || form.type === InputVarType.multiFiles)
+            .map(form => [form.variable, form.default]),
+        ),
+        ...inputsFormValue,
+      }
 
   const handleFormChange = useCallback((variable: string, value: any) => {
     setCurrentConversationInputs({
@@ -93,10 +107,11 @@ const InputsFormContent = ({ showTip }: Props) => {
               placeholder={form.label}
             />
           )}
-          {form.type === InputVarType.singleFile && (
+          {!resettingFiles && form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
-              value={inputsFormValue?.[form.variable] ? [inputsFormValue?.[form.variable]] : []}
-              onChange={files => handleFormChange(form.variable, files[0])}
+              key={currentConversationId}
+              value={fileInputsFormValue?.[form.variable] ? [fileInputsFormValue[form.variable]] : []}
+              onChange={files => handleFormChange(form.variable, files[0] ?? (form.required ? undefined : ''))}
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,
                 allowed_file_extensions: form.allowed_file_extensions,
@@ -106,9 +121,10 @@ const InputsFormContent = ({ showTip }: Props) => {
               }}
             />
           )}
-          {form.type === InputVarType.multiFiles && (
+          {!resettingFiles && form.type === InputVarType.multiFiles && (
             <FileUploaderInAttachmentWrapper
-              value={inputsFormValue?.[form.variable] || []}
+              key={currentConversationId}
+              value={fileInputsFormValue?.[form.variable] || []}
               onChange={files => handleFormChange(form.variable, files)}
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,
