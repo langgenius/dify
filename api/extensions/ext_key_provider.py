@@ -1,14 +1,23 @@
 import logging
 from collections.abc import Callable
+from functools import partial
 
 from flask import Flask
+from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
 from dify_app import DifyApp
 from libs.key_providers.base import BaseKeyProvider
 from libs.key_providers.key_provider_type import KeyProviderType
+from models.engine import db
+from repositories.tenant_public_key_repository import TenantPublicKeyRepository
 
 logger = logging.getLogger(__name__)
+
+
+def _current_session() -> Session:
+    """Resolve request state without beginning a new SQL transaction."""
+    return db.session() if isinstance(db.session, scoped_session) else db.session
 
 
 class KeyProviderManager:
@@ -34,7 +43,10 @@ class KeyProviderManager:
             case KeyProviderType.LOCAL:
                 from libs.key_providers.rsa_key_provider import RSAKeyProvider
 
-                return RSAKeyProvider
+                reader = TenantPublicKeyRepository(
+                    create_session=lambda: Session(db.engine), current_session=_current_session
+                )
+                return partial(RSAKeyProvider, public_key_reader=reader.read)
             case KeyProviderType.AZURE_KEYVAULT:
                 from libs.key_providers.azure_keyvault_key_provider import AzureKeyVaultKeyProvider
 

@@ -21,6 +21,12 @@ export type ViewHistoryProps = {
   onClearLogAndMessageModal?: () => void
   historyUrl?: string
 }
+
+const INTERRUPTED_STATUSES: readonly WorkflowRunningStatus[] = [
+  WorkflowRunningStatus.Stopped,
+  WorkflowRunningStatus.Paused,
+]
+
 const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHistoryProps) => {
   const { t } = useTranslation(['common', 'workflow'])
   const isChatflow = useAtomValue(isChatflowAtom)
@@ -119,59 +125,55 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                   </div>
                 </div>
               )}
-              {data?.data.map((item) => {
-                const interruptedStatuses: readonly WorkflowRunningStatus[] = [
-                  WorkflowRunningStatus.Stopped,
-                  WorkflowRunningStatus.Paused,
-                ]
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'mb-0.5 flex cursor-pointer rounded-lg px-2 py-1.75 hover:bg-state-base-hover',
-                      item.id === historyWorkflowData?.id &&
-                        'bg-state-accent-hover hover:bg-state-accent-hover',
-                    )}
-                    onClick={() => {
-                      workflowStore.setState({
-                        historyWorkflowData: item,
-                        showInputsPanel: false,
-                        showEnvPanel: false,
-                      })
-                      closeAllInputFieldPanels()
-                      handleBackupDraft()
-                      setOpen(false)
-                      handleNodesCancelSelected()
-                      handleCancelDebugAndPreviewPanel()
-                      setControlMode(ControlMode.Hand)
-                    }}
-                  >
-                    {!isChatflow && interruptedStatuses.includes(item.status) && (
-                      <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
-                    )}
-                    {!isChatflow && item.status === WorkflowRunningStatus.Failed && (
-                      <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
-                    )}
-                    {!isChatflow && item.status === WorkflowRunningStatus.Succeeded && (
-                      <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
-                    )}
-                    <div>
-                      <div
-                        className={cn(
-                          'flex items-center text-[13px] leading-4.5 font-medium text-text-primary',
-                          item.id === historyWorkflowData?.id && 'text-text-accent',
-                        )}
-                      >
-                        {`Test ${isChatflow ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
-                      </div>
-                      <div className="flex items-center text-xs leading-4.5 text-text-tertiary">
-                        {item.created_by_account?.name} ·
-                        {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
-                      </div>
+              {data?.data.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={cn(
+                    'mb-0.5 flex cursor-pointer rounded-lg px-2 py-1.75 hover:bg-state-base-hover',
+                    item.id === historyWorkflowData?.id &&
+                      'bg-state-accent-hover hover:bg-state-accent-hover',
+                  )}
+                  onClick={() => {
+                    workflowStore.setState({
+                      historyWorkflowData: item,
+                      showInputsPanel: false,
+                      showEnvPanel: false,
+                      showDifyBuilderPanel: false,
+                    })
+                    closeAllInputFieldPanels()
+                    handleBackupDraft()
+                    setOpen(false)
+                    handleNodesCancelSelected()
+                    handleCancelDebugAndPreviewPanel()
+                    setControlMode(ControlMode.Hand)
+                  }}
+                >
+                  {!isChatflow && INTERRUPTED_STATUSES.includes(item.status) && (
+                    <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
+                  )}
+                  {!isChatflow && item.status === WorkflowRunningStatus.Failed && (
+                    <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
+                  )}
+                  {!isChatflow && item.status === WorkflowRunningStatus.Succeeded && (
+                    <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
+                  )}
+                  <div>
+                    <div
+                      className={cn(
+                        'flex items-center text-[13px] leading-4.5 font-medium text-text-primary',
+                        item.id === historyWorkflowData?.id && 'text-text-accent',
+                      )}
+                    >
+                      {`Test ${isChatflow ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
+                    </div>
+                    <div className="flex items-center text-xs leading-4.5 text-text-tertiary">
+                      {item.created_by_account?.name} ·
+                      {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
                     </div>
                   </div>
-                )
-              })}
+                </button>
+              ))}
             </div>
           )}
         </div>

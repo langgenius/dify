@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override, runtime_checkable
 
 from flask import current_app
 from pydantic import JsonValue
@@ -18,6 +18,7 @@ from core.app.file_access import (
 )
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.db.session_factory import session_factory
+from core.dify_builder.real_call_consent import ConfirmedToolGuard
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -36,7 +37,7 @@ from core.tools.entities.tool_entities import ToolProviderType as CoreToolProvid
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
+from core.tools.tool_manager import ToolManager, WorkflowToolRuntimeKwargs
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.human_input.entities import (
@@ -78,6 +79,9 @@ from graphon.nodes.tool_runtime_entities import (
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
+from runtime_contracts.builder.execution import (
+    BuilderExecutionPolicyError,
+)
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .human_input_adapter import (
@@ -120,12 +124,12 @@ class PollingLLMRuntimeProtocol(Protocol):
 
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
+    from runtime_contracts.workflow_driver import WorkflowRunDriver
 
 
 _file_access_controller = DatabaseFileAccessController()
@@ -528,19 +532,66 @@ class _WorkflowToolRuntimeBinding:
     trace_session_id: str | None = None
 
 
+@runtime_checkable
+class _ConfirmedGuardTool(Protocol):
+    @property
+    def confirmed_guard(self) -> ConfirmedToolGuard | None: ...
+
+
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     def __init__(
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         session_maker: sessionmaker[Session] | None = None,
+        *,
+        workflow_id: str | None = None,
+        confirmed_guard: ConfirmedToolGuard | None = None,
+        confirmed_guard_factory: Callable[[str, str], ConfirmedToolGuard] | None = None,
         execution_driver: WorkflowRunDriver | None = None,
         workflow_tools: Mapping[str, WorkflowTool] | None = None,
     ) -> None:
+        """Both confirmed arguments are ``None`` for every ordinary run; at most one may be set.
+
+        A consented Builder run supplies either a ready, already claimed guard
+        (internal/preclaimed use) or a server-owned ``confirmed_guard_factory``.
+        Graphon only knows the native node execution ID when it calls
+        ``get_runtime``, so the factory is called there, once, with the node ID
+        and that actual ID to claim the grant and build the guard. A configured
+        factory means confirmed mode even before it is called: nothing falls
+        through to ordinary resolution or invocation. Only the guard's exact node
+        resolves, and it is consumed with a session that never holds a
+        transaction (see ``invoke``). Ordinary node factories supply their
+        actual workflow ID for Tool-time draft setup checks; confirmed factories
+        never use it, and published child versions retain native delegation.
+        """
+        if confirmed_guard is not None and confirmed_guard_factory is not None:
+            raise BuilderExecutionPolicyError("invalid_confirmed_configuration")
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
+        self._workflow_id = workflow_id
         self._session_maker = session_maker
         self._execution_driver = execution_driver
         self._workflow_tools = workflow_tools if workflow_tools is not None else {}
+        self._confirmed_guard = confirmed_guard
+        self._confirmed_guard_factory = confirmed_guard_factory
+        self._confirmed_guard_factory_called = False
+
+    def _credential_refresh_recorder(self, node_id: str) -> Callable[[str], None]:
+        """Advance only this run's shared bindings after the native owner's successful CAS."""
+        bindings = self._run_context.builder_tool_credential_bindings
+        assert bindings is not None
+        expected = bindings[node_id]
+
+        def record(refreshed: str) -> None:
+            for bound_node, fingerprint in bindings.items():
+                if fingerprint == expected:
+                    bindings[bound_node] = refreshed
+
+        return record
+
+    @property
+    def _confirmed(self) -> bool:
+        return self._confirmed_guard is not None or self._confirmed_guard_factory is not None
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -559,26 +610,60 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         variable_pool,
         node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
+        bindings = self._run_context.builder_tool_credential_bindings
         try:
-            tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self._run_context.tenant_id,
-                self._run_context.app_id,
-                node_id,
-                self._build_tool_runtime_spec(node_data),
-                self._run_context.user_id,
-                self._run_context.invoke_from,
-                variable_pool,
-                execution_driver=self._execution_driver,
-                workflow_tool_definition=(
-                    self._workflow_tools.get(node_data.provider_id)
-                    if self._is_workflow_tool_provider(node_data)
-                    else None
-                ),
+            guard = self._bind_confirmed_guard(
+                node_id=node_id, node_execution_id=node_execution_id, node_data=node_data
             )
+            if guard is None:
+                draft_options: WorkflowToolRuntimeKwargs = {}
+                if bindings is not None and node_id in bindings:
+                    draft_options["builder_expected_credential_fingerprint"] = bindings[node_id]
+                    draft_options["builder_credential_refreshed"] = self._credential_refresh_recorder(node_id)
+                if self._workflow_id is not None:
+                    draft_options["draft_tool_workflow_id"] = self._workflow_id
+                tool_runtime = ToolManager.get_workflow_tool_runtime(
+                    self._run_context.tenant_id,
+                    self._run_context.app_id,
+                    node_id,
+                    self._build_tool_runtime_spec(node_data),
+                    self._run_context.user_id,
+                    self._run_context.invoke_from,
+                    variable_pool,
+                    execution_driver=self._execution_driver,
+                    workflow_tool_definition=(
+                        self._workflow_tools.get(node_data.provider_id)
+                        if self._is_workflow_tool_provider(node_data)
+                        else None
+                    ),
+                    **draft_options,
+                )
+            else:
+                self._require_confirmed_node(
+                    guard, node_id=node_id, node_execution_id=node_execution_id, node_data=node_data
+                )
+                tool_runtime = ToolManager.get_workflow_tool_runtime(
+                    self._run_context.tenant_id,
+                    self._run_context.app_id,
+                    node_id,
+                    self._build_tool_runtime_spec(node_data),
+                    self._run_context.user_id,
+                    self._run_context.invoke_from,
+                    variable_pool,
+                    confirmed_guard=guard,
+                )
             tool_runtime.runtime.dify_run_context = self._run_context
-        except ToolNodeError:
-            raise
+        except BuilderExecutionPolicyError as exc:
+            # Declared refusals carry only their fixed reason code.
+            raise ToolRuntimeResolutionError(str(exc)) from exc
         except Exception as exc:
+            if self._confirmed:
+                # Provider, cache or credential text must not leave the confirmed boundary.
+                raise ToolRuntimeResolutionError(
+                    str(BuilderExecutionPolicyError("confirmed_tool_resolution_failed"))
+                ) from None
+            if isinstance(exc, ToolNodeError):
+                raise
             raise ToolRuntimeResolutionError(str(exc)) from exc
 
         conversation_id = (
@@ -631,6 +716,22 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     ) -> Generator[ToolRuntimeMessage]:
         runtime_binding = self._binding_from_handle(tool_runtime)
         tool = runtime_binding.tool
+        if self._confirmed:
+            # Before any callback or transport: a configured factory that never bound a
+            # guard, or a handle for another tool, is refused rather than run ordinarily.
+            guard = self._confirmed_guard
+            if guard is None:
+                raise self._map_invocation_exception(
+                    BuilderExecutionPolicyError("confirmed_guard_unavailable"), provider_name=provider_name
+                )
+            try:
+                same_guard = isinstance(tool, _ConfirmedGuardTool) and tool.confirmed_guard is guard
+            except AttributeError:
+                same_guard = False
+            if not same_guard:
+                raise self._map_invocation_exception(
+                    BuilderExecutionPolicyError("execution_launch_mismatch"), provider_name=provider_name
+                )
         callback = DifyWorkflowCallbackHandler()
         if runtime_binding.parent_trace_context and hasattr(tool, "set_parent_trace_context"):
             tool.set_parent_trace_context(
@@ -650,6 +751,17 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             )
             with use_credit_usage_metadata(request_metadata):
                 session_maker = self._session_maker or session_factory.get_session_maker()
+                if self._confirmed:
+                    yield from self._invoke_confirmed(
+                        session_maker,
+                        tool=tool,
+                        tool_parameters=tool_parameters,
+                        workflow_call_depth=workflow_call_depth,
+                        callback=callback,
+                        conversation_id=runtime_binding.conversation_id,
+                        provider_name=provider_name,
+                    )
+                    return
                 with session_maker.begin() as session:
                     messages = ToolEngine.generic_invoke(
                         session=session,
@@ -670,6 +782,122 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
         except Exception as exc:
             raise self._map_invocation_exception(exc, provider_name=provider_name) from exc
+
+    def _invoke_confirmed(
+        self,
+        session_maker: sessionmaker[Session],
+        *,
+        tool: Tool,
+        tool_parameters: Mapping[str, Any],
+        workflow_call_depth: int,
+        callback: DifyWorkflowCallbackHandler,
+        conversation_id: str | None,
+        provider_name: str,
+    ) -> Generator[ToolRuntimeMessage]:
+        """Consume one consented native Tool call through the same native owners.
+
+        Unlike the ordinary ``begin()`` branch the session never starts a
+        transaction: the guard's phase claims commit in their own short
+        transactions and decryption, refresh and dispatch must run outside SQL.
+        Nothing here issues SQL on it; it is re-checked at every native callback.
+        The tool itself refuses non-data messages before file transformation.
+        """
+        with session_maker() as session:
+            self._require_no_transaction(session)
+            messages = ToolEngine.generic_invoke(
+                session=session,
+                tool=tool,
+                tool_parameters=dict(tool_parameters),
+                user_id=self._run_context.user_id,
+                workflow_tool_callback=callback,
+                workflow_call_depth=workflow_call_depth,
+                app_id=self._run_context.app_id,
+                conversation_id=conversation_id,
+            )
+            transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                messages=messages,
+                user_id=self._run_context.user_id,
+                tenant_id=self._run_context.tenant_id,
+                conversation_id=conversation_id,
+            )
+            try:
+                for message in self._adapt_messages(transformed_messages, provider_name=provider_name):
+                    self._require_no_transaction(session)
+                    yield message
+                self._require_no_transaction(session)
+            finally:
+                # Close the native chain deterministically so cancellation reaches the
+                # plugin adapter's single outcome callback now; it is never rebuilt.
+                transformed_messages.close()
+                messages.close()
+
+    def _bind_confirmed_guard(
+        self, *, node_id: str, node_execution_id: str | None, node_data: ToolNodeData
+    ) -> ConfirmedToolGuard | None:
+        """The confirmed guard for this resolution, claimed lazily through the factory at most once.
+
+        Returns ``None`` only for an ordinary runtime. The factory is called with
+        Graphon's actual execution ID, its guard is validated and retained before
+        any ToolManager resolution, and it is never rebuilt: any later
+        resolution through the factory path refuses.
+        """
+        factory = self._confirmed_guard_factory
+        if factory is None:
+            return self._confirmed_guard
+        if self._confirmed_guard_factory_called:
+            raise BuilderExecutionPolicyError("confirmed_runtime_replayed")
+        if type(node_execution_id) is not str or not node_execution_id:
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        if node_data.tool_configurations:
+            # Refused before claiming, so a misconfigured node never spends the grant.
+            raise BuilderExecutionPolicyError("unsupported_tool_configuration")
+        # Spent before the call: a failing, mismatched or replayed claim is never attempted again.
+        self._confirmed_guard_factory_called = True
+        try:
+            guard = factory(node_id, node_execution_id)
+        except BuilderExecutionPolicyError:
+            raise
+        except Exception:
+            # Claim/service text may echo stored data.
+            raise BuilderExecutionPolicyError("confirmed_guard_unavailable") from None
+        if guard is None:
+            raise BuilderExecutionPolicyError("confirmed_guard_unavailable")
+        binding = guard.binding
+        if (
+            binding.node_id != node_id
+            or binding.native_node_execution_id != node_execution_id
+            or binding.context.tenant_id != self._run_context.tenant_id
+            or binding.context.app_id != self._run_context.app_id
+        ):
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        self._confirmed_guard = guard
+        return guard
+
+    @staticmethod
+    def _require_no_transaction(session: Session) -> None:
+        if session.in_transaction():
+            raise BuilderExecutionPolicyError("confirmed_session_in_transaction")
+
+    def _require_confirmed_node(
+        self,
+        guard: ConfirmedToolGuard,
+        *,
+        node_id: str,
+        node_execution_id: str | None,
+        node_data: ToolNodeData,
+    ) -> None:
+        """Only the exact claimed node of this run, with no tool configuration, resolves under a guard."""
+        binding = guard.binding
+        if (
+            node_id != binding.node_id
+            or node_execution_id is None
+            or node_execution_id != binding.native_node_execution_id
+            or binding.context.tenant_id != self._run_context.tenant_id
+            or binding.context.app_id != self._run_context.app_id
+        ):
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        if node_data.tool_configurations:
+            raise BuilderExecutionPolicyError("unsupported_tool_configuration")
 
     @override
     def get_usage(

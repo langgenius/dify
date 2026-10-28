@@ -1,4 +1,5 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import {
@@ -7,7 +8,9 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import Header from '@/app/components/workflow/header'
 import { useStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { difyBuilderHasSessionAtom } from '../dify-builder/store'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 
@@ -16,6 +19,12 @@ const WorkflowHeader = () => {
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const isChatflow = useAtomValue(isChatflowAtom)
+  const { data: difyBuilderEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.dify_builder_enabled,
+    }),
+  )
+  const hasDifyBuilderSession = useAtomValue(difyBuilderHasSessionAtom)
 
   const handleClearLogAndMessageModal = useCallback(() => {
     setMessageLogItem(undefined)
@@ -37,6 +46,10 @@ const WorkflowHeader = () => {
           middle: <FeaturesTrigger />,
           chatVariableTrigger: <ChatVariableTrigger />,
         },
+        controls: {
+          hasDifyBuilderSession,
+          showDifyBuilderButton: difyBuilderEnabled,
+        },
         runAndHistoryProps: {
           showRunButton: !isChatflow,
           showPreviewButton: isChatflow,
@@ -50,7 +63,13 @@ const WorkflowHeader = () => {
         onRestoreSettled: resetWorkflowVersionHistory,
       },
     }
-  }, [resetWorkflowVersionHistory, isChatflow, viewHistoryProps])
+  }, [
+    difyBuilderEnabled,
+    hasDifyBuilderSession,
+    resetWorkflowVersionHistory,
+    isChatflow,
+    viewHistoryProps,
+  ])
   return <Header {...headerProps} />
 }
 

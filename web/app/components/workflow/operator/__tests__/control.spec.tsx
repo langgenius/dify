@@ -103,7 +103,7 @@ describe('Control', () => {
 
     expect(store.getState()).toMatchObject({
       candidateNode: undefined,
-      controlMode: ControlMode.Pointer,
+      controlMode: ControlMode.Hand,
       nodeAnimation: false,
     })
   })

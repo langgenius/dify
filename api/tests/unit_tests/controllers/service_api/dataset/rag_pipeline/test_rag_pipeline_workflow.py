@@ -1,60 +1,4 @@
-import ast
-import io
-import uuid
-from datetime import UTC, datetime
-from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
-
-import pytest
-from flask import Flask
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Forbidden, NotFound
-
-from controllers.common.errors import (
-    FilenameNotExistsError,
-    NoFileUploadedError,
-    TooManyFilesError,
-)
-from controllers.common.errors import (
-    FileTooLargeError as FileTooLargeHTTPError,
-)
-from controllers.common.errors import (
-    UnsupportedFileTypeError as UnsupportedFileTypeHTTPError,
-)
-from controllers.service_api.dataset.error import PipelineRunError
-from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as workflow_module
-from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
-    DatasourceNodeRunApi,
-    DatasourceNodeRunPayload,
-    DatasourcePluginsApi,
-    KnowledgebasePipelineFileUploadApi,
-    PipelineRunApi,
-    PipelineUploadFileResponse,
-)
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.storage.storage_type import StorageType
-from libs.helper import dump_response
-from models.account import Account
-from models.dataset import Dataset, Pipeline
-from models.enums import CreatorUserRole
-from models.model import UploadFile
-from repositories.credentials.query_repository import CredentialQueryRepository
-from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
-from services.data_source.provider_service import DatasourceProviderService
-from services.errors.file import FileTooLargeError as FileTooLargeServiceError
-from services.errors.file import UnsupportedFileTypeError
-from services.rag_pipeline.entity.pipeline_service_api_entities import (
-    DatasourceNodeRunApiEntity,
-    PipelineRunApiEntity,
-)
-from services.rag_pipeline.rag_pipeline import RagPipelineService
-from tests.helpers.unit.model_factories import make_upload_file
-
-"""
-Unit tests for Service API RAG Pipeline Workflow controllers.
+"""Unit tests for Service API RAG Pipeline Workflow controllers.
 
 Tests coverage for:
 - DatasourceNodeRunPayload Pydantic model
@@ -70,7 +14,54 @@ Strategy:
   Flask-RESTx dispatch, not by direct calls, so we call methods directly.
 - Dataset ownership checks run against the shared SQLite fixture; pipeline and
   upload responses use real mapped instances while external services stay mocked.
-"""
+
+Unit tests for Service API knowledge pipeline file-upload serialization.
+
+Unit tests for Service API knowledge pipeline route registration."""
+
+import ast
+import io
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+import pytest
+from flask import Flask
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import Forbidden, NotFound
+
+from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
+from controllers.common.errors import FileTooLargeError as FileTooLargeHTTPError
+from controllers.common.errors import UnsupportedFileTypeError as UnsupportedFileTypeHTTPError
+from controllers.service_api.dataset.error import PipelineRunError
+from controllers.service_api.dataset.rag_pipeline import rag_pipeline_workflow as workflow_module
+from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
+    DatasourceNodeRunApi,
+    DatasourceNodeRunPayload,
+    DatasourcePluginsApi,
+    KnowledgebasePipelineFileUploadApi,
+    PipelineRunApi,
+    PipelineUploadFileResponse,
+)
+from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.storage.storage_type import StorageType
+from libs.helper import dump_response
+from models.account import Account
+from models.dataset import Dataset, Pipeline
+from models.enums import CreatorUserRole
+from models.model import UploadFile
+from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
+from services.data_source.provider_service import DatasourceProviderService
+from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.errors.file import UnsupportedFileTypeError
+from services.rag_pipeline.entity.pipeline_service_api_entities import DatasourceNodeRunApiEntity, PipelineRunApiEntity
+from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _persist_dataset(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset:
@@ -837,11 +828,6 @@ class TestRagPipelineWorkflowCases:
                     api.post(tenant_id=str(uuid.uuid4()))
 
 
-"""
-Unit tests for Service API knowledge pipeline file-upload serialization.
-"""
-
-
 def _upload_file(*, created_at: datetime) -> UploadFile:
     return make_upload_file(
         file_id="file-1",
@@ -869,11 +855,6 @@ class TestRagPipelineFileUploadSerializationCases:
 
         result = dump_response(PipelineUploadFileResponse, upload_file)
         assert result["created_at"] is None
-
-
-"""
-Unit tests for Service API knowledge pipeline route registration.
-"""
 
 
 class TestRagPipelineRouteRegistrationCases:

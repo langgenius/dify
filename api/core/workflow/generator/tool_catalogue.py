@@ -2,7 +2,7 @@
 Tool catalogue for the workflow generator.
 
 Returns a compact, LLM-readable inventory of the tools currently installed for
-a tenant (both hardcoded built-in providers and plugin providers). The planner
+a tenant (hardcoded built-in, plugin and native API providers). The planner
 uses this to recommend ``tool`` nodes by exact ``provider/tool`` identifier;
 the builder consumes the same list so it can emit a syntactically correct
 ``tool`` node ``data`` block (provider_id, provider_type, tool_name,
@@ -22,6 +22,7 @@ import json
 import logging
 import re
 import unicodedata
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from operator import itemgetter
@@ -32,6 +33,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from repositories.api_tool_catalogue import list_api_tool_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +78,19 @@ class ToolCatalogueEntry(TypedDict):
     tool_name: str
     tool_label: str
     description: str  # one-line LLM-friendly description
+    # Builtin/plugin: provider_controller.need_credentials. API: conservative
+    # unknown-auth flag; authorization_metadata must take precedence.
+    needs_credentials: bool
+    authorization_metadata: NotRequired[str]
+    # Provider declaration metadata, searched with a low weight so a tool whose
+    # own label is generic ("Post") still matches its provider's capability.
+    provider_label: NotRequired[str]
+    provider_description: NotRequired[str]
+    provider_tags: NotRequired[list[str]]
     parameters: NotRequired[list[dict[str, Any]]]
     output_schema: NotRequired[dict[str, Any]]
+    # Direct public HTTP response declarations, distinct from native outputs.
+    response_contracts: NotRequired[dict[str, object]]
 
 
 class ToolCapabilityQuery(TypedDict):
@@ -105,18 +118,33 @@ class LegacyToolFallbackSelection:
         return max(0, len(self.entries) - self.limit)
 
 
-def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
+def build_tool_catalogue(
+    tenant_id: str, *, on_source_error: Callable[[str], None] | None = None
+) -> list[ToolCatalogueEntry]:
     """
     Enumerate installed tools for the given tenant.
 
     Failures inside a single provider (mis-declared tool, plugin runtime
     error) are logged and skipped — one bad provider must not break the
-    whole generator. Returns the complete installed inventory; prompt-specific
-    truncation belongs to ``format_tool_catalogue``.
+    whole generator. A failed plugin inventory fetch is logged and leaves the
+    hardcoded built-in tools in place. Native API public metadata is read
+    independently and never constructs credential-bearing controllers.
+    Returns the complete installed
+    inventory; prompt-specific truncation belongs to ``format_tool_catalogue``.
     """
     entries: list[ToolCatalogueEntry] = []
 
-    for provider in ToolManager.list_builtin_providers(tenant_id):
+    providers: list[BuiltinToolProviderController | PluginToolProviderController] = list(
+        ToolManager.list_hardcoded_providers()
+    )
+    try:
+        providers.extend(ToolManager.list_plugin_providers(tenant_id))
+    except Exception:
+        if on_source_error is not None:
+            on_source_error("plugin_inventory")
+        logger.exception("Workflow generator: failed to list plugin tool providers; keeping built-in tools only")
+
+    for provider in providers:
         provider_name = provider.entity.identity.name
         plugin_id = ""
         # The tool-provider domain distinguishes hardcoded providers from
@@ -135,8 +163,12 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
             continue
 
         try:
+            needs_credentials = provider.need_credentials
             tools = list(provider.get_tools())
+            provider_label, provider_description, provider_tags = _provider_capability(provider)
         except Exception:
+            if on_source_error is not None:
+                on_source_error("tool_provider")
             logger.exception(
                 "Workflow generator: failed to list tools for provider %s",
                 provider_name,
@@ -157,16 +189,29 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
                         tool_name=tool_name,
                         tool_label=tool_label,
                         description=description,
+                        needs_credentials=needs_credentials,
+                        provider_label=provider_label,
+                        provider_description=provider_description,
+                        provider_tags=provider_tags,
                         parameters=[parameter.model_dump(mode="json") for parameter in tool.entity.parameters],
                         output_schema=dict(tool.entity.output_schema),
                     )
                 )
             except Exception:
+                if on_source_error is not None:
+                    on_source_error("tool_schema")
                 logger.exception(
                     "Workflow generator: failed to describe a tool in provider %s",
                     provider_name,
                 )
                 continue
+
+    try:
+        entries.extend(list_api_tool_metadata(tenant_id))
+    except Exception:
+        if on_source_error is not None:
+            on_source_error("api_tool_inventory")
+        logger.exception("Workflow generator: failed to list public API tool metadata; keeping other tools")
 
     entries.sort(key=itemgetter("provider_name", "tool_name"))
     return entries
@@ -209,10 +254,13 @@ def format_tool_catalogue(entries: list[ToolCatalogueEntry], *, max_tools: int |
         # (for example ``langgenius/google/google``). Explicit JSON-quoted
         # fields remove the ambiguous "split on the last slash" guess while
         # retaining the readable provider/tool display id.
-        line += (
+        identity_fields = (
             f" [provider_id={json.dumps(e['provider_name'], ensure_ascii=False)}; "
-            f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}]"
+            f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}"
         )
+        if e["provider_type"] == "api":
+            identity_fields += '; provider_type="api"'
+        line += identity_fields + "]"
         if desc:
             line += f" — {desc}"
         lines.append(line)
@@ -384,47 +432,89 @@ def _find_current_graph_tool_keys(
     return keys
 
 
+def tool_capability_text(entry: Mapping[str, Any]) -> str:
+    """The provider label, description and tags searched for one catalogue entry."""
+    return " ".join(
+        [
+            str(entry.get("provider_label") or ""),
+            str(entry.get("provider_description") or ""),
+            *(str(tag) for tag in entry.get("provider_tags") or []),
+        ]
+    ).strip()
+
+
+def score_tool_relevance(
+    query_text: str,
+    *,
+    provider_name: str,
+    tool_name: str,
+    label: str,
+    description: str,
+    capability: str = "",
+) -> tuple[float, bool]:
+    """Score one tool against free query text; return ``(score, is_confident)``.
+
+    The shared scorer behind capability routing, exposed so other owners
+    (the Builder's resource discovery) rank installed tools the same way.
+    Provider capability metadata carries the lowest weight and never earns a
+    phrase bonus: it describes the whole provider, not this tool.
+    """
+    query_normalized = _normalize_search_text(query_text)
+    query_tokens = _search_tokens(query_text)
+    identifier = f"{provider_name}/{tool_name}"
+    name_overlap = len(query_tokens & _search_tokens(f"{provider_name} {tool_name}"))
+    label_overlap = len(query_tokens & _search_tokens(label))
+    description_overlap = len(query_tokens & _search_tokens(description))
+    capability_overlap = len(query_tokens & _search_tokens(capability))
+
+    normalized_name = _normalize_search_text(tool_name)
+    normalized_label = _normalize_search_text(label)
+    phrase_bonus = 0.0
+    if query_normalized and query_normalized in _normalize_search_text(identifier):
+        phrase_bonus = 8.0
+    elif query_normalized and query_normalized in normalized_label:
+        phrase_bonus = 6.0
+    elif query_normalized and query_normalized in _normalize_search_text(description):
+        phrase_bonus = 2.0
+
+    fuzzy_ratio = max(
+        _fuzzy_ratio(query_normalized, normalized_name),
+        _fuzzy_ratio(query_normalized, normalized_label),
+    )
+    score = (
+        phrase_bonus
+        + name_overlap * 5.0
+        + label_overlap * 3.0
+        + description_overlap
+        + capability_overlap * 0.5
+        + fuzzy_ratio
+    )
+    is_confident = bool(
+        name_overlap
+        or label_overlap
+        or description_overlap
+        or capability_overlap
+        or fuzzy_ratio >= _MIN_NAME_FUZZY_RATIO
+    )
+    return score, is_confident
+
+
 def _rank_tools_for_query(
     entries: list[ToolCatalogueEntry], query: ToolCapabilityQuery
 ) -> list[tuple[float, ToolCatalogueEntry, bool]]:
     capability = str(query.get("capability") or "").strip()
     keywords = [str(keyword).strip() for keyword in (query.get("keywords") or []) if str(keyword).strip()]
     query_text = " ".join([capability, *keywords]).strip()
-    query_normalized = _normalize_search_text(query_text)
-    query_tokens = _search_tokens(query_text)
     ranked: list[tuple[float, ToolCatalogueEntry, bool]] = []
 
     for entry in entries:
-        identifier = f"{entry['provider_name']}/{entry['tool_name']}"
-        name_text = f"{entry['provider_name']} {entry['tool_name']}"
-        label_text = entry["tool_label"]
-        description_text = entry["description"]
-        name_tokens = _search_tokens(name_text)
-        label_tokens = _search_tokens(label_text)
-        description_tokens = _search_tokens(description_text)
-        name_overlap = len(query_tokens & name_tokens)
-        label_overlap = len(query_tokens & label_tokens)
-        description_overlap = len(query_tokens & description_tokens)
-
-        normalized_identifier = _normalize_search_text(identifier)
-        normalized_name = _normalize_search_text(entry["tool_name"])
-        normalized_label = _normalize_search_text(label_text)
-        normalized_description = _normalize_search_text(description_text)
-        phrase_bonus = 0.0
-        if query_normalized and query_normalized in normalized_identifier:
-            phrase_bonus = 8.0
-        elif query_normalized and query_normalized in normalized_label:
-            phrase_bonus = 6.0
-        elif query_normalized and query_normalized in normalized_description:
-            phrase_bonus = 2.0
-
-        fuzzy_ratio = max(
-            _fuzzy_ratio(query_normalized, normalized_name),
-            _fuzzy_ratio(query_normalized, normalized_label),
-        )
-        score = phrase_bonus + name_overlap * 5.0 + label_overlap * 3.0 + description_overlap + fuzzy_ratio
-        is_confident = bool(
-            name_overlap or label_overlap or description_overlap or fuzzy_ratio >= _MIN_NAME_FUZZY_RATIO
+        score, is_confident = score_tool_relevance(
+            query_text,
+            provider_name=entry["provider_name"],
+            tool_name=entry["tool_name"],
+            label=entry["tool_label"],
+            description=entry["description"],
+            capability=tool_capability_text(entry),
         )
         ranked.append((score, entry, is_confident))
 
@@ -520,6 +610,17 @@ def format_tool_builder_context(entry: ToolCatalogueEntry) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _provider_capability(
+    provider: BuiltinToolProviderController | PluginToolProviderController,
+) -> tuple[str, str, list[str]]:
+    """Provider label, description and tags from its declaration identity."""
+    identity = provider.entity.identity
+    label = _i18n_text(identity.label)
+    description = _i18n_text(identity.description)
+    tags = [str(tag) for tag in (identity.tags or [])]
+    return label, description, tags
 
 
 def _i18n_text(label: I18nObject | None) -> str:

@@ -1,3 +1,11 @@
+"""Unit coverage for LLM node execution with model boundaries replaced by test doubles.
+
+FOR MOCK FIXTURES, DO NOT REMOVE
+
+Unit coverage for parameter extraction with the plugin-model boundary replaced.
+
+Unit coverage for tool-node invocation with the tool boundary patched."""
+
 from __future__ import annotations
 
 import json
@@ -7,10 +15,11 @@ import time
 import types
 import uuid
 from collections.abc import Generator, Iterator, Mapping
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import override
+from typing import cast, override
 from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
@@ -22,17 +31,23 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConfirmedToolGuard
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
 from core.model_manager import QuotaManagedModelInstance
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.impl.tool import PluginToolManager
 from core.plugin.plugin_service import PluginService
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.common_entities import I18nObject as ToolI18nObject
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolParameter
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
@@ -47,7 +62,6 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -73,10 +87,10 @@ from graphon.model_runtime.entities import (
 from graphon.model_runtime.entities import UserPromptMessage
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage as _node_runtime_AssistantPromptMessage,
 )
-from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.memory.prompt_message_memory import PromptMessageMemory
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
@@ -97,16 +111,15 @@ from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from runtime_contracts.builder.execution import ConfirmedToolExecutionContext, context_digest
+from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
+from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, ServiceConfirmedToolGuard
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 from tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context, build_test_variable_pool
 
 pytest_plugins = ("tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.plugin_daemon",)
-
-"""Unit coverage for LLM node execution with model boundaries replaced by test doubles."""
-
-
-"""FOR MOCK FIXTURES, DO NOT REMOVE"""
 
 
 def init_llm_node(config: dict[str, object]) -> LLMNode:
@@ -312,7 +325,6 @@ class TestLlmNodeExecutionBehaviorCases:
             from unittest.mock import MagicMock
 
             from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-            from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
             model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
             schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
@@ -413,7 +425,6 @@ class TestLlmNodeExecutionBehaviorCases:
             from unittest.mock import MagicMock
 
             from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-            from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
             model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
             schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
@@ -475,9 +486,6 @@ class TestLlmNodeExecutionBehaviorCases:
         ]
         result = {"name": "test", "age": 123}
         assert all(_parse_structured_output(item) == result for item in llm_texts)
-
-
-"""Unit coverage for parameter extraction with the plugin-model boundary replaced."""
 
 
 def get_mocked_fetch_memory(memory_text: str) -> MagicMock:
@@ -889,9 +897,6 @@ class TestParameterExtractorExecutionBehaviorCases:
 
             if prompt.get("role") in {"user", "assistant"}:
                 latest_role = prompt.get("role")
-
-
-"""Unit coverage for tool-node invocation with the tool boundary patched."""
 
 
 def init_tool_node(config: dict[str, object]) -> ToolNode:
@@ -2560,3 +2565,608 @@ class TestNodeRuntimeCases:
         assert isinstance(tool_file_manager, DifyToolFileManager)
         assert isinstance(file_reference_factory, DifyFileReferenceFactory)
         assert file_saver_cls.call_args.kwargs["http_client"] is http_client
+
+
+_CONFIRMED_PARAMETERS = {"message_id": "18cab_1", "include_body": False, "include_attachments": False}
+
+
+def _confirmed_guard(
+    *, mocker=None, node_id="tool-node", node_execution_id="node-execution-id", tenant_id="tenant-id", app_id="app-id"
+):
+    context = ConfirmedToolExecutionContext(
+        policy_version="builder-confirmed-gmail-read-v1",
+        request_id="request",
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id="workflow",
+        actor_id="actor",
+        session_id="session",
+        test_input_id="input",
+        execution_revision="a" * 64,
+        graph_revision="b" * 64,
+        submitted_inputs_digest="c" * 64,
+        effective_inputs_digest="d" * 64,
+        context_digest="e" * 64,
+        mode="confirmed_tool",
+        sandbox_profile="disabled",
+        admitted_nodes=(),
+        consent_id="consent",
+        scope_digest="f" * 64,
+        command_id="command",
+    )
+    context = context.model_copy(update={"context_digest": context_digest(context)})
+    guard = ServiceConfirmedToolGuard(
+        BuilderRealCallConsentService(sessionmaker()),
+        ConfirmedToolBinding(
+            context=context, node_id=node_id, native_run_id="native-run", native_node_execution_id=node_execution_id
+        ),
+    )
+    if mocker is not None:
+        mocker.patch.object(guard, "before_refresh")
+        mocker.patch.object(guard, "before_invoke")
+        mocker.patch.object(guard, "observe_json")
+        mocker.patch.object(guard, "finish_stream")
+        mocker.patch.object(
+            guard,
+            "dispatch_headers",
+            return_value={
+                "X-Dify-Expected-Plugin-Identifier": "langgenius/dify-gmail:9.9.9@" + "f" * 64,
+                "X-Dify-Expected-Installation-ID": "synthetic-installation",
+                "X-Dify-Confirmed-Dispatch": "v1",
+            },
+        )
+    return guard
+
+
+def _builtin_node_data(**changes: object) -> ToolNodeData:
+    values: dict[str, object] = {
+        "title": "Get message",
+        "desc": None,
+        "provider_id": "langgenius/dify-gmail/dify-gmail",
+        "provider_type": ToolProviderType.BUILT_IN,
+        "provider_name": "langgenius/dify-gmail/dify-gmail",
+        "tool_name": "get_message",
+        "tool_label": "Get message",
+        "tool_configurations": {},
+        "tool_parameters": {
+            name: {"type": "constant", "value": value} for name, value in _CONFIRMED_PARAMETERS.items()
+        },
+        **changes,
+    }
+    return ToolNodeData.model_validate(values)
+
+
+def test_confirmed_tool_runtime_is_resolved_with_the_guard_for_its_bound_node(
+    mocker, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime_tool = _confirmed_plugin_tool(_confirmed_guard())
+    get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime", return_value=runtime_tool)
+    monkeypatch.setattr(node_runtime, "get_system_text", lambda _pool, _key: None)
+    guard = _confirmed_guard(mocker=mocker)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard=guard)
+    handle = runtime.get_runtime(
+        node_id="tool-node",
+        node_data=_builtin_node_data(),
+        variable_pool=None,
+        node_execution_id="node-execution-id",
+    )
+
+    assert DifyToolNodeRuntime._tool_from_handle(handle) is runtime_tool
+    get_runtime.assert_called_once()
+    assert get_runtime.call_args.kwargs["confirmed_guard"] is guard
+
+
+@pytest.mark.parametrize(
+    ("node_id", "node_execution_id", "changes", "context"),
+    [
+        ("other-node", "node-execution-id", {}, {}),
+        ("tool-node", "other-execution", {}, {}),
+        ("tool-node", None, {}, {}),
+        ("tool-node", "node-execution-id", {"tool_configurations": {"secret": "x"}}, {}),
+        ("tool-node", "node-execution-id", {}, {"tenant_id": "other-tenant"}),
+        ("tool-node", "node-execution-id", {}, {"app_id": "other-app"}),
+    ],
+)
+def test_confirmed_tool_runtime_refuses_anything_but_its_exact_bound_node(
+    mocker,
+    node_id: str,
+    node_execution_id: str | None,
+    changes: dict[str, object],
+    context: dict[str, str],
+) -> None:
+    get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime")
+    guard = _confirmed_guard(mocker=mocker)
+    guard = _confirmed_guard(mocker=mocker, **context)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard=guard)
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError):
+        runtime.get_runtime(
+            node_id=node_id,
+            node_data=_builtin_node_data(**changes),
+            variable_pool=None,
+            node_execution_id=node_execution_id,
+        )
+    get_runtime.assert_not_called()
+
+
+def _confirmed_plugin_tool(guard: Mock) -> PluginTool:
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="langgenius",
+            name="get_message",
+            label=ToolI18nObject(en_US="Get message"),
+            provider="langgenius/dify-gmail/dify-gmail",
+        ),
+        parameters=[
+            ToolParameter.get_simple_instance(name=name, llm_description=name, typ=typ, required=True)
+            for name, typ in [
+                ("message_id", ToolParameter.ToolParameterType.STRING),
+                ("include_body", ToolParameter.ToolParameterType.BOOLEAN),
+                ("include_attachments", ToolParameter.ToolParameterType.BOOLEAN),
+            ]
+        ],
+    )
+    runtime = ToolRuntime(
+        tenant_id="tenant-id", credential_type=CredentialType.OAUTH2, credentials={"access_token": "unit-token"}
+    )
+    return PluginTool(
+        entity=entity,
+        runtime=runtime,
+        tenant_id="tenant-id",
+        icon="",
+        plugin_unique_identifier="unit-artifact",
+        confirmed_guard=guard,
+    )
+
+
+class _ConfirmedTransport:
+    """Plugin daemon stream spy recording the caller's session state at every callback."""
+
+    def __init__(self, sessions: list[Session], *, fail_after: int | None = None) -> None:
+        self.sessions = sessions
+        self.fail_after = fail_after
+        self.observed: list[bool] = []
+        self.calls = 0
+
+    def __call__(self, *_args: object, **_kwargs: object) -> Generator[ToolInvokeMessage]:
+        self.calls += 1
+        self.observed.append(self.sessions[-1].in_transaction())
+
+        def stream() -> Generator[ToolInvokeMessage]:
+            messages = [
+                ToolInvokeMessage(
+                    type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text="ok")
+                ),
+                ToolInvokeMessage(
+                    type=ToolInvokeMessage.MessageType.JSON,
+                    message=ToolInvokeMessage.JsonMessage(
+                        json_object={"message": {"id": "18cab_1"}, "message_id": "18cab_1"}
+                    ),
+                ),
+            ]
+            for index, message in enumerate(messages):
+                self.observed.append(self.sessions[-1].in_transaction())
+                if self.fail_after == index:
+                    raise RuntimeError("native daemon failure")
+                yield message
+
+        return stream()
+
+
+class _RecordingSessionMaker(sessionmaker):
+    def __init__(self, engine, *, active=False):
+        super().__init__(engine, expire_on_commit=False)
+        self.sessions = []
+        self.calls = []
+        self.begin_calls = []
+        self.active = active
+
+    def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        session = super().__call__(**kwargs)
+        self.sessions.append(session)
+        if self.active:
+            session.begin()
+        return session
+
+    @contextmanager
+    def begin(self):
+        self.begin_calls.append({})
+        # Distinguish the begin boundary from a direct call, as the adapter does.
+        with super().__call__() as session, session.begin():
+            self.sessions.append(session)
+            yield session
+
+
+def _recording_session_maker(engine: Engine):
+    factory = _RecordingSessionMaker(engine)
+    return factory, factory.sessions
+
+
+def _confirmed_invoke(runtime: DifyToolNodeRuntime, guard: Mock) -> Generator[ToolRuntimeMessage]:
+    return runtime.invoke(
+        tool_runtime=ToolRuntimeHandle(raw=_confirmed_plugin_tool(guard)),
+        tool_parameters=dict(_CONFIRMED_PARAMETERS),
+        workflow_call_depth=0,
+        provider_name="langgenius/dify-gmail/dify-gmail",
+    )
+
+
+def test_confirmed_invoke_consumes_with_a_closed_session_not_the_ordinary_begin(
+    mocker, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
+    maker, sessions = _recording_session_maker(sqlite_engine)
+    transport = _ConfirmedTransport(sessions)
+    monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", transport)
+    guard = _confirmed_guard(mocker=mocker)
+    guard.before_invoke.side_effect = lambda _parameters: transport.observed.append(sessions[-1].in_transaction())
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard=guard)
+    messages = list(_confirmed_invoke(runtime, guard))
+
+    assert [message.type.value for message in messages] == ["text", "json"]
+    assert maker.calls == [{}]
+    assert maker.begin_calls == []
+    assert transport.calls == 1
+    assert transport.observed
+    assert not any(transport.observed)
+    guard.before_invoke.assert_called_once_with(_CONFIRMED_PARAMETERS)
+    guard.finish_stream.assert_called_once_with(complete=True, declared_failure=False)
+
+
+def test_confirmed_invoke_refuses_a_session_already_in_transaction(mocker, sqlite_engine: Engine) -> None:
+    maker = _RecordingSessionMaker(sqlite_engine, active=True)
+    transport = mocker.patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream")
+    guard = _confirmed_guard(mocker=mocker)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard=guard)
+    with pytest.raises(node_runtime.ToolRuntimeInvocationError):
+        list(_confirmed_invoke(runtime, guard))
+    guard.before_invoke.assert_not_called()
+    transport.assert_not_called()
+
+
+def test_confirmed_invoke_cancellation_finishes_unknown_exactly_once(
+    mocker, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
+    maker, sessions = _recording_session_maker(sqlite_engine)
+    transport = _ConfirmedTransport(sessions)
+    monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", transport)
+    guard = _confirmed_guard(mocker=mocker)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard=guard)
+    stream = _confirmed_invoke(runtime, guard)
+    assert next(stream).type.value == "text"
+    stream.close()
+
+    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+    assert transport.calls == 1
+
+
+def test_confirmed_native_exception_stays_unknown_not_declared_failure(
+    mocker, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
+    maker, sessions = _recording_session_maker(sqlite_engine)
+    transport = _ConfirmedTransport(sessions, fail_after=1)
+    monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", transport)
+    guard = _confirmed_guard(mocker=mocker)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard=guard)
+    with pytest.raises(node_runtime.ToolRuntimeInvocationError):
+        list(_confirmed_invoke(runtime, guard))
+
+    # Graphon reports a native failure; the consent outcome input stays unknown (incomplete).
+    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+
+
+def test_ordinary_tool_invoke_keeps_its_begin_transaction(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
+    maker, _sessions = _recording_session_maker(sqlite_engine)
+    sessions_in_transaction: list[bool] = []
+
+    def generic_invoke(**kwargs: object) -> Iterator[ToolInvokeMessage]:
+        session = kwargs["session"]
+        assert isinstance(session, Session)
+        sessions_in_transaction.append(session.in_transaction())
+        return iter(())
+
+    monkeypatch.setattr(node_runtime.ToolEngine, "generic_invoke", generic_invoke)
+    tool = _confirmed_plugin_tool(_confirmed_guard())
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker)
+    list(
+        runtime.invoke(
+            tool_runtime=ToolRuntimeHandle(raw=tool),
+            tool_parameters={},
+            workflow_call_depth=0,
+            provider_name="provider",
+        )
+    )
+
+    assert maker.begin_calls == [{}]
+    assert maker.calls == []
+    assert sessions_in_transaction == [True]
+
+
+class _GuardFactory:
+    """Server-owned factory stand-in; records the actual callback order and arguments."""
+
+    def __init__(self, events: list[str], *, mocker=None, result: Mock | None | Exception = None) -> None:
+        self.events = events
+        self.mocker = mocker
+        self.result = result
+        self.calls: list[tuple[str, str]] = []
+
+    def __call__(self, node_id: str, node_execution_id: str) -> ConfirmedToolGuard:
+        self.events.append("factory")
+        self.calls.append((node_id, node_execution_id))
+        if isinstance(self.result, Exception):
+            raise self.result
+        if self.result is None:
+            return _confirmed_guard(mocker=self.mocker, node_id=node_id, node_execution_id=node_execution_id)
+        return self.result
+
+
+def _recording_tool_manager(mocker, events: list[str]) -> MagicMock:
+    def resolve(*_args: object, **kwargs: object) -> PluginTool:
+        events.append("tool_manager")
+        guard = kwargs["confirmed_guard"]
+        assert isinstance(guard, ServiceConfirmedToolGuard)
+        return _confirmed_plugin_tool(guard)
+
+    get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime", side_effect=resolve)
+    return get_runtime
+
+
+def test_guard_factory_claims_at_the_actual_execution_id_before_resolution(
+    mocker, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
+    events: list[str] = []
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
+    maker, sessions = _recording_session_maker(sqlite_engine)
+    transport = _ConfirmedTransport(sessions)
+    monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", transport)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard_factory=factory)
+    handle = runtime.get_runtime(
+        node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"
+    )
+
+    assert events == ["factory", "tool_manager"]
+    assert factory.calls == [("tool-node", "actual-exec-7")]
+    guard = get_runtime.call_args.kwargs["confirmed_guard"]
+    assert guard.binding.native_node_execution_id == "actual-exec-7"
+    messages = list(
+        runtime.invoke(
+            tool_runtime=handle,
+            tool_parameters=dict(_CONFIRMED_PARAMETERS),
+            workflow_call_depth=0,
+            provider_name="langgenius/dify-gmail/dify-gmail",
+        )
+    )
+    assert [message.type.value for message in messages] == ["text", "json"]
+    assert maker.begin_calls == []
+    assert not any(transport.observed)
+    guard.finish_stream.assert_called_once_with(complete=True, declared_failure=False)
+
+
+@pytest.mark.parametrize("node_execution_id", [None, ""])
+def test_guard_factory_requires_a_real_execution_id(mocker, node_execution_id: str | None) -> None:
+    events: list[str] = []
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="execution_launch_mismatch"):
+        runtime.get_runtime(
+            node_id="tool-node",
+            node_data=_builtin_node_data(),
+            variable_pool=None,
+            node_execution_id=node_execution_id,
+        )
+    assert factory.calls == []
+    get_runtime.assert_not_called()
+
+
+_FACTORY_SECRET = "factory-secret-sentinel-5d1"
+
+
+def _other_tenant_guard() -> Mock:
+    guard = _confirmed_guard(node_id="tool-node", node_execution_id="actual-exec-7")
+    guard = _confirmed_guard(tenant_id="other-tenant", node_execution_id="actual-exec-7")
+    return guard
+
+
+@pytest.mark.parametrize(
+    ("result", "reason"),
+    [
+        (RuntimeError(f"claim failed {_FACTORY_SECRET}"), "confirmed_guard_unavailable"),
+        (BuilderExecutionPolicyError("consent_expired"), "consent_expired"),
+        (_confirmed_guard(node_id="other-node", node_execution_id="actual-exec-7"), "execution_launch_mismatch"),
+        (_confirmed_guard(node_id="tool-node", node_execution_id="other-exec"), "execution_launch_mismatch"),
+        (_other_tenant_guard(), "execution_launch_mismatch"),
+    ],
+    ids=["factory-raises", "factory-refuses", "wrong-node", "wrong-execution", "wrong-tenant"],
+)
+def test_failing_or_mismatched_factory_never_falls_through_to_ordinary_resolution(
+    mocker, result: Mock | Exception, reason: str
+) -> None:
+    events: list[str] = []
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, result=result)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match=reason) as raised:
+        runtime.get_runtime(
+            node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"
+        )
+    assert _FACTORY_SECRET not in str(raised.value)
+    assert factory.calls == [("tool-node", "actual-exec-7")]
+    get_runtime.assert_not_called()
+
+
+def test_factory_returning_no_guard_refuses(mocker) -> None:
+    get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime")
+
+    def factory(_node_id: str, _node_execution_id: str) -> ConfirmedToolGuard:
+        return cast(ConfirmedToolGuard, None)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="confirmed_guard_unavailable"):
+        runtime.get_runtime(
+            node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"
+        )
+    get_runtime.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("node_id", "node_execution_id"),
+    [("tool-node", "actual-exec-7"), ("tool-node", "actual-exec-8"), ("other-node", "actual-exec-9")],
+)
+def test_bound_factory_guard_is_never_rebuilt_on_replay(mocker, node_id: str, node_execution_id: str) -> None:
+    events: list[str] = []
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
+    runtime.get_runtime(
+        node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"
+    )
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError):
+        runtime.get_runtime(
+            node_id=node_id, node_data=_builtin_node_data(), variable_pool=None, node_execution_id=node_execution_id
+        )
+    assert factory.calls == [("tool-node", "actual-exec-7")]
+    assert get_runtime.call_count == 1
+
+
+def test_configured_but_unbound_factory_refuses_direct_invoke(mocker, sqlite_engine) -> None:
+    events: list[str] = []
+    factory = _GuardFactory(events, mocker=mocker)
+    transport = mocker.patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream")
+    guard = _confirmed_guard(mocker=mocker)
+    maker = _RecordingSessionMaker(sqlite_engine)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard_factory=factory)
+    with pytest.raises(node_runtime.ToolRuntimeInvocationError, match="confirmed_guard_unavailable"):
+        list(_confirmed_invoke(runtime, guard))
+    assert factory.calls == []
+    assert maker.calls == []
+    assert maker.begin_calls == []
+    guard.before_invoke.assert_not_called()
+    transport.assert_not_called()
+
+
+def test_bound_guard_refuses_a_handle_for_another_tool(mocker, sqlite_engine) -> None:
+    transport = mocker.patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream")
+    bound = _confirmed_guard(mocker=mocker)
+    maker = _RecordingSessionMaker(sqlite_engine)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), session_maker=maker, confirmed_guard=bound)
+    with pytest.raises(node_runtime.ToolRuntimeInvocationError, match="execution_launch_mismatch"):
+        list(_confirmed_invoke(runtime, _confirmed_guard(mocker=mocker)))
+    assert maker.calls == []
+    transport.assert_not_called()
+
+
+def test_configured_node_is_refused_before_the_factory_claims(mocker) -> None:
+    events: list[str] = []
+    get_runtime = _recording_tool_manager(mocker, events)
+    factory = _GuardFactory(events, mocker=mocker)
+
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=factory)
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="unsupported_tool_configuration"):
+        runtime.get_runtime(
+            node_id="tool-node",
+            node_data=_builtin_node_data(tool_configurations={"secret": "x"}),
+            variable_pool=None,
+            node_execution_id="actual-exec-7",
+        )
+    assert factory.calls == []
+    get_runtime.assert_not_called()
+
+
+_RESOLUTION_SECRET = "resolution-secret-sentinel-8e2"
+
+
+@pytest.mark.parametrize("use_factory", [False, True], ids=["ready-guard", "factory-guard"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError(f"daemon said {_RESOLUTION_SECRET}"),
+        ValueError(f"credential row {_RESOLUTION_SECRET}"),
+        node_runtime.ToolRuntimeResolutionError(f"native {_RESOLUTION_SECRET}"),
+    ],
+    ids=["runtime-error", "value-error", "tool-node-error"],
+)
+def test_unexpected_confirmed_resolution_error_is_sanitized(
+    mocker, caplog: pytest.LogCaptureFixture, error: Exception, use_factory: bool
+) -> None:
+    get_runtime = mocker.patch.object(node_runtime.ToolManager, "get_workflow_tool_runtime", side_effect=error)
+    if use_factory:
+        runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard_factory=_GuardFactory([], mocker=mocker))
+    else:
+        runtime = DifyToolNodeRuntime(
+            _build_run_context(), confirmed_guard=_confirmed_guard(mocker=mocker, node_execution_id="actual-exec-7")
+        )
+
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="confirmed_tool_resolution_failed") as raised:
+        runtime.get_runtime(
+            node_id="tool-node", node_data=_builtin_node_data(), variable_pool=None, node_execution_id="actual-exec-7"
+        )
+
+    assert _RESOLUTION_SECRET not in str(raised.value)
+    assert raised.value.__cause__ is None
+    assert raised.value.__suppress_context__ is True
+    assert _RESOLUTION_SECRET not in caplog.text
+    get_runtime.assert_called_once()
+
+
+def test_declared_confirmed_policy_refusal_keeps_its_reason(mocker) -> None:
+    get_runtime = mocker.patch.object(
+        node_runtime.ToolManager,
+        "get_workflow_tool_runtime",
+        side_effect=BuilderExecutionPolicyError("credential_cache_unavailable"),
+    )
+    runtime = DifyToolNodeRuntime(_build_run_context(), confirmed_guard=_confirmed_guard(mocker=mocker))
+
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="credential_cache_unavailable") as raised:
+        runtime.get_runtime(
+            node_id="tool-node",
+            node_data=_builtin_node_data(),
+            variable_pool=None,
+            node_execution_id="node-execution-id",
+        )
+    assert "confirmed_tool_resolution_failed" not in str(raised.value)
+
+    get_runtime.assert_called_once()
+
+
+def test_ordinary_resolution_error_keeps_native_text(mocker) -> None:
+    get_runtime = mocker.patch.object(
+        node_runtime.ToolManager, "get_workflow_tool_runtime", side_effect=RuntimeError("ordinary provider detail")
+    )
+    runtime = DifyToolNodeRuntime(_build_run_context())
+
+    with pytest.raises(node_runtime.ToolRuntimeResolutionError, match="ordinary provider detail") as raised:
+        runtime.get_runtime(
+            node_id="tool-node",
+            node_data=_builtin_node_data(),
+            variable_pool=None,
+            node_execution_id="node-execution-id",
+        )
+    assert isinstance(raised.value.__cause__, RuntimeError)
+
+    get_runtime.assert_called_once()
+
+
+def test_guard_and_factory_together_are_refused(mocker) -> None:
+    with pytest.raises(BuilderExecutionPolicyError, match="invalid_confirmed_configuration"):
+        DifyToolNodeRuntime(
+            _build_run_context(),
+            confirmed_guard=_confirmed_guard(mocker=mocker),
+            confirmed_guard_factory=_GuardFactory([], mocker=mocker),
+        )

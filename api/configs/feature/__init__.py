@@ -989,6 +989,41 @@ class WorkflowConfig(BaseSettings):
         default=10,
     )
 
+    DIFY_BUILDER_MAX_ADVANCE_SECONDS: PositiveInt = Field(
+        description=(
+            "Max wall-clock seconds for one dify_builder advance; also the advance-lock TTL and Celery soft_time_limit."
+        ),
+        default=600,
+    )
+
+    DIFY_BUILDER_ENABLED: bool = Field(
+        description="Expose the Dify Builder feature (console routes + UI flag).",
+        # TODO: Restore this to False before the production release; it is enabled by default for testing only.
+        default=True,
+    )
+
+    DIFY_BUILDER_SKILL_LEARNING_POLICY: str = Field(
+        description="Dify Builder governance tail policy: ask | automatic | disabled.",
+        default="ask",
+    )
+
+    DIFY_BUILDER_CONFIRMED_TOOL_ENABLED: bool = Field(
+        description=(
+            "Backend-only rollout control for consented real Builder Tool tests. It never qualifies an artifact; "
+            "unqualified actions stay unsupported. Not exposed in public system features."
+        ),
+        default=False,
+    )
+
+    DIFY_BUILDER_CONFIRMED_RUN_ENABLED: bool = Field(
+        description=(
+            "Run a Builder Test Run the restricted runtime cannot admit as an ordinary draft run: model, sandbox "
+            "and read-only nodes run, side effects run only when confirmed in the test-data form and are mocked "
+            "otherwise, destructive operations are always mocked. A run with mocked steps cannot be published."
+        ),
+        default=False,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """
@@ -1486,6 +1521,9 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK: bool = Field(default=True, description="Recover accepted draft handoffs")
+    WORKFLOW_DRAFT_COORDINATION_INTERVAL: PositiveInt = Field(default=60, description="Recovery interval in seconds")
+    WORKFLOW_DRAFT_COORDINATION_BATCH_SIZE: PositiveInt = Field(default=100, description="Maximum handoffs per sweep")
     ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
         default=True,
@@ -1601,6 +1639,15 @@ class CeleryScheduleTasksConfig(BaseSettings):
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",
         default=60 * 60,
+    )
+
+    ENABLE_DIFY_BUILDER_RECONCILER: bool = Field(
+        description="Enable the dify-builder interrupted-session reconciler (beat sweeper)",
+        default=False,
+    )
+    DIFY_BUILDER_RECONCILE_INTERVAL: PositiveInt = Field(
+        description="Minutes between dify-builder reconciler sweeps",
+        default=5,
     )
 
 

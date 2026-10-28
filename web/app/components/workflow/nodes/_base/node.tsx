@@ -23,6 +23,7 @@ import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { useToolIcon } from '../../hooks/use-tool-icon'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
+import { BuilderEditBorder } from './builder-edit-border'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
@@ -66,6 +67,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const { nodePanelPresence } = useCollaboration(appId, canEdit)
   const controlMode = useStore((s) => s.controlMode)
+  const isBuilderEditTarget = useStore((s) => s.builderEditTargetNodeIds.includes(id))
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,
   )
@@ -146,7 +148,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
       return (
         <div
           className={cn(
-            'mr-2 system-xs-medium text-text-tertiary',
+            'me-2 system-xs-medium text-text-tertiary',
             data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
           )}
         >
@@ -174,6 +176,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         height: isContainerNode(data.type) ? data.height : 'auto',
       }}
     >
+      {isBuilderEditTarget && <BuilderEditBorder />}
       {pluginInstallLocked && (
         <button
           type="button"
@@ -244,14 +247,14 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
             isContainerNode(data.type) && 'bg-transparent',
           )}
         >
-          <div className="mr-1 flex min-w-0 grow items-center">
-            <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
+          <div className="me-1 flex min-w-0 grow items-center">
+            <BlockIcon className="me-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
             <div className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary">
               <div title={data.title} className="min-w-0 grow truncate">
                 {data.title}
               </div>
               {viewingUsers.length > 0 && (
-                <div className="ml-3 shrink-0">
+                <div className="ms-3 shrink-0">
                   <UserAvatarList users={viewingUsers} maxVisible={3} size="sm" />
                 </div>
               )}

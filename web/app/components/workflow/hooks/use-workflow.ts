@@ -435,16 +435,23 @@ export const useWorkflowReadOnly = () => {
   const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const canvasReadOnly = useStore((s) => s.canvasReadOnly)
+  const draftSyncLocked = useStore((s) => s.workflowDraftSyncPhase !== 'idle')
 
   const getWorkflowReadOnly = useCallback(() => {
-    const { canvasReadOnly, workflowRunningData } = workflowStore.getState()
+    const { canvasReadOnly, workflowRunningData, workflowDraftSyncPhase } = workflowStore.getState()
 
-    return canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    return (
+      canvasReadOnly ||
+      workflowDraftSyncPhase !== 'idle' ||
+      workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    )
   }, [workflowStore])
 
   return {
     workflowReadOnly:
-      canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running,
+      canvasReadOnly ||
+      draftSyncLocked ||
+      workflowRunningData?.result.status === WorkflowRunningStatus.Running,
     getWorkflowReadOnly,
   }
 }
@@ -452,16 +459,26 @@ export const useWorkflowReadOnly = () => {
 const useNodesReadOnlyBase = (canEdit: boolean) => {
   const workflowStore = useWorkflowStore()
   const canvasReadOnly = useStore((s) => s.canvasReadOnly)
+  const draftSyncLocked = useStore((s) => s.workflowDraftSyncPhase !== 'idle')
+  const hasWorkflowDraftConflict = useStore((s) => s.hasWorkflowDraftConflict)
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const isRestoring = useStore((s) => s.isRestoring)
 
   const getNodesReadOnly = useCallback((): boolean => {
-    const { workflowRunningData, historyWorkflowData, isRestoring, canvasReadOnly } =
-      workflowStore.getState()
+    const {
+      workflowRunningData,
+      historyWorkflowData,
+      isRestoring,
+      canvasReadOnly,
+      hasWorkflowDraftConflict,
+      workflowDraftSyncPhase,
+    } = workflowStore.getState()
 
     return !!(
       canvasReadOnly ||
+      workflowDraftSyncPhase !== 'idle' ||
+      hasWorkflowDraftConflict ||
       !canEdit ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||
@@ -473,6 +490,8 @@ const useNodesReadOnlyBase = (canEdit: boolean) => {
   return {
     nodesReadOnly: !!(
       canvasReadOnly ||
+      draftSyncLocked ||
+      hasWorkflowDraftConflict ||
       !canEdit ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
       workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||

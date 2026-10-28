@@ -1,10 +1,7 @@
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
-from graphon.engine_events import (
-    GraphRunSucceededEvent,
-    NodeRunStreamChunkEvent,
-)
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunStreamChunkEvent
+from services.workflow_runtime.entry import iter_dify_graph_engine_events
 from tests.helpers.workflow.mock_config import MockConfigBuilder
 from tests.helpers.workflow.table_runner import TableTestRunner
 

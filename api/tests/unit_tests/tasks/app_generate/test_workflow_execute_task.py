@@ -16,13 +16,13 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.tools.errors import ToolProviderCredentialValidationError
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
@@ -36,6 +36,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
     WorkflowRunNotPausedError,
     _WorkflowRunError,
 )
+from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 from tasks import async_workflow_tasks
 from tasks.app_generate import workflow_execute_task as workflow_execute_task_module
 from tasks.app_generate.workflow_execute_task import (
@@ -790,7 +791,7 @@ def test_app_runner_streaming_failure_keeps_existing_pre_runtime_helper_behavior
     monkeypatch.setattr(runner, "_setup_flask_context", lambda _user: nullcontext())
     monkeypatch.setattr(runner, "_run_app", lambda **_kwargs: (_ for _ in ()).throw(ValueError("Invalid upload file")))
     monkeypatch.setattr(
-        "core.workflow.workflow_entry.WorkflowEntry.handle_special_values",
+        "services.workflow_runtime.entry.WorkflowEntry.handle_special_values",
         lambda value: (_ for _ in ()).throw(AssertionError("pre-runtime helper should not normalize inputs")),
     )
 
@@ -1077,6 +1078,29 @@ def test_resume_recovers_legacy_task_before_claiming_pause(
     with sqlite_session_factory.begin() as session:
         run = session.get(WorkflowRun, workflow_run_id)
         assert run is not None
+        app = session.get(App, run.app_id)
+        workflow = session.get(Workflow, run.workflow_id)
+        assert app is not None
+        assert workflow is not None
+        app.mode = app_mode
+        workflow.type = WorkflowType.CHAT if entry_point == "chat" else WorkflowType.WORKFLOW
+        run.type = workflow.type
+        graph = {
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "terminal",
+                    "data": (
+                        {"type": "answer", "title": "Answer", "answer": "Resumed"}
+                        if entry_point == "chat"
+                        else {"type": "end", "title": "End", "outputs": []}
+                    ),
+                },
+            ],
+            "edges": [{"id": "start-terminal", "source": "start", "target": "terminal"}],
+        }
+        workflow.graph = json.dumps(graph)
+        run.graph = workflow.graph
         run.task_id = task_id if scenario == "already-indexed-uppercase" else None
         run.status = WorkflowExecutionStatus.PAUSED
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="legacy-pause")
@@ -1173,6 +1197,12 @@ def test_resume_recovers_legacy_task_before_claiming_pause(
     invoke = async_workflow_tasks.resume_workflow_execution.run if entry_point == "async" else _resume_app_execution
     if entry_point == "async" and scenario == "concurrent-stop":
         with pytest.raises(WorkflowRunNotPausedError):
+            invoke({"workflow_run_id": workflow_run_id})
+    elif entry_point != "async" and scenario in {"run_id", "tenant_id", "app_id", "user_id"}:
+        with pytest.raises(
+            ToolProviderCredentialValidationError,
+            match="Saved draft execution does not match its acting account and app",
+        ):
             invoke({"workflow_run_id": workflow_run_id})
     else:
         invoke({"workflow_run_id": workflow_run_id})

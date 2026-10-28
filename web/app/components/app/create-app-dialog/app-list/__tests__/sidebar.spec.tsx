@@ -6,15 +6,7 @@ describe('Sidebar', () => {
   it('notifies callbacks when items are clicked', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()
-    const onCreate = vi.fn()
-    render(
-      <Sidebar
-        current="Cat A"
-        categories={['Cat A']}
-        onClick={onClick}
-        onCreateFromBlank={onCreate}
-      />,
-    )
+    render(<Sidebar current="Cat A" categories={['Cat A']} onClick={onClick} />)
 
     expect(screen.getByRole('button', { name: 'Cat A' })).toHaveAttribute('aria-pressed', 'true')
     expect(
@@ -26,7 +18,8 @@ describe('Sidebar', () => {
     await user.click(screen.getByText('Cat A'))
     expect(onClick).toHaveBeenCalledWith('Cat A')
 
-    await user.click(screen.getByText('app.newApp.startFromBlank'))
-    expect(onCreate).toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: 'app.newApp.startFromBlank' }),
+    ).not.toBeInTheDocument()
   })
 })

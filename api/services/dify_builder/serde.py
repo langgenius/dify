@@ -1,0 +1,128 @@
+"""Pure JSON (de)serialization for the domain ``DifyBuilderContext``.
+
+``DifyBuilderContext`` (see ``core.dify_builder.models``) is the per-session
+working state persisted, one row per version, as the ``context`` JSONB
+column on ``dify_builder_session_commits``. This module has no I/O and
+no SQLAlchemy dependency -- it only converts between the dataclass and a
+JSON-safe ``dict``, so the SQL repository can hand the dict straight to an
+``AdjustedJSON`` column and get it back unchanged. The on-disk key names are
+unchanged from the pre-rename dataclass form so existing rows deserialize
+as-is.
+"""
+
+from dataclasses import asdict
+from typing import Any
+
+from core.dify_builder.models import (
+    ChangeSet,
+    ChecklistError,
+    Diagnosis,
+    DifyBuilderContext,
+    MutationIntent,
+    Risk,
+    TestInput,
+)
+
+
+def context_to_dict(fc: DifyBuilderContext) -> dict[str, Any]:
+    """Serialize a ``DifyBuilderContext`` to a JSON-safe dict.
+
+    ``dataclasses.asdict`` recurses into the nested dataclasses
+    (``Diagnosis``, ``MutationIntent``, ``Risk``, ``ChangeSet``,
+    ``ChecklistError``), turning each into a plain dict; every field is a
+    str/int/bool/list/dict/None -- so the result is JSON-safe as-is.
+    """
+    from services.dify_builder.code_risk_assessment import validated_assessments
+
+    result = asdict(fc)
+    result["code_risk_assessments"] = validated_assessments(fc.code_risk_assessments)
+    return result
+
+
+def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
+    """Rebuild a ``DifyBuilderContext`` from a dict produced by ``context_to_dict``.
+
+    Reconstructs the nested dataclasses explicitly (they are plain dicts
+    after a JSON round-trip). Every lookup is defensive (``.get`` with a
+    default matching the field default) so an older or partial dict still
+    yields a valid ``DifyBuilderContext``.
+    """
+    from services.dify_builder.code_risk_assessment import validated_assessments
+
+    diagnosis = Diagnosis(**d["diagnosis"]) if d.get("diagnosis") else None
+    staged_repair = [MutationIntent(**m) for m in d.get("staged_repair", [])]
+    risk = Risk(**d["risk"]) if d.get("risk") else None
+    change_set = ChangeSet(**d["change_set"]) if d.get("change_set") else None
+    checklist_errors = [ChecklistError(**e) for e in d.get("checklist_errors", [])]
+
+    return DifyBuilderContext(
+        failed_run_id=d.get("failed_run_id", ""),
+        diagnosis=diagnosis,
+        staged_repair=staged_repair,
+        repair_attempts=int(d.get("repair_attempts", 0)),
+        last_repair_error=d.get("last_repair_error", ""),
+        last_repair_graph_revision=d.get("last_repair_graph_revision", ""),
+        unknown_outcome_count=int(d.get("unknown_outcome_count", 0)),
+        risk=risk,
+        change_set=change_set,
+        checkpoint_id=d.get("checkpoint_id", ""),
+        verify_run_id=d.get("verify_run_id", ""),
+        test_input_ref=d.get("test_input_ref", ""),
+        retained_test_input_ref=d.get("retained_test_input_ref", ""),
+        last_snapshot_hash=d.get("last_snapshot_hash", ""),
+        next_seq=d.get("next_seq", 0),
+        source=d.get("source", ""),
+        checklist_errors=checklist_errors,
+        business_acceptance_contract=dict(d.get("business_acceptance_contract") or {}),
+        business_acceptance_task_id=d.get("business_acceptance_task_id", ""),
+        business_acceptance_case_id=d.get("business_acceptance_case_id", ""),
+        business_acceptance_run_refs=dict(d.get("business_acceptance_run_refs") or {}),
+        goal_text=d.get("goal_text", ""),
+        active_entry_mode=d.get("active_entry_mode", ""),
+        requirements=dict(d.get("requirements") or {}),
+        plan_items=list(d.get("plan_items") or []),
+        plan_title=d.get("plan_title", ""),
+        plan_input_summary=d.get("plan_input_summary", ""),
+        plan_output_summary=d.get("plan_output_summary", ""),
+        plan_version_tag=d.get("plan_version_tag", ""),
+        resource_selection=dict(d.get("resource_selection") or {}),
+        built_node_ids=list(d.get("built_node_ids") or []),
+        form_fields=list(d.get("form_fields") or []),
+        app_name=d.get("app_name", ""),
+        app_name_auto=bool(d.get("app_name_auto", False)),
+        edit_rules=dict(d.get("edit_rules") or {}),
+        edit_target_node_ids=list(d.get("edit_target_node_ids") or []),
+        last_edit_rejection=d.get("last_edit_rejection", ""),
+        paused=bool(d.get("paused", False)),
+        task_control=dict(d.get("task_control") or {}),
+        checkpoint_seq=int(d.get("checkpoint_seq", 0)),
+        last_structure_fingerprint=d.get("last_structure_fingerprint", ""),
+        recovery_class=d.get("recovery_class", ""),
+        last_command_id=d.get("last_command_id", ""),
+        confirmed_consent_id=d.get("confirmed_consent_id", ""),
+        confirmed_command_id=d.get("confirmed_command_id", ""),
+        effect_confirmation={
+            str(node_id): str(signature) for node_id, signature in (d.get("effect_confirmation") or {}).items()
+        },
+        effect_confirmation_form={
+            str(node_id): str(signature) for node_id, signature in (d.get("effect_confirmation_form") or {}).items()
+        },
+        code_risk_assessments=validated_assessments(d.get("code_risk_assessments")),
+        skill_learning_policy=d.get("skill_learning_policy", "ask"),
+        model_config=dict(d.get("model_config") or {}),
+        reply_language=d.get("reply_language", ""),
+    )
+
+
+def test_input_from_dict(d: dict[str, Any]) -> TestInput:
+    """Decode historical inputs without inventing fixture provenance."""
+    from services.dify_builder.application.execution_policy import decode_http_fixture_set
+
+    return TestInput(
+        id=d.get("id", ""),
+        session_id=d.get("session_id", ""),
+        source=d.get("source", ""),
+        inputs=d.get("inputs", {}),
+        start_schema_hash=d.get("start_schema_hash", ""),
+        http_fixtures=decode_http_fixture_set(d.get("http_fixtures")),
+    )

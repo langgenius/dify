@@ -17,6 +17,8 @@ from flask_restx import Namespace
 from pydantic import BaseModel, TypeAdapter
 from pydantic.json_schema import CoreModeRef, DefsRef, GenerateJsonSchema
 
+from libs.flask_restx_compat import TYPED_EVENT_STREAM_RESPONSE_VENDOR_KEY
+
 DEFAULT_REF_TEMPLATE_OPENAPI_3_0 = "#/components/schemas/{model}"
 
 
@@ -72,7 +74,28 @@ SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
     "core.plugin.entities.bundle.PluginBundleDependency.Github": "PluginBundleDependencyGithub",
     "core.plugin.entities.bundle.PluginBundleDependency.Marketplace": "PluginBundleDependencyMarketplace",
     "core.plugin.entities.bundle.PluginBundleDependency.Package": "PluginBundleDependencyPackage",
+    "core.app.entities.task_entities.AgentLogStreamResponse.Data": "AgentLogStreamResponseData",
+    "core.app.entities.task_entities.HumanInputFormFilledResponse.Data": "HumanInputFormFilledResponseData",
+    "core.app.entities.task_entities.HumanInputFormTimeoutResponse.Data": "HumanInputFormTimeoutResponseData",
+    "core.app.entities.task_entities.HumanInputRequiredResponse.Data": "HumanInputRequiredResponseData",
+    "core.app.entities.task_entities.IterationNodeCompletedStreamResponse.Data": (
+        "IterationNodeCompletedStreamResponseData"
+    ),
+    "core.app.entities.task_entities.IterationNodeNextStreamResponse.Data": "IterationNodeNextStreamResponseData",
+    "core.app.entities.task_entities.IterationNodeStartStreamResponse.Data": "IterationNodeStartStreamResponseData",
+    "core.app.entities.task_entities.LoopNodeCompletedStreamResponse.Data": "LoopNodeCompletedStreamResponseData",
+    "core.app.entities.task_entities.LoopNodeNextStreamResponse.Data": "LoopNodeNextStreamResponseData",
+    "core.app.entities.task_entities.LoopNodeStartStreamResponse.Data": "LoopNodeStartStreamResponseData",
+    "core.app.entities.task_entities.NodeFinishStreamResponse.Data": "NodeFinishStreamResponseData",
+    "core.app.entities.task_entities.NodeRetryStreamResponse.Data": "NodeRetryStreamResponseData",
+    "core.app.entities.task_entities.NodeStartStreamResponse.Data": "NodeStartStreamResponseData",
+    "core.app.entities.task_entities.ReasoningChunkStreamResponse.Data": "ReasoningChunkStreamResponseData",
+    "core.app.entities.task_entities.TextChunkStreamResponse.Data": "TextChunkStreamResponseData",
+    "core.app.entities.task_entities.TextReplaceStreamResponse.Data": "TextReplaceStreamResponseData",
     "core.app.entities.task_entities.WorkflowAppBlockingResponse.Data": "WorkflowAppBlockingResponseData",
+    "core.app.entities.task_entities.WorkflowFinishStreamResponse.Data": "WorkflowFinishStreamResponseData",
+    "core.app.entities.task_entities.WorkflowPauseStreamResponse.Data": "WorkflowPauseStreamResponseData",
+    "core.app.entities.task_entities.WorkflowStartStreamResponse.Data": "WorkflowStartStreamResponseData",
 }
 
 _REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],])")
@@ -194,6 +217,19 @@ def register_response_schema_models(namespace: Namespace, *models: type[BaseMode
 
     for model in models:
         register_response_schema_model(namespace, model)
+
+
+def typed_event_stream_response(namespace: Namespace, event_model: type[BaseModel]):
+    """Document a pure SSE response whose data frames have a registered schema.
+
+    Flask-RESTX applies ``produces`` to every status. The OpenAPI finalizer uses
+    this marker to retain the 2xx event schema and document pre-stream errors as
+    JSON responses.
+    """
+    return namespace.doc(
+        produces=["text/event-stream"],
+        vendor={TYPED_EVENT_STREAM_RESPONSE_VENDOR_KEY: event_model.__name__},
+    )
 
 
 def get_or_create_model(model_name: str, field_def):

@@ -127,12 +127,18 @@ def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
     assert inner_payload["security"] == [{"InnerApiKey": []}]
     assert inner_payload["components"]["securitySchemes"] == {
+        "AgentBearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Bearer AGENT_BACKEND_API_TOKEN; runtime routes also require X-Dify-Agent-Run.",
+        },
         "InnerApiKey": {
             "type": "apiKey",
             "in": "header",
             "name": "X-Inner-Api-Key",
             "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
-        }
+        },
     }
     assert "Bearer" not in inner_payload["components"]["securitySchemes"]
     assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
@@ -356,6 +362,102 @@ def test_console_file_and_audio_responses_declare_binary_success_and_json_errors
         assert errors, path
         for status, response in errors.items():
             assert set(response["content"]) == {"application/json"}, (path, status)
+
+
+def test_finalize_openapi_payload_documents_typed_sse_and_json_preflight_errors():
+    module = _load_generate_swagger_specs_module()
+    payload = {
+        "paths": {
+            "/events": {
+                "post": {
+                    "operationId": "post_events",
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "text/event-stream": {"schema": {"$ref": "#/components/schemas/IncorrectRestxModel"}}
+                            }
+                        },
+                        "400": {
+                            "content": {"text/event-stream": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
+                        },
+                    },
+                    "x-dify-typed-event-stream-response": "EventResponse",
+                }
+            }
+        }
+    }
+
+    result = module.finalize_openapi_payload(payload)
+    result = module.finalize_openapi_payload(result)
+    operation = result["paths"]["/events"]["post"]
+
+    assert operation["responses"]["200"]["content"] == {
+        "text/event-stream": {"schema": {"$ref": "#/components/schemas/EventResponse"}}
+    }
+    assert operation["responses"]["400"]["content"] == {
+        "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+    }
+    assert operation["x-dify-typed-event-stream-response"] == "EventResponse"
+
+
+def test_generate_specs_document_dify_builder_json_reads_and_typed_sse_operations(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+
+    module.generate_specs(tmp_path)
+    payload = json.loads((tmp_path / "console-openapi.json").read_text(encoding="utf-8"))
+    paths = payload["paths"]
+    sse_operations = {
+        ("post", "/dify-builder/sessions"),
+        ("post", "/dify-builder/sessions/{session_id}/actions"),
+        ("post", "/dify-builder/sessions/{session_id}/messages"),
+        ("get", "/dify-builder/sessions/{session_id}/stream"),
+    }
+
+    for method, path in sse_operations:
+        operation = paths[path][method]
+        assert operation["responses"]["200"]["content"] == {
+            "text/event-stream": {"schema": {"$ref": "#/components/schemas/DifyBuilderStreamEventResponse"}}
+        }
+        assert operation["x-dify-typed-event-stream-response"] == "DifyBuilderStreamEventResponse"
+        for status, response in operation["responses"].items():
+            if status != "200":
+                assert set(response["content"]) == {"application/json"}
+
+    json_operations = {
+        "/dify-builder/sessions/{session_id}": "DifyBuilderSessionViewResponse",
+        "/dify-builder/sessions/{session_id}/conversation": "DifyBuilderConversationPageResponse",
+    }
+    for path, response_schema in json_operations.items():
+        operation = paths[path]["get"]
+        assert operation["responses"]["200"]["content"] == {
+            "application/json": {"schema": {"$ref": f"#/components/schemas/{response_schema}"}}
+        }
+        assert "x-dify-typed-event-stream-response" not in operation
+
+    session_schema = payload["components"]["schemas"]["DifyBuilderSessionViewResponse"]
+    assert "conversation" not in session_schema["properties"]
+    assert {"active_interaction", "conversation_last_seq"} <= session_schema["properties"].keys()
+    stream_schema = payload["components"]["schemas"]["DifyBuilderStreamEventResponse"]
+    stream_events = stream_schema["discriminator"]["mapping"]
+    assert "command_started" in stream_events
+    assert stream_events["progress_snapshot"] == "#/components/schemas/DifyBuilderProgressSnapshotEventResponse"
+    assert "snapshot" not in stream_events
+    progress_snapshot_schema = payload["components"]["schemas"]["DifyBuilderProgressSnapshotEventData"]
+    assert {"session_id", "operation_id", "at_version", "revision", "reply_language", "execution"} <= set(
+        progress_snapshot_schema["required"]
+    )
+    assert progress_snapshot_schema["properties"]["execution"] == {
+        "$ref": "#/components/schemas/DifyBuilderExecutionProgressResponse"
+    }
+
+    serialized_request_schemas = json.dumps(
+        {
+            name: schema
+            for name, schema in payload["components"]["schemas"].items()
+            if name.startswith("DifyBuilderCreate") or name.startswith("DifyBuilderSubmit")
+        }
+    )
+    assert "response_mode" not in serialized_request_schemas
 
 
 def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):

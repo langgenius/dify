@@ -87,6 +87,14 @@ describe('useWorkflowReadOnly', () => {
 })
 
 describe('useNodesReadOnly', () => {
+  it('pauses editing until the draft conflict is resolved', () => {
+    const { result, store } = renderWorkflowHook(() => useNodesReadOnly())
+    act(() => store.getState().setWorkflowDraftConflict(true))
+    expect(result.current.nodesReadOnly).toBe(true)
+    expect(result.current.getNodesReadOnly()).toBe(true)
+    act(() => store.getState().setWorkflowDraftConflict(false))
+    expect(result.current.nodesReadOnly).toBe(false)
+  })
   it('should use the default HooksStoreContext from the workflow test helper', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly())
     expect(result.current.nodesReadOnly).toBe(false)

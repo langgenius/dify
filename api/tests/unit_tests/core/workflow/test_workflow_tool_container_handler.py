@@ -45,14 +45,11 @@ from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
 )
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
-from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_tool_container_handler import (
     WorkflowToolContainerHandler,
     WorkflowToolNestedContainerHandler,
@@ -142,6 +139,9 @@ from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
+from services.workflow_runtime.agent_binding import WorkflowAgentBindingResolver
+from services.workflow_runtime.entry import WorkflowEntry
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
@@ -899,7 +899,9 @@ class TestWorkflowToolContainerCases:
                 raise CodeExecutionError("source code failed")
             return {"output": "retried output"}
 
-        monkeypatch.setattr("core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute)
+        monkeypatch.setattr(
+            "services.workflow_runtime.node_factory.CodeExecutor.execute_workflow_code_template", execute
+        )
         source = _workflow_tool_container_workflow_tool_source()
         source_graph = dict(source.graph_config)
         source_graph["nodes"].insert(
@@ -1416,7 +1418,7 @@ class TestWorkflowToolEventDeliveryCases:
             return {"id": f"{source}-{target}", "source": source, "target": target, "sourceHandle": handle}
 
         tool_node, runtime, _ = _workflow_tool_event_delivery_workflow_tool_node()
-        monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
+        monkeypatch.setattr("services.workflow_runtime.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
         outer_graph = {
             "nodes": [
                 node("start", "start", variables=[]),
@@ -1671,7 +1673,9 @@ class TestWorkflowToolEventDeliveryCases:
                 pytest.fail("Binding resolution must wait for a persisted caller")
 
             monkeypatch.setattr(binding_resolver, "resolve", reject_resolution)
-            monkeypatch.setattr("core.workflow.node_factory.WorkflowAgentBindingResolver", lambda: binding_resolver)
+            monkeypatch.setattr(
+                "services.workflow_runtime.node_factory.WorkflowAgentBindingResolver", lambda: binding_resolver
+            )
             save = SQLAlchemyWorkflowNodeExecutionRepository.save
 
             def fail_caller_save(
@@ -1880,7 +1884,7 @@ class TestWorkflowToolFileAccessCases:
                 start_at=1,
             )
         template_node, runtime, payload = _workflow_tool_file_access_workflow_tool_node(runtime_state)
-        monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
+        monkeypatch.setattr("services.workflow_runtime.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
         tool_data = template_node.node_data.model_dump(mode="python")
         nodes = [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": list[object]()}},

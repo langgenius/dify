@@ -1,0 +1,1778 @@
+"""Real LLM cognition for Dify Builder's Build mode (light methods).
+
+Pure functions called by ``LlmBuilderAgent`` for Build cognition.
+Each degrades to an honest result on model-None / provider-error / parse-fail
+rather than crashing the advance. build_nodes lives in the same module
+(added in Task A6)."""
+
+import json
+import logging
+import re
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, replace
+from datetime import UTC, datetime
+from typing import Any, Literal
+from urllib.parse import urlsplit
+
+import json_repair
+
+from core.app.app_config.entities import ModelConfig
+from core.dify_builder import urls
+from core.dify_builder.contract import ResourceOption
+from core.dify_builder.models import BuildNodesResult, MutationIntent
+from core.workflow.generator.prompts.builder_prompts import CODE_FAILURE_POLICY_RULES, TOOL_OUTPUT_SEMANTICS_RULES
+from core.workflow.generator.tool_catalogue import score_tool_relevance
+from graphon.enums import BUILT_IN_NODE_TYPES
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
+from services.dify_builder import preflight, trace_diagnostics
+from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
+from services.dify_builder.agent.model_resolver import resolve_model_instance
+from services.dify_builder.agent.resources import ResourceRef
+from services.dify_builder.generated_graph_completeness import generated_build_completeness_problems
+from services.dify_builder.native_constant_output_contract import (
+    native_build_capability_system_rules,
+    native_constant_output_system_rules,
+)
+from services.dify_builder.plan import PLAN_PRESENTATION_INSTRUCTION, WorkflowPlan, parse_plan_response
+from services.dify_builder.tool_setup import reconcile_generated_tool_setup
+from services.workflow_generator_service import WorkflowGeneratorService
+
+logger = logging.getLogger(__name__)
+
+# A reply longer than this is prose, not a title. Well above
+# ``naming.MAX_NAME_LENGTH`` so a good-but-long title is trimmed downstream
+# rather than rejected here.
+_MAX_PROPOSED_NAME_CHARS = 80
+
+
+def analyze_goal(
+    model,
+    goal_text: str,
+    on_reasoning: Callable[[str], None] | None = None,
+    *,
+    reply_language: str | None = None,
+) -> dict[str, Any]:
+    if model is None:
+        return _degraded_form(goal_text)
+    system = (
+        "You are a Dify workflow requirements analyst. Given a build goal, propose 0-6 "
+        "clarifying fields for necessary unanswered business requirements only. Do not fill a question quota. "
+        'If the goal is sufficient to build, return "fields": [] and retain its stated requirements in "values". '
+        "Ask only when an unanswered decision materially changes the requested business behavior, such as "
+        "missing-input handling or notification recipients when those are required and unspecified. "
+        "Do not ask the user to choose implementation choices the builder can make, such as Code versus "
+        "condition nodes, or to expose already fixed thresholds as configurable inputs. Preserve explicitly "
+        "requested technical choices and all fixed thresholds, operators, units, outputs, and constraints "
+        "verbatim in values without requiring clarification fields for them. Do not invent new requirements "
+        "or reopen decisions already stated in the goal. For each necessary field, provide a sensible default "
+        "only when it does not invent an unanswered business decision. "
+        "The user already typed the goal and you are given it below, so never propose a "
+        'field that restates it -- no "requirement description", "goal" or "what do you want" field. '
+        "Every field must ask for something the goal does not already say. "
+        "Never invent a URL/endpoint, API key, token, password, or account/resource id "
+        "the goal does not state -- give such a field an empty string as its default so the "
+        f"user fills it in. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
+        'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
+        '"options": ["..."]}], "values": {"<key>": <default>}}.'
+    )
+    if reply_language:
+        system += (
+            f" Write human-facing field labels, descriptions, hints, placeholders, select options, and generated "
+            f"defaults in the session reply language (BCP-47: {reply_language}). Keep JSON keys, field keys, "
+            "and field type enums in English. Preserve literal business values supplied in the goal, including "
+            "names, currencies, URLs, and credentials. For each select field, the default value must exactly match "
+            "one of its options."
+        )
+    else:
+        system += (
+            " Write human-facing field labels, descriptions, hints, placeholders, select options, and generated "
+            "defaults in the same language as the user's input. Keep JSON keys, field keys, and field type "
+            "enums in English. Preserve literal business values supplied in the goal. For each select field, "
+            "the default value must exactly match one of its options."
+        )
+    try:
+        data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
+    except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+        return _degraded_form(goal_text)
+    fields = data.get("fields")
+    values = data.get("values")
+    if not isinstance(fields, list) or not isinstance(values, dict):
+        trace_diagnostics.report("response_schema_invalid", fallback_used=True)
+        return _degraded_form(goal_text)
+    scrubbed_values = _scrub_invented_defaults(values, goal_text)
+    answered_values = _answer_goal_restatements(fields, scrubbed_values, goal_text)
+    explained_fields = _explain_blank_fields(fields, answered_values)
+    return {
+        "fields": form_schema.reconcile_form_fields(explained_fields, answered_values),
+        "values": answered_values,
+    }
+
+
+def _is_invented_literal(value: Any, key: str | None, goal_text: str) -> bool:
+    """True when ``value`` (found under ``key``, possibly nested inside a
+    field's dict/list default) is a URL or credential the LLM invented
+    rather than one the goal actually states.
+
+    An off-goal URL -- one whose host the goal never names, with or without a
+    scheme (``user_supplied.is_user_supplied_host``) -- blanks the field
+    regardless of key. A credential-shaped placeholder (``<...>``,
+    ``YOUR_API_KEY``, ...) only blanks it when the
+    value is under a credential-named key (``user_supplied.is_credential_key``,
+    decided by the key's LAST segment -- not by containing "token" or
+    "password" anywhere) or the value itself starts with an auth scheme
+    (``Bearer ``/``Basic ``/``Token ``); otherwise an ordinary default like
+    ``"Dear <customer_name>,"`` would be blanked for no reason. A
+    credential-keyed value that isn't placeholder-shaped but also never
+    appears in the goal (e.g. an invented ``sk-live-...`` string) is still
+    caught via ``is_user_supplied_secret``.
+    """
+    if isinstance(value, dict):
+        return any(_is_invented_literal(v, k, goal_text) for k, v in value.items())
+    if isinstance(value, list):
+        return any(_is_invented_literal(item, None, goal_text) for item in value)
+    if not isinstance(value, str):
+        return False
+    if any(not user_supplied.is_user_supplied_host(host, goal_text) for host in user_supplied.url_hosts(value)):
+        return True
+    credential_key = key is not None and user_supplied.is_credential_key(key)
+    stripped = user_supplied.strip_auth_scheme(value)
+    if (credential_key or stripped != value) and user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(stripped):
+        return True
+    return credential_key and not user_supplied.is_user_supplied_secret(value, goal_text)
+
+
+def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str, Any]:
+    """Blank any top-level field whose default is an invented URL or
+    credential rather than one the goal states (S5b/F2: analysis prefilled
+    ``render_api_url=https://api.yourcompany.com/...`` and
+    ``Authorization: Bearer YOUR_API_KEY`` for a goal that named neither).
+
+    The whole field is replaced with ``""`` -- even one whose default was a
+    dict -- so the user is prompted to fill it in themselves rather than the
+    workflow running against a host or secret that doesn't exist.
+    """
+    blanked = [key for key, value in values.items() if _is_invented_literal(value, key, goal_text)]
+    if not blanked:
+        return values
+    scrubbed = dict(values)
+    for key in blanked:
+        scrubbed[key] = ""
+    logger.info("dify_builder: blanked invented default(s) for %s", ", ".join(sorted(blanked)))
+    return scrubbed
+
+
+# A requirements field whose name is one of these is asking the user to restate
+# the goal they already typed (PM report 2026-09-29: "需求描述" shipped blank, so
+# there was nothing to write). ``_degraded_form`` has always answered that
+# question with ``goal_text``; these let the LLM path do the same.
+#
+# Deliberately EXACT names, not substrings, and deliberately without a bare
+# "description"/"描述": those are ambiguous (a report description is not the
+# goal), and writing the goal into the wrong box is worse than leaving it
+# blank. The prompt rule is the first line of defence; this is the backstop.
+_GOAL_RESTATING_FIELD_NAMES = frozenset(
+    {
+        "goal",
+        "goals",
+        "usergoal",
+        "usergoals",
+        "workflowgoal",
+        "objective",
+        "objectives",
+        "requirement",
+        "requirements",
+        "userrequirement",
+        "userrequirements",
+        "requirementdescription",
+        "requirementsdescription",
+        "requirementdetail",
+        "requirementdetails",
+        "requirementoverview",
+        "requirementsummary",
+        "taskdescription",
+        "userrequest",
+        "userneed",
+        "userneeds",
+        "需求",
+        "需求描述",
+        "需求说明",
+        "需求详情",
+        "需求内容",
+        "需求概述",
+        "用户需求",
+        "目标",
+        "目标描述",
+        "工作流目标",
+        "任务描述",
+    }
+)
+
+# Types that cannot hold the goal sentence: a select would gain a value none of
+# its options offer, and the rest are not free text. Anything else -- including
+# a missing or unknown type -- becomes a text box downstream
+# (``handlers_fix.build_form_fields`` clamps unknown types to "text"), so it can.
+_NON_TEXT_FORM_FIELD_TYPES = frozenset({"bool", "json", "json_object", "number", "select"})
+
+_FIELD_NAME_SEPARATORS = re.compile(r"[\s_\-:：*]+")
+
+
+# Shown on a requirements field that arrived empty, so it reads as a question
+# Fixed blank-field explanations carry a presentation ID rather than translated prose.
+
+
+def _explain_blank_fields(fields: list[Any], values: dict[str, Any]) -> list[Any]:
+    """Attach fixed hint metadata to every field that ends up without a value.
+
+    A field is blank either because the model had nothing to offer or because
+    ``_scrub_invented_defaults`` blanked an invented credential ON PURPOSE.
+    Both look identical to the user, so both get the same explanation. A field
+    the model already hinted keeps its own wording.
+    """
+    explained: list[Any] = []
+    for field_spec in fields:
+        if not isinstance(field_spec, dict) or not field_spec.get("key"):
+            explained.append(field_spec)
+            continue
+        value = values.get(str(field_spec["key"]))
+        blank = value is None or (isinstance(value, str) and not value.strip())
+        if not blank or field_spec.get("hint"):
+            explained.append(field_spec)
+            continue
+        explained.append(
+            {
+                **field_spec,
+                "hint_copy": asdict(copy_text(BuilderCopyId.REPLIES_NOT_STATED_IN_YOUR_REQUEST_ADD_IT_IF_YOU_HAVE_ONE)),
+            }
+        )
+    return explained
+
+
+def _restates_the_goal(field: dict[str, Any]) -> bool:
+    """True when this field's key or label just asks for the goal back."""
+    for raw in (field.get("key"), field.get("label")):
+        if not isinstance(raw, str):
+            continue
+        if _FIELD_NAME_SEPARATORS.sub("", raw).strip().lower() in _GOAL_RESTATING_FIELD_NAMES:
+            return True
+    return False
+
+
+def _answer_goal_restatements(fields: list[Any], values: dict[str, Any], goal_text: str) -> dict[str, Any]:
+    """Fill any goal-restating field the model left blank with the goal itself.
+
+    Repairs, never overwrites: a field the model actually answered keeps its
+    answer, and a blank field that asks for something else -- a credential the
+    scrubber blanked ON PURPOSE, say -- stays blank. Spraying the goal into
+    every empty box would be worse than the bug this fixes.
+    """
+    answered = dict(values)
+    for field_spec in fields:
+        if not isinstance(field_spec, dict):
+            continue
+        raw_key = field_spec.get("key")
+        if not raw_key:
+            continue
+        if field_spec.get("type") in _NON_TEXT_FORM_FIELD_TYPES:
+            continue
+        key = str(raw_key)
+        current = answered.get(key)
+        if current is not None and not (isinstance(current, str) and not current.strip()):
+            continue
+        if not _restates_the_goal(field_spec):
+            continue
+        answered[key] = goal_text
+    return answered
+
+
+def propose_app_name(
+    model,
+    goal_text: str,
+    requirements: dict[str, Any],
+    on_reasoning: Callable[[str], None] | None = None,
+) -> str:
+    """Name the app the way a person would title it (spec N1).
+
+    Returns "" whenever it cannot beat the name already cut from the prompt --
+    no model, a failed call, or a sentence instead of a title. The caller then
+    keeps the derived name, so this never has to be right, only safe.
+    """
+    if model is None:
+        return ""
+    system = (
+        "You name Dify apps. Given the goal the user typed, reply with a short title for "
+        "the app -- a noun phrase naming what it does, at most 5 words, no trailing "
+        "punctuation, no quotes, not a sentence and not an instruction. "
+        "Write it in the same language the user wrote the goal in. "
+        "Reply with ONLY the title."
+    )
+    user = f"GOAL:\n{goal_text}"
+    if requirements:
+        user += f"\n\nREQUIREMENTS:\n{json.dumps(requirements, ensure_ascii=False)[:1000]}"
+    try:
+        raw = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning).strip()
+    except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+        logger.warning("dify_builder: app-name proposal failed; keeping the derived name", exc_info=True)
+        return ""
+    # A sentence ("Sure! Here is a good name for...") is worse than the
+    # mechanical cut, so accept only a title-shaped reply.
+    first_line = raw.splitlines()[0].strip() if raw else ""
+    if not first_line or len(first_line) > _MAX_PROPOSED_NAME_CHARS:
+        return ""
+    return first_line
+
+
+def _degraded_form(goal_text: str) -> dict[str, Any]:
+    return {
+        "fields": [
+            {
+                "key": "goal",
+                "label": "Goal",
+                "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
+                "type": "textarea",
+                "options": [],
+            }
+        ],
+        "values": {"goal": goal_text},
+    }
+
+
+# The node types a plan step may map to. This exists because the Builder's own
+# planner previously had NO node vocabulary (ESQ1-279): it planned in business
+# language ("Send a Feishu notification"), and the generator -- whose system
+# prompt DOES carry a node whitelist -- was then handed steps it could not map
+# onto any real node, failing only after the user had approved the plan.
+#
+# Deliberately Builder-only. The generator's own whitelist lives in the SHARED
+# core/workflow/generator/prompts/planner_prompts.py, which cmd+K also uses and
+# which this package must not touch. Keep the two conceptually aligned, but do
+# not try to import across that boundary.
+_DIFY_NODE_VOCABULARY = """\
+- "start"               — workflow entry. Always present. Holds the input form variables.
+- "end"                 — workflow exit. Returns the result.
+- "llm"                 — call an LLM with a prompt.
+- "code"                — run a Python/JavaScript snippet.
+- "template-transform"  — Jinja2 string templating.
+- "http-request"        — call an external HTTP API.
+- "tool"                — call a Dify built-in or installed plugin tool (web search, Slack, JSON, …).
+- "agent"               — New Agent v2 (version=2, agent_node_kind=dify_agent): call a listed published Workspace Agent.
+                          Use only eligible roster candidates, never legacy Agent strategies.
+                          Inputs follow its published declarations; outputs are caller node-job declarations.
+- "if-else"             — branch on a condition.
+- "iteration"           — run a sub-pipeline over every item of a list.
+- "loop"                — repeat a sub-pipeline until an exit condition holds.
+- "question-classifier" — route to a labelled branch by free-text intent.
+- "parameter-extractor" — pull structured fields out of free text with an LLM.
+- "document-extractor"  — extract text from an uploaded file. Needs a file input.
+- "variable-aggregator" — rejoin mutually-exclusive branches into one variable.
+- "list-operator"       — filter / sort / slice an array variable.
+- "assigner"            — update an existing conversation or loop variable."""
+
+
+def _node_vocabulary(mode: str) -> str:
+    if mode == "advanced-chat":
+        return _DIFY_NODE_VOCABULARY.replace(
+            '- "end"                 — workflow exit. Returns the result.',
+            '- "answer"              — Chatflow reply. Returns text to the user.',
+        )
+    return _DIFY_NODE_VOCABULARY
+
+
+# How many ready tools the Builder's planner is shown. The ESQ1-302 tenant had
+# 35; a cap keeps the prompt bounded on tenants with hundreds. Tools are ranked
+# by relevance to the request first, so a matching tool is never hidden behind
+# alphabetically earlier ones; ties keep id order so the listing is stable.
+_MAX_PLANNER_TOOLS = 40
+# How many installed tools (ready or needing setup) the resource recommender
+# is shown, ranked the same way. Models are listed in full as before.
+_MAX_DISCOVERY_TOOLS = 40
+
+
+def _tool_key(ref: ResourceRef) -> tuple[str, str]:
+    """``(provider_name, tool_name)`` of a tool resource id ``provider/tool``.
+    Provider ids may contain slashes; tool names never do."""
+    provider_name, _, tool_name = ref.id.rpartition("/")
+    return provider_name, tool_name
+
+
+def _request_text(goal_text: str, requirements: dict[str, Any] | None, plan_items: Sequence[str] = ()) -> str:
+    """The free text tools are ranked against."""
+    parts = [goal_text, json.dumps(requirements, ensure_ascii=False) if requirements else "", *plan_items]
+    return "\n".join(part for part in parts if part)
+
+
+def _rank_tools(tools: Sequence[ResourceRef], query_text: str) -> list[ResourceRef]:
+    """Tools ordered by relevance to ``query_text`` (the shared tool-catalogue
+    scorer over id, label, description and provider capability), ties and an
+    empty query in id order."""
+    if not query_text.strip():
+        return sorted(tools, key=lambda t: t.id)
+
+    def score(ref: ResourceRef) -> float:
+        provider_name, tool_name = _tool_key(ref)
+        value, _confident = score_tool_relevance(
+            query_text,
+            provider_name=provider_name,
+            tool_name=tool_name,
+            label=ref.label,
+            description=ref.description,
+            capability=ref.capability,
+        )
+        return value
+
+    scored = [(score(ref), ref) for ref in tools]
+    scored.sort(key=lambda item: (-item[0], item[1].id))
+    return [ref for _score, ref in scored]
+
+
+def ready_tool_catalogue(
+    tenant_id: str,
+    *,
+    account_id: str | None = None,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+) -> list[ResourceRef]:
+    """Installed schemas the planner may name, including delayed credential setup.
+
+    The historical name is retained for existing consumers. Relevance ranking
+    and the planner cap remain; readiness describes later setup rather than
+    permission to bind a draft. ``account_id`` controls metadata visibility
+    (``None``: team-shared only), never access to another member's credential.
+    A listing failure yields ``[]`` -- the plan then just cannot name tools,
+    which is the pre-existing behaviour, never a crashed advance."""
+    return planning_catalogue(tenant_id, account_id=account_id, goal_text=goal_text, requirements=requirements).tools
+
+
+def planning_catalogue(
+    tenant_id: str,
+    *,
+    account_id: str | None = None,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+) -> resources.TenantResources:
+    """One metadata read preserves eligible Agents beside ranked installed tools.
+
+    The resource owner enforces current actor/publication visibility; no actor
+    means no Agent catalog. This projection proposes a plan, never a binding.
+    """
+    try:
+        inventory = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    except Exception as exc:
+        trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
+        logger.warning("dify_builder: resource listing failed; planning without a catalogue", exc_info=True)
+        return resources.TenantResources(
+            models=[], datasets=[], tools=[], agent_source_error="Published Agent catalog unavailable"
+        )
+    return replace(
+        inventory, tools=_rank_tools(inventory.tools, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
+    )
+
+
+def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
+    if not tools:
+        return ""
+    listing = "\n".join(_discovery_line(t.id, "plugin", t) for t in tools)
+    # "as a separate word": the generator pins a tool only on its id bounded by
+    # non-word characters (tool_catalogue's identifier boundary), and CJK counts
+    # as a word character -- "使用bowenliang123/..." never pins.
+    return (
+        "\n\n# Installed tools you may name (draft binding; setup may be required)\n"
+        "When one of these covers a step, plan that step as a `tool` node and name the tool "
+        "by its id. Installed missing_config actions may be bound now and configured before testing or "
+        "publishing; never select another member's credentials. Write the id exactly as listed, "
+        "and preserve explicitly required installed actions even when setup is missing. "
+        "Promise tool parameters only when their names appear in that action's declarations. "
+        "If a requested setting is undeclared or the declarations are unknown, explain that limitation; "
+        "do not claim the tool implements it. Credential setup cannot add undeclared parameters: "
+        "an unsupported requirement remains unmet, not pending authorization or future configuration. "
+        "If the output schema is absent or unknown, do not commit a downstream step to a guessed output channel; "
+        "plan explicit parsing and validation of the actual payload instead of claiming that json contains records. "
+        "A separate native transformation may implement a supported "
+        "result-processing requirement, but cannot establish a tool's safety or timeout behavior. "
+        "as a separate word (with a space on "
+        "each side, even in Chinese or Japanese text). An `http-request` endpoint must be "
+        "user-supplied or a required Start input supplied at runtime -- never invent one.\n"
+        f"{listing}"
+    )
+
+
+def _planner_agent_section(agents: Sequence[ResourceRef], source_error: str | None) -> str:
+    if source_error:
+        return "\n\nPublished Agent catalog is unavailable; do not infer that the workspace has no matching Agents."
+    if not agents:
+        return ""
+    listing = "\n".join(_discovery_line(ref.id, "agent", ref) for ref in agents)
+    return (
+        "\n\n# Published Workspace Agents you may name (resource confirmation required)\n"
+        "When a listed candidate fits the original request, plan an `agent` node using New Agent v2 and name its "
+        "exact listed id. Resource confirmation must select that binding before generation. Its capability source "
+        "and dependencies are public metadata; setup/readiness is not runtime authorization. Inputs come from "
+        "published Soul app-variable declarations. Outputs must be declared by the caller's node job; "
+        "never invent a published Agent output schema.\n"
+        f"{listing}"
+    )
+
+
+def _cognition_source(goal_text: str, requirements: dict[str, Any] | None) -> str:
+    """Keep the full source in every source-dependent cognition payload."""
+    return f"ORIGINAL GOAL:\n{goal_text}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(
+        requirements if requirements is not None else {}, ensure_ascii=False
+    )
+
+
+def propose_plan_v1(
+    model,
+    requirements: dict[str, Any],
+    on_reasoning: Callable[[str], None] | None = None,
+    *,
+    tools: Sequence[ResourceRef] = (),
+    agents: Sequence[ResourceRef] = (),
+    agent_source_error: str | None = None,
+    goal_text: str = "",
+    mode: str = "workflow",
+    reply_language: str | None = None,
+) -> WorkflowPlan | None:
+    """Return an intact plan or None, with at most one schema correction.
+
+    The service-only source default supports direct callers during sequential
+    adapter migration; runtime adapters must pass the original goal explicitly.
+    Structural validity alone does not prove the plan covers the source.
+    """
+    if model is None:
+        return None
+    system = (
+        "You are a Dify workflow planner. Given the original goal and confirmed requirements, "
+        "propose an ordered list of concise build steps. Preserve requested actions and outputs; "
+        "requirements may refine the goal, but do not silently resolve conflicting instructions. "
+        "Use native Code for exact parsing, arithmetic and validation, and Template for deterministic formatting. "
+        "A conditional model preference does not require an LLM step. "
+        "Preserve explicit generative or semantic behavior "
+        "and any explicitly required model identity; choose an LLM when those requirements call for one. "
+        "Do not add generative rewriting to a fixed-format report just to use a preferred model.\n\n"
+        "Every step MUST be implementable by exactly one of these Dify node types, and you "
+        "may plan ONLY in these terms:\n\n"
+        f"{_node_vocabulary(mode)}\n\n"
+        "Write each step as the work that node does, naming the node type. Good: "
+        '"llm node drafts a reply from the ticket text". Bad: "Notify the team on Feishu" '
+        "-- that names a product, not a node.\n\n"
+        "Dify has no scheduler, database, email or messaging node. An external action can use "
+        "a matching installed `tool` node, a listed eligible published Workspace Agent, "
+        "an `http-request` node with a user-supplied "
+        "endpoint, or an `http-request` node whose endpoint is a required Start input supplied "
+        "at runtime. A missing URL alone is not an unsupported capability: retain the requested "
+        "HTTP action and require the endpoint input rather than skipping it. Reserve work "
+        "outside the workflow for an actual unsupported capability. Do not replace a requested "
+        "real file with Markdown or JSON success because an endpoint is absent. Endpoint "
+        "deferral does not establish API availability, authentication, request schema or response "
+        "schema; do not invent any of them. Resource mentions, including optional or negative "
+        "mentions, do not alone require using a resource."
+        f"{CODE_FAILURE_POLICY_RULES}{TOOL_OUTPUT_SEMANTICS_RULES}\n\n"
+        f"{_planner_tool_section(tools)}{_planner_agent_section(agents, agent_source_error)}\n\n"
+        f"{PLAN_PRESENTATION_INSTRUCTION}"
+    )
+    system = _topology_directive(mode) + "\n\n" + system
+    system += "\n\n" + native_constant_output_system_rules()
+    system += llm.json_language_instruction(
+        "the plan title, input and output summaries, and plan steps", reply_language=reply_language
+    )
+    source = _cognition_source(goal_text, requirements)
+    user = source
+    for attempt in range(2):
+        try:
+            # invoke_json retries internally; use one provider call per attempt
+            # so parsing and schema correction share the same two-call budget.
+            text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
+        except Exception:
+            trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+            return None
+        try:
+            data = json_repair.loads(text)
+            if not isinstance(data, dict):
+                trace_diagnostics.report("json_decode_failed", attempt=attempt + 1)
+        except Exception as exc:
+            trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+            trace_diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
+            data = None
+        try:
+            return parse_plan_response(data)
+        except ValueError as exc:
+            if isinstance(data, dict):
+                trace_diagnostics.report("response_schema_invalid", error=exc, attempt=attempt + 1)
+            issue = str(exc)
+        if attempt == 0:
+            user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
+    return None
+
+
+def discover_resources(
+    model,
+    tenant_id: str,
+    plan_items: list[str],
+    on_reasoning: Callable[[str], None] | None = None,
+    *,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+    account_id: str | None = None,
+    mode: str = "workflow",
+    reply_language: str | None = None,
+) -> list[ResourceOption]:
+    """Recommend installed tools and models for the plan.
+
+    Recommendations include a bounded localized business rationale grounded in
+    public capability declarations, or an explicit note when unavailable so
+    selected identities survive a malformed explanation. Discovery eligibility is server-owned and
+    is separate from runtime setup/authorization, which binding and execution
+    revalidate. Tools are every installed tool -- ready or needing setup -- ranked by
+    relevance to the goal, requirements and plan and bounded to
+    ``_MAX_DISCOVERY_TOOLS``. A recommended missing_config tool keeps that
+    readiness and its setup note in ``meta``; installed tools remain bindable
+    before setup, while native runtime authorization is still required. ``account_id`` is the acting member whose
+    credentials decide readiness (``None``: team-shared only).
+    """
+    inv = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    tools = _rank_tools(inv.tools, _request_text(goal_text, requirements, plan_items))[:_MAX_DISCOVERY_TOOLS]
+    catalog = {r.id: ("plugin", r) for r in tools}
+    catalog.update({r.id: ("model", r) for r in inv.models})
+    catalog.update({r.id: ("agent", r) for r in inv.agents})
+    if not catalog or model is None:
+        return []
+    system = (
+        "You are a Dify workflow resource recommender. From the AVAILABLE resources, pick the "
+        "smallest set of ids needed for the original goal, confirmed requirements and plan, or an "
+        "explicitly required identity. Compare each declared business capability to work not covered by native nodes. "
+        "Native Code, branching and Template do not require similarly named plugins. "
+        "The Builder's own reasoning model is not a workflow model dependency. Recommend a model only for an "
+        "actual generative or semantic workflow step, or an explicitly required model identity; "
+        "a conditional model preference "
+        "does not require adding such a step. Do not add plan behavior to justify resources. "
+        "Preserve explicitly requested tool, model and published Agent identities "
+        "even when native capabilities overlap. "
+        "A mention alone "
+        "does not require a resource; respect optional and negative source instructions. "
+        "Each is listed with its readiness: 'ready' or 'missing_config' (installed in this workspace "
+        "but it requires setup -- its credentials are not authorized for this member, or the "
+        "authorization could not be verified -- so it cannot run until set up). You may recommend a "
+        "missing_config tool when it is the right fit; it is presented as requiring setup. Prefer a "
+        "ready resource that fits equally well. Readiness proves configuration metadata only, not live availability. "
+        "Never infer provider retirement from a service error or an empty catalogue; "
+        "lifecycle needs explicit evidence. "
+        "Use ONLY listed ids. Copy each complete id verbatim, including every Agent snapshot/digest suffix; "
+        "do not shorten an Agent id to its UUID. Reply with ONLY JSON: "
+        '{"resource_ids": ["<id>", ...], "selection_reasons": {"<selected resource id>": "<reason>"}}.'
+    )
+    if inv.agent_source_error:
+        system += " Published Agent catalog is unavailable; do not infer that the workspace has no Agents."
+    system += (
+        " Agent resources are published Workspace Agents; their node-job outputs must be declared by the caller. "
+        "For every selected resource (tool, model or Agent), provide a nonempty selection_reasons entry "
+        "of at most 360 characters explaining "
+        "the requested business outcome and why its declared capability (with supplied provenance) is useful there. "
+        "Explain native overlap versus required external capability where material. "
+        "Use capability declarations, not name similarity; do not invent capabilities or output schemas. "
+        "Reasons must describe capability relevance only, never grant permission or claim runtime readiness. "
+        "Reference eligibility is established only by the actor-scoped catalog, and runtime authorization remains "
+        "unverified even when setup metadata says ready. Omit reasons for unselected ids."
+    )
+    system += "\n\n# Native workflow build vocabulary\n\n" + _node_vocabulary(mode)
+    system += "\n\n" + native_build_capability_system_rules()
+    system += llm.json_language_instruction("selection_reasons business explanations", reply_language=reply_language)
+    listing = "\n".join(_discovery_line(rid, kind, ref) for rid, (kind, ref) in catalog.items())
+    user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
+    try:
+        data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
+        selected = data.get("resource_ids")
+        selected_sources: dict[str, str] = {}
+        for raw_id in selected if isinstance(selected, list) else []:
+            if not isinstance(raw_id, str):
+                continue
+            rid = raw_id
+            if rid not in catalog:
+                # Recover only an exact short Agent UUID against this current,
+                # actor-scoped catalog. Never strip a stale full selection's
+                # snapshot/digest or search by name for a replacement.
+                if not re.fullmatch(r"agent:[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}", raw_id):
+                    continue
+                matches = [
+                    candidate
+                    for candidate, (kind, _) in catalog.items()
+                    if kind == "agent" and candidate.startswith(raw_id + ":") and candidate.count(":") == 3
+                ]
+                if len(matches) != 1:
+                    continue
+                rid = matches[0]
+            # Keep the rationale attached to the selected spelling. An explicit
+            # full identity takes precedence if both spellings were selected.
+            if rid not in selected_sources or raw_id == rid:
+                selected_sources[rid] = raw_id
+        chosen_ids = list(selected_sources)
+        reasons = data.get("selection_reasons")
+        selection_reasons = {
+            rid: " ".join(reason.split())
+            for rid in chosen_ids
+            if isinstance(reasons, dict)
+            and isinstance(reason := reasons.get(selected_sources[rid]), str)
+            and 0 < len(reason.strip()) <= 360
+        }
+        if any(rid not in selection_reasons for rid in chosen_ids):
+            trace_diagnostics.report("response_schema_invalid", fallback_used=True)
+    except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+        logger.warning("dify_builder: resource recommendation failed; recommending none", exc_info=True)
+        chosen_ids = []
+        selection_reasons = {}
+    # Recommending nothing is the honest answer when there is no signal -- no
+    # model, a failed call, or a model that picked none. The old code fell back
+    # to the whole tenant inventory, and because the client pre-checks every
+    # recommendation and submits them by default, that silently bound dozens of
+    # unrelated resources and appended their names to the plan fed to the
+    # generator. The caller states the situation instead.
+    options: list[ResourceOption] = []
+    for rid in chosen_ids:
+        kind, ref = catalog[rid]
+        chinese = bool(reply_language and reply_language.lower().startswith("zh"))
+        reason = selection_reasons.get(rid)
+        fallback = (
+            "推荐理由暂不可用；请在确认前核对已声明的能力是否符合目标。"
+            if chinese
+            else "Selection rationale unavailable; review the declared capability against your goal before confirming."
+        )
+        meta = reason or fallback
+        if kind == "agent":
+            # Public provenance and eligibility facts remain server-owned, even
+            # when a model rationale is absent or malformed.
+            note = (
+                (f"推荐理由（模型）：{reason}" if chinese else f"Selection rationale (model): {reason}")
+                if reason
+                else fallback
+            )
+            meta = f"{note} {ref.meta}".strip() if chinese else f"{ref.meta} {note}".strip()
+        elif ref.readiness == "missing_config":
+            # Only catalog metadata decides setup. Do not repeat the tool's
+            # raw action manual or let model prose assert authorization.
+            unverified = resources.AUTHORIZATION_UNVERIFIED_NOTE in ref.meta
+            setup = (
+                ("需要配置：授权尚未核实。" if unverified else "需要配置：运行前请在工作区授权凭据。")
+                if chinese
+                else (resources.AUTHORIZATION_UNVERIFIED_NOTE if unverified else resources.SETUP_REQUIRED_NOTE)
+            )
+            meta = f"{meta} {setup}"
+        options.append(ResourceOption(id=rid, label=ref.label, meta=meta, kind=kind, readiness=ref.readiness))
+    return options
+
+
+def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
+    line = f"- {rid} ({kind}, {ref.readiness}): {ref.label}"
+    meta = ref.meta.replace("\n", " ").strip()
+    if meta:
+        line += f" — {meta[:240]}"
+    if kind == "plugin":
+        # Descriptions alone do not establish parameter support. Keep public
+        # declarations separate from the capped prose so the planner cannot
+        # mistake a missing setting for an installed action capability.
+        declarations = (
+            json.dumps(ref.parameter_contract, ensure_ascii=False, sort_keys=True)
+            if ref.parameter_contract is not None
+            else "unknown"
+        )
+        line += "\n  Action parameter declarations: " + declarations
+        line += "\n  Action output schema: " + ref.output_schema_state
+    if ref.model_contract:
+        line += "\n  Model declaration: " + json.dumps(ref.model_contract, sort_keys=True)
+    if ref.availability:
+        line += "\n  Availability metadata: " + json.dumps(ref.availability, sort_keys=True)
+    if kind == "agent" and ref.agent_contract is not None:
+        # Public input/dependency declarations must survive the prose cap.
+        line += "\n  Agent contract: " + json.dumps(ref.agent_contract, sort_keys=True)
+    return line
+
+
+_GAP_SYSTEM = (
+    "You check whether the original goal, confirmed requirements and workflow plan can be built "
+    "from native workflow building blocks and the selected external resources listed. "
+    "Respect optional and negative resource instructions; a mention "
+    "alone is not a required invocation. A missing HTTP endpoint can be a required Start input "
+    "provided at runtime; do not treat a missing URL alone as an unsupported capability or "
+    "invent an API contract. Each resource is "
+    "shown with its readiness: 'ready' or 'missing_config'. A missing_config Tool is installed "
+    "and can cover a draft step with delayed credential setup; credentials must be configured "
+    "or selected before testing or publishing. Setup is not a missing capability. "
+    "Name in ONE plain sentence any step not covered by a native building block or a confirmed selected binding, "
+    "and say which coverage remains unconfirmed; absence from selected candidates is not proof of an unavailable "
+    "workspace capability. Readiness is configuration metadata, not live health or supplier lifecycle proof. "
+    "Never infer retirement from a service failure or empty catalogue. "
+    "Never name a product to install. Reply with ONLY JSON: "
+    '{"gap": "<sentence, or empty string when the plan is covered>"}.'
+)
+
+
+def assess_capability_gap(
+    model,
+    plan_items: list[str],
+    options: list[ResourceOption],
+    *,
+    goal_text: str = "",
+    requirements: dict[str, Any] | None = None,
+    mode: str = "workflow",
+) -> str:
+    """One sentence naming an uncovered draft capability or named requirement.
+
+    Native build vocabulary is separate from the selected external resources;
+    neither grants runtime admission. There is no marketplace lookup, so this
+    says a capability is missing, never which plugin would supply it. A
+    ``missing_config`` Tool has an installed action schema and can cover a draft
+    step; its credentials require later setup before testing or publishing. A model we cannot
+    reach reports no gap: inventing one would block a build that might be
+    fine.
+    """
+    if model is None or not plan_items:
+        return ""
+    listing = "\n".join(f"- {o.id} ({o.kind}, {o.readiness}): {o.label}" for o in options) or "- (none)"
+    try:
+        data = llm.invoke_json(
+            model,
+            system=(
+                _GAP_SYSTEM
+                + "\n\n# Native workflow build vocabulary\n\n"
+                + _node_vocabulary(mode)
+                + "\n\n"
+                + native_constant_output_system_rules()
+                + "\n\n"
+                + native_build_capability_system_rules()
+                + llm.json_language_instruction("the gap sentence")
+            ),
+            user=(
+                f"{_cognition_source(goal_text, requirements)}\n\n"
+                f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
+            ),
+        )
+    except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+        logger.warning("dify_builder: capability-gap assessment failed", exc_info=True)
+        return ""
+    gap = data.get("gap")
+    return str(gap).strip() if isinstance(gap, str) else ""
+
+
+# Which plan step a resource kind covers, by the node vocabulary the planner
+# writes its steps in (see _DIFY_NODE_VOCABULARY). Matched case-insensitively,
+# as a whole word/phrase, because steps mix scripts ("tool节点：...").
+_STEP_KEYWORDS_BY_KIND: dict[str, tuple[str, ...]] = {
+    "model": ("llm", "question-classifier", "parameter-extractor"),
+    "plugin": ("tool",),
+    "agent": ("agent",),
+}
+
+
+def _term_in_step(item: str, term: str) -> bool:
+    """Whether ``term`` names ``item``: case-insensitive, and bounded on both
+    sides by a non-ASCII-alphanumeric character (or the string edge) so
+    "tool" doesn't match inside "toolkit" and "llm" doesn't match inside
+    "fulfillment". CJK characters, hyphens, colons and punctuation all count
+    as boundaries, so "llm节点" and "tool节点" still match.
+    """
+    if not term:
+        return False
+    pattern = rf"(?<![a-z0-9]){re.escape(term.lower())}(?![a-z0-9])"
+    return re.search(pattern, item.lower()) is not None
+
+
+def _covering_step(plan_items: list[str], kind: str, ref: ResourceRef) -> int:
+    """Index of the first step a resource covers: one naming the resource's
+    id, else one naming its label, else one naming its kind's node type;
+    ``-1`` when none does.
+
+    The id comes first because the planner is told to name a tool by its id
+    (``_planner_tool_section``): with two tool steps, the "tool" keyword alone
+    would bind both tools to the first of them.
+    """
+    for term in (ref.id, ref.label):
+        for index, item in enumerate(plan_items):
+            if _term_in_step(item, term):
+                return index
+    for index, item in enumerate(plan_items):
+        if any(_term_in_step(item, keyword) for keyword in _STEP_KEYWORDS_BY_KIND.get(kind, ())):
+            return index
+    return -1
+
+
+def _bound_name(kind: str, ref: ResourceRef) -> str:
+    """How a bound resource is named in its step's "(using ...)" suffix.
+
+    A tool carries its ``provider/tool`` id in ASCII brackets after the label:
+    the shared generator pins a tool deterministically only on that identifier
+    (``tool_catalogue._find_explicit_tool_keys``), never on the label, and its
+    boundary treats '[' / ']' as non-word characters. A model's label already is
+    its full id and keeps the label alone.
+    """
+    return f"{ref.label} [{ref.id}]" if kind in {"plugin", "agent"} else ref.label
+
+
+# A binder-produced suffix, or several stacked from repeated binds, trailing
+# a plan item. Stripped before each bind so a loop-back re-bind reflects only
+# the current selection instead of accumulating every past one. A tool's
+# "[provider/tool]" id sits inside the parentheses and holds no parenthesis
+# itself, so ``[^()]*`` strips it along with the label.
+_TRAILING_USING_SUFFIX = re.compile(r"(\s*\(using [^()]*\))+\s*$")
+
+
+def bind_resources(
+    model,
+    tenant_id: str,
+    plan_items: list[str],
+    resource_ids: list[str],
+    *,
+    account_id: str | None = None,
+) -> list[str]:
+    """Name each selected resource on the plan step it covers.
+
+    Used to append every label to the LAST step -- in the ESQ1-302 session the
+    end-node step read "(using langgenius/tokener/tokener/deepseek-v4-flash,
+    Code Interpreter)" while the step that needed a tool said nothing. The
+    last step is now only the fallback for a resource no step names. A tool
+    is named with its id (``_bound_name``) so the generator pins exactly that
+    tool.
+
+    A loop-back (build.review / build.reverted -> re-walk resources ->
+    approve_plan) feeds the already-bound plan back in here, so every item's
+    trailing "(using ...)" suffix is stripped before binding fresh: a
+    deselected resource must not keep its old suffix, and a re-bind of the
+    same selection must not pile a duplicate on top of it.
+
+    Verified installed actions remain bound when credentials require setup.
+    The fresh inventory remains authoritative for tenant/action identity;
+    binding a schema does not select or authorize any stored credential.
+    """
+    inv = _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids)
+    installed_tools = inv.tools
+    kinds: dict[str, str] = {}
+    kinds.update({r.id: "plugin" for r in installed_tools})
+    kinds.update({r.id: "model" for r in inv.models})
+    kinds.update({r.id: "agent" for r in inv.agents})
+    _selected_agent_resources(inv, resource_ids)
+    by_id = {r.id: r for r in (*installed_tools, *inv.models, *inv.agents)}
+    chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
+    stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
+    if not chosen:
+        return stripped
+    if not plan_items:
+        return [f"Use {', '.join(_bound_name(kinds[r.id], r) for r in chosen)}"]
+    names_by_step: dict[int, list[str]] = {}
+    for ref in chosen:
+        index = _covering_step(stripped, kinds[ref.id], ref)
+        names_by_step.setdefault(index if index >= 0 else len(stripped) - 1, []).append(_bound_name(kinds[ref.id], ref))
+    bound = list(stripped)
+    for index, names in names_by_step.items():
+        suffix = f" (using {', '.join(names)})"
+        if suffix not in bound[index]:
+            bound[index] = bound[index] + suffix
+    return bound
+
+
+def _inventory_for_selection(
+    tenant_id: str, *, account_id: str | None, resource_ids: Sequence[str]
+) -> resources.TenantResources:
+    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+    selected_ids = frozenset(
+        AgentBindingSelection.from_resource_id(rid).agent_id for rid in resource_ids if rid.startswith("agent:")
+    )
+    if selected_ids:
+        return resources.list_tenant_resources(tenant_id, account_id=account_id, selected_agent_ids=selected_ids)
+    return resources.list_tenant_resources(tenant_id, account_id=account_id)
+
+
+def _selected_agent_resources(inv: resources.TenantResources, resource_ids: Sequence[str]) -> list[ResourceRef]:
+    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection, AgentSnapshotChanged
+
+    selected = [rid for rid in resource_ids if rid.startswith("agent:")]
+    if selected and inv.agent_source_error:
+        raise ValueError("Published Agent catalog unavailable; retry selection")
+    by_id = {ref.id: ref for ref in inv.agents}
+    for rid in selected:
+        selection = AgentBindingSelection.from_resource_id(rid)
+        if rid not in by_id:
+            replacement = next(
+                (
+                    AgentBindingSelection.from_resource_id(ref.id)
+                    for ref in inv.agents
+                    if AgentBindingSelection.from_resource_id(ref.id).agent_id == selection.agent_id
+                ),
+                None,
+            )
+            if replacement is not None:
+                raise AgentSnapshotChanged(effective_snapshot_id=replacement.snapshot_id)
+            raise ValueError("Selected published Agent is no longer available")
+    return [by_id[rid] for rid in selected]
+
+
+def learn_from_build(
+    model,
+    goal_text: str,
+    requirements: dict[str, Any],
+    plan_items: list[str],
+    built_node_ids: list[str],
+    on_reasoning: Callable[[str], None] | None = None,
+) -> str:
+    fallback = f"Reusable skill: a {len(built_node_ids)}-node workflow for: {goal_text[:80]}"
+    if model is None:
+        return fallback
+    system = "Summarize this built workflow as a one-line reusable skill descriptor. Reply with plain text."
+    try:
+        return (
+            llm.invoke_text(
+                model,
+                system=system,
+                user=f"GOAL: {goal_text}\nPLAN: {plan_items}",
+                on_reasoning=on_reasoning,
+            )
+            or fallback
+        )
+    except Exception:
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+        return fallback
+
+
+_ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
+
+
+def _generator_model_config(tenant_id: str, model_config: dict[str, Any]) -> ModelConfig:
+    if model_config:
+        return ModelConfig.model_validate(
+            {
+                "provider": model_config.get("provider", ""),
+                "name": model_config.get("name", ""),
+                "mode": model_config.get("mode", "chat"),
+                "completion_params": model_config.get("completion_params", {}),
+            }
+        )
+    inst = resolve_model_instance(tenant_id, None)  # tenant default; read real provider/name off it
+    return ModelConfig.model_validate(
+        {
+            "provider": inst.provider,
+            "name": inst.model_name,
+            "mode": "chat",
+            "completion_params": {},
+        }
+    )
+
+
+def _selected_workflow_model(tenant_id: str, resource_ids: Sequence[str]) -> ModelConfig | None:
+    """The user-selected MODEL resource (from the resource-confirmation step) as a
+    ModelConfig to ground the built workflow's node model blocks, or None when the
+    user selected no model.
+
+    A model resource id is ``{provider}/{name}`` (see ``resources._list_models``),
+    so split on the last '/'. Only ids that are actually model resources qualify --
+    a selected dataset/tool must never ground a node's model. This is deliberately
+    separate from the Builder's session/cognition model: the workflow runs on the
+    model the user picked, not on whatever model drives the Builder itself.
+    """
+    if not resource_ids:
+        return None
+    model_ids = {m.id for m in resources.list_tenant_resources(tenant_id).models}
+    selected = next((rid for rid in resource_ids if rid in model_ids), None)
+    if selected is None:
+        return None
+    provider, _, name = selected.rpartition("/")
+    if not provider or not name:
+        return None
+    return ModelConfig.model_validate({"provider": provider, "name": name, "mode": "chat", "completion_params": {}})
+
+
+# Node-usage rules shared by Workflow and Chatflow generation.
+_NODE_USAGE_DIRECTIVE = (
+    # Node-usage guidance (meeting item 9). Builder-only: this string is
+    # prepended to the instruction at build.py:377 and cmd+K never sees it.
+    # Only rules that earned their place by breaking a real build belong here --
+    # every line costs planner output budget, which ESQ1-300 implicates.
+    "Node usage rules:\n"
+    "- A node may only reference variables its upstream node actually declares. A 'tool' node "
+    "exposes 'text', 'files' and 'json' (plus whatever its provider declares) -- it does NOT "
+    "expose 'result'. A 'code' node exposes exactly the keys in its own outputs map.\n"
+    "- 'document-extractor' requires a 'file' or 'file-list' input variable on the start node; "
+    "feed its 'text' output into the node that consumes it.\n"
+    "- Children of an 'iteration' or 'loop' belong INSIDE the container via their parent "
+    "reference. Do not wire a container's body as sibling top-level nodes.\n"
+    "- Compare like with like in 'if-else': a numeric variable needs a numeric operator, a "
+    "string variable a string operator.\n"
+    "- Prefer a 'tool' node whenever an installed tool covers the step (the installed tools are "
+    "listed for you). 'http-request' is only for an endpoint the user actually supplied: never "
+    "invent one and never use a placeholder such as example.com -- when no real URL is known, read "
+    "it from a start-node variable. Expose an http-request's changing inputs as start-node "
+    "variables rather than hardcoding them."
+)
+
+
+_WORKFLOW_TOPOLOGY_DIRECTIVE = (
+    "Build a Dify WORKFLOW graph (this is NOT a chat app): it MUST begin with exactly one "
+    "'start' node and terminate in at least one 'end' node that returns the result. Do NOT use "
+    "'answer' nodes -- those exist only in chat / advanced-chat apps and are invalid in a workflow."
+    "\n\n" + _NODE_USAGE_DIRECTIVE
+)
+
+
+def _topology_directive(mode: str) -> str:
+    if mode == "advanced-chat":
+        return (
+            "Build a Dify CHATFLOW graph (advanced-chat): it MUST begin with exactly one "
+            "'start' node and reply through at least one 'answer' node. Do NOT use 'end' nodes. "
+            "Use sys.query for the user's message and preserve conversational memory on LLM nodes."
+            "\n\n" + _NODE_USAGE_DIRECTIVE
+        )
+    return _WORKFLOW_TOPOLOGY_DIRECTIVE
+
+
+# Total generation attempts build_nodes will make for one build: the first
+# attempt plus at most two corrective retries, stopping at the first success.
+_MAX_GENERATION_ATTEMPTS = 3
+
+
+# Guidance for UNRESOLVED_REFERENCE, named in the generator's own vocabulary (see
+# FINDINGS.md Blocker B): each node's config is generated by an isolated LLM call
+# that never sees the producer's chosen output names, so a consumer invents a
+# reference no producer declares. Keyed on the error CODE, never on message
+# wording -- no control flow branches on LLM prose.
+_UNRESOLVED_REFERENCE_GUIDANCE = (
+    "For every UNRESOLVED_REFERENCE error above, the reference is invalid because no node "
+    "declares that exact output name. Fix it one of two ways: (1) make the PRODUCING node "
+    "declare that exact name -- a 'code' node's 'outputs' map, a 'parameter-extractor' node's "
+    "'parameters[].name', or an 'llm' node's structured-output schema -- or (2) change the "
+    "consumer to reference one of the producer's REAL outputs (an 'llm' node with no "
+    "structured output exposes only 'text'). Never invent an output name that matches neither."
+)
+
+
+def _valid_errors(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """The generator's structured ``errors`` list, filtered to well-formed dict
+    entries -- shared by every reader of ``result["errors"]`` (the retry
+    instruction, the error-card text, and the debug-log diagnostic) so a
+    malformed/degraded entry can't be treated as one three separate ways."""
+    errors = result.get("errors")
+    return [e for e in errors if isinstance(e, dict)] if isinstance(errors, list) else []
+
+
+def _format_generator_error(error: dict[str, Any]) -> str:
+    """One line for a structured generator error: its code, detail, and (when
+    present) the offending node id -- so both the retry instruction and the
+    error card name WHERE to fix it, not just what went wrong."""
+    code = str(error.get("code") or "").strip()
+    detail = str(error.get("detail") or error.get("message") or "").strip()
+    node_id = error.get("node_id")
+    node_part = f" (node {node_id!r})" if node_id else ""
+    label = f"{code}: {detail}" if code else detail
+    return f"- {label}{node_part}"
+
+
+def _terminal_retry_instruction(base_instruction: str, result: dict[str, Any], *, mode: str = "workflow") -> str:
+    """Corrective instruction for a generation retry after a validation failure --
+    feeds back EVERY structured error (``result["errors"]``: code, detail, node id)
+    rather than only the first, adds UNRESOLVED_REFERENCE-specific guidance when
+    that code is present, and keeps the topology guidance the retry has always
+    carried (start/end/answer) regardless of which error(s) triggered the retry."""
+    errors = _valid_errors(result)
+    if errors:
+        error_text = "\n".join(_format_generator_error(e) for e in errors)
+    else:
+        error_text = str(result.get("error") or "").strip() or "the generated graph had no nodes"
+
+    guidance = ""
+    if any(str(e.get("code")) == "UNRESOLVED_REFERENCE" for e in errors):
+        guidance = f"\n\n{_UNRESOLVED_REFERENCE_GUIDANCE}"
+
+    return (
+        f"Your previous attempt was rejected:\n{error_text}{guidance}\n\n"
+        f"Regenerate the COMPLETE graph. {_topology_directive(mode)}\n\n"
+        f"{base_instruction}"
+    )
+
+
+def _generation_error_text(result: dict[str, Any]) -> str:
+    """Best human-readable failure reason from a generator result -- EVERY
+    structured ``errors`` entry rendered (via ``_format_generator_error``, so the
+    card names the offending node the same way the retry instruction does) and
+    joined (so a multi-error failure isn't truncated to the first), else the
+    top-level ``error`` string, else a generic fallback. Surfaced to the user so
+    a failed build shows WHY -- and WHERE -- not a hardcoded 'couldn't build'
+    message.
+
+    Joined with a NEWLINE, like the retry instruction: ``_format_generator_error``
+    already prefixes each line with ``- ``, so joining with ``"; "`` rendered a
+    two-error failure as the run-on ``- X (node 'h'); - Y``."""
+    errors = _valid_errors(result)
+    if errors:
+        return "\n".join(_format_generator_error(e) for e in errors)
+    err = result.get("error")
+    if isinstance(err, str) and err.strip():
+        return err.strip()
+    return "the generator returned no usable graph"
+
+
+def _diagnostic(**fields: Any) -> dict[str, Any]:
+    """One debug-log breadcrumb, stamped with the server's UTC time.
+
+    ``at`` is the correlation key: pod logs are lost on restart, but the exported
+    debug log keeps this timestamp so the surviving log window can be searched
+    around it (and matched to the same failure the server logged).
+    """
+    return {"at": datetime.now(UTC).isoformat(), **fields}
+
+
+def _generation_diagnostic(result: dict[str, Any], *, attempt: int) -> dict[str, Any]:
+    """Capture one failed generation attempt: the generator's structured errors
+    (``code`` / ``detail`` / ``node_id`` -- e.g. UNRESOLVED_REFERENCE on node2),
+    which is strictly more than the server-side log line carries."""
+    errors = _valid_errors(result)
+    return _diagnostic(
+        source="workflow-generator",
+        attempt=attempt,
+        message=_generation_error_text(result),
+        codes=[str(e.get("code")) for e in errors if e.get("code")],
+        errors=errors,
+    )
+
+
+def _prepare_build_candidate(
+    graph: dict[str, Any],
+    grounding_mc: ModelConfig,
+    trusted_text: str,
+    *,
+    mode: Literal["workflow", "advanced-chat"],
+) -> preflight.VettedIntents:
+    """Translate, ground, and vet the complete candidate as the write guard does.
+
+    Grounding precedes validation: the runtime model, selected resources, and
+    user-supplied endpoint/credential inputs are the configuration we will
+    actually persist. A refusal condemns the entire generated batch; the
+    caller must correct it rather than returning only the applicable subset.
+    """
+    intents = graph_translate.to_intents(graph)
+    _ground(intents, grounding_mc)
+    for node_id in _ground_placeholder_endpoints(intents, trusted_text=trusted_text):
+        logger.info("Dify Builder: http-request %s had a placeholder URL; now read from a start variable", node_id)
+    for node_id in _ground_placeholder_credentials(intents, trusted_text=trusted_text):
+        logger.info(
+            "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
+        )
+    candidate = preflight.vet_intents({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+    # Generic preflight permits authored partial drafts. A full generated build
+    # must have execution paths through its nodes to the mode's terminal type.
+    completeness = generated_build_completeness_problems(candidate.applicable, mode=mode, current_graph=None)
+    return preflight.VettedIntents(
+        candidate.applicable,
+        [*candidate.rejections, *completeness],
+        [*candidate.would_run_wrong, *completeness],
+    )
+
+
+# Tool-node provider types whose installed schema the Builder inventory verifies.
+# Plugin tools are "builtin" on workflow nodes (see tool_catalogue); API,
+# workflow and MCP tools keep their existing handling.
+_INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
+
+
+def _installed_tool_refs(tenant_id: str, account_id: str | None) -> dict[tuple[str, str], ResourceRef]:
+    """Every verified installed Tool schema, uncapped; empty on lookup failure."""
+    try:
+        tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
+    except Exception as exc:
+        trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
+        logger.warning("dify_builder: tool listing failed; generating without installed tools", exc_info=True)
+        return {}
+    return {_tool_key(t): t for t in tools}
+
+
+def _uninstalled_tool_refusals(graph: dict[str, Any], ready_tool_keys: frozenset[tuple[str, str]]) -> list[str]:
+    """Refuse every generated built-in/plugin action outside the installed set."""
+    refusals: list[str] = []
+    for node in graph.get("nodes") or []:
+        data = node.get("data") if isinstance(node, dict) else None
+        if not isinstance(data, dict) or data.get("type") != "tool":
+            continue
+        if str(data.get("provider_type") or "builtin") not in _INVENTORY_TOOL_PROVIDER_TYPES:
+            continue
+        provider_name = str(data.get("provider_id") or data.get("provider_name") or "").strip()
+        tool_name = str(data.get("tool_name") or "").strip()
+        if (provider_name, tool_name) not in ready_tool_keys:
+            refusals.append(
+                f"Tool node {node.get('id')!s} uses {provider_name}/{tool_name}, which is not a verified installed "
+                "action for this workspace; use an installed tool or another node type."
+            )
+    return refusals
+
+
+def build_nodes(
+    tenant_id: str,
+    model_config: dict[str, Any],
+    plan_items: list[str],
+    resource_ids: Sequence[str] = (),
+    *,
+    trusted_text: str = "",
+    account_id: str | None = None,
+    mode: str = "workflow",
+    reply_language: str | None = None,
+) -> BuildNodesResult:
+    """Generate installed Tool schemas with delayed setup and no credential borrowing.
+
+    The complete uncapped installed inventory is read freshly and handed to
+    the shared generator as its eligibility allowlist. Credential metadata is
+    checked separately to sanitize generated references and append a visible
+    setup reminder. Native execution/publication performs its own fresh check. A
+    generated candidate naming any other built-in/plugin tool is refused like
+    any other invalid candidate, whatever the generator returned.
+    """
+    diagnostics: list[dict[str, Any]] = []
+    try:
+        mc = _generator_model_config(tenant_id, model_config)
+        tool_refs = _installed_tool_refs(tenant_id, account_id)
+        ready_tool_keys = frozenset(tool_refs)
+        graph_mode: Literal["workflow", "advanced-chat"] = "advanced-chat" if mode == "advanced-chat" else "workflow"
+        agent_refs = (
+            _selected_agent_resources(
+                _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids), resource_ids
+            )
+            if any(rid.startswith("agent:") for rid in resource_ids)
+            else []
+        )
+        base_instruction = f"{_topology_directive(graph_mode)}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
+        if agent_refs:
+            from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+            selected_agents = [
+                {
+                    **AgentBindingSelection.from_resource_id(ref.id).model_dump(mode="json"),
+                    "name": ref.label,
+                    "capability": ref.capability,
+                    "contract": ref.agent_contract,
+                }
+                for ref in agent_refs
+            ]
+            base_instruction += (
+                "\nSELECTED PUBLISHED WORKSPACE AGENTS (use only these exact bindings):\n"
+                + json.dumps(selected_agents, sort_keys=True)
+                + "\nUse native type=agent, version=2, agent_node_kind=dify_agent, "
+                "agent_binding={binding_type:roster_agent,agent_id,current_snapshot_id:snapshot_id}, agent_task, "
+                "and agent_declared_outputs. Outputs are caller node-job declarations, never a published Agent schema."
+            )
+        if trusted_text:
+            base_instruction += (
+                "\n\nORIGINAL USER REQUEST AND CONFIRMED REQUIREMENTS (authoritative):\n"
+                f"{trusted_text}\n\n"
+                "Preserve every explicit constraint in this original source, including fixed numeric limits. "
+                "If the plan omits or conflicts with a source constraint, follow the original source. "
+                "Do not replace a fixed maximum with an invented optional input."
+            )
+
+        def _generate(instruction: str) -> dict[str, Any]:
+            return dict(
+                WorkflowGeneratorService.generate_workflow_graph(
+                    tenant_id=tenant_id,
+                    mode=graph_mode,
+                    instruction=instruction,
+                    model_config=mc,
+                    current_graph=None,
+                    ready_tool_keys=ready_tool_keys,
+                    reply_language=reply_language,
+                )
+            )
+
+        result = _generate(base_instruction)
+        grounding_mc: ModelConfig | None = None
+        for attempt in range(1, _MAX_GENERATION_ATTEMPTS + 1):
+            graph = result.get("graph") or {}
+            source = "workflow-generator"
+            if not result.get("error") and graph.get("nodes"):
+                # Generation uses the cognition model; the complete runtime graph
+                # follows the user's selected model, or the session fallback.
+                if grounding_mc is None:
+                    grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
+                reconcile_generated_tool_setup(
+                    tenant_id=tenant_id,
+                    actor_id=account_id,
+                    graph=graph,
+                    tools=tool_refs,
+                )
+                from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+                selected_bindings = {
+                    (
+                        AgentBindingSelection.from_resource_id(ref.id).agent_id,
+                        AgentBindingSelection.from_resource_id(ref.id).snapshot_id,
+                    )
+                    for ref in agent_refs
+                }
+                for node in graph.get("nodes") or []:
+                    data = node.get("data") or {}
+                    if data.get("type") == "agent" and data.get("version") == "2":
+                        binding = data.get("agent_binding") or {}
+                        if (binding.get("agent_id"), binding.get("current_snapshot_id")) not in selected_bindings:
+                            raise ValueError("Generated Agent node must use a confirmed published Agent selection")
+                candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text, mode=graph_mode)
+                rejections = [*_uninstalled_tool_refusals(graph, ready_tool_keys), *candidate.rejections]
+                if not rejections and candidate.applicable:
+                    return BuildNodesResult(intents=candidate.applicable, diagnostics=diagnostics)
+                # vet_intents supplies credential-safe node/field refusals from
+                # the real engine. Never embed the raw candidate config here.
+                source = "build_nodes"
+                result["error"] = "the generated graph had no applicable node intents"
+                result["errors"] = [{"code": "CANDIDATE_VALIDATION", "detail": reason} for reason in rejections]
+
+            diagnostic = _generation_diagnostic(result, attempt=attempt)
+            diagnostic["source"] = source
+            diagnostics.append(diagnostic)
+            if attempt < _MAX_GENERATION_ATTEMPTS:
+                result = _generate(_terminal_retry_instruction(base_instruction, result, mode=graph_mode))
+
+        error = _generation_error_text(result)
+        logger.warning(
+            "Dify Builder: build_nodes produced no graph for tenant %s (%d plan items) after %d attempt(s): error=%s",
+            tenant_id,
+            len(plan_items),
+            _MAX_GENERATION_ATTEMPTS,
+            error,
+        )
+        return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
+    except Exception as exc:  # any generation/translation failure -> honest empty build
+        trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+        logger.exception(
+            "Dify Builder: build_nodes generation failed for tenant %s (%d plan items); returning empty build",
+            tenant_id,
+            len(plan_items),
+        )
+        # Surface the exception text (e.g. a provider error like credit_balance_exhausted)
+        # so the user sees WHY, not a hardcoded 'couldn't build' message.
+        message = str(exc).strip() or type(exc).__name__
+        diagnostics.append(_diagnostic(source="build_nodes", message=message, exception=type(exc).__name__))
+        return BuildNodesResult(intents=[], error=message, diagnostics=diagnostics)
+
+
+# Hosts / tokens an LLM writes when it does not know the real endpoint. A Dify
+# template (``{{#node.var#}}``) is a real reference and is NOT a placeholder;
+# a bare ``{tenant}`` or ``<your-domain>`` is. ``localhost`` is deliberately NOT
+# here -- it names the *host*, not any substring, so it is checked separately
+# against the parsed hostname (see ``_is_localhost_host``): a real tunnel host
+# like ``abc123.localhost.run`` must not match just because "localhost" is a
+# substring of it.
+_PLACEHOLDER_URL_RE = re.compile(
+    r"(^|[./-])example\.(com|org|net)\b"  # api.example.com, example.org
+    r"|your[-_]?(api|domain|server|host|company)"  # your-api.com
+    r"|placeholder"
+    r"|<[^>]+>"  # <your-domain>
+    r"|(?<!\{)\{(?!\{)[^{}#]*\}(?!\})",  # {tenant}, but not {{#s.x#}}
+    re.IGNORECASE,
+)
+
+
+def _is_localhost_host(url: str) -> bool:
+    """True when the URL's HOST -- not merely a substring of the URL -- is
+    ``localhost`` or a ``*.localhost`` name, ignoring any port. A hostname
+    like ``abc123.localhost.run`` is a real, routable tunnel domain (the
+    reserved ``.localhost`` TLD requires it to be the final label) and must
+    not match."""
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        return False
+    return host is not None and (host == "localhost" or host.endswith(".localhost"))
+
+
+def _is_placeholder_endpoint(url: str) -> bool:
+    """True for a URL the model invented rather than one the user supplied."""
+    text = (url or "").strip()
+    if not text:
+        return True
+    return _PLACEHOLDER_URL_RE.search(text) is not None or _is_localhost_host(text)
+
+
+def _add_required_start_variable(variables: list[dict], var_name: str, label: str) -> None:
+    """Append a REQUIRED text-input start variable (max 2048 chars) named
+    ``var_name`` to ``variables`` if not already present -- the write shared
+    by every grounding pass that turns an invented literal (URL, credential)
+    into a start-node input, so it is not duplicated per pass."""
+    if any(isinstance(v, dict) and v.get("variable") == var_name for v in variables):
+        return
+    variables.append(
+        {
+            "variable": var_name,
+            "label": label,
+            "type": "text-input",
+            "required": True,
+            "max_length": 2048,
+        }
+    )
+
+
+def _ground_placeholder_endpoints(intents: list[MutationIntent], *, trusted_text: str = "") -> list[str]:
+    """Replace every http-request URL the user didn't supply with a REQUIRED
+    start-node variable and a template reference to it.
+
+    ESQ1-302 called ``https://api.example.com/ppt/generate``: the model had no
+    endpoint, so it invented one, and every test run failed against a host that
+    does not exist. Turning the URL into an input makes the test-data gate ask
+    the user for the real endpoint -- or, when they have none, tells them what
+    the step needs. Builder-only; the shared generator's own http-request
+    example is ``https://example.com``, so cmd+K keeps its placeholders.
+
+    A URL is grounded when it LOOKS invented (``_is_placeholder_endpoint``) OR,
+    with ``trusted_text`` non-empty, when its host never actually appears in
+    what the user typed (``user_supplied.is_user_supplied_url``) -- a
+    plausible, real-looking host the model invented (S5b:
+    ``api.pptrender.io``) is just as much a fabrication as
+    ``api.example.com``, only harder to spot by shape alone.
+    ``trusted_text == ""`` (no caller-supplied text) keeps exactly today's
+    placeholder-only behaviour.
+
+    A URL whose HOST is already a template (``urls.host_is_templated``) reads
+    its endpoint from a variable and is never re-grounded, which also makes a
+    second pass a no-op. A URL with templates only in its path/query (e.g.
+    ``https://api.pptrender.io/v1/render?topic={{#node1.topic#}}``) has only
+    its ``scheme://host[:port]`` replaced -- the path, the query and the data
+    templates in them are kept verbatim, and the start variable is labelled
+    "<title> base URL". A URL with no templates is replaced whole ("<title>
+    URL"), as is one with no ``scheme://`` to split at. Returns the ids of the
+    http-request nodes it re-pointed.
+    """
+    start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
+    if start is None:
+        return []
+    start_id = str(start.args.get("node_id") or "")
+    if not start_id:
+        return []
+    config = dict(start.args.get("config") or {})
+    variables = list(config.get("variables") or [])
+    grounded: list[str] = []
+    for intent in intents:
+        if intent.op != "create_node" or intent.args.get("node_type") != "http-request":
+            continue
+        node_config = dict(intent.args.get("config") or {})
+        url = str(node_config.get("url") or "")
+        if urls.host_is_templated(url):
+            continue
+        not_user_supplied = bool(trusted_text) and not user_supplied.is_user_supplied_url(url, trusted_text)
+        if not (_is_placeholder_endpoint(url) or not_user_supplied):
+            continue
+        node_id = str(intent.args.get("node_id") or "")
+        var_name = f"{node_id}_url"
+        template_ref = f"{{{{#{start_id}.{var_name}#}}}}"
+        title = node_config.get("title") or node_id
+        parts = urls.split_origin(url)
+        if parts is not None and urls.TEMPLATE_MARKER in parts.rest:
+            _add_required_start_variable(variables, var_name, f"{title} base URL")
+            node_config["url"] = f"{template_ref}{parts.rest}"
+        else:
+            _add_required_start_variable(variables, var_name, f"{title} URL")
+            node_config["url"] = template_ref
+        intent.args["config"] = node_config
+        grounded.append(node_id)
+    if grounded:
+        config["variables"] = variables
+        start.args["config"] = config
+    return grounded
+
+
+# A value that IS one of these words and nothing else (no content after it)
+# is a bare auth-scheme with no credential attached -- ``strip_auth_scheme``
+# alone does not catch this: its regex only strips a scheme word FOLLOWED BY
+# whitespace, so a bare "Bearer" (nothing after it) comes back unstripped,
+# not empty.
+_BARE_SCHEME_WORDS = frozenset({"bearer", "basic", "token"})
+
+# The only keys whose value is ``<scheme> <credentials>``, so the only ones on
+# which a bare scheme word is kept when grounding (``_replace_credential_value``).
+_AUTHORIZATION_KEYS = frozenset({"authorization", "proxy-authorization"})
+
+# Mirrors user_supplied._TEMPLATE_MARKER: a Dify template reference names a
+# variable, not a literal, so it is never "invented" and must never be
+# re-grounded -- checked BEFORE the placeholder-shape check below, since a
+# grounded variable's own NAME (e.g. "your_api_key") can coincidentally match
+# CREDENTIAL_PLACEHOLDER_RE's "YOUR...KEY" pattern.
+_TEMPLATE_MARKER = "{{#"
+
+
+def _is_invented_credential(value: str, trusted_text: str) -> bool:
+    """Mirrors ``_ground_placeholder_endpoints``'s OR-of-two-checks shape, but
+    for a credential value (a header/param 'Value' half, or an
+    ``authorization.config.api_key``):
+
+    1. Already a Dify template reference (contains ``{{#``) -- a real
+       reference, never re-grounded, checked first (see ``_TEMPLATE_MARKER``).
+    2. Empty, or nothing beyond a bare ``Bearer``/``Basic``/``Token`` scheme
+       word -- never a valid credential either way, so it grounds
+       unconditionally.
+    3. An unmistakable placeholder (``CREDENTIAL_PLACEHOLDER_RE``) -- grounds
+       even in placeholder-only mode (``trusted_text == ""``, mirroring how a
+       shaped-like-invented URL grounds with no goal text at all).
+    4. Otherwise, with ``trusted_text`` non-empty, a value that never appears
+       verbatim in it also grounds (S5b-style plausible-looking secret the
+       model invented).
+    """
+    stripped_value = value.strip()
+    remainder = user_supplied.strip_auth_scheme(stripped_value)
+    if _TEMPLATE_MARKER in remainder:
+        return False
+    if not remainder or remainder.lower() in _BARE_SCHEME_WORDS:
+        return True
+    if user_supplied.CREDENTIAL_PLACEHOLDER_RE.search(remainder):
+        return True
+    return bool(trusted_text) and not user_supplied.is_user_supplied_secret(stripped_value, trusted_text)
+
+
+def _replace_credential_value(value: str, template_ref: str, *, keep_bare_scheme: bool) -> str:
+    """Rebuild a header/param 'Value' half with its secret swapped for
+    ``template_ref``, preserving surrounding whitespace (including a ``\\r``
+    left by a ``\\r\\n`` line ending) and a leading ``Bearer ``/``Basic ``/
+    ``Token `` auth-scheme prefix exactly as written (e.g. ``" Bearer
+    YOUR_API_KEY"`` -> ``" Bearer {{#s.h_api_key#}}"``).
+
+    A BARE scheme word with nothing after it (``"Bearer"``) is an auth scheme
+    only on an ``Authorization``/``Proxy-Authorization`` line
+    (``keep_bare_scheme``): there it keeps the word, adding the separating
+    space the grounded value now needs. Under any other credential key
+    (``X-Auth-Token: token``, ``api_key: token``) the word IS the invented
+    value, so it is replaced whole."""
+    lstripped = value.lstrip(" \t\r")
+    leading_ws = value[: len(value) - len(lstripped)]
+    core = lstripped.rstrip(" \t\r")
+    trailing_ws = lstripped[len(core) :]
+    remainder = user_supplied.strip_auth_scheme(core)
+    if remainder == core and core.lower() in _BARE_SCHEME_WORDS:
+        scheme_prefix = f"{core} " if keep_bare_scheme else ""
+    else:
+        scheme_prefix = core[: len(core) - len(remainder)]
+    return f"{leading_ws}{scheme_prefix}{template_ref}{trailing_ws}"
+
+
+def _ground_credential_text(text: str, template_ref: str, *, trusted_text: str, key_is_credential) -> tuple[str, bool]:
+    """Ground each ``Key: Value`` line of an http-request ``headers``/
+    ``params`` text block whose key names a credential per
+    ``key_is_credential`` (``user_supplied.is_credential_key`` for headers;
+    ``user_supplied.is_credential_param_key`` for params, which also treats a
+    bare ``key`` as one) and whose value the user didn't supply
+    (``_is_invented_credential``), replacing only the secret part of that
+    line with ``template_ref``. Every other line -- including a credential
+    line the user DID supply -- passes through byte-identical. Returns
+    ``(new_text, changed)``.
+    """
+    if not text:
+        return text, False
+    lines = text.split("\n")
+    changed = False
+    new_lines: list[str] = []
+    for line in lines:
+        if ":" not in line:
+            new_lines.append(line)
+            continue
+        key, _sep, value = line.partition(":")
+        if not key_is_credential(key.strip()) or not _is_invented_credential(value, trusted_text):
+            new_lines.append(line)
+            continue
+        keep_bare_scheme = key.strip().lower() in _AUTHORIZATION_KEYS
+        new_lines.append(f"{key}:{_replace_credential_value(value, template_ref, keep_bare_scheme=keep_bare_scheme)}")
+        changed = True
+    return "\n".join(new_lines), changed
+
+
+def _ground_placeholder_credentials(intents: list[MutationIntent], *, trusted_text: str = "") -> list[str]:
+    """Replace every http-request credential literal the user didn't supply
+    -- a header/param whose key names a credential, or an ``api-key``
+    authorization's ``config.api_key`` -- with a REQUIRED start-node variable
+    and a template reference to it. Sibling to ``_ground_placeholder_endpoints``,
+    called right after it in ``build_nodes`` and sharing its start-variable
+    insertion write (``_add_required_start_variable``); reads the start
+    node's config fresh, so a variable that pass already added (e.g.
+    ``<node>_url``) is seen and not clobbered.
+
+    S5b/F2: requirements analysis invented an ``Authorization: Bearer
+    YOUR_API_KEY`` header for a goal that named no credential. Turning it
+    into an input makes the test-data gate ask the user for the real key --
+    or, when mocked, drop it (``without_endpoint_values`` -> now
+    ``endpoint_variable_names``, extended to also scan headers/params/
+    authorization) so the run fails on a missing required input instead of
+    an invented secret the target API rejects.
+
+    A single ``<node>_api_key`` variable covers every credential grounded on
+    that node, however many lines/fields triggered it. Returns the ids of the
+    http-request nodes it re-pointed.
+    """
+    start = next((i for i in intents if i.op == "create_node" and i.args.get("node_type") == "start"), None)
+    if start is None:
+        return []
+    start_id = str(start.args.get("node_id") or "")
+    if not start_id:
+        return []
+    config = dict(start.args.get("config") or {})
+    variables = list(config.get("variables") or [])
+    grounded: list[str] = []
+    for intent in intents:
+        if intent.op != "create_node" or intent.args.get("node_type") != "http-request":
+            continue
+        node_config = dict(intent.args.get("config") or {})
+        node_id = str(intent.args.get("node_id") or "")
+        var_name = f"{node_id}_api_key"
+        template_ref = f"{{{{#{start_id}.{var_name}#}}}}"
+        changed = False
+
+        new_headers, headers_changed = _ground_credential_text(
+            str(node_config.get("headers") or ""),
+            template_ref,
+            trusted_text=trusted_text,
+            key_is_credential=user_supplied.is_credential_key,
+        )
+        if headers_changed:
+            node_config["headers"] = new_headers
+            changed = True
+
+        new_params, params_changed = _ground_credential_text(
+            str(node_config.get("params") or ""),
+            template_ref,
+            trusted_text=trusted_text,
+            key_is_credential=user_supplied.is_credential_param_key,
+        )
+        if params_changed:
+            node_config["params"] = new_params
+            changed = True
+
+        authorization = node_config.get("authorization")
+        auth_config = authorization.get("config") if isinstance(authorization, dict) else None
+        if (
+            isinstance(authorization, dict)
+            and authorization.get("type") == "api-key"
+            and isinstance(auth_config, dict)
+            and _is_invented_credential(str(auth_config.get("api_key") or ""), trusted_text)
+        ):
+            new_auth_config = dict(auth_config)
+            new_auth_config["api_key"] = template_ref
+            node_config["authorization"] = {**authorization, "config": new_auth_config}
+            changed = True
+
+        if not changed:
+            continue
+        _add_required_start_variable(variables, var_name, f"{node_config.get('title') or node_id} API key")
+        intent.args["config"] = node_config
+        grounded.append(node_id)
+    if grounded:
+        config["variables"] = variables
+        start.args["config"] = config
+    return grounded
+
+
+def _ground(intents: list[MutationIntent], mc: ModelConfig) -> None:
+    mode = mc.mode.value if hasattr(mc.mode, "value") else str(mc.mode)
+    for intent in intents:
+        if intent.op != "create_node":
+            continue
+        config = intent.args.get("config") or {}
+        if isinstance(config.get("model"), dict):
+            # Ground ONLY provider+name (the real, configured model); preserve whatever
+            # mode/completion_params the generator produced -- never fabricate params.
+            # Applies to ANY node type that carries a model block (llm,
+            # question-classifier, parameter-extractor, ...), not just "llm" --
+            # otherwise a drifted/hallucinated model on those node types flows
+            # through ungrounded.
+            model = dict(config["model"])
+            model["provider"] = mc.provider
+            model["name"] = mc.name
+            model.setdefault("mode", mode)
+            config["model"] = model
+        intent.args["config"] = config

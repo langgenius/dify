@@ -1,3 +1,11 @@
+"""Workflow packages restore node-owned Agents and assets across workspaces.
+
+Ordinary App packages preserve DSLs and enforce container integrity.
+
+Packages bundle the workflows an App calls through Workflow Tools as nested App packages.
+
+Packaged image icons travel with Apps and receive destination-owned file ids."""
+
 from __future__ import annotations
 
 import hashlib
@@ -47,9 +55,10 @@ from services.dsl_content import DSL_MAX_SIZE
 from services.entities.dsl_entities import ImportStatus
 from services.errors.base import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow_service import WorkflowService
+from tests.helpers.unit.audio_runtime_fixtures import record_calls
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
-
-"""Workflow packages restore node-owned Agents and assets across workspaces."""
+from tests.workflow_empty_draft_test_utils import EmptyDraftDatabase
 
 
 def _bundle_any_app(app: App) -> bool:
@@ -68,6 +77,24 @@ class _MemoryStorage:
     def save(self, filename: str, data: bytes) -> None:
         self.files[filename] = data
         self.saved.append(filename)
+
+
+@pytest.fixture
+def storage(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> _MemoryStorage:
+    backend = _MemoryStorage()
+    database = EmptyDraftDatabase(sqlite_session)
+    monkeypatch.setattr("services.workflow_service.db", database)
+    monkeypatch.setattr("services.workflow.draft_coordination_service.db", database)
+    monkeypatch.setattr(
+        "services.app_package_service.AgentPackageResourceExporter",
+        lambda: AgentPackageResourceExporter(storage_backend=backend),
+    )
+    monkeypatch.setattr(
+        "services.app_package_service.AgentPackageResourceImporter",
+        lambda: AgentPackageResourceImporter(storage_backend=backend),
+    )
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    return backend
 
 
 def _skill(name: str, marker: str) -> bytes:
@@ -340,7 +367,9 @@ class TestWorkflowPackageServiceCases:
     @pytest.fixture
     def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
         backend = _MemoryStorage()
-        monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
+        database = SimpleNamespace(engine=sqlite_engine)
+        monkeypatch.setattr("services.workflow_service.db", database)
+        monkeypatch.setattr("services.workflow.draft_coordination_service.db", database)
         monkeypatch.setattr(
             "services.app_package_service.AgentPackageResourceExporter",
             lambda: AgentPackageResourceExporter(storage_backend=backend),
@@ -553,7 +582,13 @@ class TestWorkflowPackageServiceCases:
         )
         sqlite_session.commit()
         retirement = Mock()
-        monkeypatch.setattr("services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", retirement)
+        monkeypatch.setattr(
+            "services.workflow.draft_coordination_service.WorkflowAgentRetirementService.retire_unowned", retirement
+        )
+        syncs: list[dict[str, object]] = []
+        monkeypatch.setattr(
+            WorkflowService, "sync_draft_workflow", record_calls(WorkflowService.sync_draft_workflow, syncs)
+        )
         updated = _import(sqlite_session, content, app_id=original.app_id)
         assert updated.status == ImportStatus.COMPLETED, updated.error
         assert updated.app_id == original.app_id
@@ -564,6 +599,10 @@ class TestWorkflowPackageServiceCases:
         )
         assert len(new_agents) == len(old_agents) == 2
         assert not (new_agents & old_agents)
+        assert len(syncs) == 1
+        assert syncs[0]["session"] is sqlite_session
+        assert syncs[0]["commit"] is False
+        assert syncs[0]["sync_agent_bindings"] is False
         retirement.assert_called_once_with(tenant_id="tenant-2", agent_ids=old_agents, account_id="account-1")
 
     @staticmethod
@@ -718,7 +757,8 @@ class TestWorkflowPackageServiceCases:
         sqlite_session: Session, storage: _MemoryStorage, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
-            "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", lambda **_kwargs: None
+            "services.workflow.draft_coordination_service.WorkflowAgentRetirementService.retire_unowned",
+            lambda **_kwargs: None,
         )
         content = _roster_export(sqlite_session, storage)
         account = _account("tenant-1")
@@ -769,9 +809,6 @@ class TestWorkflowPackageServiceCases:
         row = _bindings_by_node(sqlite_session, confirmed.app_id)["node-3"]
         assert row.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
         assert row.agent_id == "roster-agent-1"
-
-
-"""Ordinary App packages preserve DSLs and enforce container integrity."""
 
 
 def _archive(dsl: str, **manifest_overrides: object) -> io.BytesIO:
@@ -934,8 +971,6 @@ class TestAppPackageServiceCases:
         assert prepared.agents == {}
         prepared.close()
 
-
-"""Packages bundle the workflows an App calls through Workflow Tools as nested App packages."""
 
 _WORKFLOW_DSL = f"kind: app\nversion: {CURRENT_APP_DSL_VERSION}\napp:\n  mode: workflow\n"
 
@@ -1100,9 +1135,6 @@ class TestWorkflowToolPackageCases:
         config_overrides(AGENT_PACKAGE_MAX_BYTES=100_000)
         with pytest.raises(RosterAgentPackageTooLargeError, match="App package and its workflow tools exceed"):
             AppPackageService().read_package(_bundle([member], root_dsl=root_dsl))
-
-
-"""Packaged image icons travel with Apps and receive destination-owned file ids."""
 
 
 def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, reference: str = "i_000001") -> io.BytesIO:

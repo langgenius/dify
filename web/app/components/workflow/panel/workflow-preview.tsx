@@ -24,7 +24,12 @@ import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
-const WorkflowPreview = () => {
+type WorkflowPreviewProps = {
+  onFixRun?: (runId: string) => void
+  fixWithBuilderDisabled?: boolean
+}
+
+const WorkflowPreview = ({ onFixRun, fixWithBuilderDisabled }: WorkflowPreviewProps) => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const appId = useAtomValue(editorAppIdAtom)
@@ -113,7 +118,7 @@ const WorkflowPreview = () => {
   return (
     <div
       id={panelId}
-      className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="relative flex h-full flex-col rounded-s-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
       <ResizeHandle
@@ -124,7 +129,7 @@ const WorkflowPreview = () => {
         controls={panelId}
         label={t(($) => $['singleRun.testRun'], { ns: 'workflow' })}
         onResize={setPreviewPanelWidth}
-        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
+        className="absolute inset-s-0.75 top-1/2 bottom-0 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
@@ -141,55 +146,57 @@ const WorkflowPreview = () => {
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
-            <div
+            <button
+              type="button"
+              aria-pressed={currentTab === 'INPUT'}
               className={cn(
-                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+                'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
                 currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
             >
               {t(($) => $.input, { ns: 'runLog' })}
-            </div>
+            </button>
           )}
-          <div
+          <button
+            type="button"
+            aria-pressed={currentTab === 'RESULT'}
+            disabled={!workflowRunningData}
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('RESULT')
-            }}
+            onClick={() => switchTab('RESULT')}
           >
             {t(($) => $.result, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'DETAIL'}
+            disabled={!workflowRunningData}
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('DETAIL')
-            }}
+            onClick={() => switchTab('DETAIL')}
           >
             {t(($) => $.detail, { ns: 'runLog' })}
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
+            aria-pressed={currentTab === 'TRACING'}
+            disabled={!workflowRunningData}
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
-            onClick={() => {
-              if (!workflowRunningData) return
-              switchTab('TRACING')
-            }}
+            onClick={() => switchTab('TRACING')}
           >
             {t(($) => $.tracing, { ns: 'runLog' })}
-          </div>
+          </button>
         </div>
         <div
           className={cn(
@@ -240,7 +247,7 @@ const WorkflowPreview = () => {
                 workflowRunningData?.resultText &&
                 typeof workflowRunningData?.resultText === 'string' && (
                   <Button
-                    className={cn('mb-4 ml-4')}
+                    className={cn('ms-4 mb-4')}
                     onClick={() => {
                       const content = workflowRunningData?.resultText
                       if (typeof content === 'string') copy(content)
@@ -271,12 +278,15 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              workflowRunId={workflowRunningData?.result.id}
               externalTrace={
                 appId && workflowRunningData?.result?.id
                   ? { appId, kind: 'workflow', workflowRunId: workflowRunningData.result.id }
                   : undefined
               }
               onOpenTracingTab={handleOpenTracingTab}
+              onFixRun={onFixRun}
+              fixWithBuilderDisabled={fixWithBuilderDisabled}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (

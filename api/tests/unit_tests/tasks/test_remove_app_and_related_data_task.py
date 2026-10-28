@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.remove_app_and_related_data_task as remove_app_task_module
@@ -16,6 +17,7 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRealCallConsent
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog
 from services.network_access_group_service import NetworkAccessGroupUpstreamError
@@ -79,7 +81,7 @@ def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_
     assert sqlite_session.get(WorkflowAgentNodeBinding, other_tenant_id) is not None
 
 
-def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch, mocker) -> None:
     events: list[str] = []
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     other_cleanup_names = (
@@ -115,6 +117,16 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
 
     delete_bindings = MagicMock(side_effect=lambda *_args: events.append("bindings"))
     delete_workflows = MagicMock(side_effect=lambda *_args: events.append("workflows"))
+    delete_execution_requests = mocker.patch.object(
+        remove_app_task_module,
+        "_delete_builder_execution_requests",
+        side_effect=lambda *_args: events.append("execution_requests"),
+    )
+    delete_consents = mocker.patch.object(
+        remove_app_task_module,
+        "_delete_builder_real_call_consents",
+        side_effect=lambda *_args: events.append("consents"),
+    )
     monkeypatch.setattr(remove_app_task_module, "_delete_workflow_agent_node_bindings", delete_bindings)
     monkeypatch.setattr(remove_app_task_module, "_delete_app_workflows", delete_workflows)
     monkeypatch.setattr(
@@ -124,9 +136,91 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
 
     remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
 
-    assert events == ["bindings", "workflows", "executions", "runs"]
+    # Consents reference their execution sidecar, so they go first; workflows last.
+    assert events == ["consents", "execution_requests", "bindings", "workflows", "executions", "runs"]
+    delete_consents.assert_called_once_with("tenant-1", "app-1")
+    delete_execution_requests.assert_called_once_with("tenant-1", "app-1")
     delete_bindings.assert_called_once_with("tenant-1", "app-1")
     delete_workflows.assert_called_once_with("tenant-1", "app-1")
+
+
+def test_builder_execution_request_cleanup_is_scoped_idempotent_and_batched(sqlite_session: Session) -> None:
+    def request(tenant_id: str, app_id: str, state: str) -> DifyBuilderExecutionRequest:
+        return DifyBuilderExecutionRequest(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id="workflow",
+            actor_id="actor",
+            session_id="session",
+            test_input_id="test-input",
+            context={},
+            context_digest="a" * 64,
+            state=state,
+            observations=[],
+        )
+
+    targets = [request("tenant-1", "app-1", ("prepared", "running", "sealed")[i % 3]) for i in range(1001)]
+    other_app = request("tenant-1", "app-2", "running")
+    other_tenant = request("tenant-2", "app-1", "sealed")
+    sqlite_session.add_all([*targets, other_app, other_tenant])
+    sqlite_session.commit()
+    kept_ids = {other_app.id, other_tenant.id}
+
+    remove_app_task_module._delete_builder_execution_requests("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert set(sqlite_session.scalars(select(DifyBuilderExecutionRequest.id))) == kept_ids
+    remove_app_task_module._delete_builder_execution_requests("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert set(sqlite_session.scalars(select(DifyBuilderExecutionRequest.id))) == kept_ids
+
+
+def test_builder_real_call_consent_cleanup_is_scoped_idempotent_and_batched(sqlite_session: Session) -> None:
+    """Synthetic rows only: proves tenant+app scope, >1000-row batching and repeat safety."""
+    tenants = {name: str(uuid4()) for name in ("tenant-1", "tenant-2")}
+    apps = {name: str(uuid4()) for name in ("app-1", "app-2")}
+
+    def consent(tenant: str, app: str, index: int, state: str) -> DifyBuilderRealCallConsent:
+        digest = "0" * 64
+        return DifyBuilderRealCallConsent(
+            id=str(uuid4()),
+            tenant_id=tenants[tenant],
+            app_id=apps[app],
+            workflow_id=str(uuid4()),
+            actor_id=str(uuid4()),
+            session_id=str(uuid4()),
+            prepared_commit_id=str(uuid4()),
+            test_input_id=str(uuid4()),
+            prepared_version=1,
+            binding={},
+            scope_digest=digest,
+            disclosure={},
+            disclosure_digest=digest,
+            expires_at=datetime(2026, 10, 11),
+            state=state,
+            prepare_key=f"prepare-{index}",
+            prepare_body_digest=digest,
+            prepare_receipt={},
+            refresh_count=0,
+            business_count=0,
+            initial_credential_revision=digest,
+            oauth_client_revision=digest,
+        )
+
+    states = ("prepared", "confirmed", "declined", "unknown")
+    targets = [consent("tenant-1", "app-1", i, states[i % 4]) for i in range(1001)]
+    other_app = consent("tenant-1", "app-2", 0, "unknown")
+    other_tenant = consent("tenant-2", "app-1", 0, "prepared")
+    sqlite_session.add_all([*targets, other_app, other_tenant])
+    sqlite_session.commit()
+    kept_ids = {other_app.id, other_tenant.id}
+
+    remove_app_task_module._delete_builder_real_call_consents(tenants["tenant-1"], apps["app-1"])
+    sqlite_session.expire_all()
+    assert set(sqlite_session.scalars(select(DifyBuilderRealCallConsent.id))) == kept_ids
+    remove_app_task_module._delete_builder_real_call_consents(tenants["tenant-1"], apps["app-1"])
+    sqlite_session.expire_all()
+    assert set(sqlite_session.scalars(select(DifyBuilderRealCallConsent.id))) == kept_ids
 
 
 def test_cloud_app_cleanup_schedules_independent_binding_cleanup(

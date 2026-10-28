@@ -16,6 +16,7 @@ import { createStartNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import DatasetsDetailProvider from '../../datasets-detail-store/provider'
+import { fullWorkflowAccessControl } from '../../hooks-store/store'
 import { WorkflowVersion } from '../../types'
 import HeaderInNormal from '../header-in-normal'
 import HeaderInRestoring from '../header-in-restoring'
@@ -99,6 +100,43 @@ describe('Header layout components', () => {
   afterEach(() => vi.restoreAllMocks())
 
   describe('HeaderInNormal', () => {
+    it.each([false, true])(
+      'keeps an existing Builder session toggle available with canvasReadOnly=%s',
+      async (canvasReadOnly) => {
+        const user = userEvent.setup()
+        const { store } = renderWorkflowComponent(
+          <HeaderInNormal
+            controls={{ showDifyBuilderButton: true, hasDifyBuilderSession: true }}
+          />,
+          { initialStoreState: { canvasReadOnly, workflowDraftSyncPhase: 'builder' } },
+        )
+        const toggle = screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })
+        expect(toggle).toBeEnabled()
+        await user.click(toggle)
+        expect(store.getState().showDifyBuilderPanel).toBe(true)
+        await user.click(toggle)
+        expect(store.getState().showDifyBuilderPanel).toBe(false)
+      },
+    )
+
+    it.each([
+      { canvasReadOnly: true, canEdit: true, hasSession: false },
+      { canvasReadOnly: false, canEdit: false, hasSession: true },
+    ])(
+      'keeps Builder unavailable without edit access or an unlocked canvas: %j',
+      ({ canvasReadOnly, canEdit, hasSession }) => {
+        renderWorkflowComponent(
+          <HeaderInNormal
+            controls={{ showDifyBuilderButton: true, hasDifyBuilderSession: hasSession }}
+          />,
+          {
+            initialStoreState: { canvasReadOnly },
+            hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit } },
+          },
+        )
+        expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeDisabled()
+      },
+    )
     it('opens version history, backs up the draft, and closes editing panels', async () => {
       const user = userEvent.setup()
 

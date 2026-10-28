@@ -1,0 +1,57 @@
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useAtomValue } from 'jotai'
+import { useTranslation } from 'react-i18next'
+import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
+import { difyBuilderSessionViewAtom } from './session/state'
+import { buildTraceExport, serializeTraceExport } from './session/trace-export'
+import { difyBuilderRuntimeAtom } from './store'
+
+const DebugLogExport = () => {
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
+  const runtime = useAtomValue(difyBuilderRuntimeAtom)
+  const view = useAtomValue(difyBuilderSessionViewAtom)
+
+  const handleExport = () => {
+    if (!runtime) return
+    const data = buildTraceExport(runtime.session.getTrace(), view)
+    const blob = new Blob([serializeTraceExport(data)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    anchor.href = url
+    anchor.download = `builder-trace-${data.meta.session_id || 'nosession'}-${stamp}.json`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <Menu>
+      <MenuTrigger
+        render={
+          <IconButton
+            size="md"
+            disabled={!runtime}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            className="size-7 data-popup-open:bg-state-base-hover"
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
+        }
+      />
+      <MenuContent side="bottom" align="end" sideOffset={4} className="w-44">
+        <MenuItem onClick={handleExport}>
+          <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
+          <div className="ms-2 system-md-regular text-text-secondary">
+            {t(($) => $.exportDebugLog, { ns: 'difyBuilder' })}
+          </div>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
+  )
+}
+
+export default DebugLogExport

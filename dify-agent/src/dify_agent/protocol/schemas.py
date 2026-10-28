@@ -14,18 +14,21 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, field_validator, model_validator
 from pydantic_ai.messages import AgentStreamEvent
 
 from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.native_testing import AgentParentNodeRef, AgentNativeTestRef, AgentApprovalWait, Counter
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
-RunStatus = Literal["running", "succeeded", "failed", "cancelled"]
+RunStatus = Literal["running", "waiting", "succeeded", "failed", "cancelled"]
 RunEventType = Literal[
     "run_started",
+    "run_waiting",
+    "run_resumed",
     "pydantic_ai_event",
     "run_succeeded",
     "run_failed",
@@ -73,11 +76,38 @@ class CreateRunRequest(BaseModel):
     Native capabilities always release operation resources at run exit.
     """
 
+    execution_mode: Literal["ordinary", "builder_test"] = "ordinary"
+    native_test_profile: Literal["isolated", "confirmed"] = "isolated"
+    native_test_ref: AgentNativeTestRef | None = None
+    native_parent_node: AgentParentNodeRef | None = Field(default=None, exclude_if=lambda value: value is None)
+    native_test_protocol_version: Literal[1] | None = None
     composition: RunComposition
-    idempotency_key: str | None = None
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=256)
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: SessionSnapshot | None = None
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @field_validator("native_test_protocol_version", mode="before")
+    @classmethod
+    def validate_native_version_type(cls, value: object) -> object:
+        if value is not None and type(value) is not int:
+            raise ValueError("native test protocol version must be an integer")
+        return value
+
+    @model_validator(mode="after")
+    def validate_native_mode(self) -> CreateRunRequest:
+        marked = self.execution_mode == "builder_test"
+        if not marked and self.native_test_profile != "isolated":
+            raise ValueError("confirmed profile requires native test mode")
+        if self.native_test_profile == "confirmed" and self.idempotency_key is None:
+            raise ValueError("confirmed profile requires create identity")
+        if marked != (self.native_test_ref is not None) or marked != (self.native_test_protocol_version is not None):
+            raise ValueError("native test mode, reference and protocol version must agree")
+        if marked != (self.native_parent_node is not None):
+            raise ValueError("native mode and parent must agree")
+        if self.native_parent_node is not None and self.native_parent_node.ref != self.native_test_ref:
+            raise ValueError("native parent reference mismatch")
+        return self
 
 
 class CancelRunRequest(BaseModel):
@@ -211,6 +241,27 @@ class RunStartedEvent(BaseRunEvent):
     data: EmptyRunEventData = Field(default_factory=EmptyRunEventData)
 
 
+class RunWaitingEventData(BaseModel):
+    generation: Counter
+    pending_actions: tuple[AgentApprovalWait, ...]
+    model_config = ConfigDict(extra="forbid")
+
+
+class RunWaitingEvent(BaseRunEvent):
+    type: Literal["run_waiting"] = "run_waiting"
+    data: RunWaitingEventData
+
+
+class RunResumedEventData(BaseModel):
+    generation: Counter
+    model_config = ConfigDict(extra="forbid")
+
+
+class RunResumedEvent(BaseRunEvent):
+    type: Literal["run_resumed"] = "run_resumed"
+    data: RunResumedEventData
+
+
 class PydanticAIStreamRunEvent(BaseRunEvent):
     """Pydantic AI stream event with optional Dify Agent semantic annotations."""
 
@@ -241,7 +292,13 @@ class RunCancelledEvent(BaseRunEvent):
 
 
 RunEvent: TypeAlias = Annotated[
-    RunStartedEvent | PydanticAIStreamRunEvent | RunSucceededEvent | RunFailedEvent | RunCancelledEvent,
+    RunStartedEvent
+    | RunWaitingEvent
+    | RunResumedEvent
+    | PydanticAIStreamRunEvent
+    | RunSucceededEvent
+    | RunFailedEvent
+    | RunCancelledEvent,
     Field(discriminator="type"),
 ]
 RUN_EVENT_ADAPTER: TypeAdapter[RunEvent] = TypeAdapter(RunEvent)
@@ -280,6 +337,10 @@ __all__ = [
     "RunFailedEventData",
     "RunFailureType",
     "RunStartedEvent",
+    "RunWaitingEvent",
+    "RunWaitingEventData",
+    "RunResumedEvent",
+    "RunResumedEventData",
     "RunStatus",
     "RunStatusResponse",
     "RunSucceededEvent",

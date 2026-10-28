@@ -28,7 +28,8 @@ export type CreateAppPayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
-  name: string
+  name?: string | null
+  prompt?: string | null
 }
 
 export type AppDetailWithSite = {
@@ -9489,6 +9490,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreData = {
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
   400: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: ErrorResponse
   default: ErrorResponse
 }
 

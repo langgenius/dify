@@ -1,0 +1,664 @@
+"""Celery task that runs the dify_builder engine's ``Runner.advance`` off the
+request thread (P3b Task 4).
+
+The usecase's ``dispatch`` (Task 3) acquires the cross-process advance lock
+(``services.dify_builder.session_lock``) in the web process and enqueues
+this task; this task runs the actual engine step in the Celery process and
+releases the lock in ``finally`` -- regardless of whether the step succeeded,
+lost a version-CAS race, or raised. Progress (curated phase deltas,
+native workflow events during test runs, plus the settled command projection) is
+forwarded to the session's progress bus
+(``services.dify_builder.progress_bus``) for the P3c SSE endpoint to relay.
+
+Each invocation opens its own ``sessionmaker(bind=db.engine, ...)`` --
+mirrors ``services.dify_builder.dify_port._session_factory`` -- rather
+than reusing the Flask-request-scoped ``db.session``, since this runs in a
+Celery worker, not a Flask request. The ``FlaskTask`` base
+(``extensions.ext_celery.init_app``) already wraps the task body in
+``app.app_context()``, so this module must NOT push its own context.
+
+Once a message's user half is durable, a failed assistant half remains at
+the current waiting gate. The client can then retry with the same
+``client_turn_id`` without duplicating the user bubble.
+
+A reserved confirmed Tool command (``CONFIRMED_TOOL_ACTION``) is reloaded from
+the consent owner before any environment or agent setup; a forged, duplicate
+or already launched delivery ends as a conflict without running anything.
+"""
+
+import logging
+from collections.abc import Mapping
+from dataclasses import asdict, replace
+
+from celery import shared_task
+from sqlalchemy.orm import sessionmaker
+
+from configs import dify_config
+from core.dify_builder.contract import (
+    AgentMessageEventData,
+    AssistantTurnItem,
+    ConversationItemAppendedEventData,
+    ExecutionActivity,
+    ExecutionProgress,
+    ProgressEventData,
+    ReasoningEventData,
+    WorkflowEventData,
+    post_canvas_action_id,
+)
+from core.dify_builder.errors import ConflictError
+from core.dify_builder.models import CONFIRMED_TOOL_ACTION, Action, Actor, Session, Turn
+from core.dify_builder.state import PcState, is_terminal
+from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
+from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.presentation import copy_text
+from services.dify_builder import app_naming, progress_bus, progress_snapshot, session_lock
+from services.dify_builder.action_policy import requires_app_revision
+from services.dify_builder.agent.localize import LanguageDetector
+from services.dify_builder.agent_factory import build_dify_builder_agent
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+)
+from services.dify_builder.application.handlers_build import build_registry
+from services.dify_builder.application.handlers_edit import edit_registry
+from services.dify_builder.application.handlers_fix import fix_registry
+from services.dify_builder.application.runner import Env, Runner
+from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.errors import HashMismatchError
+from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.revision import executable_graph_revision
+from services.dify_builder.service import DifyBuilderService
+from services.dify_builder.test_actions import BuilderTestActions
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["advance_session"]
+
+_COMMAND_FINISHED_UNAVAILABLE_CODE = "command_finished_unavailable"
+
+
+def _build_repo() -> SqlDifyBuilderRepository:
+    # Per-task sessionmaker (never the Flask-request-scoped db.session) --
+    # mirrors dify_port._session_factory().
+    return SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
+
+
+def _build_consent_service() -> BuilderRealCallConsentService:
+    return BuilderRealCallConsentService(sessionmaker(bind=db.engine, expire_on_commit=False))
+
+
+def _build_test_actions(repo: SqlDifyBuilderRepository) -> BuilderTestActions:
+    from services.dify_builder.wiring import build_native_test_api_service
+
+    return BuilderTestActions(repo._session_factory, build_native_test_api_service)
+
+
+def _require_reserved_launch(
+    repo: SqlDifyBuilderRepository, session_id: str, action: Action, actor: Actor
+) -> ConfirmedToolExecutionContext:
+    """Reload the server-reserved confirmed command before any environment or agent setup.
+
+    The queued payload is only a pointer: its consent reference must equal the
+    session's committed pending reference, and the consent owner must still
+    hold this exact command unlaunched for this actor/session. A forged,
+    serialized, duplicate or already launched delivery never runs.
+    """
+    consent_id = action.payload.get("consent_id")
+    _session, fc = repo.get_session(session_id)
+    if (
+        set(action.payload) != {"consent_id"}
+        or not isinstance(consent_id, str)
+        or not consent_id
+        or (fc.confirmed_consent_id, fc.confirmed_command_id) != (consent_id, action.command_id)
+    ):
+        logger.warning("dify_builder confirmed command not reserved (session=%s)", session_id)
+        raise ConflictError(f"dify_builder: confirmed command is not reserved for session {session_id}")
+    try:
+        return _build_consent_service().reserved_launch(
+            actor=actor, session_id=session_id, consent_id=consent_id, command_id=action.command_id
+        )
+    except BuilderExecutionPolicyError as error:
+        logger.warning(
+            "dify_builder confirmed command refused (session=%s, command=%s, reason=%s)",
+            session_id,
+            action.command_id,
+            error.reason_code,
+        )
+        raise ConflictError(f"dify_builder: confirmed command cannot launch for session {session_id}") from None
+
+
+def _persist_failed_state(
+    repo: SqlDifyBuilderRepository,
+    session_id: str,
+    *,
+    expected_version: int,
+    expected_state: PcState,
+    command_id: str,
+) -> int | None:
+    """Persist a generic terminal failure even when agent construction failed."""
+    session, context = repo.get_session(session_id)
+    if is_terminal(session.current_state):
+        return None
+    if session.version != expected_version or session.current_state != expected_state:
+        raise ConflictError(
+            f"dify_builder: refusing stale setup failure for session {session_id} "
+            f"at version {session.version} state {session.current_state}"
+        )
+    at_version = session.version + 1
+    item = AssistantTurnItem(
+        turn_id=command_id,
+        stage_id=str(session.current_state),
+        execution=ExecutionProgress(status="error"),
+        reply_text=copy_text(BuilderCopyId.OPERATION_FAILED),
+        reply_mode="complete",
+        reply_language=context.reply_language,
+    ).to_item(seq=context.next_seq, at_version=at_version)
+    context.next_seq += 1
+    context.last_command_id = command_id
+    # Terminal: a pending confirmed command reference never survives into a retry.
+    context.confirmed_consent_id = ""
+    context.confirmed_command_id = ""
+    return repo.compare_and_advance(session.id, session.version, PcState.FAILED, context, [item])
+
+
+def _settle_reserved_grant(context: ConfirmedToolExecutionContext) -> None:
+    """Close this worker's own reloaded grant from its durable record after a terminal failure.
+
+    The consent owner decides: failed/expired before any claim, unknown after
+    one unless a sealed completion exists; counters are never touched and a
+    final grant is left as is. A failed write is repaired by the sweeper.
+    """
+    try:
+        _build_consent_service().settle_launch(context=context)
+    except Exception:
+        logger.warning(
+            "dify_builder confirmed grant settlement deferred to reconciliation (session=%s, command=%s)",
+            context.session_id,
+            context.command_id,
+        )
+
+
+@shared_task(
+    queue="dify_builder",
+    soft_time_limit=dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS,
+    time_limit=session_lock.active_advance_time_limit(),
+)
+def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token: str) -> None:
+    """Run one ``Runner.advance`` for ``session_id``, then release the
+    advance lock this worker activated from ``token``. Always releases its own
+    lock, even on a lost CAS race or an unexpected engine failure -- a stuck
+    lock would wedge the session for its full TTL
+    (``DIFY_BUILDER_MAX_ADVANCE_SECONDS``). A delivery that cannot activate the
+    token (stale, or a duplicate of a running command) neither runs nor releases."""
+    # Exactly one delivery owns the lease; a duplicate or stale delivery gets None and never
+    # runs or releases, so it cannot delete an active worker's lease.
+    owner = session_lock.activate(session_id, token)
+    if not owner:
+        logger.warning("dify_builder stale or duplicate queued advance ignored for session %s", session_id)
+        return
+
+    terminal_error: dict | None = None
+    completed: tuple[SqlDifyBuilderRepository, WorkflowServiceDifyPort, Actor] | None = None
+    repo: SqlDifyBuilderRepository | None = None
+    dify: WorkflowServiceDifyPort | None = None
+    actor: Actor | None = None
+    runner: Runner | None = None
+    env: Env | None = None
+    loaded_session: Session | None = None
+    last_progress: ProgressEventData | None = None
+    progress_activities: dict[str, ExecutionActivity] = {}
+    progress_operation_id = ""
+    action: Action | None = None
+    # Set only after this worker reloaded its own server-reserved confirmed command.
+    confirmed_context: ConfirmedToolExecutionContext | None = None
+    try:
+        repo = _build_repo()
+        dify = WorkflowServiceDifyPort()
+        actor = Actor(**actor_dict)
+        action = Action(**action_dict)
+        if action.kind == "task_continue":
+            from services.dify_builder.task_control_service import claim_continuation, refresh_continuation
+
+            claim_continuation(repo, session_id, actor, action)
+            refresh_continuation(repo, dify, session_id, actor, action)
+        confirmed = action.kind == CONFIRMED_TOOL_ACTION
+        if confirmed:
+            confirmed_context = _require_reserved_launch(repo, session_id, action, actor)
+        # The per-session model choice lives on the context (stable for the session).
+        # Read the head so the real agent is constructed with the user's chosen model.
+        loaded_session, _fc = repo.get_session(session_id)
+        from services.dify_builder.task_controls import generation, require_active
+
+        expected_generation = action.execution_generation
+        if expected_generation is None:
+            _, observed = repo.get_session_at_version(session_id, action.base_version)
+            expected_generation = generation(observed)
+        action.execution_generation = expected_generation
+        require_active(repo, session_id, expected_generation)
+        agent = build_dify_builder_agent(
+            tenant_id=actor.tenant_id,
+            model_config=_fc.model_config,
+            account_id=actor.account_id,
+            app_mode=dify.get_app_mode(loaded_session.app_id, actor),
+        )
+
+        fence = None
+
+        def delivery_active() -> bool:
+            try:
+                require_active(repo, session_id, fence.generation if fence else expected_generation)
+                return True
+            except ConflictError:
+                return False
+
+        def emit_workflow(payload: Mapping[str, object]) -> None:
+            if not delivery_active():
+                return
+            assert env is not None
+            try:
+                progress_bus.publish(
+                    session_id,
+                    asdict(
+                        WorkflowEventData(
+                            session_id=session_id,
+                            operation_id=env.operation_id,
+                            stage_id=env.stage_id,
+                            at_version=env.at_version,
+                            revision=env.next_event_revision(),
+                            payload=dict(payload),
+                        )
+                    ),
+                )
+            except Exception:
+                logger.exception("dify_builder workflow event publish failed for session %s", session_id)
+
+        def emit_canvas(event: dict) -> None:
+            if not delivery_active():
+                return
+            assert env is not None
+            try:
+                progress_bus.publish(
+                    session_id,
+                    {
+                        "kind": "canvas",
+                        "session_id": session_id,
+                        "operation_id": env.operation_id,
+                        "stage_id": env.stage_id,
+                        "at_version": env.at_version,
+                        "revision": env.next_event_revision(),
+                        **event,
+                    },
+                )
+            except Exception:
+                logger.exception("dify_builder canvas event publish failed for session %s", session_id)
+
+        def emit_message(message: AgentMessageEventData) -> None:
+            if not delivery_active():
+                return
+            try:
+                progress_bus.publish(session_id, asdict(message))
+            except Exception:
+                # Streaming delivery is best effort. The terminal sequence
+                # watermark exposes the missing assistant item so the client
+                # can recover it through the history endpoint.
+                logger.exception(
+                    "dify_builder agent_message event publish failed for session %s turn %s",
+                    session_id,
+                    message.turn_id,
+                )
+
+        def emit_item(event: ConversationItemAppendedEventData) -> None:
+            if not delivery_active():
+                return
+            try:
+                progress_bus.publish(session_id, asdict(event))
+            except Exception:
+                # The terminal sequence watermark lets the client detect this
+                # missing item and recover it through the history endpoint.
+                logger.exception(
+                    "dify_builder conversation item event publish failed for session %s seq %s",
+                    session_id,
+                    event.item.seq,
+                )
+
+        def emit_reasoning(reasoning: ReasoningEventData) -> None:
+            if not delivery_active():
+                return
+            try:
+                progress_bus.publish(session_id, asdict(reasoning))
+            except Exception:
+                logger.exception(
+                    "dify_builder reasoning event publish failed for session %s operation %s",
+                    session_id,
+                    reasoning.operation_id,
+                )
+
+        def emit_progress(progress: ProgressEventData) -> None:
+            nonlocal last_progress, progress_operation_id
+            if not delivery_active():
+                return
+            if progress.operation_id != progress_operation_id:
+                progress_activities.clear()
+                progress_operation_id = progress.operation_id
+            if progress.activity is not None:
+                progress_activities[progress.activity.id] = replace(progress.activity)
+            last_progress = progress
+            assert actor is not None
+            try:
+                progress_snapshot.save(
+                    progress_snapshot.ProgressSnapshot(
+                        session_id=session_id,
+                        operation_id=progress.operation_id,
+                        at_version=progress.at_version,
+                        revision=progress.revision,
+                        reply_language=progress.reply_language,
+                        execution=ExecutionProgress(
+                            status=progress.status, activities=list(progress_activities.values())
+                        ),
+                    ),
+                    tenant_id=actor.tenant_id,
+                    owner=owner,
+                )
+            except Exception:
+                logger.exception("dify_builder progress snapshot save failed for session %s", session_id)
+            try:
+                progress_bus.publish(session_id, asdict(progress))
+            except Exception:
+                # Phase progress is an observer notification. The following
+                # command_finished still carries the authoritative projection.
+                logger.exception(
+                    "dify_builder progress event publish failed for session %s operation %s",
+                    session_id,
+                    progress.operation_id,
+                )
+
+        language_detector = LanguageDetector(agent.model_or_none, prior_language=_fc.reply_language)
+
+        def rename_app(proposed: str) -> str:
+            assert actor is not None
+            assert loaded_session is not None
+            return app_naming.rename_app_from_proposal(
+                app_id=loaded_session.app_id,
+                tenant_id=actor.tenant_id,
+                account_id=actor.account_id,
+                proposed=proposed,
+            )
+
+        env = Env(
+            dify=dify,
+            agent=agent,
+            repo=repo,
+            now=naive_utc_now,
+            emit_workflow=emit_workflow,
+            emit_canvas=emit_canvas,
+            emit_message=emit_message,
+            emit_item=emit_item,
+            emit_progress=emit_progress,
+            emit_reasoning=emit_reasoning,
+            # A confirmed outcome is deterministic status metadata: no model call.
+            detect_language=None if confirmed else language_detector.detect_language,
+            rename_app=None if confirmed else rename_app,
+            command_id=action.command_id,
+        )
+        runner = Runner(env, fix_registry() | build_registry() | edit_registry())
+        if action.base_app_revision and requires_app_revision(action):
+            _graph, current_app_revision = dify.read_graph(loaded_session.app_id, actor)
+            if action.base_app_revision != current_app_revision:
+                raise ConflictError(f"stale app revision for app {loaded_session.app_id}")
+        from services.dify_builder.task_controls import ExecutionFence, execution_scope
+
+        def check_fence() -> None:
+            assert fence is not None
+            require_active(repo, session_id, fence.generation)
+
+        fence = ExecutionFence(
+            session_id,
+            expected_generation,
+            check_fence,
+            _fc.task_control.get("dsl", {}),
+        )
+        with execution_scope(fence):
+            runner.advance(session_id, Turn(action=action, actor=actor))
+        action.execution_generation = fence.generation
+        completed = (repo, dify, actor)
+    except (ConflictError, HashMismatchError):
+        if repo is not None and action is not None and action.kind == "task_continue":
+            from services.dify_builder.task_control_service import release_unstarted_continuation
+
+            release_unstarted_continuation(repo, session_id, action)
+        terminal_error = {
+            "kind": "error",
+            "error": "conflict",
+            "session_id": session_id,
+            "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+        }
+    except Exception:
+        # Generic message only -- never leak exception detail into the
+        # progress event (it is relayed to the end user via SSE in P3c).
+        logger.exception("dify_builder advance failed for session %s", session_id)
+        if last_progress is not None and last_progress.status == "running":
+            active_activities = [activity for activity in progress_activities.values() if activity.state == "active"]
+            failure_deltas = [replace(activity, state="failed") for activity in active_activities] or [None]
+            try:
+                for revision_offset, activity in enumerate(failure_deltas, start=1):
+                    progress_bus.publish(
+                        session_id,
+                        asdict(
+                            replace(
+                                last_progress,
+                                revision=last_progress.revision + revision_offset,
+                                status="error",
+                                activity=activity,
+                            )
+                        ),
+                    )
+            except Exception:
+                logger.exception("dify_builder failed progress publish failed for session %s", session_id)
+        retryable_message_failure = False
+        failed_action_kind = action.kind if action is not None else action_dict.get("kind")
+        failed_action_payload = action.payload if action is not None else action_dict.get("payload")
+        if repo is not None and failed_action_kind == "message" and isinstance(failed_action_payload, dict):
+            client_turn_id = failed_action_payload.get("client_turn_id")
+            if isinstance(client_turn_id, str) and client_turn_id:
+                try:
+                    turn_kinds = repo.get_conversation_turn_kinds(session_id, client_turn_id)
+                    retryable_message_failure = "user" in turn_kinds and "assistant_turn" not in turn_kinds
+                except Exception:
+                    logger.exception(
+                        "dify_builder could not inspect failed message turn for session %s",
+                        session_id,
+                    )
+
+        if retryable_message_failure:
+            terminal_error = {
+                "kind": "error",
+                "error": "step failed",
+                "recoverable": True,
+                "session_id": session_id,
+                "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+            }
+        elif runner is not None:
+            try:
+                assert repo is not None
+                # ``Runner.fail`` normally fences with the operation metadata
+                # established by ``Runner.advance``. If a failure happens
+                # before that metadata is initialized, compare against the
+                # head loaded by this worker so an expired/stale worker cannot
+                # overwrite a transition committed by a newer one.
+                if env is not None and env.at_version <= 0 and loaded_session is not None:
+                    current, _context = repo.get_session(session_id)
+                    if (
+                        current.version != loaded_session.version
+                        or current.current_state != loaded_session.current_state
+                    ):
+                        raise ConflictError(
+                            f"dify_builder: refusing stale failure for session {session_id} "
+                            f"at version {current.version} state {current.current_state}"
+                        )
+                runner.fail(session_id)
+                assert dify is not None
+                assert actor is not None
+                completed = (repo, dify, actor)
+            except ConflictError:
+                logger.warning("dify_builder stale worker failure ignored for session %s", session_id)
+                terminal_error = {
+                    "kind": "error",
+                    "error": "conflict",
+                    "session_id": session_id,
+                    "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+                }
+            except Exception:
+                logger.exception("dify_builder could not persist failed state for session %s", session_id)
+                terminal_error = {
+                    "kind": "error",
+                    "error": "step failed",
+                    "recoverable": True,
+                    "session_id": session_id,
+                    "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+                }
+        elif repo is not None and loaded_session is not None:
+            try:
+                _persist_failed_state(
+                    repo,
+                    session_id,
+                    expected_version=loaded_session.version,
+                    expected_state=loaded_session.current_state,
+                    command_id=action.command_id if action is not None else str(action_dict.get("command_id") or ""),
+                )
+                if dify is not None and actor is not None:
+                    completed = (repo, dify, actor)
+                else:
+                    terminal_error = {
+                        "kind": "error",
+                        "error": "step failed",
+                        "recoverable": True,
+                        "session_id": session_id,
+                        "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+                    }
+            except ConflictError:
+                logger.warning("dify_builder stale setup failure ignored for session %s", session_id)
+                terminal_error = {
+                    "kind": "error",
+                    "error": "conflict",
+                    "session_id": session_id,
+                    "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+                }
+            except Exception:
+                logger.exception("dify_builder could not persist early failed state for session %s", session_id)
+                terminal_error = {
+                    "kind": "error",
+                    "error": "step failed",
+                    "recoverable": True,
+                    "session_id": session_id,
+                    "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+                }
+        else:
+            terminal_error = {
+                "kind": "error",
+                "error": "step failed",
+                "recoverable": True,
+                "session_id": session_id,
+                "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+            }
+        if confirmed_context is not None:
+            # Terminal failure of this worker's own reserved command: settle its grant once
+            # (idempotent; a grant the port already settled is final and left as is).
+            _settle_reserved_grant(confirmed_context)
+    finally:
+        # Only this worker's owner value releases the activated lease.
+        session_lock.release(session_id, owner)
+        if repo is not None and actor is not None:
+            from services.dify_builder.task_control_service import observe_stop
+
+            try:
+                observe_stop(repo, _build_test_actions(repo), session_id, actor)
+            except Exception:
+                logger.exception("dify_builder stop settlement observation failed for session %s", session_id)
+
+    if repo is not None and action is not None:
+        from services.dify_builder.task_controls import generation
+
+        _, head_context = repo.get_session(session_id)
+        if head_context.paused or (
+            action.execution_generation is not None and generation(head_context) != action.execution_generation
+        ):
+            return
+
+    # Publish terminal frames only after releasing the lock so the
+    # authoritative SSE state no longer projects a completed/waiting
+    # transition as executing.
+    if terminal_error is not None:
+        progress_bus.publish(session_id, terminal_error)
+    elif completed is not None:
+        # The advance already succeeded and the lock is released; the session is
+        # durable. But the view projection (read_graph) or the publish itself can
+        # still raise -- and if this block let that escape, NO terminal frame
+        # would reach the SSE client, hanging its stream to the deadline with a
+        # stale held version (-> 409 on its next action). Fall back to a terminal
+        # error frame so the client stream always ends.
+        try:
+            repo, dify, actor = completed
+
+            def get_verification_identity(app_id: str, owner: Actor) -> tuple[str, str]:
+                graph, revision = dify.read_graph(app_id, owner)
+                return revision, executable_graph_revision(graph)
+
+            view = DifyBuilderService(
+                repo,
+                session_lock,
+                lambda *a, **k: None,
+                get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
+                get_verification_identity_fn=get_verification_identity,
+                test_actions=_build_test_actions(repo),
+            ).get_session_view(session_id, actor)
+            progress_bus.publish(
+                session_id,
+                {
+                    "kind": "command_finished",
+                    **asdict(view),
+                    "command_id": action.command_id if action is not None else action_dict.get("command_id", ""),
+                    "post_canvas_action_id": post_canvas_action_id(
+                        str(loaded_session.current_state) if loaded_session is not None else None,
+                        action.kind if action is not None else action_dict.get("kind"),
+                        completed_state=view.state,
+                        available_action_ids=[available.id for available in view.actions],
+                    ),
+                },
+            )
+        except Exception:
+            logger.exception("dify_builder command_finished projection/publish failed for session %s", session_id)
+            try:
+                progress_bus.publish(
+                    session_id,
+                    {
+                        "kind": "error",
+                        "code": _COMMAND_FINISHED_UNAVAILABLE_CODE,
+                        "error": "step failed",
+                        "session_id": session_id,
+                        "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+                    },
+                )
+            except Exception:
+                logger.exception("dify_builder terminal error frame also failed to publish for session %s", session_id)
+
+
+@shared_task(queue="dify_builder")
+def advance_native_test(*, ref: dict, generation: int, dispatch_id: str, actor: dict) -> None:
+    """V2-only delivery: trusted SQL reload, never ordinary Runner fallback.
+
+    The application composition owner supplies qualified native collaborators.
+    Queue arguments are references, not approval flags or serialized state.
+    """
+    from runtime_contracts.builder.native.contracts import decode_native_ref
+    from services.dify_builder.wiring import build_native_dispatch_lifecycle
+
+    actual_ref = decode_native_ref(ref)
+    service = build_native_dispatch_lifecycle(
+        ref=actual_ref,
+        generation=generation,
+        dispatch_id=dispatch_id,
+        actor_hint=Actor(**actor),
+    )
+    service.execute_dispatch(ref=actual_ref, generation=generation, dispatch_id=dispatch_id)

@@ -1,3 +1,11 @@
+"""App request contracts and serialization of materialized response data.
+
+Unit coverage for console app controller contracts and response mapping.
+
+Transport contracts for the Console app application boundary.
+
+Regression tests for CreateAppPayload mode validation."""
+
 from __future__ import annotations
 
 import inspect
@@ -26,40 +34,18 @@ from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import flask_admission
-from controllers.console.app import (
-    annotation as annotation_module,
-)
-from controllers.console.app import (
-    app as app_module,
-)
+from controllers.console.app import annotation as annotation_module
+from controllers.console.app import app as app_module
 from controllers.console.app import app as controller
-from controllers.console.app import (
-    completion as completion_module,
-)
-from controllers.console.app import (
-    message as message_module,
-)
-from controllers.console.app import (
-    ops_trace as ops_trace_module,
-)
-from controllers.console.app import (
-    site as site_module,
-)
-from controllers.console.app import (
-    statistic as statistic_module,
-)
-from controllers.console.app import (
-    workflow_app_log as workflow_app_log_module,
-)
-from controllers.console.app import (
-    workflow_draft_variable as workflow_draft_variable_module,
-)
-from controllers.console.app import (
-    workflow_statistic as workflow_statistic_module,
-)
-from controllers.console.app import (
-    wraps as wraps_module,
-)
+from controllers.console.app import completion as completion_module
+from controllers.console.app import message as message_module
+from controllers.console.app import ops_trace as ops_trace_module
+from controllers.console.app import site as site_module
+from controllers.console.app import statistic as statistic_module
+from controllers.console.app import workflow_app_log as workflow_app_log_module
+from controllers.console.app import workflow_draft_variable as workflow_draft_variable_module
+from controllers.console.app import workflow_statistic as workflow_statistic_module
+from controllers.console.app import wraps as wraps_module
 from controllers.console.app.app import CreateAppPayload
 from controllers.console.app.completion import ChatMessagePayload, CompletionMessagePayload
 from controllers.console.app.error import (
@@ -125,11 +111,10 @@ from services.entities.app_entities import (
 from services.entities.dsl_entities import Import, ImportStatus
 from tests.helpers.unit.config_override import apply_config_overrides
 
-"""Unit coverage for console app controller contracts and response mapping."""
-
-
 _APP_APIS_APP_ID = "11111111-1111-1111-1111-111111111111"
+
 _APP_APIS_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+
 USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
@@ -855,19 +840,22 @@ class TestAppApisCases:
             assert all(p is not None for p in payloads)
 
 
-"""App request contracts and serialization of materialized response data."""
-
-
 def _ts(hour: int = 12) -> datetime:
     return datetime(2024, 1, 1, hour, 0, 0)
 
 
 _APP_RESPONSE_MODELS_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+
 _APP_RESPONSE_MODELS_APP_ID = "00000000-0000-0000-0000-000000000101"
+
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000201"
+
 CONFIG_ID = "00000000-0000-0000-0000-000000000301"
+
 WORKFLOW_ID = "00000000-0000-0000-0000-000000000401"
+
 SITE_ID = "00000000-0000-0000-0000-000000000501"
+
 TAG_ID = "00000000-0000-0000-0000-000000000601"
 
 
@@ -1041,21 +1029,17 @@ class TestAppResponseModelsCases:
                 ("page", "2"),
                 ("limit", "50"),
                 ("mode", "chat"),
-                ("name", "Sales Copilot"),
+                ("name", "Sales DifyBuilder"),
                 ("is_created_by_me", "true"),
             ]
         )
-
         query = app_module.query_params_from_request(
-            app_module.AppListQuery,
-            list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
-            args=query_args,
+            app_module.AppListQuery, list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS, args=query_args
         )
-
         assert query.page == 2
         assert query.limit == 50
         assert query.mode == "chat"
-        assert query.name == "Sales Copilot"
+        assert query.name == "Sales DifyBuilder"
         assert query.is_created_by_me is True
         assert query.tag_ids is None
 
@@ -1444,11 +1428,10 @@ class TestAppResponseModelsCases:
                 app_fields.AppDetailWithSite.model_validate({**detail, "model_config": {**config, **invalid}})
 
 
-"""Transport contracts for the Console app application boundary."""
-
-
 _CONSOLE_APP_API_APP_ID = UUID("11111111-1111-1111-1111-111111111111")
+
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
+
 RECORD = AppRecord(
     str(_CONSOLE_APP_API_APP_ID),
     "Example",
@@ -1457,6 +1440,7 @@ RECORD = AppRecord(
     created_at=datetime(2024, 1, 1),
     updated_at=datetime(2024, 1, 1),
 )
+
 SITE = {
     "code": "site",
     "title": "Example",
@@ -1791,9 +1775,6 @@ class TestConsoleAppApiCases:
         assert boundary.calls == []
 
 
-"""Regression tests for CreateAppPayload mode validation."""
-
-
 class TestCreateAppPayloadCases:
     class TestCreateAppPayloadMode:
         @pytest.mark.parametrize(
@@ -1811,3 +1792,24 @@ class TestCreateAppPayloadCases:
         def test_rejects_unknown_mode(self):
             with pytest.raises(ValidationError):
                 CreateAppPayload.model_validate({"name": "X", "mode": "not-a-mode"})
+
+
+class TestCreateAppPayloadNaming:
+    """App Builder creates from a prompt, so the client may send no name."""
+
+    def test_accepts_a_prompt_without_a_name(self):
+        payload = CreateAppPayload.model_validate(
+            {"mode": "workflow", "prompt": "Refund approval for ecommerce orders"}
+        )
+        assert payload.name is None
+        assert payload.prompt == "Refund approval for ecommerce orders"
+
+    def test_accepts_neither_name_nor_prompt(self):
+        payload = CreateAppPayload.model_validate({"mode": "workflow"})
+        assert payload.name is None
+        assert payload.prompt is None
+
+    def test_still_rejects_an_empty_name(self):
+        # Omitting the name asks the server to derive one; sending "" is a bug.
+        with pytest.raises(ValidationError):
+            CreateAppPayload.model_validate({"name": "", "mode": "workflow"})

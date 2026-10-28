@@ -1,5 +1,6 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactFlowInstance } from 'reactflow'
+import type { WorkflowDraftRefreshResult } from '../use-workflow-refresh-draft'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -11,7 +12,15 @@ import {
   createNode,
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  baseRunningData,
+  renderWorkflowComponent,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  containerParams,
+  createNodeStartedResponse,
+} from '@/app/components/workflow/hooks/use-workflow-run-event/__tests__/test-helpers'
+import { useWorkflowNodeStarted } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-node-started'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
@@ -107,11 +116,14 @@ function setup(mode: AppMode = 'advanced-chat') {
 
   const refresh = createRef<ReturnType<typeof useWorkflowRefreshDraft>>()
   const flow = createRef<ReactFlowInstance>()
+  const nodeEvents = createRef<ReturnType<typeof useWorkflowNodeStarted>>()
   function RefreshProbe() {
     const hook = useWorkflowRefreshDraft()
     const canvas = useReactFlow()
+    const events = useWorkflowNodeStarted()
     useImperativeHandle(refresh, () => hook, [hook])
     useImperativeHandle(flow, () => canvas, [canvas])
+    useImperativeHandle(nodeEvents, () => events, [events])
     return null
   }
 
@@ -136,7 +148,7 @@ function setup(mode: AppMode = 'advanced-chat') {
     },
   )
 
-  return { ...rendered, flow, refresh }
+  return { ...rendered, flow, refresh, nodeEvents }
 }
 
 async function expectGraph(
@@ -175,7 +187,7 @@ describe('useWorkflowRefreshDraft', () => {
       await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
 
       await act(async () => {
-        expect(await refresh.current!.handleRefreshWorkflowDraft(notUpdateCanvas)).toBe(true)
+        expect(await refresh.current!.handleRefreshWorkflowDraft(notUpdateCanvas)).toBe('refreshed')
       })
 
       expect(fetchDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
@@ -186,7 +198,7 @@ describe('useWorkflowRefreshDraft', () => {
         notUpdateCanvas ? localViewport : savedViewport,
       )
       expect(store.getState()).toMatchObject({
-        syncWorkflowDraftHash: 'server-hash',
+        syncWorkflowDraftHash: notUpdateCanvas ? 'local-hash' : 'server-hash',
         isSyncingWorkflowDraft: false,
         isWorkflowDataLoaded: true,
       })
@@ -198,7 +210,7 @@ describe('useWorkflowRefreshDraft', () => {
     fetchDraft.mockReturnValue(deferred.promise)
     let isCurrent = true
     const { flow, refresh, store } = setup()
-    let request!: Promise<boolean>
+    let request!: Promise<WorkflowDraftRefreshResult>
     act(() => {
       request = refresh.current!.handleRefreshWorkflowDraft(false, {
         shouldApply: () => isCurrent,
@@ -208,7 +220,7 @@ describe('useWorkflowRefreshDraft', () => {
 
     await act(async () => {
       deferred.resolve(draftResponse)
-      expect(await request).toBe(false)
+      expect(await request).toBe('superseded')
     })
 
     await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
@@ -219,18 +231,46 @@ describe('useWorkflowRefreshDraft', () => {
     })
   })
 
+  it('preserves the automatic node-follow view when refreshing the Builder draft', async () => {
+    const { flow, refresh, store, nodeEvents } = setup()
+    await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
+    const started = createNodeStartedResponse()
+    started.data.node_id = 'local-code'
+    act(() => {
+      store.getState().setWorkflowDraftSyncPhase('builder')
+      store.getState().setCanvasReadOnly(true)
+      store.getState().setWorkflowRunningData(baseRunningData())
+      nodeEvents.current!.handleWorkflowNodeStarted(started, containerParams)
+    })
+    await waitFor(() => expect(flow.current!.getViewport()).not.toEqual(localViewport))
+    const followedViewport = flow.current!.getViewport()
+    expect(store.getState().builderViewportManuallyChanged).toBe(false)
+
+    await act(async () => {
+      expect(
+        await refresh.current!.handleRefreshWorkflowDraft(false, { builderRefresh: true }),
+      ).toBe('refreshed')
+    })
+
+    await expectGraph(flow, ['saved-start', 'saved-code'], ['saved-edge'], followedViewport)
+    expect(store.getState().workflowDraftSyncPhase).toBe('idle')
+  })
+
   it('keeps the syncing guard active until the newest overlapping refresh completes', async () => {
     const first = createDeferred<FetchWorkflowDraftResponse>()
     const second = createDeferred<FetchWorkflowDraftResponse>()
     fetchDraft.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
     let firstIsCurrent = true
     const { flow, refresh, store } = setup()
-    let firstRequest!: Promise<boolean>
-    let secondRequest!: Promise<boolean>
+    let firstRequest!: Promise<WorkflowDraftRefreshResult>
+    let secondRequest!: Promise<WorkflowDraftRefreshResult>
     act(() => {
       firstRequest = refresh.current!.handleRefreshWorkflowDraft(false, {
         shouldApply: () => firstIsCurrent,
       })
+    })
+    await waitFor(() => expect(fetchDraft).toHaveBeenCalledTimes(1))
+    act(() => {
       secondRequest = refresh.current!.handleRefreshWorkflowDraft(false, {
         shouldApply: () => true,
       })
@@ -350,18 +390,18 @@ describe('useWorkflowRefreshDraft', () => {
     const deferred = createDeferred<FetchWorkflowDraftResponse>()
     fetchDraft.mockReturnValue(deferred.promise)
     const { flow, refresh, store } = setup()
-    let request!: Promise<boolean>
+    let request!: Promise<WorkflowDraftRefreshResult>
     act(() => {
       request = refresh.current!.handleRefreshWorkflowDraft()
     })
     expect(store.getState()).toMatchObject({
-      isWorkflowDataLoaded: false,
+      isWorkflowDataLoaded: true,
       isSyncingWorkflowDraft: true,
     })
 
     await act(async () => {
       deferred.reject(new Error('refresh failed'))
-      expect(await request).toBe(false)
+      expect(await request).toBe('failed')
     })
 
     expect(store.getState()).toMatchObject({

@@ -2,7 +2,7 @@ import logging
 import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, final
+from typing import TYPE_CHECKING, Any, final, overload
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import set_committed_value
@@ -311,23 +311,42 @@ class BaseAppGenerator:
             return value.replace("\x00", "")
         return value
 
+    @overload
     @classmethod
-    def convert_to_event_stream(cls, generator: Mapping | Generator[Mapping | str]):
-        """
-        Convert messages into event stream
-        """
-        if isinstance(generator, dict):
-            return generator
-        else:
+    def convert_to_event_stream[MappingT: Mapping[str, object]](
+        cls, generator: MappingT, *, close_source: bool = False
+    ) -> MappingT: ...
 
-            def gen():
+    @overload
+    @classmethod
+    def convert_to_event_stream(
+        cls, generator: Generator[Mapping[str, object] | str], *, close_source: bool = False
+    ) -> Generator[str]: ...
+
+    @classmethod
+    def convert_to_event_stream(
+        cls, generator: Mapping[str, object] | Generator[Mapping[str, object] | str], *, close_source: bool = False
+    ) -> Mapping[str, object] | Generator[str]:
+        """Convert messages into an event stream.
+
+        In-process dispatch opts into source closure. Native host-owned streams
+        retain their existing reader finalizer as the close authority.
+        """
+        if isinstance(generator, Mapping):
+            return generator
+
+        def gen() -> Generator[str]:
+            try:
                 for message in generator:
-                    if isinstance(message, Mapping | dict):
+                    if isinstance(message, Mapping):
                         yield f"data: {orjson_dumps(message)}\n\n"
                     else:
                         yield f"event: {message}\n\n"
+            finally:
+                if close_source:
+                    generator.close()
 
-            return gen()
+        return gen()
 
     @final
     @staticmethod

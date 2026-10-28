@@ -1,3 +1,7 @@
+"""Unit coverage for RAG workflow controllers using real models and disposable SQLite state.
+
+Unit tests for rag_pipeline_workflow controller endpoints."""
+
 from __future__ import annotations
 
 import json
@@ -55,7 +59,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.datasource.entities.datasource_entities import DatasourceParameter
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
@@ -74,10 +77,17 @@ from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account as _rag_pipeline_workflow_make_account
 from tests.helpers.unit.model_factories import make_dataset, make_tenant
+
+_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+
+_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
+
+_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
 
 
 def _provider() -> PluginDatasourceProviderEntity:
@@ -274,13 +284,8 @@ class TestDatasourceCatalogCases:
             RagPipelineDatasourceProviderResponse.model_validate(payload)
 
 
-"""Unit coverage for RAG workflow controllers using real models and disposable SQLite state."""
-
-
-_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
-_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
-_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
 DEFAULT_WORKFLOW_ID = "00000000-0000-0000-0000-000000000004"
+
 DEFAULT_DATASET_ID = "44444444-4444-4444-4444-444444444444"
 
 
@@ -756,12 +761,12 @@ class TestRagPipelineWorkflowCases:
         assert generate.call_args.kwargs["generator"] is pipeline_application
 
 
-"""Unit tests for rag_pipeline_workflow controller endpoints."""
-
-
 _RAG_PIPELINE_WORKFLOW_APIS_DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+
 _RAG_PIPELINE_WORKFLOW_APIS_DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
+
 _RAG_PIPELINE_WORKFLOW_APIS_DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
+
 type WorkflowVariablePayload = dict[str, object]
 
 

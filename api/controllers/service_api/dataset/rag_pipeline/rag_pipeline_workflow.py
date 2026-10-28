@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -30,7 +30,6 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.schema import event_stream_response, json_or_event_stream_response, multipart_file_params
 from controllers.service_api.wraps import DatasetApiResource
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from extensions.ext_application_services import application_services
@@ -51,6 +50,7 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
 )
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 
 class DatasourceNodeRunPayload(BaseModel):
@@ -317,7 +317,7 @@ class PipelineRunApi(DatasetApiResource):
         rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
-            response: dict[Any, Any] | Generator[str, Any] = PipelineGenerateService.generate(
+            response: Mapping[str, object] | Generator[str] = PipelineGenerateService.generate(
                 generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,

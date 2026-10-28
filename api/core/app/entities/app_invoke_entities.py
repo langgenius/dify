@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -20,12 +20,27 @@ from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
+from runtime_contracts.builder.execution import (
+    BuilderExecutionContext,
+    BuilderExecutionContextValue,
+    ConfirmedToolExecutionContext,
+    JsonToolExecutionContext,
+)
+from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
 
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
+
+
+def _tag_legacy_builder_execution(value: object) -> object:
+    """Older serialized restricted contexts may lack the tag; never infer the confirmed variant."""
+    if isinstance(value, dict) and "policy_version" not in value:
+        return {**value, "policy_version": "builder-restricted-v1"}
+    return value
 
 
 class UserFrom(StrEnum):
@@ -96,6 +111,21 @@ def get_credit_usage_created_by(app_mode: AppMode | str | None) -> CreditUsageCr
 
 
 class DifyRunContext(BaseModel):
+    builder_execution: BuilderExecutionContextValue | None = None
+    # Separate server marker: missing native authority must never select ordinary execution.
+    native_test_required: bool = False
+    native_test_ref: NativeTestContextRef | None = None
+    # Server-only confirmed Agent marker; the reference itself grants no authority.
+    builder_agent_execution: BuilderAgentExecutionContext | None = None
+    # Builder confirmed Test Run only: nodes whose side effect was not confirmed
+    # return a mocked result instead of running. Never set for ordinary runs.
+    builder_mocked_node_ids: frozenset[str] = frozenset()
+    builder_tool_credential_bindings: dict[str, str] | None = None
+
+    @field_serializer("builder_mocked_node_ids")
+    def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:
+        return sorted(value)
+
     tenant_id: str
     app_id: str
     user_id: str
@@ -105,6 +135,11 @@ class DifyRunContext(BaseModel):
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
     workflow_tool_invocation_id: str | None = None
+
+    @field_validator("builder_execution", mode="before")
+    @classmethod
+    def tag_builder_execution(cls, value: object) -> object:
+        return _tag_legacy_builder_execution(value)
 
     @field_validator("created_by", mode="before")
     @classmethod
@@ -132,6 +167,12 @@ def build_dify_run_context(
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
+    builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext | None = None,
+    native_test_required: bool = False,
+    native_test_ref: NativeTestContextRef | None = None,
+    builder_agent_execution: BuilderAgentExecutionContext | None = None,
+    builder_mocked_node_ids: frozenset[str] = frozenset(),
+    builder_tool_credential_bindings: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -140,7 +181,13 @@ def build_dify_run_context(
     payload is always overwritten by this function to keep one canonical source.
     """
     run_context = dict(extra_context) if extra_context else {}
-    run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
+    dify_context = DifyRunContext(
+        builder_execution=builder_execution,
+        native_test_required=native_test_required,
+        native_test_ref=native_test_ref,
+        builder_agent_execution=builder_agent_execution,
+        builder_mocked_node_ids=builder_mocked_node_ids,
+        builder_tool_credential_bindings=builder_tool_credential_bindings,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -150,6 +197,11 @@ def build_dify_run_context(
         created_by=normalize_credit_usage_created_by(created_by) if created_by is not None else None,
         trace_session_id=trace_session_id,
     )
+    if isinstance(builder_tool_credential_bindings, dict):
+        # This server-owned run map is also held by the generation entity.
+        # Native OAuth receipts must survive a graph rebuild after pause.
+        dify_context.builder_tool_credential_bindings = builder_tool_credential_bindings
+    run_context[DIFY_RUN_CONTEXT_KEY] = dify_context
     return run_context
 
 
@@ -177,6 +229,28 @@ class AppGenerateEntity(BaseModel):
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # Either Builder policy variant; persisted pause/resume JSON keeps its tag and
+    # every Builder transport refuses resume, so it is only ever decoded to refuse.
+    builder_execution: BuilderExecutionContextValue | None = None
+    # Separate server marker: missing native authority must never select ordinary execution.
+    native_test_required: bool = False
+    native_test_ref: NativeTestContextRef | None = None
+    # Server-only confirmed Agent marker; the reference itself grants no authority.
+    builder_agent_execution: BuilderAgentExecutionContext | None = None
+    # Builder confirmed Test Run only; see ``DifyRunContext.builder_mocked_node_ids``.
+    builder_expected_revision: str | None = None
+    builder_mocked_node_ids: frozenset[str] = frozenset()
+    builder_tool_credential_bindings: Mapping[str, str] | None = None
+
+    @field_serializer("builder_mocked_node_ids")
+    def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:
+        return sorted(value)
+
+    @field_validator("builder_execution", mode="before")
+    @classmethod
+    def tag_builder_execution(cls, value: object) -> object:
+        return _tag_legacy_builder_execution(value)
 
     task_id: str
 

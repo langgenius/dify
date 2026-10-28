@@ -107,9 +107,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     void setUrlQuery({ sort_by: nextSortBy })
   }
 
-  const openCreateBlankModal = useCallback(() => {
-    if (canCreateApp) setCreationDialog({ type: 'blank' })
-  }, [canCreateApp])
   const openCreateTemplateDialog = useCallback(() => {
     if (canCreateApp) setCreationDialog({ type: 'template' })
   }, [canCreateApp])
@@ -144,7 +141,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
           onKeywordsChange={changeKeywords}
           onCreatorIDsChange={changeCreatorIDs}
           onSortByChange={changeSortBy}
-          onCreateBlank={openCreateBlankModal}
           onCreateTemplate={openCreateTemplateDialog}
           onImportDSL={openCreateFromDSLModal}
           onOpenTagManagement={openTagManagement}
@@ -169,7 +165,6 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
                   canCreateApp={canCreateApp}
                   dragging={dragging}
                   hasActiveFilters={hasActiveFilters}
-                  onCreateBlank={openCreateBlankModal}
                   onCreateLearnDify={onCreateLearnDify}
                   onCreateTemplate={openCreateTemplateDialog}
                   onImportDSL={openCreateFromDSLModal}
@@ -194,11 +189,8 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
-        category={category}
         dialog={creationDialog}
         onClose={() => setCreationDialog(null)}
-        onOpenBlank={openCreateBlankModal}
-        onOpenTemplate={openCreateTemplateDialog}
       />
     </StudioListNavigation>
   )

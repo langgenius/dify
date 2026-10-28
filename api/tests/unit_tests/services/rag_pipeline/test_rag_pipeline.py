@@ -12,16 +12,10 @@ from pytest_mock import MockerFixture
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from graphon.engine_events import NodeRunFailedEvent
-from graphon.enums import (
-    BuiltinNodeTypes,
-    ErrorStrategy,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
@@ -46,6 +40,7 @@ from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 
 def _make_service() -> RagPipelineService:

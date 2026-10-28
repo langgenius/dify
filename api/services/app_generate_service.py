@@ -4,18 +4,16 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_app.app_generator import AgentAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
@@ -25,6 +23,15 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
+from services.dify_builder.application.execution_policy import (
+    BuilderExecutionContext,
+    BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
+    JsonToolExecutionContext,
+    scalar_inputs_digest,
+)
+from services.dify_builder.execution_policy_service import restricted_admission_snapshot
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -33,7 +40,10 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.tools.draft_tool_setup import admit_draft_tool_setup
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
+from services.workflow_runtime.workflow_generator import BuilderExecutionAdmission, WorkflowAppGenerator
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -49,7 +59,15 @@ _MANUAL_WORKFLOW_INVOKE_SOURCES = frozenset(
 )
 
 if TYPE_CHECKING:
-    from controllers.console.app.workflow import LoopNodeRunPayload
+    from fields.workflow_run_fields import LoopNodeRunPayload
+    from runtime_contracts.builder.native.contracts import NativeTestContextRef
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+    from services.dify_builder.native_testing.native_execution import ClosableNativeEventStream
+    from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+
+
+class _EventStreamConversionOptions(TypedDict, total=False):
+    close_source: bool
 
 
 class AppGenerateService:
@@ -108,6 +126,16 @@ class AppGenerateService:
         session: Session,
         streaming: bool = True,
         root_node_id: str | None = None,
+        workflow_execution_mode: Literal["celery", "in_process"] = "celery",
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
+        builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ):
         """
         App Content Generate
@@ -116,8 +144,48 @@ class AppGenerateService:
         :param args: args
         :param invoke_from: invoke from
         :param streaming: streaming
+        :param workflow_execution_mode: Execute workflow streams locally when already
+            inside a worker task, avoiding a synchronous wait for another Celery slot.
         :return:
         """
+        if builder_agent_execution is not None and (
+            builder_execution is not None
+            or app_model.mode != AppMode.WORKFLOW
+            or workflow_execution_mode != "in_process"
+            or invoke_from != InvokeFrom.DEBUGGER
+            or not isinstance(user, Account)
+        ):
+            raise BuilderExecutionPolicyError("unsupported_execution_transport")
+        if (
+            builder_mocked_node_ids
+            or builder_expected_revision is not None
+            or builder_tool_credential_bindings is not None
+        ) and (
+            builder_execution is not None
+            or app_model.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
+            or workflow_execution_mode != "in_process"
+            or invoke_from != InvokeFrom.DEBUGGER
+            or not isinstance(user, Account)
+        ):
+            raise BuilderExecutionPolicyError("unsupported_execution_transport")
+        try:
+            if builder_execution is not None:
+                if (
+                    app_model.mode != AppMode.WORKFLOW
+                    or workflow_execution_mode != "in_process"
+                    or invoke_from != InvokeFrom.DEBUGGER
+                    or not isinstance(user, Account)
+                    or builder_execution_admit is None
+                    or args.get("files")
+                ):
+                    raise BuilderExecutionPolicyError("unsupported_execution_transport")
+                workflow = cls._get_workflow(app_model, invoke_from, args.get("workflow_id"), session=session)
+                restricted_admission_snapshot(workflow, app_model)
+                scalar_inputs_digest(args.get("inputs", {}))
+        except BuilderExecutionPolicyError as error:
+            if builder_execution_admit is not None:
+                builder_execution_admit.on_refusal(error, preworker=True)
+            raise
         return cls._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
@@ -131,6 +199,86 @@ class AppGenerateService:
                 session=session,
                 rate_limit=rate_limit,
                 request_id=request_id,
+                workflow_execution_mode=workflow_execution_mode,
+                builder_execution=builder_execution,
+                builder_execution_admit=builder_execution_admit,
+                builder_agent_execution=builder_agent_execution,
+                builder_mocked_node_ids=builder_mocked_node_ids,
+                builder_expected_revision=builder_expected_revision,
+                builder_tool_credential_bindings=builder_tool_credential_bindings,
+            ),
+        )
+
+    @classmethod
+    def generate_admitted_native(
+        cls,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account,
+        ref: NativeTestContextRef,
+        runtime: NativeRuntimeBridge,
+        native_host: NativeHostLaunch,
+    ) -> ClosableNativeEventStream:
+        """Trusted native gateway retaining this service's quota and rate-limit owner.
+
+        The opaque ref is reloaded before quota or generator setup. Only the
+        server composition owner supplies runtime; client arguments never select
+        this path. The host retains rate release through actual physical cleanup.
+        """
+        from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+        from services.dify_builder.native_testing.generation_wiring import validate_native_host
+        from services.dify_builder.native_testing.repository import native_workflow_revision
+
+        validate_native_host(required=True, ref=ref, runtime=runtime, host=native_host)
+        context = runtime.resolve(ref)
+        if (
+            not isinstance(user, Account)
+            or app_model.mode != AppMode.WORKFLOW
+            or (app_model.tenant_id, app_model.id, workflow.id, user.id)
+            != (context.tenant_id, context.app_id, context.workflow_id, context.actor_id)
+            or native_workflow_revision(workflow) != context.graph_revision
+            or workflow.graph_dict != context.graph
+        ):
+            raise NativeContextUnavailable("native_context_mismatch")
+        from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+
+        def start(rate_limit: RateLimit, request_id: str) -> ClosableNativeEventStream:
+            source = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                args={"inputs": context.inputs},
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+                call_depth=context.call_depth,
+                workflow_run_id=context.native_run_id,
+                native_test_required=True,
+                native_test_ref=context.ref,
+                native_runtime=runtime,
+                native_host=native_host,
+            )
+            stream = HostOwnedNativeGeneratorStream(source=source, host=native_host)
+            return stream
+
+        return cls._run_with_guardrails(app_model=app_model, streaming=True, action=start, native_host=native_host)
+
+    @classmethod
+    def resume_admitted_native(cls, *, app_model, workflow, user, runtime, native_host, sessions):
+        """Use the same native guardrails with exact claimed checkpoint objects."""
+        from services.dify_builder.native_testing.runtime import resume_native_generator
+
+        return cls._run_with_guardrails(
+            app_model=app_model,
+            streaming=True,
+            native_host=native_host,
+            action=lambda rate_limit, request_id: resume_native_generator(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                runtime=runtime,
+                native_host=native_host,
+                sessions=sessions,
             ),
         )
 
@@ -141,6 +289,7 @@ class AppGenerateService:
         app_model: App,
         streaming: bool,
         action: Callable[[RateLimit, str], Any],
+        native_host: NativeHostLaunch | None = None,
     ):
         quota_charge = unlimited()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
@@ -155,17 +304,30 @@ class AppGenerateService:
         max_active_request = cls._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
+        host_owns_release = False
         try:
             request_id = rate_limit.enter(request_id)
             quota_charge.commit()
+            if native_host is not None:
+                native_host.bind_release(release=lambda: rate_limit.exit(request_id))
+                host_owns_release = True
             return action(rate_limit, request_id)
         except Exception:
-            quota_charge.refund()
-            if streaming:
-                rate_limit.exit(request_id)
+            if host_owns_release:
+                assert native_host is not None
+                native_host.request_close(reason="failed")
+            else:
+                quota_charge.refund()
+                if streaming:
+                    rate_limit.exit(request_id)
+            raise
+        except BaseException:
+            if host_owns_release:
+                assert native_host is not None
+                native_host.request_close(reason="failed")
             raise
         finally:
-            if not streaming:
+            if not streaming and not host_owns_release:
                 rate_limit.exit(request_id)
 
     @classmethod
@@ -181,12 +343,32 @@ class AppGenerateService:
         session: Session,
         rate_limit: RateLimit,
         request_id: str,
+        workflow_execution_mode: Literal["celery", "in_process"] = "celery",
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
+        builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_agent_execution: BuilderAgentExecutionContext | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
+        builder_expected_revision: str | None = None,
+        builder_tool_credential_bindings: Mapping[str, str] | None = None,
     ):
         effective_mode = (
             AppMode.AGENT_CHAT
             if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
             else app_model.mode
         )
+        if (
+            builder_execution is not None or builder_agent_execution is not None
+        ) and effective_mode != AppMode.WORKFLOW:
+            error = BuilderExecutionPolicyError("unsupported_workflow")
+            if builder_execution_admit is not None:
+                builder_execution_admit.on_refusal(error, preworker=True)
+            raise error
+        conversion_options: _EventStreamConversionOptions = {}
+        if workflow_execution_mode == "in_process" and builder_execution is None:
+            conversion_options["close_source"] = True
         match effective_mode:
             case AppMode.COMPLETION:
                 return rate_limit.generate(
@@ -245,10 +427,25 @@ class AppGenerateService:
                     request_id=request_id,
                 )
             case AppMode.ADVANCED_CHAT:
+                if (
+                    streaming
+                    and workflow_execution_mode == "in_process"
+                    and invoke_from == InvokeFrom.DEBUGGER
+                    and isinstance(user, Account)
+                ):
+                    # Ordinary Tool setup is checked before the generator. The
+                    # instrumented in-process generator still owns dispatch.
+                    from services.dify_builder.native_launch_observation import begin_preparation
+
+                    begin_preparation()
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if builder_execution is None:
+                    cls._admit_normal_draft_tools(
+                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                    )
 
-                if streaming:
+                if streaming and workflow_execution_mode == "celery":
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
@@ -264,7 +461,7 @@ class AppGenerateService:
                         payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        workflow_based_app_execution_task.delay(payload_json)
+                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
@@ -278,8 +475,8 @@ class AppGenerateService:
                         request_id=request_id,
                     )
 
-                # Blocking mode: run synchronously and return JSON instead of SSE
-                # Keep behaviour consistent with WORKFLOW blocking branch.
+                # Reuse the native generator for blocking requests and streams
+                # owned by an existing worker task. Both retain pause persistence.
                 pause_config = PauseStateLayerConfig(
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
@@ -294,18 +491,39 @@ class AppGenerateService:
                             args=args,
                             invoke_from=invoke_from,
                             workflow_run_id=str(uuid.uuid4()),
-                            streaming=False,
+                            streaming=streaming,
                             pause_state_config=pause_config,
                             session=session,
-                        )
+                            builder_mocked_node_ids=builder_mocked_node_ids,
+                            builder_expected_revision=builder_expected_revision,
+                            builder_tool_credential_bindings=builder_tool_credential_bindings,
+                        ),
+                        **conversion_options,
                     ),
                     request_id=request_id,
                 )
             case AppMode.WORKFLOW:
+                if (
+                    streaming
+                    and workflow_execution_mode == "in_process"
+                    and invoke_from == InvokeFrom.DEBUGGER
+                    and isinstance(user, Account)
+                ):
+                    # Ordinary Tool setup is checked before the generator. The
+                    # instrumented in-process generator still owns dispatch.
+                    from services.dify_builder.native_launch_observation import begin_preparation
+
+                    begin_preparation()
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if builder_execution is None:
+                    cls._admit_normal_draft_tools(
+                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                    )
+                if builder_execution is not None:
+                    restricted_admission_snapshot(workflow, app_model)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
-                if streaming:
+                if streaming and workflow_execution_mode == "celery":
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(
                             app_model=app_model,
@@ -321,7 +539,7 @@ class AppGenerateService:
                         payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        workflow_based_app_execution_task.delay(payload_json)
+                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(
@@ -339,6 +557,11 @@ class AppGenerateService:
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
+                if isinstance(builder_execution, JsonToolExecutionContext):
+                    # The Builder port passes an explicit read Session. All workflow
+                    # reads are complete here; release its transaction before the
+                    # native generator starts a worker that performs metadata I/O.
+                    session.close()
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
                         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
@@ -347,16 +570,41 @@ class AppGenerateService:
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            streaming=False,
+                            streaming=streaming,
                             root_node_id=root_node_id,
                             call_depth=0,
-                            pause_state_config=pause_config,
+                            pause_state_config=pause_config if builder_execution is None else None,
+                            builder_execution=builder_execution,
+                            builder_execution_admit=builder_execution_admit,
+                            builder_agent_execution=builder_agent_execution,
+                            workflow_run_id=(
+                                builder_agent_execution.native_run_id if builder_agent_execution is not None else None
+                            ),
+                            builder_mocked_node_ids=builder_mocked_node_ids,
+                            builder_expected_revision=builder_expected_revision,
+                            builder_tool_credential_bindings=builder_tool_credential_bindings,
                         ),
+                        **conversion_options,
                     ),
                     request_id,
                 )
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
+
+    @staticmethod
+    def _admit_normal_draft_tools(
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        invoke_from: InvokeFrom,
+    ) -> None:
+        """Ordinary draft metadata gate; published delegation and Builder grants stay separate."""
+        if invoke_from != InvokeFrom.DEBUGGER or workflow.version != Workflow.VERSION_DRAFT:
+            return
+        if not isinstance(user, Account):
+            raise ValueError("Draft execution requires the acting workspace member.")
+        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
 
     @staticmethod
     def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
@@ -400,6 +648,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -413,6 +667,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -445,6 +705,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
@@ -458,6 +724,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,

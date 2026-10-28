@@ -2,7 +2,9 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
+import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -88,6 +90,7 @@ function EventObserver({ children }: { children: ReactNode }) {
 }
 
 let queryClient: QueryClient
+let workflowStore: ReturnType<typeof createTestWorkflowStore>
 const wrapper = ({ children }: { children: ReactNode }) => {
   if (appQueryFixture.appDetail)
     queryClient.setQueryData(
@@ -97,13 +100,22 @@ const wrapper = ({ children }: { children: ReactNode }) => {
   return createElement(
     QueryClientProvider,
     { client: queryClient },
-    createElement(EventEmitterContextProvider, null, createElement(EventObserver, null, children)),
+    createElement(
+      WorkflowContext,
+      { value: workflowStore },
+      createElement(
+        EventEmitterContextProvider,
+        null,
+        createElement(EventObserver, null, children),
+      ),
+    ),
   )
 }
 
 describe('useDSLByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    workflowStore = createTestWorkflowStore()
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { staleTime: Infinity, retry: false },
@@ -119,6 +131,43 @@ describe('useDSLByCanEdit', () => {
     mockDoSyncWorkflowDraft.mockReset().mockResolvedValue(undefined)
     mockExportAppConfig.mockReset().mockResolvedValue({ data: 'yaml-content' })
     mockFetchEnvironmentVariables.mockReset().mockResolvedValue({ items: [] })
+  })
+
+  it('blocks draft export and secret checks while a conflict is unresolved', async () => {
+    workflowStore.getState().setWorkflowDraftConflict(true)
+    const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+      await result.current.exportCheck()
+    })
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockFetchEnvironmentVariables).not.toHaveBeenCalled()
+    expect(mockExportAppConfig).not.toHaveBeenCalled()
+  })
+
+  it('allows exporting a saved version while the draft has a conflict', async () => {
+    workflowStore.getState().setWorkflowDraftConflict(true)
+    const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
+    await act(async () => {
+      expect(await result.current.handleExportDSL(false, 'published-version')).toBe(true)
+    })
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { include_secret: false, workflow_id: 'published-version' },
+    })
+  })
+
+  it('stops exporting when saving discovers a draft conflict', async () => {
+    mockDoSyncWorkflowDraft.mockImplementation(async () => {
+      workflowStore.getState().setWorkflowDraftConflict(true)
+      return null
+    })
+    const { result } = renderHook(() => useDSLByCanEdit(true), { wrapper })
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+    })
+    expect(mockExportAppConfig).not.toHaveBeenCalled()
   })
 
   it('exports with the latest name from the detail query', async () => {

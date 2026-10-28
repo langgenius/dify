@@ -1,0 +1,27 @@
+# Reserved for Task 5: unavailable without verified network-disabled-v1.
+nodes:
+  - id: start
+    data:
+      type: start
+      variables:
+        - variable: name
+          label: Name
+          type: text-input
+  - id: template
+    data:
+      type: template-transform
+      template: 'Hello, {{ name }}!'
+      variables:
+        - variable: name
+          value_selector: [start, name]
+  - id: end
+    data:
+      type: end
+      outputs:
+        - variable: out
+          value_selector: [template, output]
+edges:
+  - source: start
+    target: template
+  - source: template
+    target: end

@@ -4,7 +4,6 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, Pipeline
@@ -13,6 +12,7 @@ from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 
 @pytest.fixture

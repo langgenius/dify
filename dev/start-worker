@@ -11,7 +11,7 @@ show_help() {
   echo "  -c, --concurrency NUM  Number of worker processes (default: 1)"
   echo "  -P, --pool POOL        Pool implementation (default: gevent)"
   echo "  --loglevel LEVEL       Log level (default: INFO)"
-  echo "  -e, --env-file FILE    Path to an env file to source before starting"
+  echo "  -e, --env-file FILE    Path to a dotenv file to load before starting"
   echo "  -h, --help             Show this help message"
   echo ""
   echo "Examples:"
@@ -22,6 +22,7 @@ show_help() {
   echo "Available queues:"
   echo "  dataset                - RAG indexing and document processing"
   echo "  dataset_summary        - LLM-heavy summary index generation (isolated from indexing)"
+  echo "  dify_builder           - Dify Builder session advances"
   echo "  workflow               - Workflow triggers (community edition)"
   echo "  workflow_professional  - Professional tier workflows (cloud edition)"
   echo "  workflow_team         - Team tier workflows (cloud edition)"
@@ -94,12 +95,9 @@ if [[ -n "${ENV_FILE}" ]]; then
   fi
 
   echo "Loading environment variables from ${ENV_FILE}"
-  # Export everything sourced from the env file
-  set -a
-  # The env file is selected at runtime via --env-file.
-  # shellcheck source=/dev/null
-  source "${ENV_FILE}"
-  set +a
+  exec uv run dotenv -f "$ENV_FILE" run --override -- \
+    "$SCRIPT_DIR/start-worker" --queues "$QUEUES" --concurrency "$CONCURRENCY" \
+    --pool "$POOL" --loglevel "$LOGLEVEL"
 fi
 
 # If no queues are specified, use product-edition defaults
@@ -107,10 +105,10 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on product edition
   if [[ "${DEPLOYMENT_EDITION:-COMMUNITY}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
+    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,dify_builder,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
   else
     # Self-hosted editions: dataset and workflow have separate queues
-    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
+    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,dify_builder,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
   fi
 
   echo "No queues specified, using edition-based defaults: ${QUEUES}"
@@ -135,4 +133,4 @@ echo "  Log Level: ${LOGLEVEL}"
 
 uv run \
   celery -A app.celery worker \
-  -P ${POOL} -c ${CONCURRENCY} --loglevel ${LOGLEVEL} -Q ${QUEUES}
+  -P "${POOL}" -c "${CONCURRENCY}" --loglevel "${LOGLEVEL}" -Q "${QUEUES}"

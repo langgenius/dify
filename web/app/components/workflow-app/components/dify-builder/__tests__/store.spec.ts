@@ -1,0 +1,1005 @@
+import type { InteractionResponseCopy } from '../interactions/optimistic-response'
+import type { DifyBuilderRuntime } from '../store'
+import type { ConversationItem, SessionView } from '../types'
+import { QueryClient } from '@tanstack/react-query'
+import { createStore } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
+import { createNativeReceipt } from '../session/__tests__/fixtures'
+import {
+  difyBuilderActiveSessionIdAtom,
+  difyBuilderConversationAtom,
+  difyBuilderLocalUserMessageAtom,
+  difyBuilderSessionBusyAtom,
+  difyBuilderSessionViewAtom,
+} from '../session/state'
+import {
+  difyBuilderActiveInteractionAtom,
+  difyBuilderCanComposeAtom,
+  difyBuilderCanStartFixAtom,
+  difyBuilderCanvasAppliedViewAtom,
+  difyBuilderCanvasRefreshFailedAtom,
+  difyBuilderCanvasRefreshGenerationAtom,
+  difyBuilderCanvasRefreshingAtom,
+  difyBuilderDraftAtom,
+  difyBuilderHasSessionAtom,
+  difyBuilderInteractionBusyAtom,
+  difyBuilderLocalInteractionResponseAtom,
+  difyBuilderModelReadonlyAtom,
+  difyBuilderNativeCancelAtom,
+  difyBuilderRecheckReadyAtom,
+  difyBuilderRegisterChecklistErrorsAtom,
+  difyBuilderResetAtom,
+  difyBuilderRunActiveAtom,
+  difyBuilderRuntimeAtom,
+  difyBuilderSendDraftAtom,
+  difyBuilderStartChecklistFixAtom,
+  difyBuilderStartPromptAtom,
+  difyBuilderStartRunFixAtom,
+  difyBuilderSubmitActionAtom,
+} from '../store'
+
+const builderModel = {
+  completion_params: {},
+  mode: 'chat',
+  name: 'gpt-4o',
+  provider: 'openai',
+} satisfies NonNullable<SessionView['model']>
+
+const englishResponseCopy: InteractionResponseCopy = {
+  renderText: (text) => (typeof text === 'string' ? text : ''),
+  replyLanguage: 'en-US',
+  booleanFalse: 'No',
+  booleanTrue: 'Yes',
+  noResourcesSelected: 'No resources selected',
+}
+const chineseResponseCopy: InteractionResponseCopy = {
+  renderText: (text) => (typeof text === 'string' ? text : ''),
+  replyLanguage: 'zh-Hans',
+  booleanFalse: '否',
+  booleanTrue: '是',
+  noResourcesSelected: '未选择资源',
+}
+
+const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
+  canvas_read_only: false,
+  conversation_last_seq: -1,
+  interrupted: false,
+  phase: 'understand',
+  run_status: 'complete',
+  reply_language: '',
+  session_id: 'session-1',
+  version: 1,
+  ...overrides,
+})
+
+const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
+  ({
+    appId: 'app-1',
+    canEdit: true,
+    enabled: true,
+    getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
+    retryCanvasRefresh: vi.fn(),
+    session: {
+      onCanvasRefreshed: vi.fn(),
+      refresh: vi.fn(async () => true),
+      getTrace: vi.fn(() => ({ entries: [], truncated: false })),
+      loadOlderConversation: vi.fn(async () => true),
+      restore: vi.fn(async () => true),
+      stopTask: vi.fn(async () => true),
+      resumeTask: vi.fn(async () => true),
+      reset: vi.fn(),
+      runAction,
+      sendMessage: vi.fn(async () => true),
+      startBuild: vi.fn(async () => true),
+      startChecklistFix: vi.fn(async () => true),
+      startEdit: vi.fn(async () => true),
+      startFix: vi.fn(async () => true),
+      updateModel: vi.fn(async () => true),
+    },
+    setShowPanel: vi.fn(),
+  }) satisfies DifyBuilderRuntime
+
+describe('Dify Builder store', () => {
+  it('continues the completed conversation instead of creating a new session', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, createSessionView({ canvas_read_only: false }))
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
+    const history: ConversationItem[] = [
+      {
+        seq: 0,
+        at_version: 1,
+        kind: 'user',
+        payload: { text: 'Original goal', turn_id: 'original-turn' },
+      },
+    ]
+    store.set(difyBuilderConversationAtom, history)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, {
+        text: 'Test with new input',
+        model: builderModel,
+      }),
+    ).toBe(true)
+    expect(runtime.session.sendMessage).toHaveBeenCalledWith('Test with new input')
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
+    expect(runtime.session.startEdit).not.toHaveBeenCalled()
+    expect(store.get(difyBuilderConversationAtom)).toEqual(history)
+  })
+
+  it('does not silently replace a failed conversation', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ run_status: 'failed', canvas_read_only: false }),
+    )
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, { text: 'Try again', model: builderModel }),
+    ).toBe(false)
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
+    expect(runtime.session.startEdit).not.toHaveBeenCalled()
+  })
+
+  it('allows the advertised native cancel while execution is active but blocks other actions', async () => {
+    const store = createStore()
+    const runAction = vi.fn(async () => true)
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        run_status: 'processing',
+        phase: 'test',
+        test_execution: createNativeReceipt(),
+        actions: [
+          {
+            id: 'cancel_test',
+            label: 'Cancel test',
+            kind: 'destructive',
+            payload: { request_id: 'request-1' },
+          },
+        ],
+      }),
+    )
+    expect(await store.set(difyBuilderSubmitActionAtom, 'publish', {}, englishResponseCopy)).toBe(
+      false,
+    )
+    expect(
+      await store.set(
+        difyBuilderSubmitActionAtom,
+        'cancel_test',
+        { request_id: 'request-1' },
+        englishResponseCopy,
+      ),
+    ).toBe(true)
+    expect(runAction).toHaveBeenCalledWith('cancel_test', { request_id: 'request-1' })
+  })
+
+  it.each([
+    ['waiting_confirmation', 'approval'],
+    ['waiting_input', 'interaction'],
+    ['waiting_confirmation', 'configuration'],
+  ] as const)(
+    'keeps advertised cancellation available during %s/%s without releasing the session',
+    async (runStatus, waitReason) => {
+      const store = createStore()
+      const runtime = createRuntime(vi.fn(async () => true))
+      const cancel = {
+        id: 'cancel_test',
+        label: 'Cancel test',
+        kind: 'destructive',
+        payload: { request_id: 'request-1' },
+      } as const
+      const view = createSessionView({
+        run_status: runStatus,
+        phase: 'test',
+        test_execution: createNativeReceipt({ status: 'waiting', wait_reason: waitReason }),
+        actions: [cancel],
+      })
+      store.set(difyBuilderRuntimeAtom, runtime)
+      store.set(difyBuilderSessionViewAtom, view)
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: view.session_id,
+        version: view.version,
+      })
+      store.set(difyBuilderDraftAtom, 'Keep this draft')
+
+      expect(store.get(difyBuilderNativeCancelAtom)).toEqual(cancel)
+      expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+      expect(await store.set(difyBuilderSendDraftAtom, builderModel)).toBe(false)
+      store.set(difyBuilderResetAtom)
+      expect(runtime.session.reset).not.toHaveBeenCalled()
+      expect(store.get(difyBuilderDraftAtom)).toBe('Keep this draft')
+      expect(
+        await store.set(
+          difyBuilderSubmitActionAtom,
+          'cancel_test',
+          cancel.payload,
+          englishResponseCopy,
+        ),
+      ).toBe(true)
+      expect(runtime.session.runAction).toHaveBeenCalledExactlyOnceWith(
+        'cancel_test',
+        cancel.payload,
+      )
+      expect(runtime.session.startBuild).not.toHaveBeenCalled()
+      expect(runtime.session.sendMessage).not.toHaveBeenCalled()
+    },
+  )
+
+  it('does not invent cancellation or release an unresolved session without a server action', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        phase: 'test',
+        run_status: 'waiting_confirmation',
+        test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'approval' }),
+        actions: [],
+      }),
+    )
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
+    expect(store.get(difyBuilderNativeCancelAtom)).toBeUndefined()
+    expect(
+      await store.set(difyBuilderSubmitActionAtom, 'cancel_test', {}, englishResponseCopy),
+    ).toBe(false)
+    expect(runtime.session.runAction).not.toHaveBeenCalled()
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        run_status: 'complete',
+        test_execution: createNativeReceipt({ status: 'terminal', outcome: 'unknown' }),
+      }),
+    )
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    store.set(difyBuilderResetAtom)
+    expect(runtime.session.reset).not.toHaveBeenCalled()
+  })
+
+  it.each(['succeeded', 'failed', 'cancelled'] as const)(
+    'refuses a stale cancel action after terminal %s',
+    async (outcome) => {
+      const store = createStore()
+      const runtime = createRuntime(vi.fn(async () => true))
+      store.set(difyBuilderRuntimeAtom, runtime)
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({
+          phase: 'test',
+          run_status: 'complete',
+          test_execution: createNativeReceipt({ status: 'terminal', outcome }),
+          actions: [{ id: 'cancel_test', label: 'Cancel test', kind: 'destructive' }],
+        }),
+      )
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: 'session-1',
+        version: 1,
+      })
+      expect(store.get(difyBuilderNativeCancelAtom)).toBeUndefined()
+      expect(
+        await store.set(difyBuilderSubmitActionAtom, 'cancel_test', {}, englishResponseCopy),
+      ).toBe(false)
+      expect(
+        await store.set(
+          difyBuilderSubmitActionAtom,
+          'confirm',
+          { option_id: 'cancel_test' },
+          englishResponseCopy,
+        ),
+      ).toBe(false)
+      expect(runtime.session.runAction).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps native configuration waits immutable instead of offering a new conversation action', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        run_status: 'waiting_confirmation',
+        canvas_read_only: false,
+        test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'configuration' }),
+      }),
+    )
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    expect(
+      await store.set(difyBuilderStartPromptAtom, { text: 'Try again', model: builderModel }),
+    ).toBe(false)
+    expect(runtime.session.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it.each(['provide_testdata', 'start_test', 'publish'])(
+    'blocks %s until the current canvas version has been applied',
+    async (actionId) => {
+      const store = createStore()
+      const runAction = vi.fn(async () => true)
+      store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({ phase: 'test', run_status: 'waiting_input', version: 2 }),
+      )
+      expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        false,
+      )
+
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: 'session-1',
+        version: 1,
+      })
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        false,
+      )
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: 'session-1',
+        version: 2,
+      })
+      store.set(difyBuilderCanvasRefreshFailedAtom, true)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        false,
+      )
+
+      store.set(difyBuilderCanvasRefreshFailedAtom, false)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        true,
+      )
+      expect(runAction).toHaveBeenCalledExactlyOnceWith(actionId, {})
+    },
+  )
+
+  it('exposes only an interaction fenced to the current session version', () => {
+    const store = createStore()
+    const card = {
+      at_version: 1,
+      kind: 'form' as const,
+      payload: { fields: [], values: {}, variant: 'testdata' as const },
+      seq: 1,
+    }
+    store.set(difyBuilderConversationAtom, [card])
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card_seq: card.seq,
+          valid_at_version: 1,
+        },
+        version: 2,
+      }),
+    )
+    expect(store.get(difyBuilderActiveInteractionAtom)).toBeNull()
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        active_interaction: {
+          action_id: 'provide_testdata',
+          card_seq: card.seq,
+          valid_at_version: 2,
+        },
+        version: 2,
+      }),
+    )
+    expect(store.get(difyBuilderActiveInteractionAtom)?.card).toEqual(card)
+  })
+
+  it('requires the feature, edit permission, and an idle session to start a fix', () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderSessionViewAtom, createSessionView())
+
+    store.set(difyBuilderRuntimeAtom, { ...runtime, enabled: false })
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+
+    store.set(difyBuilderRuntimeAtom, runtime)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
+
+    store.set(difyBuilderRuntimeAtom, { ...runtime, canEdit: false })
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionBusyAtom, true)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+
+    store.set(difyBuilderSessionBusyAtom, false)
+    store.set(difyBuilderCanvasRefreshingAtom, true)
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+
+    store.set(difyBuilderCanvasRefreshingAtom, false)
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ run_status: 'processing', interrupted: true }),
+    )
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({ phase: 'test', run_status: 'waiting_input' }),
+    )
+    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
+  })
+
+  it.each(['waiting_input', 'waiting_confirmation', 'paused'] as const)(
+    'starts a new Fix session while the current session is %s',
+    async (runStatus) => {
+      const store = createStore()
+      store.set(queryClientAtom, new QueryClient())
+      const runtime = createRuntime(vi.fn(async () => true))
+      store.set(difyBuilderRuntimeAtom, runtime)
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({
+          run_status: runStatus,
+        }),
+      )
+      store.set(difyBuilderDraftAtom, 'Old build conversation draft')
+
+      expect(store.get(difyBuilderCanStartFixAtom)).toBe(true)
+      expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(true)
+      expect(runtime.session.startFix).toHaveBeenCalledExactlyOnceWith(
+        'app-1',
+        'failed-run-42',
+        undefined,
+      )
+      expect(runtime.session.sendMessage).not.toHaveBeenCalled()
+      expect(store.get(difyBuilderDraftAtom)).toBe('')
+    },
+  )
+
+  it('rejects a second Fix entry while the first command is preparing', async () => {
+    const store = createStore()
+    store.set(queryClientAtom, new QueryClient())
+    const runtime = createRuntime(vi.fn(async () => true))
+    let finishSync!: (started: boolean) => void
+    const sync = new Promise<boolean>((resolve) => {
+      finishSync = resolve
+    })
+    runtime.session.startFix = vi.fn(() => sync)
+    store.set(difyBuilderRuntimeAtom, runtime)
+
+    const starting = store.set(difyBuilderStartRunFixAtom, 'failed-run-42')
+    const duplicate = store.set(difyBuilderStartRunFixAtom, 'failed-run-43')
+    const checklist = store.set(difyBuilderStartChecklistFixAtom, [
+      {
+        messages: ['Missing model'],
+        node_id: 'llm-1',
+        node_type: 'llm',
+        plugin_missing: false,
+        title: 'LLM',
+        unconnected: false,
+      },
+    ])
+    finishSync(true)
+
+    expect(await starting).toBe(true)
+    expect(await duplicate).toBe(false)
+    expect(await checklist).toBe(false)
+    expect(runtime.session.startFix).toHaveBeenCalledExactlyOnceWith(
+      'app-1',
+      'failed-run-42',
+      undefined,
+    )
+    expect(runtime.session.startChecklistFix).not.toHaveBeenCalled()
+  })
+
+  it('retains the existing session and draft when preparation fails, then allows retry', async () => {
+    const store = createStore()
+    store.set(queryClientAtom, new QueryClient())
+    const runtime = createRuntime(vi.fn(async () => true))
+    const waiting = createSessionView({ run_status: 'waiting_confirmation' })
+    runtime.session.startFix.mockResolvedValueOnce(false)
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, waiting)
+    store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    store.set(difyBuilderDraftAtom, 'Continue the build')
+
+    expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(false)
+    expect(runtime.session.startFix).toHaveBeenCalledOnce()
+    expect(store.get(difyBuilderSessionViewAtom)).toEqual(waiting)
+    expect(store.get(difyBuilderActiveSessionIdAtom)).toBe(waiting.session_id)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Continue the build')
+
+    expect(await store.set(difyBuilderStartRunFixAtom, 'failed-run-42')).toBe(true)
+    expect(runtime.session.startFix).toHaveBeenCalledTimes(2)
+  })
+
+  it('allows interrupted command recovery without treating it as an active interaction', () => {
+    const store = createStore()
+
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
+    expect(store.get(difyBuilderInteractionBusyAtom)).toBe(true)
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        canvas_read_only: true,
+        interrupted: true,
+        run_status: 'processing',
+      }),
+    )
+
+    expect(store.get(difyBuilderInteractionBusyAtom)).toBe(false)
+  })
+
+  it('treats thinking as active and only enables chat at conversational gates', () => {
+    const store = createStore()
+
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
+    expect(store.get(difyBuilderRunActiveAtom)).toBe(true)
+    expect(store.get(difyBuilderInteractionBusyAtom)).toBe(true)
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_confirmation' }))
+    expect(store.get(difyBuilderRunActiveAtom)).toBe(false)
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(true)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(false)
+
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'paused' }))
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        recovery: {
+          can_continue: true,
+          can_restart: true,
+          recovery_class: 'config_only',
+        },
+        run_status: 'waiting_confirmation',
+      }),
+    )
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        app_revision: { current: 'new', conflicted: true },
+        run_status: 'waiting_confirmation',
+      }),
+    )
+    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
+    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
+  })
+
+  it('routes active waiting-flow composer text to a multi-turn message', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
+
+    expect(
+      await store.set(difyBuilderStartPromptAtom, {
+        text: 'Make the change smaller',
+        model: builderModel,
+      }),
+    ).toBe(true)
+    expect(runtime.session.sendMessage).toHaveBeenCalledWith('Make the change smaller')
+  })
+
+  it('shows a new-session prompt while session creation is in flight', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    let finishStarting!: (started: boolean) => void
+    runtime.session.startBuild = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishStarting = resolve
+        }),
+    )
+    store.set(difyBuilderRuntimeAtom, runtime)
+
+    const starting = store.set(difyBuilderStartPromptAtom, {
+      text: 'Build an expense assistant',
+      model: builderModel,
+    })
+
+    expect(store.get(difyBuilderLocalUserMessageAtom)).toMatchObject({
+      afterSequence: -1,
+      localId: expect.any(String),
+      sessionId: null,
+      text: 'Build an expense assistant',
+    })
+    expect(store.get(difyBuilderHasSessionAtom)).toBe(true)
+
+    finishStarting(true)
+    expect(await starting).toBe(true)
+  })
+
+  it('clears the submitted draft immediately and preserves a newer draft while sending', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    let finishSending!: (sent: boolean) => void
+    runtime.session.sendMessage = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishSending = resolve
+        }),
+    )
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
+    store.set(difyBuilderDraftAtom, 'First draft')
+
+    const sending = store.set(difyBuilderSendDraftAtom, builderModel)
+    expect(store.get(difyBuilderDraftAtom)).toBe('')
+    await vi.waitFor(() => {
+      expect(runtime.session.sendMessage).toHaveBeenCalledWith('First draft')
+    })
+    store.set(difyBuilderDraftAtom, 'Newer draft')
+    finishSending(true)
+
+    expect(await sending).toBe(true)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Newer draft')
+  })
+
+  it('keeps the submitted draft cleared when sending fails', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    runtime.session.sendMessage = vi.fn(async () => false)
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'waiting_input' }))
+    store.set(difyBuilderDraftAtom, 'Retry this message')
+
+    expect(await store.set(difyBuilderSendDraftAtom, builderModel)).toBe(false)
+    expect(store.get(difyBuilderDraftAtom)).toBe('')
+  })
+
+  it('rejects a draft without a model and preserves it for later', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderDraftAtom, 'Wait for a model')
+
+    expect(await store.set(difyBuilderSendDraftAtom, null)).toBe(false)
+    expect(store.get(difyBuilderDraftAtom)).toBe('Wait for a model')
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
+    expect(runtime.session.startEdit).not.toHaveBeenCalled()
+    expect(runtime.session.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it.each(['', 'A newer request'])(
+    'restores a rejected creation prompt without replacing a newer draft: %s',
+    async (newerDraft) => {
+      const store = createStore()
+      const runtime = createRuntime(vi.fn(async () => true))
+      let finishStarting!: (started: boolean) => void
+      runtime.session.startBuild = vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            finishStarting = resolve
+          }),
+      )
+      store.set(difyBuilderRuntimeAtom, runtime)
+      store.set(difyBuilderDraftAtom, 'Build an expense assistant')
+
+      const sending = store.set(difyBuilderSendDraftAtom, builderModel)
+      await vi.waitFor(() => expect(runtime.session.startBuild).toHaveBeenCalledOnce())
+      store.set(difyBuilderDraftAtom, newerDraft)
+      finishStarting(false)
+
+      expect(await sending).toBe(false)
+      expect(store.get(difyBuilderDraftAtom)).toBe(newerDraft || 'Build an expense assistant')
+      expect(store.get(difyBuilderLocalUserMessageAtom)).toBeNull()
+    },
+  )
+
+  it('clears the composer draft when resetting the session', () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderDraftAtom, 'Discard this draft')
+
+    store.set(difyBuilderResetAtom)
+
+    expect(runtime.session.reset).toHaveBeenCalledOnce()
+    expect(store.get(difyBuilderDraftAtom)).toBe('')
+  })
+
+  it('does not prepare a new session while the canvas is refreshing', async () => {
+    const store = createStore()
+    const runtime = createRuntime(vi.fn(async () => true))
+    store.set(difyBuilderRuntimeAtom, runtime)
+    store.set(difyBuilderSessionViewAtom, createSessionView())
+    store.set(difyBuilderCanvasRefreshingAtom, true)
+
+    expect(
+      await store.set(difyBuilderStartPromptAtom, {
+        text: 'Build a support bot',
+        model: builderModel,
+      }),
+    ).toBe(false)
+    expect(runtime.session.startBuild).not.toHaveBeenCalled()
+  })
+
+  it('publishes a choice response optimistically while the action is running', async () => {
+    const store = createStore()
+    let finishAction!: (submitted: boolean) => void
+    const action = new Promise<boolean>((resolve) => {
+      finishAction = resolve
+    })
+    const runAction = vi.fn(() => action)
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    store.set(
+      difyBuilderSessionViewAtom,
+      createSessionView({
+        conversation_last_seq: 4,
+        decision: {
+          title: 'Is this workflow plan ready to apply?',
+          options: [{ id: 'approve_plan', label: 'Approve plan' }],
+        },
+      }),
+    )
+
+    const submission = store.set(
+      difyBuilderSubmitActionAtom,
+      'confirm',
+      {
+        option_id: 'approve_plan',
+      },
+      englishResponseCopy,
+    )
+
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)).toMatchObject({
+      afterSequence: 4,
+      baseVersion: 1,
+      sessionId: 'session-1',
+      item: {
+        at_version: 2,
+        kind: 'interaction_response',
+        payload: {
+          interaction_kind: 'choice',
+          question: 'Is this workflow plan ready to apply?',
+          answer: 'Approve plan',
+          submitted_data: { option_id: 'approve_plan' },
+        },
+        seq: 5,
+      },
+    })
+    finishAction(true)
+    expect(await submission).toBe(true)
+    expect(store.get(difyBuilderLocalInteractionResponseAtom)).toBeNull()
+  })
+
+  it.each([
+    { language: 'en-US', copy: englishResponseCopy },
+    { language: 'zh-Hans', copy: chineseResponseCopy },
+  ])(
+    'formats $language boolean receipts without translating submitted values',
+    async ({ copy }) => {
+      const store = createStore()
+      let finishAction!: (submitted: boolean) => void
+      const action = new Promise<boolean>((resolve) => {
+        finishAction = resolve
+      })
+      const runAction = vi.fn(() => action)
+      const card: Extract<ConversationItem, { kind: 'form' }> = {
+        at_version: 1,
+        kind: 'form',
+        payload: {
+          fields: [
+            { key: 'topic', label: 'Topic', type: 'text-input' },
+            { key: 'enabled', label: 'Enabled', type: 'bool' },
+            { key: 'disabled', label: 'Disabled', type: 'bool' },
+            { key: 'literal', label: 'Goal', type: 'text' },
+            { key: 'goal', label: 'Goal', type: 'text' },
+            { key: 'list', label: 'List', type: 'json' },
+            { key: 'file', label: 'File', type: 'file' },
+          ],
+          title: 'Provide test data',
+          values: {},
+          variant: 'testdata',
+        },
+        seq: 0,
+      }
+      store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+      store.set(difyBuilderConversationAtom, [card])
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({
+          active_interaction: {
+            action_id: 'provide_testdata',
+            card_seq: card.seq,
+            valid_at_version: 1,
+          },
+          conversation_last_seq: 0,
+        }),
+      )
+
+      const inputs = {
+        enabled: true,
+        disabled: false,
+        topic: 'AI agents',
+        literal: 'Yes',
+        goal: 'Goal',
+        list: [true, false, 'Yes', 'Goal'],
+        file: { name: 'Goal', upload_file_id: 'file-1' },
+      }
+      const payload = {
+        mode: 'provide',
+        inputs,
+      }
+      const originalPayload = structuredClone(payload)
+      const submission = store.set(difyBuilderSubmitActionAtom, 'provide_testdata', payload, copy)
+
+      expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+        reply_language: copy.replyLanguage,
+        interaction_kind: 'form',
+        question: 'Provide test data',
+        fields: [
+          { key: 'topic', label: 'Topic', value: 'AI agents', display_value: 'AI agents' },
+          { key: 'enabled', label: 'Enabled', value: true, display_value: copy.booleanTrue },
+          { key: 'disabled', label: 'Disabled', value: false, display_value: copy.booleanFalse },
+          { key: 'literal', label: 'Goal', value: 'Yes', display_value: 'Yes' },
+          { key: 'goal', label: 'Goal', value: 'Goal', display_value: 'Goal' },
+          {
+            key: 'list',
+            label: 'List',
+            value: inputs.list,
+            display_value: `${copy.booleanTrue}, ${copy.booleanFalse}, Yes, Goal`,
+          },
+          { key: 'file', label: 'File', value: inputs.file, display_value: 'Goal' },
+        ],
+        submitted_data: inputs,
+      })
+      expect(runAction).toHaveBeenCalledExactlyOnceWith(
+        'provide_testdata',
+        originalPayload,
+        expect.objectContaining({ interaction_kind: 'form', reply_language: copy.replyLanguage }),
+      )
+      expect(payload).toEqual(originalPayload)
+      finishAction(true)
+      await submission
+    },
+  )
+
+  it.each([
+    { selectedIds: ['slack'], answer: 'Slack' },
+    { selectedIds: ['knowledge'], answer: 'Goal' },
+    { selectedIds: [], answer: chineseResponseCopy.noResourcesSelected },
+  ])(
+    'formats resource receipts as $answer without changing IDs or names',
+    async ({ selectedIds, answer }) => {
+      const store = createStore()
+      let finishAction!: (submitted: boolean) => void
+      const action = new Promise<boolean>((resolve) => {
+        finishAction = resolve
+      })
+      const runAction = vi.fn(() => action)
+      const card: Extract<ConversationItem, { kind: 'resource_select' }> = {
+        at_version: 1,
+        kind: 'resource_select',
+        payload: {
+          recommended: [
+            {
+              id: 'knowledge',
+              kind: 'knowledge',
+              label: 'Goal',
+              meta: 'Dataset',
+              readiness: 'ready',
+            },
+            {
+              id: 'slack',
+              kind: 'tool',
+              label: 'Slack',
+              meta: 'Tool',
+              readiness: 'ready',
+            },
+          ],
+          title: 'Choose resources',
+        },
+        seq: 0,
+      }
+      store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+      store.set(difyBuilderConversationAtom, [card])
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({
+          active_interaction: {
+            action_id: 'confirm_resources',
+            card_seq: card.seq,
+            valid_at_version: 1,
+          },
+          conversation_last_seq: 0,
+        }),
+      )
+
+      const submission = store.set(
+        difyBuilderSubmitActionAtom,
+        'confirm_resources',
+        {
+          resource_ids: selectedIds,
+        },
+        chineseResponseCopy,
+      )
+
+      expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+        reply_language: 'zh-Hans',
+        interaction_kind: 'resource',
+        question: 'Choose resources',
+        answer,
+        submitted_data: { resource_ids: selectedIds },
+      })
+      expect(runAction).toHaveBeenCalledExactlyOnceWith(
+        'confirm_resources',
+        { resource_ids: selectedIds },
+        expect.objectContaining({ reply_language: 'zh-Hans', answer }),
+      )
+      finishAction(true)
+      await submission
+    },
+  )
+
+  it('builds recheck payloads from the latest checklist atom value', async () => {
+    const store = createStore()
+    const runAction = vi.fn(async () => true)
+    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+    const remaining = [
+      {
+        messages: ['Missing model'],
+        node_id: 'llm-1',
+        node_type: 'llm',
+        plugin_missing: false,
+        title: 'LLM',
+        unconnected: false,
+      },
+    ]
+    store.set(difyBuilderCanvasRefreshGenerationAtom, 1)
+    store.set(difyBuilderRegisterChecklistErrorsAtom, {
+      errors: remaining,
+      generation: 0,
+    })
+
+    expect(store.get(difyBuilderRecheckReadyAtom)).toBe(false)
+    expect(await store.set(difyBuilderSubmitActionAtom, 'recheck', {}, englishResponseCopy)).toBe(
+      false,
+    )
+    expect(runAction).not.toHaveBeenCalled()
+
+    store.set(difyBuilderRegisterChecklistErrorsAtom, {
+      errors: remaining,
+      generation: 1,
+    })
+
+    await store.set(difyBuilderSubmitActionAtom, 'recheck', {}, englishResponseCopy)
+
+    expect(runAction.mock.calls.at(-1)?.slice(0, 2)).toEqual([
+      'recheck',
+      {
+        passed: false,
+        remaining,
+      },
+    ])
+
+    store.set(difyBuilderCanvasRefreshingAtom, true)
+    expect(store.get(difyBuilderRecheckReadyAtom)).toBe(false)
+    expect(await store.set(difyBuilderSubmitActionAtom, 'recheck', {}, englishResponseCopy)).toBe(
+      false,
+    )
+    expect(runAction).toHaveBeenCalledOnce()
+  })
+})

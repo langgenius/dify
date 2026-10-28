@@ -14,11 +14,11 @@
   },
   "samples": [
     "agent-building-blocks",
+    "app-builder-builder-mark",
+    "app-builder-builder-mark-24",
+    "app-builder-thinking",
     "avatar-user",
-    "billing-ar-cube-1",
-    "billing-asterisk",
-    "billing-aws-marketplace-dark",
-    "billing-aws-marketplace-light"
+    "billing-ar-cube-1"
   ],
   "palette": false
 }

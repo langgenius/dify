@@ -6,13 +6,15 @@ import time
 from typing import ClassVar
 
 import httpx
-from dify_agent.runtime.context import Services
 import pytest
 from fastapi.testclient import TestClient
 
 import dify_agent.server.app as app_module
 import dify_agent.server.observability as server_observability
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol.native_testing import NATIVE_TEST_CAPABILITIES, NativeTestCapabilities
+from dify_agent.runtime.context import Services
+from dify_agent.runtime.native_continuation import NativeContinuationOwner
 from dify_agent.server.app import create_app, create_dify_api_inner_http_client, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
 
@@ -75,7 +77,7 @@ class FakeRedis:
 
 
 class FakeRunScheduler:
-    created: list["FakeRunScheduler"] = []
+    created: list[FakeRunScheduler] = []
 
     store: object
     shutdown_grace_seconds: float
@@ -99,8 +101,11 @@ class FakeRunScheduler:
         stream_text_delta_flush_interval_seconds: float,
         stream_text_delta_max_chars: int,
         agent_observability: object | None = None,
+        native_owner: NativeContinuationOwner | None = None,
         application_observability: object | None = None,
     ) -> None:
+        self.native_owner = native_owner
+        self.native_capabilities = native_owner.capabilities if native_owner is not None else NATIVE_TEST_CAPABILITIES
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.run_timeout_seconds = run_timeout_seconds
@@ -131,6 +136,7 @@ class FakePluginDaemonHttpClient:
         timeout: object | None = None,
         limits: object | None = None,
         trust_env: bool | None = None,
+        transport: object | None = None,
     ) -> None:
         self.timeout = timeout
         self.limits = limits
@@ -178,6 +184,7 @@ class FakeHttpxModule:
     Timeout: ClassVar[type[FakeTimeout]] = FakeTimeout
     Limits: ClassVar[type[FakeLimits]] = FakeLimits
     AsyncClient: ClassVar[type[FakePluginDaemonHttpClient]] = FakePluginDaemonHttpClient
+    AsyncHTTPTransport = staticmethod(lambda **kwargs: object())
 
 
 @pytest.mark.parametrize(
@@ -185,6 +192,8 @@ class FakeHttpxModule:
     [
         "/runs",
         "/execution-bindings",
+        "/execution-bindings/keep-alive",
+        "/execution-bindings/job-status",
         "/home-snapshots/from-binding",
         "/execution-bindings/files/list",
     ],
@@ -198,6 +207,7 @@ def test_create_app_authenticates_control_plane_routes(
 
     with TestClient(create_app(settings)) as client:
         assert client.post(path, json={}).status_code == 401
+        assert client.post(path, headers={"Authorization": "Bearer wrong-token"}, json={}).status_code == 401
         assert client.post(path, headers={"Authorization": "Bearer secret-token"}, json={}).status_code != 401
 
 
@@ -206,6 +216,8 @@ def test_create_app_wires_authenticated_agent_stub_connection_route(monkeypatch:
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
+        inner_api_key="explicit-legacy-test-key",
+        sandbox_files_base_url="http://files.example",
         server_secret_key=_base64url_secret(b"1" * 32),
     )
     token_codec = settings.create_agent_stub_token_codec()
@@ -250,7 +262,7 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.server.agent_stub_files.httpx.AsyncClient",
-        lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
+        lambda **kwargs: original_async_client(**(kwargs | {"transport": httpx.MockTransport(handler)})),
     )
 
     with TestClient(create_app(settings)) as client:
@@ -303,6 +315,7 @@ def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construct
 
     client = create_dify_api_inner_http_client(
         ServerSettings(
+            inner_api_key="test-legacy-key",
             outbound_http_connect_timeout=1,
             outbound_http_read_timeout=2,
             outbound_http_write_timeout=3,
@@ -447,3 +460,176 @@ def test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup(
         )
         assert response.status_code == 503
     assert FakeRunScheduler.created[-1].shutdown_called
+
+
+def test_create_app_native_owner_injection_and_truthful_capabilities(monkeypatch):
+    _patch_app_lifecycle(monkeypatch)
+
+    class Owner:
+        capabilities = NativeTestCapabilities(protocol_version=1, features=frozenset({"pending-call-v1"}))
+
+    owner = Owner()
+    app = create_app(ServerSettings(api_token="secret"), native_owner=owner)
+    with TestClient(app) as client:
+        response = client.get("/runs/capabilities", headers={"Authorization": "Bearer secret"})
+        assert response.status_code == 200
+        assert response.json()["protocol_version"] == 1
+        assert set(response.json()["features"]) == {"pending-call-v1", "create-idempotency-v1"}
+        assert client.get("/runs/capabilities").status_code == 401
+        assert FakeRunScheduler.created[-1].native_owner is owner
+
+
+def test_strict_embedded_stub_borrows_lifespan_reader_and_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, bind_runtime_identity
+    from dify_agent.protocol.native_testing import AgentRuntimeIdentity
+
+    _patch_app_lifecycle(monkeypatch)
+    identity = AgentRuntimeIdentity(
+        run_id="actual", execution_mode="ordinary", parent_node=None, request_digest="a" * 64, agent_generation=0
+    )
+    seen = []
+    reads = []
+
+    async def read_active(self, selected):
+        reads.append((self, selected))
+        return identity
+
+    monkeypatch.setattr(app_module.RedisRunStore, "read_active_stub_identity", read_active)
+    monkeypatch.setattr(
+        app_module,
+        "create_dify_api_inner_http_client",
+        lambda settings: AgentRuntimeHTTPClient(
+            api_url="http://api",
+            api_token="backend",
+            transport=httpx.MockTransport(lambda req: seen.append(req) or httpx.Response(200, json={})),
+        ),
+    )
+    settings = ServerSettings(
+        redis_url="redis://example.invalid/0",
+        inner_api_url="http://api",
+        api_token="backend",
+        server_secret_key=_base64url_secret(b"1" * 32),
+        sandbox_files_base_url="http://files",
+    )
+    codec = settings.create_agent_stub_token_codec()
+    assert codec is not None
+    context = _execution_context().model_copy(
+        update={"agent_id": "agent", "agent_config_version_id": "config", "agent_config_version_kind": "draft"}
+    )
+    with bind_runtime_identity(identity):
+        token = codec.encode_runtime_token(context, run_id="actual", session_id=None)
+    with TestClient(create_app(settings)) as client:
+        result = client.get("/agent-stub/config/skills/alpha/inspect", headers={"Authorization": "Bearer " + token})
+        assert result.status_code == 200
+        assert (
+            client.post(
+                "/agent-stub/connections",
+                json={"protocol_version": 1, "argv": ["connect"]},
+                headers={"Authorization": "Bearer " + codec.encode_connection_token(context)},
+            ).status_code
+            == 403
+        )
+    assert len(seen) == 1
+    assert "X-Dify-Agent-Run" in seen[0].headers
+    assert len(reads) >= 2
+    assert all(store is reads[0][0] for store, _ in reads)
+
+
+def test_confirmed_owner_is_composed_without_withdrawing_ordinary_keys(monkeypatch):
+    from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient
+    from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
+
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(
+        _env_file=None, api_token="secret", inner_api_key="ordinary-inner", plugin_daemon_api_key="ordinary-plugin"
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/runs/capabilities", headers={"Authorization": "Bearer secret"})
+        assert response.status_code == 200
+        assert set(response.json()["features"]) == {"pending-call-v1", "policy-gate-v1", "create-idempotency-v1"}
+        scheduler = FakeRunScheduler.created[-1]
+        assert isinstance(scheduler.native_owner, ConfirmedNativeContinuationOwner)
+        assert isinstance(scheduler.services.confirmed_api_http_client, AgentRuntimeHTTPClient)
+        assert scheduler.services.inner_api_key == "ordinary-inner"
+        assert scheduler.services.plugin_daemon_api_key == "ordinary-plugin"
+
+
+def test_confirmed_stub_uses_strict_owner_alongside_legacy_ordinary_services(monkeypatch):
+    from dify_agent.adapters.native_testing.transport import _RunBoundAPITransport, bind_runtime_identity
+    from dify_agent.protocol.native_testing import AgentRuntimeIdentity
+    from dify_agent.runtime.native_effects import NativeDispatchEnvelope, _dispatch
+    from tests.local.dify_agent.runtime.test_native_effects import INTENT, PERMIT, REF
+
+    _patch_app_lifecycle(monkeypatch)
+    selected = AgentRuntimeIdentity(
+        run_id="actual",
+        execution_mode="builder_test",
+        native_test_profile="confirmed",
+        request_digest="a" * 64,
+        agent_generation=0,
+        parent_node={
+            "ref": REF,
+            "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+            "input_result_ref": "input",
+            "input_digest": "b" * 64,
+        },
+    )
+    effect = INTENT.model_copy(
+        update={
+            "kind": "shell",
+            "key": INTENT.key.model_copy(
+                update={"occurrence_path": (selected.parent_node.execution_id, "config_pull", "skill")}
+            ),
+        }
+    )
+    envelope = NativeDispatchEnvelope(REF, effect, PERMIT)
+    seen = []
+
+    async def read_active(self, identity):
+        return selected
+
+    async def send(self, req):
+        seen.append(req)
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(app_module.RedisRunStore, "read_active_stub_identity", read_active)
+    monkeypatch.setattr(_RunBoundAPITransport, "handle_async_request", send)
+    settings = ServerSettings(
+        redis_url="redis://example.invalid/0",
+        inner_api_url="http://api",
+        api_token="backend",
+        inner_api_key="ordinary-key",
+        server_secret_key=_base64url_secret(b"1" * 32),
+        sandbox_files_base_url="http://files",
+    )
+    codec = settings.create_agent_stub_token_codec()
+    context = _execution_context().model_copy(
+        update={"agent_id": "agent", "agent_config_version_id": "config", "agent_config_version_kind": "snapshot"}
+    )
+    with bind_runtime_identity(selected):
+        token = _dispatch.set(envelope)
+        try:
+            bearer = codec.encode_runtime_token(context, run_id="actual", session_id=None)
+        finally:
+            _dispatch.reset(token)
+    with TestClient(create_app(settings)) as client:
+        result = client.get("/agent-stub/config/skills/alpha/inspect", headers={"Authorization": "Bearer " + bearer})
+    assert result.status_code == 200
+    assert len(seen) == 1
+    assert seen[0].url.path == "/inner/api/agent/runtime/config/agent/skills/alpha/inspect"
+    assert "X-Dify-Agent-Dispatch" in seen[0].headers
+
+
+def test_keep_alive_is_absent_without_configured_control_plane_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(redis_url="redis://example.invalid/0", api_token=None)
+    with TestClient(create_app(settings)) as client:
+        response = client.post("/execution-bindings/keep-alive", json={"binding_ref": "private-binding"})
+    assert response.status_code == 404
+
+
+def test_anonymous_mode_does_not_mount_job_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(redis_url="redis://example.invalid/0", api_token=None)
+    with TestClient(create_app(settings)) as client:
+        assert client.post("/execution-bindings/job-status", json={}).status_code == 404

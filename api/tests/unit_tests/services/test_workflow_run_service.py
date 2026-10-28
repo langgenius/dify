@@ -1,3 +1,7 @@
+"""Tests for Console workflow pause details.
+
+Unit tests for the Console workflow-run application service."""
+
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, create_autospec
@@ -9,7 +13,7 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from models import WorkflowRun, WorkflowRunTriggeredFrom
@@ -18,13 +22,157 @@ from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunMessageRef, WorkflowRunPauseRecord
 from services import workflow_run_service as service_module
 from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace
-from services.workflow_run_service import (
-    WorkflowRunPauseDetails,
-    WorkflowRunPausedNode,
-    WorkflowRunService,
-)
+from services.workflow_run_service import WorkflowRunPauseDetails, WorkflowRunPausedNode, WorkflowRunService
 
-"""Unit tests for the Console workflow-run application service."""
+
+def _workflow_run_service_pause_service(workflow_runs: MagicMock) -> WorkflowRunService:
+    return WorkflowRunService(
+        workflow_runs=workflow_runs,
+        node_executions=MagicMock(),
+    )
+
+
+def _workflow_run_service_pause_request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
+    )
+
+
+class TestWorkflowRunServicePauseCases:
+    @staticmethod
+    @pytest.fixture
+    def workflow_runs() -> MagicMock:
+        return MagicMock()
+
+    @staticmethod
+    def test_get_pause_details_returns_none_when_run_is_not_found(workflow_runs: MagicMock) -> None:
+        workflow_runs.get_pause_record.return_value = None
+
+        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
+            _workflow_run_service_pause_request_context(), workflow_run_id="run-1"
+        )
+
+        assert result is None
+        workflow_runs.get_pause_record.assert_called_once_with(
+            workspace_id="tenant-1",
+            workflow_run_id="run-1",
+        )
+
+    @staticmethod
+    def test_get_pause_details_returns_empty_details_for_non_paused_run(workflow_runs: MagicMock) -> None:
+        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            paused_at=None,
+            reasons=(),
+            form_tokens={},
+        )
+
+        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
+            _workflow_run_service_pause_request_context(), workflow_run_id="run-1"
+        )
+
+        assert result == WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
+
+    @staticmethod
+    def test_get_pause_details_maps_human_input_and_token(workflow_runs: MagicMock) -> None:
+        reason = HumanInputRequired(
+            form_id="form-1",
+            form_content="Approve?",
+            node_id="node-1",
+            node_title="Approval",
+        )
+        paused_at = datetime(2026, 1, 2, 3, 4, 5)
+        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
+            status=WorkflowExecutionStatus.PAUSED,
+            paused_at=paused_at,
+            reasons=(reason,),
+            form_tokens={"form-1": "form-token"},
+        )
+
+        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
+            _workflow_run_service_pause_request_context(workspace_id="tenant-context"),
+            workflow_run_id="run-1",
+        )
+
+        assert result == WorkflowRunPauseDetails(
+            paused_at=paused_at,
+            paused_nodes=(
+                WorkflowRunPausedNode(
+                    node_id="node-1",
+                    node_title="Approval",
+                    form_id="form-1",
+                    form_token="form-token",
+                ),
+            ),
+        )
+        workflow_runs.get_pause_record.assert_called_once_with(
+            workspace_id="tenant-context",
+            workflow_run_id="run-1",
+        )
+
+    @staticmethod
+    def test_get_pause_details_rejects_unsupported_pause_reason(workflow_runs: MagicMock) -> None:
+        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
+            status=WorkflowExecutionStatus.PAUSED,
+            paused_at=None,
+            reasons=(HitlRequired(session_id="unhydrated-form", node_id="node-1", node_title="Approval"),),
+            form_tokens={},
+        )
+
+        with pytest.raises(NotImplementedError, match="Pause details do not support HitlRequired"):
+            _workflow_run_service_pause_service(workflow_runs).get_pause_details(
+                _workflow_run_service_pause_request_context(), workflow_run_id="run-1"
+            )
+
+    @staticmethod
+    def test_get_pause_details_preserves_scheduling_pause_without_exposing_private_message(
+        workflow_runs: MagicMock,
+    ) -> None:
+        paused_at = datetime(2026, 1, 2, 3, 4, 5)
+        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
+            status=WorkflowExecutionStatus.PAUSED,
+            paused_at=paused_at,
+            reasons=(SchedulingPause(message="private-agent-command-carrier"),),
+            form_tokens={"private-agent-command-carrier": "not-a-human-form-token"},
+        )
+
+        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
+            _workflow_run_service_pause_request_context(workspace_id="tenant-context"), workflow_run_id="run-1"
+        )
+
+        assert result == WorkflowRunPauseDetails(paused_at=paused_at, paused_nodes=())
+        workflow_runs.get_pause_record.assert_called_once_with(workspace_id="tenant-context", workflow_run_id="run-1")
+
+    @staticmethod
+    @pytest.mark.parametrize("scheduling_first", [True, False])
+    def test_get_pause_details_keeps_human_form_when_scheduling_also_waits(
+        workflow_runs: MagicMock, scheduling_first: bool
+    ) -> None:
+        human = HumanInputRequired(form_id="form-1", form_content="Approve?", node_id="node-1", node_title="Approval")
+        scheduling = SchedulingPause(message="private-agent-command-carrier")
+        paused_at = datetime(2026, 1, 2, 3, 4, 5)
+        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
+            status=WorkflowExecutionStatus.PAUSED,
+            paused_at=paused_at,
+            reasons=(scheduling, human) if scheduling_first else (human, scheduling),
+            form_tokens={"form-1": "form-token", "private-agent-command-carrier": "not-a-human-form-token"},
+        )
+
+        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
+            _workflow_run_service_pause_request_context(), workflow_run_id="run-1"
+        )
+
+        assert result == WorkflowRunPauseDetails(
+            paused_at=paused_at,
+            paused_nodes=(
+                WorkflowRunPausedNode(
+                    node_id="node-1", node_title="Approval", form_id="form-1", form_token="form-token"
+                ),
+            ),
+        )
 
 
 def _workflow_run_service_service(dependencies: tuple[MagicMock, MagicMock]) -> WorkflowRunService:
@@ -263,109 +411,3 @@ class TestWorkflowRunServiceCases:
                 workflow_run_id="run-1",
             )
             mock_assemble.assert_called_once_with(expected_executions, node_executions, session=ANY)
-
-
-"""Tests for Console workflow pause details."""
-
-
-def _workflow_run_service_pause_service(workflow_runs: MagicMock) -> WorkflowRunService:
-    return WorkflowRunService(
-        workflow_runs=workflow_runs,
-        node_executions=MagicMock(),
-    )
-
-
-def _workflow_run_service_pause_request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
-    return RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id=workspace_id,
-    )
-
-
-class TestWorkflowRunServicePauseCases:
-    @staticmethod
-    @pytest.fixture
-    def workflow_runs() -> MagicMock:
-        return MagicMock()
-
-    @staticmethod
-    def test_get_pause_details_returns_none_when_run_is_not_found(workflow_runs: MagicMock) -> None:
-        workflow_runs.get_pause_record.return_value = None
-
-        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
-            _workflow_run_service_pause_request_context(), workflow_run_id="run-1"
-        )
-
-        assert result is None
-        workflow_runs.get_pause_record.assert_called_once_with(
-            workspace_id="tenant-1",
-            workflow_run_id="run-1",
-        )
-
-    @staticmethod
-    def test_get_pause_details_returns_empty_details_for_non_paused_run(workflow_runs: MagicMock) -> None:
-        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
-            status=WorkflowExecutionStatus.SUCCEEDED,
-            paused_at=None,
-            reasons=(),
-            form_tokens={},
-        )
-
-        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
-            _workflow_run_service_pause_request_context(), workflow_run_id="run-1"
-        )
-
-        assert result == WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
-
-    @staticmethod
-    def test_get_pause_details_maps_human_input_and_token(workflow_runs: MagicMock) -> None:
-        reason = HumanInputRequired(
-            form_id="form-1",
-            form_content="Approve?",
-            node_id="node-1",
-            node_title="Approval",
-        )
-        paused_at = datetime(2026, 1, 2, 3, 4, 5)
-        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
-            status=WorkflowExecutionStatus.PAUSED,
-            paused_at=paused_at,
-            reasons=(reason,),
-            form_tokens={"form-1": "form-token"},
-        )
-
-        result = _workflow_run_service_pause_service(workflow_runs).get_pause_details(
-            _workflow_run_service_pause_request_context(workspace_id="tenant-context"),
-            workflow_run_id="run-1",
-        )
-
-        assert result == WorkflowRunPauseDetails(
-            paused_at=paused_at,
-            paused_nodes=(
-                WorkflowRunPausedNode(
-                    node_id="node-1",
-                    node_title="Approval",
-                    form_id="form-1",
-                    form_token="form-token",
-                ),
-            ),
-        )
-        workflow_runs.get_pause_record.assert_called_once_with(
-            workspace_id="tenant-context",
-            workflow_run_id="run-1",
-        )
-
-    @staticmethod
-    def test_get_pause_details_rejects_unsupported_pause_reason(workflow_runs: MagicMock) -> None:
-        workflow_runs.get_pause_record.return_value = WorkflowRunPauseRecord(
-            status=WorkflowExecutionStatus.PAUSED,
-            paused_at=None,
-            reasons=(SchedulingPause(message="Waiting for external input"),),
-            form_tokens={},
-        )
-
-        with pytest.raises(NotImplementedError, match="Pause details do not support SchedulingPause"):
-            _workflow_run_service_pause_service(workflow_runs).get_pause_details(
-                _workflow_run_service_pause_request_context(), workflow_run_id="run-1"
-            )

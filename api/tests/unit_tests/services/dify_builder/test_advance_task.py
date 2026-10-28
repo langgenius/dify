@@ -1,0 +1,1311 @@
+"""Tests for the Celery ``advance_session`` task (Task 4).
+
+Runs the real ``Runner``/``fix_registry()`` engine against a SQLite-backed
+``SqlDifyBuilderRepository`` -- mirrors the seed pattern from
+``test_engine_on_sql_repo.py`` -- but calls the task function directly
+(no Celery worker/broker involved) with the module's outbound seams
+(``_build_repo``, ``WorkflowServiceDifyPort``, ``progress_bus.publish``,
+``session_lock.release``) monkeypatched. Proves the task wires the engine
+correctly end to end: it advances the persisted session, publishes node +
+terminal ``command_finished`` progress events, and always releases the advance lock --
+even when the engine raises (``ConflictError`` -> a generic ``conflict``
+error event; any other exception -> a generic ``step failed`` event with no
+exception detail leaked).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterator, Mapping
+from dataclasses import asdict
+from typing import NoReturn, TypedDict, cast, override
+
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
+
+import tasks.dify_builder_advance_task as mod
+from core.dify_builder.models import (
+    Action,
+    Actor,
+    ConversationItem,
+    DifyBuilderContext,
+    EntryMode,
+    Graph,
+    Inputs,
+    MutationIntent,
+    NodeEvent,
+    Run,
+    Session,
+)
+from core.dify_builder.state import PcState
+from models.base import Base
+from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.service import DifyBuilderService
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, StubAgent, saved_test_context
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text, english_tree
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+APP_ID = "22222222-2222-2222-2222-222222222222"
+ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
+
+_BASE_APP_REVISION = "a" * 64
+_CHANGED_APP_REVISION = "b" * 64
+
+
+class CapturedAppRevision(TypedDict):
+    conflicted: bool
+
+
+class CapturedAction(TypedDict):
+    id: str
+
+
+class CapturedDecision(TypedDict):
+    default_option_id: str
+
+
+class CapturedWorkflowData(TypedDict):
+    inputs: Inputs
+
+
+class CapturedWorkflowEvent(TypedDict):
+    event: str
+    data: CapturedWorkflowData
+
+
+class CapturedItemPayload(TypedDict):
+    reply_mode: str
+
+
+class CapturedItem(TypedDict):
+    kind: str
+    seq: int
+    payload: CapturedItemPayload
+
+
+class CapturedEvent(TypedDict, total=False):
+    kind: str
+    error: str
+    session_id: str
+    command_id: str
+    app_revision: CapturedAppRevision
+    state: str
+    actions: list[CapturedAction]
+    decision: CapturedDecision
+    post_canvas_action_id: str | None
+    event: str
+    canvas_read_only: bool
+    phase: str
+    run_status: str
+    conversation_last_seq: int
+    operation_id: str
+    at_version: int
+    status: str
+    activity: object
+    payload: CapturedWorkflowEvent
+    revision: int
+    turn_id: str
+    delta: str
+    seq: int
+    done: bool
+    item: CapturedItem
+
+
+type CapturedEvents = list[tuple[str, CapturedEvent]]
+type Wired = tuple[CapturedEvents, list[tuple[str, str]]]
+type QueuedCommands = tuple[DifyBuilderService, FakeDifyPort, list[Action], CapturedEvents, list[tuple[str, str]]]
+
+
+_ACTOR_DICT: dict[str, str] = {"account_id": ACCOUNT_ID, "tenant_id": TENANT_ID}
+
+
+def _act(kind: str, base_version: int, **payload: object) -> dict[str, object]:
+    return {"kind": kind, "payload": payload, "base_version": base_version}
+
+
+def _new_engine_and_repo() -> tuple[Engine, SqlDifyBuilderRepository]:
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    return engine, SqlDifyBuilderRepository(factory)
+
+
+def _seed_fix_session(repo: SqlDifyBuilderRepository) -> Session:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    repo.create_session(
+        s,
+        DifyBuilderContext(failed_run_id="TR-1"),
+        [ConversationItem(kind="run-context", seq=0)],
+    )
+    repo.save_run(s.id, Run(id="TR-1", kind="original-failed", status="failed", immutable=True))
+    return s
+
+
+@pytest.fixture
+def engine() -> Iterator[Engine]:
+    engine, _repo = _new_engine_and_repo()
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def repo(engine: Engine) -> SqlDifyBuilderRepository:
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    return SqlDifyBuilderRepository(factory)
+
+
+@pytest.fixture(autouse=True)
+def active_worker_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The worker releases exactly the owner value its activation returned; these
+    # engine-wiring tests use the dispatch token as that value.
+    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, token: token)
+    monkeypatch.setattr(mod.progress_snapshot, "save", lambda *_args, **_kwargs: None)
+
+
+@pytest.fixture
+def wired(monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository) -> Wired:
+    """Patch the task's outbound seams: the SQLite repo, ``FakeDifyPort`` in
+    place of the real Dify adapter, and event-capturing stand-ins for
+    ``progress_bus.publish``/``session_lock.release``."""
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    port = FakeDifyPort()
+    port.workflow_events = [
+        {
+            "event": "workflow_started",
+            "task_id": "task-1",
+            "workflow_run_id": "dify-run-1",
+            "data": {"id": "dify-run-1", "workflow_id": "workflow-1", "inputs": {}, "created_at": 1},
+        }
+    ]
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
+
+    events: CapturedEvents = []
+    released: list[tuple[str, str]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
+    return events, released
+
+
+@pytest.fixture
+def queued_commands(monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, wired: Wired) -> QueuedCommands:
+    """Keep service admission and worker execution separate to exercise queued revision drift."""
+    events, released = wired
+    port = FakeDifyPort()
+    port.hash = _BASE_APP_REVISION
+    port.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "query", "type": "text-input", "required": True}],
+                },
+            }
+        ],
+        "edges": [],
+    }
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    monkeypatch.setattr(mod.session_lock, "acquire", lambda _sid, **_kwargs: "queued-token")
+    monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
+    queued: list[Action] = []
+    service = DifyBuilderService(
+        repo,
+        mod.session_lock,
+        lambda _sid, action, _actor, _token: queued.append(action),
+        get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
+        stamp_http_fixtures_fn=port.stamp_http_fixtures,
+    )
+    return service, port, queued, events, released
+
+
+@pytest.mark.parametrize(
+    ("entry_mode", "waiting_state", "review_state"),
+    [
+        (EntryMode.FIX, PcState.FIX_AWAIT_TESTDATA, PcState.FIX_AWAIT_DECISION),
+        (EntryMode.BUILD, PcState.BUILD_AWAIT_TESTDATA, PcState.BUILD_REVIEW),
+        (EntryMode.EDIT, PcState.EDIT_AWAIT_TESTDATA, PcState.EDIT_REVIEW),
+    ],
+)
+@pytest.mark.parametrize("base_app_revision", [_BASE_APP_REVISION, ""], ids=["stale-revision", "missing-revision"])
+def test_input_only_testdata_survives_revision_drift_through_the_worker(
+    repo: SqlDifyBuilderRepository,
+    queued_commands: QueuedCommands,
+    entry_mode: EntryMode,
+    waiting_state: PcState,
+    review_state: PcState,
+    base_app_revision: str,
+) -> None:
+    service, port, queued, events, released = queued_commands
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=waiting_state,
+    )
+    repo.create_session(session, DifyBuilderContext(last_snapshot_hash=_BASE_APP_REVISION), [])
+    # The draft changed while the user filled the form. Service admission must
+    # preserve the input-only exemption all the way through the actual worker.
+    port.hash = _CHANGED_APP_REVISION
+    inputs = {"query": "Keep the submitted input"}
+    service.submit_action(
+        session.id,
+        Actor(**_ACTOR_DICT),
+        Action(
+            kind="provide_testdata",
+            payload={"mode": "provide", "inputs": inputs},
+            base_version=session.version,
+            base_app_revision=base_app_revision,
+        ),
+    )
+    assert len(queued) == 1
+
+    mod.advance_session(session.id, asdict(queued[0]), _ACTOR_DICT, "queued-token")
+
+    stored, context = repo.get_session(session.id)
+    assert stored.current_state == review_state
+    test_input = repo.get_test_input(context.test_input_ref)
+    assert test_input.inputs == inputs
+    assert port.run_draft_inputs == inputs
+    assert repo.get_run(context.verify_run_id).status == "succeeded"
+    # Accepting inputs does not silently authorize a new repair baseline.
+    assert context.last_snapshot_hash == _BASE_APP_REVISION
+    assert events[-1][1]["kind"] == "command_finished"
+    assert events[-1][1]["app_revision"]["conflicted"] is True
+    assert not any(event["kind"] == "error" for _sid, event in events)
+    assert released == [(session.id, "queued-token")]
+
+
+@pytest.mark.parametrize(
+    ("kind", "waiting_state", "payload"),
+    [
+        ("run_verify", PcState.FIX_AWAIT_VERIFY, {}),
+        (
+            "provide_testdata",
+            PcState.FIX_AWAIT_TESTDATA,
+            {"mode": "provide", "inputs": {"query": "Test"}, "http_fixtures": []},
+        ),
+        (
+            "provide_testdata",
+            PcState.FIX_AWAIT_TESTDATA,
+            {
+                "mode": "provide",
+                "inputs": {"query": "Test"},
+                "http_fixtures": [
+                    {"node_id": "http", "status_code": 200, "content_type": "text/plain", "body": "sample"}
+                ],
+            },
+        ),
+    ],
+    ids=["workflow-action", "empty-http-fixtures", "http-fixtures"],
+)
+def test_revision_bound_commands_reject_draft_changes_while_queued(
+    repo: SqlDifyBuilderRepository,
+    queued_commands: QueuedCommands,
+    kind: str,
+    waiting_state: PcState,
+    payload: dict[str, object],
+) -> None:
+    service, port, queued, events, released = queued_commands
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=waiting_state,
+    )
+    repo.create_session(session, DifyBuilderContext(last_snapshot_hash=_BASE_APP_REVISION), [])
+    service.submit_action(
+        session.id,
+        Actor(**_ACTOR_DICT),
+        Action(kind=kind, payload=payload, base_version=session.version, base_app_revision=_BASE_APP_REVISION),
+    )
+    assert len(queued) == 1
+    # Fixture admission succeeded, but a later draft change must still fence
+    # its queued command before any input is stored or a test is launched.
+    port.hash = _CHANGED_APP_REVISION
+
+    mod.advance_session(session.id, asdict(queued[0]), _ACTOR_DICT, "queued-token")
+
+    stored, context = repo.get_session(session.id)
+    assert stored.current_state == waiting_state
+    assert stored.version == session.version
+    assert context.test_input_ref == ""
+    assert context.verify_run_id == ""
+    assert port.run_draft_inputs == {}
+    assert events == [
+        (
+            session.id,
+            {
+                "kind": "error",
+                "error": "conflict",
+                "session_id": session.id,
+                "command_id": queued[0].command_id,
+            },
+        )
+    ]
+    assert released == [(session.id, "queued-token")]
+
+
+def test_input_only_testdata_still_rejects_a_session_change_while_queued(
+    repo: SqlDifyBuilderRepository, queued_commands: QueuedCommands
+) -> None:
+    service, port, queued, events, released = queued_commands
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_TESTDATA,
+    )
+    repo.create_session(session, DifyBuilderContext(last_snapshot_hash=_BASE_APP_REVISION), [])
+    service.submit_action(
+        session.id,
+        Actor(**_ACTOR_DICT),
+        Action(
+            kind="provide_testdata",
+            payload={"mode": "provide", "inputs": {"query": "Test"}},
+            base_version=session.version,
+            base_app_revision=_BASE_APP_REVISION,
+        ),
+    )
+    assert len(queued) == 1
+    stored, context = repo.get_session(session.id)
+    new_version = repo.compare_and_advance(session.id, stored.version, stored.current_state, context, [])
+    port.hash = _CHANGED_APP_REVISION
+
+    mod.advance_session(session.id, asdict(queued[0]), _ACTOR_DICT, "queued-token")
+
+    stored, context = repo.get_session(session.id)
+    assert stored.current_state == PcState.FIX_AWAIT_TESTDATA
+    assert stored.version == new_version
+    assert context.test_input_ref == ""
+    assert context.verify_run_id == ""
+    assert port.run_draft_inputs == {}
+    assert events[-1][1]["error"] == "conflict"
+    assert released == [(session.id, "queued-token")]
+
+
+@pytest.mark.parametrize(
+    ("evidence", "expected_action"),
+    [
+        ("eligible", "publish_fix"),
+        ("stale_execution", "run_validation"),
+        ("stale_graph", "run_validation"),
+        ("failed", "run_validation"),
+        ("evidenceless", "run_validation"),
+    ],
+)
+def test_terminal_review_projects_current_persisted_verification(
+    repo: SqlDifyBuilderRepository, wired: Wired, monkeypatch: pytest.MonkeyPatch, evidence: str, expected_action: str
+) -> None:
+    events, released = wired
+    port = FakeDifyPort()
+    port.verify_pass = evidence != "failed"
+    native_run_draft = port.run_draft
+    native_read_graph = port.read_graph
+    projected_reads: list[tuple[str, Actor]] = []
+
+    def run_draft(
+        app_id: str,
+        actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        session_id: str,
+        test_input_id: str,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
+        confirmed_consent_id: str | None = None,
+        command_id: str | None = None,
+    ) -> Run:
+        result = native_run_draft(
+            app_id,
+            actor,
+            inputs,
+            on_event,
+            session_id=session_id,
+            test_input_id=test_input_id,
+            on_workflow_event=on_workflow_event,
+            effect_confirmation=effect_confirmation,
+            confirmed_consent_id=confirmed_consent_id,
+            command_id=command_id,
+        )
+        if evidence == "stale_execution":
+            port.hash = "h-stale"
+        elif evidence == "stale_graph":
+            port.graph["nodes"].append({"id": "new", "data": {"type": "end", "outputs": []}})
+        elif evidence == "evidenceless":
+            result.verification = None
+        return result
+
+    def read_graph(app_id: str, actor: Actor) -> tuple[Graph, str]:
+        if released:
+            projected_reads.append((app_id, actor))
+        return native_read_graph(app_id, actor)
+
+    monkeypatch.setattr(port, "run_draft", run_draft)
+    monkeypatch.setattr(port, "read_graph", read_graph)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_VERIFY,
+    )
+    repo.create_session(session, DifyBuilderContext(), [])
+    stored, context = repo.get_session(session.id)
+    context.test_input_ref = saved_test_context(repo, session.id).test_input_ref
+    repo.compare_and_advance(session.id, stored.version, stored.current_state, context, [])
+    session.version += 1
+
+    mod.advance_session(session.id, _act("run_verify", session.version), _ACTOR_DICT, "verify-token")
+
+    stored, context = repo.get_session(session.id)
+    run = repo.get_run(context.verify_run_id)
+    finished = events[-1][1]
+    assert stored.current_state == PcState.FIX_AWAIT_DECISION
+    assert run.session_id == session.id
+    assert run.kind == "verify"
+    assert run.immutable is True
+    assert run.status == ("failed" if evidence == "failed" else "succeeded")
+    assert (run.verification is None) is (evidence == "evidenceless")
+    assert released == [(session.id, "verify-token")]
+    assert finished["kind"] == "command_finished"
+    assert finished["state"] == "fix.await_decision"
+    assert finished["actions"][0]["id"] == expected_action
+    assert finished["decision"]["default_option_id"] == expected_action
+    assert ("publish_fix" in [action["id"] for action in finished["actions"]]) is (evidence == "eligible")
+    # Revision-conflict projection reads once; publication reads the full and
+    # graph identities together from one additional authorized draft read.
+    assert projected_reads == [(APP_ID, Actor(**_ACTOR_DICT))] * 2
+
+
+@pytest.mark.parametrize(
+    ("entry_mode", "repair_state", "applied_state", "follow_up"),
+    [
+        (EntryMode.BUILD, PcState.BUILD_AWAIT_REPAIR, PcState.BUILD_EXECUTION, "run_test"),
+        (EntryMode.EDIT, PcState.EDIT_AWAIT_REPAIR, PcState.EDIT_APPLY_CHANGES, "run_affected_tests"),
+    ],
+)
+@pytest.mark.parametrize("repair_outcome", ["empty", "refused", "applied"])
+def test_repair_command_only_requests_retest_after_a_committed_repair(
+    repo: SqlDifyBuilderRepository,
+    wired: Wired,
+    monkeypatch: pytest.MonkeyPatch,
+    entry_mode: EntryMode,
+    repair_state: PcState,
+    applied_state: PcState,
+    follow_up: str,
+    repair_outcome: str,
+) -> None:
+    events, released = wired
+    port = FakeEditDifyPort()
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    # Exercise the adapter's pure graph operations: a missing node raises a
+    # real refusal, while a valid title update changes the graph and revision.
+    target = "missing-node" if repair_outcome == "refused" else "llm"
+    intent = MutationIntent(op="set_node_config", args={"node_id": target, "path": "title", "value": "Fixed"})
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=repair_state,
+    )
+    repo.create_session(
+        session,
+        DifyBuilderContext(staged_repair=[] if repair_outcome == "empty" else [intent], last_snapshot_hash="h0"),
+        [],
+    )
+
+    mod.advance_session(session.id, _act("approve_repair", session.version), _ACTOR_DICT, "repair-token")
+
+    stored, context = repo.get_session(session.id)
+    finished = next(event for _sid, event in events if event["kind"] == "command_finished")
+    canvas_events = [event for _sid, event in events if event["kind"] == "canvas"]
+    assert released == [(session.id, "repair-token")]
+    assert events[-1][1] == finished
+    assert context.staged_repair == []
+    if repair_outcome == "applied":
+        assert stored.current_state == applied_state
+        assert finished["state"] == str(applied_state)
+        assert finished["post_canvas_action_id"] == follow_up
+        assert follow_up in [action["id"] for action in finished["actions"]]
+        assert context.last_snapshot_hash == port.hash == "h1"
+        assert (
+            english_text(next(node for node in port.graph["nodes"] if node["id"] == "llm")["data"]["title"]) == "Fixed"
+        )
+        assert canvas_events
+        assert all(event["event"] == "graph_changed" for event in canvas_events)
+    else:
+        assert stored.current_state == repair_state
+        assert finished["state"] == str(repair_state)
+        assert finished["post_canvas_action_id"] is None
+        assert [action["id"] for action in finished["actions"]] == ["keep_draft", "revert"]
+        assert context.last_snapshot_hash == port.hash == "h0"
+        assert canvas_events == []
+
+
+@pytest.mark.parametrize(
+    ("entry_mode", "repair_state", "applied_state"),
+    [
+        (EntryMode.BUILD, PcState.BUILD_AWAIT_REPAIR, PcState.BUILD_EXECUTION),
+        (EntryMode.EDIT, PcState.EDIT_AWAIT_REPAIR, PcState.EDIT_APPLY_CHANGES),
+    ],
+)
+@pytest.mark.parametrize(
+    ("restriction", "expected_actions"),
+    [("paused", []), ("recovery", ["recovery_continue", "restart"]), ("revision", ["check_recovery"])],
+)
+def test_applied_repair_follow_up_respects_the_completed_views_lifecycle_restriction(
+    repo: SqlDifyBuilderRepository,
+    wired: Wired,
+    monkeypatch: pytest.MonkeyPatch,
+    entry_mode: EntryMode,
+    repair_state: PcState,
+    applied_state: PcState,
+    restriction: str,
+    expected_actions: list[str],
+) -> None:
+    events, _released = wired
+    port = FakeEditDifyPort()
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    if restriction == "revision":
+        read_graph = port.read_graph
+
+        def read_graph_after_external_edit(app_id: str, actor: Actor) -> tuple[Graph, str]:
+            graph, revision = read_graph(app_id, actor)
+            # Model an editor change between repair application and the task's
+            # terminal projection, while preserving the repair's graph write.
+            return graph, "external-revision" if revision == "h1" else revision
+
+        monkeypatch.setattr(port, "read_graph", read_graph_after_external_edit)
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=repair_state,
+    )
+    repo.create_session(
+        session,
+        DifyBuilderContext(
+            staged_repair=[
+                MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "title", "value": "Fixed"})
+            ],
+            last_snapshot_hash="h0",
+            paused=restriction == "paused",
+            recovery_class="config_only" if restriction == "recovery" else "",
+        ),
+        [],
+    )
+
+    mod.advance_session(session.id, _act("approve_repair", session.version), _ACTOR_DICT, "repair-token")
+
+    stored, context = repo.get_session(session.id)
+    if restriction == "paused":
+        assert stored.current_state == repair_state
+        assert stored.version == 1
+        assert context.last_snapshot_hash == port.hash == "h0"
+        assert not any(event["kind"] == "command_finished" for _, event in events)
+        return
+    finished = next(event for _sid, event in events if event["kind"] == "command_finished")
+    assert stored.current_state == applied_state
+    assert context.last_snapshot_hash == port.hash == "h1"
+    assert [action["id"] for action in finished["actions"]] == expected_actions
+    assert finished["post_canvas_action_id"] is None
+
+
+def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
+    repo: SqlDifyBuilderRepository, wired: Wired
+) -> None:
+    events, released = wired
+    s = _seed_fix_session(repo)
+
+    # 1) request_fix -> auto-advances to fix.await_verify; the terminal state
+    #    event must be published and the lock released.
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-1")
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.FIX_AWAIT_VERIFY
+
+    state_events = [ev for _sid, ev in events if ev["kind"] == "command_finished"]
+    assert len(state_events) == 1, "advance_session must publish exactly one terminal command_finished event"
+    last_state_event = state_events[-1]
+    assert last_state_event["state"] == "fix.await_verify"
+    assert last_state_event["canvas_read_only"] is False
+    # The bounded session projection carries state metadata but not history.
+    assert last_state_event["phase"] == "test"
+    assert last_state_event["run_status"] == "waiting_confirmation"
+    assert "conversation" not in last_state_event
+    assert last_state_event["conversation_last_seq"] >= 0
+    # Task 5a: actions are now data-driven per PcState; fix.await_verify's
+    # table entries are run_validation (primary) + revert (destructive).
+    assert [a["id"] for a in last_state_event["actions"]] == ["run_validation", "revert"]
+
+    assert not any(ev["kind"] == "commit" for _sid, ev in events)
+    assert events[-1][1]["kind"] == "command_finished"
+
+    canvas_events = [ev for _sid, ev in events if ev["kind"] == "canvas"]
+    assert canvas_events, "advance_session must publish canvas events once the adapter emits them"
+    assert canvas_events[0]["event"] == "graph_changed"
+    assert canvas_events[0]["session_id"] == s.id
+    assert canvas_events[0]["operation_id"]
+    assert canvas_events[0]["at_version"] > 1
+
+    progress_events = [ev for _sid, ev in events if ev["kind"] == "progress"]
+    assert progress_events, "structured cognition and workflow work must publish visible phase progress"
+    assert progress_events[0]["status"] == "running"
+    assert english_tree(progress_events[0]["activity"]) == {
+        "id": "fix-load-failure",
+        "label": "Load the failed run",
+        "state": "active",
+        "kind": "stage",
+        "parent_id": None,
+    }
+    assert all("prompt" not in str(event).lower() for event in progress_events)
+
+    assert released == [(s.id, "tok-1")]
+
+    # 2) continue driving: run_verify -> fix.await_testdata -> provide_testdata
+    #    (mock) -> fix.verify (working, emits node events) -> fix.await_decision.
+    stored, _fc = repo.get_session(s.id)
+    mod.advance_session(s.id, _act("run_verify", stored.version), _ACTOR_DICT, "tok-2")
+
+    stored, _fc = repo.get_session(s.id)
+    mod.advance_session(s.id, _act("provide_testdata", stored.version, mode="mock"), _ACTOR_DICT, "tok-3")
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.FIX_AWAIT_DECISION
+
+    workflow_events = [ev for _sid, ev in events if ev["kind"] == "workflow"]
+    assert workflow_events, "native run callbacks must reach progress_bus unchanged"
+    assert all(event["session_id"] == s.id and event["operation_id"] for event in workflow_events)
+    assert workflow_events[0]["payload"]["event"] == "workflow_started"
+    assert workflow_events[0]["payload"]["data"]["inputs"] == {}
+
+    assert (s.id, "tok-2") in released
+    assert (s.id, "tok-3") in released
+
+
+def test_progress_snapshot_is_cumulative_and_saved_before_broadcast(
+    repo: SqlDifyBuilderRepository, wired: Wired, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events, _released = wired
+    saved: list[mod.progress_snapshot.ProgressSnapshot] = []
+    session = _seed_fix_session(repo)
+
+    def save(snapshot: mod.progress_snapshot.ProgressSnapshot, *, tenant_id: str, owner: str) -> None:
+        assert tenant_id == TENANT_ID
+        assert owner == "active-owner"
+        assert snapshot.session_id == session.id
+        assert not any(
+            event["kind"] == "progress"
+            and event["operation_id"] == snapshot.operation_id
+            and event["revision"] == snapshot.revision
+            for _sid, event in events
+        )
+        saved.append(snapshot)
+
+    monkeypatch.setattr(mod.progress_snapshot, "save", save)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
+
+    assert saved
+    assert any(
+        snapshot.execution.activities[0].state == "done" and snapshot.execution.activities[-1].state == "active"
+        for snapshot in saved
+    )
+    assert saved[-1].execution.status == "completed"
+    assert all(activity.state == "done" for activity in saved[-1].execution.activities)
+    assert len({activity.id for activity in saved[-1].execution.activities}) == len(saved[-1].execution.activities)
+
+
+def test_progress_snapshot_failure_does_not_block_command_completion(
+    repo: SqlDifyBuilderRepository, wired: Wired, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events, released = wired
+    session = _seed_fix_session(repo)
+
+    def fail_save(*_args: object, **_kwargs: object) -> NoReturn:
+        raise RuntimeError("snapshot store unavailable")
+
+    monkeypatch.setattr(mod.progress_snapshot, "save", fail_save)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
+
+    assert repo.get_session(session.id)[0].current_state == PcState.FIX_AWAIT_VERIFY
+    assert events[-1][1]["kind"] == "command_finished"
+    assert released == [(session.id, "active-owner")]
+
+
+def test_expired_queued_task_does_not_run_or_release_newer_lock(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+    wired: Wired,
+) -> None:
+    events, released = wired
+    session = _seed_fix_session(repo)
+    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, _token: None)
+
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "expired-token")
+
+    stored, _context = repo.get_session(session.id)
+    assert stored.version == 1
+    assert events == []
+    assert released == []
+
+
+def test_advance_session_conflict_error_publishes_conflict_and_releases_lock(
+    repo: SqlDifyBuilderRepository, wired: Wired
+) -> None:
+    events, released = wired
+    s = _seed_fix_session(repo)
+
+    before, _fc = repo.get_session(s.id)
+
+    # base_version=999 never matches the session's real current version (1),
+    # so the runner raises ConflictError before touching anything.
+    mod.advance_session(s.id, _act("run_verify", 999), _ACTOR_DICT, "tok-x")
+
+    error_events = [ev for _sid, ev in events if ev["kind"] == "error"]
+    assert any(ev["error"] == "conflict" and ev["session_id"] == s.id and ev["command_id"] == "" for ev in error_events)
+
+    after, _fc = repo.get_session(s.id)
+    assert after.current_state == before.current_state
+    assert after.version == before.version
+
+    assert (s.id, "tok-x") in released
+
+
+def test_terminal_error_is_published_after_the_advance_lock_is_released(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    timeline: list[str] = []
+    monkeypatch.setattr(
+        mod.progress_bus,
+        "publish",
+        lambda _sid, event: timeline.append(f"publish:{event['kind']}"),
+    )
+    monkeypatch.setattr(
+        mod.session_lock,
+        "release",
+        lambda _sid, _token: timeline.append("release"),
+    )
+    s = _seed_fix_session(repo)
+
+    mod.advance_session(s.id, _act("run_verify", 999), _ACTOR_DICT, "tok-order")
+
+    assert timeline == ["release", "publish:error"]
+
+
+def test_terminal_state_is_published_after_the_advance_lock_is_released(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    timeline: list[str] = []
+    monkeypatch.setattr(
+        mod.progress_bus,
+        "publish",
+        lambda _sid, event: timeline.append(f"publish:{event['kind']}"),
+    )
+    monkeypatch.setattr(
+        mod.session_lock,
+        "release",
+        lambda _sid, _token: timeline.append("release"),
+    )
+    s = _seed_fix_session(repo)
+
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-order")
+
+    assert timeline[-2:] == ["release", "publish:command_finished"]
+
+
+def test_terminal_state_projection_failure_publishes_error_frame(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    """If the post-advance view projection (get_session_view -> read_graph) or
+    the final state publish raises after a SUCCESSFUL advance, the task must not
+    let the exception escape with no terminal frame -- that leaves the SSE client
+    hanging to the stream deadline with a stale held version (-> 409 on its next
+    action). It must fall back to publishing a terminal error frame."""
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    timeline: list[str] = []
+    monkeypatch.setattr(
+        mod.progress_bus,
+        "publish",
+        lambda _sid, event: timeline.append(f"publish:{event['kind']}:{event.get('code', '')}"),
+    )
+    monkeypatch.setattr(
+        mod.session_lock,
+        "release",
+        lambda _sid, _token: timeline.append("release"),
+    )
+
+    class _BoomService:
+        def __init__(self, *_a: object, **_k: object) -> None: ...
+
+        def get_session_view(self, *_a: object, **_k: object) -> NoReturn:
+            raise RuntimeError("projection boom")
+
+    monkeypatch.setattr(mod, "DifyBuilderService", _BoomService)
+    s = _seed_fix_session(repo)
+
+    # Must NOT raise, and must still emit a terminal frame after releasing the lock.
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-boom")
+
+    assert timeline[-2:] == ["release", "publish:error:command_finished_unavailable"]
+
+
+def test_message_advance_publishes_assistant_delta_before_durable_reply(
+    repo: SqlDifyBuilderRepository,
+    wired: Wired,
+) -> None:
+    events, released = wired
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_APPROVAL,
+    )
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    mod.advance_session(
+        session.id,
+        _act("message", 1, text="Can you explain this?", client_turn_id="turn-1"),
+        _ACTOR_DICT,
+        "tok-message",
+    )
+
+    payloads = [event for _session_id, event in events]
+    kinds = [event["kind"] for event in payloads]
+    assert kinds == [
+        "conversation_item_appended",
+        "agent_message",
+        "agent_message",
+        "command_finished",
+    ]
+    user_event, delta, finished, _terminal = payloads
+    assert user_event["item"]["kind"] == "user"
+    assert user_event["item"]["seq"] == 0
+    assert delta["turn_id"] == "turn-1"
+    assert delta["delta"]
+    assert delta["seq"] == 1
+    assert delta["at_version"] == 3
+    assert delta["done"] is False
+    assert finished["turn_id"] == "turn-1"
+    assert finished["seq"] == delta["seq"]
+    assert finished["delta"] == ""
+    assert finished["done"] is True
+    items = repo.list_conversation(session.id)
+    assert [item.kind for item in items] == ["user", "assistant_turn"]
+    assert english_text(items[1].payload["reply_text"]) == delta["delta"]
+    assert released == [(session.id, "tok-message")]
+
+
+def test_message_failure_keeps_the_durable_user_half_retryable(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+
+    class FailingAgent(StubAgent):
+        @override
+        def respond_to_message(
+            self,
+            state: PcState,
+            context: DifyBuilderContext,
+            history: list[ConversationItem],
+            graph: Graph,
+            text: str,
+            on_delta: Callable[[str], None] | None = None,
+        ) -> NoReturn:
+            raise RuntimeError("model unavailable")
+
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: FailingAgent())
+    events: CapturedEvents = []
+    released: list[tuple[str, str]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, event: events.append((sid, event)))
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, token: released.append((sid, token)))
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_APPROVAL,
+    )
+    repo.create_session(session, DifyBuilderContext(), [])
+
+    mod.advance_session(
+        session.id,
+        _act("message", 1, text="Retry me", client_turn_id="turn-retry"),
+        _ACTOR_DICT,
+        "tok-message-failed",
+    )
+
+    stored, _context = repo.get_session(session.id)
+    items = repo.list_conversation(session.id)
+    assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert stored.version == 2
+    assert [(item.kind, item.payload.get("turn_id")) for item in items] == [("user", "turn-retry")]
+    assert events[-1][1] == {
+        "kind": "error",
+        "error": "step failed",
+        "recoverable": True,
+        "session_id": session.id,
+        "command_id": "",
+    }
+    assert released == [(session.id, "tok-message-failed")]
+
+    events.clear()
+    monkeypatch.setattr(
+        mod,
+        "build_dify_builder_agent",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("model setup unavailable")),
+    )
+    mod.advance_session(
+        session.id,
+        _act("message", 2, text="Retry me", client_turn_id="turn-retry"),
+        _ACTOR_DICT,
+        "tok-message-setup-failed",
+    )
+
+    still_waiting, _context = repo.get_session(session.id)
+    assert still_waiting.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert still_waiting.version == 2
+    assert [item.kind for item in repo.list_conversation(session.id)] == ["user"]
+    assert events[-1][1] == {
+        "kind": "error",
+        "error": "step failed",
+        "recoverable": True,
+        "session_id": session.id,
+        "command_id": "",
+    }
+    assert released[-1] == (session.id, "tok-message-setup-failed")
+
+    events.clear()
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
+    mod.advance_session(
+        session.id,
+        _act("message", 2, text="Retry me", client_turn_id="turn-retry"),
+        _ACTOR_DICT,
+        "tok-message-retry",
+    )
+
+    retried, _context = repo.get_session(session.id)
+    retried_items = repo.list_conversation(session.id)
+    assert retried.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert [item.kind for item in retried_items] == ["user", "assistant_turn"]
+    assert [item.payload.get("turn_id") for item in retried_items] == [
+        "turn-retry",
+        "turn-retry",
+    ]
+    assert events[-1][1]["kind"] == "command_finished"
+    assert released[-1] == (session.id, "tok-message-retry")
+
+
+def test_advance_session_generic_exception_publishes_generic_error_and_releases_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A fresh, isolated engine/repo/session so the FakeDifyPort.read_graph
+    # monkeypatch below cannot bleed into any other test.
+    engine, repo = _new_engine_and_repo()
+    try:
+        monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+        monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+
+        def _raise(_self: FakeDifyPort, _app_id: str, _actor: Actor) -> NoReturn:
+            raise RuntimeError("boom: some secret internal detail")
+
+        monkeypatch.setattr(FakeDifyPort, "read_graph", _raise)
+
+        events: CapturedEvents = []
+        released: list[tuple[str, str]] = []
+        monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+        monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
+
+        s = _seed_fix_session(repo)
+
+        mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-y")
+
+        assert next((ev["kind"], ev["error"]) for _sid, ev in events if ev["kind"] == "error") == (
+            "error",
+            "step failed",
+        )
+        # no exception detail must leak into the published event.
+        assert all("boom" not in str(ev) for _sid, ev in events)
+        stored, _context = repo.get_session(s.id)
+        assert stored.current_state == PcState.FAILED
+        assert any(ev["kind"] == "progress" and ev["status"] == "error" for _sid, ev in events)
+        assert not any(ev["kind"] == "commit" for _sid, ev in events)
+        # The failure was persisted, but this test also makes read_graph fail,
+        # so projecting the authoritative terminal view falls back to an error
+        # frame and the client reconciles over GET.
+        assert any(ev["kind"] == "error" and ev["error"] == "step failed" for _sid, ev in events)
+
+        assert (s.id, "tok-y") in released
+    finally:
+        engine.dispose()
+
+
+def test_stale_worker_failure_does_not_overwrite_a_newer_session_head(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+    wired: Wired,
+) -> None:
+    events, released = wired
+    session = _seed_fix_session(repo)
+
+    def advance_after_newer_worker(_self: mod.Runner, session_id: str, _turn: object) -> None:
+        current, context = repo.get_session(session_id)
+        repo.compare_and_advance(
+            session_id,
+            current.version,
+            PcState.FIX_AWAIT_APPROVAL,
+            context,
+            [],
+        )
+        raise RuntimeError("old worker failed after losing its lock")
+
+    monkeypatch.setattr(mod.Runner, "advance", advance_after_newer_worker)
+
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "tok-stale-worker")
+
+    stored, _context = repo.get_session(session.id)
+    assert stored.version == 2
+    assert stored.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert not any(event["kind"] == "command_finished" and event["state"] == "failed" for _sid, event in events)
+    assert events[-1][1] == {
+        "kind": "error",
+        "error": "conflict",
+        "session_id": session.id,
+        "command_id": "",
+    }
+    assert released == [(session.id, "tok-stale-worker")]
+
+
+def test_observer_publish_failure_is_best_effort_and_terminal_state_is_still_published_once(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
+
+    events: CapturedEvents = []
+    released: list[tuple[str, str]] = []
+
+    def publish(session_id: str, event: Mapping[str, object]) -> None:
+        if event["kind"] in {"canvas", "node", "progress"}:
+            raise RuntimeError("progress bus unavailable")
+        events.append((session_id, cast(CapturedEvent, event)))
+
+    monkeypatch.setattr(mod.progress_bus, "publish", publish)
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
+    s = _seed_fix_session(repo)
+
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-best-effort")
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.FIX_AWAIT_VERIFY
+    assert [event["kind"] for _sid, event in events].count("command_finished") == 1
+    assert all(event["kind"] != "error" for _sid, event in events)
+    assert events[-1][1]["kind"] == "command_finished"
+    assert released == [(s.id, "tok-best-effort")]
+
+
+def test_advance_session_setup_failure_still_releases_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A failure while constructing the task's dependencies (before the engine
+    ever runs) must still fall into the generic ``except`` and release the
+    lock in ``finally`` -- otherwise the lock leaks until its TTL and the
+    session is stuck ``busy`` for up to ``MAX_ADVANCE``."""
+
+    def _boom() -> NoReturn:
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(mod, "_build_repo", _boom)
+
+    events: CapturedEvents = []
+    released: list[tuple[str, str]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
+
+    mod.advance_session("sess-setup", _act("request_fix", 1), _ACTOR_DICT, "tok-setup")
+
+    assert next((ev["kind"], ev["error"]) for _sid, ev in events if ev["kind"] == "error") == (
+        "error",
+        "step failed",
+    )
+    # no exception detail must leak into the published event.
+    assert all("db down" not in str(ev) for _sid, ev in events)
+
+    assert ("sess-setup", "tok-setup") in released
+
+
+def test_agent_setup_failure_persists_restartable_failed_state(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    monkeypatch.setattr(
+        mod,
+        "build_dify_builder_agent",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("model unavailable")),
+    )
+    events: CapturedEvents = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, event: events.append((sid, event)))
+    monkeypatch.setattr(mod.session_lock, "release", lambda *_args: None)
+    session = _seed_fix_session(repo)
+
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "tok-agent")
+
+    stored, _context = repo.get_session(session.id)
+    assert stored.current_state == PcState.FAILED
+    assert not any(event["kind"] == "commit" for _sid, event in events)
+    state = next(event for _sid, event in events if event["kind"] == "command_finished")
+    assert state["run_status"] == "failed"
+    assert [action["id"] for action in state["actions"]] == ["restart"]
+
+
+def _seed_build_session(repo: SqlDifyBuilderRepository) -> Session:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_CAPABILITY_CHECK,
+    )
+    repo.create_session(
+        s,
+        DifyBuilderContext(goal_text="Build a report workflow"),
+        [ConversationItem(kind="user", seq=0)],
+    )
+    return s
+
+
+def test_start_build_emits_complete_reply_with_form_and_reaches_goal_analysis(
+    repo: SqlDifyBuilderRepository, wired: Wired
+) -> None:
+    events, released = wired
+    s = _seed_build_session(repo)
+
+    mod.advance_session(s.id, _act("start_build", 1), _ACTOR_DICT, "tok-b1")
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.BUILD_GOAL_ANALYSIS  # build handler resolved, not a 500
+    payloads = [event for _session_id, event in events]
+    assert not any(event["kind"] == "agent_message" for event in payloads)
+    assistant_events = [
+        event
+        for event in payloads
+        if event["kind"] == "conversation_item_appended" and event["item"]["kind"] == "assistant_turn"
+    ]
+    assert len(assistant_events) == 1
+    assert assistant_events[0]["item"]["payload"]["reply_mode"] == "complete"
+    assistant = next(item for item in repo.list_conversation(s.id) if item.kind == "assistant_turn")
+    assert assistant_events[0]["item"]["payload"] == assistant.payload
+    assert payloads[-1]["kind"] == "command_finished"
+    assert (s.id, "tok-b1") in released
+
+
+def _seed_edit_session_at_capability(repo: SqlDifyBuilderRepository) -> Session:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.EDIT,
+        current_state=PcState.EDIT_CAPABILITY_CHECK,
+    )
+    repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
+    return s
+
+
+def test_advance_session_resolves_edit_handler_via_merged_registry(
+    repo: SqlDifyBuilderRepository, wired: Wired
+) -> None:
+    _events, released = wired
+    s = _seed_edit_session_at_capability(repo)
+
+    mod.advance_session(s.id, _act("send_edit_goal", 1, text="Tighten risk"), _ACTOR_DICT, "tok-e1")
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.EDIT_IMPACT_ANALYSIS  # edit handler resolved, not a 500
+    assert (s.id, "tok-e1") in released
+
+
+@pytest.mark.usefixtures("wired")
+def test_advance_builds_the_agent_for_the_acting_account(
+    repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ENG-1191: tool readiness honours the acting member's credential
+    visibility, so the agent must know who is acting."""
+    session = _seed_fix_session(repo)
+    seen: list[dict[str, object]] = []
+
+    def build_agent(**kwargs: object) -> StubAgent:
+        seen.append(kwargs)
+        return StubAgent()
+
+    monkeypatch.setattr(mod, "build_dify_builder_agent", build_agent)
+
+    mod.advance_session(session.id, _act("message", 1, text="hello", client_turn_id="turn-1"), _ACTOR_DICT, "tok")
+
+    assert seen
+    assert seen[0]["tenant_id"] == TENANT_ID
+    assert seen[0].get("account_id") == ACCOUNT_ID
+
+
+def test_first_test_command_finished_contains_native_receipt_without_opt_in(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
+    from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    receipt = NativeTestPublicReceipt(
+        request_id="native-request",
+        generation=0,
+        version=1,
+        status="waiting",
+        wait_reason="approval",
+        native_run_id="native-run",
+        native_status="paused",
+        pending=(),
+        outcome=None,
+        evidence_refs=(),
+    )
+    port = BuilderTestActions(repo._session_factory, lambda **_: pytest.fail("projection must not start a command"))
+    monkeypatch.setattr(port, "current", lambda **_: receipt)
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    monkeypatch.setattr(mod, "BuilderTestActions", lambda *_: port, raising=False)
+    events: list[dict[str, object]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda _sid, event: events.append(event))
+    session = _seed_fix_session(repo)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "tok-native-projection")
+    finished = next(event for event in events if event["kind"] == "command_finished")
+    from controllers.console.dify_builder_fields import DifyBuilderCommandFinishedEventData
+
+    projected = DifyBuilderCommandFinishedEventData.model_validate(finished)
+    assert projected.test_execution is not None
+    assert projected.test_execution.request_id == "native-request"
+    assert projected.run_status == "waiting_confirmation"

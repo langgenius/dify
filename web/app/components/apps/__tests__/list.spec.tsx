@@ -22,6 +22,7 @@ import { List } from '../list'
 
 const api = vi.hoisted(() => ({
   apps: vi.fn<typeof consoleClient.apps.get>(),
+  create: vi.fn<typeof consoleClient.apps.post>(),
   delete: vi.fn<typeof consoleClient.apps.byAppId.delete>(),
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
   online: vi.fn<typeof consoleClient.apps.workflows.onlineUsers.post>(),
@@ -43,6 +44,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.get': api.apps,
+      'apps.post': api.create,
+      'features.get': async () => ({ dify_builder_enabled: false, apps: { size: 0, limit: 0 } }),
       'apps.byAppId.delete': api.delete,
       'apps.starred.get': api.starred,
       'apps.workflows.onlineUsers.post': api.online,
@@ -52,6 +55,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
+
+vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp: vi.fn() }))
 
 const app = (overrides: Partial<AppPartial> = {}) => ({
   ...createAppDetailFixture({ id: 'app-1', name: 'Chat app', maintainer: 'creator-1' }),
@@ -173,6 +178,11 @@ async function setup(
 
 beforeEach(() => {
   api.apps.mockReset().mockResolvedValue(page())
+  api.create
+    .mockReset()
+    .mockImplementation(async ({ body }) =>
+      createAppDetailFixture({ id: 'created-app', mode: body.mode, maintainer: 'creator-1' }),
+    )
   api.delete.mockReset().mockResolvedValue(undefined)
   api.starred.mockReset().mockResolvedValue(page([]))
   api.online.mockReset().mockResolvedValue({ data: [] })
@@ -472,8 +482,7 @@ it('changes sorting without losing filters and resets catalog scroll', async () 
 })
 
 it.each([
-  ['app.newApp.startFromBlank', 'app.newApp.startFromBlank'],
-  ['app.newApp.startFromTemplate', 'app.newApp.startFromTemplate'],
+  ['app.newApp.menu.startFromTemplate', 'app.newApp.startFromTemplate'],
   ['app.importApp', 'app.importApp'],
 ])('opens the real %s creation dialog from the menu', async (label, title) => {
   const { user } = await setup()
@@ -484,12 +493,24 @@ it.each([
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 })
 
-it('opens a real blank-app form from the first empty state', async () => {
+it('creates the selected app type directly from the first empty state', async () => {
   api.apps.mockResolvedValue(page([]))
   const { user } = await setup()
-  await user.click(screen.getByRole('button', { name: /app.newApp.startFromBlank/ }))
-  const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromBlank' })
-  expect(within(dialog).getByRole('textbox', { name: 'app.newApp.name' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /app.types.workflow/ }))
+  await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/workflow'))
+  expect(api.create).toHaveBeenCalledWith({
+    body: expect.objectContaining({ mode: 'workflow', name: 'app.newApp.untitled' }),
+  })
+})
+
+it.each([
+  ['app.newApp.menu.startFromTemplate', 'app.newApp.startFromTemplate'],
+  ['app.firstEmpty.importTitle', 'app.importApp'],
+])('opens %s from the first empty state', async (label, title) => {
+  api.apps.mockResolvedValue(page([]))
+  const { user } = await setup()
+  await user.click(screen.getByRole('button', { name: new RegExp(label) }))
+  expect(await screen.findByRole('dialog', { name: title })).toBeInTheDocument()
 })
 
 it('opens DSL import with the file dropped on the app list', async () => {
@@ -585,9 +606,7 @@ it('opens the create walkthrough after resolving the guide group without activat
   const menu = await screen.findByRole('menu', { hidden: true })
   expect(menu).toHaveAttribute('aria-hidden', 'true')
   // This is a presentation-only tour surface; a direct event must not create an app either.
-  fireEvent.click(
-    within(menu).getByRole('menuitem', { name: /app.newApp.startFromBlank/, hidden: true }),
-  )
+  fireEvent.click(within(menu).getByRole('menuitem', { name: /app.types.workflow/, hidden: true }))
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 

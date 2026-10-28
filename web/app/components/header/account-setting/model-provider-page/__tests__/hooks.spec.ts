@@ -734,7 +734,15 @@ describe('hooks', () => {
         consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
           input: { params: { provider: 'anthropic' } },
         })
-      const keys = [providerKey, ...provider.supported_model_types.map(getModelListQueryKey)]
+      const keys = [
+        providerKey,
+        ...provider.supported_model_types.flatMap((type) => [
+          getModelListQueryKey(type),
+          consoleQuery.workspaces.current.defaultModel.get.queryKey({
+            input: { query: { model_type: type } },
+          }),
+        ]),
+      ]
       for (const key of [...keys, otherProviderKey]) queryClient.setQueryData(key, { data: [] })
       const { result } = renderHook(() => useRefreshModel())
       act(() => result.current.handleRefreshModel(provider))

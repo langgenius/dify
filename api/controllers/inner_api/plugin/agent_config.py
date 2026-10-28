@@ -10,16 +10,17 @@ directly from the Dify API data plane.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 
-from flask import request
+from flask import g, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from werkzeug.local import LocalProxy
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import plugin_inner_api_only
+from controllers.inner_api.wraps import AgentRuntimeRefused, agent_endpoint_api_only, plugin_inner_api_only
 from fields.base import ResponseModel
 from libs.exception import RelayedHTTPError
 from libs.helper import dump_response
@@ -120,14 +121,49 @@ def _error_response(exc: AgentConfigServiceError) -> tuple[dict[str, str], int]:
     return {"code": exc.code, "message": exc.message}, exc.status_code
 
 
+def _authorize_runtime_config_read(
+    agent_id: str, query: _ConfigTargetQuery, source: dict[str, str] | None = None
+) -> None:
+    """Spend no second permit; revalidate the claimed parent operation before reads."""
+    context = (
+        g.get("agent_runtime_context")
+        if g.get("agent_runtime_request") is cast(LocalProxy, request)._get_current_object()
+        else None
+    )
+    if context is None:
+        return
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.agent_config_access import validate_config_read
+    from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
+
+    try:
+        envelope = g.get("agent_runtime_dispatch")
+        if envelope is None:
+            raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
+        validate_config_read(
+            context=context,
+            envelope=envelope,
+            operations=agent_operations_for_ref(context.ref),
+            agent_id=agent_id,
+            tenant_id=query.tenant_id,
+            user_id=query.user_id,
+            config_version_id=query.config_version_id,
+            config_version_kind=query.config_version_kind,
+            source=source,
+        )
+    except BuilderExecutionPolicyError:
+        raise AgentRuntimeRefused() from None
+
+
 @inner_api_ns.route("/agent-config/<string:agent_id>/manifest")
 class AgentConfigManifestApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_manifest")
     def get(self, agent_id: str):
         try:
             query = _target_query_from_request()
+            _authorize_runtime_config_read(agent_id, query)
             return AgentConfigService().manifest(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
@@ -144,11 +180,12 @@ class AgentConfigManifestApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/download-request")
 class AgentConfigDownloadRequestApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_download_request")
     def post(self, agent_id: str):
         try:
             body = _ConfigDownloadRequest.model_validate(request.get_json(silent=True) or {})
+            _authorize_runtime_config_read(agent_id, body, body.config.model_dump())
             result = AgentConfigService().request_download(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
@@ -173,11 +210,12 @@ class AgentConfigDownloadRequestApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/skills/<string:name>/inspect")
 class AgentConfigSkillInspectApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_skill_inspect")
     def get(self, agent_id: str, name: str):
         try:
             query = _target_query_from_request()
+            _authorize_runtime_config_read(agent_id, query, {"kind": "skill", "name": name})
             return AgentConfigService().inspect_skill(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
@@ -195,7 +233,7 @@ class AgentConfigSkillInspectApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/push")
 class AgentConfigPushApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_push")
     def post(self, agent_id: str):
         try:
@@ -217,7 +255,7 @@ class AgentConfigPushApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/env")
 class AgentConfigEnvApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_env")
     def patch(self, agent_id: str):
         try:
@@ -239,7 +277,7 @@ class AgentConfigEnvApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/note")
 class AgentConfigNoteApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_note")
     def put(self, agent_id: str):
         try:

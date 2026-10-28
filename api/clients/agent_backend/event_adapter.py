@@ -19,9 +19,12 @@ from dify_agent.protocol import (
     RunEvent,
     RunFailedEvent,
     RunFailureType,
+    RunResumedEvent,
     RunStartedEvent,
     RunSucceededEvent,
+    RunWaitingEvent,
 )
+from dify_agent.protocol.native_testing import AgentApprovalWait, Counter
 from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 
@@ -32,6 +35,8 @@ class AgentBackendInternalEventType(StrEnum):
     """API-only event labels used before Graphon/AppQueue integration."""
 
     RUN_STARTED = "run_started"
+    RUN_WAITING = "run_waiting"
+    RUN_RESUMED = "run_resumed"
     STREAM_EVENT = "stream_event"
     AGENT_MESSAGE_DELTA = "agent_message_delta"
     RUN_SUCCEEDED = "run_succeeded"
@@ -52,6 +57,19 @@ class AgentBackendRunStartedInternalEvent(AgentBackendInternalEventBase):
     """API-internal marker for a started Agent backend run."""
 
     type: Literal[AgentBackendInternalEventType.RUN_STARTED] = AgentBackendInternalEventType.RUN_STARTED
+
+
+class AgentBackendRunWaitingInternalEvent(AgentBackendInternalEventBase):
+    """Waiting is control; the API owner must verify the saved checkpoint separately."""
+
+    type: Literal[AgentBackendInternalEventType.RUN_WAITING] = AgentBackendInternalEventType.RUN_WAITING
+    generation: Counter
+    pending_actions: tuple[AgentApprovalWait, ...]
+
+
+class AgentBackendRunResumedInternalEvent(AgentBackendInternalEventBase):
+    type: Literal[AgentBackendInternalEventType.RUN_RESUMED] = AgentBackendInternalEventType.RUN_RESUMED
+    generation: Counter
 
 
 class AgentBackendStreamInternalEvent(AgentBackendInternalEventBase):
@@ -101,6 +119,8 @@ class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
 
 type AgentBackendInternalEvent = Annotated[
     AgentBackendRunStartedInternalEvent
+    | AgentBackendRunWaitingInternalEvent
+    | AgentBackendRunResumedInternalEvent
     | AgentBackendStreamInternalEvent
     | AgentBackendAgentMessageDeltaInternalEvent
     | AgentBackendRunSucceededInternalEvent
@@ -116,6 +136,23 @@ class AgentBackendRunEventAdapter:
     def adapt(self, event: RunEvent) -> list[AgentBackendInternalEvent]:
         """Return zero or more API-internal events derived from one public run event."""
         match event:
+            case RunWaitingEvent():
+                return [
+                    AgentBackendRunWaitingInternalEvent(
+                        run_id=event.run_id,
+                        source_event_id=event.id,
+                        generation=event.data.generation,
+                        pending_actions=event.data.pending_actions,
+                    )
+                ]
+            case RunResumedEvent():
+                return [
+                    AgentBackendRunResumedInternalEvent(
+                        run_id=event.run_id,
+                        source_event_id=event.id,
+                        generation=event.data.generation,
+                    )
+                ]
             case RunStartedEvent():
                 return [
                     AgentBackendRunStartedInternalEvent(

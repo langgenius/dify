@@ -22,7 +22,7 @@ const (
 	MaxListLimit                         = 200
 	DefaultTerminateGraceSeconds         = 10.0
 	DefaultGCIntervalSeconds             = 60.0
-	DefaultGCFinishedJobRetentionSeconds = 300.0
+	DefaultGCFinishedJobRetentionSeconds = 24.0 * 60.0 * 60.0 // Match SDK result retention across human approval pauses.
 	DefaultPollInterval                  = 5 * time.Millisecond
 	DefaultMaxPollInterval               = 50 * time.Millisecond
 	DefaultPipeMonitorInterval           = 1 * time.Second
@@ -36,6 +36,11 @@ const (
 
 // Config holds runtime configuration for the shellctl server.
 type Config struct {
+	NativeOutputBytes            int64
+	NativeScopeID                string
+	NativeScopeGeneration        int64
+	NativeScopeConfigPath        string
+	NativeJobsDir                string
 	Listen                       string
 	AuthToken                    string
 	StateDir                     string
@@ -111,6 +116,9 @@ func DefaultConfig() (*Config, error) {
 
 // JobsDir returns the path to the jobs artifact directory.
 func (c *Config) JobsDir() string {
+	if c.NativeJobsDir != "" {
+		return c.NativeJobsDir
+	}
 	return filepath.Join(c.StateDir, "jobs")
 }
 

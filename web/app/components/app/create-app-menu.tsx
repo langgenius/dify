@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Menu,
   MenuContent,
@@ -9,13 +10,14 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import {
   getStepByStepTourMenuContentProps,
   useStepByStepTourControlledMenu,
 } from '@/app/components/step-by-step-tour/menu'
 
 type CreateAppMenuProps = {
+  appBuilderEnabled?: boolean
   onCreateBlank?: () => void
   onCreateTemplate?: () => void
   onImportDSL?: () => void
@@ -25,6 +27,7 @@ type CreateAppMenuProps = {
 }
 
 export function CreateAppMenu({
+  appBuilderEnabled = false,
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
@@ -66,15 +69,41 @@ export function CreateAppMenu({
           <MenuGroup className="py-1">
             {onCreateBlank && (
               <MenuItem
-                className="py-1 system-md-regular text-text-secondary"
+                className={cn(
+                  'py-1 system-md-regular text-text-secondary',
+                  appBuilderEnabled && 'h-auto items-start',
+                )}
                 onClick={onCreateBlank}
               >
                 <span
                   aria-hidden
-                  className="i-ri-sticky-note-add-line size-4 shrink-0 text-text-secondary"
+                  className={cn(
+                    'i-ri-sticky-note-add-line size-4 shrink-0 text-text-secondary',
+                    appBuilderEnabled && 'my-0.5',
+                  )}
                 />
-                <span className="min-w-0 flex-1 truncate px-1">
-                  {t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5 px-1">
+                  <span className="truncate">
+                    {appBuilderEnabled
+                      ? t(($) => $['newApp.buildFromBlank'], { ns: 'app' })
+                      : t(($) => $['newApp.startFromBlank'], { ns: 'app' })}
+                  </span>
+                  {appBuilderEnabled && (
+                    <span className="system-xs-regular text-text-tertiary">
+                      <Trans
+                        i18nKey={($) => $['newApp.builderDescription']}
+                        ns="app"
+                        components={{
+                          builderIcon: (
+                            <span
+                              aria-hidden
+                              className="i-custom-public-app-builder-builder-mark inline-block size-4 align-middle"
+                            />
+                          ),
+                        }}
+                      />
+                    </span>
+                  )}
                 </span>
               </MenuItem>
             )}

@@ -276,3 +276,37 @@ def test_openshell_backend_rejects_malformed_egress_allow(egress_allow: str) -> 
             openshell_shellctl_auth_token="token-1",
             openshell_egress_allow=egress_allow,
         )
+
+
+def test_native_scope_endpoint_requires_separate_authentication() -> None:
+    with pytest.raises(ValidationError, match="native_test_auth_token"):
+        RuntimeBackendSettings(
+            local_sandbox_endpoint="http://ordinary.example",
+            local_native_test_endpoint="http://native.example",
+        )
+
+
+def test_native_scope_configuration_preserves_ordinary_driver() -> None:
+    settings = RuntimeBackendSettings(
+        local_sandbox_endpoint="http://ordinary.example",
+        local_sandbox_auth_token="ordinary-token",
+        local_native_test_endpoint="http://native.example",
+        local_native_test_auth_token="native-token",
+    )
+    profile = create_runtime_backend_profile(settings)
+    assert isinstance(profile.execution_bindings, LocalExecutionBindingBackend)
+    assert profile.execution_bindings.endpoint == "http://ordinary.example"
+    assert profile.execution_bindings.auth_token == "ordinary-token"
+    assert profile.execution_bindings.native_scope_client is not None
+    assert profile.execution_bindings.native_scope_client.endpoint == "http://native.example"
+
+
+def test_native_scope_endpoint_never_defaults_to_ordinary() -> None:
+    profile = create_runtime_backend_profile(
+        RuntimeBackendSettings(
+            local_sandbox_endpoint="http://ordinary.example",
+            local_sandbox_auth_token="ordinary-token",
+        )
+    )
+    assert isinstance(profile.execution_bindings, LocalExecutionBindingBackend)
+    assert profile.execution_bindings.native_scope_client is None

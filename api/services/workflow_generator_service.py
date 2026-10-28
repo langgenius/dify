@@ -1,9 +1,9 @@
 """
 Workflow generator service.
 
-Thin facade over ``core.workflow.generator.WorkflowGenerator`` that owns the
-model-manager / model-instance plumbing. Controllers call this; the pure
-domain class never touches the model registry directly.
+Facade over ``services.workflow_generation.runner.WorkflowGenerator`` that owns
+model-manager / model-instance plumbing. Controllers call this facade; the
+injected runner coordinates graph generation and source qualification.
 
 Pattern mirrors ``LLMGenerator.generate_rule_config`` — see
 ``core/llm_generator/llm_generator.py`` — but lives in ``services/`` because
@@ -18,7 +18,6 @@ from typing import Any
 from core.app.app_config.entities import ModelConfig
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
-from core.workflow.generator import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import (
     ToolCatalogueEntry,
     build_tool_catalogue,
@@ -29,6 +28,7 @@ from core.workflow.generator.types import (
     WorkflowGenerationModeRequest,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
+from services.workflow_generation.runner import WorkflowGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,8 @@ class WorkflowGeneratorService:
         model_config: ModelConfig,
         ideal_output: str = "",
         current_graph: dict[str, Any] | None = None,
+        ready_tool_keys: frozenset[tuple[str, str]] | None = None,
+        reply_language: str | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Resolve a model instance for the tenant and run the generator.
@@ -63,16 +65,39 @@ class WorkflowGeneratorService:
         flow — when present the generator refines it instead of creating a new
         graph from scratch. ``None`` is the `/create` path.
 
+        ``reply_language`` optionally sets the language of generated display text;
+        omission preserves the standalone generator behavior.
+
         Errors from the LLM call (auth, quota, invoke) propagate so the
         controller can map them to existing HTTP error envelopes (same
         envelope as ``/rule-generate``).
+
+        ``ready_tool_keys`` restricts generation to the ``(provider_name,
+        tool_name)`` tools the caller deems eligible for generation (the
+        Builder passes verified installed schemas, including actions needing
+        credential setup in the draft): both the routed catalogue and the validator's
+        installed-tool keys are filtered to it, so any other tool node fails
+        validation. The set is not live credential validation, pins no
+        ``credential_id`` and grants no runtime authorization; native runtime
+        credential selection and authorization are unchanged. ``None`` (cmd+k
+        and every other standalone caller) keeps the complete installed
+        catalogue; an empty set means no tool is eligible and keeps
+        validation on.
         """
         model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
             cls._resolve_generation_context(tenant_id=tenant_id, mode=mode, model_config=model_config)
         )
+        if ready_tool_keys is not None:
+            tool_catalogue_entries = [
+                entry
+                for entry in tool_catalogue_entries
+                if (entry["provider_name"], entry["tool_name"]) in ready_tool_keys
+            ]
+            installed_tools = installed_tool_keys(tool_catalogue_entries)
 
         return WorkflowGenerator.generate_workflow_graph(
             model_instance=model_instance,
+            reply_language=reply_language,
             model_parameters=model_parameters,
             provider=model_config.provider,
             model_name=model_config.name,
@@ -96,6 +121,7 @@ class WorkflowGeneratorService:
         model_config: ModelConfig,
         ideal_output: str = "",
         current_graph: dict[str, Any] | None = None,
+        reply_language: str | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
         """
         Streaming sibling of ``generate_workflow_graph``.
@@ -113,6 +139,7 @@ class WorkflowGeneratorService:
 
         yield from WorkflowGenerator.generate_workflow_graph_stream(
             model_instance=model_instance,
+            reply_language=reply_language,
             model_parameters=model_parameters,
             provider=model_config.provider,
             model_name=model_config.name,

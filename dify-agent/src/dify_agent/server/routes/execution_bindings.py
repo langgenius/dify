@@ -3,12 +3,16 @@
 from collections.abc import Callable
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from dify_agent.protocol import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
+    KeepAliveExecutionBindingRequest,
+    KeepAliveExecutionBindingResponse,
+    ReadExecutionBindingJobRequest,
+    ReadExecutionBindingJobResponse,
 )
 from dify_agent.server.execution_bindings import ExecutionBindingService, ExecutionBindingServiceError
 
@@ -52,4 +56,58 @@ def create_execution_bindings_router(get_service: Callable[[], ExecutionBindingS
     return router
 
 
-__all__ = ["create_execution_bindings_router"]
+def create_execution_binding_keep_alive_router(get_service: Callable[[], ExecutionBindingService | None]) -> APIRouter:
+    """Compose only behind configured service authentication, like protected Run reads."""
+    router = APIRouter(prefix="/execution-bindings", tags=["execution-bindings"])
+
+    @router.post("/keep-alive", response_model=KeepAliveExecutionBindingResponse)
+    async def keep_alive(request: Request) -> KeepAliveExecutionBindingResponse:
+        try:
+            selection = KeepAliveExecutionBindingRequest.model_validate_json(await request.body())
+        except ValueError:
+            raise HTTPException(
+                422, detail={"code": "invalid_keep_alive_request", "message": "invalid binding selection"}
+            ) from None
+        service = get_service()
+        if service is None:
+            raise HTTPException(
+                503, detail={"code": "runtime_backend_unavailable", "message": "runtime backend unavailable"}
+            )
+        try:
+            return await service.keep_alive(selection)
+        except ExecutionBindingServiceError as error:
+            raise HTTPException(error.status_code, detail={"code": error.code, "message": error.message}) from None
+
+    return router
+
+
+__all__ = [
+    "create_execution_bindings_router",
+    "create_execution_binding_keep_alive_router",
+    "create_execution_binding_job_router",
+]
+
+
+def create_execution_binding_job_router(get_service: Callable[[], ExecutionBindingService | None]) -> APIRouter:
+    """Mount only behind configured service authentication, like keep-alive."""
+    router = APIRouter(prefix="/execution-bindings", tags=["execution-bindings"])
+
+    @router.post("/job-status", response_model=ReadExecutionBindingJobResponse)
+    async def read_job(request: Request) -> ReadExecutionBindingJobResponse:
+        try:
+            selection = ReadExecutionBindingJobRequest.model_validate_json(await request.body())
+        except ValueError:
+            raise HTTPException(
+                422, detail={"code": "invalid_job_status_request", "message": "invalid job selection"}
+            ) from None
+        service = get_service()
+        if service is None:
+            raise HTTPException(
+                503, detail={"code": "runtime_backend_unavailable", "message": "runtime backend unavailable"}
+            )
+        try:
+            return await service.read_job(selection)
+        except ExecutionBindingServiceError as error:
+            raise HTTPException(error.status_code, detail={"code": error.code, "message": error.message}) from None
+
+    return router

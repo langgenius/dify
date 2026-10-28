@@ -1,14 +1,15 @@
-import type { StartNodeType } from '../nodes/start/types'
+import type { Node } from '../types'
 import type { RunAndHistoryProps } from './run-and-history'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback } from 'react'
-import { useNodes } from 'reactflow'
+import { useStoreApi } from 'reactflow'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useHooksStore } from '../hooks-store'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
+import DifyBuilderButton from './dify-builder-button'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
 import GlobalVariableButton from './global-variable-button'
@@ -25,14 +26,18 @@ export type HeaderInNormalProps = {
     chatVariableTrigger?: React.ReactNode
   }
   controls?: {
+    hasDifyBuilderSession?: boolean
     showEnvButton?: boolean
     showGlobalVariableButton?: boolean
+    showDifyBuilderButton?: boolean
   }
   runAndHistoryProps?: RunAndHistoryProps
 }
 const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
+  const canvasStore = useStoreApi()
   const { nodesReadOnly } = useNodesReadOnly()
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const { handleNodeSelect } = useNodesInteractions()
   const setShowWorkflowVersionHistoryPanel = useStore((s) => s.setShowWorkflowVersionHistoryPanel)
@@ -41,16 +46,21 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
-  const nodes = useNodes<StartNodeType>()
-  const selectedNode = nodes.find((node) => node.data.selected)
+  const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
   const showEnvButton = controls?.showEnvButton !== false
   const showGlobalVariableButton = controls?.showGlobalVariableButton !== false
+  const showDifyBuilderButton = controls?.showDifyBuilderButton === true
+  const hasDifyBuilderSession = controls?.hasDifyBuilderSession === true
+  const difyBuilderButtonDisabled = !canEdit || (nodesReadOnly && !hasDifyBuilderSession)
   const showContextButtons =
     !!components?.chatVariableTrigger || showEnvButton || showGlobalVariableButton
 
   const onStartRestoring = useCallback(() => {
+    const selectedNode = (canvasStore.getState().getNodes() as Node[]).find(
+      (node) => node.data.selected,
+    )
     workflowStore.setState({ isRestoring: true })
     handleBackupDraft()
     // clear right panel
@@ -61,11 +71,12 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
     setShowGlobalVariablePanel(false)
+    setShowDifyBuilderPanel(false)
     closeAllInputFieldPanels()
   }, [
     workflowStore,
+    canvasStore,
     handleBackupDraft,
-    selectedNode,
     handleNodeSelect,
     setShowWorkflowVersionHistoryPanel,
     setShowEnvPanel,
@@ -73,16 +84,18 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel,
     setShowChatVariablePanel,
     setShowGlobalVariablePanel,
+    setShowDifyBuilderPanel,
     closeAllInputFieldPanels,
   ])
 
+  // Keep navigation independent of status text while reserving space for the actions.
   return (
-    <div className="flex w-full items-center justify-between">
-      <div>{components?.title ?? <EditingTitle />}</div>
+    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(max-content,1fr)] items-center gap-2">
+      <div className="min-w-0">{components?.title ?? <EditingTitle />}</div>
       <div>
         <ScrollToSelectedNodeButton />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 justify-self-end">
         <OnlineUsers />
         {components?.left}
         <Separator decorative orientation="vertical" className="mx-auto h-3.5" />
@@ -96,6 +109,12 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         )}
         {components?.middle}
         {canReleaseAndVersion && <VersionHistoryButton onClick={onStartRestoring} />}
+        {showDifyBuilderButton && (
+          <>
+            <Separator decorative orientation="vertical" className="mx-0 h-4" />
+            <DifyBuilderButton disabled={difyBuilderButtonDisabled} />
+          </>
+        )}
       </div>
     </div>
   )

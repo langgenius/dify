@@ -94,7 +94,10 @@ class ExceptionLoggingHandler(logging.Handler):
 
 
 def instrument_exception_logging() -> None:
+    from libs.sensitive_http_telemetry import SensitiveHttpLogFilter
+
     exception_handler = ExceptionLoggingHandler()
+    exception_handler.addFilter(SensitiveHttpLogFilter())
     logging.getLogger().addHandler(exception_handler)
 
 

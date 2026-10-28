@@ -7,9 +7,15 @@ rather than with the full ReactFlow graph.
 """
 
 import json
+from collections.abc import Iterable
 from typing import Any
 
-from core.workflow.generator.prompts.builder_prompts import get_node_config_snippet
+from core.workflow.generator.prompts.builder_prompts import (
+    TOOL_OUTPUT_SEMANTICS_RULES,
+    TOOL_PARAMETER_SEMANTICS_RULES,
+    VARIABLE_AGGREGATOR_OUTPUT_RULES,
+    get_node_config_snippet,
+)
 
 _CONTAINER_CONFIG_SNIPPETS = {
     "iteration": """- iteration:
@@ -19,11 +25,22 @@ _CONTAINER_CONFIG_SNIPPETS = {
      "error_handle_mode": "terminated", "flatten_output": true}
     The runner supplies start_node_id, child wrappers, and the synthetic start node.""",
     "loop": """- loop:
-    {"break_conditions": [{"id": "c1",
-                            "variable_selector": ["<child>", "<var>"],
-                            "comparison_operator": "is",
-                            "value": "<value>"}],
+    {"loop_variables": [{"label": "counter", "var_type": "number",
+                         "value_type": "constant", "value": 0}],
+     "break_conditions": [{"id": "c1", "varType": "number",
+                            "variable_selector": ["<loop-id>", "counter"],
+                            "comparison_operator": "≥", "value": "10"}],
      "loop_count": 10, "logical_operator": "and"}
+    Declare the requested mutable state in loop_variables[].label, using exactly
+    the plan's declared names, not a name/variable key or an outputs mapping.
+    Each entry requires label, var_type, value_type and value. A constant value
+    is literal; value_type "variable" takes a source selector ["<src>", "<var>"].
+    Loop state is referenceable inside AND after the container as
+    ["<loop-id>", "<label>"]; assigner children update that same selector.
+    Use input_type "constant", operation "+=", value 1 to increment it.
+    Conditions compare the declared Loop state; a variable RHS uses a template
+    such as "{{#<start-id>.limit#}}". Numeric operators are ≥ / ≤ / ≠, not >= / <= / !=.
+    loop_count is the fixed maximum; Loop also publishes loop_round.
     The runner supplies start_node_id, child wrappers, and the synthetic start node.""",
 }
 
@@ -35,8 +52,13 @@ type, title, desc, selected, position, wrapper fields, edges, or viewport.
 
 Rules:
 - Use only ids from the supplied normalized plan.
-- Placeholder strings use ``{{#node_id.variable#}}``; selector fields use
-  ``["node_id", "variable"]``. Never invent an upstream output.
+- Outside Template Jinja, use ``{{#node_id.variable#}}`` placeholders.
+  Selectors use ``["node_id", "variable"]``. Never invent outputs. An upstream
+  llm exposes "text", "reasoning_content" and "usage"; each of its
+  structured-output fields is one segment deeper —
+  ``{{#node_id.structured_output.field#}}`` as a placeholder,
+  ``["node_id", "structured_output", "field"]`` as a selector — never the
+  flat ``{{#node_id.field#}}`` / ``["node_id", "field"]``.
 - Use the selected model verbatim for llm, question-classifier, and
   parameter-extractor nodes.
 - Keep prompts/code concise but complete for the user's requested behavior.
@@ -56,7 +78,7 @@ purpose={purpose}
 
 {instruction}
 
-{ideal_output_section}{mode_section}{model_section}{tool_catalogue_section}{start_inputs_section}{existing_config_section}\
+{ideal_output_section}{mode_section}{model_section}{tool_catalogue_section}{start_inputs_section}{existing_config_section}{node_outputs_section}\
 # Normalized plan and topology
 
 {plan_json}
@@ -68,7 +90,14 @@ Return {{"config": {{...}}}} for target node {node_id} now.
 def get_node_builder_system_prompt(node_type: str) -> str:
     """Build a one-node prompt containing only that node's semantic schema."""
     snippet = _CONTAINER_CONFIG_SNIPPETS.get(node_type) or get_node_config_snippet(node_type)
-    return _NODE_BUILDER_HEAD + (snippet or f"- {node_type}: emit the minimum valid config fields.")
+    parameter_rules = TOOL_PARAMETER_SEMANTICS_RULES if node_type in {"code", "tool"} else ""
+    output_rules = TOOL_OUTPUT_SEMANTICS_RULES if node_type in {"code", "tool"} else ""
+    return (
+        _NODE_BUILDER_HEAD
+        + (snippet or f"- {node_type}: emit the minimum valid config fields.")
+        + parameter_rules
+        + output_rules
+    )
 
 
 def format_parallel_plan(
@@ -81,10 +110,30 @@ def format_parallel_plan(
     ``start_inputs`` rides along so downstream builders reference the declared
     ``{{#<start-id>.<variable>#}}`` names instead of guessing them from prose
     — a guessed name gets auto-injected as a spurious form input later.
+
+    The planner's declared producer outputs deliberately do NOT ride here:
+    serialised raw they would give every consumer an llm producer's schema
+    fields flat, which is the one reference form the engine cannot resolve.
+    ``format_node_outputs_section`` renders them per call instead, where the
+    node's type is known.
+
+    When aggregation is planned, its native envelope contract also travels
+    here: isolated consumers cannot see the producer's schema snippet and
+    must keep object fields beneath ``output`` instead of inventing outputs.
     """
     payload: dict[str, Any] = {"nodes": plan_nodes, "edges": plan_edges}
     if start_inputs:
         payload["start_inputs"] = start_inputs
+    aggregator_ids = [
+        node["id"]
+        for node in plan_nodes
+        if node.get("node_type") == "variable-aggregator" and isinstance(node.get("id"), str)
+    ]
+    if aggregator_ids:
+        payload["native_variable_aggregator_contract"] = {
+            "node_ids": aggregator_ids,
+            "rules": VARIABLE_AGGREGATOR_OUTPUT_RULES,
+        }
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -124,6 +173,68 @@ def format_start_inputs_section(start_inputs: list[dict[str, Any]]) -> str:
         lines.append(f"- variable={variable!r}  label={label!r}  type={type_!r}")
     lines.append("")
     return "\n".join(lines) + "\n"
+
+
+def format_node_outputs_section(
+    node_outputs: dict[str, list[str]] | None,
+    target_node_id: str,
+    node_types: dict[str, str] | None = None,
+) -> str:
+    """Render the planner's declared producer outputs for one builder call.
+
+    Two halves, both needed: the target node is told to expose exactly the
+    names the plan promised on its behalf, and every other declared node is
+    listed so this node references only names that will really exist.
+
+    ``node_types`` (plan node id -> node type) makes the consumer half
+    type-aware, which it must be: an ``llm`` producer's declared names are its
+    structured-output SCHEMA FIELDS, and the engine publishes those under one
+    ``structured_output`` object. Listing them flat would hand every consumer
+    ``{{#<id>.<field>#}}`` — precisely the reference the engine can never
+    resolve. Native Agent caller declarations are top-level outputs too;
+    they belong in ``agent_declared_outputs``, not an invented published schema.
+    A node whose type we don't know is listed as-is. These plan names are
+    promises; final output validation still checks each actual node config.
+
+    Returns an empty string when there is nothing to say, keeping the prompt
+    identical to the one a plan without the key has always produced.
+    """
+    if not node_outputs:
+        return ""
+    types = node_types or {}
+    body: list[str] = []
+    own = node_outputs.get(target_node_id) or []
+    if own:
+        body.append(
+            "This node MUST expose exactly these output names, spelled exactly: "
+            + _quoted_names(own)
+            + " (a code node's ``outputs`` keys, a parameter-extractor's parameter names, a "
+            "human-input input's ``output_variable_name``, a loop's ``loop_variables[].label``, "
+            "an llm's ``structured_output`` schema fields, "
+            "or a native New Agent caller's custom ``agent_declared_outputs``). "
+            "Agent custom declarations do not rename system text or route-dependent switch outputs."
+        )
+    others = [(node_id, names) for node_id, names in node_outputs.items() if node_id != target_node_id and names]
+    if others:
+        body.append("These nodes expose exactly the names below — reference no other name on them:")
+        for node_id, names in others:
+            if types.get(node_id) == "llm":
+                # Schema fields live under the node's ``structured_output``
+                # object: 3 segments, never flat.
+                body.append(
+                    f"- {node_id} (llm structured output): "
+                    + _quoted_names(f"structured_output.{name}" for name in names)
+                )
+            else:
+                body.append(f"- {node_id}: " + _quoted_names(names))
+    if not body:
+        return ""
+    return "\n".join(["# Declared outputs (the plan's contract — binding)", "", *body, ""]) + "\n"
+
+
+def _quoted_names(names: Iterable[str]) -> str:
+    """Render output names as a readable, unambiguous comma-separated list."""
+    return ", ".join(repr(name) for name in names)
 
 
 def format_tool_catalogue_section(catalogue_text: str) -> str:

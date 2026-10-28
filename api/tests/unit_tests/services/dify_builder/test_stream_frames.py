@@ -1,0 +1,469 @@
+import json
+from collections.abc import Iterable
+
+import pytest
+
+from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
+from core.dify_builder.models import ConversationItem, Graph
+from services.dify_builder import wiring
+from services.dify_builder.progress_snapshot import ProgressSnapshot
+from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import native_workflow_payloads
+
+
+class _FakeSubscription:
+    def __init__(self, items: Iterable[bytes | None]) -> None:
+        self._items = list(items)
+        self.closed = False
+        self.timeouts: list[float | None] = []
+
+    def receive(self, timeout: float | None = None) -> bytes | None:
+        self.timeouts.append(timeout)
+        if not self._items:
+            raise AssertionError("test subscription ran out of events before a terminal frame")
+        return self._items.pop(0)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def _event(frame: str) -> Graph:
+    lines = frame.strip().splitlines()
+    assert lines[0] == "event: message"
+    return json.loads(lines[1].removeprefix("data: "))
+
+
+def _view(**overrides: object) -> Graph:
+    return {
+        "session_id": "s1",
+        "reply_language": "",
+        "version": 1,
+        "canvas_read_only": False,
+        "run_status": "processing",
+        "interrupted": False,
+        "conversation_last_seq": -1,
+        "phase": "understand",
+        "actions": [],
+        **overrides,
+    }
+
+
+def _workflow_payload(event: str) -> Graph:
+    return next(payload for payload in native_workflow_payloads() if payload["event"] == event)
+
+
+def _internal_workflow(event: str, revision: int = 1) -> Graph:
+    return {
+        "kind": "workflow",
+        "session_id": "s1",
+        "operation_id": "operation-1",
+        "stage_id": "build.test",
+        "at_version": 2,
+        "revision": revision,
+        "payload": _workflow_payload(event),
+    }
+
+
+def _internal_finished(**overrides: object) -> Graph:
+    return {
+        "kind": "command_finished",
+        **_view(version=2, run_status="waiting_input"),
+        "command_id": "command-1",
+        **overrides,
+    }
+
+
+def test_stream_advance_frames_closes_subscription_when_never_iterated() -> None:
+    subscription = _FakeSubscription([json.dumps(_internal_finished()).encode()])
+    stream = wiring.stream_advance_frames(_view(), subscription, expect_advance=True)
+
+    assert isinstance(stream, wiring._ClosingFrameStream)
+    stream.close()
+
+    assert subscription.closed is True
+
+
+def test_stream_advance_frames_relays_typed_envelopes_until_command_finished() -> None:
+    node = _internal_workflow("node_started")
+    finished = _internal_finished()
+    extra = _internal_workflow("node_started", revision=2)
+    subscription = _FakeSubscription(
+        [json.dumps(node).encode(), None, json.dumps(finished).encode(), json.dumps(extra).encode()]
+    )
+
+    frames = list(wiring.stream_advance_frames(_view(), subscription, expect_advance=True, command_id="command-1"))
+
+    assert _event(frames[0]) == {
+        "event": "command_started",
+        "data": {
+            "session_id": "s1",
+            "command_id": "command-1",
+            "version": 1,
+            "phase": "understand",
+            "run_status": "processing",
+        },
+    }
+    workflow_event = _event(frames[1])
+    assert workflow_event["event"] == "workflow"
+    assert workflow_event["data"] | {"payload": None} == {
+        "session_id": "s1",
+        "operation_id": "operation-1",
+        "at_version": 2,
+        "revision": 1,
+        "payload": None,
+    }
+    assert workflow_event["data"]["payload"]["event"] == "node_started"
+    assert frames[2] == ": keep-alive\n\n"
+    assert _event(frames[3]) == {
+        "event": "command_finished",
+        "data": {**_view(version=2, run_status="waiting_input"), "command_id": "command-1"},
+    }
+    assert len(frames) == 4
+    assert subscription.closed is True
+    assert subscription.timeouts == [wiring._HEARTBEAT_SECONDS] * 3
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"not-json",
+        json.dumps([]).encode(),
+        json.dumps({"kind": "notice", "text": "unsupported"}).encode(),
+    ],
+)
+def test_stream_advance_frames_turns_invalid_progress_into_typed_terminal_error(raw: bytes) -> None:
+    subscription = _FakeSubscription([raw])
+
+    frames = list(wiring.stream_advance_frames(_view(), subscription, expect_advance=True))
+
+    assert _event(frames[-1]) == {
+        "event": "error",
+        "data": {"message": "invalid Builder progress event"},
+    }
+    assert subscription.closed is True
+
+
+def test_stream_advance_frames_normalizes_internal_error_event() -> None:
+    error = {
+        "kind": "error",
+        "code": "command_finished_unavailable",
+        "error": "step failed",
+        "session_id": "s1",
+        "command_id": "command-1",
+        "stage_id": "fix.verify",
+        "traceback": "private",
+    }
+    subscription = _FakeSubscription([json.dumps(error).encode()])
+
+    frames = list(wiring.stream_advance_frames(_view(), subscription, expect_advance=True))
+
+    assert _event(frames[-1]) == {
+        "event": "error",
+        "data": {
+            "message": "step failed",
+            "session_id": "s1",
+            "command_id": "command-1",
+            "code": "command_finished_unavailable",
+        },
+    }
+    assert subscription.closed is True
+
+
+@pytest.mark.parametrize("event", ["workflow_finished", "workflow_paused", "error"])
+def test_native_workflow_terminal_event_does_not_end_the_builder_command(event: str) -> None:
+    workflow = _internal_workflow(event)
+    finished = _internal_finished()
+    subscription = _FakeSubscription([json.dumps(item).encode() for item in (workflow, finished)])
+
+    frames = list(wiring.stream_advance_frames(_view(), subscription, expect_advance=True))
+
+    assert [_event(frame)["event"] for frame in frames] == [
+        "command_started",
+        "workflow",
+        "command_finished",
+    ]
+    assert _event(frames[1])["data"]["payload"]["event"] == event
+
+
+def test_ignored_workflow_event_is_not_sent_to_the_browser() -> None:
+    workflow = {
+        "kind": "workflow",
+        "session_id": "s1",
+        "operation_id": "operation-1",
+        "stage_id": "build.test",
+        "at_version": 2,
+        "revision": 1,
+        "payload": {"event": "message_end", "task_id": "task-1", "id": "message-1"},
+    }
+    subscription = _FakeSubscription([json.dumps(workflow).encode(), json.dumps(_internal_finished()).encode()])
+
+    frames = list(wiring.stream_advance_frames(_view(), subscription, expect_advance=True))
+
+    assert [_event(frame)["event"] for frame in frames] == ["command_started", "command_finished"]
+
+
+def test_stream_advance_frames_settled_call_yields_minimal_command_handshake_only() -> None:
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(state="edit.capability_check"),
+            None,
+            expect_advance=False,
+            command_id="command-1",
+        )
+    )
+
+    assert [_event(frame) for frame in frames] == [
+        {
+            "event": "command_started",
+            "data": {
+                "session_id": "s1",
+                "command_id": "command-1",
+                "version": 1,
+                "phase": "understand",
+                "run_status": "processing",
+            },
+        }
+    ]
+
+
+def test_stream_advance_frames_can_emit_public_command_finished_for_settled_message() -> None:
+    view = _view(version=2, run_status="waiting_input", state="success", app_id="private")
+
+    frames = list(
+        wiring.stream_advance_frames(
+            view,
+            None,
+            expect_advance=False,
+            emit_command_finished_when_settled=True,
+            command_id="command-1",
+        )
+    )
+
+    assert [_event(frame) for frame in frames] == [
+        {
+            "event": "command_started",
+            "data": {
+                "session_id": "s1",
+                "command_id": "command-1",
+                "version": 2,
+                "phase": "understand",
+                "run_status": "waiting_input",
+            },
+        },
+        {
+            "event": "command_finished",
+            "data": {
+                **_view(version=2, run_status="waiting_input"),
+                "command_id": "command-1",
+            },
+        },
+    ]
+
+
+def test_reconnect_stream_skips_handshake_and_emits_settled_state() -> None:
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(version=3, run_status="waiting_confirmation"),
+            None,
+            expect_advance=False,
+            emit_command_started=False,
+            emit_command_finished_when_settled=True,
+            command_id="command-3",
+        )
+    )
+
+    assert [_event(frame) for frame in frames] == [
+        {
+            "event": "command_finished",
+            "data": {
+                **_view(version=3, run_status="waiting_confirmation"),
+                "command_id": "command-3",
+            },
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    "settled",
+    [
+        _view(version=1, run_status="waiting_input", last_command_id="command-2"),
+        _view(version=2, run_status="failed", last_command_id="command-2"),
+        _view(version=1, interrupted=True, last_command_id="command-2"),
+    ],
+)
+def test_reconnect_recovers_settled_state_when_terminal_notification_is_missing(settled: dict[str, object]) -> None:
+    subscription = _FakeSubscription([None])
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(),
+            subscription,
+            expect_advance=True,
+            emit_command_started=False,
+            command_id="command-1",
+            read_session_view=lambda: settled,
+        )
+    )
+
+    assert [_event(frame) for frame in frames] == [
+        {
+            "event": "command_finished",
+            "data": {key: value for key, value in settled.items() if key != "last_command_id"}
+            | {"command_id": "command-2"},
+        }
+    ]
+    assert subscription.closed is True
+
+
+def test_reconnect_keeps_watching_while_the_worker_is_active() -> None:
+    subscription = _FakeSubscription([None, json.dumps(_internal_finished()).encode()])
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(),
+            subscription,
+            expect_advance=True,
+            emit_command_started=False,
+            read_session_view=_view,
+        )
+    )
+
+    assert frames[0] == ": keep-alive\n\n"
+    assert _event(frames[1])["event"] == "command_finished"
+    assert subscription.closed is True
+
+
+def test_stream_advance_frames_emits_synchronously_persisted_items_individually() -> None:
+    items = [
+        ConversationItem(seq=0, at_version=1, kind="user", payload={"text": "Build it"}),
+        ConversationItem(seq=1, at_version=2, kind="form", payload={"variant": "build_requirements"}),
+        ConversationItem(seq=2, at_version=2, kind="assistant_turn", payload={"reply_text": "private"}),
+    ]
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(version=2, run_status="waiting_input", conversation_last_seq=1),
+            None,
+            expect_advance=False,
+            command_id="command-1",
+            initial_items=items,
+            emit_command_finished_when_settled=True,
+        )
+    )
+
+    assert [_event(frame)["event"] for frame in frames] == [
+        "command_started",
+        "conversation_item_appended",
+        "conversation_item_appended",
+        "command_finished",
+    ]
+    assert [_event(frame)["data"].get("item", {}).get("seq") for frame in frames] == [None, 0, 1, None]
+    assert all("kind" not in _event(frame)["data"] for frame in frames)
+
+
+@pytest.mark.parametrize(
+    ("at_version", "expected_events"),
+    [(2, ["progress_snapshot", "command_finished"]), (1, ["command_finished"])],
+)
+def test_reconnect_restores_progress_before_live_events_without_replaying_committed_progress(
+    at_version: int, expected_events: list[str]
+) -> None:
+    snapshot = ProgressSnapshot(
+        session_id="s1",
+        operation_id="operation-1",
+        at_version=at_version,
+        revision=5,
+        reply_language="zh-Hans",
+        execution=ExecutionProgress(
+            status="running",
+            activities=[
+                ExecutionActivity(id="inspect", label="Inspect workflow", state="done"),
+                ExecutionActivity(id="plan", label="Generate plan", state="active"),
+            ],
+        ),
+    )
+    subscription = _FakeSubscription([json.dumps(_internal_finished()).encode()])
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(), subscription, expect_advance=True, emit_command_started=False, initial_progress=snapshot
+        )
+    )
+
+    envelopes = [_event(frame) for frame in frames]
+    assert [event["event"] for event in envelopes] == expected_events
+    if at_version == 2:
+        from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
+
+        data = DifyBuilderStreamEventResponse.model_validate(envelopes[0]).model_dump(mode="json")["data"]
+        assert data["execution"]["activities"] == [
+            {"id": "inspect", "label": "Inspect workflow", "state": "done", "parent_id": None},
+            {"id": "plan", "label": "Generate plan", "state": "active", "parent_id": None},
+        ]
+        assert (data["revision"], data["reply_language"]) == (5, "zh-Hans")
+    assert subscription.closed
+
+
+@pytest.mark.parametrize("task_paused", [False, True])
+@pytest.mark.parametrize("native_notification", [False, True])
+def test_observation_uses_original_command_only_for_task_stop(task_paused: bool, native_notification: bool) -> None:
+    raw = json.dumps({"kind": "native_state_changed", "session_id": "s1"}).encode() if native_notification else None
+    subscription = _FakeSubscription([raw])
+    latest = _view(
+        version=2,
+        run_status="paused" if task_paused else "waiting_input",
+        last_command_id="command-2",
+        _task_paused=task_paused,
+    )
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(),
+            subscription,
+            expect_advance=True,
+            emit_command_started=False,
+            command_id="command-1",
+            read_session_view=lambda: latest,
+        )
+    )
+    assert len(frames) == 1
+    event = _event(frames[0])
+    assert event["event"] == "command_finished"
+    assert event["data"]["command_id"] == ("command-1" if task_paused else "command-2")
+    assert "_task_paused" not in event["data"]
+    assert subscription.closed
+
+
+@pytest.mark.parametrize("native_notification", [False, True])
+def test_stream_defers_initializing_observation_until_real_view(native_notification: bool) -> None:
+    notification = json.dumps({"kind": "native_state_changed", "session_id": "s1"}).encode()
+    subscription = _FakeSubscription([notification if native_notification else None, notification])
+    views = iter([None, _view(run_status="waiting_input", version=2)])
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(), subscription, True, read_session_view=lambda: next(views), command_id="original-command"
+        )
+    )
+    assert frames[1] == ": keep-alive\n\n"
+    events = [_event(frame) for frame in frames if not frame.startswith(":")]
+    assert [event["event"] for event in events] == ["command_started", "command_finished"]
+    assert events[-1]["data"]["version"] == 2
+    assert subscription.closed
+
+
+@pytest.mark.parametrize("reason", ["native_state_unavailable", "native_owner_mismatch"])
+def test_stream_surfaces_projection_policy_refusal_as_terminal_error(reason: str) -> None:
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+    subscription = _FakeSubscription([json.dumps({"kind": "native_state_changed", "session_id": "s1"}).encode()])
+
+    def read_view() -> dict[str, object]:
+        raise BuilderExecutionPolicyError(reason)
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(), subscription, True, read_session_view=read_view, command_id="original-command"
+        )
+    )
+    events = [_event(frame) for frame in frames]
+    assert [event["event"] for event in events] == ["command_started", "error"]
+    assert events[-1]["data"]["code"] == reason
+    assert subscription.closed

@@ -547,8 +547,9 @@ class AppLifecycleGateway(AppLifecycle):
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
         with self._session_factory.begin() as session:
             account = console_app_actor(session, context)
+            name = AppService._resolve_app_name(params, account)
             app = ConsoleAppRepository.insert_app_record(
-                context.active_workspace_id, params, account, settings, session=session
+                context.active_workspace_id, params, account, settings, name=name, session=session
             )
             if app.mode == AppMode.AGENT:
                 initial_soul = AppService.prepare_agent_soul(context.active_workspace_id, session=session)
@@ -557,7 +558,7 @@ class AppLifecycleGateway(AppLifecycle):
                         tenant_id=context.active_workspace_id,
                         account_id=context.account_id,
                         app_id=app.id,
-                        name=params.name,
+                        name=app.name,
                         description=params.description or "",
                         role=params.agent_role,
                         icon_type=AgentIconType(params.icon_type) if params.icon_type else None,

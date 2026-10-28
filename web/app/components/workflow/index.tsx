@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
-import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
+import type { OnlineUser } from './collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from './hooks-store'
 import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
@@ -43,9 +43,7 @@ import {
   ReactFlowProvider,
   SelectionMode,
   useEdgesState,
-  useNodes,
   useNodesState,
-  useOnViewportChange,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
@@ -85,7 +83,9 @@ import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
+import { useWorkflowViewport } from './hooks/use-workflow-viewport'
 import CustomNode from './nodes'
+import WorkflowNodesDataSync from './nodes-data-sync'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
 import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
@@ -121,6 +121,11 @@ const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
 
+const WorkflowNodeSearch = memo(() => {
+  useWorkflowSearch()
+  return null
+})
+
 type WorkflowDataUpdatePayload = {
   nodes: Node[]
   edges: Edge[]
@@ -129,29 +134,31 @@ type WorkflowDataUpdatePayload = {
   features?: unknown
   conversation_variables?: ConversationVariable[]
   environment_variables?: EnvironmentVariable[]
+  syncToCollaboration?: boolean
+  onApplied?: () => void
 }
 
 export type WorkflowProps = {
+  className?: string
   nodes: Node[]
   edges: Edge[]
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
   isCollaborationEnabled?: boolean
-  cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
 }
 
 export const Workflow: FC<WorkflowProps> = memo(
   ({
+    className,
     nodes: originalNodes,
     edges: originalEdges,
     viewport,
     children,
     onWorkflowDataUpdate,
     isCollaborationEnabled = false,
-    cursors,
     myUserId,
     onlineUsers,
   }) => {
@@ -216,30 +223,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [setWorkflowCanvasHeight, setWorkflowCanvasWidth])
 
-    const {
-      setShowConfirm,
-      setControlPromptEditorRerenderKey,
-      setSyncWorkflowDraftHash,
-      setNodes: setNodesInStore,
-    } = workflowStore.getState()
-    const currentNodes = useNodes()
-    const setNodesOnlyChangeWithData = useCallback(
-      (nodes: Node[]) => {
-        const nodesData = nodes.map((node) => ({
-          id: node.id,
-          data: node.data,
-        }))
-        const oldData = workflowStore.getState().nodes.map((node) => ({
-          id: node.id,
-          data: node.data,
-        }))
-        if (!isEqual(oldData, nodesData)) setNodesInStore(nodes)
-      },
-      [setNodesInStore, workflowStore],
-    )
-    useEffect(() => {
-      setNodesOnlyChangeWithData(currentNodes as Node[])
-    }, [currentNodes, setNodesOnlyChangeWithData])
+    const { setShowConfirm, setControlPromptEditorRerenderKey, setSyncWorkflowDraftHash } =
+      workflowStore.getState()
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
@@ -276,6 +261,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { handleSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraft()
     const { workflowReadOnly } = useWorkflowReadOnly()
     const { nodesReadOnly } = useNodesReadOnly()
+    const { builderCanvasActive, handleViewportUserInteraction } = useWorkflowViewport()
     const { eventEmitter } = useEventEmitterContextContext()
     const {
       comments,
@@ -323,9 +309,12 @@ export const Workflow: FC<WorkflowProps> = memo(
     eventEmitter?.useSubscription((v: EventEmitterValue) => {
       if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
         const payload = v.payload as WorkflowDataUpdatePayload
+        if (payload.syncToCollaboration && !collaborationManager.replaceGraphFromServer(payload))
+          return
         setNodes(payload.nodes)
         store.getState().setNodes(payload.nodes)
         setEdges(payload.edges)
+        store.getState().setEdges(payload.edges)
         workflowStore.setState({ contextMenuTarget: undefined })
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)
@@ -333,6 +322,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
 
         onWorkflowDataUpdate?.(payload)
+        payload.onApplied?.()
 
         setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
       }
@@ -361,6 +351,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       handleSyncWorkflowDraft(true, true, {
         onError: () => {
+          if (workflowStore.getState().hasWorkflowDraftConflict) return
           toast.error(
             t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
             {
@@ -401,7 +392,9 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       if (document.visibilityState === 'visible') {
         collaborationManager.emitGraphViewState(true)
-        const { isListening, workflowRunningData } = workflowStore.getState()
+        const { isListening, workflowRunningData, hasWorkflowDraftConflict } =
+          workflowStore.getState()
+        if (hasWorkflowDraftConflict) return
         const status = workflowRunningData?.result?.status
         // Avoid resetting UI state when user comes back while a run is active or listening for triggers
         if (isListening || status === WorkflowRunningStatus.Running) return
@@ -417,17 +410,22 @@ export const Workflow: FC<WorkflowProps> = memo(
           collaborationManager.refreshGraphSynchronously()
           setTimeout(() => handleRefreshWorkflowDraft(true), 500)
         } else {
-          setTimeout(() => handleRefreshWorkflowDraft(), 500)
+          // Background graph updates must keep the user's current view.
+          setTimeout(
+            () => handleRefreshWorkflowDraft(false, { background: true, preserveViewport: true }),
+            500,
+          )
         }
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
 
     // Also add beforeunload handler as additional safety net for tab close
     const handleBeforeUnload = useCallback(() => {
+      if (workflowStore.getState().hasWorkflowDraftConflict) return
       if (collaborationManager.canRestoreGraphFromCrdt())
         collaborationManager.refreshGraphSynchronously()
       syncWorkflowDraftWhenPageClose()
-    }, [syncWorkflowDraftWhenPageClose])
+    }, [syncWorkflowDraftWhenPageClose, workflowStore])
 
     // Optimized comment deletion using showConfirm
     const handleCommentDeleteClick = useCallback(
@@ -549,15 +547,6 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { handlePaneContextMenu } = usePanelInteractions()
     const { isValidConnection } = useWorkflow()
 
-    useOnViewportChange({
-      onEnd: () => {
-        handleSyncWorkflowDraft()
-      },
-    })
-
-    // Initialize workflow node search functionality
-    useWorkflowSearch()
-
     // Locate a node by ID from URL query parameter `node_id`
     useLocateNode(nodes)
 
@@ -640,15 +629,18 @@ export const Workflow: FC<WorkflowProps> = memo(
         id="workflow-container"
         className={cn(
           'relative isolate h-full w-full min-w-240 overflow-hidden',
-          workflowReadOnly && 'workflow-panel-animation',
+          workflowReadOnly && !builderCanvasActive && 'workflow-panel-animation',
           nodeAnimation && 'workflow-node-animation',
+          className,
         )}
         ref={workflowContainerRef}
       >
+        <WorkflowNodesDataSync />
+        <WorkflowNodeSearch />
         <CandidateNode />
         <CommentManager />
         <div
-          className="pointer-events-none absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
+          className="pointer-events-none absolute inset-s-0 top-0 z-10 flex w-12 items-center justify-center p-1 ps-2"
           style={{ height: controlHeight }}
         >
           <Control />
@@ -756,6 +748,13 @@ export const Workflow: FC<WorkflowProps> = memo(
             nodes={nodes}
             edges={edges}
             onKeyDownCapture={handleNodeKeyDown}
+            onMoveStart={(event) => {
+              if (event) handleViewportUserInteraction()
+            }}
+            onMoveEnd={(event) => {
+              // Loading a draft or focusing a Builder node is not a user edit.
+              if (event) handleSyncWorkflowDraft()
+            }}
             className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
             onNodeDragStart={handleNodeDragStart}
             onNodeDrag={handleNodeDrag}
@@ -785,7 +784,9 @@ export const Workflow: FC<WorkflowProps> = memo(
             nodesConnectable={!nodesReadOnly}
             nodesFocusable={!nodesReadOnly}
             edgesFocusable={!nodesReadOnly}
-            panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
+            panOnScroll={
+              controlMode === ControlMode.Pointer && (!workflowReadOnly || builderCanvasActive)
+            }
             panOnDrag={controlMode === ControlMode.Hand || [1]}
             zoomOnPinch={true}
             zoomOnScroll={true}
@@ -802,9 +803,9 @@ export const Workflow: FC<WorkflowProps> = memo(
               className="bg-workflow-canvas-workflow-bg"
               color="var(--color-workflow-canvas-workflow-dot-color)"
             />
-            {showUserCursors && cursors && (
+            {isCollaborationEnabled && (
               <UserCursors
-                cursors={cursors}
+                visible={showUserCursors}
                 myUserId={myUserId || null}
                 onlineUsers={onlineUsers || []}
               />
@@ -819,15 +820,14 @@ export const Workflow: FC<WorkflowProps> = memo(
 
 type WorkflowWithInnerContextProps = WorkflowProps & {
   hooksStore?: Partial<HooksStoreShape>
-  cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
 }
 export const WorkflowWithInnerContext = memo(
-  ({ hooksStore, cursors, myUserId, onlineUsers, ...restProps }: WorkflowWithInnerContextProps) => {
+  ({ hooksStore, myUserId, onlineUsers, ...restProps }: WorkflowWithInnerContextProps) => {
     return (
       <HooksStoreContextProvider {...hooksStore}>
-        <Workflow {...restProps} cursors={cursors} myUserId={myUserId} onlineUsers={onlineUsers} />
+        <Workflow {...restProps} myUserId={myUserId} onlineUsers={onlineUsers} />
       </HooksStoreContextProvider>
     )
   },

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from datetime import datetime
+from typing import Literal
+import re
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from shellctl.shared.constants import (
     DEFAULT_HEALTH_STATUS,
@@ -220,3 +223,57 @@ __all__ = [
     "TerminateJobRequest",
     "WaitJobRequest",
 ]
+
+
+class NativeScopeLimits(ShellctlModel):
+    """Finite supervisor limits; these never relax ordinary shellctl defaults."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+    cpu_quota: int = Field(ge=1000, le=800000)
+    memory_bytes: int = Field(ge=64 << 20, le=8 << 30)
+    pids: int = Field(ge=8, le=512)
+    fds: int = Field(ge=32, le=4096)
+    wall_seconds: int = Field(ge=1, le=3600)
+    input_bytes: int = Field(ge=1, le=16 << 20)
+    output_bytes: int = Field(ge=4096, le=64 << 20)
+    disk_bytes: int = Field(ge=1 << 20, le=1 << 30)
+
+
+class NativeNetworkTarget(ShellctlModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+    host: str = Field(min_length=1, max_length=253)
+    port: int = Field(ge=1, le=65535)
+    max_bytes: int = Field(ge=1, le=16 << 20)
+    timeout_seconds: int = Field(ge=1, le=60)
+
+
+class NativeScopeSpec(ShellctlModel):
+    """Immutable reference-only request to the private native supervisor."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+    scope_id: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}$")
+    generation: int = Field(ge=1)
+    binding_ref: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}$")
+    base_snapshot_ref: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}$")
+    input_file_refs: tuple[str, ...] = Field(default=(), max_length=64)
+    capability_digest: str = Field(pattern=r"^[a-fA-F0-9]{64}$")
+    deadline: datetime
+    limits: NativeScopeLimits
+    network_targets: tuple[NativeNetworkTarget, ...] = Field(default=(), max_length=16)
+
+    @field_validator("input_file_refs")
+    @classmethod
+    def opaque_file_references(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if any(re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}", item) is None for item in value):
+            raise ValueError("input file references must be opaque safe identifiers")
+        return value
+
+
+class NativeScopeHandle(ShellctlModel):
+    """Ephemeral transport handle; credentials are excluded from serialization."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+    scope_id: str = Field(pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}$")
+    generation: int = Field(ge=1)
+    status: Literal["ready"]
+    token: SecretStr = Field(exclude=True, repr=False)

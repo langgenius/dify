@@ -115,7 +115,9 @@ class RecentAppListItem:
 
 
 class CreateAppParams(BaseModel):
-    name: str = Field(min_length=1)
+    # A Builder app can be created from a goal prompt without a supplied name.
+    name: str | None = Field(default=None, min_length=1)
+    prompt: str | None = None
     description: str | None = None
     mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
     agent_role: str = Field(default="", max_length=255)

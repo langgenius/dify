@@ -481,3 +481,36 @@ def test_unregistered_application_hooks_preserve_payload_without_legacy_export(m
     lookup.assert_not_called()
     assert isinstance(retry.call_args.kwargs["exc"], ApplicationTracingHooksNotRegisteredError)
     assert retry.call_args.kwargs["countdown"] == process_trace_tasks.default_retry_delay
+
+
+@pytest.mark.parametrize("marker", [True, "false", 0, None, {}])
+def test_restricted_or_malformed_trace_policy_never_resolves_provider_but_keeps_enterprise(marker, mocker):
+    class EnterpriseTraceBoundary:
+        def trace(self, _data):
+            raise AssertionError("trace transport must be patched")
+
+    modules = _install_trace_manager(None, enterprise_enabled=True, enterprise_trace_cls=EnterpriseTraceBoundary)
+    provider = mocker.patch.object(
+        modules["core.ops.ops_trace_manager"].OpsTraceManager,
+        "get_ops_trace_instance",
+        side_effect=AssertionError("external provider resolution forbidden"),
+    )
+    enterprise_trace = mocker.patch.object(EnterpriseTraceBoundary, "trace")
+    with (
+        patch.dict(sys.modules, modules),
+        patch(
+            "tasks.ops_trace_task.storage.load",
+            return_value=json.dumps(
+                {
+                    "trace_info": {},
+                    "trace_info_type": None,
+                    "external_tracing_disabled": marker,
+                }
+            ),
+        ),
+        patch("tasks.ops_trace_task.storage.delete") as delete,
+    ):
+        _run_task({"app_id": "app", "file_id": "trace"})
+    provider.assert_not_called()
+    enterprise_trace.assert_called_once_with({})
+    delete.assert_called_once()

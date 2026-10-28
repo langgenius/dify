@@ -1,5 +1,99 @@
 """Compact semantic configuration references for workflow node builders."""
 
+# Shared by planning, per-Code generation, and Builder edits/repairs. A declared
+# output schema says nothing about native execution status or continuation.
+CODE_FAILURE_POLICY_RULES = """
+Code failure policy:
+- When the user or known config requires stop-on-error (including
+  continue_on_post_failure=false), raise a native Code exception on that failure.
+  Do not swallow it with a catch-and-return fallback. Stop subsequent actions
+  inside the same Code call and prevent success-path downstream execution.
+- A normal return is native success, even with diagnostic http_status=0,
+  receipt=0, an error string, or another requested failure marker. Preserve
+  requested diagnostic details in the exception when stopping; do not claim
+  that failed execution delivered normal outputs or completed a later action.
+- Honor the explicit HTTP success contract: expected status codes/ranges and
+  response checks. A received response alone does not prove success. An expected
+  404 can be valid; do not blindly reject every non-2xx response. Distinguish
+  HTTP error responses from transport/timeout failures and retain useful errors.
+- Preserve existing error_strategy and explicitly requested fallback/default-value
+  or fail-branch behavior unless the user requests changing it. Do not add a
+  continuation strategy to defeat required stopping, or infer a stop requirement
+  merely from an output name or value such as 0.
+"""
+
+# Shared input semantics for generation and edits/repairs; guidance rather
+# than provider-specific runtime value coercion.
+TOOL_PARAMETER_SEMANTICS_RULES = """
+Tool parameter semantics:
+- Bind each parameter according to the selected action's declared description,
+  type, form and required status. Matching string types alone does not establish
+  matching meaning. A Start text input does not validate or parse its label's
+  advertised format. Preserve the user's accepted input formats.
+- Authorization cannot add undeclared parameters or capabilities. Distinguish
+  missing credentials from unsupported features: never describe an
+  unsupported setting as pending setup or guarantee future support after authentication.
+- When a composite input does not match separate tool parameters, plan a
+  deterministic Code transformation before the installed tool, declare its
+  outputs, and bind each tool parameter to the corresponding parsed output.
+  This is a genuine data transformation, not a replacement for the tool action.
+  Validate the accepted representations and fail on malformed input before the
+  external action; do not duplicate the whole input into multiple parameters.
+  For example, ONLY when the selected GitHub action declares separate owner
+  and repo names, an input accepting owner/repo or a GitHub repository URL
+  needs parsing to those two names; neither parameter receives the whole URL.
+- References are executable bindings: use type "variable" with value
+  ["node_id", "output_name"], or type "mixed" with {{#node_id.output_name#}}.
+  A type "constant" value such as "node1.owner" is literal text, never a
+  reference. Use an existing declared source, not an invented Start field.
+  During repair, fix the binding and any missing upstream transformation;
+  changing the spelling of a reference-like constant does not resolve it.
+"""
+
+# Fixed native channel semantics; provider declarations remain user-context data.
+TOOL_OUTPUT_SEMANTICS_RULES = """
+Native Tool message channels:
+- text concatenates emitted text; files contains emitted files; json is a collection of JSON messages,
+  not automatic JSON parsing of text. When no JSON messages are emitted, json may contain a runtime
+  fallback wrapper such as [{"data": []}]; that is not proof the requested application records are empty.
+- A public output_schema declares provider outputs, not a conversion between these message channels.
+  An absent or unavailable schema establishes no application payload shape or channel. Do not infer
+  that a Tool's json root contains the requested records from its label, name, or matching array type.
+- When the action returns the requested JSON as text, bind text and explicitly JSON-parse it in Code.
+  Validate the consumed root, items and required fields before filtering or aggregating; a valid empty
+  application array remains empty. Never turn missing or malformed expected fields into zero/empty success.
+  Preserve actual provider-declared outputs when present; never invent fields or force every Tool to text.
+"""
+
+# Shared by the planner and the normalized plan sent to every isolated builder.
+# A consumer does not otherwise see the aggregator producer's config snippet.
+VARIABLE_AGGREGATOR_OUTPUT_RULES = """
+Native variable-aggregator outputs:
+- An ungrouped aggregator publishes only output: it selects the first available
+  branch value and does not flatten or rename that value's fields into outputs.
+  For an object field use ["<merge-id>", "output", "<field>"] or
+  {{#<merge-id>.output.<field>#}}, never ["<merge-id>", "<field>"].
+- Aggregation selects mutually exclusive branch alternatives; it does not join
+  different fields from simultaneously available inputs. To return several
+  fields, aggregate a declared object and select its nested fields, use one
+  ungrouped aggregator per field, or extract explicitly declared Code outputs.
+- output_type does not convert, parse, or enrich the selected value. Text,
+  including an llm's text or an error message, remains a string; it cannot
+  satisfy nested object selectors even if output_type is set to object.
+  Nested fields require every selected branch to actually produce a declared
+  object containing those fields with compatible types. Otherwise use separate
+  per-field merges or explicit transformations before the merge.
+- Preserve every requested End output across every reachable branch. Plan real
+  producers and branch values for all fields, including intentional empty or
+  null values only where the requested contract allows them. Do not merge only
+  report/error text and invent nested counts, totals, or attachments beneath it.
+  Keep actual native Tool file values on file outputs; text or a filename is
+  not a file. Do not drop requested fields to hide incompatible branch shapes.
+- Existing explicitly configured groups publish group_name.output, not flat
+  group_name values: ["<merge-id>", "<group_name>", "output"]. Do not invent
+  groups or named top-level outputs merely because consumers want those names.
+"""
+
 # Per-node-type configuration cheatsheet.
 #
 # Each entry mirrors the production ``defaultValue`` from
@@ -54,6 +148,35 @@ _NODE_SNIPPETS: dict[str, str] = {
 - answer (Advanced Chat mode only):
     {"variables": [],
      "answer": "<text with {{#<src>.<var>#}} placeholders>"}""",
+    "agent": """\
+- agent (native New Agent v2; only a provided confirmed published roster binding):
+    {"version": "2", "agent_node_kind": "dify_agent",
+     "agent_binding": {"binding_type": "roster_agent",
+                       "agent_id": "<provided-selected-agent-id>",
+                       "current_snapshot_id": "<provided-selected-snapshot-id>"},
+     "agent_task": "<task with {{#upstream_id.variable#}} inputs>",
+     "agent_declared_outputs": [
+       {"name": "list_value", "type": "array", "array_item": {"type": "string"}},
+       {"name": "details", "type": "object",
+        "children": [{"name": "approved", "type": "boolean"}]}
+     ],
+     "agent_output_routes": {"enabled": false, "routes": []}}
+    Copy ONLY the exact confirmed Agent ID and snapshot ID supplied in the
+    instruction. If no confirmed published binding is supplied, do not invent
+    an Agent, ID, snapshot or legacy agent strategy. Do not use tools/plugin
+    agent_strategy fields. Version MUST be the quoted string "2", never number 2.
+    The declaration examples illustrate native shapes, not a published Agent
+    output schema: choose caller job names/types from the approved task and
+    declared producer contract. Scalar types: string | number | boolean | file.
+    Arrays use array_item (type plus object children when applicable), NEVER
+    JSON Schema items; nested arrays are unsupported. Object fields use the
+    children list of name/type entries, NEVER JSON Schema properties.
+    System text is already available; switch is system-owned only when routes
+    are enabled. Never declare text, switch or _session as custom outputs.
+    Consumers reference custom outputs directly as ["<agent-node-id>", "<name>"].
+    Do not rename outputs to text or invent defaults. Leave routes disabled
+    unless the approved plan explicitly requires routing; enabled routes must
+    have at least two provided exits with stable id and selection name.""",
     "llm": """\
 - llm:
     {"model": {"provider": "<provider>", "name": "<model>", "mode": "chat",
@@ -65,11 +188,14 @@ _NODE_SNIPPETS: dict[str, str] = {
      "context": {"enabled": false, "variable_selector": []},
      "vision": {"enabled": false}}
 
+    For a new LLM node, default "reasoning_format" to "separated" so
+    "text" contains the final answer and reasoning stays in "reasoning_content".
+    Honor an explicit "tagged" or "separated" choice. When updating an existing
+    node, preserve its reasoning_format, including omission, unless requested.
+
     Prompt-writing rules for the user-message text:
-      * ``{{#node.var#}}`` placeholders are interpolated by Dify BEFORE the
-        LLM sees them — at run time the model only sees the resolved value.
-        So an instruction like "Translate this: {{#node1.text#}}" is read
-        by the LLM as "Translate this: <the actual text>".
+      * Dify resolves ``{{#node.var#}}`` BEFORE the LLM sees the prompt;
+        the model sees only the source value.
       * NEVER include placeholder syntax inside an "example output" block
         in your prompt — the LLM will treat the example as the literal
         answer template and echo placeholders back as output. Wrong:
@@ -80,7 +206,14 @@ _NODE_SNIPPETS: dict[str, str] = {
             values are the translations.
             Input: {{#node1.text#}}
       * Each placeholder only resolves the variable from its source node —
-        it cannot be a Jinja template or call a function.""",
+        it cannot be a Jinja template or call a function.
+
+    Structured output: a schema-less LLM node exposes "text",
+    "reasoning_content" and "usage". To expose extra fields, set
+    "structured_output_enabled": true and "structured_output":
+    {"schema": <json-schema-object>} on the node's data; each schema field
+    then becomes a 3-segment reference {{#<node>.structured_output.<field>#}}
+    — never a flat {{#<node>.<field>#}}.""",
     "knowledge-retrieval": """\
 - knowledge-retrieval:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -94,11 +227,25 @@ _NODE_SNIPPETS: dict[str, str] = {
     {"code_language": "python3",
      "code": "def main(arg1: str) -> dict:\\n    return {'result': arg1}",
      "variables": [{"variable": "arg1", "value_selector": ["<src>", "<var>"]}],
-     "outputs": {"result": {"type": "string", "children": null}}}""",
+     "outputs": {"result": {"type": "string", "children": null}}}
+    Return named values from ``main`` and declare each key in ``outputs`` with
+    its actual native output type: "string", "number", "boolean", "object",
+    "array[string]", "array[number]", "array[boolean]", or "array[object]".
+    Use "number" for both integer and floating-point outputs.
+    Use "array[number]" for numeric arrays.
+    Never use "integer", "int", or "float" as an output type.
+    For JSON validation/processing, declare boolean ``valid``
+    and array ``items`` outputs when needed; compare the boolean and pass the
+    array to iteration. A Code node can explicitly parse upstream JSON text
+    and return those typed fields.""",
     "template-transform": """\
 - template-transform:
     {"template": "Hello {{ name }}",
-     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}""",
+     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}
+    Template source is native Jinja: reference declared variable aliases as
+    {{ name }}, NEVER Dify {{#node.var#}} placeholders. Bind sources in variables.
+    ``variables`` is REQUIRED (no default) — a template that references no
+    variables must still set ``"variables": []``, never omit the field.""",
     "http-request": """\
 - http-request  (escape hatch — only if no installed tool fits):
     {"variables": [], "method": "get", "url": "https://example.com",
@@ -124,7 +271,13 @@ _NODE_SNIPPETS: dict[str, str] = {
     Parameter ``type`` is one of:
       "mixed"    — string template referencing variables ({{#...#}})
       "variable" — direct reference, value is ["<src>", "<var>"]
-      "constant" — literal value""",
+      "constant" — literal value
+    Outputs use the standard roots ``text``, ``files``, ``json`` plus actual
+    provider-declared fields. The builtin ``code/simple_code`` prints to scalar
+    ``text`` only: printed JSON does not create named ``valid`` / ``items``
+    outputs, and adding a node ``output_schema`` cannot create them. Use a
+    native Code node with declared typed outputs or explicitly parse the text
+    before consuming fields; do not substitute ``text`` for a boolean/array.""",
     "if-else": """\
 - if-else:
     {"_targetBranches": [{"id": "true", "name": "IF"},
@@ -138,7 +291,19 @@ _NODE_SNIPPETS: dict[str, str] = {
                         "comparison_operator": "is",
                         "value": "<value>"}]}
      ]}
-    Source handle for downstream edges = the case_id ("true" / "false").""",
+    comparison_operator MUST be exactly one of (verbatim strings): "contains",
+    "not contains", "start with", "end with", "is", "is not", "empty",
+    "not empty", "in", "not in", "all of", "null", "not null", "exists",
+    "not exists", "=", ">", "<", "≥", "≤", "≠". The number comparisons are
+    ALWAYS the unicode forms "≥" / "≤" / "≠" — never ">=" / "<=" / "!=".
+    Source handle for downstream edges = the case_id ("true" / "false").
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each declared ``case_id`` (and its
+    ``_targetBranches`` id) MUST be exactly one of those planned
+    ``source_handle`` values. The ELSE arm is implicit: its handle is always
+    "false" and it must never be declared as a case. A planned handle such as
+    "else" / "otherwise" / "default" is the ELSE arm -- do not declare a case
+    for it.""",
     "question-classifier": """\
 - question-classifier:
     {"query_variable_selector": ["<src>", "<var>"],
@@ -149,10 +314,14 @@ _NODE_SNIPPETS: dict[str, str] = {
      "_targetBranches": [{"id": "1", "name": ""}, {"id": "2", "name": ""}],
      "vision": {"enabled": false},
      "instruction": ""}
-    Source handle for downstream edges = the class_id ("1" / "2" / ...).""",
+    Source handle for downstream edges = the class_id ("1" / "2" / ...).
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each class ``id`` (and its
+    ``_targetBranches`` id) MUST be exactly one of those planned
+    ``source_handle`` values, one class per planned handle.""",
     "parameter-extractor": """\
 - parameter-extractor:
-    {"query": [["<src>", "<var>"]],          # array of value_selector arrays
+    {"query": ["<src>", "<var>"],            # ONE value_selector, not an array of them
      "model": {"provider": "<p>", "name": "<m>", "mode": "chat",
                "completion_params": {"temperature": 0.7}},
      "parameters": [{"name": "topic", "type": "string",
@@ -189,9 +358,21 @@ _NODE_SNIPPETS: dict[str, str] = {
      "extract_by": {"enabled": false, "serial": "1"},
      "order_by": {"enabled": false, "key": "", "value": "asc"},
      "limit": {"enabled": false, "size": 10}}
-    Enable only the sub-features you need; ``conditions`` reuse the if-else
-    condition shape (key / comparison_operator / value). Outputs: ``result``
-    (the processed array), ``first_record``, ``last_record``.""",
+    ``limit.size`` is an integer CONSTANT, never a variable selector or a
+    ``{{#node.variable#}}`` template. Preserve a user-requested fixed maximum
+    as that integer. For a runtime-dependent limit, use a supported dynamic
+    implementation (for example, a Code node reading the array and numeric
+    limit); do not put a template in ``limit.size`` or guess a fixed value.
+    Enable only the sub-features you need. Each ``filter_by`` condition has the
+    fields key / comparison_operator / value, and comparison_operator MUST be
+    exactly one of these 16 (verbatim strings — a filter takes FEWER operators
+    than an if-else, and anything outside this list is refused when the
+    workflow starts): "contains", "not contains", "start with", "end with",
+    "is", "is not", "in", "not in", "empty", "not empty", "=", "≠", "<", ">",
+    "≥", "≤". The number comparisons are ALWAYS the unicode forms
+    "≥" / "≤" / "≠", never ">=" / "<=" / "!=".
+    Outputs: ``result`` (the processed array), ``first_record``,
+    ``last_record``.""",
     "assigner": """\
 - assigner  (write to an existing conversation / loop variable):
     {"version": "2",
@@ -204,18 +385,27 @@ _NODE_SNIPPETS: dict[str, str] = {
     /= | remove-first | remove-last.""",
     "human-input": """\
 - human-input  (pause for a person; use webapp delivery by default):
-    {"delivery_methods": [{"id": "webapp", "type": "webapp", "enabled": true}],
+    {"delivery_methods": [{"type": "webapp", "enabled": true}],
      "form_content": "<short review / approval instructions>",
      "inputs": [{"type": "paragraph", "output_variable_name": "comment",
                  "default": {"type": "constant", "selector": [], "value": ""}}],
      "user_actions": [{"id": "approve", "title": "Approve",
                        "button_style": "primary"}],
      "timeout": 3, "timeout_unit": "day"}
+    Omit ``delivery_methods[].id`` to use the native UUID default. An explicit
+    delivery id must be a valid UUID; ``type`` names the channel. User-action
+    ids are separate identifiers and must keep their planned edge handles.
     Each ``inputs[].output_variable_name`` is an output variable. Outgoing
-    edges use the matching user-action id as ``sourceHandle``.""",
+    edges use the matching user-action id as ``sourceHandle``.
+    HANDLE CONTRACT: the normalized plan's ``edges`` already name this node's
+    outgoing ``source_handle`` values. Each ``user_actions[].id`` MUST be
+    exactly one of those planned ``source_handle`` values, one action per
+    planned handle. The timeout arm is implicit: its handle is always
+    "__timeout" and it must never be declared as a user action.""",
 }
 
 
 def get_node_config_snippet(node_type: str) -> str:
-    """Return the semantic config reference for one leaf node type."""
-    return _NODE_SNIPPETS.get(node_type, "")
+    """Return one leaf schema, including Code's native failure semantics."""
+    snippet = _NODE_SNIPPETS.get(node_type, "")
+    return snippet + CODE_FAILURE_POLICY_RULES if node_type == "code" else snippet

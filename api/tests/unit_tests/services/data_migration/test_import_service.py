@@ -1,8 +1,5 @@
-from contextlib import nullcontext
 from dataclasses import dataclass
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -13,6 +10,7 @@ from core.tools.entities.tool_entities import ApiProviderSchemaType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode
 from models.tools import ApiToolProvider, MCPToolProvider, WorkflowToolProvider
+from models.workflow import Workflow
 from services.app_dsl_service import Import
 from services.data_migration import import_service
 from services.data_migration.entities import (
@@ -487,18 +485,35 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(
 
 
 def test_ensure_workflow_app_is_published_updates_current_workflow(
+    mocker,
     monkeypatch: pytest.MonkeyPatch,
     database: Database,
 ) -> None:
     _, account = _persist_tenant_account(database.session)
     app_id = "00000000-0000-0000-0000-000000000001"
     _persist_app(database.session, app_id=app_id)
-    publish = Mock(return_value=SimpleNamespace(id="published-workflow"))
-    monkeypatch.setattr(import_service, "WorkflowService", Mock(return_value=SimpleNamespace(publish_workflow=publish)))
-    monkeypatch.setattr(
-        import_service,
-        "sessionmaker",
-        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(database.session)),
+    from services import workflow_service
+
+    draft = Workflow.new(
+        tenant_id="tenant-1",
+        app_id=app_id,
+        type="workflow",
+        version=Workflow.VERSION_DRAFT,
+        graph='{"nodes":[],"edges":[]}',
+        features="{}",
+        created_by=account.id,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    database.session.add(draft)
+    database.session.commit()
+    monkeypatch.setattr(workflow_service, "db", database)
+    prepare = mocker.spy(import_service.WorkflowService, "prepare_draft_tool_publish")
+    publish = mocker.patch.object(
+        import_service.WorkflowService,
+        "publish_workflow",
+        return_value=Workflow(id="published-workflow"),
     )
     MigrationImportService()._ensure_workflow_app_is_published(
         ImportTarget("tenant-1", "target", "account-1", "owner@example.com"),
@@ -507,7 +522,12 @@ def test_ensure_workflow_app_is_published_updates_current_workflow(
         session=database.session,
     )
 
+    database.session.expire_all()
     assert database.session.get(App, app_id).workflow_id == "published-workflow"
+    prepare.assert_called_once()
+    assert prepare.call_args.kwargs["app_model"].id == app_id
+    publish.assert_called_once()
+    assert publish.call_args.kwargs["marked_name"] == "Migration import"
 
 
 @pytest.mark.parametrize("id_strategy", [IdStrategy.PRESERVE_ID, IdStrategy.GENERATE_NEW_ID])

@@ -8,7 +8,6 @@ from dataclasses import replace
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     RagPipelineGenerateEntity,
@@ -25,7 +24,6 @@ from core.db.session_factory import session_factory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime, resolve_dify_run_context
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.nodes.human_input.boundary import build_human_input_pause_reason
@@ -60,6 +58,8 @@ from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolS
 from services.conversation_variable_updater import ConversationVariableUpdater
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
+from services.workflow_runtime.base_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
+from services.workflow_runtime.node_factory import DifyNodeFactory
 from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
 
 logger = logging.getLogger(__name__)
@@ -79,6 +79,7 @@ class WorkflowRunAgg:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
+        self._native_host = prepared.native_host
         self._workflow_execution_repository = workflow_execution_repository
         self._prepared = prepared
         self._runner = runner
@@ -133,11 +134,21 @@ class WorkflowRunAgg:
         self._form_repository = HumanInputFormSubmissionRepository()
         self.pause_reasons: Sequence[PauseReason] = ()
         is_resuming = self._runtime_state.graph_execution.paused
-        histories = (
-            workflow_node_execution_repository.get_by_workflow_execution(self._run_id, include_paused=True)
-            if is_resuming
-            else ()
-        )
+        if is_resuming and self._native_host is not None:
+            from services.dify_builder.native_testing.runtime import read_claimed_history
+
+            _, histories = read_claimed_history(
+                host=self._native_host,
+                entity=prepared.generate_entity,
+                workflow_repository=workflow_execution_repository,
+                node_repository=workflow_node_execution_repository,
+            )
+        else:
+            histories = (
+                workflow_node_execution_repository.get_by_workflow_execution(self._run_id, include_paused=True)
+                if is_resuming
+                else ()
+            )
         self._persistence_layer = WorkflowPersistenceLayer(
             application_generate_entity=prepared.generate_entity,
             workflow_info=PersistenceWorkflowInfo(
@@ -149,6 +160,8 @@ class WorkflowRunAgg:
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             trace_manager=prepared.generate_entity.trace_manager,
+            native_observation=self._native_host.native_observation if self._native_host is not None else None,
+            native_host=self._native_host,
         )
         application_layers: list[Layer] = [
             self._persistence_layer,
@@ -358,7 +371,10 @@ class WorkflowRunAgg:
         execution = self._persistence_layer.workflow_execution
         execution.status = WorkflowExecutionStatus.PAUSED
         execution.accumulated_elapsed_time = elapsed_time
-        execution.outputs = event.outputs or self._runtime_state.outputs
+        outputs = event.outputs or self._runtime_state.outputs
+        execution.outputs = (
+            self._native_host.native_observation.values(outputs) if self._native_host is not None else outputs
+        )
         execution.total_tokens = self._runtime_state.total_tokens
         execution.total_steps = self._runtime_state.node_run_steps
         execution.exceptions_count = max(

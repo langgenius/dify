@@ -124,6 +124,8 @@ class FeatureService:
             dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
         )
         features.enable_skill = dify_config.ENABLE_SKILL
+        features.dify_builder_enabled = dify_config.DIFY_BUILDER_ENABLED
+        features.skill_learning_policy = dify_config.DIFY_BUILDER_SKILL_LEARNING_POLICY
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):

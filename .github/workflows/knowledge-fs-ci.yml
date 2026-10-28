@@ -262,6 +262,7 @@ jobs:
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
             api/tests/unit_tests/controllers/console/test_wraps.py
             api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py
+            api/tests/unit_tests/controllers/inner_api/test_agent_runtime_lineage.py
             api/tests/unit_tests/core/agent/test_base_agent_runner.py
             api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py
             api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py
@@ -269,6 +270,10 @@ jobs:
             api/tests/unit_tests/services/enterprise/test_rbac_service.py
             api/tests/unit_tests/repositories/workspace/test_workspace_repository.py
             api/tests/unit_tests/services/test_agent_tool_inner_service.py
+            api/tests/unit_tests/services/test_draft_tool_admission.py
+            api/tests/unit_tests/services/dify_builder/test_agent_operation_owner.py
+            api/tests/unit_tests/services/dify_builder/test_confirmed_tool_launch.py
+            api/tests/unit_tests/services/dify_builder/test_native_agent_binding.py
             api/tests/unit_tests/services/test_vector_space_admission_service.py
             api/tests/unit_tests/services/test_tidb_binding_service.py
           )

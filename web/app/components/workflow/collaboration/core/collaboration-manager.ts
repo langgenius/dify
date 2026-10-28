@@ -18,9 +18,12 @@ import type {
   WorkflowSyncResult,
 } from '../types/collaboration'
 import type { CRDTProvider } from './crdt-provider'
+import type { ServerDraftChange, ServerDraftGraph, ServerDraftUpdate } from './server-draft-sync'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { EventEmitter } from './event-emitter'
+import { ServerDraftSync } from './server-draft-sync'
+import { applyServerGraphChange } from './server-graph-change'
 import { emitWithAuthGuard, isDefaultSocketUrl, webSocketClient } from './websocket-manager'
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
@@ -140,6 +143,19 @@ const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> =>
   cloneDeep(value) as Record<string, Value>
 
+const reuseNodeReferences = (node: Node, previousNode?: Node): Node => {
+  if (!previousNode) return node
+
+  if (isEqual(node.data, previousNode.data)) node.data = previousNode.data
+
+  // ReactFlow's symbol properties are internal; compare the imported node's string fields.
+  const keys = new Set([...Object.keys(node), ...Object.keys(previousNode)]) as Set<keyof Node>
+  for (const key of keys) {
+    if (!isEqual(node[key], previousNode[key])) return node
+  }
+  return previousNode
+}
+
 const toUint8Array = (value: unknown): Uint8Array | null => {
   if (value instanceof Uint8Array) return value
   if (value instanceof ArrayBuffer) return new Uint8Array(value)
@@ -162,6 +178,8 @@ export class CollaborationManager {
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
+  private serverDraftSync: ServerDraftSync | null = null
+  private serverDraftPending = false
   private nodesMap: LoroMap<Record<string, Value>> | null = null
   private edgesMap: LoroMap<Record<string, Value>> | null = null
   private eventEmitter = new EventEmitter()
@@ -232,8 +250,19 @@ export class CollaborationManager {
       'user_connect',
       { workflow_id: this.currentAppId },
       {
-        onAck: () => {
+        onAck: (response) => {
           this.rejoinInProgress = false
+          if (
+            response &&
+            typeof response === 'object' &&
+            'msg' in response &&
+            response.msg === 'connected' &&
+            this.doc &&
+            this.getActiveSocket() === socket
+          ) {
+            // Rejected deltas were not relayed. Restore their dependencies after rejoining.
+            this.sendGraphEvent(this.doc.export({ mode: 'update' }))
+          }
         },
         onUnauthorized: () => {
           this.rejoinInProgress = false
@@ -262,12 +291,15 @@ export class CollaborationManager {
     })
   }
 
-  private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
-    if (!this.nodesMap) throw new Error('Nodes map not initialized')
+  private getNodeContainer(
+    nodeId: string,
+    nodesMap = this.nodesMap,
+  ): LoroMap<Record<string, Value>> {
+    if (!nodesMap) throw new Error('Nodes map not initialized')
 
     const { LoroMap } = this.getCrdtRuntime()
 
-    let container = this.nodesMap.get(nodeId) as unknown
+    let container = nodesMap.get(nodeId) as unknown
 
     const isMapContainer = (
       value: unknown,
@@ -281,7 +313,7 @@ export class CollaborationManager {
 
     if (!container || !isMapContainer(container)) {
       const previousValue = container
-      const newContainer = this.nodesMap.setContainer(nodeId, new LoroMap())
+      const newContainer = nodesMap.setContainer(nodeId, new LoroMap())
       const attached = (newContainer as LoroContainer).getAttached?.() ?? newContainer
       container = attached
       if (previousValue && typeof previousValue === 'object')
@@ -333,8 +365,8 @@ export class CollaborationManager {
     return attached as LoroList<unknown>
   }
 
-  private exportNode(nodeId: string): Node {
-    const container = this.getNodeContainer(nodeId)
+  private exportNode(nodeId: string, nodesMap = this.nodesMap): Node {
+    const container = this.getNodeContainer(nodeId, nodesMap)
     const json = container.toJSON() as Node
     return {
       ...json,
@@ -565,6 +597,8 @@ export class CollaborationManager {
   private initializeCrdt(socket: Socket): void {
     const { CRDTProvider, LoroDoc, UndoManager } = this.getCrdtRuntime()
     this.provider?.destroy()
+    this.serverDraftSync?.destroy()
+    this.serverDraftPending = false
     this.undoManager = null
     this.doc = new LoroDoc()
     this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
@@ -577,7 +611,7 @@ export class CollaborationManager {
     this.undoManager = new UndoManager(this.doc, {
       maxUndoSteps: 100,
       mergeInterval: 500,
-      excludeOriginPrefixes: [],
+      excludeOriginPrefixes: ['server-draft'],
       onPush: (_isUndo, _range, _event) => {
         const selectedNode = this.reactFlowStore
           ?.getState()
@@ -635,6 +669,29 @@ export class CollaborationManager {
       this.handleSessionUnauthorized,
       this.handleSnapshotImported,
       this.shouldImportSnapshot,
+    )
+    this.serverDraftSync = new ServerDraftSync(
+      socket,
+      (change) => {
+        let update: Uint8Array | null = null
+        this.eventEmitter.emit('serverDraftRequest', {
+          change,
+          acknowledge: (proposal: Uint8Array | null) => {
+            update = proposal
+          },
+        })
+        return update
+      },
+      (update) => {
+        this.doc!.import(new Uint8Array(update.update))
+        this.refreshGraphSynchronously()
+        this.eventEmitter.emit('serverDraftApplied', update)
+      },
+      (pending) => {
+        this.serverDraftPending = pending
+        this.emitGraphReadyState()
+      },
+      this.handleSessionUnauthorized,
     )
     this.setupSubscriptions()
   }
@@ -750,6 +807,9 @@ export class CollaborationManager {
     this.crdtGeneration += 1
     this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection closed.'))
     this.provider?.destroy()
+    this.serverDraftSync?.destroy()
+    this.serverDraftSync = null
+    this.serverDraftPending = false
     this.undoManager = null
     this.doc = null
     this.provider = null
@@ -806,7 +866,12 @@ export class CollaborationManager {
 
   canPersistLocalGraph(): boolean {
     if (this.localDraftFallbackActive) return true
-    return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
+    return (
+      this.crdtTrusted &&
+      !this.graphReloadRequired &&
+      !this.serverDraftPending &&
+      this.graphViewActive !== false
+    )
   }
 
   canApplyLocalGraphMutation(): boolean {
@@ -840,7 +905,8 @@ export class CollaborationManager {
   }
 
   canFlushGraphOnPageClose(): boolean {
-    if (!this.crdtTrusted || this.graphReloadRequired || !this.isLeader) return false
+    if (!this.crdtTrusted || this.graphReloadRequired || this.serverDraftPending || !this.isLeader)
+      return false
     if (this.graphViewActive !== false) return true
 
     const socketId = this.getActiveSocket()?.id
@@ -879,6 +945,67 @@ export class CollaborationManager {
       request.generation === this.crdtGeneration &&
       request.token === this.graphReloadToken
     )
+  }
+
+  replaceGraphFromServer(graph: { nodes: Node[]; edges: Edge[] }): boolean {
+    if (!this.currentAppId || this.canUseLocalDraftFallback()) return true
+    if (!this.doc || !this.canApplyLocalGraphMutation()) return false
+
+    // Commit the server baseline to CRDT too, so pending imports and visibility
+    // restores cannot put the previous graph back into ReactFlow.
+    this.syncNodes(this.getNodes(), graph.nodes)
+    this.syncEdges(this.getEdges(), graph.edges)
+    this.doc.commit({ origin: 'server-draft' })
+    return true
+  }
+
+  createServerDraftUpdate(
+    change: ServerDraftChange,
+    graph: ServerDraftGraph,
+    previousGraph: ServerDraftGraph | null,
+  ): Uint8Array | null {
+    if (!this.doc || !this.crdtTrusted || this.graphReloadRequired) return null
+    const fork = this.doc.fork()
+    try {
+      if (change.base_update)
+        fork.import(
+          Uint8Array.from(atob(change.base_update), (character) => character.charCodeAt(0)),
+        )
+      const nodesMap = fork.getMap('nodes') as LoroMap<Record<string, Value>>
+      const edgesMap = fork.getMap('edges') as LoroMap<Record<string, Value>>
+      const current = {
+        nodes: Array.from(nodesMap.keys()).map((id) => this.exportNode(id, nodesMap)),
+        edges: Array.from(edgesMap.values()) as Edge[],
+      }
+      const next = applyServerGraphChange(current, previousGraph, graph)
+      this.syncNodes(current.nodes, next.nodes, nodesMap)
+      this.syncEdges(current.edges, next.edges, edgesMap)
+      fork.commit({ origin: 'server-draft' })
+      // Include dependencies so a retry or a new follower can import the same
+      // accepted bytes even if it missed an earlier room broadcast.
+      return fork.export({ mode: 'update' })
+    } finally {
+      fork.free()
+    }
+  }
+
+  onServerDraftRequest(
+    callback: (request: {
+      change: ServerDraftChange
+      acknowledge: (update: Uint8Array | null) => void
+    }) => void,
+  ): () => void {
+    return this.eventEmitter.on('serverDraftRequest', callback)
+  }
+
+  onServerDraftApplied(callback: (update: ServerDraftUpdate) => void): () => void {
+    return this.eventEmitter.on('serverDraftApplied', callback)
+  }
+
+  requestServerDraftSync(): Promise<ServerDraftUpdate> {
+    if (!this.serverDraftSync)
+      return Promise.reject(new Error('Collaboration connection is not available.'))
+    return this.serverDraftSync.request()
   }
 
   replaceGraphFromReactFlow(request: GraphReloadRequest): boolean {
@@ -1070,6 +1197,7 @@ export class CollaborationManager {
     return this.eventEmitter.on('syncRequest', callback)
   }
 
+  /** Imported graphs retain unchanged local node and data references for canvas subscribers. */
   onGraphImport(callback: (payload: { nodes: Node[]; edges: Edge[] }) => void): () => void {
     return this.eventEmitter.on('graphImport', callback)
   }
@@ -1280,15 +1408,15 @@ export class CollaborationManager {
     this.undoManager.clear()
   }
 
-  private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
-    if (!this.nodesMap || !this.doc) return
+  private syncNodes(oldNodes: Node[], newNodes: Node[], nodesMap = this.nodesMap): void {
+    if (!nodesMap || !this.doc) return
 
     const oldNodesMap = new Map(oldNodes.map((node) => [node.id, node]))
     const newNodesMap = new Map(newNodes.map((node) => [node.id, node]))
 
     oldNodes.forEach((oldNode) => {
       if (!newNodesMap.has(oldNode.id)) {
-        this.nodesMap?.delete(oldNode.id)
+        nodesMap.delete(oldNode.id)
       }
     })
 
@@ -1297,20 +1425,20 @@ export class CollaborationManager {
       if (oldNode && oldNode === newNode) return
       if (oldNode && isEqual(oldNode, newNode)) return
 
-      const nodeContainer = this.getNodeContainer(newNode.id)
+      const nodeContainer = this.getNodeContainer(newNode.id, nodesMap)
       this.populateNodeContainer(nodeContainer, newNode)
     })
   }
 
-  private syncEdges(oldEdges: Edge[], newEdges: Edge[]): void {
-    if (!this.edgesMap) return
+  private syncEdges(oldEdges: Edge[], newEdges: Edge[], edgesMap = this.edgesMap): void {
+    if (!edgesMap) return
 
     const oldEdgesMap = new Map(oldEdges.map((edge) => [edge.id, edge]))
     const newEdgesMap = new Map(newEdges.map((edge) => [edge.id, edge]))
 
     oldEdges.forEach((oldEdge) => {
       if (!newEdgesMap.has(oldEdge.id)) {
-        this.edgesMap?.delete(oldEdge.id)
+        edgesMap.delete(oldEdge.id)
       }
     })
 
@@ -1318,7 +1446,7 @@ export class CollaborationManager {
       const oldEdge = oldEdgesMap.get(newEdge.id)
       if (!oldEdge || !isEqual(oldEdge, newEdge)) {
         const clonedEdge = toLoroRecord(newEdge)
-        this.edgesMap?.set(newEdge.id, clonedEdge)
+        edgesMap.set(newEdge.id, clonedEdge)
       }
     })
   }
@@ -1389,8 +1517,10 @@ export class CollaborationManager {
           }
 
           if (selectedIds.has(clonedNode.id)) clonedNode.data.selected = true
+          else if (previousNode?.data.selected === false && clonedNode.data.selected === undefined)
+            clonedNode.data.selected = false
 
-          return clonedNode
+          return reuseNodeReferences(clonedNode, previousNode)
         })
 
         // Call ReactFlow's native setter directly to avoid triggering collaboration
@@ -1518,7 +1648,7 @@ export class CollaborationManager {
       const localNode = localNodesMap.get(node.id)
       if (!localNode) return node
 
-      const nextNode = cloneDeep(node)
+      const nextNode = { ...node }
       const nextData = { ...(nextNode.data || {}) } as Node['data']
       const nextDataRecord = nextData as Record<string, unknown>
       const localData = localNode.data as Record<string, unknown> | undefined
@@ -1536,7 +1666,7 @@ export class CollaborationManager {
         nextDataRecord.selected = localNode.selected
 
       nextNode.data = nextData
-      return nextNode
+      return reuseNodeReferences(nextNode, localNode)
     })
   }
 
@@ -1934,6 +2064,9 @@ export class CollaborationManager {
     })
 
     socket.on('disconnect', (reason) => {
+      this.serverDraftSync?.destroy()
+      this.serverDraftSync = null
+      this.serverDraftPending = false
       this.clearInitialSyncRetry()
       this.cursors = {}
       this.onlineUsers = []
@@ -2026,7 +2159,7 @@ export class CollaborationManager {
     // CRDT may still be empty when the canvas was initially loaded from HTTP draft data
     // before collaboration finished connecting, and no local mutation has been written yet.
     // Seed once from the current ReactFlow graph so leader resync can broadcast a full snapshot.
-    if (this.getNodes().length > 0 || this.getEdges().length > 0) return
+    if (this.nodesMap!.size > 0 || this.edgesMap!.size > 0) return
 
     const state = this.reactFlowStore.getState()
     const nodes = state.getNodes()

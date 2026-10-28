@@ -42,7 +42,7 @@ const zProviderQuotaExceededError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-export const post3Errors = {
+export const post4Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },

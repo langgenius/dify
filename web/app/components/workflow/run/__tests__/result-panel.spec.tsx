@@ -3,7 +3,7 @@ import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent as render } from '../../__tests__/workflow-test-env'
-import { BlockEnum, NodeRunningStatus } from '../../types'
+import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import ResultPanel from '../result-panel'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -75,6 +75,27 @@ const createAgentLog = (label: string): AgentLogItemWithChildren => ({
 })
 
 describe('ResultPanel', () => {
+  it('offers Builder only for a failed workflow run', async () => {
+    const user = userEvent.setup()
+    const onFixRun = vi.fn()
+    const { rerender } = render(
+      <ResultPanel
+        status={WorkflowRunningStatus.Failed}
+        workflowRunId="failed-run"
+        onFixRun={onFixRun}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.fixRun' }))
+    expect(onFixRun).toHaveBeenCalledWith('failed-run')
+    rerender(
+      <ResultPanel
+        status={WorkflowRunningStatus.Succeeded}
+        workflowRunId="successful-run"
+        onFixRun={onFixRun}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
+  })
   it('should render status, editors, alerts, error strategy tip, and metadata', () => {
     render(
       <ResultPanel

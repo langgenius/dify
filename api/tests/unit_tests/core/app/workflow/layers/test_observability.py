@@ -1,72 +1,3 @@
-from __future__ import annotations
-
-from concurrent.futures import ThreadPoolExecutor
-from threading import Event
-from types import SimpleNamespace
-
-import pytest
-from opentelemetry.sdk.trace import ReadableSpan, SpanProcessor
-from opentelemetry.trace import StatusCode, get_current_span
-
-from core.app.workflow.layers.observability import ObservabilityLayer
-from core.workflow.workflow_entry import WorkflowEntry
-from extensions.otel.semconv import DifySpanAttributes
-from graphon.engine_events import GraphRunAbortedEvent, GraphRunSucceededEvent
-from graphon.graph import Graph
-from graphon.nodes.start import StartNode
-from graphon.nodes.start.entities import StartNodeData
-from graphon.runtime import RuntimeState, VariablePool
-from tests.helpers.unit.config_override import apply_config_overrides
-from tests.workflow_test_utils import build_test_graph_init_params
-
-
-class TestObservabilityLayerExtraCases:
-    class TestObservabilityLayerExtras:
-        def test_init_tracer_disables_when_get_tracer_fails(
-            self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-        ):
-            apply_config_overrides(monkeypatch, ENABLE_OTEL=True)
-            monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
-
-            def _raise(*_args, **_kwargs):
-                raise RuntimeError("tracer init failed")
-
-            monkeypatch.setattr("core.app.workflow.layers.observability.get_tracer", _raise)
-
-            layer = ObservabilityLayer()
-
-            assert layer._is_disabled is True
-            assert layer._tracer is None
-            assert "Failed to get OpenTelemetry tracer" in caplog.text
-
-        def test_node_run_context_skips_without_execution_id(self):
-            layer = ObservabilityLayer()
-            layer._is_disabled = False
-            calls: list[str] = []
-            layer._tracer = SimpleNamespace(start_span=lambda *_args, **_kwargs: calls.append("called"))
-
-            with layer.node_run_context(SimpleNamespace(execution_id=None, title="node", id="node")):
-                assert calls == []
-
-            assert calls == []
-
-        def test_node_runs_when_span_creation_fails(self, caplog: pytest.LogCaptureFixture):
-            layer = ObservabilityLayer()
-            layer._is_disabled = False
-
-            def _raise(*_args, **_kwargs):
-                raise RuntimeError("start failed")
-
-            layer._tracer = SimpleNamespace(start_span=_raise)
-
-            node_executed = False
-            with layer.node_run_context(SimpleNamespace(execution_id="exec", title="node", id="node")):
-                node_executed = True
-
-            assert node_executed
-            assert "start failed" in caplog.text
-
-
 """
 Tests for ObservabilityLayer.
 
@@ -78,6 +9,27 @@ Test coverage:
 - Graph lifecycle management
 - Disabled mode behavior
 """
+
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+from types import SimpleNamespace
+
+import pytest
+from opentelemetry.sdk.trace import ReadableSpan, SpanProcessor
+from opentelemetry.trace import StatusCode, get_current_span
+
+from core.app.workflow.layers.observability import ObservabilityLayer
+from extensions.otel.semconv import DifySpanAttributes
+from graphon.engine_events import GraphRunAbortedEvent, GraphRunSucceededEvent
+from graphon.graph import Graph
+from graphon.nodes.start import StartNode
+from graphon.nodes.start.entities import StartNodeData
+from graphon.runtime import RuntimeState, VariablePool
+from services.workflow_runtime.entry import WorkflowEntry
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class TestObservabilityCases:
@@ -113,7 +65,7 @@ class TestObservabilityCases:
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_true", "tracer_provider_with_memory_exporter")
     def test_instrument_flag_enables_workflow_node_spans(memory_span_exporter, config_overrides, monkeypatch):
         config_overrides(ENABLE_OTEL=False, GRAPH_ENGINE_MAX_WORKERS=1)
-        monkeypatch.setattr("core.workflow.workflow_entry.is_instrument_flag_enabled", lambda: True)
+        monkeypatch.setattr("services.workflow_runtime.entry.is_instrument_flag_enabled", lambda: True)
         state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
         node = StartNode(
             node_id="start",
@@ -497,3 +449,75 @@ class TestObservabilityCases:
 
             spans = memory_span_exporter.get_finished_spans()
             assert len(spans) == 0
+
+
+class TestObservabilityLayerExtraCases:
+    class TestObservabilityLayerExtras:
+        def test_init_tracer_disables_when_get_tracer_fails(
+            self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+        ):
+            apply_config_overrides(monkeypatch, ENABLE_OTEL=True)
+            monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
+
+            def _raise(*_args, **_kwargs):
+                raise RuntimeError("tracer init failed")
+
+            monkeypatch.setattr("core.app.workflow.layers.observability.get_tracer", _raise)
+
+            layer = ObservabilityLayer()
+
+            assert layer._is_disabled is True
+            assert layer._tracer is None
+            assert "Failed to get OpenTelemetry tracer" in caplog.text
+
+        def test_node_run_context_skips_without_execution_id(self):
+            layer = ObservabilityLayer()
+            layer._is_disabled = False
+            calls: list[str] = []
+            layer._tracer = SimpleNamespace(start_span=lambda *_args, **_kwargs: calls.append("called"))
+
+            with layer.node_run_context(SimpleNamespace(execution_id=None, title="node", id="node")):
+                assert calls == []
+
+            assert calls == []
+
+        def test_node_runs_when_span_creation_fails(self, caplog: pytest.LogCaptureFixture):
+            layer = ObservabilityLayer()
+            layer._is_disabled = False
+
+            def _raise(*_args, **_kwargs):
+                raise RuntimeError("start failed")
+
+            layer._tracer = SimpleNamespace(start_span=_raise)
+
+            node_executed = False
+            with layer.node_run_context(SimpleNamespace(execution_id="exec", title="node", id="node")):
+                node_executed = True
+
+            assert node_executed
+            assert "start failed" in caplog.text
+
+
+@pytest.mark.usefixtures("mock_is_instrument_flag_enabled_true", "tracer_provider_with_memory_exporter")
+def test_instrument_flag_enables_workflow_node_spans(memory_span_exporter, config_overrides, monkeypatch):
+    config_overrides(ENABLE_OTEL=False, GRAPH_ENGINE_MAX_WORKERS=1)
+    monkeypatch.setattr("services.workflow_runtime.entry.is_instrument_flag_enabled", lambda: True)
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+    node = StartNode(
+        node_id="start",
+        data=StartNodeData(title="Start", variables=[]),
+        init_params=build_test_graph_init_params(),
+        runtime_state=state,
+    )
+    entry = WorkflowEntry(
+        graph_config={},
+        graph=Graph.new().add_root(node).build(),
+        call_depth=0,
+        graph_runtime_state=state,
+    )
+
+    events = list(entry.run())
+
+    assert isinstance(events[-1], GraphRunSucceededEvent)
+    spans = memory_span_exporter.get_finished_spans()
+    assert [span.name for span in spans] == [node.title]

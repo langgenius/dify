@@ -10,6 +10,11 @@ type DebouncedFunc = {
 }
 
 export type WorkflowDraftSliceShape = {
+  workflowDraftSyncPhase: 'idle' | 'preparing' | 'builder'
+  setWorkflowDraftSyncPhase: (phase: WorkflowDraftSliceShape['workflowDraftSyncPhase']) => void
+  enqueueWorkflowDraftOperation: <T>(operation: () => Promise<T>) => Promise<T>
+  lastSavedWorkflowDraft: { appId: string; generation: number; hash: string } | null
+  setLastSavedWorkflowDraft: (saved: WorkflowDraftSliceShape['lastSavedWorkflowDraft']) => void
   backupDraft?: {
     nodes: Node[]
     edges: Edge[]
@@ -21,6 +26,15 @@ export type WorkflowDraftSliceShape = {
   debouncedSyncWorkflowDraft: DebouncedFunc
   syncWorkflowDraftHash: string
   setSyncWorkflowDraftHash: (hash: string) => void
+  workflowDraftGeneration: number
+  workflowDraftLocalRevision: number
+  workflowDraftSavedRevision: number
+  markWorkflowDraftDirty: () => number
+  markWorkflowDraftSaved: (revision: number) => void
+  invalidateWorkflowDraftSync: () => number
+  hasWorkflowDraftConflict: boolean
+  workflowDraftConflictId: number
+  setWorkflowDraftConflict: (conflicted: boolean) => void
   isSyncingWorkflowDraft: boolean
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
   isWorkflowDataLoaded: boolean
@@ -30,18 +44,61 @@ export type WorkflowDraftSliceShape = {
   flushPendingSync: () => void
 }
 
-export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (set) => {
+export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (set, get) => {
+  // One queue per mounted editor, shared by saves and authoritative reloads.
+  let draftQueue: Promise<unknown> = Promise.resolve()
   // Create the debounced function and store it with access to cancel/flush methods
   const debouncedFn = debounce((syncWorkflowDraft) => {
     syncWorkflowDraft()
   }, 5000)
 
   return {
+    workflowDraftSyncPhase: 'idle',
+    setWorkflowDraftSyncPhase: (workflowDraftSyncPhase) => set({ workflowDraftSyncPhase }),
+    enqueueWorkflowDraftOperation: (operation) => {
+      const next = draftQueue.catch(() => undefined).then(operation)
+      draftQueue = next
+      return next
+    },
+    lastSavedWorkflowDraft: null,
+    setLastSavedWorkflowDraft: (lastSavedWorkflowDraft) => set({ lastSavedWorkflowDraft }),
     backupDraft: undefined,
     setBackupDraft: (backupDraft) => set(() => ({ backupDraft })),
     debouncedSyncWorkflowDraft: debouncedFn,
     syncWorkflowDraftHash: '',
     setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
+    workflowDraftGeneration: 0,
+    workflowDraftLocalRevision: 0,
+    workflowDraftSavedRevision: 0,
+    markWorkflowDraftDirty: () => {
+      const workflowDraftLocalRevision = get().workflowDraftLocalRevision + 1
+      set({ workflowDraftLocalRevision })
+      return workflowDraftLocalRevision
+    },
+    markWorkflowDraftSaved: (revision) =>
+      set((state) => ({
+        workflowDraftSavedRevision: Math.max(state.workflowDraftSavedRevision, revision),
+      })),
+    hasWorkflowDraftConflict: false,
+    workflowDraftConflictId: 0,
+    setWorkflowDraftConflict: (hasWorkflowDraftConflict) => {
+      const newConflict = hasWorkflowDraftConflict && !get().hasWorkflowDraftConflict
+      if (hasWorkflowDraftConflict) get().invalidateWorkflowDraftSync()
+      set({
+        hasWorkflowDraftConflict,
+        workflowDraftConflictId: get().workflowDraftConflictId + (newConflict ? 1 : 0),
+      })
+    },
+    invalidateWorkflowDraftSync: () => {
+      debouncedFn.cancel()
+      const workflowDraftGeneration = get().workflowDraftGeneration + 1
+      set({
+        workflowDraftGeneration,
+        workflowDraftSavedRevision: get().workflowDraftLocalRevision,
+        isSyncingWorkflowDraft: false,
+      })
+      return workflowDraftGeneration
+    },
     isSyncingWorkflowDraft: false,
     setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft) => set(() => ({ isSyncingWorkflowDraft })),
     isWorkflowDataLoaded: false,

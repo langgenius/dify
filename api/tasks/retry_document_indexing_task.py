@@ -6,7 +6,6 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from configs import dify_config
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.db.session_factory import get_session_maker, session_factory
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from enums import DeploymentEdition
@@ -22,6 +21,7 @@ from services.knowledge.indexing.adapters.execution import build_document_indexi
 from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_run_agg import WorkflowRunAgg
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 
 logger = logging.getLogger(__name__)
 

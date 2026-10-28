@@ -1,3 +1,26 @@
+"""SQLite-backed tests for :mod:`core.ops.ops_trace_manager`.
+
+Unit tests for lookup helper functions in core.ops.ops_trace_manager.
+
+Covers:
+- _lookup_app_and_workspace_names
+- _lookup_credential_name
+- _lookup_llm_credential_info
+- TraceTask._get_user_id_from_metadata
+
+Unit tests for TraceQueueManager telemetry guard.
+
+Verifies that TraceQueueManager.add_trace_task() only enqueues tasks when at
+least one consumer is active:
+- Enterprise telemetry is enabled (_enterprise_telemetry_enabled=True), OR
+- A third-party trace instance (Langfuse, etc.) is configured
+
+When neither is active, tasks are silently dropped to avoid unnecessary work.
+
+When BOTH are false, tasks are silently dropped (correct behavior).
+
+Nullable provider credentials never reach RSA/base64 as non-string tokens."""
+
 from __future__ import annotations
 
 import builtins
@@ -56,15 +79,6 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_app, make_tenant
-
-"""Unit tests for lookup helper functions in core.ops.ops_trace_manager.
-
-Covers:
-- _lookup_app_and_workspace_names
-- _lookup_credential_name
-- _lookup_llm_credential_info
-- TraceTask._get_user_id_from_metadata
-"""
 
 
 def _persist_app(session: Session, *, tenant_id: str, name: str = "MyApp") -> App:
@@ -628,9 +642,6 @@ class TestLookupHelpersCases:
             """Extra metadata keys have no effect on the result."""
             metadata = {"invoke_from": "web", "app_id": "a1"}
             assert get_user_id(metadata) == "anonymous"
-
-
-"""SQLite-backed tests for :mod:`core.ops.ops_trace_manager`."""
 
 
 class DummyConfig:
@@ -1403,18 +1414,35 @@ class TestOpsTraceManagerCases:
         with pytest.raises(ConnectionError, match="broker unavailable"):
             manager.enqueue_persisted_trace({"file_id": "workflow-final-run-1", "app_id": "app-id"})
 
-
-"""Unit tests for TraceQueueManager telemetry guard.
-
-Verifies that TraceQueueManager.add_trace_task() only enqueues tasks when at
-least one consumer is active:
-- Enterprise telemetry is enabled (_enterprise_telemetry_enabled=True), OR
-- A third-party trace instance (Langfuse, etc.) is configured
-
-When neither is active, tasks are silently dropped to avoid unnecessary work.
-
-When BOTH are false, tasks are silently dropped (correct behavior).
-"""
+    @staticmethod
+    def test_restricted_trace_policy_survives_shared_queue_and_persistence(monkeypatch, trace_environment, mocker):
+        provider = mocker.patch.object(
+            OpsTraceManager, "get_ops_trace_instance", side_effect=AssertionError("provider resolution forbidden")
+        )
+        restricted = TraceQueueManager(app_id="restricted", external_tracing_disabled=True)
+        provider.assert_not_called()
+        restricted._enterprise_telemetry_enabled = True
+        provider.side_effect = None
+        provider.return_value = True
+        ordinary = TraceQueueManager(app_id="ordinary")
+        storage = RecordingStorage()
+        monkeypatch.setattr(module.storage, "save", storage.save)
+        for manager in (restricted, ordinary):
+            manager.add_trace_task(
+                TraceTask(
+                    trace_type=TraceTaskName.GENERATE_NAME_TRACE,
+                    conversation_id="conversation",
+                    timer={"start": 1, "end": 2},
+                    tenant_id="tenant",
+                    generate_conversation_name="name",
+                    inputs="query",
+                )
+            )
+        for task in ordinary.collect_tasks():
+            ordinary.persist_trace_task(task)
+        payloads = {json.loads(data)["app_id"]: json.loads(data) for _, data in storage.writes}
+        assert payloads["restricted"]["external_tracing_disabled"] is True
+        assert payloads["ordinary"]["external_tracing_disabled"] is False
 
 
 class TestTraceQueueManagerCases:
@@ -1603,9 +1631,6 @@ class TestTraceQueueManagerCases:
         assert trace_queue.qsize() == int(enabled_at_start)
 
 
-"""Nullable provider credentials never reach RSA/base64 as non-string tokens."""
-
-
 @pytest.fixture
 def workspace(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> str:
     key = RSA.generate(2048)
@@ -1613,7 +1638,11 @@ def workspace(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> str:
     sqlite_session.add(make_tenant(tenant_id=tenant_id, encrypt_public_key=key.publickey().export_key().decode()))
     sqlite_session.commit()
     monkeypatch.setattr(model_engine.db, "session", sqlite_session)
-    monkeypatch.setattr(key_provider_manager, "_provider", RSAKeyProvider())
+    monkeypatch.setattr(
+        key_provider_manager,
+        "_provider",
+        RSAKeyProvider(public_key_reader=lambda _: key.publickey().export_key().decode()),
+    )
     monkeypatch.setattr(rsa, "get_decrypt_decoding", lambda _tenant: (key, gmpy2_pkcs10aep_cipher.new(key)))
     return tenant_id
 

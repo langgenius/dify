@@ -1,0 +1,1778 @@
+import json
+from copy import deepcopy
+from typing import Never
+from unittest.mock import MagicMock
+
+import pytest
+
+from core.dify_builder.models import Actor, ChecklistError, Diagnosis, Graph, NodeOutput, Run
+from graphon.model_runtime.entities.message_entities import PromptMessage
+from services.dify_builder import credentials
+from services.dify_builder.agent import fix, graph_prompt
+from services.dify_builder.preflight import preflight_errors
+from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+
+
+class _Msg:
+    def __init__(self, text: str) -> None:
+        self._t = text
+
+    def get_text_content(self) -> str:
+        return self._t
+
+
+class _Result:
+    def __init__(self, text: str) -> None:
+        self.message = _Msg(text)
+
+
+class _FakeInstance(MagicMock):
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__()
+        self._replies = list(replies)
+
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],  # noqa: ARG002
+        model_parameters: dict[str, object] | None = None,  # noqa: ARG002
+        stop: list[str] | None = None,  # noqa: ARG002
+        stream: bool = True,  # noqa: ARG002
+        **_kw: object,
+    ) -> _Result:
+        return _Result(self._replies.pop(0))
+
+
+class _BoomInstance(MagicMock):
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],  # noqa: ARG002
+        model_parameters: dict[str, object] | None = None,  # noqa: ARG002
+        stop: list[str] | None = None,  # noqa: ARG002
+        stream: bool = True,  # noqa: ARG002
+        **_kw: object,
+    ) -> Never:
+        raise RuntimeError("provider down")
+
+
+_GRAPH: Graph = {
+    "nodes": [
+        {"id": "code1", "data": {"type": "code", "title": "Code"}},
+        {"id": "end1", "data": {"type": "end", "title": "End"}},
+    ],
+    "edges": [],
+}
+_OUTPUTS = [NodeOutput(node_id="code1", title="Code", status="failed", error="NameError: x", inputs={}, outputs={})]
+
+
+def _bind_failed_native_fixture(
+    monkeypatch: pytest.MonkeyPatch, port: FakeBuildDifyPort, graph: Graph, node_id: str
+) -> str:
+    """Explicit owned native identity for non-IF risk/approval tests only."""
+    native_run_id = "risk-native-run"
+
+    def read_failed_context(app_id: str, actor: Actor, run_id: str) -> tuple[Graph, list[NodeOutput], str]:
+        assert app_id == "app"
+        assert actor.tenant_id == "tenant-1"
+        assert actor.account_id == "acc-1"
+        assert run_id == native_run_id
+        return deepcopy(graph), [NodeOutput(node_id=node_id, status="failed", error="bad config")], ""
+
+    monkeypatch.setattr(port, "failed_run_context", read_failed_context, raising=False)
+    return native_run_id
+
+
+def test_diagnose_valid() -> None:
+    m = _FakeInstance(['{"culprit_node_id": "code1", "root_cause": "x is undefined", "severity": "high"}'])
+    d = fix.diagnose(m, Run(), _GRAPH, _OUTPUTS)
+    assert d.culprit_node_id == "code1"
+    assert d.severity == "high"
+    assert "undefined" in d.root_cause
+
+
+def test_diagnose_nonexistent_culprit_falls_back() -> None:
+    m = _FakeInstance(['{"culprit_node_id": "ghost", "root_cause": "y", "severity": "medium"}'])
+    d = fix.diagnose(m, Run(), _GRAPH, _OUTPUTS)
+    assert d.culprit_node_id == "code1"  # LLM named a non-existent node -> real failed node
+
+
+def test_diagnose_bad_severity_coerced() -> None:
+    m = _FakeInstance(['{"culprit_node_id": "code1", "root_cause": "y", "severity": "catastrophic"}'])
+    assert fix.diagnose(m, Run(), _GRAPH, _OUTPUTS).severity == "medium"
+
+
+def test_diagnose_none_model_degrades_with_real_error() -> None:
+    d = fix.diagnose(None, Run(), _GRAPH, _OUTPUTS)
+    assert d.culprit_node_id == "code1"
+    assert "NameError: x" in d.root_cause
+
+
+def test_diagnose_provider_error_degrades() -> None:
+    d = fix.diagnose(_BoomInstance(), Run(), _GRAPH, _OUTPUTS)
+    assert d.culprit_node_id == "code1"
+    assert "unavailable" in d.root_cause
+
+
+def test_diagnose_checklist_valid() -> None:
+    errs = [ChecklistError(node_id="llm1", node_type="llm", title="LLM", messages=["metrics required"])]
+    g: Graph = {"nodes": [{"id": "llm1", "data": {"type": "llm"}}], "edges": []}
+    m = _FakeInstance(['{"culprit_node_id": "llm1", "root_cause": "missing metrics", "severity": "medium"}'])
+    d = fix.diagnose_checklist(m, errs, g)
+    assert d.culprit_node_id == "llm1"
+    assert "metrics" in d.root_cause
+
+
+def test_diagnose_checklist_none_model_degrades() -> None:
+    errs = [ChecklistError(node_id="llm1", messages=["metrics required"])]
+    d = fix.diagnose_checklist(None, errs, {"nodes": [], "edges": []})
+    assert d.culprit_node_id == "llm1"
+    assert d.root_cause == "metrics required"
+
+
+_DIAG = Diagnosis(culprit_node_id="code1", root_cause="x is undefined", severity="high")
+# The CULPRIT node is engine-valid; ``end1`` is deliberately left as it always
+# was -- not startable. ``preflight.new_preflight_problems`` gives a node whose
+# DATA the batch wrote no exemption, so a ``set_node_config`` on a culprit that
+# was never startable would fail for a reason that has nothing to do with what
+# these tests are about (risk classification and the re-prompt budget). ``end1``
+# is only ever CONNECTED to, never written, so its defect must keep its
+# exemption -- which is exactly what these fixtures now also guard.
+_RG: Graph = {
+    "nodes": [
+        {
+            "id": "code1",
+            "data": {
+                "type": "code",
+                "title": "Code",
+                "code": "def main():\n    return {}",
+                "code_language": "python3",
+                "outputs": {},
+                "variables": [],
+            },
+        },
+        {"id": "end1", "data": {"type": "end", "title": "End"}},
+    ],
+    "edges": [{"id": "code1-end1", "source": "code1", "target": "end1"}],
+}
+
+
+def test_propose_config_fix_auto_applies_low_risk() -> None:
+    payload = (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"code1","path":"code",'
+        '"value":"def main():\\n    return {}"}}],'
+        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
+    )
+    intents, risk = fix.propose_repair(_FakeInstance([payload]), _DIAG, _RG)
+    assert len(intents) == 1
+    assert intents[0].op == "set_node_config"
+    assert risk.level == "low"
+
+
+@pytest.mark.parametrize("switch_model", [True, False], ids=["model-switch-needs-approval", "prompt-auto-applies"])
+def test_real_fix_cognition_routes_repairs_through_core_approval(
+    monkeypatch: pytest.MonkeyPatch, switch_model: bool
+) -> None:
+    """Dropping deterministic risk shaping would write a model switch before approval."""
+    from datetime import datetime
+
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.node_defaults import default_config
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent import llm_agent
+    from services.dify_builder.application.handlers_fix import fix_registry
+    from services.dify_builder.application.runner import Env, Runner
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
+
+    data = default_config("llm")
+    data.update(
+        type="llm",
+        title="LLM",
+        model={"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+        prompt_template=[{"role": "user", "text": "old prompt"}],
+    )
+    graph: Graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "llm", "data": data},
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"id": "start-llm", "source": "start", "target": "llm"},
+            {"id": "llm-end", "source": "llm", "target": "end"},
+        ],
+    }
+    value = {**data["model"], "name": "model-b"} if switch_model else [{"role": "user", "text": "fixed prompt"}]
+    path = "model" if switch_model else "prompt_template"
+    payload = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "llm", "path": path, "value": value}}],
+            "risk": {"level": "low", "reason": "safe config repair", "has_external_side_effect": False},
+        }
+    )
+    model = _FakeInstance(['{"culprit_node_id":"llm","root_cause":"bad config","severity":"low"}', payload])
+    monkeypatch.setattr(llm_agent, "resolve_model_instance", lambda *_args: model)
+    repo = InMemoryRepository()
+    port = FakeBuildDifyPort()
+    port.graph = deepcopy(graph)
+    native_run_id = _bind_failed_native_fixture(monkeypatch, port, graph, "llm")
+    env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
+    actor = Actor(account_id="acc-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app",
+        tenant_id="tenant-1",
+        owner_account_id="acc-1",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    original = Run(id="failed-run", dify_run_id=native_run_id, kind="original-failed", status="failed", immutable=True)
+    repo.create_session(session, DifyBuilderContext(failed_run_id=original.id), [])
+    repo.save_run(session.id, original)
+    runner = Runner(env, fix_registry())
+
+    out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))
+
+    if switch_model:
+        assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+        assert port.graph == graph
+        assert port.applied == []
+        out = runner.advance(session.id, Turn(actor=actor))
+        assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+        assert port.graph == graph
+        out = runner.advance(
+            session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=actor)
+        )
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    assert port.graph["nodes"][1]["data"][path] == value
+    assert port.graph["nodes"][1]["data"]["model"]["provider"] == "provider-a"
+    assert repo.get_run(original.id) == original
+
+
+def test_invalid_model_replacement_still_fails_native_preflight() -> None:
+    from core.dify_builder.node_defaults import default_config
+
+    data = {**default_config("llm"), "type": "llm", "title": "LLM"}
+    graph: Graph = {"nodes": [{"id": "llm", "data": data}], "edges": []}
+    payload = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "llm", "path": "model", "value": "invalid"}}],
+            "risk": {"level": "low"},
+        }
+    )
+
+    intents, risk = fix.propose_repair(_FakeInstance([payload, payload]), Diagnosis(culprit_node_id="llm"), graph)
+
+    assert intents == []
+    assert risk.level == "high"
+
+
+@pytest.mark.parametrize("grouped", [False, True], ids=["ordinary", "grouped"])
+def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(
+    monkeypatch: pytest.MonkeyPatch, grouped: bool
+) -> None:
+    """A preflight-valid upstream selector switch must not auto-apply as a config repair."""
+    from datetime import datetime
+
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent import llm_agent
+    from services.dify_builder.application.handlers_fix import fix_registry
+    from services.dify_builder.application.runner import Env, Runner
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "source-a", "data": {"type": "template-transform", "title": "A", "template": "A", "variables": []}},
+            {"id": "source-b", "data": {"type": "template-transform", "title": "B", "template": "B", "variables": []}},
+            {
+                "id": "aggregator",
+                "data": {
+                    "type": "variable-aggregator",
+                    "title": "Aggregator",
+                    "output_type": "string",
+                    "variables": [["source-a", "output"]],
+                    "advanced_settings": {
+                        "group_enabled": grouped,
+                        "groups": [
+                            {"group_name": "answer", "output_type": "string", "variables": [["source-a", "output"]]}
+                        ],
+                    },
+                },
+            },
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"id": "start-a", "source": "start", "target": "source-a"},
+            {"id": "a-b", "source": "source-a", "target": "source-b"},
+            {"id": "b-aggregator", "source": "source-b", "target": "aggregator"},
+            {"id": "aggregator-end", "source": "aggregator", "target": "end"},
+        ],
+    }
+    path = "advanced_settings.groups.0.variables" if grouped else "variables"
+    payload = json.dumps(
+        {
+            "intents": [
+                {
+                    "op": "set_node_config",
+                    "args": {
+                        "node_id": "aggregator",
+                        "path": path,
+                        "value": [["source-b", "output"]],
+                    },
+                }
+            ],
+            "risk": {"level": "low", "reason": "safe config repair", "has_external_side_effect": False},
+        }
+    )
+    model = _FakeInstance(['{"culprit_node_id":"aggregator","root_cause":"wrong source","severity":"low"}', payload])
+    monkeypatch.setattr(llm_agent, "resolve_model_instance", lambda *_args: model)
+    repo = InMemoryRepository()
+    port = FakeBuildDifyPort()
+    port.graph = deepcopy(graph)
+    native_run_id = _bind_failed_native_fixture(monkeypatch, port, graph, "aggregator")
+    env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
+    actor = Actor(account_id="acc-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app",
+        tenant_id="tenant-1",
+        owner_account_id="acc-1",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    repo.create_session(session, DifyBuilderContext(failed_run_id="failed-run"), [])
+    repo.save_run(
+        session.id,
+        Run(id="failed-run", dify_run_id=native_run_id, kind="original-failed", status="failed", immutable=True),
+    )
+    runner = Runner(env, fix_registry())
+
+    out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    _, context = repo.get_session(session.id)
+    assert len(context.staged_repair) == 1  # accepted by real native preflight, rather than a no-fix refusal
+    assert context.staged_repair[0].args["value"] == [["source-b", "output"]]
+    assert port.graph == graph
+    assert port.applied == []
+    out = runner.advance(session.id, Turn(actor=actor))
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert port.graph == graph
+
+    out = runner.advance(session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    data = port.graph["nodes"][3]["data"]
+    selectors = data["advanced_settings"]["groups"][0]["variables"] if grouped else data["variables"]
+    assert selectors == [["source-b", "output"]]
+
+
+@pytest.mark.parametrize(
+    ("data", "path", "value"),
+    [
+        (
+            {
+                "type": "list-operator",
+                "variable": ["s", "public_items"],
+                "filter_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "extract_by": {"enabled": False},
+                "limit": {"enabled": False},
+            },
+            "variable",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "iteration",
+                "start_node_id": "child",
+                "iterator_selector": ["s", "public_items"],
+                "output_selector": ["s", "public_items"],
+            },
+            "iterator_selector",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "iteration",
+                "start_node_id": "child",
+                "iterator_selector": ["s", "public_items"],
+                "output_selector": ["s", "public_items"],
+            },
+            "output_selector",
+            ["s", "private_items"],
+        ),
+        (
+            {"type": "agent", "agent_parameters": {"query": {"type": "variable", "value": ["s", "public_items"]}}},
+            "agent_parameters.query.value",
+            ["s", "private_items"],
+        ),
+        (
+            {"type": "agent", "agent_parameters": {"query": {"type": "constant", "value": ["s", "public_items"]}}},
+            "agent_parameters.query.type",
+            "variable",
+        ),
+        ({"type": "agent", "memory": None}, "memory", {"window": {"enabled": False, "size": 10}}),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_tools": {
+                        "type": "constant",
+                        "value": [
+                            {
+                                "enabled": True,
+                                "provider_name": "provider-a",
+                                "tool_name": "search",
+                                "parameters": {
+                                    "query": {"auto": 0, "value": {"type": "variable", "value": ["s", "public_items"]}}
+                                },
+                            }
+                        ],
+                    }
+                },
+            },
+            "agent_parameters.dynamic_tools.value.0.parameters.query.value.value",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_tools": {
+                        "type": "constant",
+                        "value": [
+                            {
+                                "enabled": True,
+                                "provider_name": "provider-a",
+                                "tool_name": "search",
+                                "parameters": {
+                                    "query": {"auto": 1, "value": {"type": "variable", "value": ["s", "public_items"]}}
+                                },
+                            }
+                        ],
+                    }
+                },
+            },
+            "agent_parameters.dynamic_tools.value.0.parameters.query.auto",
+            0,
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_tools": {
+                        "type": "constant",
+                        "value": [
+                            {
+                                "enabled": False,
+                                "provider_name": "provider-a",
+                                "tool_name": "search",
+                                "parameters": {
+                                    "query": {"auto": 0, "value": {"type": "variable", "value": ["s", "public_items"]}}
+                                },
+                            }
+                        ],
+                    }
+                },
+            },
+            "agent_parameters.dynamic_tools.value.0.enabled",
+            True,
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_engine": {
+                        "type": "constant",
+                        "value": {
+                            "provider": "provider-a",
+                            "model": "model-a",
+                            "mode": "chat",
+                            "completion_params": {"max_tokens": 100},
+                        },
+                    }
+                },
+            },
+            "agent_parameters.dynamic_engine.value.provider",
+            "provider-b",
+        ),
+        (
+            {
+                "type": "agent",
+                "agent_parameters": {
+                    "dynamic_engine": {
+                        "type": "constant",
+                        "value": {
+                            "provider": "provider-a",
+                            "model": "model-a",
+                            "mode": "chat",
+                            "completion_params": {"max_tokens": 100},
+                        },
+                    }
+                },
+            },
+            "agent_parameters.dynamic_engine.value.completion_params.max_tokens",
+            10000,
+        ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "query",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "memory",
+            {"window": {"enabled": False, "size": 10}},
+        ),
+        (
+            {
+                "type": "question-classifier",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": {"window": {"enabled": False, "size": 1}},
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query_variable_selector": ["s", "public_items"],
+                "classes": [{"id": "category", "name": "General"}],
+            },
+            "memory.window.size",
+            10,
+        ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "vision.enabled",
+            True,
+        ),
+        (
+            {
+                "type": "question-classifier",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": {"window": {"enabled": False, "size": 1}},
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query_variable_selector": ["s", "public_items"],
+                "classes": [{"id": "category", "name": "General"}],
+            },
+            "vision.enabled",
+            True,
+        ),
+        (
+            {
+                "type": "loop",
+                "start_node_id": "child",
+                "loop_count": 2,
+                "break_conditions": [],
+                "logical_operator": "and",
+                "loop_variables": [
+                    {
+                        "label": "items",
+                        "var_type": "array[string]",
+                        "value_type": "variable",
+                        "value": ["s", "public_items"],
+                    }
+                ],
+            },
+            "loop_variables.0.value",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "loop",
+                "start_node_id": "child",
+                "loop_count": 2,
+                "break_conditions": [],
+                "logical_operator": "and",
+                "loop_variables": [
+                    {
+                        "label": "items",
+                        "var_type": "array[string]",
+                        "value_type": "constant",
+                        "value": ["s", "public_items"],
+                    }
+                ],
+            },
+            "loop_variables.0.value_type",
+            "variable",
+        ),
+        (
+            {
+                "type": "knowledge-index",
+                "chunk_structure": "text_model",
+                "index_chunk_variable_selector": ["s", "public_items"],
+            },
+            "index_chunk_variable_selector",
+            ["s", "private_items"],
+        ),
+        (
+            {
+                "type": "question-classifier",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": None,
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query_variable_selector": ["s", "public_items"],
+                "classes": [{"id": "category", "name": "General"}],
+            },
+            "memory",
+            {"window": {"enabled": False, "size": 10}},
+        ),
+        (
+            {
+                "type": "parameter-extractor",
+                "model": {"provider": "provider-a", "name": "model-a", "mode": "chat", "completion_params": {}},
+                "instruction": "old prompt",
+                "memory": {"window": {"enabled": False, "size": 1}},
+                "vision": {"enabled": False, "configs": {"variable_selector": ["s", "files"]}},
+                "query": ["s", "public_items"],
+                "parameters": [],
+                "reasoning_mode": "prompt",
+            },
+            "memory.window.size",
+            10,
+        ),
+        (
+            {
+                "type": "agent",
+                "version": "2",
+                "agent_node_kind": "dify_agent",
+                "agent_task": "Use {{#s.public_items#}}",
+            },
+            "agent_task",
+            "Use {{#s.private_items#}}",
+        ),
+    ],
+    ids=[
+        "list-source",
+        "iteration-input",
+        "iteration-output",
+        "agent-source",
+        "agent-access-activation",
+        "agent-memory",
+        "agent-tool-source",
+        "agent-tool-auto",
+        "agent-tool-enabled",
+        "agent-model-provider",
+        "agent-model-cost",
+        "extractor-query",
+        "extractor-history-presence",
+        "classifier-history-scope",
+        "extractor-vision-activation",
+        "classifier-vision-activation",
+        "loop-source",
+        "loop-access-activation",
+        "index-chunk-source",
+        "classifier-history-presence",
+        "extractor-history-scope",
+        "v2-task-binding",
+    ],
+)
+def test_real_fix_native_data_access_changes_wait_for_explicit_approval(
+    monkeypatch: pytest.MonkeyPatch, data: Graph, path: str, value: Graph | bool | int | list[str] | str
+) -> None:
+    """Real native preflight accepts the repair; Fix must still require approval.
+
+    Container and model/index fixtures establish accepted candidate/configuration
+    behavior, not runtime child execution, history reads, model calls or indexing.
+    """
+    from datetime import datetime
+
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent import llm_agent
+    from services.dify_builder.application.handlers_fix import fix_registry
+    from services.dify_builder.application.runner import Env, Runner
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, InMemoryRepository
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "title": "Start", "variables": []}},
+            {"id": "n", "data": {"title": "Node", **deepcopy(data)}},
+            {"id": "e", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [{"id": "s-n", "source": "s", "target": "n"}, {"id": "n-e", "source": "n", "target": "e"}],
+    }
+    if data["type"] in ("iteration", "loop"):
+        graph["nodes"].append(
+            {
+                "id": "child",
+                "type": "custom-" + data["type"] + "-start",
+                "parentId": "n",
+                "data": {"type": data["type"] + "-start", "title": "Child start"},
+            }
+        )
+    payload = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "n", "path": path, "value": value}}],
+            "risk": {"level": "low", "reason": "safe config repair", "has_external_side_effect": False},
+        }
+    )
+    model = _FakeInstance(['{"culprit_node_id":"n","root_cause":"wrong data source","severity":"low"}', payload])
+    monkeypatch.setattr(llm_agent, "resolve_model_instance", lambda *_args: model)
+    repo = InMemoryRepository()
+    port = FakeBuildDifyPort()
+    port.graph = deepcopy(graph)
+    native_run_id = _bind_failed_native_fixture(monkeypatch, port, graph, "n")
+    env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
+    actor = Actor(account_id="acc-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app",
+        tenant_id="tenant-1",
+        owner_account_id="acc-1",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    repo.create_session(session, DifyBuilderContext(failed_run_id="failed-run"), [])
+    repo.save_run(
+        session.id,
+        Run(id="failed-run", dify_run_id=native_run_id, kind="original-failed", status="failed", immutable=True),
+    )
+    runner = Runner(env, fix_registry())
+
+    out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    _, context = repo.get_session(session.id)
+    assert len(context.staged_repair) == 1  # accepted native candidate, not an empty no-fix refusal
+    assert context.staged_repair[0].args == {"node_id": "n", "path": path, "value": value}
+    assert port.graph == graph
+    assert port.applied == []
+    out = runner.advance(session.id, Turn(actor=actor))
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert port.graph == graph
+    assert port.applied == []
+
+    out = runner.advance(session.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=actor))
+
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    expected = deepcopy(graph)
+    target = expected["nodes"][1]["data"]
+    for component in path.split(".")[:-1]:
+        target = target[int(component)] if isinstance(target, list) else target[component]
+    target[path.split(".")[-1]] = value
+    assert port.graph == expected
+
+
+# Same split as ``_RG``: the culprit is startable, ``end1`` is not and is never
+# written.
+_HTTP_GRAPH: Graph = {
+    "nodes": [
+        {
+            "id": "http1",
+            "data": {
+                "type": "http-request",
+                "title": "HTTP",
+                "method": "get",
+                "url": "https://example.test/old",
+                "authorization": {"type": "no-auth"},
+                "headers": "",
+                "params": "",
+                "body": {"type": "none", "data": []},
+            },
+        },
+        {"id": "end1", "data": {"type": "end", "title": "End"}},
+    ],
+    "edges": [{"id": "http1-end1", "source": "http1", "target": "end1"}],
+}
+
+
+def test_propose_external_config_forced_high() -> None:
+    payload = (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"http1","path":"url",'
+        '"value":"https://example.com"}}],'
+        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
+    )
+    diag = Diagnosis(culprit_node_id="http1", root_cause="bad url", severity="high")
+    intents, risk = fix.propose_repair(_FakeInstance([payload]), diag, _HTTP_GRAPH)
+    assert len(intents) == 1
+    assert intents[0].op == "set_node_config"
+    assert risk.level == "high"  # http-request node touched -> external side effect, even config-only
+
+
+def test_propose_structural_forced_high() -> None:
+    """Also the guard for the ``connect`` exclusion: ``end1`` is already refused
+    by the engine and this batch only WIRES to it. Counting a connect's
+    endpoints as written would make ``end1``'s pre-existing defect veto the
+    whole repair, and this test would silently become "surfaces to human"."""
+    from services.dify_builder.preflight import preflight_errors
+
+    assert preflight_errors(_RG)  # ``end1`` is not startable, and nothing here fixes it
+    payload = (
+        '{"intents":[{"op":"create_node","args":{"node_type":"llm","config":{},"node_id":"llm2"}},'
+        '{"op":"connect","args":{"from_node":"llm2","to_node":"end1"}}],'
+        '"risk":{"level":"low","reason":"add node","has_external_side_effect":false}}'
+    )
+    intents, risk = fix.propose_repair(_FakeInstance([payload]), _DIAG, _RG)
+    assert len(intents) == 2
+    assert risk.level == "high"  # any structural op forces high -> human review
+
+
+def test_propose_dangling_ref_reprompts_then_recovers() -> None:
+    bad = (
+        '{"intents":[{"op":"connect","args":{"from_node":"code1","to_node":"ghost"}}],'
+        '"risk":{"level":"low","reason":"x"}}'
+    )
+    good = (
+        '{"intents":[{"op":"connect","args":{"from_node":"code1","to_node":"end1"}}],'
+        '"risk":{"level":"low","reason":"x"}}'
+    )
+    intents, risk = fix.propose_repair(_FakeInstance([bad, good]), _DIAG, _RG)
+    assert len(intents) == 1
+    assert intents[0].args["to_node"] == "end1"
+    assert risk.level == "high"  # connect is structural
+
+
+def test_propose_invalid_twice_surfaces_to_human() -> None:
+    bad = '{"intents":[{"op":"connect","args":{"from_node":"code1","to_node":"ghost"}}],"risk":{"level":"low"}}'
+    intents, risk = fix.propose_repair(_FakeInstance([bad, bad]), _DIAG, _RG)
+    assert intents == []
+    assert risk.level == "high"
+    assert "try again or finish" in risk.reason.lower()
+
+
+def test_propose_none_model_surfaces_to_human() -> None:
+    intents, risk = fix.propose_repair(None, _DIAG, _RG)
+    assert intents == []
+    assert risk.level == "high"
+
+
+def test_propose_provider_error_surfaces() -> None:
+    intents, risk = fix.propose_repair(_BoomInstance(), _DIAG, _RG)
+    assert intents == []
+    assert risk.level == "high"
+
+
+def test_diagnose_none_model_surfaces_launch_error_when_no_failed_nodes() -> None:
+    """A launch failure (verify threw before any node ran: empty node_outputs,
+    message on run.error) must surface that error in the degraded diagnosis
+    instead of the blind 'Automatic diagnosis unavailable.'"""
+    run = Run(status="failed", per_node=[], error="query is required in input form")
+    d = fix.diagnose(None, run, _GRAPH, [])
+    assert "in input form" in d.root_cause
+
+
+# ---- credentials must not reach the repair prompt ----
+#
+# A failing http-request node is one of the likeliest culprits there is, and
+# ``_culprit_config`` inlines its whole ``data``. See
+# services/dify_builder/credentials.py for the two halves of the guard.
+
+
+class _RecordingInstance(MagicMock):
+    """Like ``_FakeInstance``, but keeps the prompt it was handed."""
+
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__()
+        self._replies = list(replies)
+        self.calls: list[Graph] = []
+
+    def invoke_llm(self, **kwargs: object) -> _Result:
+        self.calls.append(kwargs)
+        return _Result(self._replies.pop(0))
+
+
+def test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence() -> None:
+    graph: Graph = {
+        "nodes": [{"id": "http1", "data": {"type": "http-request", "title": "HTTP", "api_key": "graph-secret"}}],
+        "edges": [],
+    }
+    outputs = [
+        NodeOutput(
+            node_id="http1",
+            title="HTTP",
+            status="failed",
+            error="connection refused with graph-secret",
+            inputs={
+                "key": "ordinary lookup",
+                "zero": 0,
+                "false": False,
+                "empty": "",
+                "nil": None,
+                "nested": [{"api_key": "runtime-secret", "authorization": "Bearer auth-secret"}],
+            },
+            outputs={"status_code": 503, "headers": {"X-Private": "header-secret"}, "params": "session:query-secret"},
+        )
+    ]
+    run = Run(status="failed", per_node=outputs, immutable=True)
+    before = deepcopy((run, graph, outputs))
+    model = _RecordingInstance(['{"culprit_node_id":"http1","root_cause":"connection refused","severity":"high"}'])
+
+    diagnosis = fix.diagnose(model, run, graph, outputs)
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    for secret in ("graph-secret", "runtime-secret", "auth-secret", "header-secret", "query-secret"):
+        assert secret not in prompt
+    for useful in ("connection refused", "status=failed", "503", "ordinary lookup", "'zero': 0", "False", "None"):
+        assert useful in prompt
+    assert diagnosis.culprit_node_id == "http1"
+    assert (run, graph, outputs) == before
+
+
+def test_diagnose_redacts_known_graph_credentials_before_truncating_runtime_text() -> None:
+    secret = "long-credential-" + "Z" * 400
+    graph: Graph = {
+        "nodes": [{"id": "http1", "data": {"type": "http-request", "title": "HTTP", "api_key": secret}}],
+        "edges": [],
+    }
+    outputs = [NodeOutput(node_id="http1", status="exception", inputs={"body": secret + " connection refused"})]
+    run = Run(status="failed", per_node=outputs)
+    before = deepcopy((run, graph, outputs))
+    model = _RecordingInstance(['{"culprit_node_id":"http1","root_cause":"connection refused","severity":"high"}'])
+
+    fix.diagnose(model, run, graph, outputs)
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    assert "long-credential-" not in prompt
+    assert "connection refused" in prompt
+    assert (run, graph, outputs) == before
+
+
+def test_diagnose_launch_failure_withholds_graph_credentials_and_preserves_safe_error() -> None:
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "http1",
+                "data": {"type": "http-request", "title": "HTTP graph-token", "headers": "X-Key:graph-token"},
+            }
+        ],
+        "edges": [],
+    }
+    run = Run(status="failed", error="connection refused using graph-token")
+    before = deepcopy((run, graph))
+    model = _RecordingInstance(['{"culprit_node_id":"","root_cause":"connection refused","severity":"high"}'])
+
+    fix.diagnose(model, run, graph, [])
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    assert "graph-token" not in prompt
+    assert "connection refused" in prompt
+    assert "no node executed" in prompt
+    assert (run, graph) == before
+
+
+@pytest.mark.parametrize("credential_source", ["run", "outputs"])
+def test_diagnose_withholds_runtime_only_credentials_repeated_in_graph_labels(credential_source: str) -> None:
+    graph = {
+        "nodes": [
+            {"id": "http1", "data": {"type": "http-request", "title": "HTTP runtime-only-private"}},
+            {
+                "id": "branch1",
+                "data": {"type": "if-else", "title": "Branch", "cases": [{"case_id": "runtime-only-private"}]},
+            },
+        ],
+        "edges": [{"source": "branch1", "target": "http1", "sourceHandle": "runtime-only-private"}],
+    }
+    credential_output = NodeOutput(
+        node_id="earlier1", status="success", inputs={"nested": [{"api_key": "runtime-only-private"}]}
+    )
+    run = Run(status="failed", per_node=[credential_output] if credential_source == "run" else [], immutable=True)
+    outputs = [NodeOutput(node_id="http1", status="failed", error="connection refused")]
+    if credential_source == "outputs":
+        outputs.append(credential_output)
+    before = deepcopy((run, graph, outputs))
+    model = _RecordingInstance(['{"culprit_node_id":"http1","root_cause":"connection refused","severity":"high"}'])
+
+    diagnosis = fix.diagnose(model, run, graph, outputs)
+
+    prompt = "\n".join(str(message.content) for message in model.calls[0]["prompt_messages"])
+    assert "runtime-only-private" not in prompt
+    assert f"HTTP {credentials.REDACTED}" in prompt
+    assert f"-[{credentials.REDACTED}]->" in prompt
+    assert "connection refused" in prompt
+    assert diagnosis.culprit_node_id == "http1"
+    assert (run, graph, outputs) == before
+
+
+_SECRET_HTTP_GRAPH = {
+    "nodes": [
+        {
+            "id": "http1",
+            "data": {
+                "type": "http-request",
+                "title": "HTTP",
+                "url": "https://example.test/score",
+                "authorization": {
+                    "type": "api-key",
+                    "config": {"type": "bearer", "header": "X-Auth", "api_key": "sk-live-9f3c-SECRET"},
+                },
+                "headers": "Authorization: Bearer tok-999-SECRET",
+            },
+        },
+        {"id": "end1", "data": {"type": "end", "title": "End"}},
+    ],
+    "edges": [{"id": "http1-end1", "source": "http1", "target": "end1"}],
+}
+
+
+def test_culprit_config_withholds_the_nodes_secrets() -> None:
+    block = fix._culprit_config("http1", _SECRET_HTTP_GRAPH)
+
+    assert "sk-live-9f3c-SECRET" not in block
+    assert "tok-999-SECRET" not in block
+    assert credentials.REDACTED in block
+    # structure the repair model still needs
+    assert "X-Auth" in block
+    assert "https://example.test/score" in block
+
+
+def test_propose_repair_prompt_does_not_carry_the_culprits_credentials() -> None:
+    payload = (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"http1","path":"url",'
+        '"value":"https://example.com"}}],'
+        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
+    )
+    m = _RecordingInstance([payload])
+    diag = Diagnosis(culprit_node_id="http1", root_cause="401 from the scoring API", severity="high")
+
+    fix.propose_repair(m, diag, _SECRET_HTTP_GRAPH)
+
+    prompt = "\n".join(str(msg.content) for msg in m.calls[0]["prompt_messages"])
+    assert "sk-live-9f3c-SECRET" not in prompt
+    assert "tok-999-SECRET" not in prompt
+    assert credentials.REDACTED in prompt
+
+
+def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping() -> None:
+    graph: Graph = {"nodes": [{"id": "odd", "data": "not-a-dict"}], "edges": []}
+
+    assert fix._culprit_config("odd", graph) == "{}"
+
+
+# ---- an over-budget culprit is never shown half-rendered ----
+#
+# The op schema Fix now shares with Edit tells the model to re-send an array's
+# existing elements byte-identical "as GRAPH shows them". That is only honest
+# if what GRAPH showed is whole. ``_culprit_config`` used to hand the prompt a
+# Python repr cut at 1500 characters, so a long ``cases`` array arrived severed
+# mid-value and the model would have completed it from imagination -- while
+# believing, and looking like, it was copying. Whole keys are dropped and named
+# instead.
+
+
+def _oversized_if_else_node() -> Graph:
+    """An if-else whose ``cases`` alone blows the budget several times over."""
+    cases = [
+        {
+            "case_id": f"case{i}",
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "id": f"c{i}",
+                    "varType": "string",
+                    "variable_selector": ["start1", "text"],
+                    "comparison_operator": "is",
+                    "value": f"a rather long expected value number {i}" * 3,
+                }
+            ],
+        }
+        for i in range(12)
+    ]
+    return {"id": "branch1", "data": {"type": "if-else", "title": "Score", "cases": cases}}
+
+
+def test_an_over_budget_culprit_config_drops_the_whole_key_and_names_it() -> None:
+    graph: Graph = {"nodes": [_oversized_if_else_node()], "edges": []}
+
+    block = fix._culprit_config("branch1", graph)
+
+    assert len(json.dumps(graph["nodes"][0]["data"], ensure_ascii=False)) > graph_prompt.NODE_CONFIG_LIMIT
+    kept, marker, dropped = block.partition(graph_prompt.TRUNCATION_MARKER)
+    assert marker  # it did not fit, so something had to go
+    assert dropped == "cases"  # ...and the prompt says which key went
+    # Nothing is half-rendered: what survives is whole, parseable JSON, and no
+    # fragment of a case leaked into it.
+    assert json.loads(kept) == {"type": "if-else", "title": "Score"}
+    assert "case_id" not in block
+
+
+def test_a_within_budget_culprit_config_is_rendered_whole_as_json() -> None:
+    graph: Graph = {"nodes": [{"id": "code1", "data": {"type": "code", "title": "Code", "code": "x = 1"}}], "edges": []}
+
+    block = fix._culprit_config("code1", graph)
+
+    assert graph_prompt.TRUNCATION_MARKER not in block
+    assert json.loads(block) == {"type": "code", "title": "Code", "code": "x = 1"}
+
+
+# ---- the node-data half of the check, mirroring Edit ----
+#
+# A repair that applies cleanly but leaves a node ``Graph.init`` refuses is the
+# worst outcome Fix has: it reaches the approval gate looking like a real fix,
+# the human approves it, and the write dies at ``apply_repair``'s preflight.
+# ``==`` is the error used here because no normalizer heals it and none may --
+# graphon's string equality is ``is`` and its number equality is ``=``, so the
+# ASCII form is ambiguous between them (``>=`` is unambiguous and IS healed, so
+# it can no longer prove anything).
+
+_IF_ELSE_GRAPH: Graph = {
+    "nodes": [
+        {
+            "id": "start1",
+            "type": "custom",
+            "data": {
+                "type": "start",
+                "title": "Start",
+                "variables": [
+                    {"variable": "score", "type": "number", "label": "Score", "required": True, "options": []}
+                ],
+            },
+        },
+        {
+            "id": "branch1",
+            "type": "custom",
+            "data": {
+                "type": "if-else",
+                "title": "Branch",
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {
+                                "id": "c1",
+                                "varType": "number",
+                                "variable_selector": ["start1", "score"],
+                                "comparison_operator": "=",
+                                "value": "60",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+    ],
+    "edges": [{"id": "e1", "source": "start1", "target": "branch1"}],
+}
+_IF_ELSE_DIAG = Diagnosis(culprit_node_id="branch1", root_cause="threshold is wrong", severity="medium")
+
+
+def _operator_repair(operator: str) -> str:
+    return (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"branch1",'
+        f'"path":"cases.0.conditions.0.comparison_operator","value":"{operator}"}}}}],'
+        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
+    )
+
+
+def test_propose_repair_reprompts_on_a_node_the_engine_would_refuse_and_recovers() -> None:
+    m = _RecordingInstance([_operator_repair("=="), _operator_repair("≥")])
+
+    intents, risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert len(m.calls) == 2  # structurally applicable, and STILL burned the re-prompt
+    assert [i.args["value"] for i in intents] == ["≥"]
+    assert risk.level == "low"
+
+
+def test_the_fix_reprompt_quotes_the_engines_own_words() -> None:
+    m = _RecordingInstance([_operator_repair("=="), _operator_repair("≥")])
+
+    fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    retry_prompt = m.calls[1]["prompt_messages"][1].content
+    assert "the draft would then not start: node 'branch1' (if-else): " in retry_prompt
+    assert "cases.0.conditions.0.comparison_operator" in retry_prompt
+
+
+def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human() -> None:
+    m = _RecordingInstance([_operator_repair("=="), _operator_repair("==")])
+
+    intents, risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert len(m.calls) == 2
+    assert intents == []  # never handed to the gate as if it were a fix
+    assert risk.level == "high"
+    assert "try again or finish" in risk.reason.lower()
+
+
+def test_a_repair_the_engine_accepts_never_spends_the_reprompt() -> None:
+    m = _RecordingInstance([_operator_repair("≥")])
+
+    intents, _risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert len(m.calls) == 1
+    assert len(intents) == 1
+
+
+def test_a_pre_existing_broken_node_does_not_veto_a_repair_elsewhere() -> None:
+    """New problems only: the bare ``code1`` stand-in is invalid before the
+    repair and after it, so it must not cost the re-prompt or the fix."""
+    graph: Graph = {"nodes": [*_IF_ELSE_GRAPH["nodes"], {"id": "code1", "data": {"type": "code"}}], "edges": []}
+    m = _RecordingInstance([_operator_repair("≥")])
+
+    intents, _risk = fix.propose_repair(m, _IF_ELSE_DIAG, graph)
+
+    assert len(m.calls) == 1
+    assert len(intents) == 1
+
+
+def test_a_repair_that_breaks_its_already_invalid_culprit_further_is_rejected() -> None:
+    """Fix's MAIN path, and the reason the new-problems rule is keyed on pydantic
+    error locations rather than on node identity.
+
+    For the whole ESQ1-302 / ESQ1-303 / F4 family the culprit is by definition
+    already preflight-invalid -- that is why Fix was called. A rule that exempted
+    an already-refused node from every later verdict would give ``propose_repair``
+    zero node-data coverage on the one node it is repairing: this repair, which
+    leaves the culprit refused at a field it was fine at before, would pass the
+    dry run AND the port and be written and reported as applied.
+    """
+    culprit = {"id": "code1", "type": "custom", "data": {"type": "code", "title": "Code", "code_language": "python3"}}
+    graph: Graph = {"nodes": [culprit], "edges": []}
+    assert len(preflight_errors(graph)) == 1  # already refused before the repair
+    breaks_it_further = (
+        '{"intents":[{"op":"set_node_config","args":{"node_id":"code1","path":"code_language",'
+        '"value":"klingon"}}],"risk":{"level":"low","reason":"x","has_external_side_effect":false}}'
+    )
+    m = _RecordingInstance([breaks_it_further, breaks_it_further])
+
+    intents, risk = fix.propose_repair(m, Diagnosis(culprit_node_id="code1", root_cause="x", severity="high"), graph)
+
+    assert len(m.calls) == 2  # it was refused, so the re-prompt fired
+    assert "code_language" in m.calls[1]["prompt_messages"][1].content
+    assert intents == []  # ...and refused again, so it never reaches the gate
+    assert risk.level == "high"
+
+
+# ---- a connect from a branch node carries the handle that node declares ----
+#
+# Triage edit-branch-failure-2026-09-22, option (f1). ``fix._OP_SCHEMA`` listed
+# ``connect: {from_node, to_node}`` and ``fix._graph_context`` printed no
+# handles, so a repair that wired anything from an if-else /
+# question-classifier / human-input node fell back to the ``"source"`` handle,
+# ``graph_ops.apply_connect`` refused it, that refusal spent the single
+# corrective re-prompt, and ``propose_repair`` returned ``_no_fix()`` -- the
+# repair could not be proposed at all, however right it was. Edit was given the
+# same handles in 197cd9c5ad; both now render them out of ``graph_prompt``.
+#
+# The change itself is prompt text, so the regression cover for it IS the two
+# prompt assertions in the last test here -- the schema naming ``source_handle``
+# and the context printing the handles. The three behavioural tests around them
+# are what makes those assertions mean something: they show the engine
+# accepting the connect the prompt now makes writable and refusing the one it
+# used to be the only way to write.
+
+_BRANCH_GRAPH: Graph = {
+    "nodes": [
+        {
+            "id": "start1",
+            "type": "custom",
+            "data": {
+                "type": "start",
+                "title": "Start",
+                "variables": [
+                    {"variable": "score", "type": "number", "label": "Score", "required": True, "options": []}
+                ],
+            },
+        },
+        {
+            "id": "branch1",
+            "type": "custom",
+            "data": {
+                "type": "if-else",
+                "title": "Score",
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {
+                                "id": "c1",
+                                "varType": "number",
+                                "variable_selector": ["start1", "score"],
+                                "comparison_operator": "≥",
+                                "value": "60",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+        {
+            "id": "pass1",
+            "type": "custom",
+            "data": {"type": "template-transform", "title": "Pass", "template": "pass", "variables": []},
+        },
+        {
+            "id": "excellent1",
+            "type": "custom",
+            "data": {"type": "template-transform", "title": "Excellent", "template": "excellent", "variables": []},
+        },
+    ],
+    "edges": [
+        {"id": "e1", "source": "start1", "target": "branch1"},
+        {"id": "e2", "source": "branch1", "target": "pass1", "sourceHandle": "true"},
+    ],
+}
+_BRANCH_DIAG = Diagnosis(culprit_node_id="branch1", root_cause="the else arm goes nowhere", severity="medium")
+
+
+def _branch_connect(source_handle: str | None) -> str:
+    """A repair wiring the orphan node onto the branch's ELSE arm, with or
+    without the handle the engine demands."""
+    args: Graph = {"from_node": "branch1", "to_node": "excellent1"}
+    if source_handle is not None:
+        args["source_handle"] = source_handle
+    return json.dumps(
+        {
+            "intents": [{"op": "connect", "args": args}],
+            "risk": {"level": "low", "reason": "wire the else arm", "has_external_side_effect": False},
+        }
+    )
+
+
+def test_a_branch_connect_with_a_declared_handle_is_accepted_first_time() -> None:
+    m = _RecordingInstance([_branch_connect("false")])
+
+    intents, risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
+
+    assert len(m.calls) == 1  # accepted outright: the one re-prompt was never spent
+    assert [(i.op, i.args["source_handle"]) for i in intents] == [("connect", "false")]
+    assert risk.level == "high"  # a connect is structural -> the human still sees it
+
+
+def test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it() -> None:
+    m = _RecordingInstance([_branch_connect(None), _branch_connect("false")])
+
+    intents, _risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
+
+    assert len(m.calls) == 2  # the handle-less connect was rejected by the engine's own check
+    retry_prompt = m.calls[1]["prompt_messages"][1].content
+    assert "has no handle 'source'" in retry_prompt
+    assert "['true', 'false']" in retry_prompt
+    assert [i.args["source_handle"] for i in intents] == ["false"]
+
+
+def test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human() -> None:
+    """The dead end itself is unchanged -- a model that ignores the rule twice
+    still ends at ``_no_fix()``. What changed is that it is now reachable only
+    by ignoring the rule: before, EVERY Fix branch connect landed here,
+    whatever the model wrote."""
+    m = _RecordingInstance([_branch_connect(None), _branch_connect(None)])
+
+    intents, risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
+
+    assert len(m.calls) == 2
+    assert intents == []
+    assert risk.level == "high"
+    assert "try again or finish" in risk.reason.lower()
+
+
+def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles() -> None:
+    """The prompt half of the three tests above, which are its behaviour.
+
+    On its own ``assert "source_handle" in _OP_SCHEMA`` pins a wording and
+    proves nothing; what makes it meaningful is that the same connect is
+    accepted with a declared handle and refused without one.
+    """
+    assert "source_handle" in fix._OP_SCHEMA
+    assert "if-else" in fix._OP_SCHEMA
+
+    context = fix._graph_context(_BRANCH_GRAPH)
+
+    assert "  branch1 (if-else): Score handles=['true', 'false']" in context
+    assert "  branch1 -[true]-> pass1" in context
+    assert "  start1 -> branch1" in context  # a default handle stays unnamed
+
+
+# ---- parity with Edit: a repair the guards condemn surfaces WITH its reason ----
+#
+# Fix already refuses to hand on a batch carrying any rejection (its retry ends
+# in ``_no_fix()``), so unlike Edit it never had a fallback that could write one.
+# What it did have is a blind surface: the engine-grounded reason was discarded
+# and the user got "No safe automatic fix found" with nothing to act on. A guard
+# Edit explains and Fix merely implies is the inconsistency Task 8 exists to
+# stop.
+
+_REJOIN_GRAPH: Graph = {
+    "nodes": [
+        {
+            "id": "node1",
+            "data": {
+                "type": "start",
+                "title": "Start",
+                "variables": [
+                    {"variable": "score", "type": "number", "label": "Score", "required": True, "options": []}
+                ],
+            },
+        },
+        {
+            "id": "node2",
+            "data": {
+                "type": "if-else",
+                "title": "Check",
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {
+                                "id": "c1",
+                                "varType": "number",
+                                "variable_selector": ["node1", "score"],
+                                "comparison_operator": "=",
+                                "value": "60",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+        {"id": "node3", "data": {"type": "template-transform", "title": "Pass", "template": "pass", "variables": []}},
+        {
+            "id": "node5",
+            "data": {
+                "type": "variable-aggregator",
+                "title": "Merge",
+                "output_type": "string",
+                "variables": [["node3", "output"]],
+            },
+        },
+        {"id": "node6", "data": {"type": "end", "title": "End", "outputs": [{"variable": "r", "value_selector": []}]}},
+    ],
+    "edges": [
+        {"id": "e1", "source": "node1", "target": "node2", "sourceHandle": "source"},
+        {"id": "e2", "source": "node2", "target": "node3", "sourceHandle": "true"},
+        {"id": "e4", "source": "node3", "target": "node5", "sourceHandle": "source"},
+        {"id": "e6", "source": "node5", "target": "node6", "sourceHandle": "source"},
+    ],
+}
+
+_REJOIN_DIAG = Diagnosis(culprit_node_id="node2", root_cause="the high branch is missing", severity="high")
+
+_UNFED_BRANCH_REPAIR = json.dumps(
+    {
+        "intents": [
+            {
+                "op": "create_node",
+                "args": {
+                    "node_type": "template-transform",
+                    "node_id": "node7",
+                    "config": {"title": "Excellent", "template": "excellent", "variables": []},
+                },
+            },
+            {"op": "connect", "args": {"from_node": "node2", "to_node": "node7", "source_handle": "true"}},
+            {"op": "connect", "args": {"from_node": "node7", "to_node": "node5"}},
+        ],
+        "risk": {"level": "low", "reason": "adds a branch", "has_external_side_effect": False},
+    }
+)
+
+_CLOBBERING_REPAIR = json.dumps(
+    {
+        "intents": [
+            {
+                "op": "set_node_config",
+                "args": {
+                    "node_id": "node2",
+                    "path": "cases",
+                    "value": [
+                        {
+                            "case_id": "excellent",
+                            "logical_operator": "and",
+                            "conditions": [
+                                {"variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": 90}
+                            ],
+                        },
+                        {
+                            "case_id": "true",
+                            "logical_operator": "and",
+                            "conditions": [
+                                {"variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": 60}
+                            ],
+                        },
+                    ],
+                },
+            }
+        ],
+        "risk": {"level": "low", "reason": "adds a case", "has_external_side_effect": False},
+    }
+)
+
+
+def test_a_repair_that_leaves_an_aggregator_unfed_surfaces_with_the_reason() -> None:
+    """The rejoin guard through Fix. Nothing is staged, and the reason names
+    the aggregator, the new node and the selector to append -- so the human at
+    the gate has something to act on instead of "no safe fix found"."""
+    m = _FakeInstance([_UNFED_BRANCH_REPAIR, _UNFED_BRANCH_REPAIR])
+
+    intents, risk = fix.propose_repair(m, _REJOIN_DIAG, _REJOIN_GRAPH)
+
+    assert intents == []
+    assert risk.level == "high"
+    assert "node5" in risk.reason
+    assert "node7" in risk.reason
+    assert '["node7", "output"]' in risk.reason
+
+
+def test_a_repair_that_clobbers_an_array_surfaces_with_the_reason() -> None:
+    """The identity guard through Fix, on the literal S6 rewrite: both cases
+    keep their ``case_id`` and the surviving condition's ``id`` is gone."""
+    m = _FakeInstance([_CLOBBERING_REPAIR, _CLOBBERING_REPAIR])
+
+    intents, risk = fix.propose_repair(m, _REJOIN_DIAG, _REJOIN_GRAPH)
+
+    assert intents == []
+    assert "node2" in risk.reason
+    assert "c1" in risk.reason
+
+
+def test_a_purely_structural_refusal_keeps_the_generic_surface_reason() -> None:
+    """The distinction round 2 established, in the one place Fix has it: only a
+    would-run-wrong verdict replaces the surface text. A structural refusal --
+    which DROPPED its own intent and says nothing about what remains -- still
+    ends at the same generic "no safe fix" the gate has always shown."""
+    ghost = json.dumps(
+        {
+            "intents": [{"op": "set_node_config", "args": {"node_id": "ghost", "path": "code", "value": "x"}}],
+            "risk": {"level": "low", "reason": "r", "has_external_side_effect": False},
+        }
+    )
+    m = _FakeInstance([ghost, ghost])
+
+    intents, risk = fix.propose_repair(m, _DIAG, _RG)
+
+    assert intents == []
+    assert risk.reason.startswith("No safe automatic fix found")
+    assert "node5" not in risk.reason
+
+
+def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal() -> None:
+    """The corrective re-prompt still does its job: a second attempt that
+    extends the aggregator is a real fix and is staged."""
+    rejoined = json.dumps(
+        {
+            "intents": [
+                {
+                    "op": "create_node",
+                    "args": {
+                        "node_type": "template-transform",
+                        "node_id": "node7",
+                        "config": {"title": "Excellent", "template": "excellent", "variables": []},
+                    },
+                },
+                {"op": "connect", "args": {"from_node": "node2", "to_node": "node7", "source_handle": "true"}},
+                {"op": "connect", "args": {"from_node": "node7", "to_node": "node5"}},
+                {
+                    "op": "set_node_config",
+                    "args": {
+                        "node_id": "node5",
+                        "path": "variables",
+                        "value": [["node3", "output"], ["node7", "output"]],
+                    },
+                },
+            ],
+            "risk": {"level": "low", "reason": "adds a branch", "has_external_side_effect": False},
+        }
+    )
+    m = _FakeInstance([_UNFED_BRANCH_REPAIR, rejoined])
+
+    intents, risk = fix.propose_repair(m, _REJOIN_DIAG, _REJOIN_GRAPH)
+
+    assert len(intents) == 4
+    assert risk.level == "high"  # structural, so it goes to the approval gate -- but it IS staged
+
+
+def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy() -> None:
+    """Fix only knows diagnosis/config; it must retain known failure and fallback semantics."""
+
+    class RecordingInstance(_FakeInstance):
+        def invoke_llm(
+            self,
+            *,
+            prompt_messages: list[PromptMessage],
+            model_parameters: dict[str, object] | None = None,
+            stop: list[str] | None = None,
+            stream: bool = True,
+            **kwargs: object,
+        ) -> _Result:
+            self.messages = prompt_messages
+            return super().invoke_llm(
+                prompt_messages=prompt_messages, model_parameters=model_parameters, stop=stop, stream=stream, **kwargs
+            )
+
+    model = RecordingInstance(['{"intents": [], "risk": {"level": "low"}}'])
+    graph = deepcopy(_RG)
+    graph["nodes"][0]["data"]["error_strategy"] = "default-value"
+    diagnosis = Diagnosis(culprit_node_id="code1", root_cause="repair a missing import", severity="medium")
+
+    intents, _risk = fix.propose_repair(model, diagnosis, graph)
+
+    assert intents == []
+    user = str(model.messages[1].content)
+    config = json.loads(user.split("CULPRIT NODE CONFIG:\n", 1)[1].split("\n\nGRAPH:\n", 1)[0])
+    assert config["error_strategy"] == "default-value"
+    system = str(model.messages[0].content)
+    assert "stop-on-error" in system
+    assert "user or known config" in system
+    assert "Preserve existing error_strategy" in system
+    assert "explicitly requested fallback" in system
+
+
+def test_empty_repair_preserves_permission_reason_without_validation_or_retry() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    reason = "glm5.2 returned 403: permission required; no verified alternative is available."
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": {"level": "low", "reason": reason}})])
+    graph = deepcopy(_RG)
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _DIAG, graph)
+
+    assert intents == []
+    assert risk.reason == reason
+    assert risk.level == "high"
+    assert risk.has_external_side_effect is False
+    assert len(model.calls) == 1
+    assert graph == _RG
+    assert [record["code"] for record in records] == ["repair_not_proposed"]
+    assert reason not in json.dumps(records)
+
+
+def test_empty_repair_redacts_graph_and_runtime_secrets_before_bounding_reason() -> None:
+    from services.dify_builder import diagnostic_context
+
+    graph = deepcopy(_RG)
+    graph_secret = "graph-private-" + "g" * 2100
+    runtime_secret = "runtime-private-" + "r" * 2100
+    graph["nodes"][0]["data"]["api_key"] = graph_secret
+    failed_run = Run(error=f"token={runtime_secret}")
+    reason = f"403 permission denied {graph_secret} {runtime_secret} " + "detail " * 1000
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": {"reason": reason}})])
+
+    _, risk = fix.propose_repair(
+        model,
+        _DIAG,
+        graph,
+        redact_text=lambda text: diagnostic_context.redact_diagnostic_text(text, failed_run, graph, []),
+    )
+
+    assert risk.reason.startswith("403 permission denied __DIFY_BUILDER_REDACTED__ __DIFY_BUILDER_REDACTED__ detail")
+    assert len(risk.reason) <= 2000
+    assert "graph-private" not in risk.reason
+    assert "runtime-private" not in risk.reason
+
+
+def test_retry_empty_repair_preserves_reason_and_only_prior_actual_refusal() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    reason = "403 permission required; no safe graph repair is available."
+    model = _RecordingInstance([_operator_repair("=="), json.dumps({"intents": [], "risk": {"reason": reason}})])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert intents == []
+    assert risk.reason == reason
+    assert len(model.calls) == 2
+    assert [record["code"] for record in records] == ["validation_refused", "repair_not_proposed"]
+    assert records[0]["attempt"] == 1
+
+
+def test_defensive_nonempty_nonapplicable_verdict_is_not_refused_or_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.dify_builder import preflight
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    model = _RecordingInstance([_operator_repair("≥")])
+    monkeypatch.setattr(preflight, "vet_intents", lambda *_args, **_kwargs: preflight.VettedIntents([], [], []))
+    records = []
+    graph = deepcopy(_IF_ELSE_GRAPH)
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, risk = fix.propose_repair(model, _DIAG, graph)
+
+    assert intents == []
+    assert risk.level == "high"
+    assert len(model.calls) == 1
+    assert [record["code"] for record in records] == ["repair_not_applicable"]
+
+
+@pytest.mark.parametrize("payload", [{}, {"intents": None}, {"intents": [{}]}])
+def test_malformed_repair_is_schema_invalid_not_empty_proposal(payload: dict[str, object]) -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, _risk = fix.propose_repair(_RecordingInstance([json.dumps(payload)]), _DIAG, _RG)
+
+    assert intents == []
+    assert [record["code"] for record in records] == ["response_schema_invalid"]
+
+
+def test_rejected_nonempty_repair_remains_validation_refused() -> None:
+    from services.dify_builder import trace_diagnostics as diagnostics
+
+    model = _RecordingInstance([_operator_repair("=="), _operator_repair("==")])
+    records = []
+    with diagnostics.scope(records.append, "propose-repair"):
+        intents, _risk = fix.propose_repair(model, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
+
+    assert intents == []
+    assert len(model.calls) == 2
+    assert [record["code"] for record in records] == ["validation_refused", "validation_refused"]
+
+
+@pytest.mark.parametrize("risk_payload", [{}, {"reason": "   \n"}])
+def test_empty_repair_without_explanation_uses_existing_generic_reason(risk_payload: dict[str, str]) -> None:
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": risk_payload})])
+
+    intents, risk = fix.propose_repair(model, _DIAG, _RG)
+
+    assert intents == []
+    assert risk.reason == "No safe automatic fix found — try again or finish this session."
+    assert len(model.calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("graph_secret", "runtime_secret"),
+    [
+        ("graph-prefix", "graph-prefix-runtime-private-suffix"),
+        ("runtime-prefix-graph-private-suffix", "runtime-prefix"),
+    ],
+)
+def test_empty_repair_redacts_overlapping_credentials_with_complete_runtime_profile(
+    graph_secret: str, runtime_secret: str
+) -> None:
+    from services.dify_builder import diagnostic_context
+
+    graph = deepcopy(_RG)
+    graph["nodes"][0]["data"]["api_key"] = graph_secret
+    failed_run = Run(error=f"token={runtime_secret}")
+    reason = f"403 permission required: {graph_secret} {runtime_secret}"
+    model = _RecordingInstance([json.dumps({"intents": [], "risk": {"reason": reason}})])
+
+    _, risk = fix.propose_repair(
+        model,
+        _DIAG,
+        graph,
+        redact_text=lambda text: diagnostic_context.redact_diagnostic_text(text, failed_run, graph, []),
+    )
+
+    assert risk.reason == "403 permission required: __DIFY_BUILDER_REDACTED__ __DIFY_BUILDER_REDACTED__"

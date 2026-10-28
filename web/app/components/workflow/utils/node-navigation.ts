@@ -11,6 +11,7 @@ import type { Node, ReactFlowInstance } from 'reactflow'
 type NodeSelectionDetail = {
   nodeId: string
   focus?: boolean
+  shouldFocus?: () => boolean
 }
 
 /**
@@ -18,12 +19,17 @@ type NodeSelectionDetail = {
  * @param nodeId - The ID of the node to select
  * @param focus - Whether to focus/scroll to the node
  */
-export function selectWorkflowNode(nodeId: string, focus = false): void {
+export function selectWorkflowNode(
+  nodeId: string,
+  focus = false,
+  shouldFocus?: () => boolean,
+): void {
   // Create and dispatch a custom event for node selection
   const event = new CustomEvent('workflow:select-node', {
     detail: {
       nodeId,
       focus,
+      ...(shouldFocus && { shouldFocus }),
     },
   })
   document.dispatchEvent(event)
@@ -49,7 +55,7 @@ export function scrollToWorkflowNode(nodeId: string): void {
 export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) => void): () => void {
   // Event handler for node selection
   const handleNodeSelection = (event: CustomEvent<NodeSelectionDetail>) => {
-    const { nodeId, focus } = event.detail
+    const { nodeId, focus, shouldFocus } = event.detail
     if (nodeId) {
       // Select the node
       handleNodeSelect(nodeId)
@@ -58,7 +64,7 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
       if (focus) {
         // Use a small timeout to ensure node selection happens first
         setTimeout(() => {
-          scrollToWorkflowNode(nodeId)
+          if (!shouldFocus || shouldFocus()) scrollToWorkflowNode(nodeId)
         }, 100)
       }
     }

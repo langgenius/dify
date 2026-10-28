@@ -652,12 +652,18 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
     @staticmethod
     def insert_app_record(
-        tenant_id: str, params: CreateAppParams, account: Account, settings: AppCreationSettings, *, session: Session
+        tenant_id: str,
+        params: CreateAppParams,
+        account: Account,
+        settings: AppCreationSettings,
+        *,
+        name: str,
+        session: Session,
     ) -> App:
         """Persist the App aggregate and required records before any external creation hooks."""
         app_mode = AppMode.value_of(params.mode)
         app = App(**settings.app)
-        app.name = params.name
+        app.name = name
         app.description = params.description or ""
         app.mode = app_mode
         app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI

@@ -6,19 +6,63 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from typing import cast
 
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.db.session_factory import session_factory as default_session_factory
 from core.entities.model_entities import ModelStatus
+from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from models.model import App
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from runtime_contracts.builder.native.observation import (
+    NativeModelFailureCategory,
+    NativeModelFailureDiagnostic,
+    NativeModelFailureStage,
+)
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
+
+
+class NativeAgentModelDispatchError(BuilderExecutionPolicyError):
+    """Preserve the original native failure contract with fixed diagnostic facts."""
+
+    def __init__(self, diagnostic: NativeModelFailureDiagnostic) -> None:
+        self.diagnostic = diagnostic
+        super().__init__("native_agent_model_dispatch_failed")
+
+
+def _model_failure(stage: NativeModelFailureStage, error: Exception) -> NativeModelFailureDiagnostic:
+    from dify_agent.runtime.native_continuation import NativePolicyStopped
+
+    categories: dict[type[Exception], NativeModelFailureCategory] = {
+        QuotaExceededError: "quota_exceeded",
+        InvokeAuthorizationError: "authentication",
+        InvokeBadRequestError: "bad_request",
+        InvokeRateLimitError: "rate_limit",
+        InvokeConnectionError: "connection",
+        ConnectionError: "connection",
+        ConnectionRefusedError: "connection",
+        TimeoutError: "timeout",
+        InvokeServerUnavailableError: "service_unavailable",
+        ValidationError: "invalid_response",
+    }
+    category = categories.get(type(error), "internal_unknown")
+    if stage == "receipt_append" and type(error) is NativePolicyStopped:
+        category = "result_too_large"
+    return NativeModelFailureDiagnostic(stage=stage, category=category)
 
 
 class AgentLLMInnerServiceError(RuntimeError):
@@ -51,6 +95,23 @@ class AgentLLMInnerService:
         self._session_factory = session_factory or default_session_factory.create_session
 
     def prepare(self, request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
+        from services.dify_builder.native_testing.agent_bridge import require_agent_service_envelope
+
+        require_agent_service_envelope(request.native_dispatch)
+        if request.native_dispatch is not None:
+            from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+            from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
+
+            try:
+                agent_operations_for_ref(request.native_dispatch.ref).validate_model_request(request=request)
+                return self._prepare(request)
+            except BuilderExecutionPolicyError:
+                raise
+            except Exception:
+                raise BuilderExecutionPolicyError("native_agent_model_prepare_failed") from None
+        return self._prepare(request)
+
+    def _prepare(self, request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
         caller = request.caller
         target = request.target
         app = self._validate_app_tenant(app_id=caller.app_id, tenant_id=caller.tenant_id)
@@ -83,6 +144,33 @@ class AgentLLMInnerService:
         )
 
     def invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk]:
+        if prepared.request.native_dispatch is not None:
+            from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+            from services.dify_builder.native_testing.agent_operations import agent_operations_for_ref
+
+            envelope = prepared.request.native_dispatch
+            failure: NativeModelFailureDiagnostic | None = None
+
+            def observe_failure(stage: NativeModelFailureStage, error: Exception) -> None:
+                nonlocal failure
+                failure = _model_failure(stage, error)
+
+            try:
+                owner = agent_operations_for_ref(envelope.ref)
+                owner.validate_model_request(request=prepared.request)
+                yield from owner.invoke_model(
+                    envelope=envelope, invoke=lambda: self._invoke(prepared), on_failure=observe_failure
+                )
+            except Exception as error:
+                if failure is not None:
+                    raise NativeAgentModelDispatchError(failure) from None
+                if isinstance(error, BuilderExecutionPolicyError):
+                    raise
+                raise BuilderExecutionPolicyError("native_agent_model_dispatch_failed") from None
+            return
+        yield from self._invoke(prepared)
+
+    def _invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk]:
         request = prepared.request
         caller = request.caller
         target = request.target

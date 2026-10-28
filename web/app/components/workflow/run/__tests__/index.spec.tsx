@@ -148,6 +148,35 @@ describe('RunPanel', () => {
     })
   })
 
+  it('does not offer Fix from any tab of a failed historical run', async () => {
+    const user = userEvent.setup()
+    mockFetchRunDetail.mockResolvedValue(
+      createRunDetail({
+        id: 'failed-run-1',
+        status: 'failed',
+        error: 'Workflow failed',
+      }),
+    )
+
+    renderWorkflowComponent(
+      <RunPanel
+        runDetailUrl="/console/api/runs/failed-run-1"
+        tracingListUrl="/console/api/runs/failed-run-1/tracing"
+      />,
+    )
+
+    await screen.findByText('Workflow failed')
+    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'runLog.detail' }))
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.failed')
+    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+    await screen.findByText('Trace Node')
+    expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
+  })
+
   it('switches between detail, tracing, and result tabs with real child panels', async () => {
     const user = userEvent.setup()
     renderWorkflowComponent(

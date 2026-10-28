@@ -1,0 +1,94 @@
+import type { SessionView } from '../../dify-builder/types'
+import type { HeaderProps } from '@/app/components/workflow/header'
+import { screen } from '@testing-library/react'
+import { createStore, Provider } from 'jotai'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { difyBuilderSessionViewAtom } from '../../dify-builder/session/state'
+import WorkflowHeader from '../index'
+
+const mocks = vi.hoisted(() => ({
+  header: vi.fn(),
+  resetWorkflowVersionHistory: vi.fn(),
+}))
+
+vi.mock('@/app/components/workflow/header', () => ({
+  default: (props: HeaderProps) => {
+    mocks.header(props)
+    return props.normal?.controls?.showDifyBuilderButton ? (
+      <button type="button">Builder</button>
+    ) : null
+  },
+}))
+
+vi.mock('@/service/use-workflow', () => ({
+  useResetWorkflowVersionHistory: () => mocks.resetWorkflowVersionHistory,
+}))
+
+vi.mock('../chat-variable-trigger', () => ({
+  default: () => null,
+}))
+
+vi.mock('../features-trigger', () => ({
+  default: () => null,
+}))
+
+const renderHeader = (difyBuilderEnabled: boolean, sessionView: SessionView | null = null) => {
+  const store = createStore()
+  store.set(difyBuilderSessionViewAtom, sessionView)
+  const workflowStore = createWorkflowStore({})
+
+  return renderWithConsoleQuery(
+    <Provider store={store}>
+      <WorkflowContext value={workflowStore}>
+        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+          <WorkflowHeader />
+        </EditorResourceScope>
+      </WorkflowContext>
+    </Provider>,
+    { features: { dify_builder_enabled: difyBuilderEnabled } },
+  )
+}
+
+describe('WorkflowHeader', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should hide Builder while its feature is disabled', () => {
+    renderHeader(false)
+
+    expect(screen.queryByRole('button', { name: 'Builder' })).not.toBeInTheDocument()
+  })
+
+  it('should show Builder after its feature is enabled', () => {
+    renderHeader(true)
+
+    expect(screen.getByRole('button', { name: 'Builder' })).toBeInTheDocument()
+  })
+
+  it('should tell the shared header when an existing Builder session can be resumed', () => {
+    renderHeader(true, {
+      canvas_read_only: true,
+      conversation_last_seq: -1,
+      interrupted: true,
+      phase: 'publish',
+      run_status: 'processing',
+      reply_language: '',
+      session_id: 'session-1',
+      version: 1,
+    })
+
+    expect(mocks.header).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        normal: expect.objectContaining({
+          controls: expect.objectContaining({
+            hasDifyBuilderSession: true,
+          }),
+        }),
+      }),
+    )
+  })
+})

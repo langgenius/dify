@@ -1,0 +1,7 @@
+# Wheel hashes copied from api/uv.lock at c869b466ccf4e5b103225ba4003a53d82616e3f1.
+# CPython 3.13 (GIL), Linux manylinux aarch64/x86_64 only. No sdist fallback.
+Jinja2==3.1.6 \
+    --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
+MarkupSafe==3.0.3 \
+    --hash=sha256:133a43e73a802c5562be9bbcd03d090aa5a1fe899db609c29e8c8d815c5f6de6 \
+    --hash=sha256:ccfcd093f13f0f0b7fdd0f198b90053bf7b2f02a3927a30e63f3ccc9df56b676

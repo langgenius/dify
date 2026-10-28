@@ -1,8 +1,7 @@
 import type { EventEmitterValue } from '@/context/event-emitter'
 import type { WorkflowRunDetailResponse } from '@/models/log'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import { EventEmitter } from 'ahooks/lib/useEventEmitter'
-import { useReactFlow } from 'reactflow'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
@@ -111,14 +110,12 @@ describe('Record', () => {
       viewport: { x: 12, y: 24, zoom: 0.75 },
       expected: { x: 12, y: 24, zoom: 0.75 },
     },
-  ])('publishes the initialized run graph and restores $name', async ({ viewport, expected }) => {
+  ])('publishes the initialized run graph with $name', ({ viewport, expected }) => {
     const nodes = [createNode({ id: 'source' }), createNode({ id: 'target' })]
     const edges = [createEdge({ id: 'edge', source: 'source', target: 'target' })]
     const events: EventEmitterValue[] = []
     const eventEmitter = new EventEmitter<EventEmitterValue>()
-    let flow: ReturnType<typeof useReactFlow>
     function RunRecord() {
-      flow = useReactFlow()
       eventEmitter.useSubscription((event) => events.push(event))
       return <Record />
     }
@@ -150,9 +147,10 @@ describe('Record', () => {
             }),
           ],
           edges: [expect.objectContaining({ id: 'edge', source: 'source', target: 'target' })],
+          viewport: expected,
+          onApplied: expect.any(Function),
         },
       }),
     ])
-    await waitFor(() => expect(flow!.getViewport()).toEqual(expected))
   })
 })

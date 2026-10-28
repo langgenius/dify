@@ -742,9 +742,13 @@ class TestAppDslService:
             icon_type=IconType.EMOJI,
             icon="old-icon",
             icon_background="#111111",
+            enable_site=False,
+            enable_api=False,
             updated_by=None,
             updated_at=None,
         )
+        db_session_with_containers.add(app)
+        db_session_with_containers.flush()
         service = AppDslService(db_session_with_containers)
         updated = service._create_or_update_app(
             app=app,

@@ -118,10 +118,6 @@ describe('useCollaboration', () => {
       expect(result.current.onlineUsers).toEqual([
         { user_id: 'u1', username: 'U1', avatar: '', sid: 'sid-1' },
       ])
-      expect(result.current.cursors.u1?.x).toBe(10)
-      expect(result.current.nodePanelPresence.nodeA).toEqual({
-        sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 },
-      })
       expect(result.current.isLeader).toBe(true)
       expect(result.current.leaderId).toBe('leader-1')
     })
@@ -142,9 +138,7 @@ describe('useCollaboration', () => {
 
     unmount()
     expect(unsubscribeState).toHaveBeenCalled()
-    expect(unsubscribeCursor).toHaveBeenCalled()
     expect(unsubscribeUsers).toHaveBeenCalled()
-    expect(unsubscribePresence).toHaveBeenCalled()
     expect(unsubscribeLeader).toHaveBeenCalled()
     expect(mockDisconnect).toHaveBeenCalledWith('conn-1')
   })

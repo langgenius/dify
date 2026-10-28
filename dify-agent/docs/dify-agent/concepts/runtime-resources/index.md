@@ -230,3 +230,33 @@ See the [Shell module](../../user-manual/shell-layer/index.md) for request
 composition, the [Operations Guide](../../guide/index.md) for Local and E2B
 validation, and the [OpenShell guide](../../guide/openshell.md) for OpenShell
 configuration and validation.
+
+## Disposable native test resources
+
+Native Builder tests reserve one private allocation record on the stored
+invocation before physical allocation. The API pins an exact published config
+and immutable Home, reserves stable binding/workspace IDs under its root lock,
+then closes SQL before asking the local A7 supervisor to allocate the scope.
+Finalization creates ordinary ledger rows with Workflow-run ownership and a
+`native:<invocation>` scope key; it never attaches an account conversation or
+updates the saved Agent Soul/Home. Each child invocation owns a separate mutable
+Home and Workspace.
+
+The local supervisor owns enforced network, filesystem, process, cancellation
+and deadline limits. A `native:<scope>:<generation>` backend ref classifies that
+resource; it does not authorize access. Runtime acquisition also requires the
+installed stored-lineage callback and authenticated supervisor inspection.
+Unsupported backends refuse before allocation/bootstrap. An Agent server with
+no configured service Bearer token disables its native supervisor client for
+all routes and runtime consumers, including previously allocated refs.
+
+An uncertain allocation is reconciled only by inspecting its original scope,
+IDs and generation. Missing or expired scopes remain unavailable. Cleanup uses
+the same identities; a failed cleanup retains quarantined allocation metadata
+for retry and the supervisor's finite deadline remains in force. Native Home
+export and input/secret imports require explicit capability owners; the generic
+Home snapshot endpoint refuses native exports.
+
+Public native admission remains disabled until the complete orchestration and
+runtime integration gates pass. Scope DTOs and component tests alone do not
+qualify a deployment.

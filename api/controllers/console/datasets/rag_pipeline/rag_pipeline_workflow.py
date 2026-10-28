@@ -47,7 +47,6 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import WorkflowAppBlockingResponse
 from core.entities.knowledge_entities import PipelineGenerateResponse
@@ -83,6 +82,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 from services.workflow_ref_service import WorkflowRefService
+from services.workflow_runtime.pipeline_generator import PipelineGenerator
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)

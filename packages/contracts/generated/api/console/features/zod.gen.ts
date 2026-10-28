@@ -113,6 +113,7 @@ export const zFeatureModel = z.object({
   apps: zLimitationModel.default({ limit: 10, size: 0 }),
   billing: zBillingModel.default({ subscription: { interval: '', plan: 'sandbox' } }),
   can_replace_logo: z.boolean().default(false),
+  dify_builder_enabled: z.boolean().default(false),
   documents_upload_quota: zLimitationModel.default({ limit: 50, size: 0 }),
   education: zEducationModel.default({ activated: false, enabled: false }),
   enable_skill: z.boolean().default(true),

@@ -35,6 +35,7 @@ NON_CORE_COVERAGE_ALLOWLIST = frozenset(
         "api/migrations/versions/2026_08_17_1200-f3a8c1d7e920_add_knowledge_fs_upgrade_jobs.py",
         "api/migrations/versions/2026_08_18_1200-e6b4a2c9d731_limit_active_knowledge_fs_upgrades.py",
         "api/migrations/versions/2026_10_21_1300-3edd6cd27f54_limit_active_knowledge_fs_upgrades_on_mysql.py",
+        "api/migrations/versions/2026_10_26_1800-db7f42c9a801_merge_builder_and_knowledge_fs_heads.py",
     }
 )
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")

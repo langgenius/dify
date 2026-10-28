@@ -2,7 +2,7 @@ import json
 import logging
 import mimetypes
 import time
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 import sqlalchemy as sa
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 from yarl import URL
 
@@ -18,10 +18,17 @@ import contexts
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.dify_builder.models import Actor
+from core.dify_builder.real_call_consent import (
+    EXPECTED_PLUGIN_IDENTIFIER_HEADER,
+    ConfirmedToolGuard,
+    validate_confirmed_dispatch_headers,
+)
 from core.entities import PluginCredentialType
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.helper.provider_cache import ToolProviderCredentialsCache
+from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool import Tool
@@ -43,7 +50,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
-from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -59,11 +66,14 @@ from graphon.runtime import VariablePool
 from graphon.variables.template_resolution import convert_template
 from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from runtime_contracts.builder.execution import (
+    BuilderExecutionPolicyError,
+)
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from runtime_contracts.workflow_driver import WorkflowRunDriver
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +101,18 @@ class WorkflowToolRuntimeSpec(Protocol):
 
     @property
     def credential_id(self) -> str | None: ...
+
+
+class WorkflowToolRuntimeKwargs(TypedDict, total=False):
+    """Internal optional native draft bindings; ordinary callers omit them."""
+
+    draft_tool_workflow_id: str
+    builder_expected_credential_fingerprint: str
+    builder_credential_refreshed: Callable[[str], None] | None
+
+
+class _DraftToolRuntimeKwargs(WorkflowToolRuntimeKwargs, total=False):
+    draft_tool_app_id: str
 
 
 class ToolManager:
@@ -195,6 +217,13 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
+        *,
+        confirmed_guard: ConfirmedToolGuard | None = None,
+        draft_tool_workflow_id: str | None = None,
+        builder_expected_credential_fingerprint: str | None = None,
+        builder_credential_refreshed: Callable[[str], None] | None = None,
+        draft_tool_app_id: str | None = None,
+        json_provider_validator: Callable[[object, object], None] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
     ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
         """
@@ -208,9 +237,56 @@ class ToolManager:
         :param invoke_from: invoke from
         :param tool_invoke_from: the tool invoke from
         :param credential_id: the credential id
+        :param confirmed_guard: ``None`` for every ordinary native call (the
+            default keeps them unchanged); a consented Builder call takes the
+            separate confirmed branch before any credential, config or schema work
+
+        :param draft_tool_workflow_id: internal native-factory workflow scope;
+            ordinary debugger drafts recheck setup at Tool resolution. Published
+            children keep delegation even if debugger invocation is inherited.
+        :param draft_tool_app_id: actual native app owner for that workflow scope
+        :param json_provider_validator: trusted JSON service callback checking the
+            actual native controller and tool before any credential branch
 
         :return: the tool
         """
+        if json_provider_validator is not None and (
+            confirmed_guard is not None
+            or draft_tool_workflow_id is not None
+            or draft_tool_app_id is not None
+            or credential_id is not None
+            or provider_type != ToolProviderType.BUILT_IN
+        ):
+            raise BuilderExecutionPolicyError("invalid_json_tool_configuration")
+        if confirmed_guard is not None:
+            return cls._get_confirmed_tool_runtime(
+                confirmed_guard,
+                provider_type=provider_type,
+                provider_id=provider_id,
+                tool_name=tool_name,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                invoke_from=invoke_from,
+                tool_invoke_from=tool_invoke_from,
+                credential_id=credential_id,
+            )
+        draft_selection = None
+        if provider_type == ToolProviderType.BUILT_IN and draft_tool_workflow_id is not None:
+            from services.tools.draft_tool_setup import prepare_draft_tool_runtime_selection
+
+            draft_selection = prepare_draft_tool_runtime_selection(
+                tenant_id=tenant_id,
+                app_id=draft_tool_app_id or "",
+                workflow_id=draft_tool_workflow_id,
+                session_maker=sessionmaker(bind=db.engine),
+                actor_id=user_id,
+                invoke_from=invoke_from,
+                provider=provider_id,
+                action=tool_name,
+                credential_id=credential_id,
+                expected_credential_fingerprint=builder_expected_credential_fingerprint,
+                on_credential_refreshed=builder_credential_refreshed,
+            )
         match provider_type:
             case ToolProviderType.BUILT_IN:
                 provider_controller = cls.get_builtin_provider(provider_id, tenant_id)
@@ -219,7 +295,12 @@ class ToolManager:
                 if not builtin_tool:
                     raise ToolProviderNotFoundError(f"builtin tool {tool_name} not found")
 
-                if not provider_controller.need_credentials:
+                if json_provider_validator is not None:
+                    # The service checks the actual (possibly cached) controller and
+                    # returned tool before native credential selection or validation.
+                    json_provider_validator(provider_controller, builtin_tool)
+
+                if json_provider_validator is not None or not provider_controller.need_credentials:
                     return builtin_tool.fork_tool_runtime(
                         runtime=ToolRuntime(
                             tenant_id=tenant_id,
@@ -229,144 +310,18 @@ class ToolManager:
                             tool_invoke_from=tool_invoke_from,
                         )
                     )
-                builtin_provider = None
-                if isinstance(provider_controller, PluginToolProviderController):
-                    provider_id_entity = ToolProviderID(provider_id)
-                    if is_valid_uuid(credential_id):
-                        try:
-                            builtin_provider_stmt = select(BuiltinToolProvider).where(
-                                BuiltinToolProvider.tenant_id == tenant_id,
-                                BuiltinToolProvider.id == credential_id,
-                            )
-                            builtin_provider = db.session.scalar(builtin_provider_stmt)
-                        except Exception as e:
-                            builtin_provider = None
-                            logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
-                        if builtin_provider is None:
-                            raise ToolProviderCredentialValidationError(
-                                f"Tool credential {credential_id} has been deleted. "
-                                "Select or authorize another credential."
-                            )
-
-                    if builtin_provider is None:
-                        with Session(db.engine) as session:
-                            builtin_provider = session.scalar(
-                                sa.select(BuiltinToolProvider)
-                                .where(
-                                    BuiltinToolProvider.tenant_id == tenant_id,
-                                    (BuiltinToolProvider.provider == str(provider_id_entity))
-                                    | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
-                                )
-                                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                            )
-                        if builtin_provider is None:
-                            raise ToolProviderCredentialValidationError(
-                                f"No workspace credential is configured for tool provider {provider_id}. "
-                                "Authorize the provider or select a credential."
-                            )
-                else:
-                    builtin_provider = db.session.scalar(
-                        select(BuiltinToolProvider)
-                        .where(
-                            BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id)
-                        )
-                        .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                        .limit(1)
-                    )
-
-                    if builtin_provider is None:
-                        raise ToolProviderCredentialValidationError(
-                            f"No credential is configured for built-in tool provider {provider_id}. "
-                            "Authorize the provider or select a credential."
-                        )
-
-                from core.helper.credential_utils import runtime_check_credential_policy_compliance
-
-                runtime_check_credential_policy_compliance(
-                    credential_id=builtin_provider.id,
-                    provider=provider_id,
-                    credential_type=PluginCredentialType.TOOL,
-                    check_existence=False,
-                )
-
-                encrypter, cache = create_provider_encrypter(
-                    tenant_id=tenant_id,
-                    config=[
-                        x.to_basic_provider_config()
-                        for x in provider_controller.get_credentials_schema_by_type(builtin_provider.credential_type)
-                    ],
-                    cache=ToolProviderCredentialsCache(
-                        tenant_id=tenant_id, provider=provider_id, credential_id=builtin_provider.id
-                    ),
-                )
-
-                decrypted_credentials: Mapping[str, Any] = encrypter.decrypt(builtin_provider.credentials)
-
-                if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
-                    # TODO: circular import
-                    from core.plugin.impl.oauth import OAuthHandler
-                    from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-
-                    tool_provider = ToolProviderID(provider_id)
-                    provider_name = tool_provider.provider_name
-                    redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
-                    plugin_unique_identifier = (
-                        provider_controller.plugin_unique_identifier
-                        if isinstance(provider_controller, PluginToolProviderController)
-                        else None
-                    )
-                    system_credentials = BuiltinToolManageService.get_oauth_client(
-                        tenant_id,
-                        provider_id,
-                        provider_controller=(
-                            provider_controller
-                            if isinstance(provider_controller, PluginToolProviderController)
-                            else None
-                        ),
-                    )
-                    if system_credentials is not None:
-                        plugin_unique_identifier = system_credentials.plugin_unique_identifier
-
-                    oauth_handler = OAuthHandler()
-                    try:
-                        refreshed_credentials = oauth_handler.refresh_credentials(
-                            tenant_id=tenant_id,
-                            user_id=builtin_provider.user_id,
-                            plugin_id=tool_provider.plugin_id,
-                            provider=provider_name,
-                            redirect_uri=redirect_uri,
-                            system_credentials=(
-                                dict(system_credentials.credentials) if system_credentials is not None else {}
-                            ),
-                            plugin_unique_identifier=plugin_unique_identifier,
-                            credentials=decrypted_credentials,
-                        )
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed to refresh OAuth credentials for tool provider %s", provider_id, exc_info=True
-                        )
-                        raise ToolProviderCredentialValidationError(
-                            f"OAuth credential for tool provider {provider_id} could not be refreshed. "
-                            "Reauthorize or select another credential."
-                        ) from exc
-                    # update the credentials
-                    builtin_provider.encrypted_credentials = json.dumps(
-                        encrypter.encrypt(refreshed_credentials.credentials)
-                    )
-                    builtin_provider.expires_at = refreshed_credentials.expires_at
-                    db.session.commit()
-                    decrypted_credentials = refreshed_credentials.credentials
-                    cache.delete()
+                from services.tools.ordinary_tool_credentials import resolve_ordinary_tool_credentials
 
                 return builtin_tool.fork_tool_runtime(
-                    runtime=ToolRuntime(
+                    runtime=resolve_ordinary_tool_credentials(
+                        provider_controller=provider_controller,
+                        provider_id=provider_id,
                         tenant_id=tenant_id,
                         user_id=user_id,
-                        credentials=dict(decrypted_credentials),
-                        credential_type=builtin_provider.credential_type,
-                        runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
+                        credential_id=credential_id,
+                        draft_selection=draft_selection,
                     )
                 )
 
@@ -414,13 +369,22 @@ class ToolManager:
             case ToolProviderType.APP:
                 raise NotImplementedError("app provider not implemented")
             case ToolProviderType.PLUGIN:
-                plugin_tool = cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
-                runtime = getattr(plugin_tool, "runtime", None)
-                if runtime is not None:
-                    runtime.user_id = user_id
-                    runtime.invoke_from = invoke_from
-                    runtime.tool_invoke_from = tool_invoke_from
-                return plugin_tool
+                from services.tools.ordinary_tool_credentials import resolve_ordinary_tool_credentials
+
+                plugin_controller = cls.get_plugin_provider(provider_id, tenant_id)
+                plugin_tool = plugin_controller.get_tool(tool_name)
+                return plugin_tool.fork_tool_runtime(
+                    runtime=resolve_ordinary_tool_credentials(
+                        provider_controller=plugin_controller,
+                        provider_id=provider_id,
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                        credential_id=credential_id,
+                        draft_selection=None,
+                    )
+                )
             case ToolProviderType.MCP:
                 mcp_tool = cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
                 runtime = getattr(mcp_tool, "runtime", None)
@@ -433,6 +397,175 @@ class ToolManager:
                 raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
             case _:
                 raise ToolProviderNotFoundError(f"provider type {provider_type} not found")
+
+    @classmethod
+    def _get_confirmed_tool_runtime(
+        cls,
+        guard: ConfirmedToolGuard,
+        *,
+        provider_type: ToolProviderType,
+        provider_id: str,
+        tool_name: str,
+        tenant_id: str,
+        user_id: str | None,
+        invoke_from: InvokeFrom,
+        tool_invoke_from: ToolInvokeFrom,
+        credential_id: str | None,
+    ) -> PluginTool:
+        """One consented builtin plugin Tool bound to its exact explicit credential.
+
+        Unlike the ordinary branch this never reads the workspace default,
+        validates credentials, decrypts tool configuration or uses the ordinary
+        credential cache. The private credential/client snapshot is read in one
+        short session closed before compliance, decryption, refresh or dispatch.
+        A due token is refreshed at most once, only after the guard spends the
+        refresh phase, and the refreshed ciphertext is committed by the guard's
+        CAS before the ordinary cache is invalidated (outside SQL, as native
+        refresh does). A refresh that is not recorded leaves its auth effect
+        unknown and blocks the business phase. Refusals raise
+        ``BuilderExecutionPolicyError`` without native text; nothing is retried.
+        """
+        from core.helper.credential_utils import runtime_check_credential_policy_compliance
+        from core.plugin.impl.oauth import OAuthHandler
+        from core.plugin.plugin_service import PluginService
+        from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
+        context = guard.binding.context
+        if tenant_id != context.tenant_id:
+            raise BuilderExecutionPolicyError("execution_owner_mismatch")
+        if provider_type != ToolProviderType.BUILT_IN:
+            raise BuilderExecutionPolicyError("unsupported_action")
+        if credential_id is None or not is_valid_uuid(credential_id):
+            raise BuilderExecutionPolicyError("credential_required")
+
+        headers = validate_confirmed_dispatch_headers(guard.dispatch_headers())
+        artifact = headers[EXPECTED_PLUGIN_IDENTIFIER_HEADER]
+        try:
+            controller = cls.get_builtin_provider(provider_id, tenant_id)
+            tool = controller.get_tool(tool_name) if isinstance(controller, PluginToolProviderController) else None
+        except Exception:
+            # Daemon/transport text may echo provider data.
+            raise BuilderExecutionPolicyError("installed_tool_unavailable") from None
+        if (
+            not isinstance(controller, PluginToolProviderController)
+            or tool is None
+            or not controller.need_credentials
+            or controller.plugin_unique_identifier != artifact
+            or tool.plugin_unique_identifier != artifact
+        ):
+            raise BuilderExecutionPolicyError("installed_tool_unavailable")
+        # Static declaration only: a dynamic schema would send credentials to the daemon before consent.
+        if tool.entity.has_runtime_parameters:
+            raise BuilderExecutionPolicyError("unsupported_tool_configuration")
+        try:
+            # Server-resolved evidence selects the same OAuth client the consent bound.
+            verified = PluginService.is_plugin_verified(tenant_id, artifact) is True
+        except Exception:
+            raise BuilderExecutionPolicyError("installed_tool_unavailable") from None
+
+        selection = BuiltinToolManageService.load_builder_credential(
+            actor=Actor(account_id=context.actor_id, tenant_id=tenant_id),
+            provider_id=provider_id,
+            credential_id=credential_id,
+            verified_plugin=verified,
+        )
+        snapshot = selection.snapshot
+        # Admit exactly the selected detached snapshot against the claimed grant before any
+        # compliance, decryption, refresh or dispatch; later phases use this same snapshot.
+        BuiltinToolManageService.validate_builder_credential_snapshot(
+            binding=guard.binding, reference=snapshot.reference
+        )
+        try:
+            runtime_check_credential_policy_compliance(
+                credential_id=credential_id,
+                provider=provider_id,
+                credential_type=PluginCredentialType.TOOL,
+                check_existence=False,
+            )
+        except BuilderExecutionPolicyError:
+            raise
+        except Exception:
+            raise BuilderExecutionPolicyError("credential_policy_refused") from None
+
+        try:
+            credential_type = CredentialType.of(snapshot.reference.credential_type)
+            stored = json.loads(snapshot.encrypted_credentials) if snapshot.encrypted_credentials else {}
+        except ValueError:
+            raise BuilderExecutionPolicyError("credential_reference_unavailable") from None
+        if not isinstance(stored, dict):
+            raise BuilderExecutionPolicyError("credential_reference_unavailable")
+        encrypter, _ = create_provider_encrypter(
+            tenant_id=tenant_id,
+            config=[x.to_basic_provider_config() for x in controller.get_credentials_schema_by_type(credential_type)],
+            cache=NoOpProviderCredentialCache(),
+        )
+        credentials: Mapping[str, Any] = encrypter.decrypt(stored)
+
+        expires_at = snapshot.reference.expires_at
+        if expires_at != -1 and (expires_at - 60) < int(time.time()):
+            tool_provider = ToolProviderID(provider_id)
+            system_credentials = BuiltinToolManageService.decrypt_builder_oauth_client(
+                tenant_id=tenant_id, provider_controller=controller, client=snapshot.client
+            )
+            guard.before_refresh()
+            recorded = False
+            try:
+                refreshed = OAuthHandler().refresh_credentials(
+                    tenant_id=tenant_id,
+                    user_id=selection.owner_user_id,
+                    plugin_id=tool_provider.plugin_id,
+                    provider=tool_provider.provider_name,
+                    redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback",
+                    system_credentials=system_credentials,
+                    credentials=credentials,
+                    confirmed_dispatch_headers=headers,
+                )
+                guard.persist_refresh(json.dumps(encrypter.encrypt(refreshed.credentials)), refreshed.expires_at)
+                recorded = True
+            except Exception as error:
+                reason = error.reason_code if isinstance(error, BuilderExecutionPolicyError) else "refresh_failed"
+                raise BuilderExecutionPolicyError(reason) from None
+            finally:
+                if not recorded:
+                    cls._finish_without_business(guard)
+            # The CAS committed; invalidate the ordinary cache outside SQL exactly as native refresh does.
+            try:
+                ToolProviderCredentialsCache(
+                    tenant_id=tenant_id, provider=provider_id, credential_id=credential_id
+                ).delete()
+            except Exception:
+                # The refreshed row stays committed; the grant closes as unknown before any
+                # business dispatch, without retrying, echoing or logging the cache error.
+                cls._finish_without_business(guard)
+                raise BuilderExecutionPolicyError("credential_cache_unavailable") from None
+            credentials = refreshed.credentials
+
+        return PluginTool(
+            entity=tool.entity,
+            runtime=ToolRuntime(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                credentials=dict(credentials),
+                credential_type=credential_type,
+                runtime_parameters={},
+                invoke_from=invoke_from,
+                tool_invoke_from=tool_invoke_from,
+            ),
+            tenant_id=tool.tenant_id,
+            icon=tool.icon,
+            plugin_unique_identifier=tool.plugin_unique_identifier,
+            confirmed_guard=guard,
+        )
+
+    @staticmethod
+    def _finish_without_business(guard: ConfirmedToolGuard) -> None:
+        """Close a grant whose refresh phase ended without any business dispatch as unknown."""
+        try:
+            guard.finish_stream(complete=False, declared_failure=False)
+        except Exception as error:
+            # The grant stays unresolved for the Run owner; never echo native text.
+            reason = error.reason_code if isinstance(error, BuilderExecutionPolicyError) else type(error).__name__
+            logger.warning("Confirmed refresh outcome was not saved: %s", reason)
 
     @classmethod
     def get_agent_tool_runtime(
@@ -496,12 +629,44 @@ class ToolManager:
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
+        *,
+        confirmed_guard: ConfirmedToolGuard | None = None,
+        draft_tool_workflow_id: str | None = None,
+        builder_expected_credential_fingerprint: str | None = None,
+        builder_credential_refreshed: Callable[[str], None] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
         workflow_tool_definition: WorkflowTool | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
+
+        ``confirmed_guard`` is ``None`` for every ordinary workflow node. A
+        consented Builder node converts and decrypts no tool configuration: its
+        literal parameters arrive only with the node's own invocation, where the
+        guard checks the complete final envelope. ``draft_tool_workflow_id``
+        comes only from the ordinary native node factory; it never changes the
+        confirmed early branch or grants authority from graph/client markers.
         """
+        if confirmed_guard is not None:
+            return cls.get_tool_runtime(
+                provider_type=workflow_tool.provider_type,
+                provider_id=workflow_tool.provider_id,
+                tool_name=workflow_tool.tool_name,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                invoke_from=invoke_from,
+                tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                credential_id=workflow_tool.credential_id,
+                confirmed_guard=confirmed_guard,
+            )
+
+        draft_options: _DraftToolRuntimeKwargs = {}
+        if builder_expected_credential_fingerprint is not None:
+            draft_options["builder_expected_credential_fingerprint"] = builder_expected_credential_fingerprint
+            draft_options["builder_credential_refreshed"] = builder_credential_refreshed
+        if draft_tool_workflow_id is not None:
+            draft_options["draft_tool_workflow_id"] = draft_tool_workflow_id
+            draft_options["draft_tool_app_id"] = app_id
 
         if workflow_tool_definition is None:
             tool_runtime = cls.get_tool_runtime(
@@ -514,6 +679,7 @@ class ToolManager:
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 credential_id=workflow_tool.credential_id,
                 execution_driver=execution_driver,
+                **draft_options,
             )
         else:
             tool_runtime = workflow_tool_definition.fork_tool_runtime(

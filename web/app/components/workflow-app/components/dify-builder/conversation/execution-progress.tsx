@@ -1,0 +1,132 @@
+import type {
+  ExecutionActivity,
+  ExecutionProgress as ExecutionProgressData,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useState } from 'react'
+import { useBuilderText } from '../copy/use-builder-text'
+
+const ActivityIcon = ({ state }: { state: ExecutionActivity['state'] }) => (
+  <span
+    aria-hidden
+    className={cn(
+      'size-3.5 shrink-0 text-text-quaternary',
+      state === 'active' &&
+        'i-ri-loader-4-line animate-spin text-text-accent motion-reduce:animate-none',
+      state === 'done' && 'i-ri-check-line text-text-success',
+      state === 'failed' && 'i-ri-close-line text-text-destructive',
+      state === 'stopped' && 'i-ri-subtract-line',
+    )}
+  />
+)
+
+const ActivityRow = ({
+  activity,
+  renderText,
+}: {
+  activity: ExecutionActivity
+  renderText: ReturnType<typeof useBuilderText>['renderText']
+}) => (
+  <div
+    className={cn(
+      'flex min-h-5 items-center gap-1.5 text-xs text-text-tertiary',
+      activity.state === 'active' && 'text-text-secondary',
+      activity.state === 'failed' && 'text-text-destructive',
+    )}
+  >
+    <ActivityIcon state={activity.state} />
+    <span>{renderText(activity.label)}</span>
+  </div>
+)
+
+const ActivityList = ({
+  activities,
+  renderText,
+}: {
+  activities: ExecutionActivity[]
+  renderText: ReturnType<typeof useBuilderText>['renderText']
+}) => {
+  const activityIds = new Set(activities.map((activity) => activity.id))
+  const childrenByParent = new Map<string, ExecutionActivity[]>()
+  for (const activity of activities) {
+    if (!activity.parent_id || !activityIds.has(activity.parent_id)) continue
+    const siblings = childrenByParent.get(activity.parent_id) ?? []
+    siblings.push(activity)
+    childrenByParent.set(activity.parent_id, siblings)
+  }
+  const roots = activities.filter(
+    (activity) => !activity.parent_id || !activityIds.has(activity.parent_id),
+  )
+
+  return (
+    <ol className="ms-1.75 space-y-1 border-s border-divider-subtle py-1 ps-4.75">
+      {roots.map((activity) => {
+        const children = childrenByParent.get(activity.id) ?? []
+        return (
+          <li key={activity.id}>
+            <ActivityRow renderText={renderText} activity={activity} />
+            {children.length > 0 && (
+              <ol className="ms-1.75 mt-1 space-y-1 border-s border-divider-subtle ps-4.75">
+                {children.map((child) => (
+                  <li key={child.id}>
+                    <ActivityRow renderText={renderText} activity={child} />
+                  </li>
+                ))}
+              </ol>
+            )}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+export const ExecutionProgress = memo(
+  ({
+    execution,
+    replyLanguage,
+  }: {
+    execution?: ExecutionProgressData | null
+    replyLanguage?: string
+  }) => {
+    const { renderText } = useBuilderText(replyLanguage)
+    const [open, setOpen] = useState(false)
+    const activities = execution?.activities ?? []
+    if (!execution || activities.length === 0) return null
+
+    let summaryActivity = activities.at(-1)
+    for (const activity of activities) {
+      if (activity.state === 'active') summaryActivity = activity
+    }
+    if (!activities.some((activity) => activity.state === 'active')) {
+      summaryActivity =
+        activities.find((activity) => activity.state === 'failed') ?? summaryActivity
+    }
+
+    return (
+      <details
+        aria-label={renderText(summaryActivity?.label)}
+        className="group min-h-8"
+        open={open}
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+      >
+        <summary className="flex h-8 cursor-pointer list-none items-center gap-2 text-[13px] leading-4 font-medium text-text-tertiary outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid">
+          <ActivityIcon state={summaryActivity?.state ?? 'stopped'} />
+          <span
+            role={execution.status === 'running' ? 'status' : undefined}
+            aria-live={execution.status === 'running' ? 'polite' : undefined}
+            aria-atomic={execution.status === 'running' ? 'true' : undefined}
+          >
+            {renderText(summaryActivity?.label)}
+          </span>
+          <span className="grow" />
+          <span
+            aria-hidden
+            className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90 motion-reduce:transition-none [&:dir(rtl)]:-scale-x-100 [&:dir(rtl)]:group-open:-rotate-90"
+          />
+        </summary>
+        {open && <ActivityList renderText={renderText} activities={activities} />}
+      </details>
+    )
+  },
+)

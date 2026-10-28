@@ -1,0 +1,182 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
+import type { SessionRunEvents } from '../session/types'
+import type { DifyBuilderCanvasSnapshot } from '../utils'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useStore as useAtomStore } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
+import { useHydrateAtoms } from 'jotai/utils'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
+import { difyBuilderSessionScopedAtoms } from '../session/state'
+import { useDifyBuilderSessionController } from '../session/use-session-controller'
+import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
+import { DifyBuilderCanvasLockCleanup } from './canvas-sync'
+import { DifyBuilderCreationStart } from './creation-start'
+import { DifyBuilderSessionPersistence } from './session-persistence'
+import { getSessionStorageKey } from './session-storage'
+import { useDifyBuilderCanvasEvents } from './use-canvas-events'
+import { useDifyBuilderCanvasRefresh } from './use-canvas-refresh'
+import { useDifyBuilderRunEvents } from './use-run-events'
+
+type DifyBuilderProviderProps = {
+  appId?: string
+  canEdit: boolean
+  canStartCreation?: boolean
+  children: ReactNode
+  getCanvasSnapshot: () => DifyBuilderCanvasSnapshot
+  onRefreshCanvas: (shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>
+  onSyncDraft: (saveDraft: boolean, signal: AbortSignal) => Promise<void>
+  tenantId?: string
+  userId?: string
+}
+
+const DifyBuilderProviderContent = ({
+  appId,
+  canEdit,
+  canStartCreation = false,
+  children,
+  getCanvasSnapshot,
+  onRefreshCanvas,
+  onSyncDraft,
+  tenantId,
+  userId,
+}: DifyBuilderProviderProps) => {
+  const { data: enabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.dify_builder_enabled,
+    }),
+  )
+  const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
+  const setPublishedAt = useStore((state) => state.setPublishedAt)
+  const setLastPublishedHasUserInput = useStore((state) => state.setLastPublishedHasUserInput)
+  const queryClient = useQueryClient()
+  const publicationRequestIdRef = useRef(0)
+
+  useEffect(
+    () => () => {
+      publicationRequestIdRef.current += 1
+    },
+    [appId],
+  )
+
+  const onPublishWorkflow = useCallback(() => {
+    if (!appId) return
+    const requestId = ++publicationRequestIdRef.current
+    const publishedQuery = appWorkflowQueryOptions(appId)
+    void queryClient
+      .cancelQueries({ queryKey: publishedQuery.queryKey, exact: true })
+      .then(() => {
+        if (requestId !== publicationRequestIdRef.current) return null
+        return queryClient.query({ ...publishedQuery, staleTime: 0 })
+      })
+      .then((publishedWorkflow) => {
+        if (requestId !== publicationRequestIdRef.current || !publishedWorkflow) return
+        setPublishedAt(publishedWorkflow.created_at)
+        const graph = publishedWorkflow.graph
+        const nodes = Array.isArray(graph?.nodes) ? (graph.nodes as Node[]) : []
+        const edges = Array.isArray(graph?.edges) ? (graph.edges as Edge[]) : []
+        const startNodeIds = nodes
+          .filter((node) => node?.data?.type === BlockEnum.Start)
+          .map((node) => node.id)
+        setLastPublishedHasUserInput(edges.some((edge) => startNodeIds.includes(edge.source)))
+      })
+      .catch((error) => {
+        console.warn('[dify-builder] refresh published workflow failed', error)
+      })
+  }, [appId, queryClient, setLastPublishedHasUserInput, setPublishedAt])
+
+  const onResetPublication = useCallback(() => {
+    publicationRequestIdRef.current += 1
+  }, [])
+
+  const runEvents = useDifyBuilderRunEvents(appId)
+  const store = useAtomStore()
+  const onCanvasRefreshed = useCallback(() => {
+    store.get(difyBuilderRuntimeAtom)?.session.onCanvasRefreshed()
+  }, [store])
+  const canvasRefresh = useDifyBuilderCanvasRefresh(onRefreshCanvas, onCanvasRefreshed)
+  const canvasEvents = useDifyBuilderCanvasEvents(onPublishWorkflow, onResetPublication)
+  const sessionEvents = useMemo<SessionRunEvents>(
+    () => ({
+      ...runEvents,
+      onCommandStarted: canvasRefresh.cancel,
+      onSessionStateChanged: (state) => {
+        canvasEvents.onSessionStateChanged(state)
+        void canvasRefresh.refresh()
+      },
+      onCanvasEvent: (event) => {
+        runEvents.onCanvasEvent(event)
+        canvasEvents.onCanvasEvent(event)
+        if (event.event === 'graph_changed') void canvasRefresh.refresh()
+      },
+      finishCommand: () => {
+        runEvents.finishCommand()
+        canvasRefresh.finishCommand()
+      },
+      reset: () => {
+        runEvents.reset()
+        canvasEvents.reset()
+        canvasRefresh.reset()
+      },
+    }),
+    [canvasEvents, canvasRefresh, runEvents],
+  )
+  const session = useDifyBuilderSessionController(onSyncDraft, sessionEvents)
+  const runtime = useMemo(
+    () => ({
+      appId,
+      canEdit,
+      enabled,
+      getCanvasSnapshot,
+      session,
+      retryCanvasRefresh: canvasRefresh.retry,
+      setShowPanel,
+    }),
+    [appId, canEdit, enabled, getCanvasSnapshot, session, setShowPanel, canvasRefresh.retry],
+  )
+
+  useHydrateAtoms([[difyBuilderRuntimeAtom, runtime]] as const, {
+    dangerouslyForceHydrate: true,
+  })
+
+  return (
+    <>
+      <DifyBuilderCanvasLockCleanup />
+      {children}
+      {/* Install canvas and panel handlers before restoring or starting a session. */}
+      <DifyBuilderSessionPersistence
+        appId={appId}
+        enabled={enabled}
+        restore={session.restore}
+        tenantId={tenantId}
+        userId={userId}
+      />
+      <DifyBuilderCreationStart
+        appId={appId}
+        canEdit={canEdit}
+        canStartCreation={canStartCreation}
+        enabled={enabled}
+      />
+    </>
+  )
+}
+
+export const DifyBuilderProvider = (props: DifyBuilderProviderProps) => {
+  const scopeKey = getSessionStorageKey(props.tenantId, props.userId, props.appId) ?? 'unscoped'
+  return (
+    <ScopeProvider
+      key={scopeKey}
+      atoms={[...difyBuilderSessionScopedAtoms, ...difyBuilderScopedAtoms]}
+      name="DifyBuilder"
+    >
+      <DifyBuilderProviderContent {...props} />
+    </ScopeProvider>
+  )
+}

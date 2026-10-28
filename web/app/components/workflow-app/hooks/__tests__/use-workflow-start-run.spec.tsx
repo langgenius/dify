@@ -104,6 +104,23 @@ describe('useWorkflowStartRunByCanEdit', () => {
     expect(workflowStore.getState().showInputsPanel).toBe(false)
   })
 
+  it('should leave the run panel closed when saving discovers a conflict', async () => {
+    mockDoSyncWorkflowDraft.mockImplementationOnce(async () => {
+      workflowStore.getState().setWorkflowDraftConflict(true)
+      return null
+    })
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+
+    await act(async () => {
+      await result.current.handleWorkflowStartRunInWorkflow()
+    })
+
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
+  })
+
   it('should open the input panel instead of running immediately when start inputs are required', async () => {
     canvasNodes = toNodes([
       { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },

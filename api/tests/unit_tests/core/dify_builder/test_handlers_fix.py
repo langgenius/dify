@@ -1,0 +1,1654 @@
+"""Tests for the run-fix + checklist handlers (Tasks 6-7).
+
+Port of dify-enterprise/server/pkg/enterprise/biz/dify_builder/handlers_fix_test.go
+— both the run-fix cases and the checklist-fix flow / ``fix_registry()``
+cases (``## ---- checklist-fix flow ----``).
+"""
+
+from dataclasses import replace
+from datetime import datetime
+from typing import NoReturn, Unpack
+
+import pytest_mock
+
+from core.dify_builder.contract import PreflightContextCard, PreflightIssue
+from core.dify_builder.models import (
+    Action,
+    Actor,
+    ChecklistError,
+    ConversationItem,
+    Diagnosis,
+    DifyBuilderContext,
+    EntryMode,
+    Graph,
+    Inputs,
+    MutationIntent,
+    Risk,
+    Run,
+    Session,
+    StartSchema,
+    Turn,
+)
+from core.dify_builder.state import PcState, canvas_read_only
+from services.dify_builder.application.handlers_fix import (
+    fix_registry,
+    handle_apply,
+    handle_await_approval,
+    handle_await_decision,
+    handle_await_testdata,
+    handle_await_verify,
+    handle_diagnose,
+    handle_propose,
+    handle_publish,
+    handle_verify,
+)
+from services.dify_builder.application.runner import Env, Handler, Runner
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeDifyPort,
+    FixtureEnv,
+    InMemoryRepository,
+    SessionOverrides,
+    StubAgent,
+    saved_test_context,
+    successful_verification,
+)
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
+
+# ---- shared fixtures / helpers -------------------------------------------
+
+
+def _actor() -> Actor:
+    return Actor(account_id="acc-1", tenant_id="tenant-1")
+
+
+def _session(**overrides: Unpack[SessionOverrides]) -> Session:
+    return replace(
+        Session(
+            app_id="app",
+            tenant_id="t",
+            owner_account_id="u",
+            entry_mode=EntryMode.FIX,
+            current_state=PcState.FIX_DIAGNOSE,
+        ),
+        **overrides,
+    )
+
+
+def _new_env() -> tuple[FixtureEnv, InMemoryRepository]:
+    repo = InMemoryRepository()
+    env = FixtureEnv(
+        dify=FakeDifyPort(),
+        agent=StubAgent(),
+        repo=repo,
+        now=lambda: datetime.min,
+    )
+    return env, repo
+
+
+def _run_fix_registry() -> dict[PcState, Handler]:
+    """The run-fix subset of Go's ``FixRegistry`` (checklist entries are Task 7)."""
+    return {
+        PcState.FIX_DIAGNOSE: handle_diagnose,
+        PcState.FIX_PROPOSE: handle_propose,
+        PcState.FIX_AWAIT_APPROVAL: handle_await_approval,
+        PcState.FIX_APPLY: handle_apply,
+        PcState.FIX_AWAIT_VERIFY: handle_await_verify,
+        PcState.FIX_AWAIT_TESTDATA: handle_await_testdata,
+        PcState.FIX_VERIFY: handle_verify,
+        PcState.FIX_AWAIT_DECISION: handle_await_decision,
+        PcState.FIX_PUBLISH: handle_publish,
+    }
+
+
+def _seed_diagnose_session(repo: InMemoryRepository) -> Session:
+    s = _session()
+    repo.create_session(s, DifyBuilderContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    repo.save_run(s.id, Run(id="TR-1", kind="original-failed", status="failed", immutable=True))
+    return s
+
+
+def _drive_to_await_verify(env: Env, repo: InMemoryRepository) -> tuple[Runner, Session]:
+    s = _seed_diagnose_session(repo)
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    return runner, out
+
+
+def _drive_to_await_decision(env: Env, repo: InMemoryRepository) -> tuple[Runner, Session]:
+    runner, s = _drive_to_await_verify(env, repo)
+    turn = Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+    turn = Turn(
+        action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version), actor=_actor()
+    )
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+    return runner, out
+
+
+# ---- diagnose -> propose -----------------------------------------------
+
+
+def test_diagnose_then_propose_high_risk_stops_at_await_approval() -> None:
+    env, repo = _new_env()
+    assert isinstance(env.agent, StubAgent)
+    env.agent.risk_level = "high"
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+    assert not canvas_read_only(out.current_state), "await states leave the canvas editable"
+
+
+def test_handle_propose_empty_intents_explains_the_missing_repair() -> None:
+    # propose_repair may legitimately return no intents alongside a high-risk
+    # surface-to-human Risk (Task 3) -- the reply must explain that instead of
+    # claiming "0 change(s)".
+    env, _ = _new_env()
+    s = _session()
+    fc = DifyBuilderContext()
+
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        del reply_language
+        _ = diagnosis, graph
+        return ([], Risk(level="high", reason="none", has_external_side_effect=False))
+
+    env.agent.propose_repair = propose_repair
+
+    result = handle_propose(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_APPROVAL
+    turns = [i for i in result.items if i.kind == "assistant_turn"]
+    assert english_text(turns[-1].payload["reply_text"]).startswith("No automatic fix found")
+
+
+def test_diagnose_then_propose_low_risk_creates_checkpoint_and_stages_repair() -> None:
+    env, repo = _new_env()
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+
+    # low-risk stub => auto-advance diagnose -> propose -> apply -> await_verify
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+
+    _, fc = repo.get_session(s.id)
+    assert fc.diagnosis is not None
+    assert fc.diagnosis.culprit_node_id == "output"
+    assert fc.staged_repair
+    assert fc.checkpoint_id, "a repair checkpoint must be created before mutation"
+
+
+def test_apply_writes_graph_locks_during_work_unlocks_at_await_verify() -> None:
+    env, repo = _new_env()
+    fake = env.fake_dify
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+    assert not canvas_read_only(out.current_state), "await_verify is editable"
+    assert fake.applied, "apply must call the adapter with the staged repair"
+
+    _, fc = repo.get_session(s.id)
+    assert fc.change_set is not None
+    assert "output" in fc.change_set.changed_nodes
+
+
+def test_apply_refuses_to_apply_an_empty_staged_repair() -> None:
+    """ESQ1-291 in Fix: handle_propose routes straight to fix.apply whenever
+    the risk is low, including when the agent found no safe fix at all.
+    Applying nothing and then spending a verify run on it re-offers the
+    identical failure forever."""
+    env, repo = _new_env()
+    s = _session(current_state=PcState.FIX_APPLY)
+    fc = DifyBuilderContext(staged_repair=[])
+
+    result = handle_apply(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    assert [item.kind for item in result.items] == ["assistant_turn"]
+    assert result.items[0].payload["reply_mode"] == "complete"
+    assert "No fix is staged" in english_text(result.items[0].payload["reply_text"])
+    assert not env.fake_dify.applied, "nothing staged -> the adapter must not be called"
+
+
+def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session() -> None:
+    """ESQ1-271: apply_repair re-validates against the draft as it is NOW.
+    An uncaught ValueError here reaches the runner and kills the session."""
+    from core.dify_builder.models import MutationIntent
+
+    env, _repo = _new_env()
+
+    def _stale(*_args: object, **_kwargs: object) -> NoReturn:
+        raise ValueError("path 'outputs.result': no key 'outputs' at outputs")
+
+    env.fake_dify.apply_repair = _stale  # type: ignore[method-assign]
+    s = _session(current_state=PcState.FIX_APPLY)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "code", "path": "o.r", "value": 1})]
+    )
+
+    result = handle_apply(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    assert not any(i.kind == "error" for i in result.items)
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "Couldn't apply the fix" in english_text(assistant.payload["reply_text"])
+    assert "no key 'outputs'" in english_text(assistant.payload["reply_text"])
+    assert result.context is not None
+    assert result.context.staged_repair == []
+
+
+def test_apply_says_a_fix_that_would_not_start_is_not_a_stale_fix() -> None:
+    """A fix the preflight rejected applied fine; it would leave a draft that
+    fails at Graph.init. Same recovery as a stale intent, true reason."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+    from core.dify_builder.models import MutationIntent
+
+    env, _repo = _new_env()
+
+    def _would_not_start(*_args: object, **_kwargs: object) -> NoReturn:
+        raise DraftWouldNotStartError("the draft would not start: node 'code' (code): 1 validation error")
+
+    env.fake_dify.apply_repair = _would_not_start  # type: ignore[method-assign]
+    s = _session(current_state=PcState.FIX_APPLY)
+    fc = DifyBuilderContext(
+        staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "code", "path": "o.r", "value": 1})]
+    )
+
+    result = handle_apply(env, Turn(actor=_actor()), s, fc)
+
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    assistant = next(i for i in result.items if i.kind == "assistant_turn")
+    assert "The workflow can't start" in english_text(assistant.payload["reply_text"])
+    assert "the draft would not start: node 'code' (code): 1 validation error" in english_text(
+        assistant.payload["reply_text"]
+    )
+    assert assistant.payload["execution"]["status"] == "error"
+    assert result.context is not None
+    assert result.context.staged_repair == []
+
+
+def test_apply_forwards_env_emit_canvas_to_the_adapters_on_canvas_callback() -> None:
+    events: list[dict[str, object]] = []
+    repo = InMemoryRepository()
+    env = FixtureEnv(
+        dify=FakeDifyPort(),
+        agent=StubAgent(),
+        repo=repo,
+        now=lambda: datetime.min,
+        emit_canvas=events.append,
+    )
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    runner.advance(s.id, turn)
+
+    assert events == [{"event": "graph_changed", "cause": "apply"}]
+
+
+def test_apply_without_env_emit_canvas_does_not_error() -> None:
+    env, repo = _new_env()  # emit_canvas defaults to None
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+
+
+def test_apply_streams_change_summary_when_adapter_omits_scope_and_changes() -> None:
+    env, repo = _new_env()
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    runner.advance(s.id, turn)
+
+    items = repo.list_conversation(s.id)
+    assert not any(i.kind == "change_set" for i in items)
+    assistant = next(
+        i for i in items if i.kind == "assistant_turn" and english_text(i.payload["reply_text"]).startswith("Applied")
+    )
+    assert "(configuration)" in english_text(assistant.payload["reply_text"])
+    assert "output" in english_text(assistant.payload["reply_text"])
+
+
+def test_diagnose_records_structure_fingerprint() -> None:
+    # Locks the C-1 pairing: handle_diagnose's read-graph site
+    # (fc.last_snapshot_hash = graph_hash) must set fc.last_structure_fingerprint
+    # alongside it. Calls handle_diagnose directly (not via the Runner) so the
+    # apply site's later write to last_structure_fingerprint doesn't mask a
+    # missing diagnose-site pairing.
+    env, repo = _new_env()
+    dify = env.fake_dify
+    repo.save_run("sess", Run(id="r1", dify_run_id="d1", status="failed"))
+    s = _session(id="sess")
+    fc = DifyBuilderContext(failed_run_id="r1")
+
+    handle_diagnose(env, Turn(actor=_actor()), s, fc)
+
+    assert fc.last_snapshot_hash == dify.hash
+    assert fc.last_structure_fingerprint != ""
+    assert fc.last_structure_fingerprint == dify.structural_fingerprint(dify.graph)
+
+
+# ---- await_approval ------------------------------------------------------
+
+
+def test_await_approval_stray_action_no_auto_apply_approve_advances() -> None:
+    env, repo = _new_env()
+    assert isinstance(env.agent, StubAgent)
+    env.agent.risk_level = "high"
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL
+
+    # (a) a stray/unknown action must NOT auto-apply the high-risk repair.
+    turn = Turn(action=Action(kind="undo", base_version=out.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_APPROVAL, (
+        "an unknown/stray action must not auto-apply a high-risk repair"
+    )
+
+    # (b) an explicit approval advances past the gate.
+    turn = Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+
+
+# ---- verify ---------------------------------------------------------------
+
+
+def test_run_validation_exposes_testdata_form_for_start_inputs() -> None:
+    env, repo = _new_env()
+    env.fake_dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "label": "Topic", "type": "text-input"},
+                        {"variable": "attachment", "label": "Attachment", "type": "file"},
+                    ],
+                },
+            }
+        ]
+    }
+    runner, s = _drive_to_await_verify(env, repo)
+
+    out = runner.advance(
+        s.id,
+        Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor()),
+    )
+
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+    items = repo.list_conversation(s.id)
+    form = next(item for item in items if item.kind == "form")
+    assert form.payload["variant"] == "testdata"
+    assert [(field["key"], field["type"]) for field in form.payload["fields"]] == [
+        ("topic", "text-input"),
+        ("attachment", "file"),
+    ]
+    assistant = next(
+        item
+        for item in reversed(items)
+        if item.kind == "assistant_turn" and item.payload["stage_id"] == "fix.await_verify"
+    )
+    assert assistant.payload["cards"] == ["form"]
+
+
+def test_mock_validation_inputs_use_the_workflow_start_schema() -> None:
+    env, repo = _new_env()
+    env.fake_dify.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "topic", "label": "Topic", "type": "text-input"}],
+                },
+            }
+        ]
+    }
+    captured_schema = {}
+
+    def generate_mock_inputs(
+        schema: StartSchema, prior_failed: Inputs, *, business_context: str = ""
+    ) -> dict[str, str]:
+        _ = business_context
+        _ = prior_failed
+        captured_schema.update(schema)
+        return {"topic": "mock topic"}
+
+    env.agent.generate_mock_inputs = generate_mock_inputs
+    runner, s = _drive_to_await_verify(env, repo)
+    out = runner.advance(
+        s.id,
+        Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor()),
+    )
+
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
+
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+    assert captured_schema == {"variables": [{"variable": "topic", "label": "Topic", "type": "text-input"}]}
+    _, fc = repo.get_session(s.id)
+    assert repo.get_test_input(fc.test_input_ref).inputs == {"topic": "mock topic"}
+
+
+def test_verify_mints_new_immutable_run_original_untouched() -> None:
+    env, repo = _new_env()
+    runner, s = _drive_to_await_verify(env, repo)
+
+    # run_verify (no inputs) -> await_testdata
+    turn = Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+
+    # provide mock data -> verify (working) -> await_decision
+    turn = Turn(
+        action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version), actor=_actor()
+    )
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+
+    _, fc = repo.get_session(s.id)
+    assert fc.verify_run_id
+    assert fc.verify_run_id != fc.failed_run_id, "verify must mint a NEW run id"
+
+    orig = repo.get_run(fc.failed_run_id)
+    assert orig.status == "failed", "original failed run is never mutated"
+    verify = repo.get_run(fc.verify_run_id)
+    assert verify.kind == "verify"
+    assert verify.immutable
+
+
+def test_verify_threads_test_inputs_to_run_draft() -> None:
+    """Regression guard: handle_verify must resolve fc.test_input_ref via
+    repo.get_test_input and pass the REAL saved inputs to dify.run_draft, not
+    an empty stub."""
+    env, repo = _new_env()
+    fake = env.fake_dify
+    runner, s = _drive_to_await_verify(env, repo)
+
+    turn = Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+
+    want_inputs = {"report_pdf": "q3.pdf"}
+    turn = Turn(
+        action=Action(kind="provide_testdata", payload={"inputs": want_inputs}, base_version=out.version),
+        actor=_actor(),
+    )
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+
+    _, fc = repo.get_session(s.id)
+    assert fc.test_input_ref
+
+    saved = repo.get_test_input(fc.test_input_ref)
+    assert saved.inputs == want_inputs
+
+    assert fake.run_draft_inputs, "run_draft must receive real inputs, not an empty stub"
+    assert fake.run_draft_inputs == want_inputs
+
+
+def test_verify_fail_freezes_run_allows_re_fix() -> None:
+    env, repo = _new_env()
+    env.fake_dify.verify_pass = False
+    runner, s = _drive_to_await_verify(env, repo)
+
+    turn = Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    turn = Turn(
+        action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version), actor=_actor()
+    )
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+
+    _, fc = repo.get_session(s.id)
+    verify = repo.get_run(fc.verify_run_id)
+    assert verify.status == "failed"
+    assert verify.immutable
+
+
+def test_verify_running_without_proof_stops_at_decision() -> None:
+    """Missing proof stops at the existing review gate with publication blocked."""
+    from core.dify_builder.models import Run
+
+    env, repo = _new_env()
+    runner, s = _drive_to_await_verify(env, repo)
+
+    turn = Turn(action=Action(kind="run_verify", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_TESTDATA
+
+    env.fake_dify.run_draft = lambda *_a, **_k: Run(
+        dify_run_id="",
+        status="running",
+        per_node=[],
+        error="the workflow run's progress stream ended before the run did, so its outcome is unknown",
+    )
+    turn = Turn(
+        action=Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=out.version), actor=_actor()
+    )
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_DECISION  # Missing proof requires review.
+
+    _, fc = repo.get_session(s.id)
+    verify = repo.get_run(fc.verify_run_id)
+    assert verify.status == "running"
+
+
+# ---- await_decision --------------------------------------------------------
+
+
+def test_decision_publish_reaches_success() -> None:
+    env, repo = _new_env()
+    fake = env.fake_dify
+    runner, s = _drive_to_await_decision(env, repo)
+
+    turn = Turn(action=Action(kind="publish", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.SUCCESS
+    assert fake.published
+
+
+def test_decision_undo_is_append_only() -> None:
+    env, repo = _new_env()
+    runner, s = _drive_to_await_decision(env, repo)
+    items_before = len(repo.list_conversation(s.id))
+    version_before = s.version
+
+    turn = Turn(action=Action(kind="undo", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.SUCCESS
+
+    # history is append-only: undo added exactly one commit (version +1) and
+    # one conversation item, never removing prior history.
+    assert out.version == version_before + 1
+    assert len(repo.list_conversation(s.id)) == items_before + 1
+
+
+def test_decision_re_fix_loops_back_to_diagnose_and_clears_repair_state() -> None:
+    env, repo = _new_env()
+    runner, s = _drive_to_await_decision(env, repo)
+
+    turn = Turn(action=Action(kind="re_fix", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+
+    # re_fix auto-advances straight back through diagnose -> propose -> apply
+    # -> await_verify (low-risk stub), same as the very first drive.
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+
+    _, fc = repo.get_session(s.id)
+    assert fc.verify_run_id == ""
+    assert fc.test_input_ref == ""
+
+
+# ---- checklist-fix flow ----------------------------------------------------
+
+
+def _seed_checklist_session(repo: InMemoryRepository, errors: list[ChecklistError]) -> Session:
+    s = _session(entry_mode=EntryMode.FIX_CHECKLIST, current_state=PcState.CHECKLIST_DIAGNOSE)
+    issues = [
+        PreflightIssue(
+            node_id=error.node_id,
+            node_type=error.node_type,
+            title=error.title,
+            messages=list(error.messages),
+            unconnected=error.unconnected,
+            plugin_missing=error.plugin_missing,
+        )
+        for error in errors
+    ]
+    repo.create_session(
+        s,
+        DifyBuilderContext(source="checklist", checklist_errors=errors),
+        [
+            PreflightContextCard(
+                node_count=len({issue.node_id for issue in issues}),
+                issue_count=len(issues),
+                issues=issues,
+            ).to_item(seq=0, at_version=0)
+        ],
+    )
+    return s
+
+
+def _drive_checklist_to_await_recheck(env: Env, repo: InMemoryRepository) -> tuple[Runner, Session]:
+    errors = [ChecklistError(node_id="n1", node_type="llm", title="LLM", messages=["missing prompt"])]
+    s = _seed_checklist_session(repo, errors)
+
+    runner = Runner(env, fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+    # low-risk stub => auto-advance checklist.diagnose -> checklist.propose -> fix.apply -> checklist.await_recheck
+    assert out.current_state == PcState.CHECKLIST_AWAIT_RECHECK
+    return runner, out
+
+
+def test_checklist_fix_diagnose_to_apply_reaches_await_recheck() -> None:
+    env, repo = _new_env()
+    fake = env.fake_dify
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+    assert runner is not None
+
+    assert fake.applied, "checklist apply must call the adapter with the staged repair"
+
+    _, fc = repo.get_session(s.id)
+    assert fc.diagnosis is not None
+    assert fc.diagnosis.culprit_node_id == "n1"
+    assert fc.staged_repair
+
+    items = repo.list_conversation(s.id)
+    preflight = [item for item in items if item.kind == "preflight_context"]
+    assert len(preflight) == 1
+    assert preflight[0].payload["issues"][0]["messages"] == ["missing prompt"]
+    assert not any(item.kind == "summary" for item in items)
+    assert any(
+        item.kind == "assistant_turn" and "Checklist diagnosis complete" in english_text(item.payload["reply_text"])
+        for item in items
+    )
+
+
+def test_checklist_fix_recheck_passed_requires_native_run_before_publish() -> None:
+    env, repo = _new_env()
+    fake = env.fake_dify
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+
+    turn = Turn(action=Action(kind="recheck", payload={"passed": True}, base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+
+    turn = Turn(action=Action(kind="publish", base_version=out.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+    assert not fake.published
+
+
+def test_checklist_fix_recheck_failed_loops_back_to_diagnose() -> None:
+    env, repo = _new_env()
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+
+    remaining = [{"node_id": "n2", "node_type": "llm", "title": "LLM", "messages": ["still broken"]}]
+    turn = Turn(
+        action=Action(kind="recheck", payload={"passed": False, "remaining": remaining}, base_version=s.version),
+        actor=_actor(),
+    )
+    out = runner.advance(s.id, turn)
+    # low-risk stub => auto-advances checklist.diagnose -> checklist.propose
+    # -> fix.apply -> checklist.await_recheck again
+    assert out.current_state == PcState.CHECKLIST_AWAIT_RECHECK
+
+    _, fc = repo.get_session(s.id)
+    assert len(fc.checklist_errors) == 1
+    assert fc.checklist_errors[0].node_id == "n2"
+    assert fc.checklist_errors[0].messages == ["still broken"]
+    assert not any(item.kind == "notice" for item in repo.list_conversation(s.id))
+
+
+def test_checklist_fix_await_recheck_undo_reaches_success() -> None:
+    env, repo = _new_env()
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+
+    turn = Turn(action=Action(kind="undo", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.SUCCESS
+
+
+# ---- fix_registry -----------------------------------------------------------
+
+
+def test_fix_registry_has_exactly_twelve_states() -> None:
+    registry = fix_registry()
+
+    assert set(registry.keys()) == {
+        PcState.FIX_DIAGNOSE,
+        PcState.FIX_PROPOSE,
+        PcState.FIX_AWAIT_APPROVAL,
+        PcState.FIX_APPLY,
+        PcState.FIX_AWAIT_VERIFY,
+        PcState.FIX_AWAIT_TESTDATA,
+        PcState.FIX_VERIFY,
+        PcState.FIX_AWAIT_DECISION,
+        PcState.FIX_PUBLISH,
+        PcState.CHECKLIST_DIAGNOSE,
+        PcState.CHECKLIST_PROPOSE,
+        PcState.CHECKLIST_AWAIT_RECHECK,
+    }
+    # checklist.propose reuses the run-fix propose handler, as Go does.
+    assert registry[PcState.CHECKLIST_PROPOSE] is handle_propose
+
+
+# ---- start_schema -----------------------------------------------------------
+
+
+def test_start_schema_reads_start_node_variables() -> None:
+    from services.dify_builder.application.handlers_fix import start_schema
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "query", "type": "text-input"}]}},
+            {"id": "llm", "data": {"type": "llm"}},
+        ],
+        "edges": [],
+    }
+    assert start_schema(graph) == {"variables": [{"variable": "query", "type": "text-input"}]}
+
+
+def test_start_schema_empty_when_no_start_or_no_vars() -> None:
+    from services.dify_builder.application.handlers_fix import start_schema
+
+    assert start_schema({"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}) == {"variables": []}
+    assert start_schema({"nodes": [{"id": "s", "data": {"type": "start"}}], "edges": []}) == {"variables": []}
+
+
+# ---- needs_upload_inputs -----------------------------------------------------
+
+
+def test_needs_upload_inputs_false_for_an_all_text_schema() -> None:
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "topic", "type": "text-input"}, {"variable": "count", "type": "number"}]}
+    assert needs_upload_inputs(schema) is False
+
+
+def test_needs_upload_inputs_false_when_there_are_no_variables() -> None:
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
+
+    assert needs_upload_inputs({"variables": []}) is False
+
+
+def test_needs_upload_inputs_true_for_a_file_variable() -> None:
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "doc", "type": "file"}]}
+    assert needs_upload_inputs(schema) is True
+
+
+def test_needs_upload_inputs_true_for_a_file_list_variable() -> None:
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
+
+    schema = {"variables": [{"variable": "docs", "type": "file-list"}]}
+    assert needs_upload_inputs(schema) is True
+
+
+def test_needs_upload_inputs_true_for_a_mixed_schema() -> None:
+    """A human still has to supply the file even though everything else in
+    the schema could be mocked -- the mixed case must still stop at the gate."""
+    from services.dify_builder.application.handlers_fix import needs_upload_inputs
+
+    schema = {
+        "variables": [
+            {"variable": "topic", "type": "text-input"},
+            {"variable": "doc", "type": "file"},
+        ]
+    }
+    assert needs_upload_inputs(schema) is True
+
+
+# ---- endpoint_variable_names -------------------------------------------------
+
+
+def test_endpoint_variable_names_finds_a_start_variable_referenced_as_the_whole_url() -> None:
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "h_url", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "{{#s.h_url#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"h_url"}
+
+
+def test_endpoint_variable_names_ignores_a_url_template_not_in_host_position() -> None:
+    """Review fix round 1 (item 1): a start-variable template appearing LATER
+    in the url (path/query), not at its very start, is an ordinary data
+    input -- e.g. ``https://wttr.in/{{#s.city#}}`` -- not an endpoint the
+    user must supply, so mocking ``city`` must not be blocked. Only a
+    template occupying the HOST position (the url, stripped, STARTS with it)
+    counts; this intentionally narrows the old (Plan 3) behaviour, which
+    collected any embedded reference."""
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "city", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "https://wttr.in/{{#s.city#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == set()
+
+
+def test_endpoint_variable_names_finds_a_leading_start_template_before_a_path() -> None:
+    """``{{#s.h_url#}}/v1/render`` -- what grounding writes for an invented
+    host with a templated path/query -- reads its endpoint from ``h_url``."""
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "h_url", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "{{#s.h_url#}}/v1/render?topic={{#s.topic#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"h_url"}
+
+
+def test_endpoint_variable_names_finds_a_start_template_inside_the_host() -> None:
+    """M4: a template in the parsed HOST (not only a leading one) is the
+    endpoint; a template in the same url's path stays an ordinary data input."""
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": []}},
+            {"id": "h", "data": {"type": "http-request", "url": "https://{{#s.host#}}/v1"}},
+            {"id": "h2", "data": {"type": "http-request", "url": "https://api.{{#s.env#}}.acme.com/v1/{{#s.topic#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"host", "env"}
+
+
+def test_endpoint_variable_names_ignores_non_credential_header_and_param_keys() -> None:
+    """Review fix round 1 (item 1): an ordinary data input read via a header
+    or param -- not a secret -- must stay mockable. Before this fix, ANY
+    start-variable template anywhere in headers/params was collected, so a
+    search query or an Accept-Language header was silently dropped from
+    every prefill/mock, and "use mock data" failed for every API-calling
+    app. Only a CREDENTIAL-keyed line counts now."""
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "query", "type": "text-input"},
+                        {"variable": "lang", "type": "text-input"},
+                    ],
+                },
+            },
+            {
+                "id": "h",
+                "data": {
+                    "type": "http-request",
+                    "url": "https://api.acme.com/v1/search",
+                    "headers": "Accept-Language: {{#s.lang#}}",
+                    "params": "q: {{#s.query#}}",
+                    "authorization": {"type": "no-auth", "config": None},
+                },
+            },
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == set()
+
+
+def test_endpoint_variable_names_ignores_a_reference_to_a_non_start_node() -> None:
+    """A template pointing at another node's output is an ordinary wired
+    value, not an endpoint waiting on the user."""
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": []}},
+            {"id": "llm1", "data": {"type": "llm"}},
+            {"id": "h", "data": {"type": "http-request", "url": "{{#llm1.text#}}"}},
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == set()
+
+
+def test_endpoint_variable_names_empty_when_there_is_no_http_request_node() -> None:
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [{"id": "s", "data": {"type": "start", "variables": [{"variable": "topic", "type": "text-input"}]}}],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == set()
+
+
+def test_endpoint_variable_names_collects_headers_too() -> None:
+    """A node whose url and header both read the start node counts both; a
+    header reading another node's output is an ordinary wired value, not a
+    credential waiting on the user."""
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "h_url", "type": "text-input"},
+                        {"variable": "h_api_key", "type": "text-input"},
+                    ],
+                },
+            },
+            {"id": "llm1", "data": {"type": "llm"}},
+            {
+                "id": "h",
+                "data": {
+                    "type": "http-request",
+                    "url": "{{#s.h_url#}}",
+                    "headers": "Authorization: Bearer {{#s.h_api_key#}}\nX-Trace: {{#llm1.text#}}",
+                    "params": "",
+                    "authorization": {"type": "no-auth", "config": None},
+                },
+            },
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"h_url", "h_api_key"}
+
+
+def test_endpoint_variable_names_also_collects_params_and_authorization_api_key() -> None:
+    from services.dify_builder.application.handlers_fix import endpoint_variable_names
+
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "p_key", "type": "text-input"},
+                        {"variable": "auth_key", "type": "text-input"},
+                    ],
+                },
+            },
+            {
+                "id": "h",
+                "data": {
+                    "type": "http-request",
+                    "url": "https://api.acme.com/v1",
+                    "headers": "",
+                    "params": "api_key: {{#s.p_key#}}",
+                    "authorization": {
+                        "type": "api-key",
+                        "config": {"type": "bearer", "api_key": "{{#s.auth_key#}}"},
+                    },
+                },
+            },
+        ],
+        "edges": [],
+    }
+    assert endpoint_variable_names(graph) == {"p_key", "auth_key"}
+
+
+# ---- without_endpoint_values -------------------------------------------------
+
+
+def _endpoint_graph() -> Graph:
+    """What ``_ground_placeholder_endpoints`` leaves of the ESQ1-302 draft: its
+    invented ``https://api.example.com/ppt/generate`` re-pointed at a required
+    start variable."""
+    return {
+        "nodes": [
+            {
+                "id": "s",
+                "data": {
+                    "type": "start",
+                    "variables": [
+                        {"variable": "topic", "type": "text-input", "required": True},
+                        {"variable": "h_url", "type": "text-input", "required": True, "max_length": 2048},
+                    ],
+                },
+            },
+            {"id": "h", "data": {"type": "http-request", "title": "Call PPT API", "url": "{{#s.h_url#}}"}},
+        ],
+        "edges": [],
+    }
+
+
+def test_without_endpoint_values_drops_only_the_endpoint_keys() -> None:
+    from services.dify_builder.application.handlers_fix import without_endpoint_values
+
+    inputs = {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
+
+    assert without_endpoint_values(_endpoint_graph(), inputs) == {"topic": "quarterly report"}
+    assert inputs == {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}  # not mutated
+
+
+def test_without_endpoint_values_keeps_everything_when_no_url_reads_a_start_variable() -> None:
+    from services.dify_builder.application.handlers_fix import without_endpoint_values
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "s", "data": {"type": "start", "variables": [{"variable": "topic", "type": "text-input"}]}},
+            {"id": "h", "data": {"type": "http-request", "url": "https://api.openai.com/v1/chat"}},
+        ],
+        "edges": [],
+    }
+
+    assert without_endpoint_values(graph, {"topic": "x"}) == {"topic": "x"}
+
+
+def test_fix_await_testdata_mock_leaves_the_endpoint_for_the_form() -> None:
+    """A mocked URL for an endpoint variable is accepted at launch and fails on
+    connection -- a config failure, not an input one, so it feeds the repair
+    loop (ESQ1-302). Dropped, the missing required key is rejected at launch as
+    "... is required in input form" instead."""
+    env, _ = _new_env()
+    env.fake_dify.graph = _endpoint_graph()
+
+    def generate_mock_inputs(schema: StartSchema, prior_failed: Inputs, *, business_context: str = "") -> Inputs:
+        _ = business_context
+        _ = schema, prior_failed
+        return {"topic": "quarterly report", "h_url": "https://api.example.com/ppt/generate"}
+
+    env.agent.generate_mock_inputs = generate_mock_inputs
+    s = _session(current_state=PcState.FIX_AWAIT_TESTDATA)
+
+    result = handle_await_testdata(
+        env,
+        Turn(actor=_actor(), action=Action(kind="provide_testdata", payload={"mode": "mock"})),
+        s,
+        DifyBuilderContext(),
+    )
+
+    assert result.next == PcState.FIX_VERIFY
+    assert result.context is not None
+    assert env.repo.get_test_input(result.context.test_input_ref).inputs == {"topic": "quarterly report"}
+
+
+# ---- is_input_failure / testdata_form_fields -------------------------------
+
+
+def test_is_input_failure_matches_input_signals() -> None:
+    from core.dify_builder.models import NodeOutput, Run
+    from services.dify_builder.application.handlers_fix import is_input_failure
+
+    fail = Run(
+        per_node=[
+            NodeOutput(
+                node_id="node2", status="failed", error="File variable not found for selector: ['start', 'document']"
+            )
+        ]
+    )
+    assert is_input_failure(fail) is True
+    cfg = Run(per_node=[NodeOutput(node_id="llm", status="failed", error="model provider error: 500")])
+    assert is_input_failure(cfg) is False
+    assert is_input_failure(Run(per_node=[])) is False
+
+
+def test_is_input_failure_does_not_misclassify_a_config_required_field_error() -> None:
+    # I1 (final review, Important): "required" alone is too broad -- it also
+    # fires on config/runtime faults that have nothing to do with test inputs,
+    # misrouting them to the testdata gate where the diagnosed auto-repair is
+    # never offered. Only genuinely input/file-shaped signals should match.
+    from core.dify_builder.models import NodeOutput, Run
+    from services.dify_builder.application.handlers_fix import is_input_failure
+
+    cfg = Run(
+        per_node=[NodeOutput(node_id="n1", status="failed", error="Node config invalid: field 'timeout' is required")]
+    )
+    assert is_input_failure(cfg) is False
+
+
+def test_testdata_form_fields_preserves_file_type() -> None:
+    from services.dify_builder.application.handlers_fix import testdata_form_fields
+
+    schema = {
+        "variables": [
+            {"variable": "document", "label": "Document", "type": "file", "required": True},
+            {"variable": "topic", "type": "paragraph"},
+        ]
+    }
+    fields = testdata_form_fields(schema)
+    assert [f.key for f in fields] == ["document", "topic"]
+    assert fields[0].type == "file"  # NOT clamped to "text"
+    assert fields[0].required is True
+    assert english_text(fields[1].label) == "topic"  # falls back to the variable name
+
+
+def test_testdata_form_fields_copies_start_input_constraints() -> None:
+    from services.dify_builder.application.handlers_fix import testdata_form_fields
+
+    schema = {
+        "variables": [
+            {
+                "variable": "format",
+                "label": "Format",
+                "type": "select",
+                "options": ["PDF", "Markdown"],
+                "required": True,
+                "default": "PDF",
+                "max_length": 20,
+                "placeholder": "Choose a format",
+                "hint": "Used for the final report",
+                "unit": "characters",
+                "json_schema": {"type": "string", "enum": ["PDF", "Markdown"]},
+            },
+            {
+                "variable": "documents",
+                "type": "file-list",
+                "max_length": 4,
+                "allowed_file_types": ["document", "custom"],
+                "allowed_file_extensions": [".pdf", ".md"],
+                "allowed_file_upload_methods": ["local_file", "remote_url"],
+            },
+            {
+                "variable": "legacy_file",
+                "type": "file",
+                "number_limits": 2,
+                "allowed_upload_methods": ["remote_url"],
+                "json_schema": '{"type":"string"}',
+            },
+        ]
+    }
+
+    fields = testdata_form_fields(schema)
+
+    assert fields[0].options == ["PDF", "Markdown"]
+    assert fields[0].required is True
+    assert fields[0].default == "PDF"
+    assert fields[0].max_length == 20
+    assert fields[0].placeholder == "Choose a format"
+    assert fields[0].hint == "Used for the final report"
+    assert fields[0].unit == "characters"
+    assert fields[0].json_schema == {"type": "string", "enum": ["PDF", "Markdown"]}
+    assert fields[1].allowed_file_types == ["document", "custom"]
+    assert fields[1].allowed_file_extensions == [".pdf", ".md"]
+    assert fields[1].allowed_file_upload_methods == ["local_file", "remote_url"]
+    assert fields[1].max_length == 4
+    assert fields[1].number_limits == 4
+    assert fields[2].number_limits == 2
+    assert fields[2].allowed_file_upload_methods == ["remote_url"]
+    assert fields[2].json_schema == '{"type":"string"}'
+
+
+def test_testdata_form_fields_drops_malformed_constraints() -> None:
+    from services.dify_builder.application.handlers_fix import testdata_form_fields
+
+    fields = testdata_form_fields(
+        {
+            "variables": [
+                {
+                    "variable": "document",
+                    "type": "file",
+                    "options": ["valid", {"not": "a string"}],
+                    "required": "yes",
+                    "default": ["not", "primitive"],
+                    "max_length": True,
+                    "number_limits": 0,
+                    "allowed_file_types": ["document", 1],
+                    "allowed_file_extensions": "pdf",
+                    "allowed_file_upload_methods": {"method": "local_file"},
+                    "placeholder": 1,
+                    "hint": [],
+                    "unit": False,
+                    "json_schema": ["not", "schema"],
+                }
+            ]
+        }
+    )
+
+    assert len(fields) == 1
+    field = fields[0]
+    assert field.options == ["valid"]
+    assert field.required is False
+    assert field.default is None
+    assert field.max_length is None
+    assert field.number_limits is None
+    assert field.allowed_file_types == ["document"]
+    assert field.allowed_file_extensions == []
+    assert field.allowed_file_upload_methods == []
+    assert field.placeholder is None
+    assert field.hint is None
+    assert field.unit is None
+    assert field.json_schema is None
+
+
+# ---- launch-failure classification (verify run threw before any node ran) ----
+
+
+def test_is_input_failure_matches_launch_error_input_validation() -> None:
+    """A launch-time failure (empty per_node, message on run.error) that carries
+    an input-validation signal must classify as an input failure so it routes to
+    the testdata gate, not the blind config-repair loop."""
+    from services.dify_builder.application.handlers_fix import is_input_failure
+
+    run = Run(status="failed", per_node=[], error="query is required in input form")
+    assert is_input_failure(run) is True
+
+
+def test_is_input_failure_launch_error_non_input_is_config() -> None:
+    """A launch error that matches no input signal stays a config failure."""
+    from services.dify_builder.application.handlers_fix import is_input_failure
+
+    run = Run(status="failed", per_node=[], error="RuntimeError: connection reset by peer")
+    assert is_input_failure(run) is False
+
+
+def test_launch_error_text_prefers_message_falls_back_to_type() -> None:
+    from services.dify_builder.application.handlers_fix import launch_error_text
+
+    assert launch_error_text(ValueError("query is required in input form")) == "query is required in input form"
+
+    class _EmptyError(Exception):
+        pass
+
+    assert launch_error_text(_EmptyError()) == "_EmptyError"
+
+
+# ---- model-config failure classification (ModelNotExistError etc.) ----
+
+
+def _run_with_node_error(err: str) -> Run:
+    from core.dify_builder.models import NodeOutput
+
+    return Run(status="failed", per_node=[NodeOutput(node_id="n", status="failed", error=err)])
+
+
+def test_model_config_error_text_matches_model_and_provider_not_exist() -> None:
+    from services.dify_builder.application.handlers_fix import model_config_error_text
+
+    model_err = "Model gpt-5.6 does not exist."
+    assert model_config_error_text(_run_with_node_error(model_err)) == model_err
+    assert model_config_error_text(_run_with_node_error("Provider openai does not exist.")) is not None
+    # exception class name, surfaced as a launch error (empty per_node)
+    assert model_config_error_text(Run(status="failed", per_node=[], error="ModelNotExistError: x")) is not None
+
+
+def test_model_config_error_text_ignores_non_model_errors() -> None:
+    from services.dify_builder.application.handlers_fix import model_config_error_text
+
+    # a real node-logic error is NOT a model-config failure
+    assert model_config_error_text(_run_with_node_error("NameError: x is not defined")) is None
+    # a generic 'does not exist' without model/provider/credential context is not matched
+    assert model_config_error_text(_run_with_node_error("node 'foo' does not exist")) is None
+
+
+def test_build_change_set_survives_non_string_changed_nodes() -> None:
+    """ESQ1-271: an int node id used to crash the whole session on join()."""
+    from core.dify_builder.models import ApplyResult
+    from services.dify_builder.application.handlers_fix import build_change_set
+
+    # ApplyResult is @dataclass(kw_only=True) with every field defaulted
+    # (models.py:213) -- pass only what the assertion needs.
+    result = ApplyResult(new_hash="h")
+    vars(result)["changed_nodes"] = [1, "n2"]
+    changes, scope, change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
+    assert changes == ["1", "n2"]
+    assert change_set.diff == "1; n2"
+    assert scope == "configuration"
+
+
+def test_verify_keeps_the_ports_run_error() -> None:
+    """Fix's ``Run(...)`` literal had no ``error=`` at all, so a launch failure
+    was persisted with an empty error and diagnose saw nothing."""
+    launch_error = "node 'node4' (http-request): body.data.0.type Field required [invalid_param]"
+    env, _ = _new_env()
+    env.fake_dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, dify_run_id="", status="failed", per_node=[], error=launch_error
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    res = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
+
+    assert res.next == PcState.FIX_AWAIT_DECISION
+    assert res.run is not None
+    assert res.run.status == "failed"
+    assert res.run.error == launch_error
+
+
+def test_verify_survives_a_run_draft_that_raises() -> None:
+    """Build and Edit already degrade a raising ``run_draft`` to a failed Run;
+    Fix's ``handle_verify`` had no try/except and killed the advance."""
+    env, _ = _new_env()
+    env.fake_dify.run_draft = lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("kaboom-provider"))
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    res = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
+
+    assert res.next == PcState.FIX_AWAIT_DECISION
+    assert res.run is not None
+    assert res.run.status == "failed"
+    assert res.run.error == "kaboom-provider"
+    assert res.run.culprit_node_id == ""
+
+
+def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output() -> None:
+    from core.dify_builder.models import NodeOutput
+
+    env, _ = _new_env()
+    env.fake_dify.graph = {
+        "nodes": [
+            {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "node2",
+                "data": {"type": "if-else", "title": "Check", "cases": [{"case_id": "true", "conditions": []}]},
+            },
+            {"id": "node6", "data": {"type": "end", "title": "End", "outputs": []}},
+        ],
+        "edges": [
+            {"source": "node1", "target": "node2"},
+            {"source": "node2", "target": "node6", "sourceHandle": "else"},
+        ],
+    }
+    env.fake_dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify",
+        immutable=True,
+        dify_run_id="run-f",
+        verification=successful_verification(env.fake_dify, no_output=True),
+        status="succeeded",
+        per_node=[NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")],
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    res = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
+
+    assert res.next == PcState.FIX_AWAIT_DECISION
+    assert res.run is not None
+    assert res.run.culprit_node_id == "node2"
+    test_result = next(i for i in res.items if i.kind == "test_result")
+    assert test_result.payload["status"] == "failed"
+    assert "produced no terminal output" in english_text(test_result.payload["failure_reason"])
+    assert "produced no terminal output" in english_text(
+        next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
+
+
+# ---- dead_end_branch_node_id / run_finished_without_output (fix round 1) --
+
+
+_DEAD_END_GRAPH: Graph = {
+    "nodes": [
+        {"id": "node1", "data": {"type": "start"}},
+        {"id": "node2", "data": {"type": "if-else"}},
+        {"id": "node3", "data": {"type": "template-transform"}},
+        {"id": "node6", "data": {"type": "end"}},
+    ],
+    "edges": [
+        {"source": "node1", "target": "node2"},
+        {"source": "node2", "target": "node3"},
+        {"source": "node3", "target": "node6"},
+    ],
+}
+
+
+def test_dead_end_branch_node_id_finds_a_branch_whose_target_never_ran() -> None:
+    from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import dead_end_branch_node_id, run_finished_without_output
+
+    per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
+
+    assert dead_end_branch_node_id(_DEAD_END_GRAPH, per_node) == "node2"
+    assert run_finished_without_output(_DEAD_END_GRAPH, per_node) is True
+
+
+def test_dead_end_branch_node_id_is_empty_once_a_target_shows_up_with_any_status() -> None:
+    """A target that appears in per_node -- even failed -- means the engine
+    entered that arm, so the branch did not route nowhere."""
+    from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import dead_end_branch_node_id, run_finished_without_output
+
+    per_node = [
+        NodeOutput(node_id="node1", status="succeeded"),
+        NodeOutput(node_id="node2", status="succeeded"),
+        NodeOutput(node_id="node3", status="failed"),
+    ]
+
+    assert dead_end_branch_node_id(_DEAD_END_GRAPH, per_node) == ""
+    assert run_finished_without_output(_DEAD_END_GRAPH, per_node) is False
+
+
+def test_dead_end_branch_node_id_treats_no_outgoing_edges_as_routing_nowhere() -> None:
+    from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import dead_end_branch_node_id
+
+    graph: Graph = {
+        "nodes": [
+            {"id": "node1", "data": {"type": "start"}},
+            {"id": "node2", "data": {"type": "if-else"}},
+            {"id": "node6", "data": {"type": "end"}},
+        ],
+        "edges": [{"source": "node1", "target": "node2"}],
+    }
+    per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
+
+    assert dead_end_branch_node_id(graph, per_node) == "node2"
+
+
+def test_run_finished_without_output_is_false_without_an_end_node() -> None:
+    from core.dify_builder.models import NodeOutput
+    from services.dify_builder.application.handlers_fix import run_finished_without_output
+
+    graph: Graph = {
+        "nodes": [{"id": "node1", "data": {"type": "start"}}, {"id": "node2", "data": {"type": "if-else"}}],
+        "edges": [{"source": "node1", "target": "node2"}],
+    }
+    per_node = [NodeOutput(node_id="node1", status="succeeded"), NodeOutput(node_id="node2", status="succeeded")]
+
+    assert run_finished_without_output(graph, per_node) is False
+
+
+def test_each_unknown_outcome_stops_at_the_fix_decision_gate() -> None:
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    env, _ = _new_env()
+    env.fake_dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    first = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
+    assert first.next == PcState.FIX_AWAIT_DECISION
+    assert first.context is not None
+    second = handle_verify(env, Turn(actor=_actor()), s, first.context)
+
+    assert second.next == PcState.FIX_AWAIT_DECISION
+    assert second.context is not None
+    assert second.context.unknown_outcome_count == 0
+    assert "Execution safety requires review" in english_text(
+        next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
+
+
+def test_re_fix_after_unknown_requires_new_inputs() -> None:
+    """Re-fix clears the input reference; another verification requires new inputs."""
+    from services.dify_builder.run_mapping import TRUNCATED_STREAM_ERROR
+
+    env, _ = _new_env()
+    env.fake_dify.run_draft = lambda *_a, **_k: Run(
+        kind="verify", immutable=True, status="running", per_node=[], error=TRUNCATED_STREAM_ERROR
+    )
+    s = _session(current_state=PcState.FIX_VERIFY)
+
+    first = handle_verify(env, Turn(actor=_actor()), s, saved_test_context(env.repo, s.id))
+    assert first.context is not None
+    second = handle_verify(env, Turn(actor=_actor()), s, first.context)
+    assert second.next == PcState.FIX_AWAIT_DECISION
+    assert second.context is not None
+    assert second.context.unknown_outcome_count == 0
+
+    turn = Turn(action=Action(kind="re_fix", base_version=s.version), actor=_actor())
+    assert second.context is not None
+    re_fixed = handle_await_decision(env, turn, s, second.context)
+    assert re_fixed.context is not None
+    assert re_fixed.context.unknown_outcome_count == 0
+
+    assert re_fixed.context is not None
+    third = handle_verify(env, Turn(actor=_actor()), s, re_fixed.context)
+    assert third.next == PcState.FIX_AWAIT_TESTDATA  # re_fix cleared inputs; new input is required.
+
+
+def test_the_unknown_outcome_counter_is_exported_with_its_cap() -> None:
+    """Build and Edit import note_unknown_outcome from this module, so it is
+    part of the shared surface ``__all__`` declares, next to its cap."""
+    from services.dify_builder.application import handlers_fix
+
+    assert {"MAX_UNKNOWN_OUTCOMES", "note_unknown_outcome"} <= set(handlers_fix.__all__)
+
+
+_UNFED_AGGREGATOR_REASON = (
+    "No safe automatic fix found — the repair would have applied cleanly and then not worked:\n"
+    "the new branch node7 -> node5 would run and produce nothing: node5 is a variable-aggregator "
+    'and none of its selectors is rooted at node7. Append ["node7", "output"] to node5\'s variables.'
+)
+
+
+def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
+    """Parity with Edit's refusal. ``propose_repair`` already refused to stage a
+    batch the semantic guards condemned -- but it surfaced BLIND: the reason
+    lived on ``fc.risk`` and was shown to nobody, so the human at the gate saw
+    "No automatic fix found" with nothing to act on. The guards' text is
+    engine-grounded and names the aggregator, the node and the selector, which
+    is precisely what makes a manual fix possible."""
+    env, _ = _new_env()
+    s = _session()
+    fc = DifyBuilderContext()
+    written: list[object] = []
+    mocker.patch.object(env.fake_dify, "apply_repair", side_effect=lambda *a, **k: written.append((a, k)))
+
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        del reply_language
+        _ = diagnosis, graph
+        return ([], Risk(level="high", reason=_UNFED_AGGREGATOR_REASON, has_external_side_effect=False))
+
+    env.agent.propose_repair = propose_repair
+
+    result = handle_propose(env, Turn(actor=_actor()), s, fc)
+
+    assert written == []  # nothing was written -- this step never writes, and nothing is staged for the one that does
+    assert result.context is not None
+    assert result.context.staged_repair == []
+    assert result.next == PcState.FIX_AWAIT_APPROVAL
+    turns = [i for i in result.items if i.kind == "assistant_turn"]
+    assert _UNFED_AGGREGATOR_REASON in english_text(turns[-1].payload["reply_text"])
+    assert "node5" in english_text(turns[-1].payload["reply_text"])
+    assert turns[-1].payload["cards"] == []
+
+
+def test_a_staged_repair_still_carries_no_error_card() -> None:
+    """The other half: the card appears only when there is nothing to stage, so
+    an ordinary proposal is unchanged."""
+    env, _ = _new_env()
+    s = _session()
+    fc = DifyBuilderContext()
+    from core.dify_builder.models import MutationIntent
+
+    def propose_repair(
+        diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
+    ) -> tuple[list[MutationIntent], Risk]:
+        del reply_language
+        _ = diagnosis, graph
+        return (
+            [MutationIntent(op="set_node_config", args={"node_id": "code1", "path": "code", "value": "x"})],
+            Risk(level="low", reason="Config-only fix.", has_external_side_effect=False),
+        )
+
+    env.agent.propose_repair = propose_repair
+
+    result = handle_propose(env, Turn(actor=_actor()), s, fc)
+
+    assert [i for i in result.items if i.kind == "error"] == []
+    turns = [i for i in result.items if i.kind == "assistant_turn"]
+    assert turns[-1].payload["cards"] == []
+
+
+def test_missing_test_input_ref_requests_test_data_without_launch(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
+    from services.dify_builder.application.handlers_fix import handle_verify
+
+    env, repo = _new_env()
+    s = Session(
+        app_id="app",
+        tenant_id="tenant",
+        owner_account_id="actor",
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_VERIFY,
+    )
+    calls = []
+    mocker.patch.object(env.fake_dify, "run_draft", side_effect=lambda *args, **_kwargs: calls.append(args))
+    result = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
+    assert result.next == PcState.FIX_AWAIT_TESTDATA
+    assert not calls
+
+
+def test_confirmed_fix_verify_uses_saved_input_without_repair_and_returns_to_decision() -> None:
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import assert_confirmed_handler_outcome
+
+    assert_confirmed_handler_outcome("fix", PcState.FIX_VERIFY, PcState.FIX_AWAIT_DECISION)
+
+
+def test_confirmed_fix_without_saved_input_refuses_instead_of_generating_mocks() -> None:
+    from core.dify_builder.models import CONFIRMED_TOOL_ACTION
+    from services.dify_builder.application.handlers_fix import handle_verify
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import (
+        ConfirmedSpyPort,
+        NoModelAgent,
+        as_env_collaborators,
+    )
+
+    env, repo = _new_env()
+    port = ConfirmedSpyPort()
+    env.fake_dify, env.agent, _typed_repo = as_env_collaborators(port, NoModelAgent(), repo)
+    s = _session(current_state=PcState.FIX_VERIFY)
+    fc = DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1")
+    action = Action(kind=CONFIRMED_TOOL_ACTION, base_version=1, command_id="command-1")
+    result = handle_verify(env, Turn(action=action, actor=_actor()), s, fc)
+    assert port.confirmed_calls == []
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    assert result.context is not None
+    assert (result.context.confirmed_consent_id, result.context.confirmed_command_id) == ("", "")
+    assert result.run is not None
+    assert result.run.execution_refusal is not None
+
+
+def test_checklist_diagnosis_and_repair_use_persisted_reply_language(mocker: pytest_mock.MockerFixture) -> None:
+    from services.dify_builder.application.handlers_fix import handle_checklist_diagnose
+
+    env, _ = _new_env()
+    session = _session(current_state=PcState.CHECKLIST_DIAGNOSE)
+    context = DifyBuilderContext(source="checklist", reply_language="zh-Hans")
+    diagnose = mocker.spy(env.agent, "diagnose_checklist")
+    propose = mocker.spy(env.agent, "propose_repair")
+
+    handle_checklist_diagnose(env, Turn(actor=_actor()), session, context)
+    handle_propose(env, Turn(actor=_actor()), session, context)
+
+    assert diagnose.call_args.kwargs["reply_language"] == "zh-Hans"
+    assert propose.call_args.kwargs["reply_language"] == "zh-Hans"

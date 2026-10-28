@@ -7,7 +7,7 @@ import logging
 import math
 import re
 from http import HTTPStatus
-from typing import Literal, cast
+from typing import Literal, NotRequired, TypedDict, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -52,6 +52,15 @@ _SSE_RESPONSE_HEADERS = (
     "x-trace-id",
 )
 _BASE64URL_HEADER_VALUE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+class _RequestKwargs(TypedDict):
+    headers: dict[str, str]
+    params: tuple[tuple[str, str], ...]
+    timeout: float | httpx.Timeout
+    follow_redirects: bool
+    content: NotRequired[bytes]
+    json: NotRequired[JsonValue]
 
 
 class HTTPKnowledgeFSProductRemoteClient:
@@ -346,7 +355,7 @@ class HTTPKnowledgeFSProductRemoteClient:
             "X-Trace-Id": request.trace_id,
             _ERROR_CONTRACT_HEADER: _ERROR_CONTRACT_VERSION,
         }
-        request_kwargs: dict[str, object] = {
+        request_kwargs: _RequestKwargs = {
             "headers": headers,
             "params": request.query,
             "timeout": httpx.Timeout(
@@ -456,7 +465,7 @@ class HTTPKnowledgeFSProductRemoteClient:
             request_size += len(name.encode("utf-8")) + len(value.encode("utf-8")) + 4
         if request_size > max_request_bytes:
             raise KnowledgeFSProductRequestRejectedError(status_code=413)
-        request_kwargs: dict[str, object] = {
+        request_kwargs: _RequestKwargs = {
             "headers": headers,
             "params": query,
             "timeout": (

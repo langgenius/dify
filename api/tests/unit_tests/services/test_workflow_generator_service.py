@@ -14,7 +14,7 @@ from redis import Redis
 from core.app.app_config.entities import ModelConfig
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.provider_configuration import ProviderModelBundle
-from core.entities.provider_entities import CustomProviderConfiguration
+from core.entities.provider_entities import CustomProviderConfiguration, ProviderConfig, ProviderConfigType
 from core.model_manager import ModelInstance
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -30,12 +30,12 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
-from core.workflow.generator import WorkflowGenerator
 from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResultChunk, LLMResultChunkDelta
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from services.workflow_generation.runner import WorkflowGenerator
 from services.workflow_generator_service import WorkflowGeneratorService
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
@@ -117,7 +117,8 @@ def generation(monkeypatch: pytest.MonkeyPatch) -> Iterator[GenerationObservatio
         )
 
     monkeypatch.setattr(ProviderManager, "get_provider_model_bundle", provider_bundle)
-    monkeypatch.setattr(ToolManager, "list_builtin_providers", providers)
+    monkeypatch.setattr(ToolManager, "list_hardcoded_providers", lambda: iter([]))
+    monkeypatch.setattr(ToolManager, "list_plugin_providers", providers)
     monkeypatch.setattr(PluginModelClient, "get_model_schema", lambda *_args, **_kwargs: config.model_schema)
     monkeypatch.setattr(PluginModelClient, "_request_with_plugin_daemon_response_stream", dispatch)
     monkeypatch.setattr(
@@ -203,6 +204,10 @@ def test_forwards_model_instance_and_complete_catalogue_to_generator(generation:
             "tool_name": "search",
             "tool_label": "Search",
             "description": "Search.",
+            "needs_credentials": False,
+            "provider_label": "Search",
+            "provider_description": "Search",
+            "provider_tags": [],
             "parameters": [],
             "output_schema": {},
         }
@@ -218,11 +223,10 @@ def test_catalogue_build_failure_falls_back_to_empty_text(
 ) -> None:
     """A discovery outage must still run the real planner and builders without tool validation."""
 
-    def unavailable(tenant_id: str) -> list[PluginToolProviderController]:
-        assert tenant_id == TENANT_ID
+    def unavailable() -> Iterator[PluginToolProviderController]:
         raise RuntimeError("plugin daemon unreachable")
 
-    monkeypatch.setattr(ToolManager, "list_builtin_providers", unavailable)
+    monkeypatch.setattr(ToolManager, "list_hardcoded_providers", unavailable)
     result = WorkflowGeneratorService.generate_workflow_graph(
         tenant_id=TENANT_ID, mode="workflow", instruction="Summarize a URL", model_config=_model_config()
     )
@@ -305,3 +309,138 @@ def test_stream_delegates_to_runner_stream(generation: GenerationObservations) -
     assert list(stream) == []
     assert generation.generator_calls[0]["mode"] == "workflow"
     _assert_model_resolution(generation, CreditUsageAppType.WORKFLOW)
+
+
+def _allowlist_providers(generation: GenerationObservations) -> None:
+    for provider_name, tool_name, needs_credentials in [
+        ("time", "current_time", False),
+        ("acme/huddle/huddle", "post", True),
+    ]:
+        label = I18nObject(en_US=tool_name)
+        generation.providers.append(
+            PluginToolProviderController(
+                entity=ToolProviderEntityWithPlugin(
+                    identity=ToolProviderIdentity(
+                        author="test", name=provider_name, description=label, icon="", label=label
+                    ),
+                    credentials_schema=(
+                        [ProviderConfig(name="api_key", type=ProviderConfigType.SECRET_INPUT)]
+                        if needs_credentials
+                        else []
+                    ),
+                    tools=[
+                        ToolEntity(
+                            identity=ToolIdentity(author="test", name=tool_name, label=label, provider=provider_name),
+                            description=ToolDescription(human=label, llm=f"{tool_name} description"),
+                        )
+                    ],
+                ),
+                plugin_id=provider_name.rsplit("/", 1)[0],
+                plugin_unique_identifier=f"{provider_name}:1.0@checksum",
+                tenant_id=TENANT_ID,
+            )
+        )
+
+
+class TestReadyToolAllowlist:
+    """Only eligible installed tools may reach the planner and graph validator."""
+
+    def test_allowlist_filters_catalogue_and_validator_keys(self, generation: GenerationObservations) -> None:
+        _allowlist_providers(generation)
+
+        result = WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id=TENANT_ID,
+            mode="workflow",
+            instruction="Post the time to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset({("time", "current_time")}),
+        )
+
+        assert result["error"] == ""
+        call = generation.generator_calls[0]
+        entries = call["tool_catalogue_entries"]
+        assert isinstance(entries, list)
+        assert [(entry["provider_name"], entry["tool_name"]) for entry in entries] == [("time", "current_time")]
+        assert call["installed_tools"] == {("time", "current_time")}
+
+    def test_empty_allowlist_means_no_executable_tools(self, generation: GenerationObservations) -> None:
+        _allowlist_providers(generation)
+
+        result = WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id=TENANT_ID,
+            mode="workflow",
+            instruction="Post to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset(),
+        )
+
+        assert result["error"] == ""
+        call = generation.generator_calls[0]
+        assert call["tool_catalogue_entries"] == []
+        assert call["installed_tools"] == set()
+
+    def test_allowlist_keeps_validation_on_when_the_catalogue_fails(
+        self, generation: GenerationObservations, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def unavailable() -> Iterator[PluginToolProviderController]:
+            raise RuntimeError("plugin daemon unreachable")
+
+        monkeypatch.setattr(ToolManager, "list_hardcoded_providers", unavailable)
+
+        result = WorkflowGeneratorService.generate_workflow_graph(
+            tenant_id=TENANT_ID,
+            mode="workflow",
+            instruction="Post to the team chat",
+            model_config=_model_config(),
+            ready_tool_keys=frozenset({("time", "current_time")}),
+        )
+
+        assert result["error"] == ""
+        call = generation.generator_calls[0]
+        assert call["tool_catalogue_entries"] == []
+        assert call["installed_tools"] == set()
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("reply_language", [None, "zh-CN"])
+def test_session_reply_language_reaches_planner_and_node_builders(
+    generation: GenerationObservations, stream: bool, reply_language: str | None
+) -> None:
+    generate = (
+        WorkflowGeneratorService.generate_workflow_graph_stream
+        if stream
+        else WorkflowGeneratorService.generate_workflow_graph
+    )
+    result = generate(
+        tenant_id=TENANT_ID,
+        mode="workflow",
+        instruction="Return the literal value customer_id in USD",
+        model_config=_model_config(),
+        reply_language=reply_language,
+    )
+    if stream:
+        list(result)
+    assert len(generation.daemon_calls) == 3
+    for call in generation.daemon_calls:
+        request = call["data"]
+        assert isinstance(request, dict)
+        payload = request["data"]
+        assert isinstance(payload, dict)
+        messages = payload["prompt_messages"]
+        assert isinstance(messages, list)
+        system_message = messages[0]
+        assert isinstance(system_message, dict)
+        system = system_message["content"]
+        assert isinstance(system, str)
+        if reply_language:
+            assert "BCP-47: zh-CN" in system
+            assert "identifiers" in system
+            assert "code" in system
+            assert "user-supplied" in system
+        else:
+            assert "session reply language" not in system
+        user_message = messages[-1]
+        assert isinstance(user_message, dict)
+        user = user_message["content"]
+        assert isinstance(user, str)
+        assert "customer_id in USD" in user

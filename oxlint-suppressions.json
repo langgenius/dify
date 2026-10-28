@@ -645,7 +645,7 @@
   },
   "web/app/components/app/create-app-dialog-shell.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/app/create-app-dialog/app-card/index.tsx": {
@@ -660,15 +660,10 @@
   },
   "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
+      "count": 2
     },
     "react/only-export-components": {
       "count": 1
-    }
-  },
-  "web/app/components/app/create-app-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
     }
   },
   "web/app/components/app/create-from-dsl-modal/uploader.tsx": {
@@ -875,11 +870,6 @@
   "web/app/components/apps/app-card/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 8
-    }
-  },
-  "web/app/components/apps/app-list-header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/apps/creators-filter.tsx": {
@@ -4004,14 +3994,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-run-callbacks.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -4166,11 +4148,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/collaboration/components/user-cursors.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/comment/comment-icon.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
@@ -4283,12 +4260,6 @@
   "web/app/components/workflow/header/view-history.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 5
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/workflow/header/view-workflow-history.tsx": {
@@ -4324,11 +4295,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks/use-workflow-run-event/use-workflow-finished.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -4342,11 +4308,6 @@
   "web/app/components/workflow/hooks/use-workflow-variables.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
@@ -4800,11 +4761,6 @@
   "web/app/components/workflow/nodes/_base/node-sections.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/node.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/workflow/nodes/_base/types.ts": {
@@ -5984,15 +5940,6 @@
     }
   },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -7238,11 +7185,6 @@
     },
     "typescript/no-deprecated": {
       "count": 1
-    }
-  },
-  "web/service/http-error.spec.ts": {
-    "typescript/no-deprecated": {
-      "count": 13
     }
   },
   "web/service/log.ts": {

@@ -242,6 +242,8 @@ class DraftNodeExecutionTrace(WorkflowNodeTraceInfo):
 
 
 class TaskData(BaseModel):
+    external_tracing_disabled: bool = False
+
     app_id: str
     trace_info_type: str
     trace_info: Any = None

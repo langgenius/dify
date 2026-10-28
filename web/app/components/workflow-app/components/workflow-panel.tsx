@@ -1,6 +1,6 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import {
@@ -11,6 +11,11 @@ import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
+import {
+  difyBuilderAvailableAtom,
+  difyBuilderCanStartFixAtom,
+  difyBuilderStartRunFixAtom,
+} from './dify-builder/store'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
   ssr: false,
@@ -58,6 +63,9 @@ const WorkflowPanelOnLeft = ({ appId }: { appId: string }) => {
   )
 }
 const WorkflowPanelOnRight = () => {
+  const difyBuilderAvailable = useAtomValue(difyBuilderAvailableAtom)
+  const canStartFix = useAtomValue(difyBuilderCanStartFixAtom)
+  const startRunFix = useSetAtom(difyBuilderStartRunFixAtom)
   const isChatflow = useAtomValue(isChatflowAtom)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
@@ -70,7 +78,18 @@ const WorkflowPanelOnRight = () => {
       {historyWorkflowData && !isChatflow && <Record />}
       {historyWorkflowData && isChatflow && <ChatRecord />}
       {showDebugAndPreviewPanel && isChatflow && <DebugAndPreview />}
-      {showDebugAndPreviewPanel && !isChatflow && <WorkflowPreview />}
+      {showDebugAndPreviewPanel && !isChatflow && (
+        <WorkflowPreview
+          fixWithBuilderDisabled={!canStartFix}
+          onFixRun={
+            difyBuilderAvailable && !historyWorkflowData
+              ? (runId: string) => {
+                  void startRunFix(runId)
+                }
+              : undefined
+          }
+        />
+      )}
       {showChatVariablePanel && isChatflow && <ChatVariablePanel />}
       {showGlobalVariablePanel && <GlobalVariablePanel />}
       {controlMode === 'comment' && <CommentsPanel />}

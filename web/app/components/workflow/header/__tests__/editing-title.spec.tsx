@@ -54,4 +54,18 @@ describe('EditingTitle', () => {
     expect(statusContent.getByText('workflow.common.unpublished')).toBeInTheDocument()
     expect(statusContent.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
   })
+
+  it('should show unsaved changes instead of the previous autosave time after a conflict', () => {
+    renderWorkflowComponent(<EditingTitle />, {
+      initialStoreState: {
+        draftUpdatedAt: 1_710_000_000_000,
+        hasWorkflowDraftConflict: true,
+      },
+    })
+
+    const status = screen.getByRole('status', { name: 'workflow.common.workflowSaveStatus' })
+    expect(within(status).getByText('workflow.draftConflict.unsaved')).toBeInTheDocument()
+    expect(within(status).queryByText('workflow.common.autoSaved')).not.toBeInTheDocument()
+    expect(within(status).queryByText('08:00:00')).not.toBeInTheDocument()
+  })
 })

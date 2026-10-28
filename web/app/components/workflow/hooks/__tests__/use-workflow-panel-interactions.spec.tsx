@@ -19,6 +19,14 @@ const setup = (state: Partial<Shape> = {}) =>
     },
   )
 
+it('allows hand and pointer modes while Builder keeps nodes read-only', () => {
+  const { result, store } = setup({ workflowDraftSyncPhase: 'builder' })
+  act(() => result.current.mode.handleModeHand())
+  expect(store.getState().controlMode).toBe(ControlMode.Hand)
+  act(() => result.current.mode.handleModePointer())
+  expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+})
+
 it('switches from pointer to hand and clears the real graph selection', () => {
   const { result, store } = setup()
   act(() => result.current.mode.handleModeHand())
@@ -29,16 +37,16 @@ it('switches from pointer to hand and clears the real graph selection', () => {
   expect(store.getState().controlMode).toBe(ControlMode.Pointer)
 })
 
-it('blocks edit modes but allows comments on a readonly canvas', () => {
+it('allows navigation and comments on a readonly canvas', () => {
   const { result, store } = setup({ canvasReadOnly: true })
   act(() => result.current.mode.handleModeHand())
-  expect(store.getState().controlMode).toBe(ControlMode.Pointer)
-  expect(result.current.flow.getNode('a')?.data._isBundled).toBe(true)
+  expect(store.getState().controlMode).toBe(ControlMode.Hand)
+  expect(result.current.flow.getNode('a')?.data._isBundled).toBe(false)
   act(() => result.current.mode.handleModeComment())
   expect(store.getState().controlMode).toBe(ControlMode.Comment)
   expect(result.current.flow.getNode('a')?.data._isBundled).toBe(false)
   act(() => result.current.mode.handleModePointer())
-  expect(store.getState().controlMode).toBe(ControlMode.Comment)
+  expect(store.getState().controlMode).toBe(ControlMode.Pointer)
 })
 
 it('preserves mode and graph selection while a workflow run blocks comments', () => {

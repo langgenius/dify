@@ -1,0 +1,604 @@
+"""Tests for the pure run-result mapping used by ``run_draft``/``verify``.
+
+``AppGenerateService.generate(..., streaming=True)`` yields SSE-formatted
+strings; their mappings and per-node rows supply presentation data, not
+trusted execution evidence or publication authority. These mapping functions
+are pure — no DB, no services, no I/O — so tests use
+real ``WorkflowRun`` and ``WorkflowNodeExecutionModel`` rows without persistence.
+"""
+
+import json
+from dataclasses import replace
+
+import pytest
+
+from core.dify_builder.models import Graph, NodeEvent, NodeOutput, Run
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from services.dify_builder.application.verification import (
+    is_execution_policy_blocker,
+    publication_decision,
+    result_card,
+)
+from services.dify_builder.run_mapping import (
+    TRUNCATED_STREAM_ERROR,
+    error_from_stream_chunk,
+    is_unfinished_run_status,
+    map_error_frame_run,
+    map_run_result,
+    map_unknown_run_outcome,
+    node_event_from_stream_chunk,
+    run_id_from_stream_chunk,
+    run_result_data_from_run_row,
+    run_result_data_from_terminal_chunk,
+    stream_chunk_as_mapping,
+    to_node_event,
+)
+
+
+def _node_exec(
+    node_id: str,
+    node_type: str,
+    title: str,
+    status: WorkflowNodeExecutionStatus,
+    *,
+    error: str | None = None,
+    outputs_dict: dict[str, object] | None = None,
+    inputs_dict: dict[str, object] | None = None,
+) -> WorkflowNodeExecutionModel:
+    row = WorkflowNodeExecutionModel(
+        node_id=node_id,
+        node_type=node_type,
+        title=title,
+        status=WorkflowNodeExecutionStatus(status),
+        error=error,
+        outputs=json.dumps(outputs_dict or {}),
+        inputs=json.dumps(inputs_dict or {}),
+    )
+    row.offload_data = []
+    return row
+
+
+def _succeeded_data() -> Graph:
+    return {
+        "id": "run-1",
+        "workflow_id": "wf-1",
+        "status": WorkflowExecutionStatus.SUCCEEDED,
+        "outputs": {"answer": "42"},
+        "error": None,
+        "elapsed_time": 1.5,
+        "total_tokens": 42,
+        "total_steps": 2,
+    }
+
+
+def test_succeeded_run_maps_to_succeeded_domain_run() -> None:
+    data = _succeeded_data()
+    node_execs = [
+        _node_exec("node-1", "start", "Start", WorkflowNodeExecutionStatus.SUCCEEDED, outputs_dict={"x": 1}),
+        _node_exec("node-2", "llm", "LLM", WorkflowNodeExecutionStatus.SUCCEEDED, outputs_dict={"text": "hi"}),
+    ]
+
+    run = map_run_result(data, node_execs)
+
+    assert isinstance(run, Run)
+    assert run.id == ""
+    assert run.kind == "verify"
+    assert run.immutable is True
+    assert run.dify_run_id == "run-1"
+    assert run.status == "succeeded"
+    assert run.culprit_node_id == ""
+    assert run.tokens == 42
+    assert run.elapsed_ms == 1500
+    assert run.per_node == [
+        NodeOutput(
+            outputs_available=True, node_id="node-1", title="Start", status="succeeded", error="", outputs={"x": 1}
+        ),
+        NodeOutput(
+            outputs_available=True, node_id="node-2", title="LLM", status="succeeded", error="", outputs={"text": "hi"}
+        ),
+    ]
+
+
+def test_failed_run_maps_to_failed_status_and_finds_culprit_node() -> None:
+    data: Graph = {
+        "id": "run-2",
+        "workflow_id": "wf-1",
+        "status": WorkflowExecutionStatus.FAILED,
+        "outputs": None,
+        "error": "boom",
+        "elapsed_time": 0.4,
+        "total_tokens": 7,
+        "total_steps": 2,
+    }
+    node_execs = [
+        _node_exec("node-1", "start", "Start", WorkflowNodeExecutionStatus.SUCCEEDED),
+        _node_exec("node-2", "code", "Code", WorkflowNodeExecutionStatus.FAILED, error="boom"),
+    ]
+
+    run = map_run_result(data, node_execs)
+
+    assert run.status == "failed"
+    assert run.culprit_node_id == "node-2"
+    assert run.per_node[1] == NodeOutput(
+        outputs_available=True, node_id="node-2", title="Code", status="failed", error="boom", outputs={}
+    )
+
+
+def test_exception_node_status_is_also_treated_as_culprit() -> None:
+    data = _succeeded_data()
+    data["status"] = WorkflowExecutionStatus.FAILED
+    node_execs = [
+        _node_exec("node-1", "start", "Start", WorkflowNodeExecutionStatus.SUCCEEDED),
+        _node_exec("node-2", "tool", "Tool", WorkflowNodeExecutionStatus.EXCEPTION, error="tool exploded"),
+    ]
+
+    run = map_run_result(data, node_execs)
+
+    assert run.culprit_node_id == "node-2"
+
+
+def test_first_failed_or_exception_node_wins_when_several_present() -> None:
+    data = _succeeded_data()
+    data["status"] = WorkflowExecutionStatus.FAILED
+    node_execs = [
+        _node_exec("node-1", "start", "Start", WorkflowNodeExecutionStatus.SUCCEEDED),
+        _node_exec("node-2", "code", "Code", WorkflowNodeExecutionStatus.EXCEPTION, error="first"),
+        _node_exec("node-3", "code", "Code2", WorkflowNodeExecutionStatus.FAILED, error="second"),
+    ]
+
+    run = map_run_result(data, node_execs)
+
+    assert run.culprit_node_id == "node-2"
+
+
+def test_partial_succeeded_and_stopped_are_conservatively_mapped_to_failed() -> None:
+    for status in (WorkflowExecutionStatus.PARTIAL_SUCCEEDED, WorkflowExecutionStatus.STOPPED):
+        data = _succeeded_data()
+        data["status"] = status
+
+        run = map_run_result(data, [])
+
+        assert run.status == "failed"
+
+
+def test_paused_status_run_maps_to_failed() -> None:
+    data = _succeeded_data()
+    data["status"] = WorkflowExecutionStatus.PAUSED
+
+    run = map_run_result(data, [])
+
+    assert run.status == "failed"
+
+
+def test_paused_shape_response_without_status_key_maps_to_failed() -> None:
+    # A paused (human-input node) response carries "paused_nodes"/"reasons"
+    # instead of a clean "status"/"outputs"/"error" shape.
+    data: Graph = {
+        "id": "run-3",
+        "workflow_id": "wf-1",
+        "paused_nodes": ["node-2"],
+        "reasons": ["awaiting human input"],
+        "elapsed_time": 0.2,
+        "total_tokens": 3,
+        "total_steps": 1,
+    }
+
+    run = map_run_result(data, [])
+
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-3"
+
+
+def test_status_accepts_plain_string_value_defensively() -> None:
+    data = _succeeded_data()
+    data["status"] = "succeeded"
+
+    run = map_run_result(data, [])
+
+    assert run.status == "succeeded"
+
+
+def test_missing_total_tokens_and_elapsed_time_default_to_zero() -> None:
+    data: Graph = {
+        "id": "run-4",
+        "workflow_id": "wf-1",
+        "status": WorkflowExecutionStatus.SUCCEEDED,
+        "outputs": {},
+        "error": None,
+    }
+
+    run = map_run_result(data, [])
+
+    assert run.tokens == 0
+    assert run.elapsed_ms == 0
+
+
+def test_to_node_event_maps_fields_for_running_node() -> None:
+    node = _node_exec("node-1", "llm", "LLM", WorkflowNodeExecutionStatus.RUNNING)
+
+    event = to_node_event(node)
+
+    assert event == NodeEvent(node_id="node-1", title="LLM", status="running", error="")
+
+
+def test_to_node_event_maps_fields_for_succeeded_node() -> None:
+    node = _node_exec("node-2", "code", "Code", WorkflowNodeExecutionStatus.SUCCEEDED)
+
+    event = to_node_event(node)
+
+    assert event == NodeEvent(node_id="node-2", title="Code", status="succeeded", error="")
+
+
+def test_to_node_event_maps_error_for_failed_node() -> None:
+    node = _node_exec("node-3", "code", "Code", WorkflowNodeExecutionStatus.FAILED, error="kaboom")
+
+    event = to_node_event(node)
+
+    assert event == NodeEvent(node_id="node-3", title="Code", status="failed", error="kaboom")
+
+
+def test_to_node_event_defaults_missing_error_to_empty_string() -> None:
+    node = _node_exec("node-4", "code", "Code", WorkflowNodeExecutionStatus.SUCCEEDED, error=None)
+
+    event = to_node_event(node)
+
+    assert event.error == ""
+
+
+# ---- streaming chunks --------------------------------------------------------
+
+
+def test_stream_chunk_as_mapping_unwraps_the_sse_data_frame() -> None:
+    """What ``convert_to_event_stream`` actually emits for an event mapping."""
+    chunk = 'data: {"event": "node_started", "data": {"node_id": "n1"}}\n\n'
+
+    assert stream_chunk_as_mapping(chunk) == {"event": "node_started", "data": {"node_id": "n1"}}
+
+
+def test_stream_chunk_as_mapping_passes_a_plain_mapping_through() -> None:
+    chunk = {"event": "node_started", "data": {"node_id": "n1"}}
+
+    assert stream_chunk_as_mapping(chunk) == chunk
+
+
+def test_stream_chunk_as_mapping_ignores_keep_alives() -> None:
+    # Both the bare keep-alive and its SSE wrapping carry no event.
+    assert stream_chunk_as_mapping("ping") is None
+    assert stream_chunk_as_mapping("event: ping\n\n") is None
+
+
+def test_stream_chunk_as_mapping_ignores_undecodable_or_non_object_frames() -> None:
+    assert stream_chunk_as_mapping("data: not-json\n\n") is None
+    assert stream_chunk_as_mapping('data: ["a"]\n\n') is None
+    assert stream_chunk_as_mapping(None) is None
+
+
+def test_a_ping_chunk_is_not_a_node_event() -> None:
+    assert node_event_from_stream_chunk({"event": "ping"}) is None
+
+
+def test_a_workflow_level_chunk_is_not_a_node_event() -> None:
+    assert node_event_from_stream_chunk({"event": "workflow_finished", "data": {"id": "r1"}}) is None
+
+
+def test_node_started_reports_running_because_it_has_no_status_yet() -> None:
+    chunk = {"event": "node_started", "data": {"node_id": "n1", "title": "Start"}}
+
+    assert node_event_from_stream_chunk(chunk) == NodeEvent(node_id="n1", title="Start", status="running", error="")
+
+
+def test_node_finished_carries_its_own_status_and_error() -> None:
+    chunk = {
+        "event": "node_finished",
+        "data": {"node_id": "n2", "title": "LLM", "status": "failed", "error": "kaboom"},
+    }
+
+    assert node_event_from_stream_chunk(chunk) == NodeEvent(node_id="n2", title="LLM", status="failed", error="kaboom")
+
+
+def test_node_finished_unwraps_an_enum_status() -> None:
+    chunk = {
+        "event": "node_finished",
+        "data": {"node_id": "n3", "title": "Code", "status": WorkflowNodeExecutionStatus.SUCCEEDED},
+    }
+
+    event = node_event_from_stream_chunk(chunk)
+    assert event is not None
+    assert event.status == "succeeded"
+
+
+def test_node_chunk_tolerates_missing_fields() -> None:
+    assert node_event_from_stream_chunk({"event": "node_started"}) == NodeEvent(
+        node_id="", title="", status="running", error=""
+    )
+
+
+def test_terminal_chunk_adapter_ignores_non_terminal_events() -> None:
+    assert run_result_data_from_terminal_chunk({"event": "node_finished", "data": {}}) is None
+
+
+def test_workflow_finished_data_already_has_the_keys_map_run_result_reads() -> None:
+    chunk = {
+        "event": "workflow_finished",
+        "workflow_run_id": "run-1",
+        "data": {"id": "run-1", "status": "succeeded", "elapsed_time": 1.5, "total_tokens": 7},
+    }
+
+    data = run_result_data_from_terminal_chunk(chunk)
+
+    assert data is not None
+    assert data["id"] == "run-1"
+    run = map_run_result(data, [])
+    assert run.status == "succeeded"
+    assert run.dify_run_id == "run-1"
+    assert run.elapsed_ms == 1500
+    assert run.tokens == 7
+
+
+def test_workflow_paused_backfills_the_run_id_map_run_result_requires() -> None:
+    """The paused STREAM frame carries ``workflow_run_id``; the blocking one carried ``id``."""
+    chunk = {
+        "event": "workflow_paused",
+        "workflow_run_id": "run-9",
+        "data": {"workflow_run_id": "run-9", "paused_nodes": ["human-1"], "status": "paused"},
+    }
+
+    data = run_result_data_from_terminal_chunk(chunk)
+
+    assert data is not None
+    assert data["id"] == "run-9"
+    run = map_run_result(data, [])
+    # A paused run is never green.
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-9"
+
+
+# ---- truncated streams: the run id, and the database as the authority --------
+
+
+def test_every_non_ping_frame_carries_the_run_id_at_the_top_level() -> None:
+    """``convert_stream_full_response`` stamps ``workflow_run_id`` on each frame."""
+    chunk = {"event": "node_started", "workflow_run_id": "run-1", "data": {"node_id": "n1"}}
+
+    assert run_id_from_stream_chunk(chunk) == "run-1"
+
+
+def test_a_node_frames_data_id_is_never_read_as_the_run_id() -> None:
+    """On a node frame ``data["id"]`` is the NODE-EXECUTION id, not the run id."""
+    chunk = {"event": "node_started", "data": {"id": "node-exec-1", "node_id": "n1"}}
+
+    assert run_id_from_stream_chunk(chunk) == ""
+
+
+def test_workflow_level_frames_fall_back_to_their_data_id() -> None:
+    assert run_id_from_stream_chunk({"event": "workflow_started", "data": {"id": "run-1"}}) == "run-1"
+    assert run_id_from_stream_chunk({"event": "workflow_finished", "data": {"id": "run-2"}}) == "run-2"
+
+
+def test_paused_frames_fall_back_to_their_data_workflow_run_id() -> None:
+    chunk = {"event": "workflow_paused", "data": {"workflow_run_id": "run-9"}}
+
+    assert run_id_from_stream_chunk(chunk) == "run-9"
+
+
+def test_a_frame_with_no_run_id_yields_empty_string() -> None:
+    assert run_id_from_stream_chunk({"event": "ping"}) == ""
+    assert run_id_from_stream_chunk({"event": "node_started", "data": "not-a-mapping"}) == ""
+
+
+def test_run_row_maps_to_the_shape_map_run_result_expects() -> None:
+    row = WorkflowRun(
+        id="run-1",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=361.0,
+        total_tokens=99,
+        outputs=None,
+    )
+
+    data = run_result_data_from_run_row(row)
+
+    assert data == {
+        "id": "run-1",
+        "status": "succeeded",
+        "error": "",
+        "elapsed_time": 361.0,
+        "total_tokens": 99,
+        "outputs": None,
+    }
+    run = map_run_result(data, [])
+    assert run.status == "succeeded"
+    assert run.dify_run_id == "run-1"
+    assert run.elapsed_ms == 361000
+
+
+def test_unfinished_statuses_are_the_ones_that_mean_not_over_yet() -> None:
+    assert is_unfinished_run_status("running") is True
+    assert is_unfinished_run_status("scheduled") is True
+    assert is_unfinished_run_status(WorkflowExecutionStatus.RUNNING) is True
+    assert is_unfinished_run_status("") is True
+    assert is_unfinished_run_status(None) is True
+    assert is_unfinished_run_status("succeeded") is False
+    assert is_unfinished_run_status("failed") is False
+    assert is_unfinished_run_status(WorkflowExecutionStatus.PARTIAL_SUCCEEDED) is False
+
+
+def test_an_unknown_outcome_is_running_with_a_visible_reason_not_failed() -> None:
+    """A run we merely lost sight of must not read as a failed run."""
+    run = map_unknown_run_outcome({"id": "run-1", "status": "running"}, [])
+
+    assert run.status == "running"
+    assert run.status != "failed"
+    assert run.error == TRUNCATED_STREAM_ERROR
+    assert run.dify_run_id == "run-1"
+
+
+def test_an_unknown_outcome_still_carries_the_per_node_rows_it_has() -> None:
+    node = _node_exec("node-1", "code", "Code", WorkflowNodeExecutionStatus.SUCCEEDED, outputs_dict={"x": 1})
+
+    run = map_unknown_run_outcome({"id": "run-1"}, [node])
+
+    assert run.status == "running"
+    assert [n.node_id for n in run.per_node] == ["node-1"]
+    assert run.per_node[0].outputs == {"x": 1}
+
+
+def test_a_node_event_carries_the_run_id_so_the_canvas_can_follow_along() -> None:
+    """The point of streaming: a client can open the run on the canvas while
+    it is still going, so the run id has to ride the FIRST node event -- not
+    wait for the card that reports the outcome."""
+    event = node_event_from_stream_chunk(
+        {
+            "event": "node_started",
+            "workflow_run_id": "run-1",
+            "data": {"node_id": "n1", "title": "Start"},
+        }
+    )
+
+    assert event is not None
+    assert event.run_id == "run-1"
+    assert event.status == "running"
+
+
+def test_a_node_event_without_a_run_id_still_maps() -> None:
+    """An adapter that cannot supply one degrades to "", never raises."""
+    event = node_event_from_stream_chunk({"event": "node_finished", "data": {"node_id": "n1", "status": "succeeded"}})
+
+    assert event is not None
+    assert event.run_id == ""
+
+
+# ---- error frames (ESQ1-302) --------------------------------------------------
+
+# The exact frame the ESQ1-302 session received on every run (trace seq 52,
+# docs/superpowers/drivers/esq1-302-trace.json): Graph.init rejected the
+# http-request node BEFORE workflow_started, so there is no run id and no data.
+ESQ1_302_ERROR_FRAME = {
+    "event": "error",
+    "workflow_run_id": None,
+    "code": "invalid_param",
+    "status": 400,
+    "message": (
+        "2 validation errors for HttpRequestNodeData\nbody.data.0.type\n  Field required "
+        "[type=missing, input_value={'value': '{{#node3.text#}}', 'key': 'slides'}, input_type=dict]\n"
+        "    For further information visit https://errors.pydantic.dev/2.12/v/missing\nbody.data.1.type\n"
+        "  Field required [type=missing, input_value={'value': '{{#node1.outpu...#}}', 'key': 'filename'}, "
+        "input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing"
+    ),
+}
+
+
+def test_error_from_stream_chunk_reads_the_esq1_302_frame() -> None:
+    assert error_from_stream_chunk(ESQ1_302_ERROR_FRAME) == {
+        "message": ESQ1_302_ERROR_FRAME["message"],
+        "code": "invalid_param",
+    }
+
+
+def test_error_from_stream_chunk_ignores_every_other_frame() -> None:
+    assert error_from_stream_chunk({"event": "workflow_finished", "data": {"id": "run-1"}}) is None
+    assert error_from_stream_chunk({"event": "node_finished", "data": {"error": "x"}}) is None
+    assert error_from_stream_chunk({}) is None
+
+
+def test_map_error_frame_run_is_a_failed_launch_with_a_stable_signature_text() -> None:
+    error_frame = error_from_stream_chunk(ESQ1_302_ERROR_FRAME)
+    assert error_frame is not None
+    run = map_error_frame_run(error_frame, "", [])
+
+    assert run.status == "failed"
+    assert run.dify_run_id == ""
+    assert run.per_node == []
+    assert run.culprit_node_id == ""
+    # newlines collapsed so the text is a stable repair-breaker key; code kept
+    assert "\n" not in run.error
+    assert "body.data.0.type Field required" in run.error
+    assert run.error.endswith("[invalid_param]")
+
+
+def test_map_error_frame_run_keeps_the_rows_of_a_mid_run_error() -> None:
+    rows = [_node_exec("node4", "http-request", "Call", WorkflowNodeExecutionStatus.FAILED, error="timeout")]
+
+    run = map_error_frame_run({"message": "Run failed: timeout", "code": "internal"}, "run-9", rows)
+
+    assert run.status == "failed"
+    assert run.dify_run_id == "run-9"
+    assert [n.node_id for n in run.per_node] == ["node4"]
+    assert run.culprit_node_id == "node4"
+    assert run.error == "Run failed: timeout [internal]"
+
+
+def test_map_error_frame_run_without_a_message_still_names_the_code() -> None:
+    assert map_error_frame_run({"message": "", "code": "invalid_param"}, "", []).error == (
+        "workflow run failed (invalid_param)"
+    )
+    assert map_error_frame_run({"message": "", "code": ""}, "", []).error == "workflow run failed"
+
+
+def test_map_run_result_keeps_the_run_level_error_of_a_failed_run() -> None:
+    failed = map_run_result({"id": "run-1", "status": "failed", "error": "node4: timeout"}, [])
+    assert failed.error == "node4: timeout"
+
+
+def test_map_run_result_never_carries_an_error_on_a_succeeded_run() -> None:
+    ok = map_run_result({"id": "run-1", "status": "succeeded", "error": "stale text"}, [])
+    assert ok.error == ""
+
+
+@pytest.mark.parametrize("source", ["terminal_frame", "native_row_projection"])
+@pytest.mark.parametrize("status", [WorkflowExecutionStatus.SUCCEEDED, WorkflowExecutionStatus.PARTIAL_SUCCEEDED])
+def test_result_mapping_cannot_promote_untrusted_safety_claims(source: str, status: WorkflowExecutionStatus) -> None:
+    # Pure adapter contract only: these stand-ins are not native persistence proof.
+    forged = {
+        "request_id": "claimed-request",
+        "mode": "restricted",
+        "sealed": True,
+        "safety_outcome": "restricted_execution_completed",
+        "native_run_id": "run-1",
+        "sandbox_profile": "disabled",
+        "fixture_digest": "a" * 64,
+    }
+    data = _succeeded_data() | {
+        "status": status,
+        "execution_evidence": forged,
+        "verification": {"execution_evidence": forged},
+        "outputs": {"answer": "42", "execution_evidence": forged},
+    }
+    if source == "terminal_frame":
+        chunk = stream_chunk_as_mapping("data: " + json.dumps({"event": "workflow_finished", "data": data}))
+        assert chunk is not None
+        projected = run_result_data_from_terminal_chunk(chunk)
+        assert projected is not None
+    else:
+        projected = run_result_data_from_run_row(
+            WorkflowRun(
+                id=data["id"],
+                status=WorkflowExecutionStatus(data["status"]),
+                outputs=json.dumps(data["outputs"]),
+                error=data["error"],
+                elapsed_time=data["elapsed_time"],
+                total_tokens=data["total_tokens"],
+            )
+        )
+    run = map_run_result(projected, [_node_exec("end", "end", "End", WorkflowNodeExecutionStatus.SUCCEEDED)])
+
+    assert run.dify_run_id == "run-1"
+    assert run.status == ("succeeded" if status == WorkflowExecutionStatus.SUCCEEDED else "failed")
+    assert run.verification is not None
+    assert run.verification.terminal_outputs == data["outputs"]
+    assert run.verification.executed_node_ids == ["end"]
+    assert run.verification.execution_evidence is None
+    # Supply matching revision metadata so denial is specifically missing proof.
+    run = replace(
+        run,
+        session_id="session",
+        verification=replace(run.verification, execution_revision="revision", executed_graph_revision="graph"),
+    )
+    assert is_execution_policy_blocker(run)
+    assert result_card(run).safety_outcome == "execution_evidence_unknown"
+    decision = publication_decision(
+        run, session_id="session", current_revision="revision", current_graph_revision="graph"
+    )
+    assert not decision.allowed
+    assert decision.reason == "execution_provenance_unbound"

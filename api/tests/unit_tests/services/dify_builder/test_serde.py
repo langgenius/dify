@@ -1,0 +1,365 @@
+"""Round-trip tests for the ``DifyBuilderContext`` JSON (de)serializer.
+
+``DifyBuilderContext`` is the per-session working state persisted as the
+``context`` JSONB column on ``dify_builder_session_commits`` (P3a Task 4).
+This module verifies the pure (de)serializer is lossless and produces a
+JSON-safe dict, independent of any database concern.
+"""
+
+import json
+
+import pytest
+
+from core.dify_builder.models import (
+    ChangeSet,
+    ChecklistError,
+    Diagnosis,
+    DifyBuilderContext,
+    MutationIntent,
+    Risk,
+)
+from models.dify_builder import DifyBuilderRun
+from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
+from services.dify_builder.application.verification import is_execution_policy_blocker, publication_decision
+from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.serde import context_from_dict, context_to_dict
+
+
+def _full_fix_context() -> DifyBuilderContext:
+    return DifyBuilderContext(
+        failed_run_id="TR-1",
+        diagnosis=Diagnosis(
+            culprit_node_id="n1",
+            root_cause="TypeError in code node",
+            severity="high",
+        ),
+        staged_repair=[
+            MutationIntent(
+                op="set_node_config",
+                args={"node_id": "n1", "path": "code", "value": "return {}"},
+            )
+        ],
+        risk=Risk(level="low", reason="config-only change", has_external_side_effect=False),
+        change_set=ChangeSet(changed_nodes=["n1"], diff="- old\n+ new"),
+        checkpoint_id="cp-1",
+        verify_run_id="TR-2",
+        test_input_ref="ti-1",
+        last_snapshot_hash="abc123",
+        next_seq=3,
+        source="checklist",
+        checklist_errors=[
+            ChecklistError(
+                node_id="n2",
+                node_type="code",
+                title="Code",
+                messages=["missing required field"],
+                unconnected=False,
+                plugin_missing=False,
+            )
+        ],
+    )
+
+
+def test_fully_populated_fix_context_round_trips() -> None:
+    fc = _full_fix_context()
+
+    result = context_from_dict(context_to_dict(fc))
+
+    assert result == fc
+
+
+def test_empty_fix_context_round_trips() -> None:
+    fc = DifyBuilderContext()
+
+    result = context_from_dict(context_to_dict(fc))
+
+    assert result == fc
+
+
+def test_to_dict_output_is_json_serializable() -> None:
+    fc = _full_fix_context()
+
+    d = context_to_dict(fc)
+
+    # Must not raise -- this is what actually lands in the JSONB column.
+    json.dumps(d)
+
+
+def test_from_dict_tolerates_missing_optional_keys() -> None:
+    # An older/partial persisted dict -- only a subset of keys present.
+    d = {"failed_run_id": "TR-9"}
+
+    fc = context_from_dict(d)
+
+    assert fc == DifyBuilderContext(failed_run_id="TR-9")
+
+
+def test_context_round_trips_build_fields() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(
+        goal_text="Build a quarterly report workflow",
+        requirements={"currency": "USD", "prefer_audited": True},
+        plan_items=["Retrieve", "Summarize", "Emit"],
+        plan_version_tag="v2",
+        resource_selection={"resource_ids": ["kb-company"]},
+        built_node_ids=["start", "llm", "end"],
+    )
+    out = context_from_dict(context_to_dict(fc))
+    assert out == fc
+
+
+def test_context_from_dict_defaults_build_fields_when_absent() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict
+
+    fc = context_from_dict({"failed_run_id": "TR-9"})
+    assert fc == DifyBuilderContext(failed_run_id="TR-9")
+    assert fc.goal_text == ""
+    assert fc.requirements == {}
+    assert fc.plan_items == []
+
+
+def test_context_roundtrip_preserves_edit_fields() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(
+        edit_rules={"risk_threshold": "high", "preserve_summary": True},
+        edit_target_node_ids=["llm", "knowledge_retrieval"],
+        # multi-line, quoted, non-ASCII: a real pydantic refusal, which is what
+        # actually lands in the JSONB column.
+        last_edit_rejection="the draft would not start: node 'node2' (if-else):\n  Input should be '\u2265'",
+    )
+    out = context_from_dict(context_to_dict(fc))
+    assert out.edit_rules == {"risk_threshold": "high", "preserve_summary": True}
+    assert out.edit_target_node_ids == ["llm", "knowledge_retrieval"]
+    assert out == fc  # every edit field, last_edit_rejection included
+
+
+def test_context_from_dict_defaults_edit_fields_when_absent() -> None:
+    from services.dify_builder.serde import context_from_dict
+
+    out = context_from_dict({})  # an older row with no edit_* keys
+    assert out.edit_rules == {}
+    assert out.edit_target_node_ids == []
+    assert out.last_edit_rejection == ""
+
+
+def test_context_roundtrip_preserves_lifecycle_fields() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(paused=True, checkpoint_seq=7)
+    out = context_from_dict(context_to_dict(fc))
+    assert out.paused is True
+    assert out.checkpoint_seq == 7
+
+
+def test_context_from_dict_defaults_lifecycle_fields_when_absent() -> None:
+    from services.dify_builder.serde import context_from_dict
+
+    out = context_from_dict({})  # an older row with no paused/checkpoint_seq keys
+    assert out.paused is False
+    assert out.checkpoint_seq == 0
+
+
+def test_serde_round_trips_recovery_fields() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(last_structure_fingerprint="fp-abc", recovery_class="config_only")
+    d = context_to_dict(fc)
+    assert d["last_structure_fingerprint"] == "fp-abc"
+    assert d["recovery_class"] == "config_only"
+    back = context_from_dict(d)
+    assert back.last_structure_fingerprint == "fp-abc"
+    assert back.recovery_class == "config_only"
+
+
+def test_serde_defaults_recovery_fields_for_old_rows() -> None:
+    from services.dify_builder.serde import context_from_dict
+
+    # An older persisted dict lacking the new keys still deserializes.
+    back = context_from_dict({})
+    assert back.last_structure_fingerprint == ""
+    assert back.recovery_class == ""
+
+
+def test_serde_round_trips_skill_learning_policy() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(skill_learning_policy="automatic")
+    d = context_to_dict(fc)
+    assert d["skill_learning_policy"] == "automatic"
+    assert context_from_dict(d).skill_learning_policy == "automatic"
+
+
+def test_serde_defaults_skill_learning_policy_for_old_rows() -> None:
+    from services.dify_builder.serde import context_from_dict
+
+    assert context_from_dict({}).skill_learning_policy == "ask"
+
+
+def test_form_fields_round_trips() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext()
+    fc.form_fields = [{"key": "categories", "label": "Categories", "type": "text", "options": []}]
+    restored = context_from_dict(context_to_dict(fc))
+    assert restored.form_fields == fc.form_fields
+
+
+def test_form_fields_defaults_empty_when_absent() -> None:
+    from services.dify_builder.serde import context_from_dict
+
+    assert context_from_dict({}).form_fields == []
+
+
+def test_reply_language_round_trips() -> None:
+    fc = DifyBuilderContext(reply_language="ja")
+    result = context_from_dict(context_to_dict(fc))
+    assert result.reply_language == "ja"
+
+
+def test_reply_language_defaults_empty_when_absent() -> None:
+    assert context_from_dict({}).reply_language == ""
+
+
+def test_repair_loop_fields_round_trip() -> None:
+    # Regression: context_from_dict previously never read these two keys,
+    # so a session persisted mid-repair-loop silently reset its attempt
+    # count to 0 on the very next turn, making the repeated-failure guard
+    # in handlers_build.py structurally unreachable (BUILD_AWAIT_REPAIR is
+    # a waiting state -- every approve_repair is a fresh turn that reloads
+    # the context via context_from_dict).
+    fc = DifyBuilderContext(repair_attempts=5, last_repair_error="boom", last_repair_graph_revision="executable")
+    result = context_from_dict(context_to_dict(fc))
+    assert result.repair_attempts == 5
+    assert result.last_repair_error == "boom"
+    assert result.last_repair_graph_revision == "executable"
+
+
+def test_repair_loop_fields_default_when_absent() -> None:
+    out = context_from_dict({})  # an older row with no repair_attempts/last_repair_error keys
+    assert out.repair_attempts == 0
+    assert out.last_repair_error == ""
+    assert out.last_repair_graph_revision == ""
+
+
+def test_unknown_outcome_count_round_trips_and_defaults_to_zero() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(unknown_outcome_count=2)
+    assert context_from_dict(context_to_dict(fc)).unknown_outcome_count == 2
+    # a context persisted before the field existed
+    assert context_from_dict({}).unknown_outcome_count == 0
+
+
+@pytest.mark.parametrize("has_run_evidence", [False, True], ids=["historical-missing", "additive-simulation"])
+def test_context_roundtrip_cannot_replace_repository_owned_execution_evidence(has_run_evidence: bool) -> None:
+    # Typed unit serialization fixture, not evidence of actual native execution.
+    summary = ExecutionEvidenceSummary(
+        request_id="request",
+        mode="restricted",
+        sealed=True,
+        safety_outcome="simulation_completed",
+        simulated_node_ids=("http",),
+        sandbox_profile="disabled",
+        fixture_digest="a" * 64,
+        native_run_id="native-run",
+    )
+    verification: dict[str, object] = {
+        "execution_revision": "revision",
+        "executed_graph_revision": "graph",
+        "terminal_outputs": {"answer": "sample"},
+        "output_findings": [],
+        "executed_node_ids": ["http", "end"],
+        "no_output_dead_branch": False,
+    }
+    if has_run_evidence:
+        verification["execution_evidence"] = summary.model_dump(mode="json")
+    # Use the actual repository decoder; context serde has no Run decoder.
+    run = SqlDifyBuilderRepository._to_domain_run(
+        DifyBuilderRun(
+            id="verify-run",
+            session_id="session",
+            kind="verify",
+            dify_run_id="native-run",
+            status="succeeded",
+            immutable=True,
+            verification=json.loads(json.dumps(verification)),
+        )
+    )
+    forged = summary.model_dump(mode="json") | {
+        "safety_outcome": "restricted_execution_completed",
+        "simulated_node_ids": [],
+    }
+    payload = {
+        "verify_run_id": run.id,
+        "test_input_ref": "test-input",
+        "last_snapshot_hash": "revision",
+        "execution_evidence": forged,
+        "verification": {"execution_evidence": forged},
+    }
+    restored = context_from_dict(json.loads(json.dumps(payload)))
+    roundtripped = context_to_dict(restored)
+
+    assert restored.verify_run_id == run.id
+    assert restored.test_input_ref == "test-input"
+    assert restored.last_snapshot_hash == "revision"
+    assert "execution_evidence" not in roundtripped
+    assert "verification" not in roundtripped
+    assert context_from_dict(json.loads(json.dumps(roundtripped))) == restored
+    assert run.verification is not None
+    assert run.verification.execution_evidence == (summary if has_run_evidence else None)
+    assert is_execution_policy_blocker(run)
+    decision = publication_decision(
+        run, session_id="session", current_revision="revision", current_graph_revision="graph"
+    )
+    assert not decision.allowed
+    assert decision.reason == ("simulation_only" if has_run_evidence else "execution_provenance_unbound")
+
+
+def test_confirmed_command_survives_session_commit_round_trip() -> None:
+    from core.dify_builder.models import DifyBuilderContext
+
+    original = DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1")
+    loaded = context_from_dict(context_to_dict(original))
+    assert loaded.confirmed_consent_id == "consent-1"
+    assert loaded.confirmed_command_id == "command-1"
+    assert context_from_dict({}).confirmed_consent_id == ""
+    assert context_from_dict({}).confirmed_command_id == ""
+
+
+def test_confirmed_evidence_summary_round_trips_through_persisted_run_json() -> None:
+    summary = ExecutionEvidenceSummary(
+        request_id="request-1",
+        policy_version="builder-confirmed-gmail-read-v1",
+        mode="confirmed_tool",
+        sealed=True,
+        safety_outcome="confirmed_tool_completed",
+        sandbox_profile="disabled",
+        native_run_id="native-1",
+        consent_id="consent-1",
+        action_state="completed",
+        action_reason_code="message_returned",
+    )
+    decoded = ExecutionEvidenceSummary.model_validate(json.loads(json.dumps(summary.model_dump(mode="json"))))
+    assert decoded == summary
+    # An older restricted row without the new optional fields still decodes unchanged.
+    legacy = {
+        "request_id": "request-1",
+        "mode": "restricted",
+        "sealed": True,
+        "safety_outcome": "restricted_execution_completed",
+        "sandbox_profile": "disabled",
+        "fixture_digest": "a" * 64,
+        "native_run_id": "native-1",
+    }
+    old = ExecutionEvidenceSummary.model_validate(legacy)
+    assert (old.policy_version, old.consent_id, old.action_state) == ("builder-restricted-v1", None, None)

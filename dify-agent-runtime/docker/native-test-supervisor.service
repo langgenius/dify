@@ -1,0 +1,31 @@
+[Unit]
+Description=Dify native test scope supervisor
+After=network.target
+
+[Service]
+Type=simple
+User=dify-native
+Group=dify-native
+Delegate=cpu memory pids
+DelegateSubgroup=manager
+CPUQuota=200%
+MemoryMax=3G
+TasksMax=768
+LimitNOFILE=4096
+NoNewPrivileges=yes
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+SystemCallFilter=accept accept4 access arch_prctl bind brk capget capset chdir chmod chown chroot clock_gettime clock_nanosleep clone clone3 close close_range connect copy_file_range dup dup2 dup3 epoll_create epoll_create1 epoll_ctl epoll_pwait epoll_pwait2 epoll_wait eventfd eventfd2 execve execveat exit exit_group faccessat faccessat2 fadvise64 fallocate fchdir fchmod fchmodat fchmodat2 fchown fchownat fcntl fdatasync flock fork fstat fstatfs fsync ftruncate futex futex_waitv getcwd getdents getdents64 getegid geteuid getgid getgroups getpeername getpgid getpgrp getpid getppid getrandom getresgid getresuid getrlimit getrusage getsid getsockname getsockopt gettid gettimeofday getuid ioctl kill landlock_add_rule landlock_create_ruleset landlock_restrict_self lchown link linkat listen lseek lstat madvise membarrier memfd_create mincore mkdir mkdirat mlock mmap mprotect mremap munlock munmap nanosleep newfstatat open openat openat2 pipe pipe2 poll ppoll prctl pread64 preadv preadv2 prlimit64 pselect6 pwrite64 pwritev pwritev2 read readahead readlink readlinkat readv recvfrom recvmmsg recvmsg rename renameat renameat2 restart_syscall rseq rt_sigaction rt_sigpending rt_sigprocmask rt_sigqueueinfo rt_sigreturn rt_sigsuspend rt_sigtimedwait sched_getaffinity sched_getparam sched_getscheduler sched_setaffinity sched_yield select sendfile sendmmsg sendmsg sendto set_robust_list set_tid_address setgid setgroups setpgid setresgid setresuid setrlimit setsid setsockopt setuid shutdown sigaltstack socket socketpair splice stat statfs statx symlink symlinkat sysinfo tgkill time timer_create timer_delete timer_gettime timer_settime timerfd_create timerfd_gettime timerfd_settime times tkill truncate umask uname unlink unlinkat utime utimensat utimes vfork wait4 waitid write writev mount umount2 unshare
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/dify-native /home/dify /workspace /sys/fs/cgroup/system.slice/dify-native.service
+EnvironmentFile=/etc/dify-native/supervisor.env
+AppArmorProfile=dify-native-test-supervisor
+ExecStart=/usr/local/libexec/dify-native-start
+# A supervisor restart retains workers; scope deadlines and cgroup.kill own
+# child lifetime. Stopping the deployment requires explicit scope destruction.
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

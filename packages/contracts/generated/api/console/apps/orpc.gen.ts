@@ -4722,18 +4722,26 @@ export const get80 = oc
   })
 
 /**
- * Sync draft workflow
+ * Save the graph and explicit environment-variable patches
  *
- * Sync draft workflow configuration
+ * Save draft graph and environment patches; initialize configuration for new drafts
+ * Existing draft
+ * features and conversation variables are owned by their dedicated endpoints;
+ * the submitted snapshots only initialize a new draft. Legacy clients that
+ * edit configuration through this POST must use those dedicated endpoints.
+ *
+ * Empty initialization or clearing requires force=true;
+ * an already-empty draft may be saved with its current hash without force.
  */
 export const post61 = oc
   .route({
-    description: 'Sync draft workflow configuration',
+    description:
+      'Save draft graph and environment patches; initialize configuration for new drafts\nExisting draft\nfeatures and conversation variables are owned by their dedicated endpoints;\nthe submitted snapshots only initialize a new draft. Legacy clients that\nedit configuration through this POST must use those dedicated endpoints.\n\nEmpty initialization or clearing requires force=true;\nan already-empty draft may be saved with its current hash without force.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraft',
     path: '/apps/{app_id}/workflows/draft',
-    summary: 'Sync draft workflow',
+    summary: 'Save the graph and explicit environment-variable patches',
     tags: ['console'],
   })
   .input(

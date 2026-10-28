@@ -1,0 +1,722 @@
+"""``apply_repair`` dry-validates the graph it is about to write. Separate from
+``test_dify_port.py`` because that module's older ``apply_repair`` tests build
+nodes from bare ``config={}`` stand-ins (not valid node data) and bypass the
+check; these tests use real node data and the real check."""
+
+import json
+from collections.abc import Iterator
+from copy import deepcopy
+from unittest.mock import MagicMock, patch
+
+import pytest
+import pytest_mock
+import sqlalchemy
+from sqlalchemy.orm import Session
+
+from core.dify_builder.models import ApplyResult, Graph, MutationIntent
+from models.workflow import Workflow
+from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.errors import PreflightError
+from services.dify_builder.revision import execution_revision
+from tests.unit_tests.services.dify_builder.test_dify_port import (
+    PortDatabase,
+    TrackedPortSession,
+    _account,
+    _actor,
+    _app,
+    _configure_session_get,
+    _workflow,
+)
+from tests.unit_tests.services.dify_builder.test_native_http_output_contract import http_graph
+
+
+@pytest.fixture
+def mock_session(sqlite_engine: sqlalchemy.Engine, mocker: pytest_mock.MockerFixture) -> Iterator[TrackedPortSession]:
+    with TrackedPortSession(sqlite_engine, expire_on_commit=False) as session:
+        for name in ("get", "refresh", "commit"):
+            mocker.spy(session, name)
+        yield session
+
+
+_START: Graph = {"id": "node1", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}}
+# ``comparison_operator`` must be one of graphon's SupportedComparisonOperator
+# literals; "equals" is not, and no normalizer heals it -- it reaches the
+# preflight as written. (A numeric ``value`` would be coerced first, see
+# test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight.)
+_BROKEN_IF_ELSE_CONFIG = {
+    "title": "判断分数",
+    "logical_operator": "and",
+    "cases": [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": "equals", "value": "60"}
+            ],
+        }
+    ],
+}
+
+
+@pytest.fixture(autouse=True)
+def _mock_db(sqlite_engine: sqlalchemy.Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.setattr("services.dify_builder.dify_port.db", PortDatabase(sqlite_engine))
+    with patch("services.dify_builder.dify_port.set_login_user"):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _mock_sessionmaker(mock_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("services.dify_builder.dify_port._session_factory", lambda: lambda: mock_session)
+
+
+def _apply(mock_session: Session, graph_dict: Graph, intents: list[MutationIntent]) -> tuple[ApplyResult, MagicMock]:
+    _configure_session_get(mock_session, account=_account(), app=_app())
+    workflow = _workflow(session=mock_session, graph_dict=graph_dict, features_dict={})
+    with patch("services.dify_builder.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(
+            Workflow, workflow.id
+        )
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = _workflow(graph_dict=graph_dict)
+        result = WorkflowServiceDifyPort().apply_repair(
+            "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
+        )
+    return result, mock_ws_cls.return_value.sync_draft_workflow
+
+
+def test_apply_repair_refuses_numeric_http_status_string_operator_before_sync(mock_session: Session) -> None:
+    graph = http_graph("=", "200")
+    original = deepcopy(graph)
+    intent = MutationIntent(
+        op="set_node_config",
+        args={
+            "node_id": "branch",
+            "path": "cases.0.conditions.0.comparison_operator",
+            "value": "is",
+        },
+    )
+
+    with patch("services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph)) as sync:
+        with pytest.raises(PreflightError, match="status_code.*number"):
+            _apply(mock_session, graph, [intent])
+
+    sync.assert_not_called()
+    assert graph == original
+
+
+def test_apply_repair_preserves_unrelated_existing_numeric_http_operator_exemption(mock_session: Session) -> None:
+    graph: Graph = dict(http_graph())
+    intent = MutationIntent(op="set_node_config", args={"node_id": "start", "path": "title", "value": "Begin"})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == ["start"]
+    assert (
+        sync.call_args.kwargs["graph"]["nodes"][2]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "is"
+    )
+
+
+def test_a_repair_that_would_not_start_is_rejected_before_it_is_written(mock_session: Session) -> None:
+    intents = [
+        MutationIntent(
+            op="create_node", args={"node_type": "if-else", "node_id": "node2", "config": _BROKEN_IF_ELSE_CONFIG}
+        )
+    ]
+
+    with pytest.raises(PreflightError, match=r"node 'node2' \(if-else\)") as excinfo:
+        _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "comparison_operator" in str(excinfo.value)
+    assert isinstance(excinfo.value, ValueError)  # the handlers' existing ``except ValueError`` catches it
+
+
+def test_a_preflight_rejection_is_the_core_draft_would_not_start_error() -> None:
+    """The handlers live in ``core`` and cannot import ``services``, so they
+    tell "this draft would not start" apart from a stale intent by the core
+    type this one subclasses."""
+    from core.dify_builder.errors import DraftWouldNotStartError
+
+    assert issubclass(PreflightError, DraftWouldNotStartError)
+    assert issubclass(PreflightError, ValueError)
+
+
+def test_a_pre_existing_broken_node_the_repair_does_not_touch_does_not_veto_it(mock_session: Session) -> None:
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    fix_elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, broken], "edges": []}, fix_elsewhere)
+
+    assert result.changed_nodes == ["node1"]
+    sync.assert_called_once()
+
+
+def test_a_repair_that_heals_the_broken_node_is_written(mock_session: Session) -> None:
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    healed_cases = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
+    healed_cases[0]["conditions"][0]["comparison_operator"] = "="
+    heal = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": healed_cases})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, broken], "edges": []}, heal)
+
+    assert result.changed_nodes == ["node2"]
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "="
+
+
+def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(mock_session: Session) -> None:
+    """The ESQ1-285 flip-flop: a Fix/Edit repair writes ``"value": 60`` (the
+    generator never produced this intent, so the shared postprocess never saw
+    it). The chokepoint normalizes it, and the preflight then passes."""
+    numeric_cases = [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": "=", "value": 60}
+            ],
+        }
+    ]
+    valid_cases = json.loads(json.dumps(numeric_cases))
+    valid_cases[0]["conditions"][0]["value"] = "1"  # the draft is currently valid
+    node2 = {"id": "node2", "type": "custom", "data": {"type": "if-else", "title": "判断分数", "cases": valid_cases}}
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": numeric_cases})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, node2], "edges": []}, intents)
+
+    assert result.changed_nodes == ["node2"]
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
+
+
+def test_apply_repair_canonicalizes_an_ascii_comparison_operator_before_the_preflight(mock_session: Session) -> None:
+    """F4 cause (a): the Edit LLM rewrote an if-else's ``cases`` with ``">="``,
+    which graphon's ``SupportedComparisonOperator`` refuses -- so the whole
+    batch was rejected and the session parked at ``edit.plan_approval``.
+    ``>=`` can only mean ``≥`` (graphon has no string ordering operator), so
+    the chokepoint canonicalizes it and the preflight then passes."""
+    ascii_cases = [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": "90"}
+            ],
+        }
+    ]
+    valid_cases = json.loads(json.dumps(ascii_cases))
+    valid_cases[0]["conditions"][0]["comparison_operator"] = "="  # the draft is currently valid
+    node2 = {"id": "node2", "type": "custom", "data": {"type": "if-else", "title": "判断分数", "cases": valid_cases}}
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": ascii_cases})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, node2], "edges": []}, intents)
+
+    assert result.changed_nodes == ["node2"]
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "≥"
+
+
+def test_apply_repair_still_rejects_an_ambiguous_equality_operator(mock_session: Session) -> None:
+    """``==`` is ambiguous between graphon's number equality (``=``) and its
+    string equality (``is``), exactly like the word form ``equals``. Healing it
+    would silently pick one comparison; it must keep failing loudly instead."""
+    ambiguous_cases = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
+    ambiguous_cases[0]["conditions"][0]["comparison_operator"] = "=="
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "if-else",
+                "node_id": "node2",
+                "config": {**_BROKEN_IF_ELSE_CONFIG, "cases": ambiguous_cases},
+            },
+        )
+    ]
+
+    with pytest.raises(PreflightError, match=r"node 'node2' \(if-else\)") as excinfo:
+        _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "comparison_operator" in str(excinfo.value)
+
+
+def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_session: Session) -> None:
+    body = {"type": "json", "data": [{"key": "", "value": '{"a": 1}'}]}  # one item, no ``type``
+    http: Graph = {
+        "id": "node4",
+        "type": "custom",
+        "data": {
+            "type": "http-request",
+            "title": "Call",
+            "method": "post",
+            "url": "https://x.test/a",
+            "authorization": {"config": None, "type": "no-auth"},
+            "headers": "",
+            "params": "",
+            "body": {"type": "none", "data": []},
+        },
+    }
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node4", "path": "body", "value": body})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, http], "edges": []}, intents)
+
+    assert result.changed_nodes == ["node4"]
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["body"]["data"][0]["type"] == "text"
+
+
+def test_apply_repair_counts_a_node_the_chokepoint_normalizer_heals_as_changed(mock_session: Session) -> None:
+    """The chokepoint normalizers scan every node in the graph, not just the
+    ones an intent named: a repair that only touches node1's title can still
+    heal an UNTOUCHED node's numeric condition value as a side effect.
+    ``diff_graphs`` already reports that node as changed -- ``changed_nodes``
+    must agree, or the ApplyResult is internally inconsistent."""
+    numeric_cases = [
+        {
+            "case_id": "true",
+            "logical_operator": "and",
+            "conditions": [
+                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": "=", "value": 60}
+            ],
+        }
+    ]
+    untouched = {
+        "id": "node2",
+        "type": "custom",
+        "data": {"type": "if-else", "title": "判断分数", "cases": numeric_cases},
+    }
+    fix_elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, untouched], "edges": []}, fix_elsewhere)
+
+    assert set(result.changed_nodes) == {"node1", "node2"}
+    _, kwargs = sync.call_args
+    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
+
+
+def _http_create_intent(node_id: str, authorization: Graph) -> MutationIntent:
+    config: Graph = {
+        "title": "Call",
+        "method": "post",
+        "url": "https://x.test/a",
+        "authorization": authorization,
+        "headers": "",
+        "params": "",
+        "body": {"type": "none", "data": []},
+    }
+    return MutationIntent(op="create_node", args={"node_type": "http-request", "node_id": node_id, "config": config})
+
+
+def test_apply_repair_heals_an_authorization_without_type_and_writes(mock_session: Session) -> None:
+    """The live E2E crash: this shape made the preflight raise KeyError out of
+    ``apply_repair`` and failed the Build session. The chokepoint normalizer
+    now fills the type, so the repair is written."""
+    intents = [_http_create_intent("node5", {"config": {"type": "bearer", "api_key": "{{#node1.key#}}"}})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "node5" in result.changed_nodes
+    _, kwargs = sync.call_args
+    written = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node5")
+    assert written["data"]["authorization"]["type"] == "api-key"
+
+
+def test_apply_repair_unwraps_a_nested_parameter_extractor_query_before_the_preflight(mock_session: Session) -> None:
+    """Blocker A: a Fix/Edit repair writes a parameter-extractor ``query`` as
+    an array of selector arrays (``[["sys", "query"]]``); graphon's
+    ``ParameterExtractorNodeData.query`` is ``list[str]``, one selector, and
+    ``Graph.init`` always refuses the nested shape. The chokepoint normalizer
+    unwraps the one unambiguous case and the preflight then passes."""
+    config: Graph = {
+        "title": "Extract",
+        "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+        "query": [["sys", "query"]],
+        "parameters": [{"name": "topic", "type": "string", "description": "Topic", "required": True}],
+        "reasoning_mode": "prompt",
+    }
+    intents = [
+        MutationIntent(
+            op="create_node", args={"node_type": "parameter-extractor", "node_id": "node5", "config": config}
+        )
+    ]
+
+    result, sync = _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "node5" in result.changed_nodes
+    _, kwargs = sync.call_args
+    written = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node5")
+    assert written["data"]["query"] == ["sys", "query"]
+
+
+def test_apply_repair_rejects_a_crashing_node_it_cannot_heal_instead_of_raising_it(mock_session: Session) -> None:
+    """A shape no normalizer heals (a present but invalid ``type`` also makes
+    graphon raise KeyError) is a preflight PROBLEM -- a PreflightError the
+    handlers already catch -- never a KeyError that ends the session."""
+    intents = [_http_create_intent("node5", {"type": "bearer", "config": {"type": "bearer", "api_key": "x"}})]
+
+    with pytest.raises(PreflightError, match=r"node 'node5' \(http-request\): KeyError"):
+        _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+
+def test_apply_repair_writes_a_template_transform_the_llm_created_without_variables(mock_session: Session) -> None:
+    """F4 cause (b): the Edit LLM created a ``template-transform`` carrying only
+    ``title`` and ``template``. ``TemplateTransformNodeData.variables`` is
+    required with no default, so the preflight refused the WHOLE batch and the
+    session parked at ``edit.plan_approval``. The node-type defaults fill the
+    missing required field at the ``_build_node`` chokepoint, so the intent now
+    writes."""
+    intents = [
+        MutationIntent(
+            op="create_node",
+            args={
+                "node_type": "template-transform",
+                "node_id": "node7",
+                "config": {"title": "Excellent", "template": "excellent"},
+            },
+        ),
+        MutationIntent(op="connect", args={"from_node": "node1", "to_node": "node7"}),
+    ]
+
+    result, sync = _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
+
+    assert "node7" in result.changed_nodes
+    _, kwargs = sync.call_args
+    written = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node7")
+    assert written["data"]["variables"] == []
+    assert written["data"]["template"] == "excellent"
+
+
+def test_a_repair_that_leaves_its_own_culprit_invalid_is_refused_not_applied(mock_session: Session) -> None:
+    """The silent false success the location key cannot see, and the reason a
+    node the batch WROTE gets no exemption at all.
+
+    ``node2`` is already refused at ``cases.0.conditions.0.comparison_operator``
+    ("equals"). The repair rewrites that very field to another value the engine
+    also refuses ("klingon"). Nothing is new -- same node, same field path -- so
+    under new-problems-only the batch applies, the draft still will not start,
+    and the Builder reports "Applied the changes". It must be refused instead,
+    and the refusal must name the field so the corrective re-prompt has
+    something to work with."""
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    still_broken = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
+    still_broken[0]["conditions"][0]["comparison_operator"] = "klingon"
+    repair = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": still_broken})]
+
+    with pytest.raises(PreflightError, match=r"node 'node2' \(if-else\)") as excinfo:
+        _apply(mock_session, {"nodes": [_START, broken], "edges": []}, repair)
+
+    assert "comparison_operator" in str(excinfo.value)
+    assert "klingon" in str(excinfo.value)  # names the value it just wrote, not the one it replaced
+
+
+def test_a_repair_that_only_half_fixes_the_node_it_wrote_is_refused_too(mock_session: Session) -> None:
+    """Same rule, the other shape: the repair genuinely improves ``node2`` (it
+    adds the missing ``varType``) but leaves the operator invalid. Improved is
+    not startable, and writing it would still produce a draft that dies at
+    ``Graph.init``."""
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    half = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
+    half[0]["conditions"][0]["varType"] = "number"
+    repair = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": half})]
+
+    with pytest.raises(PreflightError, match=r"node 'node2' \(if-else\)"):
+        _apply(mock_session, {"nodes": [_START, broken], "edges": []}, repair)
+
+
+def test_a_node_the_healer_touched_is_still_not_a_node_this_batch_wrote(mock_session: Session) -> None:
+    """``heal_nodes_for_preflight`` scans EVERY node, so its returned ids are
+    folded into ``changed_nodes`` for the change set. They must NOT widen the set
+    the preflight holds answerable: a node the healer merely normalized is not a
+    node this batch is responsible for, and letting it in would re-break "a
+    pre-existing defect does not veto an unrelated fix".
+
+    ``node4`` is the exact shape that proves it: the healer DOES touch it (its
+    body item has no ``type``, so it is healed and its id is returned) and it is
+    STILL invalid afterwards (no ``url``, which nothing heals). No intent names
+    it. The write must go through anyway."""
+    healed_but_still_broken = {
+        "id": "node4",
+        "type": "custom",
+        "data": {
+            "type": "http-request",
+            "title": "H",
+            "method": "post",
+            "authorization": {"type": "no-auth"},
+            "headers": "",
+            "params": "",
+            "body": {"type": "json", "data": [{"key": "k", "value": "v"}]},  # no ``type`` -> healed
+        },
+    }
+    elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, healed_but_still_broken], "edges": []}, elsewhere)
+
+    assert "node4" in result.changed_nodes  # the healer's id still reaches the change set...
+    sync.assert_called_once()  # ...and its untouched, unhealed defect still did not veto the write
+
+
+def test_wiring_an_already_broken_node_is_still_written(mock_session: Session) -> None:
+    """The port's own copy of the ``connect`` exclusion. ``node2`` is refused as
+    it stands and this batch only adds an EDGE to it -- ``apply_connect`` reports
+    both endpoints as changed (right for the change set), but an edge cannot
+    change a node's ``validate_node_config`` verdict, so neither endpoint may
+    enter the set the preflight holds answerable. Without the exclusion this
+    write is refused on a defect the user already had."""
+    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
+    wire = [MutationIntent(op="connect", args={"from_node": "node1", "to_node": "node2"})]
+
+    result, sync = _apply(mock_session, {"nodes": [_START, broken], "edges": []}, wire)
+
+    sync.assert_called_once()
+    assert result.changed_nodes == ["node1", "node2"]  # the change set still names both
+
+
+@pytest.mark.parametrize(
+    ("node_type", "config"),
+    [
+        ("knowledge-retrieval", {"dataset_ids": ["kb-1"]}),
+        (
+            "human-input",
+            {
+                "form_content": "Review",
+                "inputs": [],
+                "user_actions": [{"id": "approve", "title": "Approve"}],
+                "timeout": 3,
+            },
+        ),
+        ("agent", {"agent_strategy_name": "legacy"}),
+        ("agent", {"version": "2", "agent_node_kind": "dify_agent", "agent_task": "fabricated"}),
+    ],
+)
+@pytest.mark.parametrize("op", ["create_node", "insert_between"])
+def test_direct_write_refuses_first_phase_additions_before_sync(
+    mock_session: Session, node_type: str, config: Graph, op: str
+) -> None:
+    graph: Graph = {
+        "nodes": [_START, {"id": "end", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}}],
+        "edges": [{"id": "edge", "source": "node1", "target": "end"}],
+    }
+    args = {"node_type": node_type, "node_id": "new", "config": config}
+    if op == "insert_between":
+        args["edge"] = {"source": "node1", "target": "end"}
+    intents = [
+        MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"}),
+        MutationIntent(op=op, args=args),
+    ]
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, intents)
+        sync.assert_not_called()
+    assert graph["nodes"][0]["data"]["title"] == "Start"
+
+
+@pytest.mark.parametrize(
+    ("node_type", "config"),
+    [
+        ("knowledge-retrieval", {"dataset_ids": ["kb-1"], "retrieval_mode": "multiple"}),
+        (
+            "human-input",
+            {
+                "form_content": "Review",
+                "inputs": [],
+                "user_actions": [{"id": "approve", "title": "Approve"}],
+                "timeout": 3,
+            },
+        ),
+        ("agent", {}),
+        ("agent", {"version": "2", "agent_node_kind": "dify_agent"}),
+    ],
+)
+def test_direct_write_refuses_disguised_type_conversion(mock_session: Session, node_type: str, config: Graph) -> None:
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "n",
+                "type": "custom",
+                "data": {
+                    "type": "code",
+                    "title": "Convert",
+                    "variables": [],
+                    "outputs": {},
+                    "code": "",
+                    "code_language": "python3",
+                    **config,
+                },
+            }
+        ],
+        "edges": [],
+    }
+    intent = MutationIntent(op="set_node_config", args={"node_id": "n", "path": "type", "value": node_type})
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, [intent])
+        sync.assert_not_called()
+
+
+def test_direct_write_refuses_retrieval_binding_change(mock_session: Session) -> None:
+    graph: Graph = {
+        "nodes": [
+            {
+                "id": "r",
+                "type": "custom",
+                "data": {
+                    "type": "knowledge-retrieval",
+                    "title": "Existing",
+                    "dataset_ids": ["kb-1"],
+                    "retrieval_mode": "multiple",
+                },
+            }
+        ],
+        "edges": [],
+    }
+    intent = MutationIntent(op="set_node_config", args={"node_id": "r", "path": "dataset_ids", "value": ["kb-2"]})
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, [intent])
+        sync.assert_not_called()
+
+
+def test_direct_write_refuses_legacy_agent_to_native_new_agent_conversion(mock_session: Session) -> None:
+    graph: Graph = {"nodes": [{"id": "a", "type": "custom", "data": {"type": "agent", "title": "Legacy"}}], "edges": []}
+    intents = [
+        MutationIntent(op="set_node_config", args={"node_id": "a", "path": "version", "value": "2"}),
+        MutationIntent(op="set_node_config", args={"node_id": "a", "path": "agent_node_kind", "value": "dify_agent"}),
+    ]
+    with patch(
+        "services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph, features_dict={})
+    ) as sync:
+        with pytest.raises(PreflightError, match="first phase"):
+            _apply(mock_session, graph, intents)
+        sync.assert_not_called()
+
+
+@pytest.mark.parametrize("node_id", ["node1", "agent", "hitl"])
+def test_direct_write_retains_historical_nodes_and_allows_permitted_repairs(
+    mock_session: Session, node_id: str
+) -> None:
+    from tests.unit_tests.services.dify_builder.test_preflight import _human_input_graph
+
+    hitl = {**_human_input_graph([])["nodes"][1], "id": "hitl"}
+    retrieval = {
+        "id": "retrieval",
+        "type": "custom",
+        "data": {
+            "type": "knowledge-retrieval",
+            "title": "Knowledge",
+            "dataset_ids": ["kb-1"],
+            "retrieval_mode": "multiple",
+        },
+    }
+    agent = {"id": "agent", "type": "custom", "data": {"type": "agent", "title": "Legacy"}}
+    graph: Graph = {"nodes": [_START, agent, hitl, retrieval], "edges": []}
+    intent = MutationIntent(op="set_node_config", args={"node_id": node_id, "path": "title", "value": "Repaired"})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == [node_id]
+    written = sync.call_args.kwargs["graph"]
+    assert {n["id"] for n in written["nodes"]} == {"node1", "agent", "hitl", "retrieval"}
+    assert next(n for n in written["nodes"] if n["id"] == "retrieval") == retrieval
+    for node in graph["nodes"]:
+        if node["id"] != node_id:
+            assert next(n for n in written["nodes"] if n["id"] == node["id"]) == node
+
+
+@pytest.mark.parametrize("node_type", ["knowledge-retrieval", "human-input", "agent"])
+def test_direct_write_preserves_already_present_create_replay(mock_session: Session, node_type: str) -> None:
+    graph: Graph = {"nodes": [{"id": "existing", "type": "custom", "data": {"type": node_type}}], "edges": []}
+    intent = MutationIntent(op="create_node", args={"node_type": node_type, "node_id": "existing", "config": {}})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == []
+    sync.assert_not_called()
+
+
+def test_direct_write_allows_edge_only_wiring_without_retrieval_config_changes(mock_session: Session) -> None:
+    retrieval = {
+        "id": "r",
+        "type": "custom",
+        "data": {
+            "type": "knowledge-retrieval",
+            "title": "Knowledge",
+            "dataset_ids": ["kb-1"],
+            "query_variable_selector": ["node1", "query"],
+            "retrieval_mode": "multiple",
+        },
+    }
+    graph: Graph = {"nodes": [_START, retrieval], "edges": []}
+    intent = MutationIntent(op="connect", args={"from_node": "node1", "to_node": "r"})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == ["node1", "r"]
+    written = sync.call_args.kwargs["graph"]
+    assert written["nodes"] == graph["nodes"]
+    assert [(edge["source"], edge["target"]) for edge in written["edges"]] == [("node1", "r")]
+
+
+def test_apply_repair_reuses_full_existing_node_and_reports_only_actual_wiring(mock_session: Session) -> None:
+    graph: Graph = {
+        "nodes": [
+            deepcopy(_START),
+            {"id": "end", "type": "custom", "data": {"type": "end", "title": "End", "outputs": []}},
+            {
+                "id": "mark",
+                "type": "custom",
+                "position": {"x": 777, "y": 333},
+                "annotation": {"note": "retain"},
+                "data": {"type": "template-transform", "title": "Mark", "template": "hello", "variables": []},
+            },
+        ],
+        "edges": [{"id": "old", "source": "node1", "target": "end"}],
+    }
+    original = deepcopy(graph)
+    intent = MutationIntent(
+        op="insert_between",
+        args={
+            "edge": {"source": "node1", "target": "end"},
+            "node_type": "template-transform",
+            "node_id": "mark",
+            "config": {},
+            "reuse_existing": True,
+        },
+    )
+    result, sync = _apply(mock_session, graph, [intent])
+    written = sync.call_args.kwargs["graph"]
+    assert written["nodes"] == original["nodes"]
+    assert {(e["source"], e["target"]) for e in written["edges"]} == {("node1", "mark"), ("mark", "end")}
+    assert result.scope == "structure"
+    assert set(result.changes) == {"− node1 → end", "＋ node1 → mark", "＋ mark → end"}
+    assert graph == original
+
+
+def test_reuse_existing_cannot_make_unbound_tool_executable(mock_session: Session) -> None:
+    from services.dify_builder.resource_grounding import ResourceBindingError
+
+    graph: Graph = {
+        "nodes": [
+            deepcopy(_START),
+            {"id": "end", "data": {"type": "end", "outputs": []}},
+            {"id": "tool", "data": {"type": "tool", "provider_id": "", "tool_name": ""}},
+        ],
+        "edges": [{"source": "node1", "target": "end"}],
+    }
+    intent = MutationIntent(
+        op="insert_between",
+        args={
+            "edge": {"source": "node1", "target": "end"},
+            "node_type": "tool",
+            "node_id": "tool",
+            "config": {},
+            "reuse_existing": True,
+        },
+    )
+    with patch("services.dify_builder.dify_port._sync_graph_only") as sync:
+        with pytest.raises(ResourceBindingError, match="resource_selection_required"):
+            _apply(mock_session, graph, [intent])
+        sync.assert_not_called()

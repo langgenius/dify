@@ -73,20 +73,22 @@ def check_upgradable_plugin_task():
 
     for i in range(0, total_strategies, MAX_CONCURRENT_CHECK_TASKS):
         batch_strategies = strategies[i : i + MAX_CONCURRENT_CHECK_TASKS]
+        # Preserve batch pacing without holding a worker execution slot during
+        # the interval. Celery owns the delayed delivery, including redelivery.
+        countdown = (i // MAX_CONCURRENT_CHECK_TASKS) * batch_interval_time
         for strategy in batch_strategies:
-            check_task.process_tenant_plugin_autoupgrade_check_task.delay(
-                strategy.tenant_id,
-                strategy.strategy_setting,
-                strategy.upgrade_time_of_day,
-                strategy.upgrade_mode,
-                strategy.exclude_plugins,
-                strategy.include_plugins,
-                strategy.category,
+            check_task.process_tenant_plugin_autoupgrade_check_task.apply_async(
+                args=(
+                    strategy.tenant_id,
+                    strategy.strategy_setting,
+                    strategy.upgrade_time_of_day,
+                    strategy.upgrade_mode,
+                    strategy.exclude_plugins,
+                    strategy.include_plugins,
+                    strategy.category,
+                ),
+                countdown=countdown,
             )
-
-        # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one
-        if batch_interval_time > 0.0001 and i + MAX_CONCURRENT_CHECK_TASKS < total_strategies:
-            time.sleep(batch_interval_time)
 
     end_at = time.perf_counter()
     click.echo(

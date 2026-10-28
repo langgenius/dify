@@ -41,6 +41,12 @@ class HomeSnapshotService:
         self,
         request: CreateHomeSnapshotFromBindingRequest,
     ) -> HomeSnapshotResponse:
+        if request.backend_binding_ref.startswith("native:"):
+            raise HomeSnapshotServiceError(
+                "native_home_export_requires_capability",
+                "Native test Home export requires an explicit capability",
+                status_code=409,
+            )
         try:
             async with open_runtime_lease(self.execution_bindings, request.backend_binding_ref) as lease:
                 snapshot_ref = await self.home_snapshots.create_from_runtime(

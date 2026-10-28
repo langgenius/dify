@@ -40,6 +40,8 @@ from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
+from services.workflow.webhook_policy import MAX_WEBHOOK_NODES_PER_WORKFLOW as MAX_WEBHOOK_NODES
+from services.workflow.webhook_policy import WorkflowWebhookLimitError
 from services.workflow_service import WorkflowService
 
 try:
@@ -85,7 +87,7 @@ class WebhookService:
     """Service for handling webhook operations."""
 
     __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
-    MAX_WEBHOOK_NODES_PER_WORKFLOW = 5  # Maximum allowed webhook nodes per workflow
+    MAX_WEBHOOK_NODES_PER_WORKFLOW = MAX_WEBHOOK_NODES  # Maximum allowed webhook nodes per workflow
 
     @staticmethod
     def _sanitize_key(key: str) -> str:
@@ -906,7 +908,14 @@ class WebhookService:
         return response_data, status_code
 
     @classmethod
-    def sync_webhook_relationships(cls, app: App, workflow: Workflow, *, remove_stale: bool = True):
+    def sync_webhook_relationships(
+        cls,
+        app: App,
+        workflow: Workflow,
+        *,
+        remove_stale: bool = True,
+        reconcile_current_draft: bool = False,
+    ):
         """
         Sync webhook relationships in DB.
 
@@ -918,9 +927,8 @@ class WebhookService:
         webhook node without changing its URL. Published workflow synchronization
         removes stale records after the deletion becomes effective.
 
-        Approach:
-        Frequent DB operations may cause performance issues, using Redis to cache it instead.
-        If any record exists, cache it.
+        SQL is authoritative. Cache updates follow a committed relationship transaction.
+        Durable delivery refreshes the exact draft after acquiring the Redis lock.
 
         Limits:
         - Maximum 5 webhook nodes per workflow
@@ -939,21 +947,16 @@ class WebhookService:
 
         # Check webhook node limit
         if len(nodes_id_in_graph) > cls.MAX_WEBHOOK_NODES_PER_WORKFLOW:
-            raise ValueError(
+            raise WorkflowWebhookLimitError(
                 f"Workflow exceeds maximum webhook node limit. "
                 f"Found {len(nodes_id_in_graph)} webhook nodes, maximum allowed is {cls.MAX_WEBHOOK_NODES_PER_WORKFLOW}"
             )
 
-        not_found_in_cache: list[str] = []
-        for node_id in nodes_id_in_graph:
-            # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
-                not_found_in_cache.append(node_id)
-                continue
-
         lock_key = f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock"
         lock = redis_client.lock(lock_key, timeout=10)
         lock_acquired = False
+        cache_sets: dict[str, str] = {}
+        cache_deletes: list[str] = []
 
         try:
             # acquire the lock with blocking and timeout
@@ -963,7 +966,19 @@ class WebhookService:
                 raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
 
             with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                # fetch the non-cached nodes from DB
+                if reconcile_current_draft:
+                    current_app = session.scalar(select(App.id).where(App.id == app.id, App.tenant_id == app.tenant_id))
+                    current = session.scalar(
+                        select(Workflow).where(
+                            Workflow.id == workflow.id,
+                            Workflow.app_id == app.id,
+                            Workflow.tenant_id == app.tenant_id,
+                            Workflow.version == Workflow.VERSION_DRAFT,
+                        )
+                    )
+                    if current_app is None or current is None:
+                        return
+                    nodes_id_in_graph = [node_id for node_id, _ in current.walk_nodes(TRIGGER_WEBHOOK_NODE_TYPE)]
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(
                         WorkflowWebhookTrigger.app_id == app.id,
@@ -973,8 +988,8 @@ class WebhookService:
 
                 nodes_id_in_db = {node.node_id: node for node in all_records}
 
-                # get the nodes not found both in cache and DB
-                nodes_not_found = [node_id for node_id in not_found_in_cache if node_id not in nodes_id_in_db]
+                # Find graph nodes missing from the authoritative relationship rows.
+                nodes_not_found = [node_id for node_id in nodes_id_in_graph if node_id not in nodes_id_in_db]
 
                 # create new webhook records
                 for node_id in nodes_not_found:
@@ -990,18 +1005,23 @@ class WebhookService:
                     session.add(webhook_record)
                     session.flush()
                     cache = Cache(record_id=webhook_record.id, node_id=node_id, webhook_id=webhook_record.webhook_id)
-                    redis_client.set(
-                        f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
-                    )
+                    cache_sets[f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}"] = cache.model_dump_json()
 
                 if remove_stale:
                     # Delete relationships only when reconciling an effective published workflow.
                     for node_id in nodes_id_in_db:
                         if node_id not in nodes_id_in_graph:
                             session.delete(nodes_id_in_db[node_id])
-                            redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
-        except Exception:
-            logger.exception("Failed to sync webhook relationships for app %s", app.id)
+                            cache_deletes.append(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
+            try:
+                for key, value in cache_sets.items():
+                    redis_client.set(key, value, ex=60 * 60)
+                for key in cache_deletes:
+                    redis_client.delete(key)
+            except Exception as exc:
+                logger.warning("Webhook cache update failed app=%s category=%s", app.id, type(exc).__name__)
+        except Exception as exc:
+            logger.warning("Webhook synchronization failed app=%s category=%s", app.id, type(exc).__name__)
             raise
         finally:
             # release the lock only if it was acquired
@@ -1009,7 +1029,7 @@ class WebhookService:
                 try:
                     lock.release()
                 except Exception:
-                    logger.exception("Failed to release lock for webhook sync, app %s", app.id)
+                    logger.log(logging.ERROR, "Failed to release lock for webhook sync, app %s", app.id)
 
     @classmethod
     def generate_webhook_id(cls) -> str:

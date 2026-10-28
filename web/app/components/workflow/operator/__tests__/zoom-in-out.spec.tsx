@@ -194,14 +194,30 @@ describe('workflow zoom controls', () => {
     expect(onToggleUserComments).not.toHaveBeenCalled()
   })
 
-  it('does not open the menu when the workflow is read only', async () => {
+  it('keeps viewport navigation available while canvas editing is locked', async () => {
     const user = userEvent.setup()
     workflowReadOnly = true
     renderZoomInOut()
 
-    expect(getZoomControls().label).toBeDisabled()
+    expect(getZoomControls().label).toBeEnabled()
     await user.click(getZoomControls().label)
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('allows zooming and fitting while Builder owns the graph', async () => {
+    const user = userEvent.setup()
+    const { store, doSyncWorkflowDraft } = renderZoomInOut()
+    act(() => store.getState().setWorkflowDraftSyncPhase('builder'))
+
+    await user.click(getZoomControls().zoomInTrigger)
+    await waitFor(() => expect(getZoomControls().label).toHaveAccessibleName('120%'))
+    await user.click(getZoomControls().zoomOutTrigger)
+    await waitFor(() => expect(getZoomControls().label).toHaveAccessibleName('100%'))
+    const menu = await openZoomMenu(user)
+    await user.click(menu.getByRole('menuitem', { name: /^workflow\.operator\.zoomToFit/ }))
+    await waitFor(() => expect(getZoomControls().label).toHaveAccessibleName('25%'))
+    act(() => store.getState().flushPendingSync())
+    expect(doSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('disables inline zoom controls at the supported viewport bounds', async () => {

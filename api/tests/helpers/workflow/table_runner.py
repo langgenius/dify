@@ -21,17 +21,11 @@ from typing import Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
-from graphon.engine_events import (
-    EngineEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-)
+from graphon.engine_events import EngineEvent, GraphRunStartedEvent, GraphRunSucceededEvent
 from graphon.graph import Graph
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import (
@@ -43,6 +37,8 @@ from graphon.variables import (
     ObjectVariable,
     StringVariable,
 )
+from services.workflow_runtime.entry import iter_dify_graph_engine_events
+from services.workflow_runtime.node_factory import DifyNodeFactory, get_default_root_node_id
 from tests.helpers.workflow.mock_config import MockConfig
 from tests.helpers.workflow.mock_factory import MockNodeFactory
 

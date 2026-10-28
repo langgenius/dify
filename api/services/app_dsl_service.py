@@ -58,7 +58,6 @@ from models.workflow import Workflow
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
-from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
@@ -86,7 +85,9 @@ from services.icon_configuration import (
 )
 from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow.draft_coordination_service import WorkflowDraftCoordinationService
 from services.workflow.graph_diff import draft_token
+from services.workflow.webhook_policy import validate_webhook_node_count
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -691,7 +692,7 @@ class AppDslService:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
         # Check the draft before any write so a refused import leaves the app and its cached dependencies alone.
-        locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash) if draft_hash is not None else None
+        locked_draft: Workflow | None = None
         site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
         if app_mode == AppMode.AGENT:
             self._ensure_agent_import_permission(account, app=app)
@@ -699,6 +700,32 @@ class AppDslService:
         target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
         if target_tenant_id is None:
             raise ValueError("Current tenant is not set")
+
+        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
+            workflow_data = data.get("workflow")
+            if not workflow_data or not isinstance(workflow_data, dict):
+                raise ValueError("Missing workflow data for workflow/advanced chat app")
+            if app is not None:
+                # Import also writes App metadata. Take its exact owner before
+                # any draft lock, including the hash guard, so an initializer's
+                # stale absence recheck cannot invert the metadata flush order.
+                owner_id = self._session.scalar(
+                    select(App.id).where(App.id == app.id, App.tenant_id == app.tenant_id).with_for_update()
+                )
+                if owner_id is None:
+                    raise WorkflowNotFoundError("App not found for draft initialization.")
+                if draft_hash is None:
+                    locked_draft = WorkflowService().get_draft_workflow_for_creation(app, session=self._session)
+        if draft_hash is not None:
+            locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash)
+
+        # This pure policy must precede App metadata writes: later queries can autoflush
+        # and the import caller deliberately translates errors without rolling back.
+        if app_mode == AppMode.WORKFLOW:
+            candidate_graph = data["workflow"].get("graph", {})
+            if not isinstance(candidate_graph, dict):
+                raise ValueError("Workflow graph must be a mapping")
+            validate_webhook_node_count(candidate_graph)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -767,10 +794,7 @@ class AppDslService:
         # Initialize app based on mode
         match app_mode:
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
-                workflow_data = data.get("workflow")
-                if not workflow_data or not isinstance(workflow_data, dict):
-                    raise ValueError("Missing workflow data for workflow/advanced chat app")
-
+                workflow_data = data["workflow"]
                 environment_variables_list = workflow_data.get("environment_variables", [])
                 environment_variables = [
                     variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
@@ -828,6 +852,7 @@ class AppDslService:
                     preserve_agent_bindings and is_agent_v2_graph(graph)
                 )
                 graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
+                coordination_id = str(uuid4())
                 draft_workflow = workflow_service.sync_draft_workflow(
                     app_model=app,
                     graph=graph_for_sync,
@@ -838,6 +863,7 @@ class AppDslService:
                     conversation_variables=conversation_variables,
                     session=self._session,
                     commit=not import_agent_bindings,
+                    coordination_id=coordination_id,
                     sync_agent_bindings=not import_agent_bindings,
                 )
                 if import_agent_bindings:
@@ -858,12 +884,16 @@ class AppDslService:
                         session=self._session,
                         draft_workflow=draft_workflow,
                     )
-                    self._session.commit()
-                    WorkflowAgentRetirementService.retire_unowned(
-                        tenant_id=app.tenant_id,
-                        agent_ids=retirement_candidates,
+                    WorkflowDraftCoordinationService.stage(
+                        self._session,
+                        coordination_id=coordination_id,
+                        workflow=draft_workflow,
                         account_id=account.id,
+                        retirement_agent_ids=retirement_candidates,
+                        emit_draft_event=False,
                     )
+                    self._session.commit()
+                    WorkflowDraftCoordinationService.kick(coordination_id)
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")

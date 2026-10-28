@@ -1,0 +1,295 @@
+"""P3b acceptance: the usecase, the Celery task, and the SQL repo wired
+together end to end (Task 6).
+
+Runs the real ``DifyBuilderService`` (Task 3) with an *eager*
+``enqueue_fn`` that calls the real ``advance_session`` Celery task (Task 4)
+synchronously -- no broker/worker involved -- over a SQLite-backed
+``SqlDifyBuilderRepository`` shared by both sides (the task's ``_build_repo`` is
+monkeypatched to return the very same repo instance the usecase holds) and
+the real ``services.dify_builder.session_lock`` module shared by both
+sides too (only its ``redis_client`` is faked, once, so the usecase's
+``acquire`` and the task's ``release`` observe the same lock state).
+
+Proves the full P3b integration: dispatch acquires the lock and enqueues,
+the task synchronously drives the engine, emits progress events, persists
+through the shared repo, and releases the lock -- all inside one
+``submit_action``/``create_fix_session`` call, with cross-process busy
+serialization (a second submit while the lock is held) verified separately.
+
+Test-only: no production code changes belong in this file.
+"""
+
+import dataclasses
+import json
+from collections.abc import Iterator
+
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
+
+import tasks.dify_builder_advance_task as task_mod
+from core.dify_builder.errors import BadRequestError, BusyError
+from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Graph, Run, Session
+from core.dify_builder.state import PcState
+from models.base import Base
+from services.dify_builder import service as service_mod
+from services.dify_builder import session_lock
+from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.service import DifyBuilderService
+from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, StubAgent
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+APP_ID = "22222222-2222-2222-2222-222222222222"
+ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
+
+
+class _FakeRedis:
+    """In-memory model of the two ops session_lock uses: SET NX PX and the
+    Lua compare-del via eval."""
+
+    def __init__(self) -> None:
+        self._store: dict[str, str] = {}
+
+    def set(self, name: str, value: str, nx: bool = False, px: object | None = None, **kw: object) -> bool | None:  # noqa: ARG002
+        if nx and name in self._store:
+            return None
+        self._store[name] = value
+        return True
+
+    def get(self, name: str) -> str | None:
+        return self._store.get(name)
+
+    def eval(self, script: str, numkeys: int, *args: str) -> int:  # noqa: ARG002
+        key, token = args[0], args[1]
+        if self._store.get(key) == token:
+            del self._store[key]
+            return 1
+        return 0
+
+
+def _actor() -> Actor:
+    return Actor(account_id=ACCOUNT_ID, tenant_id=TENANT_ID)
+
+
+@pytest.fixture
+def engine() -> Iterator[Engine]:
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def repo(engine: Engine) -> SqlDifyBuilderRepository:
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    return SqlDifyBuilderRepository(factory)
+
+
+def _wire(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> tuple[DifyBuilderService, FakeDifyPort, list[tuple[str, Graph]]]:
+    """Wire the usecase to the real task, run eagerly, over the shared repo
+    and the real (faked-Redis) session_lock module."""
+    monkeypatch.setattr(session_lock, "redis_client", _FakeRedis())  # real lock module, faked redis (shared)
+    monkeypatch.setattr(task_mod, "_build_repo", lambda: repo)  # task uses the SAME repo
+
+    # Every eager worker observes the same authoritative draft, including the
+    # revision written by apply_repair and later bound to the verification run.
+    port = FakeDifyPort()
+    port.workflow_events = [
+        {
+            "event": "workflow_started",
+            "task_id": "task-1",
+            "workflow_run_id": "dify-run-1",
+            "data": {"id": "dify-run-1", "workflow_id": "workflow-1", "inputs": {}, "created_at": 1},
+        }
+    ]
+    monkeypatch.setattr(task_mod, "WorkflowServiceDifyPort", lambda: port)
+    monkeypatch.setattr(task_mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
+    monkeypatch.setattr(
+        service_mod,
+        "validate_model_config",
+        lambda _tenant, config: (
+            config or {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+        ),
+    )
+
+    events: list[tuple[str, Graph]] = []
+    monkeypatch.setattr(task_mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+
+    def eager_enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
+        task_mod.advance_session(session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token)
+
+    def get_verification_identity(app_id: str, actor: Actor) -> tuple[str, str]:
+        graph, revision = port.read_graph(app_id, actor)
+        return revision, port.graph_revision(graph)
+
+    svc = DifyBuilderService(
+        repo,
+        session_lock,
+        eager_enqueue,
+        get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
+        get_verification_identity_fn=get_verification_identity,
+    )
+    return svc, port, events
+
+
+# ---- Test 1: full happy path, async-wired -----------------------------------
+
+
+@pytest.mark.parametrize("draft_change", [None, "execution", "graph"])
+def test_full_fix_flow_create_to_publish_success_eager_async(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, draft_change: str | None
+) -> None:
+    # Seed the failed run BEFORE creating the session -- get_run is by id
+    # with no FK, so any placeholder session_id works here.
+    repo.save_run(
+        "00000000-0000-0000-0000-000000000000",
+        Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
+    )
+
+    svc, port, events = _wire(monkeypatch, repo)
+
+    # create_fix_session's dispatch runs the task synchronously (eager
+    # enqueue), so the returned view already reflects the advanced state:
+    # fix.diagnose -> fix.propose -> fix.apply -> fix.await_verify.
+    view = svc.create_fix_session(APP_ID, _actor(), failed_run_id="TR-1")
+    assert view.state == "fix.await_verify"
+    assert session_lock.exists(view.session_id) is False, "the task must release the lock in its finally"
+
+    sid = view.session_id
+
+    assert view.app_revision is not None
+    view = svc.submit_action(
+        sid, _actor(), Action(kind="run_verify", base_version=view.version, base_app_revision=view.app_revision.current)
+    )
+    assert view.state == "fix.await_testdata"
+    assert session_lock.exists(sid) is False
+
+    assert view.app_revision is not None
+    view = svc.submit_action(
+        sid, _actor(), Action(kind="provide_testdata", payload={"mode": "mock"}, base_version=view.version)
+    )
+    assert view.state == "fix.await_decision"
+    assert session_lock.exists(sid) is False
+
+    stored, context = repo.get_session(sid)
+    verified = repo.get_run(context.verify_run_id)
+    assert verified.session_id == sid
+    assert verified.kind == "verify"
+    assert verified.immutable is True
+    assert verified.status == "succeeded"
+    assert verified.verification is not None
+    assert verified.verification.execution_revision == "h1"
+    assert verified.verification.executed_graph_revision == port.graph_revision(port.graph)
+    assert not port.published
+
+    if draft_change is not None:
+        if draft_change == "execution":
+            port.hash = "h-stale"
+        else:
+            port.graph["nodes"].append({"id": "new", "data": {"type": "end", "outputs": []}})
+        event_count = len(events)
+        assert view.app_revision is not None
+        with pytest.raises(BadRequestError, match="publication verification denied: stale_revision"):
+            svc.submit_action(
+                sid,
+                _actor(),
+                Action(kind="publish", base_version=view.version, base_app_revision=view.app_revision.current),
+            )
+        unchanged, unchanged_context = repo.get_session(sid)
+        assert unchanged.current_state == PcState.FIX_AWAIT_DECISION
+        assert unchanged.version == stored.version
+        assert unchanged_context.verify_run_id == verified.id
+        assert not port.published
+        assert len(events) == event_count
+        assert session_lock.exists(sid) is False
+        return
+
+    assert view.app_revision is not None
+    view = svc.submit_action(
+        sid, _actor(), Action(kind="publish", base_version=view.version, base_app_revision=view.app_revision.current)
+    )
+    assert view.state == "success"
+    assert port.published
+
+    stored, _fc = repo.get_session(sid)
+    assert stored.current_state == PcState.SUCCESS
+
+    # the bus received both native workflow events (from provide_testdata -> fix.verify
+    # draft run) and terminal command-finished events across the whole flow.
+    assert any(ev.get("kind") == "workflow" for _sid, ev in events)
+    assert any(ev.get("kind") == "command_finished" for _sid, ev in events)
+
+    # the lock was acquired-then-released on every dispatch, including the
+    # final one.
+    assert session_lock.exists(sid) is False
+
+
+# ---- Test 2: busy while a lock is held --------------------------------------
+
+
+def test_submit_action_while_lock_held_raises_busy_eager_async(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
+    svc, port, _events = _wire(monkeypatch, repo)
+
+    # Seed the session DIRECTLY via the repo (bypassing create_fix_session,
+    # whose eager dispatch would immediately release the lock again).
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_VERIFY,
+    )
+    repo.create_session(s, DifyBuilderContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+
+    # Manually hold the lock, simulating an in-flight advance on another
+    # worker.
+    held = session_lock.acquire(s.id)
+    assert held is not None
+
+    # CAS passes (version is 1), but dispatch's acquire fails because the
+    # lock is still held -- proving the cross-process serialization.
+    with pytest.raises(BusyError):
+        svc.submit_action(s.id, _actor(), Action(kind="run_verify", base_version=1, base_app_revision=port.hash))
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.FIX_AWAIT_VERIFY, "a busy dispatch must leave the session untouched"
+
+    session_lock.release(s.id, held)
+    reacquired = session_lock.acquire(s.id)
+    assert reacquired is not None, "release must actually free the lock"
+
+
+# ---- Test 3: terminal state frame stays bounded ----------------------------
+
+
+def test_terminal_state_frame_excludes_conversation_history(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
+    repo.save_run(
+        "00000000-0000-0000-0000-000000000000",
+        Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
+    )
+
+    svc, _port, events = _wire(monkeypatch, repo)
+
+    # create_fix_session's dispatch runs the task synchronously (eager
+    # enqueue), so by the time this returns the task has already published
+    # its terminal `command_finished` frame.
+    svc.create_fix_session(APP_ID, _actor(), failed_run_id="TR-1")
+
+    state_frames = [ev for _sid, ev in events if ev.get("kind") == "command_finished"]
+    assert len(state_frames) >= 1
+    terminal = state_frames[-1]
+    assert "conversation" not in terminal
+    assert terminal["conversation_last_seq"] >= 0
+    assert "version" in terminal
+    assert "actions" in terminal
+    assert "session_id" in terminal  # a SessionView-only field, proves it's the whole view
+    json.dumps(terminal)  # must stay JSON-serializable

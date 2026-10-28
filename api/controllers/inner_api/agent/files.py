@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
@@ -14,12 +15,14 @@ from controllers.common.session import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user
-from controllers.inner_api.wraps import plugin_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from core.plugin.entities.request import RequestDownloadFileMapping, RequestRequestUploadFile
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.file_request_service import FileRequestService
 
 
@@ -40,11 +43,13 @@ class AgentFileUploadRequestPayload(RequestRequestUploadFile):
     user_id: str
     user_from: Literal["account", "end-user"] | None = None
     max_size: int = Field(ge=0, description="Maximum upload size in bytes")
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
 
     model_config = ConfigDict(extra="forbid")
 
 
 class AgentFileDownloadRequestPayload(BaseModel):
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
     tenant_id: str
     user_id: str
     user_from: Literal["account", "end-user"]
@@ -88,7 +93,7 @@ class AgentFileUploadRequestApi(Resource):
     """Allocate an origin-free signed upload URI for the Agent CLI."""
 
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_file_upload_request")
     @inner_api_ns.expect(inner_api_ns.models[AgentFileUploadRequestPayload.__name__])
     @inner_api_ns.response(
@@ -107,6 +112,20 @@ class AgentFileUploadRequestApi(Resource):
                 status_code=400,
             ) from exc
 
+        try:
+            claim_agent_endpoint(
+                boundary="file_upload",
+                caller={"tenant_id": payload.tenant_id, "user_id": payload.user_id},
+                envelope=payload.native_dispatch,
+                target={"direction": "upload"},
+                parameters=payload.model_dump(mode="json", exclude={"native_dispatch"}),
+                kind="file",
+                physical_owner_ready=False,
+            )
+        except BuilderExecutionPolicyError:
+            raise AgentFileRequestHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         tenant = application_services().workspaces.management.get(payload.tenant_id)
         if tenant is None:
             raise AgentFileRequestHttpError(
@@ -145,7 +164,7 @@ class AgentFileDownloadRequestApi(Resource):
     """Allocate a transfer URI or frontend URL for one Agent CLI file."""
 
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_file_download_request")
     @inner_api_ns.expect(inner_api_ns.models[AgentFileDownloadRequestPayload.__name__])
     @inner_api_ns.response(
@@ -164,6 +183,20 @@ class AgentFileDownloadRequestApi(Resource):
                 status_code=400,
             ) from exc
 
+        try:
+            claim_agent_endpoint(
+                boundary="file_download",
+                caller={"tenant_id": payload.tenant_id, "user_id": payload.user_id},
+                envelope=payload.native_dispatch,
+                target={"direction": "download"},
+                parameters=payload.model_dump(mode="json", exclude={"native_dispatch"}),
+                kind="file",
+                physical_owner_ready=False,
+            )
+        except BuilderExecutionPolicyError:
+            raise AgentFileRequestHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         if application_services().workspaces.management.get(payload.tenant_id) is None:
             raise AgentFileRequestHttpError(
                 error_code="tenant_not_found",

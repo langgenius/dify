@@ -7,6 +7,7 @@ from services.credentials.query import (
     CredentialQuery,
     DatasourceCredentialListItem,
     ModelCredentialRecord,
+    ToolCredentialMetadata,
     ToolCredentialRecord,
     TriggerSubscriptionRecord,
 )
@@ -38,6 +39,23 @@ class DatasourceCredentialQuery(CredentialQuery):
         return self.credentials
 
     # Datasource credential tests never read the other credential kinds.
+    def list_visible_tool_provider_ids(self, *, workspace_id: str, actor_id: str | None) -> set[str]:
+        raise AssertionError(f"unexpected tool provider lookup: {workspace_id=} {actor_id=}")
+
+    def resolve_tool_credential_metadata(
+        self,
+        *,
+        workspace_id: str,
+        provider: str,
+        legacy_provider: str | None,
+        actor_id: str | None,
+        credential_id: str | None,
+    ) -> ToolCredentialMetadata | None:
+        raise AssertionError(
+            "unexpected tool credential metadata lookup: "
+            f"{workspace_id=} {provider=} {legacy_provider=} {actor_id=} {credential_id=}"
+        )
+
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:
         raise AssertionError(f"unexpected model credential lookup: {workspace_id=} {provider=} {actor_id=}")
 

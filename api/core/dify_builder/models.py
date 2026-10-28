@@ -1,0 +1,494 @@
+"""Dify Builder domain models.
+
+Port of dify-enterprise/server/pkg/enterprise/biz/dify_builder/models.go.
+
+Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
+
+- ``ForwardAuth`` is dropped entirely. ``Turn`` carries an ``Actor``
+  (``account_id``, ``tenant_id``) instead of a forwarded console token, which
+  is never persisted and only ever valid for a single ``Advance`` call.
+- Every field except ``PcState``/``EntryMode``-typed fields
+  (``Session.entry_mode``, ``Session.current_state``, ``Checkpoint.state``)
+  ``Turn.actor``, and ``ChangedNode.node_id`` gets a default matching the Go zero value (``""``,
+  ``0``, ``False``, empty list/dict, ``datetime.min``). This mirrors how the
+  Go test suite constructs these structs: almost every struct literal in
+  ``*_test.go`` sets only a handful of fields and relies on Go's implicit
+  zero-initialization for the rest (e.g. ``&Session{AppID: "app", ...}``,
+  ``&DifyBuilderContext{}``, ``&DifyBuilderContext{FailedRunID: "TR-1"}``). The excepted
+  fields have no meaningful "empty" value (an empty string is not a valid
+  ``PcState``/``EntryMode`` member) and are always set explicitly in the Go
+  suite, so they stay required here.
+- ``Diagnosis`` / ``Risk`` / ``MutationIntent`` / ``ChangeSet`` / ``NodeEvent``
+  / ``ApplyResult`` (Go: ``ports.go``) live here rather than in ``ports.py``.
+  ``DifyBuilderContext`` embeds ``Diagnosis``/``Risk``/``ChangeSet``/
+  ``MutationIntent`` directly, and defining them in ``ports.py`` (which
+  imports the rest of these models) would create a models<->ports import
+  cycle; ``ports.py`` imports them back out of this module instead.
+"""
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import StrEnum
+from typing import Any, Literal
+
+from core.dify_builder.state import PcState
+from runtime_contracts.builder.execution import BuilderExecutionRefusal, ExecutionEvidenceSummary, HttpFixtureSetV1
+
+
+class EntryMode(StrEnum):
+    FIX = "fix"
+    FIX_CHECKLIST = "fix_checklist"
+    BUILD = "build"
+    EDIT = "edit"
+
+
+@dataclass(kw_only=True)
+class ChecklistError:
+    """One pre-publish checklist finding for a node.
+
+    Config errors (``messages``) are fixable via ``set_node_config``;
+    ``unconnected`` and ``plugin_missing`` are structural — surfaced to the
+    user, not auto-fixed in v1.
+    """
+
+    node_id: str = ""
+    node_type: str = ""
+    title: str = ""
+    messages: list[str] = field(default_factory=list)
+    unconnected: bool = False
+    plugin_missing: bool = False
+
+
+@dataclass(kw_only=True)
+class Session:
+    id: str = ""
+    app_id: str = ""
+    tenant_id: str = ""
+    owner_account_id: str = ""
+    entry_mode: EntryMode
+    current_state: PcState
+    version: int = 0
+    created_at: datetime = field(default_factory=lambda: datetime.min)
+    updated_at: datetime = field(default_factory=lambda: datetime.min)
+
+
+# Graph, Inputs and StartSchema are opaque JSON blobs the engine passes
+# through; only the Dify adapter and the agent interpret them.
+Graph = dict[str, Any]
+Inputs = dict[str, Any]
+StartSchema = dict[str, Any]
+
+
+@dataclass(kw_only=True)
+class NodeOutput:
+    node_id: str = ""
+    title: str = ""
+    status: str = ""  # success | failed | skip
+    error: str = ""
+    inputs: Inputs = field(default_factory=dict)
+    outputs: Inputs = field(default_factory=dict)
+    outputs_available: bool = False
+
+
+@dataclass(kw_only=True)
+class OutputFinding:
+    node_id: str
+    output_name: str
+    selector: list[str]
+    state: Literal["present", "unresolved", "unknown"]
+    reason: str
+
+
+@dataclass(kw_only=True)
+class RunVerification:
+    """Observed execution facts. Empty digests mean revision binding is unavailable."""
+
+    execution_revision: str
+    executed_graph_revision: str
+    terminal_outputs: Inputs | None
+    output_findings: list[OutputFinding]
+    executed_node_ids: list[str]
+    no_output_dead_branch: bool
+    execution_evidence: ExecutionEvidenceSummary | None = None
+    # Content-free deterministic findings; empty means no explicit business contract.
+    business_acceptance: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
+class PublicationDecision:
+    allowed: bool
+    reason: Literal[
+        "eligible",
+        "execution_policy_blocked",
+        "execution_evidence_unknown",
+        "simulation_only",
+        "execution_provenance_unbound",
+        "no_verified_run",
+        "execution_failed",
+        "execution_unknown",
+        "revision_unbound",
+        "stale_revision",
+        "required_output_unresolved",
+        "dead_branch_without_output",
+        "business_acceptance_failed",
+        "business_acceptance_unverified",
+    ]
+
+
+@dataclass(kw_only=True)
+class Run:
+    execution_refusal: BuilderExecutionRefusal | None = None
+    id: str = ""
+    session_id: str = ""
+    verification: RunVerification | None = None
+    kind: str = ""  # original-failed | verify
+    dify_run_id: str = ""
+    status: str = ""  # running | succeeded | failed
+    per_node: list[NodeOutput] = field(default_factory=list)
+    culprit_node_id: str = ""
+    # The run-level error text: the launch failure when the run threw before
+    # any node executed (then ``per_node`` is empty and this is the only
+    # evidence), or the engine's run error for a failed run. "" for a
+    # succeeded run and for an unknown outcome other than the truncated-stream
+    # notice (``run_mapping.TRUNCATED_STREAM_ERROR``).
+    error: str = ""
+    inputs_ref: str = ""
+    tokens: int = 0
+    elapsed_ms: int = 0
+    immutable: bool = False
+
+
+@dataclass(kw_only=True)
+class Snapshot:
+    id: str = ""
+    session_id: str = ""
+    hash: str = ""
+    graph: Graph = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
+class Checkpoint:
+    id: str = ""
+    session_id: str = ""
+    state: PcState
+    snapshot_id: str = ""
+
+
+@dataclass(kw_only=True)
+class TestInput:
+    # Not a pytest test class; ``__test__`` (unannotated, so not a dataclass
+    # field) tells pytest's Test*-name collector to skip it.
+    __test__ = False
+
+    id: str = ""
+    session_id: str = ""
+    source: str = ""  # reuse | mock | upload
+    inputs: Inputs = field(default_factory=dict)
+    start_schema_hash: str = ""
+    http_fixtures: HttpFixtureSetV1 | None = None
+
+
+@dataclass(kw_only=True)
+class ConversationItem:
+    seq: int = 0
+    kind: str = ""  # user | decision | notice | run_context | preflight_context | assistant_turn | plan
+    # | form | resource_select | test_result
+    payload: dict[str, Any] = field(default_factory=dict)
+    at_version: int = 0
+
+
+@dataclass(kw_only=True)
+class Diagnosis:
+    # Bounded sanitized condition projection only; never raw native execution rows.
+    condition_evidence: dict[str, Any] | None = None
+    culprit_node_id: str = ""
+    root_cause: str = ""
+    severity: str = ""
+
+
+@dataclass(kw_only=True)
+class Risk:
+    level: str = ""  # low | high
+    reason: str = ""
+    has_external_side_effect: bool = False
+
+
+@dataclass(kw_only=True)
+class MutationIntent:
+    """A single graph mutation the dify_builder applies to the draft.
+
+    ``op`` selects one of five verbs (Slice 1: mutation verbs); ``args`` is
+    the verb's untyped wire-shaped payload -- ``services.dify_builder
+    .graph_ops`` unpacks it as keyword arguments (``apply_fn(graph,
+    **intent.args)``), so each verb's arg-dict keys below are exactly that
+    verb's ``apply_*`` function's parameter names. Required keys are
+    enforced by ``graph_ops.validate_intent_args``; ``?`` marks an optional
+    key.
+
+    - ``set_node_config``: ``{node_id, path, value}``
+    - ``create_node``: ``{node_type, config, position?, node_id?}``
+    - ``delete_node``: ``{node_id}``
+    - ``connect``: ``{from_node, to_node, source_handle?, target_handle?}``
+    - ``insert_between``: ``{edge, node_type, config, position?, node_id?, reuse_existing?}``
+    """
+
+    op: str = ""
+    args: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
+class ChangeSet:
+    changed_nodes: list[str] = field(default_factory=list)
+    diff: str = ""
+
+
+@dataclass(kw_only=True)
+class NodeEvent:
+    """A per-node progress event emitted while a draft run streams."""
+
+    node_id: str = ""
+    title: str = ""
+    status: str = ""
+    error: str = ""
+    # The Dify workflow run these nodes belong to. Carried on the event so a
+    # client can point the canvas at the run while it is still going -- the
+    # run id is known from the first streamed frame, long before the card
+    # that reports the outcome exists. "" when the adapter cannot supply one.
+    run_id: str = ""
+
+
+@dataclass(kw_only=True)
+class ChangedNode:
+    """A node's identity and display name captured with a change summary."""
+
+    node_id: str
+    title: str = ""
+
+
+@dataclass(kw_only=True)
+class ApplyResult:
+    """Reports what a repair changed and the draft's new execution revision."""
+
+    changed_nodes: list[str] = field(default_factory=list)
+    nodes: list[ChangedNode] = field(default_factory=list)
+    new_hash: str = ""
+    changes: list[str] = field(default_factory=list)
+    scope: str = ""
+    structure_fingerprint: str = ""
+
+
+@dataclass(kw_only=True)
+class PublishResult:
+    """User-visible identity of the workflow version created by publish."""
+
+    version_name: str = ""
+    status: str = "live"
+
+
+@dataclass(kw_only=True)
+class BuildNodesResult:
+    """Outcome of ``build_nodes``: the create/connect ``intents`` to apply, plus a
+    human-readable ``error`` explaining WHY generation failed when ``intents`` is
+    empty -- the generator's specific reason (e.g. UNRESOLVED_REFERENCE, non-object
+    JSON) or a provider error (e.g. credit_balance_exhausted). Empty on success."""
+
+    intents: list[MutationIntent] = field(default_factory=list)
+    error: str = ""
+    # Structured, timestamped breadcrumbs returned to the handler for backend
+    # logging (server UTC ``at``, generator ``code``/``node_id``/``detail``).
+    # They are intentionally not sent to the frontend.
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class DifyBuilderContext:
+    """Per-session working state persisted as the commit context.
+
+    One context type for all entry modes (Fix, checklist, Build, Edit).
+    Fix-specific and Build-specific fields coexist; each scenario touches
+    only its own, all default-valued (serialized as a JSON blob -- no
+    migration on rename or on adding fields).
+    """
+
+    # -- Fix / checklist fields --
+    failed_run_id: str = ""
+    diagnosis: Diagnosis | None = None
+    staged_repair: list[MutationIntent] = field(default_factory=list)
+    # Repair-loop convergence. Nothing tracked attempts before, so a repair
+    # that changed nothing could be approved forever (ESQ1-291) and a repair
+    # aimed at the wrong field could thrash indefinitely (ESQ1-285/290).
+    repair_attempts: int = 0
+    # The ENGINE failure signature of the last diagnosed run (see
+    # handlers_build._failure_signature), NOT human-readable prose -- it is
+    # compared for equality to detect a repair loop and is never displayed.
+    last_repair_error: str = ""
+    # Executable graph for that failure; retained across same-task recovery.
+    last_repair_graph_revision: str = ""
+    # Consecutive verify runs whose outcome could not be established (stream
+    # ended with neither a terminal nor an error frame). Reset by any
+    # determinate outcome; ``handlers_fix.MAX_UNKNOWN_OUTCOMES`` caps it so a
+    # stream that keeps ending early cannot be re-run forever.
+    unknown_outcome_count: int = 0
+    risk: Risk | None = None
+    change_set: ChangeSet | None = None
+    checkpoint_id: str = ""
+    verify_run_id: str = ""
+    test_input_ref: str = ""
+    # Prefill data only after a new task invalidates active test input/consent.
+    retained_test_input_ref: str = ""
+    # Execution revision, distinct from the editor's full graph persistence hash.
+    last_snapshot_hash: str = ""
+    next_seq: int = 0
+    # source distinguishes diagnosis origin: "" (run, default) | "checklist".
+    source: str = ""
+    checklist_errors: list[ChecklistError] = field(default_factory=list)
+
+    # Explicit user-confirmed, task-bound test expectations; existing JSON state.
+    business_acceptance_contract: dict[str, Any] = field(default_factory=dict)
+    business_acceptance_task_id: str = ""
+    business_acceptance_case_id: str = ""
+    business_acceptance_run_refs: dict[str, str] = field(default_factory=dict)
+
+    # -- Build fields (Slice 2, additive) --
+    goal_text: str = ""
+    reply_language: str = ""  # detected user-input language (BCP-47); drives reply/localization
+    requirements: dict[str, Any] = field(default_factory=dict)
+    plan_items: list[str] = field(default_factory=list)
+    plan_title: str = ""
+    plan_input_summary: str = ""
+    plan_output_summary: str = ""
+    plan_version_tag: str = ""
+    resource_selection: dict[str, Any] = field(default_factory=dict)
+    built_node_ids: list[str] = field(default_factory=list)
+    form_fields: list[dict] = field(default_factory=list)
+    # The app's name as last seen by the engine, so the build-complete card can
+    # say it (spec N4). Empty means unknown -- that card then keeps its generic
+    # title rather than naming the app wrongly.
+    app_name: str = ""
+    # True while the app still carries the name cut from its creating prompt, so
+    # Builder may refine it once (spec N1); cleared the moment it does. Plan
+    # approval freezes the name for good (spec N3, 批准即定名).
+    app_name_auto: bool = False
+
+    # -- Edit fields (Slice 3, additive) --
+    edit_rules: dict[str, Any] = field(default_factory=dict)
+    edit_target_node_ids: list[str] = field(default_factory=list)
+    # Why the ENGINE refused the last edit write, verbatim (the
+    # ``DraftWouldNotStartError``/``ValueError`` the Dify port raised), capped
+    # at ``handlers_edit._MAX_REJECTION_CHARS``. Never prose the model wrote
+    # about its own proposal, and never branched on -- it is corrective prompt
+    # text only. Credentials are withheld only to redaction's declared scope
+    # (see ``handlers_edit._rejection_text``): an http-request ``body`` value is
+    # not covered, so this field is persisted state that can carry one.
+    #
+    # Without it every re-approval at ``edit.plan_approval`` re-reads the same
+    # unchanged draft and re-prompts the agent with byte-identical inputs, so
+    # the user can approve the same plan forever and get the same refusal card
+    # (triage edit-branch-failure-2026-09-22, "Why every retry is blind").
+    # It is also the only record fine enough to tell two refusals at the SAME
+    # pydantic error location apart -- ``preflight.new_preflight_problems`` is
+    # keyed on locations, so one bad value replaced by another bad value at the
+    # same path is not a new problem to it, but the two engine messages differ.
+    # Cleared the moment a write succeeds, and by every path that starts a new
+    # edit, so a refusal can never be quoted at an unrelated later change.
+    last_edit_rejection: str = ""
+
+    # Current task mode after continuing a completed task in this transcript.
+    active_entry_mode: str = ""
+
+    # -- Lifecycle fields (Slice 4, additive) --
+    paused: bool = False
+    # Durable task controls; old contexts belong to generation zero.
+    task_control: dict[str, Any] = field(default_factory=dict)
+    checkpoint_seq: int = 0
+
+    # -- Recovery fields (C-1, additive) --
+    last_structure_fingerprint: str = ""
+    recovery_class: str = ""
+
+    # Stable id of the most recent command persisted into this context. It is
+    # returned in SessionView so reconnecting clients can correlate
+    # command_finished without replaying conversation rows over SSE.
+    last_command_id: str = ""
+
+    # -- Confirmed real-call reservation (additive) --
+    # Set only by the consent service's atomic launch reservation, in the same
+    # commit as ``last_command_id``; public payloads never set them. Empty means
+    # no reserved confirmed command (all older rows). A pending reference, not
+    # authority: the worker reloads the reserved command and sidecar, and the
+    # terminal or recovery commit clears both.
+    confirmed_consent_id: str = ""
+    confirmed_command_id: str = ""
+
+    # -- Test Run effect confirmation (PRD §9.1, additive) --
+    # Side-effect node id -> the effect signature the user ticked in the
+    # test-data form. A node runs for real only while its current signature
+    # still matches; every other side effect, and every destructive node, is
+    # mocked. Empty (all older rows) means nothing was confirmed.
+    effect_confirmation: dict[str, str] = field(default_factory=dict)
+    # Configuration signatures actually shown in the latest server form.
+    # Separate from approval: submitting a checkbox cannot approve new config
+    # under the same node ID. Only hashes are persisted, never account secrets.
+    effect_confirmation_form: dict[str, str] = field(default_factory=dict)
+
+    # Server-prepared Code explanations, never public action authority. Only
+    # validated DTO projections (hashes, classification, notice) are persisted.
+    code_risk_assessments: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    # -- Governance fields (C-2, additive) --
+    skill_learning_policy: str = "ask"
+
+    # -- Agent model selection (Foundation slice, additive) --
+    # The user's per-session model choice, in Dify's model-selector shape
+    # {provider, name, mode, completion_params}. Empty == use the tenant default LLM.
+    # Kept a plain dict so core imports no services/model-runtime type.
+    model_config: dict[str, Any] = field(default_factory=dict)
+
+
+# Internal kind of a reserved confirmed Tool command. Only the dispatch owner's
+# reservation winner enqueues it; the public action route refuses it.
+CONFIRMED_TOOL_ACTION = "run_confirmed_tool"
+
+
+@dataclass(kw_only=True)
+class Action:
+    """A user-driven event or service-internal command entering the machine."""
+
+    # start_build (internal) | request_fix | approve_repair | reject_repair |
+    # run_verify | provide_testdata | publish | keep_draft | undo | re_fix | message
+    kind: str = ""
+    payload: dict[str, Any] = field(default_factory=dict)
+    base_version: int = 0
+    # Opaque execution revision observed in the latest server view.
+    # Empty means the action does not mutate or otherwise depend on the app
+    # draft (for example a free-text conversation turn).
+    base_app_revision: str = ""
+    # Server-assigned stable id shared by command_started and
+    # command_finished. It is not accepted from the public request payload.
+    command_id: str = ""
+    execution_generation: int | None = None
+    # Server-built receipt metadata. It is attached only after synchronous
+    # validation and committed atomically with the first state transition.
+    interaction_response: dict[str, Any] | None = None
+    # Display-only snapshot, never read by handlers or execution policy.
+    receipt_snapshot: dict[str, Any] | None = None
+
+
+@dataclass(kw_only=True)
+class Actor:
+    """The acting console identity for one Advance call. Never persisted."""
+
+    account_id: str
+    tenant_id: str
+
+
+@dataclass(kw_only=True)
+class Turn:
+    """Per-request data carried through one Advance.
+
+    Replaces Go's ``Turn.Auth ForwardAuth`` — there is no forwarded console
+    token in this port; ``actor`` identifies who is driving this turn.
+    """
+
+    action: Action | None = None
+    actor: Actor

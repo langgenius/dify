@@ -43,6 +43,7 @@ from models import (
     WorkflowSchedulePlan,
 )
 from models.agent import WorkflowAgentNodeBinding
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRealCallConsent
 from models.tools import WorkflowToolProvider
 from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.web import PinnedConversation, SavedMessage
@@ -129,6 +130,8 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_recommended_apps(tenant_id, app_id)
         _delete_app_annotation_data(tenant_id, app_id)
         _delete_app_dataset_joins(tenant_id, app_id)
+        _delete_builder_real_call_consents(tenant_id, app_id)
+        _delete_builder_execution_requests(tenant_id, app_id)
         _delete_workflow_agent_node_bindings(tenant_id, app_id)
         _delete_app_workflows(tenant_id, app_id)
         _delete_app_workflow_node_executions(tenant_id, app_id)
@@ -327,6 +330,60 @@ def _delete_app_workflows(tenant_id: str, app_id: str):
         {"tenant_id": tenant_id, "app_id": app_id},
         del_workflow,
         "workflow",
+    )
+
+
+def _delete_builder_real_call_consents(tenant_id: str, app_id: str) -> None:
+    """Remove real-call consent records with their tenant-owned App.
+
+    Runs before the execution sidecars they reference. Same bounded, idempotent
+    deletion owner; selection and deletion both keep the full tenant/App scope.
+    """
+
+    def del_consent(session: Session, consent_id: str) -> None:
+        session.execute(
+            delete(DifyBuilderRealCallConsent)
+            .where(
+                DifyBuilderRealCallConsent.id == consent_id,
+                DifyBuilderRealCallConsent.tenant_id == tenant_id,
+                DifyBuilderRealCallConsent.app_id == app_id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+
+    _delete_records(
+        """select id from dify_builder_real_call_consents
+        where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_consent,
+        "Builder real-call consent",
+    )
+
+
+def _delete_builder_execution_requests(tenant_id: str, app_id: str) -> None:
+    """Retain execution evidence until its tenant-owned App is removed.
+
+    Use the existing bounded deletion owner for retry/idempotency; both the
+    batch selection and row deletion retain the complete tenant/App scope.
+    """
+
+    def del_execution_request(session: Session, request_id: str) -> None:
+        session.execute(
+            delete(DifyBuilderExecutionRequest)
+            .where(
+                DifyBuilderExecutionRequest.id == request_id,
+                DifyBuilderExecutionRequest.tenant_id == tenant_id,
+                DifyBuilderExecutionRequest.app_id == app_id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+
+    _delete_records(
+        """select id from dify_builder_execution_requests
+        where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_execution_request,
+        "Builder execution request",
     )
 
 
