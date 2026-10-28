@@ -68,7 +68,7 @@ def test_get_prompt(mocker: MockerFixture) -> None:
 
 @pytest.mark.parametrize("observation_name", ["agent_observation", "knowledge_retrieval"])
 def test_history_limit_keeps_complete_agent_turns(mocker: MockerFixture, observation_name: str) -> None:
-    history = [
+    history: list[PromptMessage] = [
         UserPromptMessage(content="Earlier query"),
         AssistantPromptMessage(content="Earlier thought", opaque_body={"signature": "signed"}),
         UserPromptMessage(content="Tool observation", name=observation_name),

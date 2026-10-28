@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable, Sequence
 from datetime import timedelta
+from decimal import Decimal
 from typing import Literal
 
 import pytest
@@ -192,10 +193,10 @@ def test_workflow_history_budget_preserves_database_turns(
         _inputs={},
         query="latest query",
         message={},
-        message_unit_price=0,
+        message_unit_price=Decimal(0),
         answer="latest answer",
         answer_tokens=1,
-        answer_unit_price=0,
+        answer_unit_price=Decimal(0),
         currency="USD",
         from_source=older.from_source,
     )

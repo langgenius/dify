@@ -222,7 +222,6 @@ class MockModelClass(PluginModelClient):
                         index=0,
                         message=AssistantPromptMessage(
                             content=full_text[i],
-                            tool_calls=[tool_call] if tool_call else [],
                         ),
                         usage=LLMUsage(
                             prompt_tokens=2,

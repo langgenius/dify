@@ -1,7 +1,7 @@
 """Persist complete agent model messages.
 
 Revision ID: e9c48a2701bd
-Revises: a8c3e7f4b912
+Revises: b9d3f7a5c102
 """
 
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ from alembic import op
 import models.types
 
 revision = "e9c48a2701bd"
-down_revision = "a8c3e7f4b912"
+down_revision = "b9d3f7a5c102"
 branch_labels = None
 depends_on = None
 

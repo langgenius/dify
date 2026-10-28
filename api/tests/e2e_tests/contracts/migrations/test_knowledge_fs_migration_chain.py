@@ -30,17 +30,17 @@ def _scripts() -> ScriptDirectory:
     return ScriptDirectory(str(_VERSIONS.parent))
 
 
-def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
-    assert _scripts().get_heads() == [_KNOWLEDGE_FS_CHAIN[-1]]
+def test_knowledge_fs_chain_precedes_the_single_head() -> None:
+    scripts = _scripts()
+    heads = scripts.get_heads()
+    assert len(heads) == 1
+    assert _KNOWLEDGE_FS_CHAIN[-1] in {revision.revision for revision in scripts.iterate_revisions(heads[0], "base")}
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
     scripts = _scripts()
-    applied_on_main = {revision.revision for revision in scripts.iterate_revisions(_MAIN_HEAD, "base")}
     pending = [
-        revision.revision
-        for revision in reversed(list(scripts.iterate_revisions("heads", "base")))
-        if revision.revision not in applied_on_main
+        revision.revision for revision in reversed(list(scripts.iterate_revisions(_KNOWLEDGE_FS_CHAIN[-1], _MAIN_HEAD)))
     ]
 
     assert pending == _KNOWLEDGE_FS_CHAIN

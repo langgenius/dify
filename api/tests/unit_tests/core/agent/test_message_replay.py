@@ -1,10 +1,16 @@
+from collections.abc import Generator
 from copy import deepcopy
+from typing import Literal
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.model_manager import ModelInstance
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
@@ -12,10 +18,11 @@ from graphon.model_runtime.entities import (
     LLMResultChunk,
     LLMResultChunkDelta,
     LLMUsage,
+    PromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
 )
-from models.model import MessageAgentThought
+from models.model import Conversation, Message, MessageAgentThought
 from services.agent.message_history import AgentMessageHistory
 from services.workflow_run_agg import WorkflowRunAgg
 
@@ -23,10 +30,17 @@ from services.workflow_run_agg import WorkflowRunAgg
 @pytest.mark.usefixtures("agent_runtime_app")
 @pytest.mark.parametrize("mode", ["blocking", "streaming", "react"])
 def test_tool_rounds_and_persisted_history_preserve_model_messages(
-    mode, sqlite_session, agent_records, agent_generate_entity, agent_queue_manager, monkeypatch
-):
+    mode: Literal["blocking", "streaming", "react"],
+    sqlite_session: Session,
+    agent_records: tuple[Conversation, Message],
+    agent_generate_entity: AgentChatAppGenerateEntity,
+    agent_queue_manager: MessageBasedAppQueueManager,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     conversation, message = agent_records
     app_config = agent_generate_entity.app_config
+    assert isinstance(app_config, AgentChatAppConfig)
+    assert app_config.agent is not None
     app_config.agent.max_iteration = 3
     runner_class = CotChatAgentRunner if mode == "react" else FunctionCallAgentRunner
     runner = runner_class(
@@ -71,10 +85,10 @@ def test_tool_rounds_and_persisted_history_preserve_model_messages(
     replies.append(
         AssistantPromptMessage(content='{"action":"Final Answer","action_input":"done"}' if mode == "react" else "done")
     )
-    requests = []
+    requests: list[list[PromptMessage]] = []
 
-    def invoke(**kwargs):
-        requests.append(deepcopy(kwargs["prompt_messages"]))
+    def invoke(*, prompt_messages: list[PromptMessage], **_kwargs: object) -> LLMResult | Generator[LLMResultChunk]:
+        requests.append(deepcopy(prompt_messages))
         reply = replies[len(requests) - 1].model_copy(deep=True)
         if mode == "blocking":
             return LLMResult(model="m", prompt_messages=[], message=reply, usage=LLMUsage.empty_usage())
@@ -88,7 +102,10 @@ def test_tool_rounds_and_persisted_history_preserve_model_messages(
     assert assistants == replies[:2]
 
     rows = sqlite_session.scalars(select(MessageAgentThought).order_by(MessageAgentThought.position)).all()
-    restored = [item for row in rows for item in AgentMessageHistory.model_validate_json(row.model_messages).messages]
+    restored: list[PromptMessage] = []
+    for row in rows:
+        assert row.model_messages is not None
+        restored.extend(AgentMessageHistory.model_validate_json(row.model_messages).messages)
     assert [item for item in restored if isinstance(item, AssistantPromptMessage)] == replies
     if mode != "react":
         assert [item.tool_call_id for item in restored if isinstance(item, ToolPromptMessage)] == [
@@ -101,7 +118,7 @@ def test_tool_rounds_and_persisted_history_preserve_model_messages(
     assert [item for item in history if isinstance(item, AssistantPromptMessage)] == replies
 
 
-def test_history_keeps_empty_tool_results_and_completes_interrupted_calls():
+def test_history_keeps_empty_tool_results_and_completes_interrupted_calls() -> None:
     assistant = AssistantPromptMessage(
         opaque_body=False,
         tool_calls=[
@@ -114,8 +131,11 @@ def test_history_keeps_empty_tool_results_and_completes_interrupted_calls():
     )
     history = AgentMessageHistory(provider="p", model="m", messages=[assistant])
     restored = AgentMessageHistory.model_validate_json(history.model_dump_json()).restore(provider="p", model="m")
+    assert restored is not None
     assert restored[0] == assistant
+    assert isinstance(restored[1], ToolPromptMessage)
     assert restored[1].tool_call_id == "original"
+    assert isinstance(restored[1].content, str)
     assert "interrupted" in restored[1].content
     history.messages.append(ToolPromptMessage(tool_call_id="original", content=""))
     assert history.restore(provider="p", model="m") == history.messages
