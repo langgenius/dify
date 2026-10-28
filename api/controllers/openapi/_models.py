@@ -1402,7 +1402,7 @@ class SkillImportBody(BaseModel):
     skill_id: UUIDStr | None = Field(None, description="Overwrite this skill's draft; omit to create a new skill")
     draft_hash: str | None = Field(
         None,
-        pattern=r"^\d+$",
+        pattern=r"^[0-9]+$",
         description="From describe.skill; rejects the overwrite if the draft changed since",
     )
 

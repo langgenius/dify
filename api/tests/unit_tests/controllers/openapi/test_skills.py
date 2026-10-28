@@ -376,9 +376,10 @@ def test_import_with_skill_id_overwrites(monkeypatch: pytest.MonkeyPatch) -> Non
     assert response.hints[0].op == "publish.skill"
 
 
-def test_import_with_foreign_draft_hash_is_rejected() -> None:
+@pytest.mark.parametrize("draft_hash", ["abc", "١٢٣"])
+def test_import_with_foreign_draft_hash_is_rejected(draft_hash: str) -> None:
     with pytest.raises(ValidationError) as exc:
-        _import(_folder(**{"SKILL.md": b"x"}), skill_id=SKILL_ID, draft_hash="abc")
+        _import(_folder(**{"SKILL.md": b"x"}), skill_id=SKILL_ID, draft_hash=draft_hash)
     assert [error["loc"] for error in exc.value.errors()] == [("draft_hash",)]
 
 
