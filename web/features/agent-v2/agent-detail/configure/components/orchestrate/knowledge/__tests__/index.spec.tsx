@@ -16,7 +16,11 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/console'
-import { seedModelProviderQueries } from '@/test/console/model-provider'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
@@ -33,22 +37,28 @@ import { AgentKnowledgeRetrieval } from '../index'
 
 const render = createNuqsTestRenderer(renderWithConsoleQuery)
 
-const { getDatasets, getDataset, getSpaces } = vi.hoisted(() => ({
+const { getDatasets, getDataset, getSpaces, getRules } = vi.hoisted(() => ({
   getDatasets: vi.fn(),
   getDataset: vi.fn(),
   getSpaces: vi.fn(),
+  getRules: vi.fn(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.get': getDatasets,
       'datasets.byDatasetId.get': getDataset,
       'knowledgeFs.spaces.get': getSpaces,
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': getRules,
       'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
       'workspaces.current.defaultModel.get': async () => ({ data: null }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': getRules,
     }),
   }
 })
@@ -57,6 +67,20 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 beforeEach(() => {
+  getRules.mockReset().mockResolvedValue({
+    data: [
+      {
+        name: 'temperature',
+        label: { en_US: 'Temperature' },
+        type: 'float',
+        default: 0.7,
+        min: 0,
+        max: 2,
+        required: false,
+        options: [],
+      },
+    ],
+  })
   getDataset
     .mockReset()
     .mockImplementation(async ({ params }: { params: { dataset_id: string } }) =>
@@ -392,6 +416,44 @@ describe('shared knowledge binding dialog', () => {
     })
   })
 
+  it('stages retrieval limit edits and discards them when the shared dialog is cancelled', async () => {
+    const user = userEvent.setup()
+    setup(
+      [
+        {
+          id: 'classic',
+          name: 'Saved search',
+          selectedDatasets: [createDatasetFixture()],
+          multipleRetrievalConfig: { top_k: 4, score_threshold: null, reranking_enable: false },
+        },
+      ],
+      { enabled: false },
+    )
+    const editLimit = async (dialog: HTMLElement) => {
+      await advanced(user, dialog)
+      await user.click(within(dialog).getByRole('button', { name: 'dataset.retrievalSettings' }))
+      const topK = screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+      expect(topK).toHaveValue('4')
+      await user.clear(topK)
+      await user.type(topK, '8')
+      await user.tab()
+      await user.keyboard('{Escape}')
+    }
+    let dialog = await open(user)
+    await editLimit(dialog)
+    await user.click(within(dialog).getByRole('button', { name: /operation.cancel/ }))
+    expect(snapshot().knowledge.sets[0].retrieval.top_k).toBe(4)
+    dialog = await open(user)
+    await editLimit(dialog)
+    expect(snapshot().knowledge.sets[0].retrieval.top_k).toBe(4)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets[0].retrieval).toMatchObject({
+      mode: 'multiple',
+      top_k: 8,
+      reranking_enable: false,
+    })
+  })
+
   it('retains Classic bindings when dataset lookup fails and supports retry', async () => {
     const user = userEvent.setup()
     getDataset.mockRejectedValue(new ORPCError('FORBIDDEN', { status: 403 }))
@@ -405,6 +467,177 @@ describe('shared knowledge binding dialog', () => {
     getDataset.mockResolvedValue(createDatasetFixture())
     await user.click(within(dialog).getByRole('button', { name: /operation.retry/ }))
     expect(await within(dialog).findByRole('radio', { name: /dialog.query.agent$/ })).toBeVisible()
+  })
+
+  it('saves edited metadata conditions and their logical operator only on confirmation', async () => {
+    const user = userEvent.setup()
+    const dataset = createDatasetFixture({
+      doc_metadata: [
+        { id: 'topic', name: 'topic', type: 'string' },
+        { id: 'author', name: 'author', type: 'string' },
+      ],
+    })
+    setup([{ id: 'classic', name: 'Saved search', selectedDatasets: [dataset] }], {
+      enabled: false,
+    })
+    const original = snapshot().knowledge
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    await user.click(
+      within(dialog).getByRole('button', { name: /metadata.options.disabled.title/ }),
+    )
+    await user.click(screen.getByRole('menuitemradio', { name: /metadata.options.manual.title/ }))
+    await user.click(within(dialog).getByRole('button', { name: /metadata.panel.conditions/ }))
+    const addCondition = async (name: string) => {
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflowModels.nodes.knowledgeRetrieval.metadata.panel.add',
+        }),
+      )
+      await user.click(
+        within(await screen.findByRole('menu')).getByRole('menuitem', { name: new RegExp(name) }),
+      )
+    }
+    await addCondition('topic')
+    await user.type(
+      within(screen.getByRole('group', { name: 'topic' })).getByRole('textbox'),
+      'agent',
+    )
+    await addCondition('author')
+    const author = within(screen.getByRole('group', { name: 'author' }))
+    await user.type(author.getByRole('textbox'), 'Ada')
+    await user.click(screen.getByText('AND'))
+    await user.click(
+      within(screen.getByRole('group', { name: 'topic' })).getByRole('button', {
+        name: 'common.operation.remove',
+      }),
+    )
+    await user.click(within(dialog).getByRole('button', { name: /metadata.panel.conditions/ }))
+    expect(snapshot().knowledge).toEqual(original)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets[0].metadata_filtering).toEqual({
+      mode: 'manual',
+      conditions: {
+        logical_operator: 'or',
+        conditions: [
+          expect.objectContaining({
+            name: 'author',
+            metadata_id: 'author',
+            comparison_operator: 'is',
+            value: 'Ada',
+          }),
+        ],
+      },
+    })
+  })
+
+  it.each(['single retrieval', 'automatic metadata'] as const)(
+    'saves the %s model and parameters through the shared dialog',
+    async (target) => {
+      const user = userEvent.setup()
+      const { queryClient } = setup(
+        [
+          {
+            id: 'classic',
+            name: 'Saved search',
+            selectedDatasets: [createDatasetFixture()],
+            ...(target === 'single retrieval'
+              ? {
+                  retrievalMode: RETRIEVE_TYPE.oneWay,
+                  singleRetrievalConfig: {
+                    model: {
+                      provider: 'openai',
+                      name: 'gpt-4',
+                      mode: 'chat',
+                      completion_params: { temperature: 0.7 },
+                    },
+                  },
+                }
+              : {}),
+          },
+        ],
+        { enabled: false },
+      )
+      seedModelProviderQueries(queryClient, [
+        createModelCatalogFixture({
+          models: [
+            createCatalogModelFixture({ model_properties: { mode: 'chat' } }),
+            createCatalogModelFixture({
+              model: 'gpt-4.1',
+              label: { en_US: 'GPT-4.1' },
+              model_properties: { mode: 'chat' },
+            }),
+          ],
+        }),
+      ])
+      const original = snapshot().knowledge
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      if (target === 'single retrieval') {
+        await user.click(within(dialog).getByRole('button', { name: 'dataset.retrievalSettings' }))
+        await user.click(screen.getByRole('button', { name: /^GPT-4 CHAT$/ }))
+      } else {
+        await user.click(
+          within(dialog).getByRole('button', { name: /metadata.options.disabled.title/ }),
+        )
+        await user.click(
+          screen.getByRole('menuitemradio', { name: /metadata.options.automatic.title/ }),
+        )
+        await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+      }
+      await user.click(
+        within(
+          await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+        ).getByRole('button', { name: /^GPT-4.1/ }),
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
+      )
+      const params = within(
+        await screen.findByRole('dialog', { name: 'modelProvider.modelProvider.modelSettings' }),
+      )
+      await user.clear(params.getByRole('spinbutton', { name: 'Temperature' }))
+      await user.type(params.getByRole('spinbutton', { name: 'Temperature' }), '0.2')
+      await user.tab()
+      await user.click(params.getByRole('button', { name: 'common.operation.close' }))
+      if (target === 'single retrieval') await user.keyboard('{Escape}')
+      expect(snapshot().knowledge).toEqual(original)
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      const saved = snapshot().knowledge.sets[0]
+      expect(
+        target === 'single retrieval' ? saved.retrieval : saved.metadata_filtering,
+      ).toMatchObject({
+        mode: target === 'single retrieval' ? 'single' : 'automatic',
+        [target === 'single retrieval' ? 'model' : 'model_config']: {
+          provider: 'openai',
+          name: 'gpt-4.1',
+          mode: 'chat',
+          completion_params: { temperature: 0.2 },
+        },
+      })
+    },
+  )
+
+  it('recovers the Classic catalog after an error and loads later pages without losing selections', async () => {
+    const user = userEvent.setup()
+    getDatasets.mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR'))
+    setup([], { enabled: false })
+    const dialog = await open(user)
+    expect(await within(dialog).findByRole('alert')).toBeVisible()
+    getDatasets.mockResolvedValueOnce({ ...datasetPage(), has_more: true })
+    await user.click(within(dialog).getByRole('button', { name: /operation.retry/ }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+    getDatasets.mockResolvedValueOnce({
+      ...datasetPage([createDatasetFixture({ id: 'dataset-2', name: 'More docs' })]),
+      page: 2,
+    })
+    await user.click(within(dialog).getByRole('button', { name: /loadMore/ }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'More docs' }))
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets.map((item: { name: string }) => item.name)).toEqual([
+      'Test Dataset',
+      'More docs',
+    ])
   })
 })
 
