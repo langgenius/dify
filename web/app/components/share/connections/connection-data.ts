@@ -65,7 +65,7 @@ export function getConnectionData({
 
     return {
       id: requirement.node_id,
-      name: requirement.title,
+      name: requirement.provider_label,
       description: requirement.purpose,
       icon: { icon_type: 'link', icon: requirement.icon },
       iconDark: requirement.icon_dark

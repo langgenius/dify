@@ -80,8 +80,18 @@ describe('Webapp connection data', () => {
       'reuse-two': 'source-one',
       'source-two': 'source-two',
     })
-    expect(data.services[0]?.name).toBe('Repository connection')
+    expect(data.services[0]?.name).toBe('GitHub')
     expect(data.services[0]?.description).toBe('Read repository documentation.')
+  })
+
+  it('uses the localized provider label instead of the tool node title', () => {
+    const data = getConnectionData({
+      requirements: [requirement({ provider_label: '谷歌搜索', title: 'Search the web' })],
+      connections: [],
+      allConnectionsLoaded: true,
+    })
+
+    expect(data.services[0]?.name).toBe('谷歌搜索')
   })
 
   it('filters each source by both provider and its allowed credential methods', () => {
