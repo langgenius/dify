@@ -1143,7 +1143,7 @@ class TestToolNodeRuntimeCases:
         assert workflow_tool.provider_type == CoreToolProviderType.BUILT_IN
 
     @staticmethod
-    def test_get_runtime_chains_parent_trace_context_for_workflow_tools(
+    def test_workflow_tools_receive_the_chained_parent_trace_context(
         runtime: DifyToolNodeRuntime,
     ) -> None:
         variable_pool: VariablePool = build_test_variable_pool(
@@ -1181,7 +1181,7 @@ class TestToolNodeRuntimeCases:
                 node_execution_id="node-execution-id",
             )
 
-        assert tool_runtime.raw.parent_trace_context == ParentTraceContext(
+        chained = ParentTraceContext(
             parent_workflow_run_id="workflow-run-id",
             parent_node_execution_id="node-execution-id",
             parent_app_id="app-id",
@@ -1191,7 +1191,24 @@ class TestToolNodeRuntimeCases:
                 parent_external_trace_id="caller-trace",
             ),
         )
+        assert tool_runtime.raw.parent_trace_context == chained
         assert workflow_runtime.runtime.runtime_parameters == {}
+
+        with (
+            patch.object(ToolEngine, "generic_invoke", return_value=iter([])),
+            patch.object(
+                ToolFileMessageTransformer,
+                "transform_tool_invoke_messages",
+                side_effect=lambda *, messages, **_: messages,
+            ),
+        ):
+            list(
+                runtime.invoke(
+                    tool_runtime=tool_runtime, tool_parameters={}, workflow_call_depth=0, provider_name="provider"
+                )
+            )
+
+        workflow_runtime.set_parent_trace_context.assert_called_once_with(chained)
 
     @staticmethod
     def test_get_runtime_passes_trace_session_and_caller_trace_to_workflow_tools(
