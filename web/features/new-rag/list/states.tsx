@@ -182,7 +182,9 @@ function ButtonOrLink({
 function EmptyGhostGrid() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div className={cn('absolute inset-x-8 inset-y-2 gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}>
+      <div
+        className={cn('absolute inset-x-8 inset-y-2 gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
+      >
         {EMPTY_GHOST_CARD_IDS.map((id) => (
           <div key={id} className="h-41.5 rounded-xl bg-background-default-lighter opacity-75" />
         ))}

@@ -42,11 +42,7 @@ import { useKnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
 import { matchesKnowledgeUpgradeFilters } from '../upgrade/knowledge-upgrade-filters'
 import { KnowledgeSpaceCard } from './knowledge-space-card'
 import { KnowledgeViewSwitcher } from './knowledge-view-switcher'
-import {
-  NewKnowledgeEmptyState,
-  NewKnowledgeLoadingState,
-  NewKnowledgePageState,
-} from './states'
+import { NewKnowledgeEmptyState, NewKnowledgeLoadingState, NewKnowledgePageState } from './states'
 
 const PAGE_SIZE = 30
 const UPGRADE_DATASET_BATCH_SIZE = 50
