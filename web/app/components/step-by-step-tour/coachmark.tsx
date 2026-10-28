@@ -100,11 +100,12 @@ type StepByStepTourCoachmarkProps = {
   interactionPolicy: StepByStepTourGuideInteractionPolicy
   onSkip: () => void
   onComplete: () => void
+  completing?: boolean
 }
 
 type StepByStepTourCoachmarkOverlay = Omit<
   StepByStepTourCoachmarkProps,
-  'onComplete' | 'onSkip' | 'targetElement'
+  'completing' | 'onComplete' | 'onSkip' | 'targetElement'
 > & {
   anchorRect: StepByStepTourTargetRect
   highlightRect: StepByStepTourTargetRect
@@ -120,6 +121,7 @@ export function StepByStepTourCoachmark({
   interactionPolicy,
   onSkip,
   onComplete,
+  completing = false,
 }: StepByStepTourCoachmarkProps) {
   const targetRects = useStepByStepTourTargetRect(targetElement, guide.highlightPartSelectors)
   const portalRef = useRef<HTMLDivElement>(null)
@@ -360,6 +362,7 @@ export function StepByStepTourCoachmark({
                       variant="primary"
                       size="medium"
                       className="min-w-20 px-3"
+                      loading={completing}
                       onClick={currentOverlay ? onComplete : undefined}
                     >
                       {overlay.guide.primaryActionLabel}
