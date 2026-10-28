@@ -975,7 +975,7 @@ describe('StepByStepTourMount', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Mark Knowledge needs permission complete' }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
       action: 'permission_fallback_shown',
       permission_variant: 'no_knowledge_permission',
@@ -1120,7 +1120,7 @@ describe('StepByStepTourMount', () => {
     const completeStudioButton = await screen.findByRole('button', {
       name: 'Mark Manage your apps in Studio complete',
     })
-    expect(completeStudioButton).toBeDisabled()
+    expect(completeStudioButton).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(completeStudioButton)
 
@@ -1134,9 +1134,12 @@ describe('StepByStepTourMount', () => {
     await waitFor(() =>
       expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0'),
     )
-    expect(
-      screen.getByRole('button', { name: 'Mark Try a Learn Dify lesson complete' }),
-    ).toBeDisabled()
+    const reopenedHomeButton = screen.getByRole('button', {
+      name: 'Mark Try a Learn Dify lesson complete',
+    })
+    expect(reopenedHomeButton).toHaveAttribute('aria-disabled', 'true')
+    expect(reopenedHomeButton).toBeEnabled()
+    expect(reopenedHomeButton).toHaveFocus()
   })
 
   it('does not allow manually completing externally completed tasks from the checklist', async () => {
@@ -1153,7 +1156,7 @@ describe('StepByStepTourMount', () => {
     const completeHomeButton = await screen.findByRole('button', {
       name: 'Mark Try a Learn Dify lesson complete',
     })
-    expect(completeHomeButton).toBeDisabled()
+    expect(completeHomeButton).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(completeHomeButton)
 

@@ -66,7 +66,6 @@ import {
 } from './state'
 import {
   getStepByStepTourGuideInteractionPolicy,
-  getStepByStepTourGuideKind,
   getStepByStepTourGuides,
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -514,7 +513,6 @@ export default function StepByStepTourMount({
               id: task.id,
               iconClassName: knowledgeUnavailable ? 'i-ri-lock-line' : task.iconClassName,
               status: completed ? 'completed' : task.id === currentTask?.id ? 'current' : 'pending',
-              canToggleCompletion: false,
             }
           })
 
@@ -682,18 +680,6 @@ export default function StepByStepTourMount({
                 setChecklistMinimized(true)
               }}
               onSkip={skipTour}
-              onCompleteTask={(taskId) => {
-                const guides = getStepByStepTourGuides(taskId, sessionGuideGroup)
-                const hasExternalCompletionGuide = guides.some(
-                  (guide) => getStepByStepTourGuideKind(guide) === 'action',
-                )
-                if (hasExternalCompletionGuide) return
-
-                completeTask({
-                  taskId,
-                  onSuccess: (completedTaskIds) => trackTaskCompleted(completedTaskIds, taskId),
-                })
-              }}
               onStartTask={(taskId) => {
                 const task = availableTasks.find((item) => item.id === taskId)
 
