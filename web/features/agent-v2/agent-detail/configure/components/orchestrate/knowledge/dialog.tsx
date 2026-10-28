@@ -4,8 +4,6 @@ import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/conso
 import type { RefObject } from 'react'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   Dialog,
@@ -21,7 +19,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useId, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import {
@@ -29,9 +27,13 @@ import {
   validateKnowledgeRetrievals,
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { consoleQuery } from '@/service/console'
+import { KnowledgeBindingOption } from './binding-option'
+import { ClassicKnowledgePicker } from './classic-picker'
+import { ClassicKnowledgeSettings } from './classic-settings'
 
 type Props = {
   open: boolean
+  knowledgeFsEnabled: boolean
   initialBindings: AgentKnowledgeRetrievalItem[]
   onConfirm: (bindings: AgentKnowledgeRetrievalItem[]) => void
   onOpenChange: (open: boolean) => void
@@ -48,103 +50,32 @@ const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
   space.permission_keys.includes('knowledge_space_read') &&
   space.permission_keys.includes('knowledge_space_query')
 
-function KnowledgeSpaceOption({
-  space,
-  checked,
-  disabled,
-  onCheckedChange,
-}: {
-  space: KnowledgeFsSpaceListItemResponse
-  checked: boolean
-  disabled: boolean
-  onCheckedChange: (checked: boolean) => void
-}) {
-  const { t } = useTranslation(['agentV2'])
-  const id = useId()
-  const name =
-    space.technical_summary?.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])
-  const description = space.technical_summary?.description
-
-  return (
-    <div
-      className={cn(
-        'group/space flex h-14 min-w-0 items-center gap-2 rounded-lg px-2 transition-colors motion-reduce:transition-none',
-        checked
-          ? 'bg-state-accent-active'
-          : 'focus-within:bg-state-base-hover hover:bg-state-base-hover',
-      )}
-    >
-      <label
-        htmlFor={id}
-        className={cn(
-          'flex h-full min-w-0 flex-1 items-center gap-3',
-          disabled ? 'cursor-not-allowed' : 'cursor-pointer',
-        )}
-      >
-        <span
-          aria-hidden
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg text-text-secondary shadow-xs group-focus-within/space:text-text-accent group-hover/space:text-text-accent"
-        >
-          <span className="i-ri-book-open-line size-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span
-            id={`${id}-name`}
-            className={cn(
-              'block truncate system-sm-medium',
-              disabled
-                ? 'text-text-tertiary'
-                : 'text-text-secondary group-focus-within/space:text-text-primary group-hover/space:text-text-primary',
-            )}
-          >
-            {name}
-          </span>
-          {!!description && (
-            <span className="grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-150 group-focus-within/space:grid-rows-[1fr] group-focus-within/space:opacity-100 group-hover/space:grid-rows-[1fr] group-hover/space:opacity-100 motion-reduce:transition-none">
-              <span
-                id={`${id}-description`}
-                className="min-h-0 truncate overflow-hidden system-xs-regular text-text-tertiary"
-              >
-                {description}
-              </span>
-            </span>
-          )}
-        </span>
-        <Checkbox
-          id={id}
-          aria-labelledby={`${id}-name`}
-          aria-describedby={description ? `${id}-description` : undefined}
-          checked={checked}
-          disabled={disabled}
-          onCheckedChange={onCheckedChange}
-        />
-      </label>
-    </div>
-  )
-}
-
 /** Draft state lives as long as the dialog content: each opening starts from the saved bindings. */
 function AgentKnowledgeRetrievalForm({
   initialBindings,
+  knowledgeFsEnabled,
   onConfirm,
   onClose,
   searchRef,
 }: FormProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'datasetSettings', 'appDebug'])
   const { t: tc } = useTranslation(['common'])
   const [draft, setDraft] = useState(initialBindings)
   const [filter, setFilter] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const validationMessage = useKnowledgeValidationMessage()
-  const spacesQuery = useInfiniteQuery({
-    ...consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
+  const spacesQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
+      enabled: knowledgeFsEnabled,
       input: (pageParam) => ({ query: { limit: 50, page: pageParam } }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
     }),
-  })
-  const spaces = spacesQuery.data?.pages.flatMap((page) => page.data) ?? []
+  )
+  const spaces = knowledgeFsEnabled
+    ? (spacesQuery.data?.pages.flatMap((page) => page.data) ?? [])
+    : []
   const spacesById = new Map(spaces.map((space) => [space.control_space_id, space]))
   const visibleSpaces = spaces.filter(
     (space) =>
@@ -158,13 +89,14 @@ function AgentKnowledgeRetrievalForm({
   const unavailableBindingIds = new Set(
     draft
       .filter((item) => {
-        if (!item.controlSpaceId || item.isMissing) return false
+        if (!knowledgeFsEnabled || !item.controlSpaceId || item.isMissing) return false
         const space = spacesById.get(item.controlSpaceId)
         return space ? !canBindSpace(space) : spacesQuery.isSuccess && !spacesQuery.hasNextPage
       })
       .map((item) => item.id),
   )
-  const validation = validateKnowledgeRetrievals(draft)
+  const visibleBindings = draft.filter((item) => knowledgeFsEnabled || !item.controlSpaceId)
+  const validation = validateKnowledgeRetrievals(visibleBindings)
   const spaceCount = draft.filter((item) => item.controlSpaceId).length
   const update = (id: string, patch: Partial<AgentKnowledgeRetrievalItem>) =>
     setDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
@@ -207,18 +139,20 @@ function AgentKnowledgeRetrievalForm({
     >
       <DialogHeader>
         <div className="flex items-center gap-2">
-          <DialogTitle>{t(($) => $['agentDetail.configure.knowledgeFs.title'])}</DialogTitle>
+          <DialogTitle>
+            {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.title'])}
+          </DialogTitle>
           <Infotip>
             <InfotipTrigger
-              aria-label={t(($) => $['agentDetail.configure.knowledgeFs.description'])}
+              aria-label={t(($) => $['agentDetail.configure.knowledgeRetrieval.empty.description'])}
             />
             <InfotipContent>
-              {t(($) => $['agentDetail.configure.knowledgeFs.description'])}
+              {t(($) => $['agentDetail.configure.knowledgeRetrieval.empty.description'])}
             </InfotipContent>
           </Infotip>
         </div>
         <DialogDescription>
-          {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+          {t(($) => $['agentDetail.configure.knowledgeRetrieval.empty.description'])}
         </DialogDescription>
         <DialogHeaderCloseButton aria-label={tc(($) => $['operation.close'])} />
       </DialogHeader>
@@ -227,11 +161,11 @@ function AgentKnowledgeRetrievalForm({
           ref={searchRef}
           value={filter}
           onValueChange={setFilter}
-          aria-label={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
+          aria-label={tc(($) => $['operation.search'])}
         />
       </div>
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pb-4 system-sm-regular">
-        {draft.some((item) => item.isMissing) && (
+        {knowledgeFsEnabled && draft.some((item) => item.isMissing) && (
           <p role="alert" className="px-2 system-xs-regular text-text-warning">
             {t(($) => $['agentDetail.configure.knowledgeFs.rebind'])}
           </p>
@@ -241,64 +175,80 @@ function AgentKnowledgeRetrievalForm({
             {t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])}
           </p>
         )}
-        {spacesQuery.isPending && (
-          <div role="status" className="space-y-1">
-            <span className="sr-only">
-              {t(($) => $['agentDetail.configure.knowledgeFs.loading'])}
-            </span>
-            {Array.from({ length: 5 }, (_, index) => (
-              <div
-                key={index}
-                aria-hidden
-                className="flex h-14 items-center gap-3 px-2 motion-safe:animate-pulse"
-              >
-                <span className="size-8 rounded-lg bg-background-section" />
-                <span className="h-4 w-1/2 rounded bg-background-section" />
+        <ClassicKnowledgePicker
+          draft={draft}
+          initialBindings={initialBindings}
+          filter={filter}
+          showSourceLabel={knowledgeFsEnabled}
+          onSelect={(item) => setDraft((current) => [...current, item])}
+          onRemove={(id) => setDraft((current) => current.filter((item) => item.id !== id))}
+        />
+        {knowledgeFsEnabled && (
+          <div>
+            {spacesQuery.isPending && (
+              <div role="status" className="space-y-1">
+                <span className="sr-only">
+                  {t(($) => $['agentDetail.configure.knowledgeFs.loading'])}
+                </span>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div
+                    key={index}
+                    aria-hidden
+                    className="flex h-14 items-center gap-3 px-2 motion-safe:animate-pulse"
+                  >
+                    <span className="size-8 rounded-lg bg-background-section" />
+                    <span className="h-4 w-1/2 rounded bg-background-section" />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            {spacesQuery.isError && (
+              <div role="alert" className="space-y-2 p-3 system-sm-regular text-text-destructive">
+                <p>{t(($) => $['agentDetail.configure.knowledgeFs.loadError'])}</p>
+                <Button onClick={() => void spacesQuery.refetch()} loading={spacesQuery.isFetching}>
+                  {t(($) => $['agentDetail.configure.knowledgeFs.retry'])}
+                </Button>
+              </div>
+            )}
+            {!spacesQuery.isPending && !spacesQuery.isError && visibleSpaces.length === 0 && (
+              <p className="px-2 py-8 text-center system-sm-regular text-text-tertiary">
+                {t(($) => $['agentDetail.configure.knowledgeFs.empty'])}
+              </p>
+            )}
+            <fieldset className="min-w-0 space-y-1">
+              <legend className="px-2 system-xs-medium text-text-secondary">
+                {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+              </legend>
+              {visibleSpaces.map((space) => {
+                const binding = draft.find((item) => item.controlSpaceId === space.control_space_id)
+                const checked = !!binding && !binding.isMissing
+                return (
+                  <KnowledgeBindingOption
+                    key={space.control_space_id}
+                    name={
+                      space.technical_summary?.name ||
+                      t(($) => $['agentDetail.configure.knowledgeFs.title'])
+                    }
+                    description={space.technical_summary?.description}
+                    checked={checked}
+                    disabled={!checked && !binding && spaceCount >= 10}
+                    onCheckedChange={(next) => toggle(space, next)}
+                  />
+                )
+              })}
+            </fieldset>
+            {spacesQuery.hasNextPage && (
+              <Button
+                className="ms-2"
+                onClick={() => void spacesQuery.fetchNextPage()}
+                loading={spacesQuery.isFetchingNextPage}
+              >
+                {t(($) => $['agentDetail.configure.knowledgeFs.loadMore'])}
+              </Button>
+            )}
           </div>
         )}
-        {spacesQuery.isError && (
-          <div role="alert" className="space-y-2 p-3 system-sm-regular text-text-destructive">
-            <p>{t(($) => $['agentDetail.configure.knowledgeFs.loadError'])}</p>
-            <Button onClick={() => void spacesQuery.refetch()} loading={spacesQuery.isFetching}>
-              {t(($) => $['agentDetail.configure.knowledgeFs.retry'])}
-            </Button>
-          </div>
-        )}
-        {!spacesQuery.isPending && !spacesQuery.isError && visibleSpaces.length === 0 && (
-          <p className="px-2 py-8 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['agentDetail.configure.knowledgeFs.empty'])}
-          </p>
-        )}
-        <fieldset className="min-w-0 space-y-1">
-          <legend className="sr-only">
-            {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
-          </legend>
-          {visibleSpaces.map((space) => {
-            const binding = draft.find((item) => item.controlSpaceId === space.control_space_id)
-            const checked = !!binding && !binding.isMissing
-            return (
-              <KnowledgeSpaceOption
-                key={space.control_space_id}
-                space={space}
-                checked={checked}
-                disabled={!checked && !binding && spaceCount >= 10}
-                onCheckedChange={(next) => toggle(space, next)}
-              />
-            )
-          })}
-        </fieldset>
-        {spacesQuery.hasNextPage && (
-          <Button
-            className="ml-2"
-            onClick={() => void spacesQuery.fetchNextPage()}
-            loading={spacesQuery.isFetchingNextPage}
-          >
-            {t(($) => $['agentDetail.configure.knowledgeFs.loadMore'])}
-          </Button>
-        )}
-        {draft.length > 0 && (
+        {visibleBindings.length > 0 && (
           <Collapsible
             open={advancedOpen}
             onOpenChange={setAdvancedOpen}
@@ -318,21 +268,19 @@ function AgentKnowledgeRetrievalForm({
             </CollapsibleTrigger>
             <CollapsiblePanel>
               <div className="space-y-3 px-2 pt-3">
-                {draft.map((item) => (
+                {visibleBindings.map((item) => (
                   <fieldset
                     key={item.id}
                     className="min-w-0 space-y-3 rounded-xl bg-background-section p-3"
                   >
-                    <legend className="sr-only">
-                      {item.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])}
-                    </legend>
+                    <legend className="sr-only">{item.name || item.id}</legend>
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate system-sm-medium">
-                        {item.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])}
+                        {item.name || item.id}
                       </span>
                       <IconButton
                         aria-label={t(($) => $['agentDetail.configure.knowledgeRetrieval.remove'], {
-                          name: item.name || t(($) => $['agentDetail.configure.knowledgeFs.title']),
+                          name: item.name || item.id,
                         })}
                         tone="destructive"
                         onClick={() =>
@@ -349,26 +297,39 @@ function AgentKnowledgeRetrievalForm({
                     )}
                     <Field invalid={submitted && !!validation.byId[item.id]?.name}>
                       <FieldLabel>
-                        {t(($) => $['agentDetail.configure.knowledgeFs.alias'])}
+                        {item.controlSpaceId
+                          ? t(($) => $['agentDetail.configure.knowledgeFs.alias'])
+                          : t(
+                              ($) => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'],
+                            )}
                       </FieldLabel>
                       <Input
                         required
-                        maxLength={120}
+                        maxLength={item.controlSpaceId ? 120 : 255}
                         value={item.name ?? ''}
                         onChange={(event) => update(item.id, { name: event.target.value })}
                       />
                     </Field>
                     <Field>
                       <FieldLabel>
-                        {t(($) => $['agentDetail.configure.knowledgeFs.bindingDescription'])}
+                        {item.controlSpaceId
+                          ? t(($) => $['agentDetail.configure.knowledgeFs.bindingDescription'])
+                          : t(($) => $['form.desc'], { ns: 'datasetSettings' })}
                       </FieldLabel>
                       <Textarea
                         rows={3}
-                        maxLength={2000}
+                        maxLength={item.controlSpaceId ? 2000 : undefined}
                         value={item.description ?? ''}
                         onValueChange={(value) => update(item.id, { description: value })}
                       />
                     </Field>
+                    {!item.controlSpaceId && (
+                      <ClassicKnowledgeSettings
+                        item={item}
+                        onChange={(patch) => update(item.id, patch)}
+                        errors={submitted ? validation.byId[item.id] : undefined}
+                      />
+                    )}
                   </fieldset>
                 ))}
               </div>
@@ -382,8 +343,8 @@ function AgentKnowledgeRetrievalForm({
         )}
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
-        <span role="status" className="mr-auto system-xs-medium text-text-tertiary tabular-nums">
-          {spaceCount} / 10
+        <span role="status" className="me-auto system-xs-medium text-text-tertiary tabular-nums">
+          {visibleBindings.length} {t(($) => $['feature.dataSet.selected'], { ns: 'appDebug' })}
         </span>
         <Button onClick={onClose}>{tc(($) => $['operation.cancel'])}</Button>
         <Button type="submit" variant="primary">
@@ -398,6 +359,7 @@ function AgentKnowledgeRetrievalForm({
 export function AgentKnowledgeRetrievalDialog({
   open,
   initialBindings,
+  knowledgeFsEnabled,
   onConfirm,
   onOpenChange,
 }: Props) {
@@ -408,6 +370,7 @@ export function AgentKnowledgeRetrievalDialog({
       <DialogContent initialFocus={searchRef} className="w-144 overflow-hidden">
         <AgentKnowledgeRetrievalForm
           initialBindings={initialBindings}
+          knowledgeFsEnabled={knowledgeFsEnabled}
           searchRef={searchRef}
           onConfirm={onConfirm}
           onClose={() => onOpenChange(false)}

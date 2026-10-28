@@ -1,10 +1,16 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { zKnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
+import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { describe, expect, it } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+  MetadataFilteringModeEnum,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -15,11 +21,51 @@ import {
   renderWithConsoleQuery as render,
   seedKnowledgeFsFeatures,
 } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
+
+const { getDatasets, getDataset, getSpaces } = vi.hoisted(() => ({
+  getDatasets: vi.fn(),
+  getDataset: vi.fn(),
+  getSpaces: vi.fn(),
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.get': getDatasets,
+      'datasets.byDatasetId.get': getDataset,
+      'knowledgeFs.spaces.get': getSpaces,
+      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+      'workspaces.current.defaultModel.get': async () => ({ data: null }),
+    }),
+  }
+})
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => () => 'https://docs.example.com',
+  useGetLanguage: () => 'en_US',
+}))
+beforeEach(() => {
+  getDataset
+    .mockReset()
+    .mockImplementation(async ({ params }: { params: { dataset_id: string } }) =>
+      createDatasetFixture({ id: params.dataset_id }),
+    )
+  getSpaces.mockReset().mockResolvedValue({ data: [], page: 1, limit: 50, has_more: false })
+  getDatasets.mockReset().mockResolvedValue({
+    data: [],
+    page: 1,
+    limit: 100,
+    total: 1,
+    has_more: false,
+  })
+})
 
 const SPACE = '00000000-0000-4000-8000-000000000001'
 const SECOND = '00000000-0000-4000-8000-000000000002'
@@ -108,9 +154,193 @@ function setup(
 }
 const snapshot = () => JSON.parse(screen.getByLabelText('snapshot').textContent ?? '{}')
 const open = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole('button', { name: /knowledgeFs.add/ }))
+  await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.add/ }))
   return screen.findByRole('dialog')
 }
+
+const datasetPage = (data = [createDatasetFixture()]) => ({
+  data,
+  page: 1,
+  limit: 50,
+  total: data.length,
+  has_more: false,
+})
+async function advanced(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
+  await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
+}
+
+describe('shared knowledge binding dialog', () => {
+  beforeEach(() => getDatasets.mockResolvedValue(datasetPage()))
+
+  it.each([false, true])(
+    'selects Classic knowledge and commits only on confirmation (KnowledgeFS=%s)',
+    async (enabled) => {
+      const user = userEvent.setup()
+      setup([binding], { enabled })
+      const dialog = await open(user)
+      await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+      expect(snapshot().knowledge.sets).toEqual([])
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      expect(snapshot().knowledge.sets[0]).toMatchObject({
+        name: 'Test Dataset',
+        datasets: [{ id: 'dataset-1' }],
+        query: { mode: 'generated_query' },
+      })
+      expect(snapshot().knowledge.spaces[0]).toMatchObject({ id: binding.id })
+      expect(screen.getAllByRole('heading')).toHaveLength(1)
+      if (!enabled) {
+        expect(screen.queryByText('Product manual')).not.toBeInTheDocument()
+        expect(getSpaces).not.toHaveBeenCalled()
+      }
+    },
+  )
+
+  it('discards Classic selections and advanced edits on cancel', async () => {
+    const user = userEvent.setup()
+    setup([{ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] }], {
+      enabled: false,
+    })
+    let dialog = await open(user)
+    await advanced(user, dialog)
+    const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
+    await user.clear(name)
+    await user.type(name, 'Unsaved')
+    await user.click(within(dialog).getByRole('button', { name: /operation.cancel/ }))
+    expect(snapshot().knowledge.sets[0].name).toBe('Saved search')
+    dialog = await open(user)
+    expect(within(dialog).getByRole('checkbox', { name: 'Saved search' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Saved search' }))
+    await user.click(within(dialog).getByRole('button', { name: /operation.cancel/ }))
+    expect(snapshot().knowledge.sets).toHaveLength(1)
+  })
+
+  it('preserves existing dataset groups, retrieval settings and stable prompt references', async () => {
+    const user = userEvent.setup()
+    setup(
+      [
+        {
+          id: 'docs',
+          name: 'Product manual',
+          datasetRefs: [{ id: 'dataset-1' }, { id: 'dataset-2' }],
+          queryMode: 'custom',
+          customQuery: 'original question',
+          metadataFilterMode: MetadataFilteringModeEnum.manual,
+          metadataFilteringConditions: {
+            logical_operator: LogicalOperator.and,
+            conditions: [
+              {
+                id: 'condition',
+                name: 'author',
+                comparison_operator: ComparisonOperator.is,
+                value: 'Ada',
+              },
+            ],
+          },
+          multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
+        },
+      ],
+      { enabled: false },
+    )
+    const original = snapshot().knowledge.sets[0]
+    const dialog = await open(user)
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await advanced(user, dialog)
+    expect(await within(dialog).findByRole('textbox', { name: /customInputLabel/ })).toHaveValue(
+      'original question',
+    )
+    const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
+    await user.clear(name)
+    await user.type(name, 'Renamed search')
+    expect(snapshot().knowledge.sets[0]).toEqual(original)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets).toEqual([{ ...original, name: 'Renamed search' }])
+    expect(snapshot().prompt).toContain('Renamed search')
+  })
+
+  it('keeps all KnowledgeFS UI and requests hidden while preserving disabled bindings', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = setup([{ ...binding, isMissing: true }], { enabled: false })
+    queryClient.removeQueries({ queryKey: consoleQuery.knowledgeFs.spaces.get.queryKey() })
+    const dialog = await open(user)
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+    await advanced(user, dialog)
+    expect(dialog.textContent).not.toMatch(/knowledgeFs|view.classic/)
+    expect(within(dialog).queryByText('Product manual')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets).toHaveLength(1)
+    expect(snapshot().knowledge.spaces[0]).toMatchObject({ id: 'docs', is_missing: true })
+    expect(getSpaces).not.toHaveBeenCalled()
+  })
+
+  it('validates Classic advanced settings and applies both sources together', async () => {
+    const user = userEvent.setup()
+    setup()
+    const dialog = await open(user)
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await advanced(user, dialog)
+    await user.click(within(dialog).getByRole('radio', { name: /dialog.query.custom$/ }))
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(within(dialog).getAllByRole('alert').length).toBeGreaterThan(0)
+    expect(snapshot().knowledge).toEqual({ sets: [], spaces: [] })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /customInputLabel/ }),
+      'support question',
+    )
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets[0].query).toEqual({
+      mode: 'user_query',
+      value: 'support question',
+    })
+    expect(snapshot().knowledge.spaces).toHaveLength(1)
+  })
+
+  it('stages changes to an existing dataset group until shared confirmation', async () => {
+    const user = userEvent.setup()
+    const first = createDatasetFixture()
+    const second = createDatasetFixture({ id: 'dataset-2', name: 'Second dataset' })
+    getDatasets.mockResolvedValue(datasetPage([first, second]))
+    setup([{ id: 'group', name: 'Saved group', selectedDatasets: [first] }], { enabled: false })
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+      }),
+    )
+    const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+    await user.click(await within(picker).findByRole('button', { name: /Second dataset/ }))
+    await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    expect(snapshot().knowledge.sets[0].datasets).toHaveLength(1)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets).toHaveLength(1)
+    expect(snapshot().knowledge.sets[0]).toMatchObject({
+      id: 'group',
+      name: 'Saved group',
+      datasets: [{ id: first.id }, { id: second.id }],
+    })
+  })
+
+  it('retains Classic bindings when dataset lookup fails and supports retry', async () => {
+    const user = userEvent.setup()
+    getDataset.mockRejectedValue(new ORPCError('FORBIDDEN', { status: 403 }))
+    setup([{ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] }], {
+      enabled: false,
+    })
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    expect(await within(dialog).findByRole('alert')).toBeVisible()
+    expect(snapshot().knowledge.sets[0].datasets).toEqual([{ id: 'dataset-1' }])
+    getDataset.mockResolvedValue(createDatasetFixture())
+    await user.click(within(dialog).getByRole('button', { name: /operation.retry/ }))
+    expect(await within(dialog).findByRole('radio', { name: /dialog.query.agent$/ })).toBeVisible()
+  })
+})
 
 describe('KnowledgeFS composer interaction', () => {
   it('selects multiple real names and commits only on confirmation', async () => {
@@ -244,7 +474,7 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.spaces).toEqual([])
   })
 
-  it('requires explicit rebind after import and explicit removal of legacy datasets', async () => {
+  it('requires explicit rebind after import', async () => {
     const user = userEvent.setup()
     setup([{ ...binding, isMissing: true }])
     const dialog = await open(user)
@@ -396,10 +626,11 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.spaces).toHaveLength(1)
   })
 
-  it('hides the section when server configuration is unavailable', () => {
+  it('offers only Classic knowledge when KnowledgeFS is unavailable', () => {
     setup([], { enabled: false })
     expect(screen.queryByRole('heading', { name: /knowledgeFs.title/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /knowledgeFs.add/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeEnabled()
     expect(screen.queryByText(/knowledgeFs.runtimeUnavailable/)).not.toBeInTheDocument()
   })
 
@@ -414,15 +645,13 @@ describe('KnowledgeFS composer interaction', () => {
     expect(screen.queryByText('Product manual')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /knowledgeFs.title/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /knowledgeFs.add/ })).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /knowledgeRetrieval.edit/ }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /knowledgeRetrieval.edit/ })).toBeEnabled()
 
     await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.remove/ }))
 
     expect(snapshot().knowledge.sets).toEqual([])
     expect(snapshot().knowledge.spaces[0]).toMatchObject({ id: binding.id })
-    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /knowledgeRetrieval.label/ })).toBeInTheDocument()
 
     act(() => {
       seedKnowledgeFsFeatures(queryClient, { agent_enabled: true })
@@ -430,19 +659,19 @@ describe('KnowledgeFS composer interaction', () => {
 
     expect(await screen.findByText('Product manual')).toBeInTheDocument()
     expect(screen.queryByText('Classic Docs')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /knowledgeFs.add/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeEnabled()
   })
 
   it('does not offer additions when viewing a historical version', () => {
     setup([binding], { viewingVersion: true })
-    expect(screen.queryByRole('button', { name: /knowledgeFs.add/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
   })
 
   it('keeps sibling composers isolated', async () => {
     const user = userEvent.setup()
     setup([binding], { label: 'first' })
     setup([], { label: 'second' })
-    const firstAdd = screen.getAllByRole('button', { name: /knowledgeFs.add/ })[0]
+    const firstAdd = screen.getAllByRole('button', { name: /knowledgeRetrieval.add/ })[0]
     if (!firstAdd) throw new Error('First composer must expose an add button')
     await user.click(firstAdd)
     const dialog = await screen.findByRole('dialog')
@@ -458,7 +687,7 @@ describe('KnowledgeFS composer interaction', () => {
 
   it('does not mutate a read-only composer', () => {
     setup([binding], { readOnly: true })
-    expect(screen.getByRole('button', { name: /knowledgeFs.add/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /knowledgeRetrieval.add/ })).toBeDisabled()
     expect(
       screen.queryByRole('button', { name: /knowledgeRetrieval.remove/ }),
     ).not.toBeInTheDocument()

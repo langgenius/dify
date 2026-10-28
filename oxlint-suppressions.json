@@ -6511,11 +6511,6 @@
       "count": 5
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/knowledge/dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/slash.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 30
