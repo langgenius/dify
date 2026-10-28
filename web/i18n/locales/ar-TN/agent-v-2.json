@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "قم بتحميل ملفات لهذا الوكيل.",
   "agentDetail.configure.files.upload.dropzone": "أفلت الملفات هنا، أو",
   "agentDetail.configure.files.upload.failed": "فشل تحميل الملف.",
-  "agentDetail.configure.files.upload.fileType": "FILE",
   "agentDetail.configure.files.upload.queued": "في قائمة الانتظار",
   "agentDetail.configure.files.upload.success": "تم تحميل الملف.",
   "agentDetail.configure.files.upload.title": "تحميل ملفات",

@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "Laden Sie Dateien für diesen Agenten hoch.",
   "agentDetail.configure.files.upload.dropzone": "Dateien hier ablegen oder",
   "agentDetail.configure.files.upload.failed": "Datei konnte nicht hochgeladen werden.",
-  "agentDetail.configure.files.upload.fileType": "DATEI",
   "agentDetail.configure.files.upload.queued": "In der Warteschlange",
   "agentDetail.configure.files.upload.success": "Datei hochgeladen.",
   "agentDetail.configure.files.upload.title": "Dateien hochladen",

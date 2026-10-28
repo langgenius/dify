@@ -21,11 +21,13 @@ import {
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
 import { formatFileSize } from '@/utils/format'
@@ -305,6 +307,7 @@ export function AgentFileUploadDialog({
   const [isUploading, setIsUploading] = useState(false)
   const isUploadingRef = useRef(false)
   const nextFileIdRef = useRef(0)
+  const fileUploadSync = useAtomValue(agentConfigFileUploadSyncAtom)
   const uploadFileMutation = useMutation(
     consoleQuery.files.upload.post.mutationOptions({
       context: { silent: true },
@@ -360,6 +363,7 @@ export function AgentFileUploadDialog({
       setFiles(updatedFiles)
     }
 
+    const releaseAutosave = await fileUploadSync.beginUpload()
     try {
       // Both upload and binding are sequential: binding writes the whole Agent config snapshot.
       for (const item of selectedFiles) {
@@ -416,6 +420,7 @@ export function AgentFileUploadDialog({
         }
       }
     } finally {
+      await releaseAutosave()
       isUploadingRef.current = false
       setIsUploading(false)
     }

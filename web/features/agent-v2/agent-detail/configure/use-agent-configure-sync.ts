@@ -16,6 +16,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
+import { agentConfigFileUploadSyncAtom } from '@/features/agent-v2/agent-composer/config-file-upload-sync'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import {
   useKnowledgeValidationMessage,
@@ -63,6 +64,7 @@ export function useAgentConfigureSync({
   const toolPresentation = useAgentToolPresentation(toolPresentationIdentities, toolProviderCatalog)
   const queryClient = useQueryClient()
   const store = useStore()
+  const fileUploadSync = useAtomValue(agentConfigFileUploadSyncAtom)
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
   const enabledRef = useRef(enabled)
@@ -144,7 +146,7 @@ export function useAgentConfigureSync({
     [setSavedDraft],
   )
 
-  const saveComposer = useSerialAsyncCallback(
+  const runSaveComposer = useSerialAsyncCallback(
     async ({
       configSnapshot,
       draftBaseline,
@@ -224,6 +226,11 @@ export function useAgentConfigureSync({
       return true
     },
   )
+  const saveComposer = useCallback(
+    (...args: Parameters<typeof runSaveComposer>) =>
+      fileUploadSync.trackSave(runSaveComposer(...args)),
+    [fileUploadSync, runSaveComposer],
+  )
 
   const saveComposerOnPageClose = useCallback(
     async ({
@@ -297,12 +304,31 @@ export function useAgentConfigureSync({
   const debouncedSaveDraft = useMemo(
     () =>
       debounce(() => {
-        if (enabledRef.current) latestDraftSaveRef.current()
+        if (enabledRef.current && !fileUploadSync.isUploading) latestDraftSaveRef.current()
       }, DRAFT_AUTOSAVE_WAIT),
-    [],
+    [fileUploadSync],
+  )
+
+  useEffect(
+    () =>
+      fileUploadSync.register({
+        pause: () => debouncedSaveDraft.cancel?.(),
+        saveLatest: async () => {
+          if (!enabledRef.current || !store.get(isAgentComposerDirtyAtom)) return
+          await saveComposer({
+            configSnapshot: getAgentSoulDraft(),
+            draftBaseline: store.get(agentComposerDraftAtom),
+          })
+        },
+        resume: () => {
+          if (enabledRef.current && store.get(isAgentComposerDirtyAtom)) debouncedSaveDraft()
+        },
+      }),
+    [debouncedSaveDraft, fileUploadSync, getAgentSoulDraft, saveComposer, store],
   )
 
   const saveDraft = useCallback(async () => {
+    if (fileUploadSync.isUploading) await fileUploadSync.waitForUpload()
     if (!enabledRef.current) return
 
     const draft = store.get(agentComposerDraftAtom)
@@ -332,11 +358,12 @@ export function useAgentConfigureSync({
     store,
     tCommon,
     explicitlySavingDraftKeysRef,
+    fileUploadSync,
   ])
 
   const saveDirtyDraftOnPageClose = useCallback(
     (allowInFlightDuplicate = false) => {
-      if (!enabledRef.current) return
+      if (!enabledRef.current || fileUploadSync.isUploading) return
 
       const draft = store.get(agentComposerDraftAtom)
       if (!store.get(isAgentComposerDirtyAtom)) {
@@ -355,14 +382,18 @@ export function useAgentConfigureSync({
 
       debouncedSaveDraft.cancel?.()
       pageCloseSavingDraftKeyRef.current = draftKey
-      void saveComposerOnPageClose({
-        configSnapshot,
-        draftBaseline: draft,
-        draftKey,
-      }).finally(() => {
-        if (pageCloseSavingDraftKeyRef.current === draftKey)
-          pageCloseSavingDraftKeyRef.current = undefined
-      })
+      void fileUploadSync
+        .trackSave(
+          saveComposerOnPageClose({
+            configSnapshot,
+            draftBaseline: draft,
+            draftKey,
+          }),
+        )
+        .finally(() => {
+          if (pageCloseSavingDraftKeyRef.current === draftKey)
+            pageCloseSavingDraftKeyRef.current = undefined
+        })
     },
     [
       debouncedSaveDraft,
@@ -370,6 +401,7 @@ export function useAgentConfigureSync({
       saveComposerOnPageClose,
       store,
       explicitlySavingDraftKeysRef,
+      fileUploadSync,
     ],
   )
 
@@ -379,8 +411,13 @@ export function useAgentConfigureSync({
       const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
       const isDirty = store.get(isAgentComposerDirtyAtom)
 
-      if (!enabledRef.current || publishInFlightRef.current || !isDirty) {
-        if (!isDirty) debouncedSaveDraft.cancel?.()
+      if (
+        !enabledRef.current ||
+        publishInFlightRef.current ||
+        fileUploadSync.isUploading ||
+        !isDirty
+      ) {
+        if (fileUploadSync.isUploading || !isDirty) debouncedSaveDraft.cancel?.()
         return
       }
 
@@ -390,7 +427,7 @@ export function useAgentConfigureSync({
 
       debouncedSaveDraft()
     })
-  }, [debouncedSaveDraft, getAgentSoulDraft, store])
+  }, [debouncedSaveDraft, fileUploadSync, getAgentSoulDraft, store])
 
   useEffect(() => {
     const saveDraftWhenPageHidden = () => {
@@ -416,6 +453,7 @@ export function useAgentConfigureSync({
   }, [saveDirtyDraftOnPageClose])
 
   const publishDraft = useCallback(async (): Promise<AgentConfigurePublishResult | false> => {
+    if (fileUploadSync.isUploading) await fileUploadSync.waitForUpload()
     if (
       !publishEnabledRef.current ||
       !getCurrentPermissions().canReleaseAndVersion ||
@@ -488,6 +526,7 @@ export function useAgentConfigureSync({
     agentId,
     agentName,
     debouncedSaveDraft,
+    fileUploadSync,
     getKnowledgeValidationMessage,
     getCurrentPermissions,
     runPublishTransaction,

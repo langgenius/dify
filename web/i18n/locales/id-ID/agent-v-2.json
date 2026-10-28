@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "Unggah file untuk agen ini.",
   "agentDetail.configure.files.upload.dropzone": "Letakkan file di sini, atau",
   "agentDetail.configure.files.upload.failed": "Gagal mengunggah file.",
-  "agentDetail.configure.files.upload.fileType": "FILE",
   "agentDetail.configure.files.upload.queued": "Dalam antrean",
   "agentDetail.configure.files.upload.success": "File diunggah.",
   "agentDetail.configure.files.upload.title": "Unggah file",

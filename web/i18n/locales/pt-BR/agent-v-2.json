@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "Envie arquivos para este agente.",
   "agentDetail.configure.files.upload.dropzone": "Solte arquivos aqui, ou",
   "agentDetail.configure.files.upload.failed": "Falha ao enviar o arquivo.",
-  "agentDetail.configure.files.upload.fileType": "ARQUIVO",
   "agentDetail.configure.files.upload.queued": "Na fila",
   "agentDetail.configure.files.upload.success": "Arquivo enviado.",
   "agentDetail.configure.files.upload.title": "Enviar arquivos",

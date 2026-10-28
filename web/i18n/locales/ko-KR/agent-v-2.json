@@ -111,7 +111,6 @@
   "agentDetail.configure.files.upload.description": "이 에이전트에 사용할 파일을 여러 개 업로드할 수 있습니다.",
   "agentDetail.configure.files.upload.dropzone": "파일을 여기에 놓거나",
   "agentDetail.configure.files.upload.failed": "파일 업로드에 실패했습니다.",
-  "agentDetail.configure.files.upload.fileType": "FILE",
   "agentDetail.configure.files.upload.queued": "대기 중",
   "agentDetail.configure.files.upload.success": "파일을 업로드했습니다.",
   "agentDetail.configure.files.upload.title": "파일 업로드",
