@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}} اتصال لازم است.",
   "connections.setup.required_other": "هر {{count}} اتصال لازم است.",
   "connections.setup.selectConnection": "یک اتصال انتخاب کنید",
+  "connections.setup.startUsingApp": "شروع استفاده از برنامه",
   "connections.setup.title": "برای شروع گفتگو، سرویس‌ها را متصل کنید",
   "generation.batchFailed.info": "{{num}} اجرای ناموفق",
   "generation.batchFailed.outputPlaceholder": "محتوای خروجی وجود ندارد",

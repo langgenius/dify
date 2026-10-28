@@ -53,6 +53,7 @@
   "connections.setup.required_one": "Потрібне {{count}} підключення.",
   "connections.setup.required_other": "Потрібні всі {{count}} підключення.",
   "connections.setup.selectConnection": "Виберіть підключення",
+  "connections.setup.startUsingApp": "Почати користуватися застосунком",
   "connections.setup.title": "Підключіть сервіси, щоб почати чат",
   "generation.batchFailed.info": "{{num}} виконань не вдалося",
   "generation.batchFailed.outputPlaceholder": "Вміст відсутній",

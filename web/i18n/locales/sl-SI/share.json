@@ -53,6 +53,7 @@
   "connections.setup.required_other": "Potrebnih je vseh {{count}} povezav.",
   "connections.setup.required_two": "Potrebni sta obe povezavi ({{count}}).",
   "connections.setup.selectConnection": "Izberite povezavo",
+  "connections.setup.startUsingApp": "Začni uporabljati aplikacijo",
   "connections.setup.title": "Povežite storitve za začetek klepeta",
   "generation.batchFailed.info": "{{num}} neuspelih izvedb",
   "generation.batchFailed.outputPlaceholder": "Brez izhodne vsebine",

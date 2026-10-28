@@ -55,6 +55,7 @@
   "connections.setup.required_two": "كلا الاتصالين ({{count}}) مطلوبان.",
   "connections.setup.required_zero": "لا يلزم أي اتصال ({{count}}).",
   "connections.setup.selectConnection": "اختر اتصالًا",
+  "connections.setup.startUsingApp": "ابدأ استخدام التطبيق",
   "connections.setup.title": "اربط الخدمات لبدء الدردشة",
   "generation.batchFailed.info": "{{num}} عمليات تنفيذ فاشلة",
   "generation.batchFailed.outputPlaceholder": "لا يوجد محتوى إخراج",

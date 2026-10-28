@@ -12,10 +12,11 @@ import CSVReader from './csv-reader'
 type IRunBatchProps = {
   vars: { name: string }[]
   onSend: (data: string[][]) => void
+  disabled?: boolean
   isAllFinished: boolean
 }
 
-const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
+const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished, disabled = false }) => {
   const { t } = useTranslation(['share'])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
@@ -29,7 +30,7 @@ const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
   }
 
   const handleSend = () => {
-    onSend(csvData)
+    if (!disabled) onSend(csvData)
   }
   const Icon = isAllFinished ? RiPlayLargeLine : RiLoader2Line
   return (
@@ -39,9 +40,9 @@ const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
       <div className="flex justify-end">
         <Button
           variant="primary"
-          className={cn('mt-4 pr-4 pl-3', !isPC && 'grow')}
+          className={cn('mt-4 ps-3 pe-4', !isPC && 'grow')}
           onClick={handleSend}
-          disabled={!isParsed || !isAllFinished}
+          disabled={disabled || !isParsed || !isAllFinished}
         >
           <Icon
             className={cn(!isAllFinished && 'animate-spin', 'size-4 shrink-0')}

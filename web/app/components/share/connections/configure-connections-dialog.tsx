@@ -2,6 +2,7 @@
 
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { ComponentProps } from 'react'
+import type { ConnectionLoadStateProps } from './connection-load-state'
 import {
   Dialog,
   DialogBody,
@@ -14,6 +15,7 @@ import {
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ApiKeyDialog from './api-key-dialog'
+import ConnectionLoadState from './connection-load-state'
 import RequiredServices from './required-services'
 
 type Props = Omit<
@@ -22,6 +24,8 @@ type Props = Omit<
 > & {
   handle: DialogHandle<unknown>
   isResponding?: boolean
+  disabled?: boolean
+  loadState?: ConnectionLoadStateProps
 }
 
 type ApiKeyEditor = {
@@ -39,13 +43,15 @@ export default function ConfigureConnectionsDialog({
   onRemove,
   isResponding = false,
   isMutating = false,
+  disabled = false,
+  loadState,
 }: Props) {
   const { t } = useTranslation(['share', 'common'])
   const [open, setOpen] = useState(false)
   const [apiKeyEditor, setApiKeyEditor] = useState<ApiKeyEditor | null>(null)
   const [apiKeyEditorOpen, setApiKeyEditorOpen] = useState(false)
   const configurationTitleRef = useRef<HTMLHeadingElement>(null)
-  const actionsDisabled = isResponding || isMutating
+  const actionsDisabled = isResponding || isMutating || disabled
   const requestReplacement = (serviceId: string, connectionId: string) => {
     if (actionsDisabled || !onReplace) return
     const service = services.find((item) => item.id === serviceId)
@@ -103,7 +109,7 @@ export default function ConfigureConnectionsDialog({
               services={services}
               onConnect={onConnect}
               onConnectionChange={onConnectionChange}
-              disabled={isResponding}
+              disabled={isResponding || disabled}
               isMutating={isMutating}
               onReconnect={onReconnect}
               onReplace={onReplace}
@@ -111,6 +117,7 @@ export default function ConfigureConnectionsDialog({
               onRequestAddApiKey={requestAddApiKey}
               onRemove={onRemove}
             />
+            {loadState && <ConnectionLoadState {...loadState} />}
           </div>
         </DialogBody>
       </DialogContent>

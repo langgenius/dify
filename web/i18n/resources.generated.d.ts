@@ -5013,6 +5013,7 @@ export default interface Resources {
       | '{{count}} connection is required.'
       | 'All {{count}} connections are required.'
     'connections.setup.selectConnection': 'Select a connection'
+    'connections.setup.startUsingApp': 'Start using App'
     'connections.setup.title': 'Connect services to start chatting'
     'generation.batchFailed.info': '{{num}} failed executions'
     'generation.batchFailed.outputPlaceholder': 'No output content'

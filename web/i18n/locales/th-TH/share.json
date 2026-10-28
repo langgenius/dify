@@ -51,6 +51,7 @@
   "connections.setup.required_one": "ต้องมีการเชื่อมต่อ {{count}} รายการ",
   "connections.setup.required_other": "ต้องมีการเชื่อมต่อครบทั้ง {{count}} รายการ",
   "connections.setup.selectConnection": "เลือกการเชื่อมต่อ",
+  "connections.setup.startUsingApp": "เริ่มใช้งานแอป",
   "connections.setup.title": "เชื่อมต่อบริการเพื่อเริ่มแชต",
   "generation.batchFailed.info": "{{num}} การดําเนินการที่ล้มเหลว",
   "generation.batchFailed.outputPlaceholder": "ไม่มีเนื้อหาเอาต์พุต",

@@ -27,6 +27,7 @@ export type EmbeddedChatbotContextValue = {
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
+  conversationSession?: number
   isMobile: boolean
   isInstalledApp: boolean
   appSourceType: AppSourceType

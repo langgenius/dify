@@ -52,6 +52,7 @@
   "connections.setup.required_one": "Se requiere {{count}} conexión.",
   "connections.setup.required_other": "Se requieren las {{count}} conexiones.",
   "connections.setup.selectConnection": "Selecciona una conexión",
+  "connections.setup.startUsingApp": "Empezar a usar la aplicación",
   "connections.setup.title": "Conecta servicios para empezar a chatear",
   "generation.batchFailed.info": "{{num}} ejecuciones fallidas",
   "generation.batchFailed.outputPlaceholder": "Sin contenido de salida",

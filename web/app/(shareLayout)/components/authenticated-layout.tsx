@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getWebAppEntryState, WebAppEntryContext } from '@/app/components/share/webapp-entry'
+import WebAppSignInHandoff from '@/app/components/share/webapp-sign-in-handoff'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
@@ -155,7 +156,11 @@ const AuthenticatedApp = ({
       </div>
     )
   }
-  return <WebAppEntryContext value={entry}>{children}</WebAppEntryContext>
+  return (
+    <WebAppEntryContext value={entry}>
+      <WebAppSignInHandoff>{children}</WebAppSignInHandoff>
+    </WebAppEntryContext>
+  )
 }
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {

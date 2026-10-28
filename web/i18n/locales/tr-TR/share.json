@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}} bağlantı gereklidir.",
   "connections.setup.required_other": "{{count}} bağlantının tümü gereklidir.",
   "connections.setup.selectConnection": "Bir bağlantı seçin",
+  "connections.setup.startUsingApp": "Uygulamayı kullanmaya başla",
   "connections.setup.title": "Sohbete başlamak için hizmetleri bağlayın",
   "generation.batchFailed.info": "{{num}} başarısız işlemler",
   "generation.batchFailed.outputPlaceholder": "Çıktı içeriği yok",

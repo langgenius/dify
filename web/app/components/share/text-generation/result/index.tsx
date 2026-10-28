@@ -1,6 +1,7 @@
 'use client'
 import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { FC } from 'react'
+import type { WorkflowRunSnapshot } from '../workflow-run-configuration'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
@@ -17,6 +18,8 @@ import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
 
 type IResultProps = {
+  runSnapshot?: WorkflowRunSnapshot
+  onTaskStart?: (taskId?: number) => void
   isWorkflow: boolean
   isCallBatchAPI: boolean
   isPC: boolean
@@ -48,6 +51,8 @@ type IResultProps = {
   hideInlineStopButton?: boolean
 }
 const Result: FC<IResultProps> = ({
+  runSnapshot,
+  onTaskStart,
   isWorkflow,
   isCallBatchAPI,
   isPC,
@@ -86,6 +91,8 @@ const Result: FC<IResultProps> = ({
     onRunControlChange,
   })
   const { handleSend } = useResultSender({
+    runSnapshot,
+    onTaskStart,
     appId,
     appSourceType,
     completionFiles,
@@ -126,7 +133,7 @@ const Result: FC<IResultProps> = ({
         isWorkflow={isWorkflow}
         workflowProcessData={runState.workflowProcessData}
         isError={isError}
-        onRetry={handleSend}
+        onRetry={() => handleSend()}
         content={runState.completionRes}
         messageId={runState.messageId}
         isInWebApp

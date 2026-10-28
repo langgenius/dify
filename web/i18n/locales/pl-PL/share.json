@@ -53,6 +53,7 @@
   "connections.setup.required_one": "Wymagane jest {{count}} połączenie.",
   "connections.setup.required_other": "Wymagane są wszystkie {{count}} połączenia.",
   "connections.setup.selectConnection": "Wybierz połączenie",
+  "connections.setup.startUsingApp": "Zacznij korzystać z aplikacji",
   "connections.setup.title": "Połącz usługi, aby rozpocząć czat",
   "generation.batchFailed.info": "{{num}} nieudanych wykonan",
   "generation.batchFailed.outputPlaceholder": "Brak treści wyjściowej",

@@ -1,5 +1,6 @@
 import type { ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
+import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { onTestFinished } from 'vite-plus/test'
@@ -22,6 +23,12 @@ import {
   createWorkflowProcessFixture,
 } from '@/test/fixtures/workflow-process'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import {
+  checkedRevision,
+  createChatConnections,
+  selectedConnectionId,
+  withChatConnections,
+} from '../../chat-with-history/__tests__/connection-fixture'
 import ChatWrapper from '../chat-wrapper'
 import { EmbeddedChatbotContext } from '../context'
 
@@ -98,7 +105,11 @@ const pausedAnswer = (id = 'paused-answer', runId = 'run-1'): ChatItemInTree =>
     ],
   })
 
-function renderSubject(overrides: Partial<EmbeddedChatbotContextValue> = {}) {
+function renderSubject(
+  overrides: Partial<EmbeddedChatbotContextValue> = {},
+  initialConnections?: ConnectionsState,
+) {
+  let connections = initialConnections
   const context = createEmbeddedChatbotContextFixture({
     appId: 'app-1',
     appData: {
@@ -116,21 +127,28 @@ function renderSubject(overrides: Partial<EmbeddedChatbotContextValue> = {}) {
     appParams: createChatConfigFixture({ questionEditEnable: true }),
     ...overrides,
   })
-  const view = renderWithConsoleQuery(
-    <ContextProvider value={context}>
-      <ChatWrapper />
-    </ContextProvider>,
-  )
+  const tree = () =>
+    withChatConnections({
+      state: connections,
+      children: (
+        <ContextProvider value={context}>
+          <ChatWrapper />
+        </ContextProvider>
+      ),
+    })
+  const view = renderWithConsoleQuery(tree())
   return {
     ...view,
     context,
     user: userEvent.setup(),
-    updateContext: (changes: Partial<EmbeddedChatbotContextValue>) =>
-      view.rerender(
-        <ContextProvider value={{ ...context, ...changes }}>
-          <ChatWrapper />
-        </ContextProvider>,
-      ),
+    updateConnections: (next: ConnectionsState) => {
+      connections = next
+      view.rerender(tree())
+    },
+    updateContext: (changes: Partial<EmbeddedChatbotContextValue>) => {
+      Object.assign(context, changes)
+      view.rerender(tree())
+    },
   }
 }
 
@@ -416,5 +434,45 @@ describe('Embedded chatbot orchestration', () => {
     // The opening statement remains in chat, but the original welcome presentation is removed.
     expect(welcome).not.toBeInTheDocument()
     expect(screen.getByText('Welcome to the app')).toBeVisible()
+  })
+})
+
+it('confirms restored Chatflow connections before allowing an embedded send', async () => {
+  const { user } = renderSubject({ currentConversationId: '' }, createChatConnections())
+  expect(post).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'share.connections.setup.startUsingApp' }))
+  expect(post).not.toHaveBeenCalled()
+  const input = screen.getByPlaceholderText('Ask the assistant')
+  await user.type(input, 'Read repository documentation{Enter}')
+  await waitFor(() => expect(post).toHaveBeenCalled())
+  expect(post.mock.calls[0]![1].body).toMatchObject({
+    query: 'Read repository documentation',
+    conversation_id: '',
+    connection_revision: checkedRevision,
+    connections: { 'github-node': selectedConnectionId },
+  })
+})
+
+it('keeps embedded conversation history visible but rejects regeneration and typing until checked', async () => {
+  const ready = createChatConnections()
+  const { user, updateConnections } = renderSubject(
+    {
+      currentConversationId: 'saved-conversation',
+      appPrevChatList: history(),
+    },
+    { ...ready, canRun: false, runConfiguration: null },
+  )
+  expect(screen.getByText('Original answer')).toBeVisible()
+  expect(screen.getByPlaceholderText('Ask the assistant')).toBeDisabled()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.regenerate' }).at(-1)!)
+  expect(post).not.toHaveBeenCalled()
+  updateConnections(ready)
+  expect(screen.getByPlaceholderText('Ask the assistant')).toBeEnabled()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.regenerate' }).at(-1)!)
+  await waitFor(() => expect(post).toHaveBeenCalled())
+  expect(post.mock.calls[0]![1].body).toMatchObject({
+    conversation_id: 'saved-conversation',
+    connection_revision: checkedRevision,
+    connections: { 'github-node': selectedConnectionId },
   })
 })

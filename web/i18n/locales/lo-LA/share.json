@@ -51,6 +51,7 @@
   "connections.setup.required_one": "ຕ້ອງມີ {{count}} ການເຊື່ອມຕໍ່.",
   "connections.setup.required_other": "ຕ້ອງມີການເຊື່ອມຕໍ່ທັງ {{count}} ລາຍການ.",
   "connections.setup.selectConnection": "ເລືອກການເຊື່ອມຕໍ່",
+  "connections.setup.startUsingApp": "ເລີ່ມໃຊ້ແອັບ",
   "connections.setup.title": "ເຊື່ອມຕໍ່ບໍລິການເພື່ອເລີ່ມສົນທະນາ",
   "generation.batchFailed.info": "ການປະມວນຜົນລົ້ມເຫຼວ {{num}} ລາຍການ",
   "generation.batchFailed.outputPlaceholder": "ບໍ່ມີເນື້ອຫາຜົນລັດ",

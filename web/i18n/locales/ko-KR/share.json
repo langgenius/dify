@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}}개의 연결이 필요합니다.",
   "connections.setup.required_other": "{{count}}개의 연결이 모두 필요합니다.",
   "connections.setup.selectConnection": "연결 선택",
+  "connections.setup.startUsingApp": "앱 사용 시작",
   "connections.setup.title": "서비스를 연결하여 채팅 시작",
   "generation.batchFailed.info": "{{num}} 회의 실행이 실패했습니다",
   "generation.batchFailed.outputPlaceholder": "출력 컨텐츠 없음",

@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}} bağlantı tələb olunur.",
   "connections.setup.required_other": "Bütün {{count}} bağlantı tələb olunur.",
   "connections.setup.selectConnection": "Bağlantı seçin",
+  "connections.setup.startUsingApp": "Tətbiqdən istifadə etməyə başlayın",
   "connections.setup.title": "Söhbətə başlamaq üçün xidmətləri qoşun",
   "generation.batchFailed.info": "{{num}} uğursuz icra",
   "generation.batchFailed.outputPlaceholder": "Çıxış məzmunu yoxdur",

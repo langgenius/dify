@@ -134,6 +134,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       conversationId,
     })
   const [newConversationId, setNewConversationId] = useState('')
+  const [conversationSession, setConversationSession] = useState(0)
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
@@ -404,6 +405,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setClearChatList(true)
       return
     }
+    setConversationSession((session) => session + 1)
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
@@ -468,6 +470,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     handleNewConversationCompleted,
     newConversationId,
     chatShouldReloadKey,
+    conversationSession,
     handleFeedback,
     currentChatInstanceRef,
     clearChatList,

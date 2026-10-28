@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}} कनेक्शन आवश्यक है।",
   "connections.setup.required_other": "सभी {{count}} कनेक्शन आवश्यक हैं।",
   "connections.setup.selectConnection": "कनेक्शन चुनें",
+  "connections.setup.startUsingApp": "ऐप का उपयोग शुरू करें",
   "connections.setup.title": "चैट शुरू करने के लिए सेवाएँ कनेक्ट करें",
   "generation.batchFailed.info": "{{num}} विफल कार्यान्वयन",
   "generation.batchFailed.outputPlaceholder": "कोई आउटपुट सामग्री नहीं",

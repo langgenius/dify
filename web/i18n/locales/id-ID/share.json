@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}} koneksi diperlukan.",
   "connections.setup.required_other": "Semua {{count}} koneksi diperlukan.",
   "connections.setup.selectConnection": "Pilih koneksi",
+  "connections.setup.startUsingApp": "Mulai gunakan aplikasi",
   "connections.setup.title": "Hubungkan layanan untuk mulai mengobrol",
   "generation.batchFailed.info": "{{num}} eksekusi gagal",
   "generation.batchFailed.outputPlaceholder": "Tidak ada konten keluaran",

@@ -132,6 +132,8 @@ function Consumer() {
   const state = useWebAppConnections()
   return (
     <>
+      <textarea aria-label="Draft message" />
+      <output aria-label="Run configuration">{JSON.stringify(state.runConfiguration)}</output>
       <output aria-label="Connection status">{state.status}</output>
       <output aria-label="Selected connections">{JSON.stringify(state.selections)}</output>
       <output aria-label="Authorization sources">{JSON.stringify(state.sourceNodeByNodeId)}</output>
@@ -151,6 +153,17 @@ function Consumer() {
       </button>
       <button type="button" onClick={() => state.onConnectionChange('reuse-a', null)}>
         Clear reused node connection
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void state.onConnect('source-a', 'api-key', {
+            name: 'New API Key',
+            credentials: { api_key: 'sk-test' },
+          })
+        }}
+      >
+        Create API Key
       </button>
       <RequiredServices
         services={state.services}
@@ -176,6 +189,7 @@ function selectedAccount(serviceName: string) {
 type Scope = {
   address: WebAppAddress
   conversationId?: string
+  selectionSession?: number
   entry: ReadyEntry
 }
 
@@ -185,7 +199,11 @@ describe('WebAppConnectionsProvider', () => {
   const tree = (scope: Scope) => (
     <QueryClientProvider client={queryClient}>
       <WebAppEntryContext value={scope.entry}>
-        <WebAppConnectionsProvider address={scope.address} conversationId={scope.conversationId}>
+        <WebAppConnectionsProvider
+          address={scope.address}
+          conversationId={scope.conversationId}
+          selectionSession={scope.selectionSession}
+        >
           <Consumer />
         </WebAppConnectionsProvider>
       </WebAppEntryContext>
@@ -210,6 +228,137 @@ describe('WebAppConnectionsProvider', () => {
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
     captureAppAccessScope()
+  })
+
+  it('preserves the draft message when the first response assigns a real conversation ID', async () => {
+    const user = userEvent.setup()
+    const requests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      requests.push(request.clone())
+      if (new URL(request.url).pathname.endsWith('/connections/preflight'))
+        return replyToPreflight(request)
+      return Response.json(
+        request.url.includes('/configuration')
+          ? { connections: { 'source-a': personal, 'source-b': work } }
+          : page([personal, work]),
+      )
+    })
+    const view = render(tree({ address, entry: entry() }))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Run configuration')).toHaveTextContent(firstId),
+    )
+    await user.type(screen.getByRole('textbox', { name: 'Draft message' }), 'My next question')
+
+    view.rerender(tree({ address, conversationId, entry: entry() }))
+
+    expect(screen.getByRole('textbox', { name: 'Draft message' })).toHaveValue('My next question')
+    await waitFor(() =>
+      expect(screen.getByLabelText('Run configuration')).toHaveTextContent(conversationId),
+    )
+    const configuration = requests.filter((request) => request.url.includes('/configuration'))
+    expect(configuration).toHaveLength(2)
+    expect(new URL(configuration[1]!.url).searchParams.get('conversation_id')).toBe(conversationId)
+    const checks = requests.filter((request) => request.url.endsWith('/connections/preflight'))
+    expect(await checks.at(-1)!.clone().json()).toMatchObject({ conversation_id: conversationId })
+  })
+
+  it('reloads app defaults and rechecks them for each new blank conversation session without remounting content', async () => {
+    const user = userEvent.setup()
+    const configurationRequests: Request[] = []
+    const checks: EndUserConnectionPreflightPayload[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (request.url.endsWith('/connections/preflight')) {
+        checks.push((await request.clone().json()) as EndUserConnectionPreflightPayload)
+        return replyToPreflight(request)
+      }
+      if (request.url.includes('/configuration')) {
+        configurationRequests.push(request)
+        return Response.json({ connections: { 'source-a': personal, 'source-b': work } })
+      }
+      return Response.json(page([personal, work]))
+    })
+    const view = render(tree({ address, selectionSession: 0, entry: entry() }))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Run configuration')).toHaveTextContent(firstId),
+    )
+    await user.type(screen.getByRole('textbox', { name: 'Draft message' }), 'Mounted content')
+
+    view.rerender(tree({ address, selectionSession: 1, entry: entry() }))
+
+    await waitFor(() => expect(checks).toHaveLength(2))
+    expect(configurationRequests).toHaveLength(2)
+    expect(screen.getByRole('textbox', { name: 'Draft message' })).toHaveValue('Mounted content')
+    await waitFor(() =>
+      expect(screen.getByLabelText('Run configuration')).toHaveTextContent(firstId),
+    )
+    await user.click(selectedAccount('Find repositories'))
+    await user.click(await screen.findByRole('button', { name: 'work@example.com' }))
+    await waitFor(() => expect(checks).toHaveLength(3))
+    expect(selections()['source-a']).toBe(secondId)
+
+    view.rerender(tree({ address, selectionSession: 2, entry: entry() }))
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Run configuration')).toHaveTextContent(firstId),
+    )
+    expect(configurationRequests).toHaveLength(3)
+    expect(checks).toHaveLength(4)
+    expect(checks.at(-1)).toEqual({
+      connection_revision: connectionRevision,
+      connections: { 'source-a': firstId, 'source-b': secondId },
+    })
+    expect(configurationRequests.every((request) => new URL(request.url).search === '')).toBe(true)
+    expect(screen.getByRole('textbox', { name: 'Draft message' })).toHaveValue('Mounted content')
+  })
+
+  it('does not apply a delayed connection creation after leaving and reopening the same conversation', async () => {
+    const user = userEvent.setup()
+    const created = deferred<Response>()
+    let createStarted = false
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/connections/preflight'))
+        return replyToPreflight(request)
+      if (request.method === 'POST') {
+        createStarted = true
+        return created.promise
+      }
+      return Response.json(
+        request.url.includes('/configuration')
+          ? { connections: { 'source-a': personal, 'source-b': work } }
+          : page([personal, work]),
+      )
+    })
+    const originalScope = { address, conversationId, entry: entry() }
+    const view = render(tree(originalScope))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+    )
+    await user.click(screen.getByRole('button', { name: 'Create API Key' }))
+    await waitFor(() => expect(createStarted).toBe(true))
+
+    view.rerender(tree({ ...originalScope, conversationId: secondId }))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+    )
+    view.rerender(tree(originalScope))
+    await waitFor(() =>
+      expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+    )
+    await act(async () => {
+      created.resolve(
+        Response.json(
+          connection({ id: '77777777-7777-4777-8777-777777777777', credential_type: 'api-key' }),
+        ),
+      )
+    })
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Run configuration')).toHaveTextContent(conversationId),
+    )
+    expect(selections()).toEqual({ 'source-a': firstId, 'source-b': secondId })
   })
 
   it('loads both resources in parallel and keeps a saved selection visible before its list page arrives', async () => {

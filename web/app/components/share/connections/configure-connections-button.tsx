@@ -5,6 +5,7 @@ import type { RequiredConnectionService } from './required-services'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { getServiceConnectionStatus } from './connection-status'
 
 type Props = Omit<ButtonProps, 'children' | 'variant'> & {
   services: readonly RequiredConnectionService[]
@@ -16,7 +17,9 @@ export default function ConfigureConnectionsButton({ services, ...props }: Props
     const selectedConnection = service.availableConnections.find(
       (connection) => connection.id === service.selectedConnectionId,
     )
-    return selectedConnection?.status === 'expired' || selectedConnection?.status === 'invalid'
+    if (!selectedConnection) return false
+    const status = getServiceConnectionStatus(service, selectedConnection)
+    return status !== 'connected'
   }).length
 
   return (

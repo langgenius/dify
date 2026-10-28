@@ -30,12 +30,26 @@ import { ConnectionsContext } from './use-connections'
 type Props = PropsWithChildren<{
   address: WebAppAddress
   conversationId?: string
+  selectionSession?: number
   oauthCallbackOrigin?: string
 }>
+
+type ConnectionDraft = {
+  scope: string
+  session: object
+  selectionOverrides: Record<string, string | null>
+  confirmedIds: string[]
+  validationRevision: number
+}
+
+function createDraft(scope: string, validationRevision = 0): ConnectionDraft {
+  return { scope, session: {}, selectionOverrides: {}, confirmedIds: [], validationRevision }
+}
 
 function ConnectionSession({
   address,
   conversationId,
+  selectionSession = 0,
   authSession,
   entry,
   oauthCallbackOrigin,
@@ -68,6 +82,7 @@ function ConnectionSession({
     address,
     authSession,
     parameters?.connection_revision,
+    selectionSession,
   ]
   const list = useInfiniteQuery(
     webAppQuery.connections.get.infiniteOptions({
@@ -95,9 +110,23 @@ function ConnectionSession({
       retry: false,
     }),
   )
-  const [selectionOverrides, setSelectionOverrides] = useState<Record<string, string | null>>({})
-  const [confirmedIds, setConfirmedIds] = useState<string[]>([])
-  const [validationRevision, setValidationRevision] = useState(0)
+  const scope = JSON.stringify([
+    address.kind,
+    address.code,
+    authSession,
+    parameters?.connection_revision,
+    conversationId,
+    selectionSession,
+  ])
+  const [storedDraft, setStoredDraft] = useState(() => createDraft(scope))
+  const draft =
+    storedDraft.scope === scope
+      ? storedDraft
+      : createDraft(scope, storedDraft.validationRevision + 1)
+  if (draft !== storedDraft) setStoredDraft(draft)
+  const { selectionOverrides, confirmedIds, validationRevision, session } = draft
+  const updateDraft = (update: (current: ConnectionDraft) => ConnectionDraft) =>
+    setStoredDraft((current) => (current.session === session ? update(current) : current))
   const confirmed = useQueries({
     queries: confirmedIds.map((connectionId) =>
       webAppQuery.connections.byConnectionId.get.queryOptions({
@@ -185,19 +214,34 @@ function ConnectionSession({
     oauthCallbackOrigin,
     refreshConnections,
     onSaved: (nodeId, connection) => {
-      setValidationRevision((current) => current + 1)
+      updateDraft((current) => ({
+        ...current,
+        validationRevision: current.validationRevision + 1,
+        confirmedIds: current.confirmedIds.includes(connection.id)
+          ? current.confirmedIds
+          : [...current.confirmedIds, connection.id],
+        selectionOverrides: { ...current.selectionOverrides, [nodeId]: connection.id },
+      }))
       void queryClient.cancelQueries({ queryKey: listKey, exact: true })
       queryClient.setQueryData(
         connectionDetailQueryKey(address, authSession, connection.id),
         connection,
       )
-      setConfirmedIds((current) =>
-        current.includes(connection.id) ? current : [...current, connection.id],
-      )
-      setSelectionOverrides((current) => ({ ...current, [nodeId]: connection.id }))
     },
     onRemoved: (connectionId) => {
-      setValidationRevision((current) => current + 1)
+      updateDraft((current) => ({
+        ...current,
+        validationRevision: current.validationRevision + 1,
+        confirmedIds: current.confirmedIds.filter((id) => id !== connectionId),
+        selectionOverrides: {
+          ...current.selectionOverrides,
+          ...Object.fromEntries(
+            Object.entries(data.selections)
+              .filter(([, id]) => id === connectionId)
+              .map(([nodeId]) => [nodeId, null]),
+          ),
+        },
+      }))
       void queryClient.cancelQueries({ queryKey: listKey, exact: true })
       void queryClient.cancelQueries({ queryKey: configurationKey, exact: true })
       queryClient.setQueryData<InfiniteData<EndUserConnectionListResponse>>(
@@ -223,19 +267,10 @@ function ConnectionSession({
             ),
           },
       )
-      setConfirmedIds((current) => current.filter((id) => id !== connectionId))
       queryClient.removeQueries({
         queryKey: connectionDetailQueryKey(address, authSession, connectionId),
         exact: true,
       })
-      setSelectionOverrides((current) => ({
-        ...current,
-        ...Object.fromEntries(
-          Object.entries(data.selections)
-            .filter(([, id]) => id === connectionId)
-            .map(([nodeId]) => [nodeId, null]),
-        ),
-      }))
     },
   })
 
@@ -286,7 +321,10 @@ function ConnectionSession({
       )
     )
       return
-    setSelectionOverrides((current) => ({ ...current, [sourceId]: connectionId }))
+    updateDraft((current) => ({
+      ...current,
+      selectionOverrides: { ...current.selectionOverrides, [sourceId]: connectionId },
+    }))
   }
 
   return (
@@ -325,6 +363,7 @@ function ConnectionSession({
 export function WebAppConnectionsProvider({
   address,
   conversationId,
+  selectionSession,
   oauthCallbackOrigin,
   children,
 }: Props) {
@@ -334,21 +373,13 @@ export function WebAppConnectionsProvider({
     getWebAppAuthSessionSnapshot,
     () => 0,
   )
-  const connectionRevision =
-    entry && 'parameters' in entry ? entry.parameters.connection_revision : null
-  const sessionKey = JSON.stringify([
-    address.kind,
-    address.code,
-    authSession,
-    connectionRevision,
-    conversationId,
-  ])
 
   return (
     <ConnectionSession
-      key={sessionKey}
+      key={JSON.stringify([address.kind, address.code, authSession])}
       address={address}
       conversationId={conversationId}
+      selectionSession={selectionSession}
       authSession={authSession}
       entry={entry}
       oauthCallbackOrigin={oauthCallbackOrigin}

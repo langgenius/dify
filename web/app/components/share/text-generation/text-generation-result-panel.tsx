@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { InputValueTypes, Task, TextGenerationRunControl } from './types'
+import type { WorkflowRunSnapshot } from './workflow-run-configuration'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
@@ -12,6 +13,9 @@ import ResDownload from './run-batch/res-download'
 import { TaskStatus } from './types'
 
 type TextGenerationResultPanelProps = {
+  runSnapshot?: WorkflowRunSnapshot
+  onTaskStart?: (taskId?: number) => void
+  connectionsReady?: boolean
   allFailedTaskList: Task[]
   allSuccessTaskList: Task[]
   allTaskList: Task[]
@@ -45,6 +49,9 @@ type TextGenerationResultPanelProps = {
 }
 
 const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
+  runSnapshot,
+  onTaskStart,
+  connectionsReady = true,
   allFailedTaskList,
   allSuccessTaskList,
   allTaskList,
@@ -81,6 +88,8 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   const renderResult = (task?: Task) => (
     <Res
       key={task?.id}
+      runSnapshot={runSnapshot}
+      onTaskStart={onTaskStart}
       isWorkflow={isWorkflow}
       isCallBatchAPI={isCallBatchAPI}
       isPC={isPC}
@@ -125,7 +134,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           className={cn(
             isShowResultPanel
               ? 'flex items-center justify-center p-2 pt-6'
-              : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
+              : 'absolute inset-s-0 top-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
           )}
           onClick={() => {
             if (isShowResultPanel) onHideResultPanel()
@@ -186,7 +195,8 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
             <div className="h-3.5 w-px bg-divider-regular"></div>
             <button
               type="button"
-              className="inline cursor-pointer border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="inline cursor-pointer border-none bg-transparent p-0 text-start system-sm-semibold-uppercase text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              disabled={!connectionsReady}
               onClick={handleRetryAllFailedTask}
             >
               {t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}

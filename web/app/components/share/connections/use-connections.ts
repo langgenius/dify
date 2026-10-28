@@ -19,8 +19,12 @@ export type ConnectionsState = ReturnType<typeof getConnectionData> &
 
 export const ConnectionsContext = createContext<ConnectionsState | null>(null)
 
+export function useOptionalWebAppConnections() {
+  return use(ConnectionsContext)
+}
+
 export function useWebAppConnections() {
-  const connections = use(ConnectionsContext)
+  const connections = useOptionalWebAppConnections()
   if (!connections) throw new Error('WebAppConnectionsProvider is required.')
   return connections
 }

@@ -51,6 +51,7 @@
   "connections.setup.required_one": "Cần có {{count}} kết nối.",
   "connections.setup.required_other": "Cần có tất cả {{count}} kết nối.",
   "connections.setup.selectConnection": "Chọn kết nối",
+  "connections.setup.startUsingApp": "Bắt đầu sử dụng ứng dụng",
   "connections.setup.title": "Kết nối các dịch vụ để bắt đầu trò chuyện",
   "generation.batchFailed.info": "{{num}} lần thực thi thất bại",
   "generation.batchFailed.outputPlaceholder": "Không có nội dung đầu ra",

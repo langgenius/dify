@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}} verbinding is vereist.",
   "connections.setup.required_other": "Alle {{count}} verbindingen zijn vereist.",
   "connections.setup.selectConnection": "Selecteer een verbinding",
+  "connections.setup.startUsingApp": "App gaan gebruiken",
   "connections.setup.title": "Verbind diensten om te beginnen met chatten",
   "generation.batchFailed.info": "{{num}} failed executions",
   "generation.batchFailed.outputPlaceholder": "No output content",

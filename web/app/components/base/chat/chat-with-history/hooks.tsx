@@ -194,6 +194,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     userId: isInstalledApp ? userId : appData?.end_user_id,
   })
   const [newConversationId, setNewConversationId] = useState('')
+  const [conversationSession, setConversationSession] = useState(0)
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
@@ -500,6 +501,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [handleConversationIdInfoChange, setClearChatList],
   )
   const handleNewConversation = useCallback(async () => {
+    setConversationSession((session) => session + 1)
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
@@ -644,6 +646,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     handleNewConversationCompleted,
     newConversationId,
     chatShouldReloadKey,
+    conversationSession,
     handleFeedback,
     currentChatInstanceRef,
     sidebarCollapseState,

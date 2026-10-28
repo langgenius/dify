@@ -51,6 +51,7 @@
   "connections.setup.required_one": "{{count}} Verbindung ist erforderlich.",
   "connections.setup.required_other": "Alle {{count}} Verbindungen sind erforderlich.",
   "connections.setup.selectConnection": "Verbindung auswählen",
+  "connections.setup.startUsingApp": "App verwenden",
   "connections.setup.title": "Dienste verbinden, um einen Chat zu starten",
   "generation.batchFailed.info": "{{num}} fehlgeschlagene Ausführungen",
   "generation.batchFailed.outputPlaceholder": "Kein Ausgabeanhalt",
