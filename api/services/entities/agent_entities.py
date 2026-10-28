@@ -42,8 +42,8 @@ class ComposerSavePayload(BaseModel):
     agent_soul: AgentSoulConfig | None = Field(
         default=None,
         description=(
-            "For save_to_current_version and node_job_only, omit config_files to preserve the latest server-managed "
-            "files. An explicitly supplied list replaces the files, including an empty list to clear them."
+            "For Agent draft saves and workflow node_job_only updates, omit config_files to preserve the latest "
+            "server-managed files. An explicit list replaces the files, including an empty list to clear them."
         ),
     )
     node_job: WorkflowNodeJobConfig | None = None

@@ -22812,7 +22812,7 @@ Rate limit exceeded for downloading compliance report.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_soul | [AgentSoulConfig](#agentsoulconfig) | For save_to_current_version and node_job_only, omit config_files to preserve the latest server-managed files. An explicitly supplied list replaces the files, including an empty list to clear them. | No |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) | For Agent draft saves and workflow node_job_only updates, omit config_files to preserve the latest server-managed files. An explicit list replaces the files, including an empty list to clear them. | No |
 | binding | [ComposerBindingPayload](#composerbindingpayload) |  | No |
 | client_revision_id | string |  | No |
 | description | string |  | No |
