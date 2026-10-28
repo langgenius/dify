@@ -1,5 +1,6 @@
 import { waitFor } from '@testing-library/react'
 import { PUBLIC_API_PREFIX } from '@/config'
+import { createDeferred } from '@/test/deferred'
 import {
   getAnonymousWebAppPassport,
   getAuthenticatedWebAppPassport,
@@ -104,6 +105,50 @@ describe('App user session restoration', () => {
     await expect(restoreWebAppAccountSession(address, () => true)).rejects.toThrow()
     expect(getWebAppAccessToken()).toBe('account-proof')
   })
+
+  it.each([403, 503])(
+    'preserves account and anonymous credentials when Passport renewal fails with %s',
+    async (status) => {
+      setWebAppPassport(address, 'anonymous-passport', 'anonymous')
+      setWebAppPassport(address, 'existing-account-passport', 'authenticated')
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(Response.json({ logged_in: true, app_logged_in: false }))
+        .mockResolvedValueOnce(new Response(null, { status }))
+
+      await expect(restoreWebAppAccountSession(address, () => true)).rejects.toThrow()
+
+      expect(getWebAppAccessToken()).toBe('account-proof')
+      expect(getAuthenticatedWebAppPassport(address)).toBe('existing-account-passport')
+      expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
+    },
+  )
+
+  it.each([200, 401])(
+    'ignores the previous account Passport response with status %s after switching accounts',
+    async (status) => {
+      setWebAppPassport(address, 'anonymous-passport', 'anonymous')
+      const passport = createDeferred<Response>()
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(Response.json({ logged_in: true, app_logged_in: false }))
+        .mockReturnValueOnce(passport.promise)
+
+      const restoring = restoreWebAppAccountSession(address, () => true)
+      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+      setWebAppAccessToken('next-account-proof', 'end_user')
+      setWebAppPassport(address, 'next-account-passport', 'authenticated')
+      passport.resolve(
+        status === 200
+          ? Response.json({ access_token: 'previous-account-passport' })
+          : new Response(null, { status }),
+      )
+
+      await expect(restoring).resolves.toBe(false)
+      expect(getWebAppAccessToken()).toBe('next-account-proof')
+      expect(getAuthenticatedWebAppPassport(address)).toBe('next-account-passport')
+      expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
+    },
+  )
 
   it('discards an old account response after the user switches accounts', async () => {
     let resolveStatus!: (response: Response) => void

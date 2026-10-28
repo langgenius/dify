@@ -107,7 +107,8 @@ describe('NormalForm', () => {
       app_code: 'my-webapp',
       code_challenge: 'a'.repeat(43),
       code_challenge_method: 'S256',
-      redirect_url: 'https://agent-app.dify.dev/web-prefix/chat/my-webapp?conversation=existing',
+      redirect_url:
+        'https://agent-app.dify.dev/web-prefix/chat/my-webapp?conversation=existing&input=hello%20world#turn-2',
     }
 
     beforeEach(() => {
@@ -203,7 +204,7 @@ describe('NormalForm', () => {
       expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('returns through Account sign-in after password login and then obtains the Web callback', async () => {
+    it('returns through Account sign-in after password login and converts the backend callback into the App URL', async () => {
       const user = userEvent.setup()
       const replace = vi.fn()
       const requests: Request[] = []
@@ -249,7 +250,18 @@ describe('NormalForm', () => {
       mockUseSearchParams.mockReturnValue(resume.searchParams)
       render(<NormalForm />)
 
-      await waitFor(() => expect(replace).toHaveBeenLastCalledWith(callback))
+      await waitFor(() => expect(replace).toHaveBeenCalledTimes(2))
+      const destination = new URL(replace.mock.calls[1]![0])
+      expect(destination.origin).toBe('https://agent-app.dify.dev')
+      expect(destination.pathname).toBe('/web-prefix/chat/my-webapp')
+      expect(destination.hash).toBe('#turn-2')
+      expect(Object.fromEntries(destination.searchParams)).toEqual({
+        conversation: 'existing',
+        input: 'hello world',
+        mode: 'end_user',
+        redirect_url: target.redirect_url,
+        login_code: 'one-use-code',
+      })
       expect(requests.map((request) => request.method)).toEqual(['GET', 'POST', 'GET'])
       expect(new URL(requests[2]!.url).searchParams.get('code_challenge')).toBe(
         target.code_challenge,
@@ -257,30 +269,73 @@ describe('NormalForm', () => {
       expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('reuses an existing Account session through the server callback without showing credentials', async () => {
-      const replace = vi.fn()
-      const callback = `https://agent-app.dify.dev/web-prefix/webapp-signin?${new URLSearchParams({
-        mode: 'end_user',
-        redirect_url: target.redirect_url,
-        login_code: 'existing-account-code',
-      })}`
-      vi.stubGlobal('location', {
-        href: window.location.href,
-        origin: window.location.origin,
-        pathname: window.location.pathname,
-        search: window.location.search,
-        hash: window.location.hash,
-        replace,
-      })
-      vi.mocked(globalThis.fetch).mockImplementation(async () =>
-        Response.json({ logged_in: true, redirect_url: callback }),
-      )
-      render(<NormalForm />)
+    it.each(['/console', '/chat'])(
+      'reuses an Account session under %s and navigates directly to the App with its query and hash',
+      async (accountBasePath) => {
+        deployment.basePath = accountBasePath
+        const replace = vi.fn()
+        const callback = `https://agent-app.dify.dev/web-prefix/webapp-signin?${new URLSearchParams(
+          {
+            mode: 'end_user',
+            redirect_url: target.redirect_url,
+            login_code: 'existing-account-code',
+          },
+        )}`
+        vi.stubGlobal('location', {
+          href: window.location.href,
+          origin: window.location.origin,
+          pathname: window.location.pathname,
+          search: window.location.search,
+          hash: window.location.hash,
+          replace,
+        })
+        vi.mocked(globalThis.fetch).mockImplementation(async () =>
+          Response.json({ logged_in: true, redirect_url: callback }),
+        )
+        render(<NormalForm />)
 
-      await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith(callback))
-      expect(screen.queryByRole('button', { name: 'login.signBtn' })).not.toBeInTheDocument()
-      expect(globalThis.fetch).toHaveBeenCalledOnce()
-    })
+        await waitFor(() => expect(replace).toHaveBeenCalledOnce())
+        const destination = new URL(replace.mock.calls[0]![0])
+        expect(destination.origin).toBe('https://agent-app.dify.dev')
+        expect(destination.pathname).toBe('/web-prefix/chat/my-webapp')
+        expect(destination.hash).toBe('#turn-2')
+        expect(Object.fromEntries(destination.searchParams)).toEqual({
+          conversation: 'existing',
+          input: 'hello world',
+          mode: 'end_user',
+          redirect_url: target.redirect_url,
+          login_code: 'existing-account-code',
+        })
+        expect(screen.queryByRole('button', { name: 'login.signBtn' })).not.toBeInTheDocument()
+        expect(globalThis.fetch).toHaveBeenCalledOnce()
+      },
+    )
+
+    it.each(['return URL', 'origin'] as const)(
+      'rejects an Account callback with a mismatched %s',
+      async (mismatch) => {
+        const replace = vi.fn()
+        const callback = new URL('https://agent-app.dify.dev/web-prefix/webapp-signin')
+        callback.search = new URLSearchParams({
+          mode: 'end_user',
+          redirect_url:
+            mismatch === 'return URL'
+              ? 'https://agent-app.dify.dev/web-prefix/chat/another-app'
+              : target.redirect_url,
+          login_code: 'unexpected-code',
+        }).toString()
+        if (mismatch === 'origin') callback.hostname = 'untrusted.example'
+        vi.stubGlobal('location', { ...window.location, replace })
+        vi.mocked(globalThis.fetch).mockImplementation(async () =>
+          Response.json({ logged_in: true, redirect_url: callback.href }),
+        )
+        render(<NormalForm />)
+
+        expect(await screen.findByText('share.common.appUnknownError')).toBeVisible()
+        expect(replace).not.toHaveBeenCalled()
+        expect(mockReplace).not.toHaveBeenCalled()
+      },
+    )
 
     it('only offers supported End User login methods without probing the workspace', async () => {
       render(<NormalForm />, {

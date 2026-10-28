@@ -1,11 +1,18 @@
 import type { AppData } from '@/models/share'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
 import { fetchAppInfo } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
 import MigrateConversationsContent from '../content'
+
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ token: 'current-app' }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}))
 
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
@@ -76,4 +83,42 @@ it('shows a load failure instead of confirmation actions when the WebApp cannot 
   expect(await screen.findByText('share.common.appUnknownError')).toBeInTheDocument()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'login.history.continue' })).not.toBeInTheDocument()
+})
+
+it('keeps history actions unavailable and preserves all passports when deferring to the original chat', async () => {
+  const user = userEvent.setup()
+  const passports = [
+    [PASSPORT_LOCAL_STORAGE_NAME('current-app'), 'anonymous-current'],
+    [PASSPORT_LOCAL_STORAGE_NAME('other-app'), 'anonymous-other'],
+    [PASSPORT_LOCAL_STORAGE_NAME('environment:preview-app'), 'anonymous-preview'],
+    [AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('current-app'), 'signed-in-current'],
+  ] as const
+  for (const [key, value] of passports) localStorage.setItem(key, value)
+  window.history.replaceState(
+    {},
+    '',
+    '/chat/current-app/migrate-conversations?conversationId=existing-chat',
+  )
+  vi.mocked(fetchAppInfo).mockResolvedValueOnce(appInfo)
+
+  try {
+    render(
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MigrateConversationsContent />
+      </QueryClientProvider>,
+    )
+
+    await screen.findByRole('heading', { name: appInfo.site.title })
+    await user.click(screen.getByRole('radio', { name: 'login.history.add' }))
+    expect(screen.getByRole('button', { name: 'login.history.addAndContinue' })).toBeDisabled()
+    await user.click(screen.getByRole('radio', { name: 'login.history.delete' }))
+    expect(screen.getByRole('button', { name: 'login.history.deleteAndContinue' })).toBeDisabled()
+
+    const notNow = screen.getByRole('link', { name: 'login.history.notNow' })
+    expect(notNow).toHaveAttribute('href', '/chat/current-app?conversationId=existing-chat')
+    await user.click(notNow)
+    for (const [key, value] of passports) expect(localStorage.getItem(key)).toBe(value)
+  } finally {
+    for (const [key] of passports) localStorage.removeItem(key)
+  }
 })

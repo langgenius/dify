@@ -46,7 +46,10 @@ function NormalForm() {
       refetchOnWindowFocus: false,
     }),
   )
-  const accountCallback = getAccountLoginCallbackUrl(accountSession.data?.redirect_url)
+  const accountCallback = getAccountLoginCallbackUrl(
+    accountSession.data?.redirect_url,
+    accountInput?.redirect_url,
+  )
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),

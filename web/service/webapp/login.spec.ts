@@ -4,7 +4,9 @@ import { captureAppAccessScope } from '@/features/app-access-error/state'
 import { parseWebAppAddress, resolveWebAppAddress } from '../webapp-address'
 import {
   getAnonymousWebAppPassport,
+  getAuthenticatedWebAppPassport,
   getWebAppAccessToken,
+  getWebAppLoginMode,
   getWebAppPassport,
   setWebAppAccessToken,
   setWebAppPassport,
@@ -28,11 +30,11 @@ let sequence = 0
 let returnUrl: string
 
 function callback(code = 'one-use-code') {
-  window.history.replaceState(
-    {},
-    '',
-    `/base/webapp-signin?${new URLSearchParams({ mode: 'end_user', login_code: code, redirect_url: returnUrl })}`,
-  )
+  const target = new URL(returnUrl)
+  target.searchParams.set('mode', 'end_user')
+  target.searchParams.set('login_code', code)
+  target.searchParams.set('redirect_url', returnUrl)
+  window.history.replaceState({}, '', target.href)
 }
 
 describe('Webapp Account PKCE transaction', () => {
@@ -78,14 +80,13 @@ describe('Webapp Account PKCE transaction', () => {
     expect(login.href).not.toContain(stored.verifier)
   })
 
-  it('exchanges once with cookies across concurrent calls and remounts without storing returned credentials', async () => {
+  it('exchanges once across concurrent calls and remounts, preserving anonymous history and storing the new account', async () => {
     const address = { kind: 'default', code: `app-${sequence}` } as const
     const otherApp = { kind: 'default', code: 'another-app' } as const
     setWebAppPassport(address, 'anonymous-passport', 'anonymous')
     setWebAppPassport(otherApp, 'another-anonymous-passport', 'anonymous')
     await beginWebAppAccountLogin(accountUrl, returnUrl)
     callback()
-    const storeCredentials = vi.spyOn(localStorage, 'setItem')
     let body: unknown
     let headers: Headers | undefined
     const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -107,9 +108,9 @@ describe('Webapp Account PKCE transaction', () => {
       login_code: 'one-use-code',
       code_verifier: expect.stringMatching(/^[\w-]{43}$/),
     })
-    expect(storeCredentials).not.toHaveBeenCalled()
-    expect(getWebAppAccessToken()).toBe('')
-    expect(getWebAppPassport(address)).toBe('anonymous-passport')
+    expect(getWebAppAccessToken()).toBe('web-proof')
+    expect(getWebAppLoginMode()).toBe('end_user')
+    expect(getAuthenticatedWebAppPassport(address)).toBe('app-passport')
     expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
     expect(getAnonymousWebAppPassport(otherApp)).toBe('another-anonymous-passport')
     expect(sessionStorage.getItem(`webapp-account-login-app-${sequence}`)).toBeNull()
@@ -223,8 +224,10 @@ describe('Webapp Account PKCE transaction', () => {
   })
 
   it('fails before navigation when the PKCE verifier cannot be stored', async () => {
-    vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => {
-      throw new DOMException('Storage is unavailable.', 'SecurityError')
+    vi.stubGlobal('sessionStorage', {
+      setItem: vi.fn(() => {
+        throw new DOMException('Storage is unavailable.', 'SecurityError')
+      }),
     })
     const fetch = vi.spyOn(globalThis, 'fetch')
 
@@ -236,16 +239,37 @@ describe('Webapp Account PKCE transaction', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('recognizes only the dedicated ordinary App callback, including a deployment prefix, without browser globals', () => {
+  it('recognizes callbacks only on ordinary App pages without browser globals', () => {
     const params = new URLSearchParams({
       mode: 'end_user',
       redirect_url: 'https://apps.example/base/chat/code?x=1#history',
     })
     vi.stubGlobal('window', undefined)
-    expect(isWebAppAccountCallback('/base/webapp-signin', params)).toBe(true)
+    expect(isWebAppAccountCallback('/base/webapp-signin', params)).toBe(false)
     expect(isWebAppAccountCallback('/chat/code', params)).toBe(false)
+    params.set('login_code', 'one-use-code')
+    expect(isWebAppAccountCallback('/base/webapp-signin', params)).toBe(false)
+    expect(isWebAppAccountCallback('/base/chat/code', params)).toBe(true)
+    expect(isWebAppAccountCallback('/base/workflow/code', params)).toBe(true)
+    expect(isWebAppAccountCallback('/base/environment/chat/code', params)).toBe(false)
+    expect(isWebAppAccountCallback('/base/apps', params)).toBe(false)
     params.set('redirect_url', 'https://apps.example/base/environment/chat/code')
     expect(isWebAppAccountCallback('/base/webapp-signin', params)).toBe(false)
+  })
+
+  it('rejects a callback delivered to another App before redeeming or changing credentials', async () => {
+    await beginWebAppAccountLogin(accountUrl, returnUrl)
+    callback()
+    const wrongApp = new URL(window.location.href)
+    wrongApp.pathname = '/base/chat/another-app'
+    window.history.replaceState({}, '', wrongApp)
+    const fetch = vi.spyOn(globalThis, 'fetch')
+
+    await expect(completeWebAppAccountLogin(returnUrl, 'one-use-code')).rejects.toThrow(
+      'Invalid Web App login callback',
+    )
+    expect(fetch).not.toHaveBeenCalled()
+    expect(getWebAppAccessToken()).toBe('')
   })
 
   it('parses prefixed default/environment routes and resolves callback targets without corrupting their encoding', () => {

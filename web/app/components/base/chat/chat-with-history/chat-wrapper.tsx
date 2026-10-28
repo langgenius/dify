@@ -4,7 +4,7 @@ import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
@@ -62,6 +62,12 @@ const ChatWrapper = () => {
     isNewAgent,
     renderAgentContent,
   } = useChatWithHistoryContext()
+
+  const connectionsReady = isInstalledApp || (connections?.canRun ?? true)
+  const connectionsReadyRef = useRef(connectionsReady)
+  useEffect(() => {
+    connectionsReadyRef.current = connectionsReady
+  }, [connectionsReady])
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const timezone =
@@ -300,7 +306,9 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: any) => {
+      if (!connectionsReadyRef.current) return
       if (!(await prepareHumanInputSubmission())) return
+      if (!connectionsReadyRef.current) return
 
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
       else await submitHumanInputForm(formToken, formData)
@@ -482,6 +490,7 @@ const ChatWrapper = () => {
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
+        humanInputFormDisabled={!connectionsReady}
         onHumanInputFormSubmit={handleSubmitHumanInputForm}
         chatNode={
           showConnectionSignIn ? (

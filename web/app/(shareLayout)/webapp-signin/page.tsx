@@ -8,15 +8,13 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
-import { isWebAppAccountCallback } from '@/service/webapp/login'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
-import EndUserLogin from './end-user-login'
 import { resolveWebAppLoginRedirect } from './login-redirect'
 import NormalForm from './normalForm'
 
@@ -99,13 +97,4 @@ function WebSSOForm() {
   )
 }
 
-function WebAppSignIn() {
-  const pathname = usePathname()
-  const params = useSearchParams()
-  return isWebAppAccountCallback(pathname, params) ? (
-    <EndUserLogin key={`${params.get('redirect_url')}:${params.get('login_code')}`} />
-  ) : (
-    <WebSSOForm />
-  )
-}
-export default React.memo(WebAppSignIn)
+export default React.memo(WebSSOForm)

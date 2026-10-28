@@ -85,6 +85,7 @@ export type ChatProps = {
     responding?: boolean
     content?: string
   }) => ReactNode
+  humanInputFormDisabled?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
@@ -144,6 +145,7 @@ const Chat: FC<ChatProps> = ({
   onBeforeSpeechToText,
   renderAgentContent,
   renderMessageFooter,
+  humanInputFormDisabled,
   onHumanInputFormSubmit,
   getHumanInputNodeData,
 }) => {
@@ -244,6 +246,7 @@ const Chat: FC<ChatProps> = ({
                     hideAvatar={hideAvatar}
                     renderAgentContent={renderAgentContent}
                     footer={renderMessageFooter?.(item)}
+                    humanInputFormDisabled={humanInputFormDisabled}
                     onHumanInputFormSubmit={onHumanInputFormSubmit}
                   />
                 )

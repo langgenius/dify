@@ -43,6 +43,7 @@ type AnswerProps = {
     responding?: boolean
     content?: string
   }) => ReactNode
+  humanInputFormDisabled?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
@@ -61,6 +62,7 @@ const Answer: FC<AnswerProps> = ({
   switchSibling,
   hideAvatar,
   renderAgentContent,
+  humanInputFormDisabled,
   onHumanInputFormSubmit,
 }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
@@ -163,21 +165,21 @@ const Answer: FC<AnswerProps> = ({
         <div className="relative size-10 shrink-0">
           {answerIcon || <AnswerIcon />}
           {responding && (
-            <div className="absolute -top-0.75 -left-0.75 flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-1.5 shadow-xs">
+            <div className="absolute -inset-s-0.75 -top-0.75 flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn ps-1.5 shadow-xs">
               <LoadingAnim type="avatar" />
             </div>
           )}
         </div>
       )}
       <div
-        className="chat-answer-container group ml-4 w-0 grow pb-4"
+        className="chat-answer-container group ms-4 w-0 grow pb-4"
         ref={containerRef}
         data-testid="chat-answer-container"
       >
         {/* Block 1: Workflow Process + Human Input Forms */}
         {hasHumanInputs && (
           <div
-            className={cn('group relative pr-10', chatAnswerContainerInner)}
+            className={cn('group relative pe-10', chatAnswerContainerInner)}
             data-testid="chat-answer-container-humaninput"
           >
             <div
@@ -212,6 +214,7 @@ const Answer: FC<AnswerProps> = ({
               {humanInputFormDataList && humanInputFormDataList.length > 0 && (
                 <HumanInputFormList
                   humanInputFormDataList={humanInputFormDataList}
+                  disabled={humanInputFormDisabled}
                   onHumanInputFormSubmit={onHumanInputFormSubmit}
                   getHumanInputNodeData={getHumanInputNodeData}
                 />
@@ -240,8 +243,8 @@ const Answer: FC<AnswerProps> = ({
 
         {/* Block 2: Response Content (when human inputs exist) */}
         {hasHumanInputs && (responding || !contentIsEmpty || hasAgentContent || hasReasoning) && (
-          <div className={cn('group relative mt-2 pr-10', chatAnswerContainerInner)}>
-            <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
+          <div className={cn('group relative mt-2 pe-10', chatAnswerContainerInner)}>
+            <div className="absolute inset-s-6 -top-2 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div
               ref={contentRef}
               className="relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary"
@@ -312,7 +315,7 @@ const Answer: FC<AnswerProps> = ({
         {/* Original single block layout (when no human inputs) */}
         {!hasHumanInputs && (
           <div
-            className={cn('group relative pr-10', chatAnswerContainerInner)}
+            className={cn('group relative pe-10', chatAnswerContainerInner)}
             data-testid="chat-answer-container-inner"
           >
             <div

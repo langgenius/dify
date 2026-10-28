@@ -13,7 +13,7 @@ import {
 } from '@/service/webapp/login'
 import { basePath } from '@/utils/var'
 
-export default function EndUserLogin() {
+export default function AccountLoginCallback() {
   const { t } = useTranslation(['common', 'share'])
   const params = useSearchParams()
   const redirect = params.get('redirect_url')
@@ -25,7 +25,12 @@ export default function EndUserLogin() {
   useEffect(() => {
     mutate()
   }, [mutate])
-  if (!isError) return <LoadingPlaceholder />
+  if (!isError)
+    return (
+      <main className="flex h-full items-center justify-center">
+        <LoadingPlaceholder />
+      </main>
+    )
   return (
     <main className="flex h-full flex-col items-center justify-center gap-4 p-6">
       <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>

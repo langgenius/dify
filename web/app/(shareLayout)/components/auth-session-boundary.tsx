@@ -8,6 +8,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 import { isWebAppAccountCallback } from '@/service/webapp/login'
+import AccountLoginCallback from './account-login-callback'
 
 const getServerSession = () => 0
 
@@ -53,7 +54,9 @@ export default function AuthSessionBoundary({ children }: PropsWithChildren) {
     getServerSession,
   )
   return isWebAppAccountCallback(pathname, params) ? (
-    children
+    <AccountLoginCallback
+      key={`${pathname}:${params.get('redirect_url')}:${params.get('login_code')}`}
+    />
   ) : (
     <SessionContent key={session}>{children}</SessionContent>
   )

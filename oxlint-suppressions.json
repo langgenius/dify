@@ -798,9 +798,6 @@
     }
   },
   "web/app/components/app/text-generate/item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "dify/require-disable-directive-description": {
       "count": 4
     },
@@ -814,9 +811,6 @@
     }
   },
   "web/app/components/app/text-generate/item/workflow-body.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
     },
@@ -1050,11 +1044,6 @@
   "web/app/components/base/chat/chat/answer/agent-roster-response-content.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/base/chat/chat/answer/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
     }
   },
   "web/app/components/base/chat/chat/answer/more.tsx": {

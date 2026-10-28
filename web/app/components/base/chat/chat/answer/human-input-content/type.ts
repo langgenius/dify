@@ -12,6 +12,7 @@ export type UnsubmittedHumanInputContentProps = {
   showEmailTip?: boolean
   isEmailDebugMode?: boolean
   showDebugModeTip?: boolean
+  disabled?: boolean
   onSubmit?: (formToken: string, data: HumanInputFormSubmitData) => Promise<void>
 }
 
@@ -21,6 +22,7 @@ export type SubmittedHumanInputContentProps = {
 
 export type HumanInputFormProps = {
   formData: HumanInputFormData
+  disabled?: boolean
   onSubmit?: (formToken: string, data: HumanInputFormSubmitData) => Promise<void>
 }
 

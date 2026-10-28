@@ -20,6 +20,7 @@ it('requires a history choice and submits only the currently selected action', a
       email="reader@example.com"
       conversationCount={3}
       app={app}
+      continueHref="/chat/current-app"
       onConfirm={onConfirm}
     />,
   )
@@ -51,23 +52,26 @@ it('requires a history choice and submits only the currently selected action', a
   expect(onConfirm).toHaveBeenLastCalledWith('add')
 })
 
-it('switches accounts without submitting the selected history action', async () => {
-  const user = userEvent.setup()
-  const onConfirm = vi.fn()
-  const onSwitchAccount = vi.fn()
-  render(
-    <SignInConfirmation
-      email="reader@example.com"
-      conversationCount={3}
-      app={app}
-      onConfirm={onConfirm}
-      onSwitchAccount={onSwitchAccount}
-    />,
-  )
+it.each([null, 'add', 'delete'] as const)(
+  'allows deferring with choice %s without submitting history',
+  async (choice) => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    render(
+      <SignInConfirmation
+        email="reader@example.com"
+        conversationCount={3}
+        app={app}
+        continueHref="/chat/current-app?conversationId=existing-chat"
+        onConfirm={onConfirm}
+      />,
+    )
 
-  await user.click(screen.getByText('login.history.delete'))
-  await user.click(screen.getByRole('button', { name: 'login.history.useDifferentAccount' }))
+    if (choice) await user.click(screen.getByRole('radio', { name: `login.history.${choice}` }))
+    const notNow = screen.getByRole('link', { name: 'login.history.notNow' })
+    expect(notNow).toHaveAttribute('href', '/chat/current-app?conversationId=existing-chat')
+    await user.click(notNow)
 
-  expect(onSwitchAccount).toHaveBeenCalledOnce()
-  expect(onConfirm).not.toHaveBeenCalled()
-})
+    expect(onConfirm).not.toHaveBeenCalled()
+  },
+)
