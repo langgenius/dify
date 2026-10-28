@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 import zipfile
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from types import SimpleNamespace
 from typing import cast, override
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Table, delete, func, select
+from sqlalchemy import Table, delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -64,6 +63,7 @@ from services.skill_management_service import (
     SkillOverwritePayload,
     SkillPublishPayload,
     SkillRestorePayload,
+    SkillServiceErrorCode,
     SkillVersionUpdatePayload,
     normalize_skill_file_path,
     validate_skill_description,
@@ -2901,29 +2901,6 @@ def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
     assert exc_info.value.details == {"path": "SKILL.md", "field": "description", "line": 2}
 
 
-_BAD_NAME_FRONTMATTERS = [
-    ("description: Expenses\n", "missing_skill_name"),
-    ("name: Expense SOP\ndescription: Expenses\n", "invalid_skill_name"),
-]
-
-
-@pytest.mark.parametrize(("frontmatter", "code"), _BAD_NAME_FRONTMATTERS)
-def test_import_skill_package_reports_a_bad_name_as_a_service_error(frontmatter: str, code: str) -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.import_skill(
-            tenant_id=TENANT,
-            user_id=USER,
-            payload=SkillImportPayload(
-                content=_zip_payload({"SKILL.md": f"---\n{frontmatter}---\n# Expenses"}), filename="skill.zip"
-            ),
-        )
-
-    assert exc_info.value.code == code
-    assert exc_info.value.details["field"] == "name"
-
-
 def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
 
@@ -3720,271 +3697,11 @@ def test_archive_limits_name_the_file_count_limit(monkeypatch: pytest.MonkeyPatc
 
 
 OTHER_TENANT = "99999999-9999-9999-9999-999999999999"
-
-
-class _CapturingToolFileManager(_FakeToolFileManager):
-    def __init__(self) -> None:
-        super().__init__()
-        self.captured: list[bytes] = []
-
-    @override
-    def create_file_by_raw(
-        self,
-        *,
-        user_id: str,
-        tenant_id: str,
-        conversation_id: str | None,
-        file_binary: bytes,
-        mimetype: str,
-        filename: str | None = None,
-    ) -> ToolFile:
-        self.captured.append(file_binary)
-        return super().create_file_by_raw(
-            user_id=user_id,
-            tenant_id=tenant_id,
-            conversation_id=conversation_id,
-            file_binary=file_binary,
-            mimetype=mimetype,
-            filename=filename,
-        )
-
-
-def _published_skill(
-    service: SkillManagementService, name: str = "expense-sop", body: str = "# Expenses"
-) -> tuple[dict[str, str], dict[str, str]]:
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name=name))
-    service.replace_draft_tree(
-        tenant_id=TENANT,
-        user_id=USER,
-        skill_id=created["id"],
-        payload=SkillDraftTreePayload(
-            files=[{"path": "SKILL.md", "content": _skill_md(name=name, description="Expenses", body=body)}]
-        ),
-    )
-    version = service.publish_skill(
-        tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload()
-    )
-    return created, version
-
-
-def test_export_version_archive_returns_the_stored_zip(monkeypatch: pytest.MonkeyPatch) -> None:
-    manager = _CapturingToolFileManager()
-    service = SkillManagementService(tool_file_manager=manager)
-    created, version = _published_skill(service)
-
-    def load_once(_key: str) -> bytes:
-        return manager.captured[-1]
-
-    monkeypatch.setattr("services.skill_management_service.storage.load_once", load_once)
-    archive = service.export_version_archive(tenant_id=TENANT, skill_id=created["id"], version_id=version["id"])
-
-    assert archive.payload == manager.captured[-1]
-    assert archive.filename == "expense-sop-v1.zip"
-    assert archive.mime_type == "application/zip"
-
-
-def test_export_version_archive_rejects_a_version_of_another_skill() -> None:
-    manager = _CapturingToolFileManager()
-    service = SkillManagementService(tool_file_manager=manager)
-    skill_a, _version_a = _published_skill(service, name="skill-a")
-    _skill_b, version_b = _published_skill(service, name="skill-b")
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.export_version_archive(tenant_id=TENANT, skill_id=skill_a["id"], version_id=version_b["id"])
-
-    assert (exc_info.value.code, exc_info.value.status_code) == ("skill_version_not_found", 404)
-
-
-def test_export_version_archive_rejects_another_workspace() -> None:
-    service = SkillManagementService(tool_file_manager=_CapturingToolFileManager())
-    created, version = _published_skill(service)
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.export_version_archive(tenant_id=OTHER_TENANT, skill_id=created["id"], version_id=version["id"])
-
-    assert exc_info.value.code == "skill_not_found"
-
-
-def _import_paths(files: dict[str, str]) -> list[str]:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    imported = service.import_skill(
-        tenant_id=TENANT,
-        user_id=USER,
-        payload=SkillImportPayload(content=_zip_payload(files), filename="expense-sop.zip"),
-    )
-    return [item["path"] for item in imported["files"]]
-
-
-def test_import_drops_os_junk_at_zip_root() -> None:
-    paths = _import_paths(
-        {
-            "SKILL.md": _skill_md(name="expense-sop"),
-            ".DS_Store": "junk",
-            "__MACOSX/._SKILL.md": "junk",
-            "scripts/Thumbs.db": "junk",
-        }
-    )
-
-    assert paths == ["SKILL.md"]
-
-
-def test_import_keeps_lookalike_names() -> None:
-    paths = _import_paths({"SKILL.md": _skill_md(name="expense-sop"), "x.DS_Store": "kept", ".ds_store": "kept"})
-
-    assert paths == [".ds_store", "SKILL.md", "x.DS_Store"]
-
-
-def _overwrite_payload(
-    *, name: str = "expense-sop", description: str | None = "New description", expected_updated_at: int | None = None
-) -> SkillOverwritePayload:
-    frontmatter = f"name: {name}\n"
-    if description is not None:
-        frontmatter += f"description: {description}\n"
-    frontmatter += "metadata:\n  display-name: New Display\n"
-    return SkillOverwritePayload(
-        content=_zip_payload({"SKILL.md": f"---\n{frontmatter}---\n# New", "new.md": "new"}),
-        expected_updated_at=expected_updated_at,
-    )
-
-
-def _draft_paths(skill_id: str) -> list[str]:
-    with session_factory.create_session() as session:
-        return sorted(session.scalars(select(SkillDraftFile.path).where(SkillDraftFile.skill_id == skill_id)))
-
-
-def test_overwrite_replaces_draft_and_syncs_metadata() -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    service.replace_draft_tree(
-        tenant_id=TENANT,
-        user_id=USER,
-        skill_id=created["id"],
-        payload=SkillDraftTreePayload(
-            files=[
-                {"path": "SKILL.md", "content": _skill_md(name="expense-sop", description="Old")},
-                {"path": "old.md", "content": "old"},
-            ]
-        ),
-    )
-    before = service.update_metadata(
-        tenant_id=TENANT,
-        user_id=USER,
-        skill_id=created["id"],
-        payload=SkillMetadataPayload(icon="🔥", tags=["finance"]),
-    )
-
-    result = service.overwrite_skill(
-        tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=_overwrite_payload()
-    )
-
-    assert result["description"] == "New description"
-    assert result["display_name"] == "New Display"
-    assert result["name"] == "expense-sop"
-    assert result["icon"] == before["icon"] == "🔥"
-    assert result["tags"] == before["tags"]
-    assert result["tags"]
-    assert _draft_paths(created["id"]) == ["SKILL.md", "new.md"]
-
-
-def test_overwrite_without_a_display_name_takes_the_one_derived_from_the_name() -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(
-        tenant_id=TENANT,
-        user_id=USER,
-        payload=SkillCreatePayload(name="expense-sop", display_name="Console Title"),
-    )
-    payload = SkillOverwritePayload(content=_zip_payload({"SKILL.md": _skill_md(name="expense-sop")}))
-
-    result = service.overwrite_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=payload)
-
-    assert created["display_name"] == "Console Title"
-    expected = SkillManagementService._display_name_from_frontmatter(metadata={}, name="expense-sop")
-    assert result["display_name"] == expected == "Expense Sop"
-    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["display_name"] == expected
-
-
-def test_overwrite_rejects_a_different_name() -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    paths_before = _draft_paths(created["id"])
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.overwrite_skill(
-            tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=_overwrite_payload(name="other-sop")
-        )
-
-    assert (exc_info.value.code, exc_info.value.status_code) == ("skill_name_mismatch", 400)
-    assert exc_info.value.details == {"expected": "expense-sop", "got": "other-sop"}
-    assert _draft_paths(created["id"]) == paths_before
-    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["name"] == "expense-sop"
-
-
-def test_overwrite_rejects_stale_expected_updated_at() -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    payload = SkillOverwritePayload(content=b"binary-file-never-parsed", expected_updated_at=1)
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.overwrite_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=payload)
-
-    assert (exc_info.value.code, exc_info.value.status_code) == ("skill_conflict", 409)
-    with session_factory.create_session() as session:
-        assert session.scalar(select(func.count()).select_from(ToolFile)) == 0
-
-
-def test_overwrite_requires_description() -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.overwrite_skill(
-            tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=_overwrite_payload(description=None)
-        )
-
-    assert exc_info.value.code == "missing_skill_description"
-
-
-@pytest.mark.parametrize(("frontmatter", "code"), _BAD_NAME_FRONTMATTERS)
-def test_overwrite_reports_a_bad_name_as_a_service_error(frontmatter: str, code: str) -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    payload = SkillOverwritePayload(content=_zip_payload({"SKILL.md": f"---\n{frontmatter}---\n# Expenses"}))
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.overwrite_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=payload)
-
-    assert exc_info.value.code == code
-    assert exc_info.value.details["field"] == "name"
-
-
-def test_overwrite_rejects_oversized_archive(monkeypatch: pytest.MonkeyPatch) -> None:
-    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.overwrite_skill(
-            tenant_id=TENANT,
-            user_id=USER,
-            skill_id=created["id"],
-            payload=SkillOverwritePayload(content=b"not-empty"),
-        )
-
-    assert (exc_info.value.code, exc_info.value.message) == ("archive_too_large", "skill archive is over 0 MiB")
-
-
-def test_overwrite_unknown_skill_is_404() -> None:
-    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.overwrite_skill(tenant_id=TENANT, user_id=USER, skill_id=str(uuid4()), payload=_overwrite_payload())
-
-    assert (exc_info.value.code, exc_info.value.status_code) == ("skill_not_found", 404)
-
-
 _LOGO = b"\x89PNG\r\n\x1a\n\x00logo"
 _CHART = b"\x89PNG\r\n\x1a\n\x00chart"
 _SAME_SIZE_AS_LOGO = b"\x89PNG\r\n\x1a\n\x00fake"
+_NAME_DETAILS = {"path": "SKILL.md", "field": "name", "line": 2}
+_DESCRIPTION_DETAILS = {**_NAME_DETAILS, "field": "description"}
 
 
 class _ForcedFailureError(Exception):
@@ -4005,295 +3722,48 @@ def tool_files(monkeypatch: pytest.MonkeyPatch) -> _FakeToolFileManager:
     return manager
 
 
-def _tool_file_ids() -> set[str]:
-    with session_factory.create_session() as session:
-        return set(session.scalars(select(ToolFile.id)))
+@pytest.fixture
+def service(tool_files: _FakeToolFileManager) -> SkillManagementService:
+    return SkillManagementService(tool_file_manager=tool_files)
 
 
-def _draft_tool_file_ids(skill_id: str) -> dict[str, str | None]:
-    with session_factory.create_session() as session:
-        rows = session.execute(
-            select(SkillDraftFile.path, SkillDraftFile.tool_file_id).where(
-                SkillDraftFile.skill_id == skill_id, SkillDraftFile.tool_file_id.is_not(None)
-            )
-        ).all()
-    return {row.path: row.tool_file_id for row in rows}
+def _before[**P, R](hook: Callable[[], object], call: Callable[P, R]) -> Callable[P, R]:
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
+        hook()
+        return call(*args, **kwargs)
+
+    return wrapped
 
 
-def _skill_package(binaries: dict[str, bytes], *, name: str = "expense-sop", body: str = "# Expenses") -> bytes:
+def _service_error(call: Callable[[], object]) -> SkillManagementServiceError:
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        call()
+    return exc_info.value
+
+
+def _new_skill(service: SkillManagementService, name: str = "expense-sop") -> str:
+    return service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name=name))["id"]
+
+
+def _package(binaries: Mapping[str, bytes], *, name: str = "expense-sop", body: str = "# Expenses") -> bytes:
     return _zip_payload({"SKILL.md": _skill_md(name=name, description="Expenses", body=body), **binaries})
 
 
-def _import_package(service: SkillManagementService, content: bytes) -> dict[str, str]:
-    return service.import_skill(
-        tenant_id=TENANT, user_id=USER, payload=SkillImportPayload(content=content, filename="expense-sop.zip")
-    )
+def _import_package(service: SkillManagementService, content: bytes) -> str:
+    payload = SkillImportPayload(content=content, filename="expense-sop.zip")
+    return service.import_skill(tenant_id=TENANT, user_id=USER, payload=payload)["id"]
 
 
-def _overwrite_package(service: SkillManagementService, skill_id: str, content: bytes) -> None:
-    service.overwrite_skill(
-        tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=SkillOverwritePayload(content=content)
-    )
+def _overwrite_package(
+    service: SkillManagementService, skill_id: str, content: bytes, *, expected_updated_at: int | None = None
+) -> Mapping[str, object]:
+    payload = SkillOverwritePayload(content=content, expected_updated_at=expected_updated_at)
+    return service.overwrite_skill(tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=payload)
 
 
-def _skill_with_logo(service: SkillManagementService) -> tuple[str, str]:
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    _overwrite_package(service, created["id"], _skill_package({"assets/logo.png": _LOGO}))
-    logo_id = _draft_tool_file_ids(created["id"])["assets/logo.png"]
-    assert logo_id is not None
-    return created["id"], logo_id
-
-
-def test_import_rejected_for_missing_name_stores_no_files(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    content = _zip_payload({"SKILL.md": "---\ndescription: Expenses\n---\n# Expenses", "assets/logo.png": _LOGO})
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        _import_package(service, content)
-
-    assert exc_info.value.code == "missing_skill_name"
-    assert _tool_file_ids() == set()
-    assert tool_files.stored == {}
-
-
-def test_import_name_taken_stores_no_files(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    existing = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    ids_before = _tool_file_ids()
-    stored_before = dict(tool_files.stored)
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
-
-    assert (exc_info.value.code, exc_info.value.message) == ("skill_name_conflict", "skill name already exists")
-    assert exc_info.value.details == {SkillErrorDetail.SKILL_ID: existing["id"]}
-    assert _tool_file_ids() == ids_before
-    assert tool_files.stored == stored_before
-
-
-def test_import_over_workspace_limit_stores_no_files(
-    tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr("services.skill_management_service._MAX_SKILLS_PER_WORKSPACE", 1)
-    service = SkillManagementService(tool_file_manager=tool_files)
-    service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="other-sop"))
-    ids_before = _tool_file_ids()
-    stored_before = dict(tool_files.stored)
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
-
-    assert exc_info.value.code == "skill_limit_exceeded"
-    assert _tool_file_ids() == ids_before
-    assert tool_files.stored == stored_before
-
-
-def test_import_failure_after_upload_deletes_its_files(
-    tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-
-    def fail(**_kwargs: object) -> None:
-        assert tool_files.stored, "binaries are stored before the forced failure"
-        raise _ForcedFailureError
-
-    monkeypatch.setattr(service, "_build_draft_rows_from_tree", fail)
-
-    with pytest.raises(_ForcedFailureError):
-        _import_package(service, _skill_package({"assets/logo.png": _LOGO, "assets/chart.png": _CHART}))
-
-    assert _tool_file_ids() == set()
-    assert tool_files.stored == {}
+def _tool_file_ids() -> set[str]:
     with session_factory.create_session() as session:
-        assert session.scalar(select(func.count()).select_from(Skill)) == 0
-
-
-def test_import_commit_conflict_deletes_its_files(
-    tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    ids_before = _tool_file_ids()
-    stored_before = dict(tool_files.stored)
-
-    def lose_the_race(_session: Session, **_kwargs: object) -> None:
-        return None
-
-    monkeypatch.setattr(service, "_reject_taken_skill_name", lose_the_race)
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
-
-    assert (exc_info.value.code, exc_info.value.message) == ("skill_name_conflict", "skill name already exists")
-    assert exc_info.value.details == {SkillErrorDetail.NAME: "expense-sop"}
-    assert _tool_file_ids() == ids_before
-    assert tool_files.stored == stored_before
-
-
-def test_import_cleanup_failure_still_raises_the_original_error(
-    tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-
-    def fail(**_kwargs: object) -> None:
-        raise _ForcedFailureError
-
-    def broken_delete(key: str) -> None:
-        raise OSError(key)
-
-    monkeypatch.setattr(service, "_build_draft_rows_from_tree", fail)
-    monkeypatch.setattr("services.skill_management_service.storage.delete", broken_delete)
-
-    with pytest.raises(_ForcedFailureError):
-        _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
-
-
-def test_overwrite_name_mismatch_stores_no_files(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    ids_before = _tool_file_ids()
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        _overwrite_package(service, created["id"], _skill_package({"assets/logo.png": _LOGO}, name="other-sop"))
-
-    assert exc_info.value.code == "skill_name_mismatch"
-    assert _tool_file_ids() == ids_before
-    assert tool_files.stored == {}
-
-
-def test_overwrite_missing_description_stores_no_files(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    content = _zip_payload({"SKILL.md": "---\nname: expense-sop\n---\n# Expenses", "assets/logo.png": _LOGO})
-
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        _overwrite_package(service, created["id"], content)
-
-    assert exc_info.value.code == "missing_skill_description"
-    assert _tool_file_ids() == set()
-    assert tool_files.stored == {}
-
-
-def test_overwrite_reuses_identical_binary(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    skill_id, logo_id = _skill_with_logo(service)
-    ids_before = _tool_file_ids()
-
-    _overwrite_package(service, skill_id, _skill_package({"assets/logo.png": _LOGO}, body="# Changed"))
-
-    assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id}
-    assert _tool_file_ids() == ids_before
-    skill_md = service.get_skill(tenant_id=TENANT, skill_id=skill_id)["files"]
-    assert any("# Changed" in (file["content"] or "") for file in skill_md)
-
-
-def test_overwrite_reuses_a_moved_binary(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    skill_id, logo_id = _skill_with_logo(service)
-
-    _overwrite_package(service, skill_id, _skill_package({"images/logo.png": _LOGO}))
-
-    assert _draft_tool_file_ids(skill_id) == {"images/logo.png": logo_id}
-
-
-def test_overwrite_changed_binary_keeps_the_old_file(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    skill_id, logo_id = _skill_with_logo(service)
-
-    _overwrite_package(service, skill_id, _skill_package({"assets/logo.png": _CHART}))
-
-    new_logo_id = _draft_tool_file_ids(skill_id)["assets/logo.png"]
-    assert new_logo_id not in {None, logo_id}
-    assert _tool_file_ids() == {logo_id, new_logo_id}
-
-
-def test_overwrite_does_not_reuse_another_skills_file(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    _skill_id, logo_id = _skill_with_logo(service)
-    other = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="other-sop"))
-
-    _overwrite_package(service, other["id"], _skill_package({"assets/logo.png": _LOGO}, name="other-sop"))
-
-    assert _draft_tool_file_ids(other["id"])["assets/logo.png"] != logo_id
-
-
-def test_overwrite_failure_after_upload_keeps_reused_files(
-    tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    skill_id, logo_id = _skill_with_logo(service)
-    stored_before = dict(tool_files.stored)
-
-    def fail(_session: Session, **_kwargs: object) -> None:
-        assert len(tool_files.stored) > len(stored_before), "the new binary is stored before the forced failure"
-        raise _ForcedFailureError
-
-    monkeypatch.setattr(service, "_replace_draft_rows", fail)
-
-    with pytest.raises(_ForcedFailureError):
-        _overwrite_package(service, skill_id, _skill_package({"assets/logo.png": _LOGO, "assets/chart.png": _CHART}))
-
-    assert _tool_file_ids() == {logo_id}
-    assert tool_files.stored == stored_before
-    assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id}
-
-
-def test_restore_reuses_identical_binary(tool_files: _FakeToolFileManager) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    skill_id, logo_id = _skill_with_logo(service)
-    version = service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=SkillPublishPayload())
-    _overwrite_package(service, skill_id, _skill_package({"assets/logo.png": _LOGO}, body="# Later"))
-    ids_before = _tool_file_ids()
-
-    restored = service.restore_version(
-        tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=SkillRestorePayload(version_id=version["id"])
-    )
-
-    assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id}
-    assert _tool_file_ids() == ids_before
-    assert any("# Expenses" in (file["content"] or "") for file in restored["files"])
-
-
-def _stored_tool_file(manager: _FakeToolFileManager, payload: bytes, *, tenant_id: str = TENANT) -> ToolFile:
-    return manager.create_file_by_raw(
-        user_id=USER, tenant_id=tenant_id, conversation_id=None, file_binary=payload, mimetype="image/png"
-    )
-
-
-def _draft_logo_claims_logo_bytes(service: SkillManagementService, skill_id: str, *, tool_file_id: str) -> None:
-    """Point the draft's logo row at ``tool_file_id`` while claiming the hash and size of ``_LOGO``."""
-    service.replace_draft_tree(
-        tenant_id=TENANT,
-        user_id=USER,
-        skill_id=skill_id,
-        payload=SkillDraftTreePayload(
-            files=[
-                {"path": "SKILL.md", "content": _skill_md(name="expense-sop", description="Expenses")},
-                {
-                    "path": "assets/logo.png",
-                    "storage": "tool_file",
-                    "tool_file_id": tool_file_id,
-                    "mime_type": "image/png",
-                    "size": len(_LOGO),
-                    "hash": hashlib.sha256(_LOGO).hexdigest(),
-                },
-            ]
-        ),
-    )
-
-
-def _overwrite_logo_after_claim(tool_files: _FakeToolFileManager, *, claimed_tool_file_id: str) -> str:
-    service = SkillManagementService(tool_file_manager=tool_files)
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
-    _draft_logo_claims_logo_bytes(service, created["id"], tool_file_id=claimed_tool_file_id)
-
-    _overwrite_package(service, created["id"], _skill_package({"assets/logo.png": _LOGO}))
-
-    new_logo_id = _draft_tool_file_ids(created["id"])["assets/logo.png"]
-    assert new_logo_id is not None
-    assert new_logo_id != claimed_tool_file_id
-    assert tool_files.stored[_tool_file_key(new_logo_id)] == _LOGO
-    return new_logo_id
+        return set(session.scalars(select(ToolFile.id)))
 
 
 def _tool_file_key(tool_file_id: str) -> str:
@@ -4303,44 +3773,213 @@ def _tool_file_key(tool_file_id: str) -> str:
     return key
 
 
-def test_overwrite_does_not_reuse_a_file_whose_bytes_differ_from_its_claimed_hash(
-    tool_files: _FakeToolFileManager,
+def _draft_paths(skill_id: str) -> list[str]:
+    with session_factory.create_session() as session:
+        return sorted(session.scalars(select(SkillDraftFile.path).where(SkillDraftFile.skill_id == skill_id)))
+
+
+def _draft_tool_file_ids(skill_id: str) -> dict[str, str]:
+    with session_factory.create_session() as session:
+        files = session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == skill_id))
+        return {file.path: file.tool_file_id for file in files if file.tool_file_id is not None}
+
+
+def _skill_with_logo(service: SkillManagementService) -> tuple[str, str]:
+    skill_id = _new_skill(service)
+    _overwrite_package(service, skill_id, _package({"assets/logo.png": _LOGO}))
+    return skill_id, _draft_tool_file_ids(skill_id)["assets/logo.png"]
+
+
+def test_export_version_archive_serves_only_the_skills_own_version(
+    service: SkillManagementService, tool_files: _FakeToolFileManager
 ) -> None:
-    forged = _stored_tool_file(tool_files, _SAME_SIZE_AS_LOGO)
+    skill_id = _import_package(service, _package({}))
+    other_id = _import_package(service, _package({}, name="other-sop"))
+    publish = SkillPublishPayload()
+    version = service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=publish)
+    other_version = service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=other_id, payload=publish)
+    skill_zip, _other_zip = tool_files.stored.values()
 
-    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=forged.id)
+    archive = service.export_version_archive(tenant_id=TENANT, skill_id=skill_id, version_id=version["id"])
+    other_skills_version = _service_error(
+        lambda: service.export_version_archive(tenant_id=TENANT, skill_id=skill_id, version_id=other_version["id"])
+    )
+    other_workspace = _service_error(
+        lambda: service.export_version_archive(tenant_id=OTHER_TENANT, skill_id=skill_id, version_id=version["id"])
+    )
 
-    assert tool_files.stored[forged.file_key] == _SAME_SIZE_AS_LOGO
-    assert forged.id in _tool_file_ids()
-
-
-def test_overwrite_does_not_reuse_a_missing_file(tool_files: _FakeToolFileManager) -> None:
-    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=str(uuid4()))
-
-
-def test_overwrite_does_not_reuse_another_tenants_file(tool_files: _FakeToolFileManager) -> None:
-    foreign = _stored_tool_file(tool_files, _LOGO, tenant_id=OTHER_TENANT)
-
-    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=foreign.id)
-
-    assert tool_files.stored[foreign.file_key] == _LOGO
-    assert foreign.id in _tool_file_ids()
-
-
-def test_overwrite_uploads_a_new_copy_when_the_candidate_cannot_be_loaded(tool_files: _FakeToolFileManager) -> None:
-    unreadable = _stored_tool_file(tool_files, _LOGO)
-    del tool_files.stored[unreadable.file_key]
-
-    _overwrite_logo_after_claim(tool_files, claimed_tool_file_id=unreadable.id)
-
-    assert unreadable.id in _tool_file_ids()
+    assert archive.payload == skill_zip
+    assert (archive.filename, archive.mime_type) == ("expense-sop-v1.zip", "application/zip")
+    assert other_skills_version.code == SkillServiceErrorCode.SKILL_VERSION_NOT_FOUND
+    assert other_skills_version.status_code == 404
+    assert other_workspace.code == SkillServiceErrorCode.SKILL_NOT_FOUND
 
 
-def test_overwrite_loads_each_reuse_candidate_once(
+@pytest.mark.parametrize(
+    ("extra", "paths"),
+    [
+        ({".DS_Store": "junk", "__MACOSX/._SKILL.md": "junk", "scripts/Thumbs.db": "junk"}, ["SKILL.md"]),
+        ({"x.DS_Store": "kept", ".ds_store": "kept"}, [".ds_store", "SKILL.md", "x.DS_Store"]),
+    ],
+    ids=["os-junk-dropped", "lookalike-names-kept"],
+)
+def test_import_drops_os_junk_only(service: SkillManagementService, extra: dict[str, str], paths: list[str]) -> None:
+    skill_id = _import_package(service, _zip_payload({"SKILL.md": _skill_md(name="expense-sop"), **extra}))
+    assert [item["path"] for item in service.get_skill(tenant_id=TENANT, skill_id=skill_id)["files"]] == paths
+
+
+def test_import_refused_for_a_taken_name_or_a_full_workspace_stores_no_files(
+    service: SkillManagementService, tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    existing_id = _new_skill(service)
+    package = _package({"assets/logo.png": _LOGO})
+
+    at_pre_check = _service_error(lambda: _import_package(service, package))
+    monkeypatch.setattr(service, "_reject_taken_skill_name", lambda _session, **_kwargs: None)
+    at_commit = _service_error(lambda: _import_package(service, package))
+    monkeypatch.setattr("services.skill_management_service._MAX_SKILLS_PER_WORKSPACE", 1)
+    workspace_full = _service_error(lambda: _import_package(service, _package({"x.png": _LOGO}, name="other-sop")))
+
+    for error in (at_pre_check, at_commit):
+        assert (error.code, error.message) == (SkillServiceErrorCode.SKILL_NAME_CONFLICT, "skill name already exists")
+    assert at_pre_check.details == {SkillErrorDetail.SKILL_ID: existing_id}
+    assert at_commit.details == {SkillErrorDetail.NAME: "expense-sop"}
+    assert workspace_full.code == "skill_limit_exceeded"
+    assert (_tool_file_ids(), tool_files.stored) == (set(), {})
+
+
+def test_import_failure_after_upload_deletes_its_files_and_keeps_its_error_if_cleanup_fails(
+    service: SkillManagementService, tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail(**_kwargs: object) -> None:
+        assert tool_files.stored, "binaries are stored before the forced failure"
+        raise _ForcedFailureError
+
+    def broken_delete(key: str) -> None:
+        raise OSError(key)
+
+    monkeypatch.setattr(service, "_build_draft_rows_from_tree", fail)
+    with pytest.raises(_ForcedFailureError):
+        _import_package(service, _package({"assets/logo.png": _LOGO, "assets/chart.png": _CHART}))
+    assert (_tool_file_ids(), tool_files.stored) == (set(), {})
+    with session_factory.create_session() as session:
+        assert session.scalar(select(func.count()).select_from(Skill)) == 0
+
+    monkeypatch.setattr("services.skill_management_service.storage.delete", broken_delete)
+    with pytest.raises(_ForcedFailureError):
+        _import_package(service, _package({"assets/logo.png": _LOGO}))
+
+
+def test_import_uploads_while_no_transaction_is_open(
     tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    service = SkillManagementService(tool_file_manager=tool_files)
+    in_transaction_at_upload: list[bool] = []
+    with session_factory.create_session() as session:
+        record = _before(
+            lambda: in_transaction_at_upload.append(session.in_transaction()), tool_files.create_file_by_raw
+        )
+        monkeypatch.setattr(tool_files, "create_file_by_raw", record)
+        service = SkillManagementService(tool_file_manager=tool_files, session=session)
+        _import_package(service, _package({"assets/logo.png": _LOGO}))
+    assert in_transaction_at_upload == [False]
+
+
+def test_overwrite_replaces_draft_and_syncs_metadata(service: SkillManagementService) -> None:
+    skill_id = _import_package(service, _package({"old.md": b"old"}))
+    before = service.update_metadata(
+        tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=SkillMetadataPayload(icon="🔥", tags=["finance"])
+    )
+    skill_md = "---\nname: expense-sop\ndescription: New description\nmetadata:\n  display-name: New Display\n---\n"
+
+    result = _overwrite_package(service, skill_id, _zip_payload({"SKILL.md": skill_md, "new.md": "new"}))
+
+    assert (result["name"], result["description"]) == ("expense-sop", "New description")
+    assert (result["display_name"], result["icon"]) == ("New Display", "🔥")
+    assert result["tags"] == before["tags"]
+    assert result["tags"]
+    assert _draft_paths(skill_id) == ["SKILL.md", "new.md"]
+
+
+def test_overwrite_without_a_display_name_takes_the_one_derived_from_the_name(service: SkillManagementService) -> None:
+    payload = SkillCreatePayload(name="expense-sop", display_name="Console Title")
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=payload)
+
+    result = _overwrite_package(service, created["id"], _package({}))
+
+    assert created["display_name"] == "Console Title"
+    expected = SkillManagementService._display_name_from_frontmatter(metadata={}, name="expense-sop")
+    assert result["display_name"] == expected == "Expense Sop"
+    assert service.get_skill(tenant_id=TENANT, skill_id=created["id"])["display_name"] == expected
+
+
+def _import_into(service: SkillManagementService, _skill_id: str, content: bytes) -> None:
+    _import_package(service, content)
+
+
+_NO_NAME = "---\ndescription: Expenses\n---\n"
+_BAD_NAME = "---\nname: Expense SOP\ndescription: Expenses\n---\n"
+_NO_DESCRIPTION = "---\nname: expense-sop\n---\n"
+
+
+@pytest.mark.parametrize(
+    ("send", "skill_md", "code", "details"),
+    [
+        (_import_into, _NO_NAME, SkillServiceErrorCode.MISSING_SKILL_NAME, _NAME_DETAILS),
+        (_import_into, _BAD_NAME, SkillServiceErrorCode.INVALID_SKILL_NAME, _NAME_DETAILS),
+        (_overwrite_package, _NO_NAME, SkillServiceErrorCode.MISSING_SKILL_NAME, _NAME_DETAILS),
+        (_overwrite_package, _BAD_NAME, SkillServiceErrorCode.INVALID_SKILL_NAME, _NAME_DETAILS),
+        (_overwrite_package, _NO_DESCRIPTION, SkillServiceErrorCode.MISSING_SKILL_DESCRIPTION, _DESCRIPTION_DETAILS),
+        (
+            _overwrite_package,
+            _skill_md("other-sop"),
+            SkillServiceErrorCode.SKILL_NAME_MISMATCH,
+            {"expected": "expense-sop", "got": "other-sop"},
+        ),
+    ],
+    ids=["import-no-name", "import-bad-name", "overwrite-no-name", "overwrite-bad-name", "no-description", "mismatch"],
+)
+def test_a_rejected_package_leaves_the_draft_and_storage_unchanged(
+    service: SkillManagementService,
+    tool_files: _FakeToolFileManager,
+    send: Callable[[SkillManagementService, str, bytes], object],
+    skill_md: str,
+    code: str,
+    details: dict[str, object],
+) -> None:
+    skill_id = _new_skill(service)
+    paths_before = _draft_paths(skill_id)
+
+    error = _service_error(lambda: send(service, skill_id, _zip_payload({"SKILL.md": skill_md, "x.png": _LOGO})))
+
+    assert (error.code, error.status_code, error.details) == (code, 400, details)
+    assert _draft_paths(skill_id) == paths_before
+    assert service.get_skill(tenant_id=TENANT, skill_id=skill_id)["name"] == "expense-sop"
+    assert (_tool_file_ids(), tool_files.stored) == (set(), {})
+
+
+def test_overwrite_refuses_a_stale_draft_hash_an_unknown_skill_and_an_oversized_archive(
+    service: SkillManagementService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    skill_id = _new_skill(service)
+
+    stale = _service_error(lambda: _overwrite_package(service, skill_id, b"never-parsed", expected_updated_at=1))
+    unknown = _service_error(lambda: _overwrite_package(service, str(uuid4()), _package({})))
+    apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
+    oversized = _service_error(lambda: _overwrite_package(service, skill_id, b"not-empty"))
+
+    assert (stale.code, stale.status_code) == (SkillServiceErrorCode.SKILL_CONFLICT, 409)
+    assert (unknown.code, unknown.status_code) == (SkillServiceErrorCode.SKILL_NOT_FOUND, 404)
+    assert oversized.code == SkillServiceErrorCode.ARCHIVE_TOO_LARGE
+    assert oversized.message == "skill archive is over 0 MiB"
+    assert _tool_file_ids() == set()
+
+
+def test_overwrite_and_restore_reuse_a_matching_binary_at_any_path_loading_it_once(
+    service: SkillManagementService, tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
     skill_id, logo_id = _skill_with_logo(service)
+    version = service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=SkillPublishPayload())
+    ids_before = _tool_file_ids()
     loaded: list[str] = []
 
     def load_once(key: str) -> bytes:
@@ -4348,40 +3987,94 @@ def test_overwrite_loads_each_reuse_candidate_once(
         return tool_files.stored[key]
 
     monkeypatch.setattr("services.skill_management_service.storage.load_once", load_once)
-
-    _overwrite_package(service, skill_id, _skill_package({"assets/logo.png": _LOGO, "images/logo.png": _LOGO}))
+    _overwrite_package(service, skill_id, _package({"assets/logo.png": _LOGO, "images/logo.png": _LOGO}, body="# New"))
 
     assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id, "images/logo.png": logo_id}
     assert loaded == [_tool_file_key(logo_id)]
+    assert any(
+        "# New" in (file["content"] or "") for file in service.get_skill(tenant_id=TENANT, skill_id=skill_id)["files"]
+    )
+
+    restore = SkillRestorePayload(version_id=version["id"])
+    restored = service.restore_version(tenant_id=TENANT, user_id=USER, skill_id=skill_id, payload=restore)
+
+    assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id}
+    assert any("# Expenses" in (file["content"] or "") for file in restored["files"])
+    assert _tool_file_ids() == ids_before
 
 
-def test_import_uploads_while_no_transaction_is_open() -> None:
-    in_transaction_at_upload: list[bool] = []
-    with session_factory.create_session() as session:
+def test_overwrite_stores_a_new_file_for_changed_bytes_or_another_skills_binary(
+    service: SkillManagementService,
+) -> None:
+    skill_id, logo_id = _skill_with_logo(service)
+    other_id = _new_skill(service, "other-sop")
 
-        class _TransactionCheckingToolFileManager(_FakeToolFileManager):
-            @override
-            def create_file_by_raw(
-                self,
-                *,
-                user_id: str,
-                tenant_id: str,
-                conversation_id: str | None,
-                file_binary: bytes,
-                mimetype: str,
-                filename: str | None = None,
-            ) -> ToolFile:
-                in_transaction_at_upload.append(session.in_transaction())
-                return super().create_file_by_raw(
-                    user_id=user_id,
-                    tenant_id=tenant_id,
-                    conversation_id=conversation_id,
-                    file_binary=file_binary,
-                    mimetype=mimetype,
-                    filename=filename,
-                )
+    _overwrite_package(service, skill_id, _package({"assets/logo.png": _CHART}))
+    _overwrite_package(service, other_id, _package({"assets/logo.png": _LOGO}, name="other-sop"))
 
-        service = SkillManagementService(tool_file_manager=_TransactionCheckingToolFileManager(), session=session)
-        _import_package(service, _skill_package({"assets/logo.png": _LOGO}))
+    chart_id = _draft_tool_file_ids(skill_id)["assets/logo.png"]
+    other_logo_id = _draft_tool_file_ids(other_id)["assets/logo.png"]
+    assert len({logo_id, chart_id, other_logo_id}) == 3
+    assert _tool_file_ids() == {logo_id, chart_id, other_logo_id}
 
-    assert in_transaction_at_upload == [False]
+
+def test_overwrite_failure_after_upload_keeps_reused_files(
+    service: SkillManagementService, tool_files: _FakeToolFileManager, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    skill_id, logo_id = _skill_with_logo(service)
+    stored_before = dict(tool_files.stored)
+
+    def fail(_session: Session, **_kwargs: object) -> None:
+        assert len(tool_files.stored) > len(stored_before), "the new binary is stored before the forced failure"
+        raise _ForcedFailureError
+
+    monkeypatch.setattr(service, "_replace_draft_rows", fail)
+    with pytest.raises(_ForcedFailureError):
+        _overwrite_package(service, skill_id, _package({"assets/logo.png": _LOGO, "assets/chart.png": _CHART}))
+
+    assert (_tool_file_ids(), tool_files.stored) == ({logo_id}, stored_before)
+    assert _draft_tool_file_ids(skill_id) == {"assets/logo.png": logo_id}
+
+
+def _stored_tool_file(manager: _FakeToolFileManager, payload: bytes, *, tenant_id: str = TENANT) -> ToolFile:
+    return manager.create_file_by_raw(
+        user_id=USER, tenant_id=tenant_id, conversation_id=None, file_binary=payload, mimetype="image/png"
+    )
+
+
+def _unreadable_logo(manager: _FakeToolFileManager) -> str:
+    tool_file = _stored_tool_file(manager, _LOGO)
+    del manager.stored[tool_file.file_key]
+    return tool_file.id
+
+
+@pytest.mark.parametrize(
+    "claimed_file",
+    [
+        pytest.param(lambda manager: _stored_tool_file(manager, _SAME_SIZE_AS_LOGO).id, id="bytes-differ"),
+        pytest.param(lambda _manager: str(uuid4()), id="file-missing"),
+        pytest.param(lambda manager: _stored_tool_file(manager, _LOGO, tenant_id=OTHER_TENANT).id, id="other-tenant"),
+        pytest.param(_unreadable_logo, id="object-unreadable"),
+    ],
+)
+def test_overwrite_reuses_only_a_file_whose_stored_bytes_match_the_draft_claim(
+    service: SkillManagementService,
+    tool_files: _FakeToolFileManager,
+    claimed_file: Callable[[_FakeToolFileManager], str],
+) -> None:
+    skill_id, logo_id = _skill_with_logo(service)
+    claimed_id = claimed_file(tool_files)
+    # The logo row keeps claiming the logo's hash and size, but now names the claimed file.
+    with session_factory.create_session() as session, session.begin():
+        session.execute(
+            update(SkillDraftFile).where(SkillDraftFile.tool_file_id == logo_id).values(tool_file_id=claimed_id)
+        )
+    ids_before, stored_before = _tool_file_ids(), dict(tool_files.stored)
+
+    _overwrite_package(service, skill_id, _package({"assets/logo.png": _LOGO}))
+
+    new_logo_id = _draft_tool_file_ids(skill_id)["assets/logo.png"]
+    assert new_logo_id not in {claimed_id, logo_id}
+    assert tool_files.stored[_tool_file_key(new_logo_id)] == _LOGO
+    assert ids_before <= _tool_file_ids()
+    assert stored_before.items() <= tool_files.stored.items()

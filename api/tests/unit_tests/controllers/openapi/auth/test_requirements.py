@@ -183,17 +183,15 @@ class TestRequirementsCases:
         CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session)
 
     @staticmethod
-    @pytest.mark.parametrize("enabled", [True, False])
     def test_check_skill_enabled_follows_the_server_flag(
-        sqlite_session: Session, config_overrides: Callable[..., None], enabled: bool
+        sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        config_overrides(ENABLE_SKILL=enabled)
         subject = account_subject()
         ctx = make_ctx(sqlite_session, subject=subject)
 
-        if enabled:
-            CheckSkillEnabled().run(subject, ctx, sqlite_session)
-            return
+        config_overrides(ENABLE_SKILL=True)
+        CheckSkillEnabled().run(subject, ctx, sqlite_session)
+        config_overrides(ENABLE_SKILL=False)
         with pytest.raises(SkillsDisabled):
             CheckSkillEnabled().run(subject, ctx, sqlite_session)
 
@@ -703,12 +701,7 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
-    Route(
-        "skills.import",
-        "POST",
-        "/workspaces/{workspace_id}/skills/imports",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
-    ),
+    Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "app_dsl.import",
         "POST",
@@ -1446,23 +1439,6 @@ _REQ_SKILL_READ = (
     *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     CheckRBACPermission(RBACCheck(RBACPermission.SKILL_VIEW, Workspace())),
 )
-_REQ_SKILL_PUBLISH = (
-    CheckSkillEnabled(),
-    CheckSubject(allowed=_ACCOUNT),
-    CheckScope(Scope.WORKSPACE_WRITE),
-    CheckWorkspaceMember(),
-    CheckRBACPermission(RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())),
-    CheckWorkspaceRole(_EDITOR_UP),
-)
-_REQ_SKILL_IMPORT = (
-    CheckSkillEnabled(),
-    CheckSubject(allowed=_ACCOUNT),
-    CheckScope(Scope.WORKSPACE_WRITE),
-    CheckWorkspaceMember(),
-    CheckRBACPermission(RBACCheck(RBACPermission.SKILL_EDIT, Workspace())),
-    CheckWorkspaceRole(_EDITOR_UP),
-    CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
-)
 _REQ_MEMBER_MANAGE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),
@@ -1605,6 +1581,17 @@ def _req_admin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
     )
 
 
+def _req_skill_write(permission: RBACPermission) -> tuple[Requirement, ...]:
+    return (
+        CheckSkillEnabled(),
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        CheckWorkspaceRole(_EDITOR_UP),
+    )
+
+
 _REQ_PLUGIN_TASK = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_READ),
@@ -1672,8 +1659,11 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "skills.describe": _REQ_SKILL_READ,
     "skills.versions": _REQ_SKILL_READ,
     "skills.export": _REQ_SKILL_READ,
-    "skills.publish": _REQ_SKILL_PUBLISH,
-    "skills.import": _REQ_SKILL_IMPORT,
+    "skills.publish": _req_skill_write(RBACPermission.SKILL_PUBLISH),
+    "skills.import": (
+        *_req_skill_write(RBACPermission.SKILL_EDIT),
+        CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
+    ),
     "knowledge_bases.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
