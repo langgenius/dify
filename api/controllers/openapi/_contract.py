@@ -72,12 +72,14 @@ def paginated(op: str) -> Callable:
 
 
 class CapRequestBody(Requirement):
-    def __init__(self, max_bytes: Callable[[], int]) -> None:
+    def __init__(self, *, max_bytes: Callable[[], int], max_parts: Callable[[], int]) -> None:
         self.max_bytes = max_bytes
+        self.max_parts = max_parts
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         request.max_content_length = self.max_bytes()
+        request.max_form_parts = self.max_parts()
 
 
 def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:

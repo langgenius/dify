@@ -245,19 +245,32 @@ def view() -> Callable[[], str]:
     return handler
 
 
-def test_a_capped_route_refuses_only_an_oversized_body_naming_both_limits(
-    app: Flask, sqlite_session: Session, view: Callable[[], str]
+@pytest.mark.parametrize(
+    ("size", "extra", "accepted"),
+    [
+        (1, {"note": '"y"'}, True),
+        (2 * _MIB, {}, False),
+        (1, {"note": '"y"', "other": '"z"'}, False),
+    ],
+)
+def test_a_capped_route_sets_its_own_limits_and_names_them(
+    app: Flask,
+    sqlite_session: Session,
+    view: Callable[[], str],
+    size: int,
+    extra: dict[str, str],
+    accepted: bool,
 ) -> None:
-    cap = CapRequestBody(lambda: _MIB)
-    for size, accepted in ((1, True), (2 * _MIB, False)):
-        with _post(app, size):
-            cap.run(account_subject(), make_ctx(sqlite_session), sqlite_session)
-            assert "form" not in request.__dict__
-            if accepted:
-                assert view() == "ok"
-                continue
-            with pytest.raises(RequestOverRouteLimits, match="at most 1000 parts and 1 MiB$"):
-                view()
+    app.config["MAX_FORM_PARTS"] = 1
+    cap = CapRequestBody(max_bytes=lambda: _MIB, max_parts=lambda: 2)
+    with _post(app, size, **extra):
+        cap.run(account_subject(), make_ctx(sqlite_session), sqlite_session)
+        assert "form" not in request.__dict__
+        if accepted:
+            assert view() == "ok"
+            return
+        with pytest.raises(RequestOverRouteLimits, match="at most 2 parts and 1 MiB$"):
+            view()
 
 
 def test_an_uncapped_route_keeps_the_generic_413(app: Flask, view: Callable[[], str]) -> None:
