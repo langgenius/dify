@@ -603,7 +603,8 @@ describe('Inline Agent configure workspace', () => {
           debug_conversation_message_count: 1,
         }),
       })
-      expect(await screen.findByText('Earlier answer')).toBeVisible()
+      // Persisted history waits for the real Chat and Markdown renderers as well as the query.
+      expect(await screen.findByText('Earlier answer', {}, { timeout: 5000 })).toBeVisible()
       expect(api.history).toHaveBeenCalledWith({
         params: { agent_id: 'agent-1' },
         query: { conversation_id: 'old-conversation' },
@@ -643,7 +644,7 @@ describe('Inline Agent configure workspace', () => {
         debug_conversation_message_count: 1,
       }),
     })
-    await screen.findByText('Build history')
+    expect(await screen.findByText('Build history', {}, { timeout: 5000 })).toBeVisible()
     await changeMode(user, 'preview')
     await sendPreview(user)
     await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
@@ -661,7 +662,7 @@ describe('Inline Agent configure workspace', () => {
     await receive(1, 'new-preview-conversation', 'New preview answer')
     await complete(1)
     await changeMode(user, 'build')
-    expect(await screen.findByText('Build history')).toBeVisible()
+    expect(await screen.findByText('Build history', {}, { timeout: 5000 })).toBeVisible()
   })
 
   it('opens generated files after a build response completes', async () => {
