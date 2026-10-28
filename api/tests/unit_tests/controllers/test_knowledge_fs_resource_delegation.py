@@ -1371,6 +1371,13 @@ _SERVICE_DELEGATION_CASES = (
         {"resource_id": "document-1", "path_parameters": (("documentId", "document-1"),)},
     ),
     (
+        service_resources.KnowledgeFSServiceLogicalDocumentApi,
+        service_resources.KnowledgeFSServiceLogicalDocumentApi.delete,
+        ("space-1", "document-1"),
+        "deleteLogicalDocument",
+        {"resource_id": "document-1", "path_parameters": (("documentId", "document-1"),)},
+    ),
+    (
         service_resources.KnowledgeFSServiceDocumentOutlineApi,
         service_resources.KnowledgeFSServiceDocumentOutlineApi.get,
         ("space-1", "document-1"),
