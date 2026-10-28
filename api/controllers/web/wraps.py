@@ -7,7 +7,6 @@ from flask import request
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
-from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import (
     WebAppAccessServiceUnavailableError,
@@ -18,7 +17,7 @@ from controllers.web.error import (
 from core.logging.context import set_identity_context
 from extensions.ext_application_services import application_services
 from libs.passport import PassportService
-from libs.token import extract_console_cookie_token, extract_webapp_access_token, extract_webapp_passport
+from libs.token import extract_webapp_cookie_token, extract_webapp_passport
 from models.model import App, EndUser
 from repositories.web_passport_repository import get_web_passport_identity
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
@@ -59,12 +58,6 @@ def resolve_web_app_id(app_code: str) -> str:
         raise WebAppAccessServiceUnavailableError() from exc
 
 
-def extract_web_login_token() -> str | None:
-    if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
-        return extract_console_cookie_token(request) or extract_webapp_access_token(request)
-    return extract_webapp_access_token(request)
-
-
 def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
     webapp_auth_enabled = SystemFeatureService.is_webapp_auth_enabled()
     if not app_code:
@@ -95,6 +88,13 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
 
         try:
             application_services().web_identity.validate_passport(decoded, account_id=end_user.account_id)
+            if end_user.account_id is not None:
+                login_token = extract_webapp_cookie_token(request)
+                if not login_token:
+                    raise WebIdentityError("Web App Account login required.")
+                application_services().web_identity.validate_account_login(
+                    PassportService().verify(login_token), account_id=end_user.account_id
+                )
         except WebIdentityError as exc:
             raise Unauthorized(str(exc)) from exc
         if end_user.account_id is not None:

@@ -1,6 +1,7 @@
 import base64
 import hashlib
 from datetime import UTC, datetime, timedelta
+from email.utils import parsedate_to_datetime
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
 from typing import cast
@@ -18,6 +19,7 @@ from controllers.console import wraps
 from controllers.console.auth import login as console_login
 from controllers.web import bp as web_bp
 from controllers.web import passport
+from extensions.ext_application_services import ApplicationServices
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth import decode_account_oauth_state
 from libs.passport import PassportService
@@ -26,7 +28,7 @@ from services.web_login_handoff import WebLoginHandoffService, WebLoginTarget
 from services.web_login_handoff_adapters import RedisWebLoginGrantStore
 from services.web_passport_gateways import PassportTokenGateway
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, WebAccounts
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, WebAccounts, webapp_login_claims
 from tests.unit_tests.controllers.web.test_web_account_passport_flow import identity_flow as identity_flow  # noqa: PLC0414 -- Register the shared pytest fixture in this module.
 
 VERIFIER = "v" * 43
@@ -119,12 +121,24 @@ def test_existing_console_session_crosses_sites_and_reuses_passport(handoff: Sim
     claims = handoff.signer.verify(response.json["access_token"])
     assert claims["token_source"] == "webapp_account"
     assert ACCOUNT_ID not in claims.values()
-    proof = response.json["webapp_access_token"]
+    assert set(response.json) == {"access_token"}
+    cookies = SimpleCookie()
+    cookies.load(response.headers["Set-Cookie"])
+    cookie = cookies["__Host-webapp_access_token"]
+    assert cookie["httponly"]
+    assert cookie["secure"]
+    assert cookie["samesite"] == "Lax"
+    assert cookie["path"] == "/"
+    assert not cookie["domain"]
+    assert len(response.headers.getlist("Set-Cookie")) == 1
+    assert client.get_cookie("__Host-access_token", domain="console.example.com").value == handoff.login
+    proof = cookie.value
     assert handoff.signer.verify(proof)["token_source"] == "webapp_account_login"
+    assert int(parsedate_to_datetime(cookie["expires"]).timestamp()) == handoff.signer.verify(proof)["exp"]
     response = client.get(
         "/api/passport?mode=end_user",
         base_url="https://apps.example.net",
-        headers={"X-App-Code": "app-b", "Authorization": f"Bearer {proof}"},
+        headers={"X-App-Code": "app-b"},
     )
     assert response.status_code == 200
     assert handoff.signer.verify(response.json["access_token"])["app_code"] == "app-b"
@@ -133,6 +147,100 @@ def test_existing_console_session_crosses_sites_and_reuses_passport(handoff: Sim
     )
     assert replay.status_code == 400
     assert replay.json["code"] == "invalid_param"
+
+
+@pytest.mark.parametrize("credential", ["missing", "console-cookie", "bearer", "console-token", "expired", "tampered"])
+def test_account_passport_renewal_requires_webapp_cookie(handoff: SimpleNamespace, credential: str) -> None:
+    client = handoff.app.test_client()
+    proof = handoff.signer.issue(webapp_login_claims())
+    headers = {"X-App-Code": "app-a"}
+    if credential == "console-cookie":
+        client.set_cookie("__Host-access_token", handoff.login, domain="apps.example.net", secure=True)
+    elif credential == "bearer":
+        headers["Authorization"] = f"Bearer {proof}"
+    elif credential != "missing":
+        cookie = {
+            "console-token": handoff.login,
+            "expired": handoff.signer.issue(webapp_login_claims(exp=1)),
+            "tampered": "invalid-signature",
+        }[credential]
+        client.set_cookie("__Host-webapp_access_token", cookie, domain="apps.example.net", secure=True)
+    response = client.get("/api/passport?mode=end_user", base_url="https://apps.example.net", headers=headers)
+    assert response.status_code == 401
+
+
+def test_webapp_login_and_logout_preserve_console_cookies_on_same_host(
+    handoff: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from controllers.web import login
+
+    monkeypatch.setattr(login, "application_services", lambda: handoff.services)
+    client = handoff.app.test_client()
+    console_cookies = {"access_token": handoff.login, "refresh_token": "console-refresh", "csrf_token": "console-csrf"}
+    for name, value in console_cookies.items():
+        client.set_cookie(f"__Host-{name}", value, domain="apps.example.net", secure=True)
+    target = handoff.services.web_login_handoff.authorize(
+        WebLoginTarget(app_code="app-a", redirect_url=RETURN_URL, code_challenge=CHALLENGE), handoff.login
+    )
+    code = parse_qs(urlsplit(target).query)["login_code"][0]
+    response = client.post(
+        "/api/passport",
+        base_url="https://apps.example.net",
+        headers={"X-App-Code": "app-a"},
+        json={"login_code": code, "code_verifier": VERIFIER},
+    )
+    assert response.status_code == 200
+    for name, value in console_cookies.items():
+        assert client.get_cookie(f"__Host-{name}", domain="apps.example.net").value == value
+    assert client.get_cookie("__Host-webapp_access_token", domain="apps.example.net") is not None
+    response = client.post("/api/logout", base_url="https://apps.example.net")
+    assert response.status_code == 200
+    assert client.get_cookie("__Host-webapp_access_token", domain="apps.example.net") is None
+    for name, value in console_cookies.items():
+        assert client.get_cookie(f"__Host-{name}", domain="apps.example.net").value == value
+
+
+@pytest.mark.parametrize("mode", ["console", "end_user"])
+@pytest.mark.parametrize("credential", ["matching-cookie", "missing", "other-account", "bearer", "console-cookie"])
+def test_login_status_checks_cookie_even_without_end_user_mode(
+    handoff: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    account_application_services: ApplicationServices,
+    mode: str,
+    credential: str,
+) -> None:
+    from controllers.web import login
+
+    service = account_application_services.web_authentication
+    monkeypatch.setattr(service._tokens, "_identities", handoff.services.web_identity)
+    monkeypatch.setattr(service, "_app_sessions", handoff.services.app_sessions)
+    monkeypatch.setattr(service, "_private_app_access_enabled", False)
+    monkeypatch.setattr(login, "application_services", lambda: SimpleNamespace(web_authentication=service))
+    proof = handoff.signer.issue(webapp_login_claims())
+    app_passport = handoff.services.web_passport.issue_for_account(app_code="app-a", access_token=proof).access_token
+    headers = {"X-App-Passport": app_passport}
+    client = handoff.app.test_client()
+    if credential in {"matching-cookie", "other-account"}:
+        cookie = (
+            proof
+            if credential == "matching-cookie"
+            else handoff.signer.issue(webapp_login_claims(user_id=str(uuid4())))
+        )
+        client.set_cookie("__Host-webapp_access_token", cookie, domain="apps.example.net", secure=True)
+    elif credential == "bearer":
+        headers["Authorization"] = f"Bearer {proof}"
+    elif credential == "console-cookie":
+        client.set_cookie("__Host-access_token", handoff.login, domain="apps.example.net", secure=True)
+    response = client.get(
+        "/api/login/status",
+        base_url="https://apps.example.net",
+        headers=headers,
+        query_string={"app_code": "app-a", "mode": mode},
+    )
+    assert response.status_code == 200
+    assert response.json["app_logged_in"] is (credential == "matching-cookie")
+    if mode == "end_user":
+        assert response.json["logged_in"] is (credential in {"matching-cookie", "other-account"})
 
 
 def test_no_console_session_reports_logged_out(handoff: SimpleNamespace) -> None:
@@ -167,7 +275,8 @@ def test_expired_code_is_rejected(handoff: SimpleNamespace) -> None:
 
 
 def test_account_switch_rejects_previous_account_passport(handoff: SimpleNamespace) -> None:
-    token = handoff.services.web_passport.issue_for_account(app_code="app-a", access_token=handoff.login).access_token
+    login_token = handoff.signer.issue(webapp_login_claims())
+    token = handoff.services.web_passport.issue_for_account(app_code="app-a", access_token=login_token).access_token
     sessions = handoff.services.app_sessions
     assert sessions.verify(token=token, app_code="app-a", user_id=None, account_id=ACCOUNT_ID)
     assert not sessions.verify(token=token, app_code="app-a", user_id=None, account_id=str(uuid4()))

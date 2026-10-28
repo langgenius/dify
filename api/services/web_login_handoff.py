@@ -4,6 +4,7 @@ import base64
 import hashlib
 import secrets
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 from urllib.parse import urlencode, urlsplit, urlunsplit
@@ -41,6 +42,12 @@ class WebLoginGrant(BaseModel):
 
 class WebLoginUnavailableError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class WebLoginSession:
+    access_token: str
+    expires_at: int
 
 
 class WebLoginGrantStore(Protocol):
@@ -118,7 +125,7 @@ class WebLoginHandoffService:
             )
         )
 
-    def redeem(self, *, app_code: str, code: str, code_verifier: str) -> str:
+    def redeem(self, *, app_code: str, code: str, code_verifier: str) -> WebLoginSession:
         if not self._enabled:
             raise WebPassportAccountExchangeDisabledError()
         key = self._key(code)
@@ -143,14 +150,17 @@ class WebLoginHandoffService:
             self._identities.require_account(grant.account_id)
         except WebIdentityError as exc:
             raise WebPassportUnauthorizedError("Account is unavailable.") from exc
-        return self._tokens.issue(
-            {
-                "sub": "Web API Account Login",
-                "token_source": "webapp_account_login",
-                "user_id": grant.account_id,
-                "auth_type": "internal",
-                "exp": grant.login_expires_at,
-            }
+        return WebLoginSession(
+            access_token=self._tokens.issue(
+                {
+                    "sub": "Web API Account Login",
+                    "token_source": "webapp_account_login",
+                    "user_id": grant.account_id,
+                    "auth_type": "internal",
+                    "exp": grant.login_expires_at,
+                }
+            ),
+            expires_at=grant.login_expires_at,
         )
 
     @staticmethod

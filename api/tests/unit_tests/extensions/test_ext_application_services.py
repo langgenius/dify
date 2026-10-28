@@ -2086,7 +2086,15 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
         initialization_password="",
         redis=_redis(),
     )
-    token = PassportService().issue({"sub": "Console API Passport", "user_id": account.id, "exp": 2_000_000_000})
+    token = PassportService().issue(
+        {
+            "sub": "Web API Account Login",
+            "token_source": "webapp_account_login",
+            "auth_type": "internal",
+            "user_id": account.id,
+            "exp": 2_000_000_000,
+        }
+    )
     if not enabled:
         with pytest.raises(WebPassportAccountExchangeDisabledError):
             services.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
@@ -2108,11 +2116,12 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
         initialization_password="",
         redis=_redis(),
     )
-    assert reader.web_authentication.get_login_status(
+    assert not reader.web_authentication.get_login_status(
         app_code="rollout-code",
         user_id=None,
         access_token=None,
         app_session_token=result.access_token,
+        account_login_token=token,
     ).app_logged_in
     with pytest.raises(WebPassportAccountExchangeDisabledError):
         reader.web_passport.issue_for_account(app_code="rollout-code", access_token=token)

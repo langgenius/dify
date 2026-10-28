@@ -71,8 +71,7 @@ class TokenManagerWebAuthenticationGateway(WebAuthenticationTokenGateway):
         if not token:
             return None
         try:
-            claims = self._identities.resolve_login(PassportService().verify(token))
-            return claims.account_id if claims.token_source in {None, "webapp_account_login"} else None
+            return self._identities.resolve_webapp_account_login(PassportService().verify(token)).account_id
         except Exception:
             return None
 
@@ -194,7 +193,15 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
         self._identities = identities
 
     @override
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None, account_id: str | None = None) -> bool:
+    def verify(
+        self,
+        *,
+        token: str | None,
+        app_code: str,
+        user_id: str | None,
+        account_id: str | None = None,
+        require_account: bool = False,
+    ) -> bool:
         if not token:
             return False
         try:
@@ -212,7 +219,12 @@ class PassportWebAppSessionGateway(WebAppSessionGateway):
                 app_code=token_app_code,
                 end_user_id=end_user_id,
             )
-            if session is None or (account_id is not None and session.account_id != account_id):
+            if session is None:
+                return False
+            # Incidental Account cookies must not invalidate legacy guest sessions.
+            if session.account_id is not None and session.account_id != account_id:
+                return False
+            if require_account and session.account_id is None:
                 return False
             self._identities.validate_passport(decoded, account_id=session.account_id)
             if session.account_id is None and user_id is not None and session.end_user_session_id != user_id:
