@@ -1,7 +1,8 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { ConsoleHumanInputV2FormDefinitionResponse } from '@dify/contracts/api/console/form/types.gen'
 import type { UseQueryOptions } from '@tanstack/react-query'
 import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
-import type { consoleClient } from '@/service/console'
+import type { consoleClient, consoleQuery } from '@/service/console'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,11 +12,24 @@ type ConsoleFormSubmitInput = Parameters<
   typeof consoleClient.form.humanInput.v2.byFormToken.post
 >[0]
 
-const { fetchForm, fetchLegacyForm, submitForm, submitLegacyForm } = vi.hoisted(() => ({
+type LogoutMutationOptions = Parameters<typeof consoleQuery.logout.post.mutationOptions>[0]
+
+const {
+  fetchForm,
+  fetchLegacyForm,
+  submitForm,
+  submitLegacyForm,
+  fetchProfile,
+  logout,
+  deployment,
+} = vi.hoisted(() => ({
   fetchForm: vi.fn<(token: string) => Promise<ConsoleHumanInputV2FormDefinitionResponse>>(),
   fetchLegacyForm: vi.fn(),
   submitForm: vi.fn<(input: ConsoleFormSubmitInput) => Promise<Record<string, unknown>>>(),
   submitLegacyForm: vi.fn(),
+  fetchProfile: vi.fn<typeof consoleClient.account.profile.get>(),
+  logout: vi.fn<() => ReturnType<typeof consoleClient.logout.post>>(),
+  deployment: { basePath: '' },
 }))
 
 type FormQueryOptions = Omit<
@@ -27,7 +41,21 @@ type FormQueryOptions = Omit<
 }
 
 vi.mock('@/service/console', () => ({
+  consoleClient: {
+    account: { profile: { get: fetchProfile } },
+  },
   consoleQuery: {
+    account: {
+      profile: { get: { queryKey: () => ['account-profile'] } },
+    },
+    logout: {
+      post: {
+        mutationOptions: (options: LogoutMutationOptions) => ({
+          ...options,
+          mutationFn: logout,
+        }),
+      },
+    },
     form: {
       humanInput: {
         byFormToken: {
@@ -64,6 +92,15 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: submitLegacyForm,
 }))
 
+vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: vi.fn() }))
+
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return deployment.basePath
+  },
+}))
+
 vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
 
 const createDefinition = (
@@ -89,11 +126,23 @@ const createDefinition = (
   ...overrides,
 })
 
-const renderForm = () => {
+const createProfile = (
+  overrides: Partial<GetAccountProfileResponse> = {},
+): GetAccountProfileResponse => ({
+  id: 'reviewer-account',
+  name: 'Approval Reviewer',
+  email: 'reviewer@example.com',
+  avatar: '',
+  avatar_url: null,
+  is_password_set: true,
+  ...overrides,
+})
+
+const renderForm = (formToken = 'console-token') => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <ConsoleHumanInputForm formToken="console-token" />
+      <ConsoleHumanInputForm formToken={formToken} />
     </QueryClientProvider>,
   )
 }
@@ -104,7 +153,12 @@ describe('ConsoleHumanInputForm', () => {
     fetchLegacyForm.mockReset().mockRejectedValue({ status: 404 })
     submitForm.mockReset().mockResolvedValue({})
     submitLegacyForm.mockReset()
+    fetchProfile.mockReset().mockResolvedValue(createProfile())
+    logout.mockReset().mockResolvedValue({ result: 'success' })
+    deployment.basePath = ''
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('reads and submits the resolved Console form using only the new Console API', async () => {
     const user = userEvent.setup()
@@ -116,6 +170,7 @@ describe('ConsoleHumanInputForm', () => {
     expect(fetchForm).toHaveBeenCalledWith('console-token')
     expect(fetchLegacyForm).not.toHaveBeenCalled()
     expect(screen.queryByText('{{#start.title#}}')).not.toBeInTheDocument()
+    expect(fetchProfile).not.toHaveBeenCalled()
 
     await user.clear(response)
     await user.type(response, 'Approved after review')
@@ -129,6 +184,10 @@ describe('ConsoleHumanInputForm', () => {
     expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
     expect(screen.getByText('share.humanInput.recorded')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'response' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'share.humanInput.switchAccount' }),
+    ).not.toBeInTheDocument()
+    expect(fetchProfile).not.toHaveBeenCalled()
   })
 
   it('keeps edited input after a failed submission and allows retry', async () => {
@@ -183,18 +242,130 @@ describe('ConsoleHumanInputForm', () => {
   })
 
   it.each([
-    [{ status: 404 }, 'share.humanInput.formNotFound'],
+    { error: { status: 404 }, name: 'Approval Reviewer', expectedName: 'Approval Reviewer' },
+    {
+      error: { data: { body: { code: 'not_found' } } },
+      name: '',
+      expectedName: 'reviewer@example.com',
+    },
+    { error: { code: 'not_found' }, name: '  ', expectedName: 'reviewer@example.com' },
+  ])(
+    'shows account recovery for an unavailable definition: $error',
+    async ({ error, name, expectedName }) => {
+      fetchProfile.mockResolvedValue(createProfile({ name }))
+      fetchForm.mockRejectedValue(error)
+      renderForm()
+
+      expect(await screen.findByText('share.humanInput.unavailableTitle')).toBeInTheDocument()
+      expect(screen.getByText('share.humanInput.unavailableDescription')).toBeInTheDocument()
+      expect(
+        await screen.findByText(
+          `share.humanInput.currentAccount:${JSON.stringify({ name: expectedName })}`,
+        ),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'share.humanInput.switchAccount' })).toBeEnabled()
+      expect(fetchProfile).toHaveBeenCalledOnce()
+      expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.retry' }),
+      ).not.toBeInTheDocument()
+      expect(submitForm).not.toHaveBeenCalled()
+      expect(fetchLegacyForm).not.toHaveBeenCalled()
+      expect(submitLegacyForm).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    [{ status: 500 }, 'share.humanInputV2.unknownError'],
+    [{ status: 429 }, 'share.humanInput.rateLimitExceeded'],
     [{ status: 410, data: { body: { code: 'expired' } } }, 'share.humanInput.expired'],
-  ])('shows a terminal state for a rejected definition: %j', async (error, expected) => {
+  ])('does not offer account recovery for other definition errors: %j', async (error, expected) => {
     fetchForm.mockRejectedValue(error)
     renderForm()
 
     expect(await screen.findByText(expected)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
-    expect(submitForm).not.toHaveBeenCalled()
-    expect(fetchLegacyForm).not.toHaveBeenCalled()
-    expect(submitLegacyForm).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: 'share.humanInput.switchAccount' }),
+    ).not.toBeInTheDocument()
+    expect(fetchProfile).not.toHaveBeenCalled()
+  })
+
+  it.each(['', '/console'])(
+    'switches account once while pending and returns to the original form with base path "%s"',
+    async (basePath) => {
+      const user = userEvent.setup()
+      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+      deployment.basePath = basePath
+      fetchForm.mockRejectedValue({ status: 404 })
+      let completeLogout:
+        | ((value: Awaited<ReturnType<typeof consoleClient.logout.post>>) => void)
+        | undefined
+      const pendingLogout = new Promise<Awaited<ReturnType<typeof consoleClient.logout.post>>>(
+        (resolve) => {
+          completeLogout = resolve
+        },
+      )
+      logout.mockReturnValue(pendingLogout)
+      const formToken = 'approval/request?待办+1'
+      renderForm(formToken)
+
+      const switchAccount = await screen.findByRole('button', {
+        name: 'share.humanInput.switchAccount',
+      })
+      await user.click(switchAccount)
+      expect(switchAccount).toHaveAttribute('aria-disabled', 'true')
+      await user.click(switchAccount)
+      expect(logout).toHaveBeenCalledOnce()
+      expect(replace).not.toHaveBeenCalled()
+
+      await act(async () => {
+        completeLogout?.({ result: 'success' })
+        await pendingLogout
+      })
+
+      const returnPath = `${basePath}/human-input/${encodeURIComponent(formToken)}`
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        `${basePath}/signin?redirect_url=${encodeURIComponent(returnPath)}`,
+      )
+    },
+  )
+
+  it('keeps the unavailable page when switching account fails and allows retry', async () => {
+    const user = userEvent.setup()
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    fetchForm.mockRejectedValue({ status: 404 })
+    logout.mockRejectedValue(new Error('Logout failed'))
+    renderForm()
+
+    const switchAccount = await screen.findByRole('button', {
+      name: 'share.humanInput.switchAccount',
+    })
+    await user.click(switchAccount)
+
+    await waitFor(() => expect(switchAccount).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(screen.getByText('share.humanInput.unavailableTitle')).toBeInTheDocument()
+    expect(replace).not.toHaveBeenCalled()
+    await user.click(switchAccount)
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(2))
+    expect(replace).not.toHaveBeenCalled()
+  })
+
+  it('shows the same account recovery if access is lost before submission', async () => {
+    const user = userEvent.setup()
+    submitForm.mockRejectedValue(
+      new Response(JSON.stringify({ code: 'not_found' }), { status: 404 }),
+    )
+    renderForm()
+
+    await user.click(await screen.findByRole('button', { name: 'Approve' }))
+
+    expect(await screen.findByText('share.humanInput.unavailableTitle')).toBeInTheDocument()
+    expect(
+      await screen.findByText('share.humanInput.currentAccount:{"name":"Approval Reviewer"}'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'share.humanInput.switchAccount' })).toBeEnabled()
+    expect(screen.queryByRole('textbox', { name: 'response' })).not.toBeInTheDocument()
+    expect(submitForm).toHaveBeenCalledOnce()
   })
 
   it.each([{ status: 409, code: 'already_submitted' }, new Response(null, { status: 409 })])(
@@ -212,6 +383,10 @@ describe('ConsoleHumanInputForm', () => {
       expect(
         screen.queryByRole('button', { name: 'common.operation.retry' }),
       ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'share.humanInput.switchAccount' }),
+      ).not.toBeInTheDocument()
+      expect(fetchProfile).not.toHaveBeenCalled()
     },
   )
 

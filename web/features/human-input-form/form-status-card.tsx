@@ -7,6 +7,8 @@ type FormStatusCardProps = {
   iconClassName: string
   title: ReactNode
   subtitle?: ReactNode
+  description?: ReactNode
+  children?: ReactNode
   submissionID?: string
   removeWebappBrand?: boolean
   replaceWebappLogo?: string | null
@@ -16,6 +18,8 @@ const FormStatusCard = ({
   iconClassName,
   title,
   subtitle,
+  description,
+  children,
   submissionID,
   removeWebappBrand,
   replaceWebappLogo,
@@ -32,7 +36,11 @@ const FormStatusCard = ({
           <div className="grow">
             <div className="title-4xl-semi-bold text-text-primary">{title}</div>
             {!!subtitle && <div className="title-4xl-semi-bold text-text-primary">{subtitle}</div>}
+            {description !== undefined && (
+              <div className="mt-3 system-md-regular text-text-secondary">{description}</div>
+            )}
           </div>
+          {children}
           {submissionID && (
             <div className="shrink-0 system-2xs-regular-uppercase break-words text-text-tertiary">
               {t(($) => $['humanInput.submissionID'], { id: submissionID, ns: 'share' })}

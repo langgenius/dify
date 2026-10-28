@@ -5,10 +5,13 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import FormStatusCard from '@/features/human-input-form/form-status-card'
 import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
+import { useLogout } from '@/service/use-common'
+import { basePath } from '@/utils/var'
 import { normalizeConsoleFormDefinition } from './definition'
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -23,6 +26,36 @@ const getErrorKind = (error: unknown) => {
   if (record.status === 404 || code === 'not_found') return 'not-found'
   if (record.status === 429) return 'rate-limited'
   return 'unknown'
+}
+
+function UnavailableConsoleForm({ formToken }: { formToken: string }) {
+  const { t } = useTranslation(['share'])
+  const { data } = useQuery(userProfileQueryOptions())
+  const profile = data?.profile
+  const accountName = profile?.name?.trim() || profile?.email
+  const returnPath = `${basePath}/human-input/${encodeURIComponent(formToken)}`
+  const logout = useLogout({
+    redirectTo: `/signin?redirect_url=${encodeURIComponent(returnPath)}`,
+  })
+
+  return (
+    <FormStatusCard
+      iconClassName="i-ri-information-2-fill text-text-accent"
+      title={t(($) => $['humanInput.unavailableTitle'])}
+      description={t(($) => $['humanInput.unavailableDescription'])}
+    >
+      <div className="flex flex-col items-start gap-3">
+        {accountName && (
+          <p className="system-sm-regular wrap-anywhere text-text-tertiary">
+            {t(($) => $['humanInput.currentAccount'], { name: accountName })}
+          </p>
+        )}
+        <Button loading={logout.isPending} onClick={() => logout.mutate()}>
+          {t(($) => $['humanInput.switchAccount'])}
+        </Button>
+      </div>
+    </FormStatusCard>
+  )
 }
 
 export default function ConsoleHumanInputForm({ formToken }: { formToken: string }) {
@@ -70,11 +103,9 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
       ? t(($) => $['humanInput.expired'], { ns: 'share' })
       : errorKind === 'submitted'
         ? t(($) => $['humanInput.completed'], { ns: 'share' })
-        : errorKind === 'not-found'
-          ? t(($) => $['humanInput.formNotFound'], { ns: 'share' })
-          : errorKind === 'rate-limited'
-            ? t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })
-            : t(($) => $['humanInputV2.unknownError'], { ns: 'share' })
+        : errorKind === 'rate-limited'
+          ? t(($) => $['humanInput.rateLimitExceeded'], { ns: 'share' })
+          : t(($) => $['humanInputV2.unknownError'], { ns: 'share' })
 
   if (form.isPending) return <LoadingPlaceholder className="h-full" />
 
@@ -99,6 +130,8 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
       />
     )
   }
+
+  if (errorKind === 'not-found') return <UnavailableConsoleForm formToken={formToken} />
 
   if (form.isError || terminal) {
     return (

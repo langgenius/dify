@@ -5248,6 +5248,7 @@ export default interface Resources {
     'generation.tabs.saved': 'Saved'
     'generation.title': 'AI Completion'
     'humanInput.completed': 'Seems like this request was dealt with elsewhere.'
+    'humanInput.currentAccount': 'Current account: {{name}}'
     'humanInput.expirationTimeNowOrFuture': 'This action will expire {{relativeTime}}.'
     'humanInput.expired': 'Seems like this request has expired.'
     'humanInput.expiredTip': 'This action has expired.'
@@ -5256,7 +5257,10 @@ export default interface Resources {
     'humanInput.recorded': 'Your input has been recorded.'
     'humanInput.sorry': 'Sorry!'
     'humanInput.submissionID': 'submission_id: {{id}}'
+    'humanInput.switchAccount': 'Switch account'
     'humanInput.thanks': 'Thanks!'
+    'humanInput.unavailableDescription': "The link may be unavailable or may not match the account you're signed in with. Open the form from the notification you received, or try switching accounts."
+    'humanInput.unavailableTitle': 'Unable to open this form'
     'humanInputV2.accessRateLimited': 'Too many verification emails were requested. Please try again later.'
     'humanInputV2.alreadySubmitted': 'This request has already been completed.'
     'humanInputV2.challengeExpired': 'This verification code has expired. Request a new code to continue.'
