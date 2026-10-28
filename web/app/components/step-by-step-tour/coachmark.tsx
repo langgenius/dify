@@ -335,9 +335,7 @@ export function StepByStepTourCoachmark({
                 )}
               >
                 <PopoverClose
-                  render={
-                    <Button variant="ghost" size="medium" className="-ms-3.5 text-text-tertiary" />
-                  }
+                  className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-0 text-start system-sm-regular text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   onKeyDown={
                     overlay.interactionPolicy === 'target-only' ? handleSkipKeyDown : undefined
                   }
