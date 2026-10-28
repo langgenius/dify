@@ -7,7 +7,8 @@ from contextlib import contextmanager
 from enum import StrEnum
 from http import HTTPStatus
 from io import BytesIO
-from typing import Any, Final
+from types import MappingProxyType
+from typing import Final
 
 from flask import send_file
 from flask_restx import Resource
@@ -42,7 +43,7 @@ from controllers.openapi._models import (
     Hint,
     SkillDescribeResponse,
     SkillExportQuery,
-    SkillImportBody,
+    SkillImportPayload,
     SkillImportResponse,
     SkillListQuery,
     SkillListResponse,
@@ -76,65 +77,49 @@ from libs.archive_writer import (
     write_archive,
 )
 from machinery.context import RequestContext
+from services.skill_management_service import SkillImportPayload as ServiceSkillImportPayload
 from services.skill_management_service import (
-    SkillImportPayload,
     SkillManagementService,
     SkillManagementServiceError,
     SkillOverwritePayload,
+    SkillServiceErrorCode,
     max_skill_archive_bytes,
 )
 from services.skill_management_service import SkillPublishPayload as ServiceSkillPublishPayload
 
 
-class ServiceCode(StrEnum):
-    NOT_FOUND = "skill_not_found"
-    VERSION_NOT_FOUND = "skill_version_not_found"
-    CONFLICT = "skill_conflict"
-    NAME_CONFLICT = "skill_name_conflict"
-    NAME_MISMATCH = "skill_name_mismatch"
-    MISSING_SKILL_MD = "missing_skill_md"
-    INVALID_SKILL_MD = "invalid_skill_md"
-    MISSING_SKILL_NAME = "missing_skill_name"
-    INVALID_SKILL_NAME = "invalid_skill_name"
-    MISSING_SKILL_DESCRIPTION = "missing_skill_description"
-    INVALID_SKILL_DESCRIPTION = "invalid_skill_description"
-    INVALID_SKILL_PACKAGE = "invalid_skill_package"
-    ARCHIVE_TOO_LARGE = "archive_too_large"
-    SKILL_TOO_LARGE = "skill_too_large"
-    TOO_MANY_FILES = "too_many_files"
-    DUPLICATE_FILE_PATH = "duplicate_file_path"
-    FILE_PATH_CONFLICT = "file_path_conflict"
-    INVALID_SKILL_FILE = "invalid_skill_file"
+class ServiceRejection(StrEnum):
+    """Service error codes this surface answers with its own error; any other code is relayed."""
+
+    error: type[OpenApiError]
+
+    NOT_FOUND = (SkillServiceErrorCode.SKILL_NOT_FOUND, SkillNotFound)
+    VERSION_NOT_FOUND = (SkillServiceErrorCode.SKILL_VERSION_NOT_FOUND, SkillVersionNotFound)
+    CONFLICT = (SkillServiceErrorCode.SKILL_CONFLICT, DraftChanged)
+    NAME_CONFLICT = (SkillServiceErrorCode.SKILL_NAME_CONFLICT, SkillNameTaken)
+    NAME_MISMATCH = (SkillServiceErrorCode.SKILL_NAME_MISMATCH, SkillNameMismatch)
+    MISSING_SKILL_MD = (SkillServiceErrorCode.MISSING_SKILL_MD, SkillPackageInvalid)
+    INVALID_SKILL_MD = (SkillServiceErrorCode.INVALID_SKILL_MD, SkillPackageInvalid)
+    MISSING_SKILL_NAME = (SkillServiceErrorCode.MISSING_SKILL_NAME, SkillPackageInvalid)
+    INVALID_SKILL_NAME = (SkillServiceErrorCode.INVALID_SKILL_NAME, SkillPackageInvalid)
+    MISSING_SKILL_DESCRIPTION = (SkillServiceErrorCode.MISSING_SKILL_DESCRIPTION, SkillPackageInvalid)
+    INVALID_SKILL_DESCRIPTION = (SkillServiceErrorCode.INVALID_SKILL_DESCRIPTION, SkillPackageInvalid)
+    INVALID_SKILL_PACKAGE = (SkillServiceErrorCode.INVALID_SKILL_PACKAGE, SkillPackageInvalid)
+    DUPLICATE_FILE_PATH = (SkillServiceErrorCode.DUPLICATE_FILE_PATH, SkillPackageInvalid)
+    FILE_PATH_CONFLICT = (SkillServiceErrorCode.FILE_PATH_CONFLICT, SkillPackageInvalid)
+    INVALID_SKILL_FILE = (SkillServiceErrorCode.INVALID_SKILL_FILE, SkillPackageInvalid)
+    ARCHIVE_TOO_LARGE = (SkillServiceErrorCode.ARCHIVE_TOO_LARGE, SkillPackageTooLarge)
+    SKILL_TOO_LARGE = (SkillServiceErrorCode.SKILL_TOO_LARGE, SkillPackageTooLarge)
+    TOO_MANY_FILES = (SkillServiceErrorCode.TOO_MANY_FILES, SkillPackageTooLarge)
+
+    def __new__(cls, value: str, error: type[OpenApiError]) -> ServiceRejection:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.error = error
+        return member
 
 
-_PACKAGE_CODES: Final = (
-    ServiceCode.MISSING_SKILL_MD,
-    ServiceCode.INVALID_SKILL_MD,
-    ServiceCode.MISSING_SKILL_NAME,
-    ServiceCode.INVALID_SKILL_NAME,
-    ServiceCode.MISSING_SKILL_DESCRIPTION,
-    ServiceCode.INVALID_SKILL_DESCRIPTION,
-    ServiceCode.INVALID_SKILL_PACKAGE,
-    ServiceCode.DUPLICATE_FILE_PATH,
-    ServiceCode.FILE_PATH_CONFLICT,
-    ServiceCode.INVALID_SKILL_FILE,
-)
-
-_TOO_LARGE_CODES: Final = (
-    ServiceCode.ARCHIVE_TOO_LARGE,
-    ServiceCode.SKILL_TOO_LARGE,
-    ServiceCode.TOO_MANY_FILES,
-)
-
-_REJECTIONS: Final[Mapping[str, type[OpenApiError]]] = {
-    ServiceCode.NOT_FOUND: SkillNotFound,
-    ServiceCode.VERSION_NOT_FOUND: SkillVersionNotFound,
-    ServiceCode.CONFLICT: DraftChanged,
-    ServiceCode.NAME_CONFLICT: SkillNameTaken,
-    ServiceCode.NAME_MISMATCH: SkillNameMismatch,
-    **dict.fromkeys(_PACKAGE_CODES, SkillPackageInvalid),
-    **dict.fromkeys(_TOO_LARGE_CODES, SkillPackageTooLarge),
-}
+_NO_HINTS: Final[Mapping[type[OpenApiError], list[Hint]]] = MappingProxyType({})
 
 _IMPORT_FILENAME: Final = "skill.zip"
 
@@ -162,25 +147,27 @@ def _details(error: SkillManagementServiceError) -> list[ErrorDetail]:
 
 
 def _rejection(error: SkillManagementServiceError) -> OpenApiError:
-    known = _REJECTIONS.get(error.code)
-    if known is not None:
-        return known(error.message, details=_details(error))
-    return SkillRequestRejected(error.message, status_code=error.status_code, details=_details(error))
+    try:
+        known = ServiceRejection(error.code)
+    except ValueError:
+        return SkillRequestRejected(error.message, status_code=error.status_code, details=_details(error))
+    return known.error(error.message, details=_details(error))
 
 
 @contextmanager
-def _rejecting(*, hints: Mapping[type[OpenApiError], list[Hint]] | None = None) -> Generator[None]:
+def _relaying_service_errors(*, hints: Mapping[type[OpenApiError], list[Hint]] = _NO_HINTS) -> Generator[None]:
     try:
         yield
     except SkillManagementServiceError as error:
         rejection = _rejection(error)
-        if hints is not None and type(rejection) in hints:
-            rejection.hints = hints[type(rejection)]
+        rejection_hints = hints.get(type(rejection))
+        if rejection_hints is not None:
+            rejection.hints = rejection_hints
         raise rejection from error
 
 
 def _skill_upload_parts() -> int:
-    plain_fields = len(SkillImportBody.model_fields) - len(file_fields(SkillImportBody))
+    plain_fields = len(SkillImportPayload.model_fields) - len(file_fields(SkillImportPayload))
     return dify_config.SKILL_PACKAGE_MAX_ENTRIES + plain_fields
 
 
@@ -226,10 +213,6 @@ def _expected_updated_at(draft_hash: str | None) -> int | None:
     return int(draft_hash)
 
 
-def _version_fields(record: Mapping[str, Any]) -> dict[str, Any]:
-    return {**record, "created_by": record["published_by"]}
-
-
 @openapi_ns.route("/workspaces/<string:workspace_id>/skills")
 class SkillListApi(Resource):
     @endpoint(
@@ -246,7 +229,7 @@ class SkillListApi(Resource):
         returns=(HTTPStatus.OK, SkillListResponse, "Skills"),
     )
     def get(self, ctx: RequestContext, workspace_id: str, *, query: SkillListQuery):
-        with _rejecting():
+        with _relaying_service_errors():
             result = SkillManagementService().list_skills(
                 tenant_id=ctx.active_workspace_id,
                 keyword=query.keyword,
@@ -276,7 +259,7 @@ class SkillDescribeApi(Resource):
     def get(self, ctx: RequestContext, workspace_id: str, skill_id: str):
         skill_id = require_uuid(skill_id, not_found=SkillNotFound)
         service = SkillManagementService()
-        with _rejecting():
+        with _relaying_service_errors():
             record = service.get_skill(tenant_id=ctx.active_workspace_id, skill_id=skill_id)
             versions = service.list_versions(tenant_id=ctx.active_workspace_id, skill_id=skill_id)["data"]
         latest = next((version for version in versions if version["is_latest"]), None)
@@ -284,7 +267,7 @@ class SkillDescribeApi(Resource):
             {
                 **record,
                 "draft_hash": _draft_hash(record["updated_at"]),
-                "latest_version": SkillVersionRow.model_validate(_version_fields(latest)) if latest else None,
+                "latest_version": SkillVersionRow.model_validate(latest) if latest else None,
             }
         )
 
@@ -303,9 +286,9 @@ class SkillVersionListApi(Resource):
     )
     def get(self, ctx: RequestContext, workspace_id: str, skill_id: str, *, query: SkillVersionListQuery):
         skill_id = require_uuid(skill_id, not_found=SkillNotFound)
-        with _rejecting():
+        with _relaying_service_errors():
             records = SkillManagementService().list_versions(tenant_id=ctx.active_workspace_id, skill_id=skill_id)
-        rows = [SkillVersionRow.model_validate(_version_fields(record)) for record in records["data"]]
+        rows = [SkillVersionRow.model_validate(record) for record in records["data"]]
         return SkillVersionListResponse.page_of(rows, query=query)
 
 
@@ -327,7 +310,7 @@ class SkillExportApi(Resource):
     def get(self, ctx: RequestContext, workspace_id: str, skill_id: str, *, query: SkillExportQuery):
         skill_id = require_uuid(skill_id, not_found=SkillNotFound)
         service = SkillManagementService()
-        with _rejecting():
+        with _relaying_service_errors():
             if query.version_id is None:
                 archive = service.export_draft_archive(tenant_id=ctx.active_workspace_id, skill_id=skill_id)
             else:
@@ -359,14 +342,14 @@ class SkillPublishApi(Resource):
     )
     def post(self, ctx: RequestContext, workspace_id: str, skill_id: str, *, body: SkillPublishPayload):
         skill_id = require_uuid(skill_id, not_found=SkillNotFound)
-        with _rejecting():
+        with _relaying_service_errors():
             record = SkillManagementService().publish_skill(
                 tenant_id=ctx.active_workspace_id,
                 user_id=ctx.account_id,
                 skill_id=skill_id,
                 payload=ServiceSkillPublishPayload(version_name=body.version_name, publish_note=body.publish_note),
             )
-        return SkillPublishResponse.model_validate(_version_fields(record))
+        return SkillPublishResponse.model_validate(record)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/skills/imports")
@@ -388,19 +371,19 @@ class SkillImportApi(Resource):
             ),
         ),
         requirements=(*_edit_guards(RBACPermission.SKILL_EDIT), _UPLOAD_CAP),
-        body=SkillImportBody,
+        body=SkillImportPayload,
         returns=(
             (HTTPStatus.CREATED, SkillImportResponse, "Created"),
             (HTTPStatus.OK, SkillImportResponse, "Overwritten"),
         ),
     )
-    def post(self, ctx: RequestContext, workspace_id: str, *, body: SkillImportBody):
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: SkillImportPayload):
         """Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
         so an edit made in the same second as the export is not detected.
         """
         content = _archive_of(body.files)
         workspace = ctx.active_workspace_id
-        taken: dict[type[OpenApiError], list[Hint]] = {
+        name_conflict_hints: Mapping[type[OpenApiError], list[Hint]] = {
             SkillNameTaken: [
                 Hint(
                     summary="Overwrite the existing skill instead",
@@ -410,13 +393,13 @@ class SkillImportApi(Resource):
             ]
         }
         service = SkillManagementService()
-        with _rejecting(hints=taken):
+        with _relaying_service_errors(hints=name_conflict_hints):
             if body.skill_id is None:
                 status = HTTPStatus.CREATED
                 record = service.import_skill(
                     tenant_id=workspace,
                     user_id=ctx.account_id,
-                    payload=SkillImportPayload(content=content, filename=_IMPORT_FILENAME),
+                    payload=ServiceSkillImportPayload(content=content, filename=_IMPORT_FILENAME),
                 )
             else:
                 status = HTTPStatus.OK

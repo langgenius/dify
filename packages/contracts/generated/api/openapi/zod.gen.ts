@@ -1864,9 +1864,9 @@ export const zSkillExportQuery = z.object({
 })
 
 /**
- * SkillImportBody
+ * SkillImportPayload
  */
-export const zSkillImportBody = z.object({
+export const zSkillImportPayload = z.object({
   draft_hash: z
     .string()
     .regex(/^[0-9]+$/)
@@ -3841,7 +3841,7 @@ export const zGetWorkspacesByWorkspaceIdSkillsQuery = z.object({
  */
 export const zGetWorkspacesByWorkspaceIdSkillsResponse = zSkillListResponse
 
-export const zPostWorkspacesByWorkspaceIdSkillsImportsBody = zSkillImportBody
+export const zPostWorkspacesByWorkspaceIdSkillsImportsBody = zSkillImportPayload
 
 export const zPostWorkspacesByWorkspaceIdSkillsImportsPath = z.object({
   workspace_id: z.string(),

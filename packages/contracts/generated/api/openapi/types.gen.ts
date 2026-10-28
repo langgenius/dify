@@ -1378,7 +1378,7 @@ export type SkillExportQuery = {
   version_id?: string | null
 }
 
-export type SkillImportBody = {
+export type SkillImportPayload = {
   draft_hash?: string | null
   files: {
     [key: string]: Blob | File | Array<Blob | File>
@@ -4552,7 +4552,7 @@ export type GetWorkspacesByWorkspaceIdSkillsResponse =
   GetWorkspacesByWorkspaceIdSkillsResponses[keyof GetWorkspacesByWorkspaceIdSkillsResponses]
 
 export type PostWorkspacesByWorkspaceIdSkillsImportsData = {
-  body: SkillImportBody
+  body: SkillImportPayload
   path: {
     workspace_id: string
   }

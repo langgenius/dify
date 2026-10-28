@@ -2017,7 +2017,7 @@ so an edit made in the same second as the export is not detected.
 
 | Required | Schema |
 | -------- | ------ |
-| Yes | **application/json**: [SkillImportBody](#skillimportbody)<br>**multipart/form-data**: [SkillImportBody](#skillimportbody)<br> |
+| Yes | **application/json**: [SkillImportPayload](#skillimportpayload)<br>**multipart/form-data**: [SkillImportPayload](#skillimportpayload)<br> |
 
 #### Responses
 
@@ -3795,7 +3795,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | version_id | string | Export this published version instead of the draft | No |
 
-#### SkillImportBody
+#### SkillImportPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
