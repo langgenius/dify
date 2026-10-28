@@ -152,7 +152,7 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue(defaultChatHookReturn as ChatHookReturn)
   })
 
-  it.each(['1', '2'] as const)(
+  it.each(['1', '2', undefined] as const)(
     'submits Web App forms with event version %s',
     async (formVersion) => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
@@ -205,10 +205,14 @@ describe('ChatWrapper', () => {
       fireEvent.click(screen.getByText('Run'))
 
       await waitFor(() => {
-        expect(submitWebAppHumanInputForm).toHaveBeenCalledWith('token-web-1', {
-          inputs: { test: 'web-test' },
-          action: 'run',
-        })
+        expect(submitWebAppHumanInputForm).toHaveBeenCalledWith(
+          'token-web-1',
+          {
+            inputs: { test: 'web-test' },
+            action: 'run',
+          },
+          formVersion,
+        )
       })
     },
   )

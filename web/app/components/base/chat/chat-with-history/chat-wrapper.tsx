@@ -290,7 +290,7 @@ const ChatWrapper = () => {
         .flatMap((item) => item.humanInputFormDataList ?? [])
         .find((item) => item.form_token === formToken)
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
-      else await submitWebAppHumanInputForm(formToken, formData)
+      else await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
     },
     [chatList, isInstalledApp, prepareHumanInputSubmission],
   )

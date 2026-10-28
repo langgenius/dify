@@ -416,18 +416,37 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       },
     )
 
-    it('should submit web app approvals through the passport-aware service', async () => {
-      const user = userEvent.setup()
-      render(<ChatWrapper />)
+    it.each(['1', '2', undefined] as const)(
+      'submits web app version %s through the passport-aware service',
+      async (formVersion) => {
+        const user = userEvent.setup()
+        vi.mocked(useChat).mockReturnValue(
+          createUseChatReturn({
+            chatList: [
+              {
+                id: 'answer-1',
+                isAnswer: true,
+                content: '',
+                humanInputFormDataList: [createHumanInputForm(formVersion)],
+              },
+            ],
+          }),
+        )
+        render(<ChatWrapper />)
 
-      await user.click(screen.getByRole('button', { name: 'submit human input' }))
+        await user.click(screen.getByRole('button', { name: 'submit human input' }))
 
-      expect(submitWebAppHumanInputForm).toHaveBeenCalledWith('form-token', {
-        inputs: { answer: 'ok' },
-        action: 'approve',
-      })
-      expect(submitHumanInputForm).not.toHaveBeenCalled()
-      expect(submitHumanInputFormService).not.toHaveBeenCalled()
-    })
+        expect(submitWebAppHumanInputForm).toHaveBeenCalledWith(
+          'form-token',
+          {
+            inputs: { answer: 'ok' },
+            action: 'approve',
+          },
+          formVersion,
+        )
+        expect(submitHumanInputForm).not.toHaveBeenCalled()
+        expect(submitHumanInputFormService).not.toHaveBeenCalled()
+      },
+    )
   })
 })

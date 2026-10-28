@@ -339,10 +339,14 @@ describe('GenerationItem', () => {
     await user.click(screen.getByText('submit-human-input'))
     await user.click(screen.getByText('switch-workflow-tab'))
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-1', {
-      action: 'submit',
-      inputs: { name: 'dify' },
-    })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+      'token-1',
+      {
+        action: 'submit',
+        inputs: { name: 'dify' },
+      },
+      undefined,
+    )
     expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
   })
 

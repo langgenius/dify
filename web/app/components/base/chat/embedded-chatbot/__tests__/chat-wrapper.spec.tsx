@@ -268,7 +268,7 @@ describe('Embedded chatbot orchestration', () => {
         ).toHaveBeenCalledExactlyOnceWith(
           'form-token',
           { inputs: {}, action: 'approve' },
-          ...(installed ? [undefined] : []),
+          undefined,
         ),
       )
       expect(installed ? submitHumanInputForm : submitInstalledHumanInput).not.toHaveBeenCalled()

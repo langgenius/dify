@@ -195,14 +195,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [workflowProcessData])
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
+      const form = workflowProcessData?.humanInputFormDataList?.find(
+        (item) => item.form_token === formToken,
+      )
       if (appSourceType === AppSourceType.installedApp) {
-        const form = workflowProcessData?.humanInputFormDataList?.find(
-          (item) => item.form_token === formToken,
-        )
         await submitHumanInputFormService(formToken, formData, form?.form_version)
       } else if (appSourceType === AppSourceType.webApp) {
         if (prepareHumanInputSubmission && !(await prepareHumanInputSubmission())) return
-        await submitWebAppHumanInputForm(formToken, formData)
+        await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
       } else await submitHumanInputForm(formToken, formData)
     },
     [appSourceType, prepareHumanInputSubmission, workflowProcessData?.humanInputFormDataList],

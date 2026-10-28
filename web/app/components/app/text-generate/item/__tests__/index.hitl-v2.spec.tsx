@@ -2,7 +2,10 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { AppSourceType } from '@/service/share'
-import { createWorkflowProcessFixture } from '@/test/fixtures/workflow-process'
+import {
+  createHumanInputFormFixture,
+  createWorkflowProcessFixture,
+} from '@/test/fixtures/workflow-process'
 import GenerationItem from '../index'
 
 const mockFetchMoreLikeThis = vi.fn()
@@ -96,17 +99,31 @@ describe('GenerationItem', () => {
   it.each([
     {
       appSourceType: AppSourceType.webApp,
+      formVersion: '1' as const,
+      submit: mockSubmitWebAppHumanInputForm,
+      unusedSubmit: mockSubmitHumanInputForm,
+    },
+    {
+      appSourceType: AppSourceType.webApp,
+      formVersion: '2' as const,
+      submit: mockSubmitWebAppHumanInputForm,
+      unusedSubmit: mockSubmitHumanInputForm,
+    },
+    {
+      appSourceType: AppSourceType.webApp,
+      formVersion: undefined,
       submit: mockSubmitWebAppHumanInputForm,
       unusedSubmit: mockSubmitHumanInputForm,
     },
     {
       appSourceType: AppSourceType.tryApp,
+      formVersion: undefined,
       submit: mockSubmitHumanInputForm,
       unusedSubmit: mockSubmitWebAppHumanInputForm,
     },
   ])(
-    'should preserve $appSourceType human input submission and workflow tab switching',
-    async ({ appSourceType, submit, unusedSubmit }) => {
+    'preserves $appSourceType version $formVersion submission and workflow tab switching',
+    async ({ appSourceType, formVersion, submit, unusedSubmit }) => {
       const user = userEvent.setup()
       render(
         <GenerationItem
@@ -117,7 +134,10 @@ describe('GenerationItem', () => {
           messageId="msg-1"
           onRetry={vi.fn()}
           siteInfo={null}
-          workflowProcessData={createWorkflowProcessFixture({ resultText: 'workflow result' })}
+          workflowProcessData={createWorkflowProcessFixture({
+            resultText: 'workflow result',
+            humanInputFormDataList: [createHumanInputFormFixture({ form_version: formVersion })],
+          })}
         />,
       )
 
@@ -126,10 +146,14 @@ describe('GenerationItem', () => {
       await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
       await user.click(screen.getByRole('button', { name: 'switch-workflow-tab' }))
 
-      expect(submit).toHaveBeenCalledWith('token-1', {
-        action: 'submit',
-        inputs: { name: 'dify' },
-      })
+      expect(submit).toHaveBeenCalledWith(
+        'token-1',
+        {
+          action: 'submit',
+          inputs: { name: 'dify' },
+        },
+        ...(appSourceType === AppSourceType.webApp ? [formVersion] : []),
+      )
       expect(unusedSubmit).not.toHaveBeenCalled()
       expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
       expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
@@ -164,10 +188,14 @@ describe('GenerationItem', () => {
       expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
       await act(async () => resolvePreparation?.(ready))
       if (ready) {
-        expect(mockSubmitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
-          inputs: { name: 'dify' },
-          action: 'submit',
-        })
+        expect(mockSubmitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+          'token-1',
+          {
+            inputs: { name: 'dify' },
+            action: 'submit',
+          },
+          undefined,
+        )
       } else {
         expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
       }

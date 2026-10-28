@@ -666,7 +666,7 @@ it.each([false, true])(
           inputs: { review: 'Approved' },
           action: 'approve',
         },
-        ...(isInstalledApp ? [undefined] : []),
+        undefined,
       ),
     )
     expect(otherSubmit).not.toHaveBeenCalled()
