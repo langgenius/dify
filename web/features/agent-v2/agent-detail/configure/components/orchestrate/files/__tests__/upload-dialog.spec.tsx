@@ -1,3 +1,4 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -16,6 +17,7 @@ type CommitInput = {
 }
 
 const mocks = vi.hoisted(() => ({
+  uploadConfig: vi.fn<() => Promise<UploadConfig>>(),
   upload: vi.fn(async ({ body }: UploadInput) => ({ id: `upload-${body.file.name}` })),
   commitAgent: vi.fn(async ({ body }: CommitInput) => ({
     file: {
@@ -41,6 +43,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': mocks.uploadConfig,
       'files.upload.post': mocks.upload,
       'agent.byAgentId.config.files.post': mocks.commitAgent,
       'apps.byAppId.agent.config.files.post': mocks.commitWorkflow,
@@ -61,9 +64,11 @@ function deferred<T>() {
 function renderUploadDialog({
   apiContext = { agentId: 'agent-1', draftType: 'draft' },
   documentSizeLimit = 15,
+  cacheUploadConfig = true,
 }: {
   apiContext?: AgentConfigApiContext
   documentSizeLimit?: number
+  cacheUploadConfig?: boolean
 } = {}) {
   const onUploaded = vi.fn()
   const onOpenChange = vi.fn()
@@ -73,10 +78,12 @@ function renderUploadDialog({
       mutations: { retry: false },
     },
   })
-  queryClient.setQueryData(
-    consoleQuery.files.upload.get.queryKey(),
-    createFileUploadConfigFixture({ file_size_limit: documentSizeLimit }),
-  )
+  if (cacheUploadConfig) {
+    queryClient.setQueryData(
+      consoleQuery.files.upload.get.queryKey(),
+      createFileUploadConfigFixture({ file_size_limit: documentSizeLimit }),
+    )
+  }
 
   function Harness() {
     const [open, setOpen] = useState(true)
@@ -121,6 +128,8 @@ function fileInput() {
 
 describe('AgentFileUploadDialog batch uploads', () => {
   beforeEach(() => {
+    mocks.uploadConfig.mockReset()
+    mocks.uploadConfig.mockResolvedValue(createFileUploadConfigFixture())
     mocks.upload.mockReset()
     mocks.commitAgent.mockReset()
     mocks.commitWorkflow.mockReset()
@@ -135,6 +144,38 @@ describe('AgentFileUploadDialog batch uploads', () => {
     })
     mocks.commitAgent.mockImplementation(commit)
     mocks.commitWorkflow.mockImplementation(commit)
+  })
+
+  it('waits for configured limits before accepting a selection or drop, then allows files above the default limit', async () => {
+    const user = userEvent.setup()
+    const uploadConfig = deferred<UploadConfig>()
+    mocks.uploadConfig.mockReturnValueOnce(uploadConfig.promise)
+    const { onUploaded } = renderUploadDialog({ cacheUploadConfig: false })
+    const file = new File([new Uint8Array(20 * 1024 * 1024)], 'large.md', {
+      type: 'text/markdown',
+    })
+
+    expect(fileInput()).toBeDisabled()
+    expect(screen.getByRole('button', { name: `${uploadKey}browse` })).toBeDisabled()
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    await user.upload(fileInput(), file)
+    fireEvent.drop(screen.getByRole('group', { name: `${uploadKey}title` }), {
+      dataTransfer: { types: ['Files'], files: [file] },
+    })
+    expect(screen.queryByText('large.md')).not.toBeInTheDocument()
+    expect(uploadButton()).toBeDisabled()
+
+    await act(async () =>
+      uploadConfig.resolve(createFileUploadConfigFixture({ file_size_limit: 50 })),
+    )
+    await waitFor(() => expect(fileInput()).toBeEnabled())
+    await user.upload(fileInput(), file)
+    expect(within(fileRow('large.md')).getByText(`${uploadKey}queued`)).toBeInTheDocument()
+    await user.click(uploadButton())
+
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
+    expect(mocks.upload).toHaveBeenCalledExactlyOnceWith({ body: { file } })
+    expect(mocks.commitAgent).toHaveBeenCalledOnce()
   })
 
   it('uploads and binds each selected file before starting the next, and protects the running batch from dismissal or duplicate submission', async () => {

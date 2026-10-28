@@ -71,7 +71,10 @@ function AgentFileUploader({
   const { t } = useTranslation(['agentV2'])
   const { t: tAppDebug } = useTranslation(['appDebug'])
   const { t: tCommon } = useTranslation(['common'])
-  const { data: fileUploadConfig } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const { data: fileUploadConfig, isPending: isLoadingUploadConfig } = useQuery(
+    consoleQuery.files.upload.get.queryOptions(),
+  )
+  const selectionDisabled = disabled || isLoadingUploadConfig
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
     getFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -97,7 +100,7 @@ function AgentFileUploader({
   }
 
   const setUploadFiles = (selectedFiles: File[]) => {
-    if (disabled) return
+    if (selectionDisabled) return
 
     onAdd(
       selectedFiles.map((file) => {
@@ -123,7 +126,7 @@ function AgentFileUploader({
   }
 
   const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
-    if (disabled || !hasDraggedFiles(event)) return
+    if (selectionDisabled || !hasDraggedFiles(event)) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -135,7 +138,7 @@ function AgentFileUploader({
     if (!hasDraggedFiles(event)) return
 
     event.preventDefault()
-    event.dataTransfer.dropEffect = disabled ? 'none' : 'copy'
+    event.dataTransfer.dropEffect = selectionDisabled ? 'none' : 'copy'
   }
 
   const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
@@ -162,6 +165,7 @@ function AgentFileUploader({
     <div
       role="group"
       aria-label={t(($) => $['agentDetail.configure.files.upload.title'])}
+      aria-busy={isLoadingUploadConfig}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -173,7 +177,7 @@ function AgentFileUploader({
         className="hidden"
         type="file"
         multiple
-        disabled={disabled}
+        disabled={selectionDisabled}
         onChange={handleFileChange}
       />
       <div
@@ -188,7 +192,7 @@ function AgentFileUploader({
             {t(($) => $['agentDetail.configure.files.upload.dropzone'])}
             <button
               type="button"
-              disabled={disabled}
+              disabled={selectionDisabled}
               className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => fileInputRef.current?.click()}
             >
@@ -198,6 +202,11 @@ function AgentFileUploader({
         </div>
         {dragging && <div className="absolute top-0 left-0 size-full" />}
       </div>
+      {isLoadingUploadConfig && (
+        <p role="status" className="mt-2 system-xs-regular text-text-tertiary">
+          {tCommon(($) => $.loading)}
+        </p>
+      )}
       <ul className="mt-2 space-y-2" aria-live="polite" aria-relevant="additions text">
         {files.map((item) => {
           const statusLabel = {
