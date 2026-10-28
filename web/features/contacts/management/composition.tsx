@@ -9,7 +9,7 @@ import { useMemo } from 'react'
 import { currentWorkspaceIdAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { selectIMBindingCentrallyManaged } from '../im-binding-capability'
+import { selectIMCentrallyManaged } from '../im-capability'
 import { ContactsFeatureContext, ContactsManagementRepositoryContext } from './composition-context'
 import { createContactsApiRepository } from './repository'
 
@@ -37,12 +37,12 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const capability = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: selectIMBindingCentrallyManaged,
+      select: selectIMCentrallyManaged,
       retry: false,
     }),
   )
   const { error: capabilityError, refetch: refetchCapability } = capability
-  const imBindingCentrallyManaged = capability.isSuccess ? capability.data : undefined
+  const imCentrallyManaged = capability.isSuccess ? capability.data : undefined
   const deployment =
     deploymentEdition === 'ENTERPRISE'
       ? 'ee'
@@ -52,9 +52,9 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
   const context = useMemo<ContactsFeatureContextValue>(
     () => ({
       deployment,
-      imBindingCentrallyManaged,
-      imBindingCapabilityError: capabilityError,
-      retryIMBindingCapability: () => {
+      imCentrallyManaged,
+      imCapabilityError: capabilityError,
+      retryIMCapability: () => {
         void refetchCapability()
       },
       workspaceId,
@@ -64,14 +64,7 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
         canManageMembers: Boolean(workspaceId) && canManage,
       },
     }),
-    [
-      canManage,
-      capabilityError,
-      refetchCapability,
-      deployment,
-      imBindingCentrallyManaged,
-      workspaceId,
-    ],
+    [canManage, capabilityError, refetchCapability, deployment, imCentrallyManaged, workspaceId],
   )
   const repository = useMemo(() => createContactsApiRepository(undefined, context), [context])
 

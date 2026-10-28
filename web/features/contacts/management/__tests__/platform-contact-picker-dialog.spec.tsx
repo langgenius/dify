@@ -135,7 +135,7 @@ describe('Enterprise Platform contact import', () => {
     const context = {
       workspaceId: scenario.workspaceId,
       deployment: scenario.deployment,
-      imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+      imCentrallyManaged: scenario.imCentrallyManaged,
       permissions: scenario.permissions,
       ...overrides,
     }
@@ -280,8 +280,8 @@ describe('Enterprise Platform contact import', () => {
   )
 
   it.each<Partial<ContactsFeatureContextValue>>([
-    { imBindingCentrallyManaged: undefined },
-    { imBindingCentrallyManaged: false },
+    { imCentrallyManaged: undefined },
+    { imCentrallyManaged: false },
     { workspaceId: '' },
     { permissions: { canViewContacts: true, canManageContacts: false, canManageMembers: false } },
   ])(

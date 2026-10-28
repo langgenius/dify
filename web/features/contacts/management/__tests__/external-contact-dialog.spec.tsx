@@ -47,7 +47,7 @@ function renderAvatarDialog(contact?: ComponentProps<typeof ExternalContactDialo
         <ContactsManagementProvider
           context={{
             deployment: scenario.deployment,
-            imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+            imCentrallyManaged: scenario.imCentrallyManaged,
             permissions: scenario.permissions,
             workspaceId: scenario.workspaceId,
           }}
@@ -176,7 +176,7 @@ describe('ExternalContactDialog pending state', () => {
         <ContactsManagementProvider
           context={{
             deployment: scenario.deployment,
-            imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+            imCentrallyManaged: scenario.imCentrallyManaged,
             permissions: scenario.permissions,
             workspaceId: scenario.workspaceId,
           }}
@@ -241,7 +241,7 @@ describe('ExternalContactDialog pending state', () => {
           <ContactsManagementProvider
             context={{
               deployment: scenario.deployment,
-              imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
+              imCentrallyManaged: scenario.imCentrallyManaged,
               permissions: scenario.permissions,
               workspaceId: scenario.workspaceId,
             }}

@@ -32,14 +32,14 @@ export function MemberRemovalContactImpactContent({
   const [keepAsPlatformContact, setKeepAsPlatformContact] = useState(true)
   const removeLabelId = useId()
   const failed = removal.isError || removal.data?.kind === 'failed'
-  const { imBindingCentrallyManaged, imBindingCapabilityError, retryIMBindingCapability } = context
-  const capabilityReady = imBindingCentrallyManaged !== undefined
+  const { imCentrallyManaged, imCapabilityError, retryIMCapability } = context
+  const capabilityReady = imCentrallyManaged !== undefined
 
   function handleRemove() {
     if (removal.isPending || !capabilityReady) return
     removal.mutate(
       {
-        keepAsPlatformContact: imBindingCentrallyManaged && keepAsPlatformContact,
+        keepAsPlatformContact: imCentrallyManaged && keepAsPlatformContact,
         memberId: member.id,
       },
       {
@@ -60,7 +60,7 @@ export function MemberRemovalContactImpactContent({
           {t(
             ($) =>
               $[
-                imBindingCentrallyManaged
+                imCentrallyManaged
                   ? 'memberRemoval.eeDescription'
                   : 'memberRemoval.standardDescription'
               ],
@@ -87,7 +87,7 @@ export function MemberRemovalContactImpactContent({
             </span>
           </span>
         </div>
-        {imBindingCentrallyManaged && (
+        {imCentrallyManaged && (
           <div className="flex items-start gap-2 rounded-lg p-1 focus-within:ring-2 focus-within:ring-state-accent-solid">
             <Checkbox
               aria-labelledby="member-removal-keep-platform-label"
@@ -116,14 +116,14 @@ export function MemberRemovalContactImpactContent({
             {t(($) => $['memberRemoval.failed'])}
           </p>
         )}
-        {imBindingCapabilityError && (
+        {imCapabilityError && (
           <div
             role="alert"
             className="rounded-lg bg-state-destructive-hover p-3 system-sm-regular text-text-destructive"
           >
             <p>{t(($) => $['directory.errorTitle'])}</p>
-            {retryIMBindingCapability && (
-              <Button variant="secondary" onClick={retryIMBindingCapability}>
+            {retryIMCapability && (
+              <Button variant="secondary" onClick={retryIMCapability}>
                 {t(($) => $['action.retry'])}
               </Button>
             )}

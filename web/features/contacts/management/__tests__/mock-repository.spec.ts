@@ -256,7 +256,7 @@ describe('Enterprise Platform contact API repository', () => {
   const client = consoleClient.workspace.current.humanInput.v2
   const context: ContactsFeatureContextValue = {
     deployment: 'ee',
-    imBindingCentrallyManaged: true,
+    imCentrallyManaged: true,
     workspaceId: 'workspace-ee',
     permissions: { canViewContacts: true, canManageContacts: true, canManageMembers: true },
   }
@@ -373,8 +373,8 @@ describe('Enterprise Platform contact API repository', () => {
 
   it.each<ContactsFeatureContextValue | undefined>([
     undefined,
-    { ...context, imBindingCentrallyManaged: undefined },
-    { ...context, imBindingCentrallyManaged: false },
+    { ...context, imCentrallyManaged: undefined },
+    { ...context, imCentrallyManaged: false },
     { ...context, workspaceId: '' },
     { ...context, permissions: { ...context.permissions, canManageContacts: false } },
   ])(

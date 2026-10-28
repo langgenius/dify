@@ -94,7 +94,7 @@ async function setup(ids: string[], contactRemoval = false) {
           repository={contactsRepository}
           context={{
             deployment: scenario.deployment,
-            imBindingCentrallyManaged: true,
+            imCentrallyManaged: true,
             permissions: scenario.permissions,
             workspaceId: scenario.workspaceId,
           }}

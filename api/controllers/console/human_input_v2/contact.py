@@ -10,7 +10,6 @@ from flask import abort, request
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from controllers.common.human_input_v2_contracts import (
     AddPlatformContactsRequest,
     AddPlatformContactsResponse,
@@ -90,7 +89,6 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
-from enums import DeploymentEdition
 from libs.datetime_utils import naive_utc_now
 from libs.helper import build_avatar_url, dump_response
 from libs.login import login_required
@@ -196,7 +194,7 @@ def _workspace_scope(tenant_id: str) -> WorkspaceScope:
 
 
 def _im_binding_scope(tenant_id: str) -> DirectoryScope:
-    if FeatureService.is_im_binding_centrally_managed():
+    if FeatureService.is_im_centrally_managed():
         return DeploymentScope()
     return _workspace_scope(tenant_id)
 
@@ -380,7 +378,7 @@ def _contact_summary_payload(view: ContactWithIMBindings) -> dict[str, object]:
 
 def _contact_service(session: Session, tenant_id: TenantId) -> ContactManagementService:
     repository = SQLAlchemyContactRepository(session)
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+    if FeatureService.is_im_centrally_managed():
         channel = DeploymentIMChannelReader(session).get()
     else:
         channel = WorkspaceIMChannelReader(session, tenant_id).get()
@@ -628,7 +626,7 @@ class WorkspaceContactsRemoveApi(Resource):
         request_body = RemoveContactsRequest.model_validate(console_ns.payload or {})
         try:
             contact_ids = [ContactId(contact_id) for contact_id in request_body.contact_ids]
-            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+            if FeatureService.is_im_centrally_managed():
                 removed_ids = build_enterprise_contact_management_service(session).remove_contacts(
                     TenantId(tenant_id),
                     contact_ids,
@@ -780,7 +778,7 @@ class WorkspaceContactIMOverrideApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
-        if not FeatureService.is_im_binding_centrally_managed():
+        if not FeatureService.is_im_centrally_managed():
             raise WorkspaceIMOverrideNotAllowedError()
         request_body = SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
         tenant_id = TenantId(tenant_id)
@@ -810,7 +808,7 @@ class WorkspaceContactIMOverrideApi(Resource):
     @require_admin_or_owner
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
-        if not FeatureService.is_im_binding_centrally_managed():
+        if not FeatureService.is_im_centrally_managed():
             raise WorkspaceIMOverrideNotAllowedError()
         tenant_id = TenantId(tenant_id)
         try:
@@ -849,7 +847,7 @@ class WorkspaceContactIMBindingsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
-        if FeatureService.is_im_binding_centrally_managed():
+        if FeatureService.is_im_centrally_managed():
             raise IMBindingReadOnlyError()
         request_body = CreateIMBindingRequest.model_validate(console_ns.payload or {})
         tenant_id = TenantId(tenant_id)
@@ -880,7 +878,7 @@ class WorkspaceContactIMBindingsApi(Resource):
     @require_admin_or_owner
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: UUID):
-        if FeatureService.is_im_binding_centrally_managed():
+        if FeatureService.is_im_centrally_managed():
             raise IMBindingReadOnlyError()
         try:
             build_im_contact_sync_application().binding_service.delete_organization_binding(

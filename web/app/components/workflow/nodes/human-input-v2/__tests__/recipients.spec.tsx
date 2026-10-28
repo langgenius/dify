@@ -94,7 +94,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 
 const createFeaturesFixture = (centrallyManaged?: boolean): GetFeaturesResponse => ({
   ...zGetFeaturesResponse.parse({}),
-  ...(centrallyManaged === undefined ? {} : { im_binding_centrally_managed: centrallyManaged }),
+  ...(centrallyManaged === undefined ? {} : { im_centrally_managed: centrallyManaged }),
 })
 
 const render = (ui: ReactElement, queryClient = createTestQueryClient()) =>

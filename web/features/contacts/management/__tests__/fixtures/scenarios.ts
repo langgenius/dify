@@ -37,7 +37,7 @@ type ContactsMockFailurePlan = {
 export type ContactsMockScenarioDefinition = {
   contacts: ContactView[]
   deployment: ContactsDeployment
-  imBindingCentrallyManaged: boolean
+  imCentrallyManaged: boolean
   failures: ContactsMockFailurePlan
   availablePlatformContacts: AvailablePlatformContact[]
   memberContactIds: Record<string, string>
@@ -146,7 +146,7 @@ export function createContactsMockScenario(
     availablePlatformContacts: clone(availablePlatformContacts),
     contacts: mixedContacts('ee'),
     deployment: 'ee',
-    imBindingCentrallyManaged: true,
+    imCentrallyManaged: true,
     failures: {},
     memberContactIds: { 'member-owner': 'contact-owner' },
     permissions: clone(managerPermissions),
@@ -159,14 +159,14 @@ export function createContactsMockScenario(
         ...base,
         contacts: mixedContacts('ce'),
         deployment: 'ce',
-        imBindingCentrallyManaged: false,
+        imCentrallyManaged: false,
       }
     case ContactsMockScenario.SaasMixed:
       return {
         ...base,
         contacts: mixedContacts('saas'),
         deployment: 'saas',
-        imBindingCentrallyManaged: false,
+        imCentrallyManaged: false,
       }
     case ContactsMockScenario.Empty:
       return { ...base, contacts: [] }

@@ -34,6 +34,7 @@ from core.workflow.nodes.human_input_v2.entities import (
     OnetimeEmail,
 )
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
+from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
@@ -3202,17 +3203,17 @@ def test_delivery_uses_one_injected_email_client_for_multiple_recipients(
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 2
 
 
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
 @pytest.mark.parametrize("configured", [False, True])
-def test_enterprise_email_delivery_uses_configured_deployment_client(
-    context: Context, monkeypatch: pytest.MonkeyPatch, configured: bool
+def test_self_hosted_email_delivery_uses_configured_deployment_client(
+    context: Context, monkeypatch: pytest.MonkeyPatch, edition: DeploymentEdition, configured: bool
 ) -> None:
     from configs import dify_config
-    from enums import DeploymentEdition
     from extensions.ext_mail import mail
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from services.human_input_v2.composition import build_human_input_delivery_service
 
-    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", edition)
     monkeypatch.setattr(dify_config, "APP_WEB_URL", "https://app.example.com")
     monkeypatch.setattr(mail, "is_inited", lambda: configured)
     sent_mail: list[dict[str, str]] = []

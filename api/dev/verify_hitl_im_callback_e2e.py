@@ -31,7 +31,6 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 from core.human_input_v2.shared.values import AccountId, ContactId, IMIdentityId, IMSyncRunId, RecipientId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_key_provider import key_provider_manager
 from graphon.enums import WorkflowExecutionStatus
@@ -66,6 +65,7 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.app_generate_service import AppGenerateService
 from services.app_service import AppService
+from services.feature_service import FeatureService
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
@@ -449,7 +449,7 @@ def main() -> None:
     parser.add_argument("--tenant-id", required=True)
     arguments = parser.parse_args()
     assert dify_config.TRIGGER_URL.rstrip("/") == _ORIGIN, "This verifier is restricted to hitl-dev"
-    assert dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD, "This verifier requires workspace channels"
+    assert not FeatureService.is_im_centrally_managed(), "This verifier requires workspace channels"
     assert dify_config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE == IMEventTransportMode.WEBHOOK, (
         "This verifier requires HTTP callback transport"
     )

@@ -18,9 +18,9 @@ export type ContactsPermissions = {
 
 export type ContactsFeatureContextValue = {
   deployment: ContactsDeployment
-  imBindingCentrallyManaged: boolean | undefined
-  imBindingCapabilityError?: Error | null
-  retryIMBindingCapability?: () => void
+  imCentrallyManaged: boolean | undefined
+  imCapabilityError?: Error | null
+  retryIMCapability?: () => void
   permissions: ContactsPermissions
   workspaceId: string
 }

@@ -188,7 +188,7 @@ function contactRemoval() {
   const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
   const context: ContactsFeatureContextValue = {
     deployment: scenario.deployment,
-    imBindingCentrallyManaged: true,
+    imCentrallyManaged: true,
     permissions: scenario.permissions,
     workspaceId: scenario.workspaceId,
   }

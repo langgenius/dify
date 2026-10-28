@@ -51,7 +51,7 @@ export function useContactsDirectory(query: Omit<ContactsListQuery, 'deployment'
       enabled:
         Boolean(context.workspaceId) &&
         context.permissions.canViewContacts &&
-        context.imBindingCentrallyManaged !== undefined,
+        context.imCentrallyManaged !== undefined,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
         repository.listContacts({ ...query, deployment: context.deployment, page: pageParam }),
@@ -114,7 +114,7 @@ export function useContactCounts() {
         enabled:
           Boolean(context.workspaceId) &&
           context.permissions.canViewContacts &&
-          (kind !== 'platform' || context.imBindingCentrallyManaged === true),
+          (kind !== 'platform' || context.imCentrallyManaged === true),
         select: (page) => page.total,
       }),
     ),
@@ -134,7 +134,7 @@ export function useAvailablePlatformContacts(
         enabled &&
         Boolean(context.workspaceId) &&
         context.permissions.canManageContacts &&
-        context.imBindingCentrallyManaged === true &&
+        context.imCentrallyManaged === true &&
         repository.supportsPlatformImport !== false,
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
@@ -211,7 +211,7 @@ export function useAddPlatformContacts() {
       mutationFn: (command: AddPlatformContactsCommand) => {
         if (
           !context.workspaceId ||
-          !context.imBindingCentrallyManaged ||
+          !context.imCentrallyManaged ||
           !context.permissions.canManageContacts ||
           repository.supportsPlatformImport === false
         )
@@ -270,14 +270,14 @@ export function useContactIMChannels(enabled = true) {
       queryKey: [
         ...contactsManagementQueryKeys.all(context.workspaceId),
         'im-channels',
-        context.imBindingCentrallyManaged,
+        context.imCentrallyManaged,
         repository,
       ],
       queryFn: listIMChannels ? () => listIMChannels() : skipToken,
       enabled:
         enabled &&
         Boolean(context.workspaceId) &&
-        context.imBindingCentrallyManaged !== undefined &&
+        context.imCentrallyManaged !== undefined &&
         context.permissions.canManageContacts,
       retry: false,
     }),
@@ -304,7 +304,7 @@ export function useContactIMIdentities(search: string) {
       getNextPageParam: (page) => (page.has_more ? page.page + 1 : undefined),
       enabled:
         Boolean(context.workspaceId) &&
-        context.imBindingCentrallyManaged !== undefined &&
+        context.imCentrallyManaged !== undefined &&
         context.permissions.canManageContacts &&
         repository.supportsIMBindings === true,
       retry: false,

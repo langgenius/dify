@@ -196,7 +196,7 @@ export function ContactsDirectoryPage() {
   })
   const search = browsing.contact_search
   const platformFilterUnavailable =
-    browsing.contact_kind === 'platform' && context.imBindingCentrallyManaged === false
+    browsing.contact_kind === 'platform' && context.imCentrallyManaged === false
   const kind = platformFilterUnavailable ? 'all' : browsing.contact_kind
   const loadedPages = platformFilterUnavailable ? 1 : browsing.contact_pages
   const [contactId, setContactId] = useQueryState('contact_id', contactIdParser)
@@ -214,7 +214,7 @@ export function ContactsDirectoryPage() {
   const removeContacts = useRemoveContacts()
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(
-    (filter) => filter !== 'platform' || context.imBindingCentrallyManaged,
+    (filter) => filter !== 'platform' || context.imCentrallyManaged,
   )
   const hasFilters = Boolean(search) || kind !== 'all'
   const currentPageCount = directoryQuery.data?.pages.length ?? 0
@@ -238,7 +238,7 @@ export function ContactsDirectoryPage() {
 
   useEffect(() => {
     if (
-      context.imBindingCentrallyManaged !== undefined &&
+      context.imCentrallyManaged !== undefined &&
       currentPageCount > 0 &&
       currentPageCount < loadedPages &&
       directoryQuery.hasNextPage &&
@@ -248,7 +248,7 @@ export function ContactsDirectoryPage() {
       void fetchNextPage()
     }
   }, [
-    context.imBindingCentrallyManaged,
+    context.imCentrallyManaged,
     currentPageCount,
     directoryQuery.hasNextPage,
     directoryQuery.isFetchNextPageError,
@@ -348,14 +348,12 @@ export function ContactsDirectoryPage() {
     )
   }
 
-  if (context.imBindingCentrallyManaged === undefined) {
-    if (context.imBindingCapabilityError) {
+  if (context.imCentrallyManaged === undefined) {
+    if (context.imCapabilityError) {
       return (
         <DirectoryState
           action={
-            <Button onClick={context.retryIMBindingCapability}>
-              {t(($) => $['action.retry'])}
-            </Button>
+            <Button onClick={context.retryIMCapability}>{t(($) => $['action.retry'])}</Button>
           }
           description={t(($) => $['directory.errorDescription'])}
           icon="i-ri-error-warning-line"
@@ -419,7 +417,7 @@ export function ContactsDirectoryPage() {
           />
           {context.permissions.canManageContacts && (
             <div className="flex shrink-0 lg:ms-auto">
-              {context.imBindingCentrallyManaged && repository.supportsPlatformImport !== false ? (
+              {context.imCentrallyManaged && repository.supportsPlatformImport !== false ? (
                 <Menu>
                   <MenuTrigger render={<Button variant="primary" />}>
                     <span aria-hidden className="me-1 i-ri-add-line size-4" />
@@ -711,7 +709,7 @@ export function ContactsDirectoryPage() {
         }}
         onCreated={openDetails}
       />
-      {context.imBindingCentrallyManaged && repository.supportsPlatformImport !== false && (
+      {context.imCentrallyManaged && repository.supportsPlatformImport !== false && (
         <PlatformContactPickerDialog
           open={platformDialogOpen}
           onOpenChange={setPlatformDialogOpen}
