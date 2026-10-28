@@ -32,7 +32,7 @@ from controllers.openapi._errors import (
 from controllers.openapi._models import (
     SkillDescribeResponse,
     SkillExportQuery,
-    SkillImportBody,
+    SkillImportPayload,
     SkillImportResponse,
     SkillListQuery,
     SkillListResponse,
@@ -43,10 +43,8 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._upload import UploadParts
 from controllers.openapi.skills import (
-    _PACKAGE_CODES,
-    _TOO_LARGE_CODES,
     _UPLOAD_CAP,
-    ServiceCode,
+    ServiceRejection,
     SkillDescribeApi,
     SkillExportApi,
     SkillImportApi,
@@ -61,11 +59,12 @@ from controllers.openapi.skills import (
 from machinery.context import RequestContext
 from services.skill_management_service import (
     PublishedSkillArchive,
-    SkillImportPayload,
     SkillManagementService,
     SkillManagementServiceError,
     SkillOverwritePayload,
+    SkillServiceErrorCode,
 )
+from services.skill_management_service import SkillImportPayload as ServiceSkillImportPayload
 from services.skill_management_service import SkillPublishPayload as ServiceSkillPublishPayload
 from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_ctx
 
@@ -146,13 +145,17 @@ def test_rejection_maps_known_codes() -> None:
     assert isinstance(_rejection(SkillManagementServiceError("skill_name_mismatch", "x")), SkillNameMismatch)
 
 
-@pytest.mark.parametrize("code", _PACKAGE_CODES)
-def test_rejection_maps_package_codes(code: ServiceCode) -> None:
+def test_every_mapped_code_is_a_service_code() -> None:
+    assert {rejection.value for rejection in ServiceRejection} <= {code.value for code in SkillServiceErrorCode}
+
+
+@pytest.mark.parametrize("code", [code for code in ServiceRejection if code.error is SkillPackageInvalid])
+def test_rejection_maps_package_codes(code: ServiceRejection) -> None:
     assert isinstance(_rejection(SkillManagementServiceError(code, "x")), SkillPackageInvalid)
 
 
-@pytest.mark.parametrize("code", _TOO_LARGE_CODES)
-def test_rejection_maps_size_codes_to_413(code: ServiceCode) -> None:
+@pytest.mark.parametrize("code", [code for code in ServiceRejection if code.error is SkillPackageTooLarge])
+def test_rejection_maps_size_codes_to_413(code: ServiceRejection) -> None:
     error = _rejection(SkillManagementServiceError(code, "x"))
     assert isinstance(error, SkillPackageTooLarge)
     assert error.code == 413
@@ -329,7 +332,7 @@ def _folder(**files: bytes) -> UploadParts:
 
 
 def _import(parts: UploadParts, **fields: object) -> tuple[SkillImportResponse, int]:
-    body = SkillImportBody.model_validate({"files": parts, **fields})
+    body = SkillImportPayload.model_validate({"files": parts, **fields})
     result = _call(SkillImportApi(), SkillImportApi.post, body=body)
     return cast(tuple[SkillImportResponse, int], result)
 
@@ -345,7 +348,7 @@ def test_import_folder_creates_skill(monkeypatch: pytest.MonkeyPatch) -> None:
     response, status = _import(_folder(**{"SKILL.md": b"---\nname: expense-sop\n---\n", "scripts__run.py": b"x"}))
     assert status == 201
     assert len(sent) == 1
-    payload = cast(SkillImportPayload, sent[0]["payload"])
+    payload = cast(ServiceSkillImportPayload, sent[0]["payload"])
     assert (sent[0]["tenant_id"], sent[0]["user_id"]) == ("ws-id", "acct-id")
     assert zipfile.ZipFile(io.BytesIO(payload.content)).namelist() == ["SKILL.md", "scripts/run.py"]
     assert (response.id, response.name, response.draft_hash, response.file_count) == (
@@ -445,8 +448,8 @@ def test_import_part_cap_counts_files_and_fields(
     monkeypatch.setattr(dify_config, "SKILL_PACKAGE_MAX_ENTRIES", 2)
     assert _skill_upload_parts() == 4
 
-    @accepts(body=SkillImportBody)
-    def handler(*, body: SkillImportBody) -> int:
+    @accepts(body=SkillImportPayload)
+    def handler(*, body: SkillImportPayload) -> int:
         return len(body.files)
 
     def post(*paths: str) -> FlaskRequestContext:
@@ -482,7 +485,7 @@ def test_import_only_junk_is_rejected() -> None:
 def test_import_same_path_twice_is_rejected(app: Flask) -> None:
     data = {"files[SKILL.md]": [(io.BytesIO(b"a"), "SKILL.md"), (io.BytesIO(b"b"), "SKILL.md")]}
 
-    @accepts(body=SkillImportBody)
+    @accepts(body=SkillImportPayload)
     def handler(**_kwargs: object) -> None:
         pytest.fail("must not parse")
 
@@ -494,7 +497,7 @@ def test_import_same_path_twice_is_rejected(app: Flask) -> None:
 
 
 def test_import_unknown_body_field_rejected(app: Flask) -> None:
-    @accepts(body=SkillImportBody)
+    @accepts(body=SkillImportPayload)
     def handler(**_kwargs: object) -> None:
         pytest.fail("must not parse")
 
@@ -508,5 +511,5 @@ def test_import_unknown_body_field_rejected(app: Flask) -> None:
 
 def test_import_draft_hash_without_skill_id_is_rejected() -> None:
     with pytest.raises(ValidationError) as exc:
-        SkillImportBody.model_validate({"files": _folder(**{"SKILL.md": b"x"}), "draft_hash": "1761200000"})
+        SkillImportPayload.model_validate({"files": _folder(**{"SKILL.md": b"x"}), "draft_hash": "1761200000"})
     assert [error["loc"] for error in exc.value.errors()] == [("draft_hash",)]

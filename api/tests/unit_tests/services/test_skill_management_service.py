@@ -3756,13 +3756,16 @@ def _published_skill(
     return created, version
 
 
-def test_export_version_archive_returns_the_stored_zip() -> None:
+def test_export_version_archive_returns_the_stored_zip(monkeypatch: pytest.MonkeyPatch) -> None:
     manager = _CapturingToolFileManager()
     service = SkillManagementService(tool_file_manager=manager)
     created, version = _published_skill(service)
 
-    with patch("services.skill_management_service.storage.load_once", return_value=manager.captured[-1]):
-        archive = service.export_version_archive(tenant_id=TENANT, skill_id=created["id"], version_id=version["id"])
+    def load_once(_key: str) -> bytes:
+        return manager.captured[-1]
+
+    monkeypatch.setattr("services.skill_management_service.storage.load_once", load_once)
+    archive = service.export_version_archive(tenant_id=TENANT, skill_id=created["id"], version_id=version["id"])
 
     assert archive.payload == manager.captured[-1]
     assert archive.filename == "expense-sop-v1.zip"

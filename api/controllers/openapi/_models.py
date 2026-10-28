@@ -1362,7 +1362,7 @@ class SkillVersionRow(BaseModel):
     version_name: str | None
     publish_note: str
     created_at: int
-    created_by: str | None = Field(description="Account id that published it")
+    created_by: str | None = Field(validation_alias="published_by", description="Account id that published it")
 
 
 class SkillDescribeResponse(SkillRow, Hinted):
@@ -1395,7 +1395,7 @@ class SkillPublishResponse(SkillVersionRow, Hinted):
     pass
 
 
-class SkillImportBody(BaseModel):
+class SkillImportPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     files: UploadParts = Field(description="The skill folder, one part per file; SKILL.md at its root")
