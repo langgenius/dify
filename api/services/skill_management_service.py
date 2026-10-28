@@ -26,7 +26,7 @@ from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Final, Literal
 from uuid import uuid4
 
 import json_repair
@@ -55,7 +55,7 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
-from libs.archive_writer import BYTES_PER_MIB, is_os_junk
+from libs.archive_writer import is_os_junk
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from models.account import Account
@@ -570,6 +570,9 @@ class SkillFileContent:
     content: str | None
     size: int
     hash: str
+
+
+BYTES_PER_MIB: Final = 1024 * 1024
 
 
 def max_skill_archive_bytes() -> int:

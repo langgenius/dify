@@ -63,7 +63,6 @@ from controllers.openapi.auth.requirements import (
     workspace_write_guards,
 )
 from libs.archive_writer import (
-    BYTES_PER_MIB,
     ArchiveEmptyError,
     ArchiveError,
     ArchiveLimitKind,
@@ -77,6 +76,7 @@ from libs.archive_writer import (
 )
 from machinery.context import RequestContext
 from services.skill_management_service import (
+    BYTES_PER_MIB,
     SkillImportPayload,
     SkillManagementService,
     SkillManagementServiceError,

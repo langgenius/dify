@@ -39,7 +39,7 @@ from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect, EndpointSpec, Example, Kind
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
-from libs.archive_writer import BYTES_PER_MIB
+from services.skill_management_service import BYTES_PER_MIB
 
 __all__ = [
     "MULTIPART_HEADER_BYTES_PER_PART",
