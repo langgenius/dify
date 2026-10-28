@@ -42,6 +42,7 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
+import { basePath } from '@/utils/var'
 import { getStepByStepTourPermissionVariant, trackStepByStepTourEvent } from './analytics'
 import { StepByStepTourCoachmark } from './coachmark'
 import { FloatingChecklist, MinimizedTourPill } from './floating-widget'
@@ -607,7 +608,7 @@ export default function StepByStepTourMount({
               // The Integrations page stays mounted across sections, so the step only needs the URL.
               if (nextGuideRoute && nextGuideRoute !== pathname) {
                 lastRequestedIntegrationRouteRef.current = nextGuideRoute
-                window.history.replaceState(null, '', nextGuideRoute)
+                window.history.replaceState(null, '', `${basePath}${nextGuideRoute}`)
               }
               advanceGuide({
                 guideIndex: nextActiveGuide.activeGuideIndex,
