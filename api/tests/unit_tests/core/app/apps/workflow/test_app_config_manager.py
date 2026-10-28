@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from typing import cast
 from unittest.mock import patch
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -38,16 +37,9 @@ class TestWorkflowAppConfigManager:
 
     def test_config_validate_filters_keys(self) -> None:
         def _add_key(key: str, value: object) -> Callable[..., tuple[dict[str, object], list[str]]]:
-            def _inner[**P](*args: P.args, **kwargs: P.kwargs) -> tuple[dict[str, object], list[str]]:
+            def _inner(config: dict[str, object], **_: object) -> tuple[dict[str, object], list[str]]:
                 # Support both positional and keyword arguments for config
-                if "config" in kwargs:
-                    config = cast("dict[str, object]", kwargs["config"])
-                elif len(args) > 0:
-                    config = cast("dict[str, object]", args[0])
-                else:
-                    config: dict[str, object] = {}
-                config[key] = value
-                return config, [key]
+                return {**config, key: value}, [key]
 
             return _inner
 
