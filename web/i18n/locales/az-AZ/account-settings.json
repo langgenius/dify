@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Resurslar",
   "resourceAccessToken.searchPlaceholder": "Tokenləri axtar…",
   "resourceAccessToken.searchResourcesPlaceholder": "Tətbiqləri və ya bilik bazalarını axtar…",
-  "resourceAccessToken.tabAll": "Hamısı",
+  "resourceAccessToken.tabAllTypes": "Bütün növlər",
   "resourceAccessToken.tabApps": "Tətbiqlər",
   "resourceAccessToken.tabKnowledgeBases": "Bilik bazaları",
   "resourceAccessToken.token": "Token",

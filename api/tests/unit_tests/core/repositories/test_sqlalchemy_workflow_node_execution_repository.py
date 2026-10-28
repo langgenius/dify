@@ -1179,10 +1179,10 @@ class TestWorkflowNodeExecutionTruncationCases:
                 error=None,
                 elapsed_time=1.0,
                 execution_metadata="{}",
-                created_at=datetime.now(UTC),
                 finished_at=None,
-                offload_data=[],
             )
+            db_model.offload_data = []
+            db_model.created_at = datetime.now(UTC)
 
             domain_model = repo._to_domain_model(db_model)
 
@@ -1225,9 +1225,8 @@ class TestWorkflowNodeExecutionTruncationCases:
 
         def test_truncated_properties_without_offload_data(self):
             """Test truncated properties when no offload data exists."""
-            model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel(
-                offload_data=[],
-            )
+            model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
+            model.offload_data = []
 
             assert model.inputs_truncated is False
             assert model.outputs_truncated is False

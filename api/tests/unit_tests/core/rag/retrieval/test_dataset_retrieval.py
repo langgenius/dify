@@ -64,6 +64,7 @@ from models.dataset import Document as DatasetDocument
 from models.dataset import Document as _retrieval_source_query_Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
+from tests.helpers.unit.model_factories import make_document
 
 # ==================== Helper Functions ====================
 
@@ -4025,6 +4026,41 @@ class TestDatasetRetrievalCases:
             )
             assert result is filters
             assert len(filters) == 1
+
+        @pytest.mark.parametrize(
+            ("condition", "metadata_name", "value", "expected"),
+            [
+                ("is not", "writer", "Alice", {"bob", "missing"}),
+                ("≠", "year", 2023, {"bob", "missing"}),
+                ("not contains", "writer", "Ali", {"bob", "missing"}),
+                ("not in", "writer", "Alice", {"bob", "missing"}),
+                ("is", "writer", "Alice", {"alice"}),
+                ("in", "writer", "Alice", {"alice"}),
+                (">", "year", 2024, {"bob"}),
+            ],
+        )
+        def test_process_metadata_filter_includes_missing_field_only_for_negative_conditions(
+            self,
+            sqlite_session_factory: sessionmaker[Session],
+            condition: str,
+            metadata_name: str,
+            value: str | int,
+            expected: set[str],
+        ) -> None:
+            documents: dict[str, dict[str, object]] = {
+                "alice": {"writer": "Alice", "year": 2023},
+                "bob": {"writer": "Bob", "year": 2025},
+                "missing": {},
+            }
+            with sqlite_session_factory.begin() as session:
+                for document_id, doc_metadata in documents.items():
+                    session.add(make_document(document_id=document_id, doc_metadata=doc_metadata))
+
+            filters = DatasetRetrieval.process_metadata_filter_func(0, condition, metadata_name, value, [])
+            with sqlite_session_factory() as session:
+                found = set(session.scalars(select(DatasetDocument.id).where(*filters)).all())
+
+            assert found == expected
 
         def test_calculate_vector_score(self, retrieval: DatasetRetrieval) -> None:
             doc_high = _dataset_retrieval_Document(page_content="a", metadata={"score": 0.9}, provider="dify")

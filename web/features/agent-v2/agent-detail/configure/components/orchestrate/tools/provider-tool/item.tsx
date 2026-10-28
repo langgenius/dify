@@ -9,12 +9,7 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -329,24 +324,20 @@ export const AgentProviderToolItem = memo(
             </span>
           </CollapsibleTrigger>
           {!readOnly && (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover">
+            <Menu modal={false}>
+              <MenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover">
                 <span className="sr-only">
                   {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
                 </span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-44">
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="gap-2"
-                  onClick={onRemoveProvider}
-                >
+              </MenuTrigger>
+              <MenuContent align="end" className="w-44">
+                <MenuItem variant="destructive" className="gap-2" onClick={onRemoveProvider}>
                   <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                   <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </MenuItem>
+              </MenuContent>
+            </Menu>
           )}
           {isInstalled === false && (
             <div className="shrink-0">

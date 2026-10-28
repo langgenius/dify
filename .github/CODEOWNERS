@@ -310,7 +310,7 @@
 
 # Frontend - Personal Settings
 /web/app/components/header/account-setting/ @CodingOnStar @iamjoel
-/web/app/components/header/account-dropdown/ @CodingOnStar @iamjoel
+/web/app/components/header/account-menu/ @CodingOnStar @iamjoel
 
 # Frontend - Analytics
 /web/app/components/base/ga/ @CodingOnStar @iamjoel
@@ -331,7 +331,7 @@
 /web/app/education/ @iamjoel @zxhlyh
 
 # Frontend - Workspace
-/web/app/components/header/account-dropdown/workplace-selector/ @iamjoel @zxhlyh
+/web/app/components/header/account-menu/workplace-selector/ @iamjoel @zxhlyh
 
 # Frontend - App Shell and Console Bootstrap
 /web/app/layout.tsx @iamjoel @lyzno1

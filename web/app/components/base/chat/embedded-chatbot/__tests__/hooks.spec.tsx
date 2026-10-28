@@ -566,6 +566,58 @@ describe('useEmbeddedChatbot', () => {
       expect(result.current.clearChatList).toBe(true)
     })
 
+    it('restores required file defaults after completion and reset, with initial URL inputs taking priority', async () => {
+      const file = createChatFileFixture()
+      const replacement = createChatFileFixture({
+        id: 'replacement',
+        uploadedId: 'replacement-upload',
+      })
+      webAppState.embeddedConversationId = null
+      webAppState.appParams = createChatConfigFixture({
+        user_input_form: [
+          { file: { variable: 'file', label: 'File', required: true, default: file } },
+          { 'file-list': { variable: 'files', label: 'Files', required: true, default: [file] } },
+          {
+            'text-input': {
+              variable: 'topic',
+              label: 'Topic',
+              required: true,
+              default: 'configured',
+            },
+          },
+        ],
+      })
+      setUrlInputs({ topic: 'initial-url' })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'completed-conversation' }),
+      )
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      await waitFor(() => expect(result.current.newConversationInputs.topic).toBe('initial-url'))
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({
+          file: replacement,
+          files: [replacement],
+          topic: 'edited',
+        })
+        result.current.handleNewConversationCompleted('completed-conversation')
+      })
+      await waitFor(() =>
+        expect(result.current.currentConversationId).toBe('completed-conversation'),
+      )
+      act(() => result.current.handleNewConversation())
+
+      const onStart = vi.fn()
+      act(() => result.current.handleStartChat(onStart))
+      expect(onStart).toHaveBeenCalledOnce()
+      expect(result.current.currentConversationId).toBe('')
+      expect(result.current.newConversationInputs).toEqual({
+        file,
+        files: [file],
+        topic: 'initial-url',
+      })
+    })
+
     it('clears the trial conversation when starting a new chat', async () => {
       const { result } = await renderWithClient(
         () => useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'),
@@ -806,6 +858,30 @@ describe('useEmbeddedChatbot', () => {
   })
 
   describe('Required file inputs', () => {
+    it('does not start a conversation after a required file list is cleared', async () => {
+      webAppState.appParams = createChatConfigFixture({
+        user_input_form: [
+          {
+            'file-list': {
+              variable: 'files',
+              required: true,
+              label: 'Files',
+              default: [createChatFileFixture()],
+            },
+          },
+        ],
+      })
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      const onStart = vi.fn()
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({ files: [] })
+        result.current.handleStartChat(onStart)
+      })
+
+      expect(onStart).not.toHaveBeenCalled()
+    })
+
     it('should handle multi-file uploading status', async () => {
       webAppState.appParams = createChatConfigFixture({
         user_input_form: [{ 'file-list': { variable: 'files', required: true, label: 'files' } }],

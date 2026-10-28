@@ -114,7 +114,7 @@ def _feedback(
 
 def _agent_observability_service_workflow_run(*, workflow_type: WorkflowType = WorkflowType.WORKFLOW) -> WorkflowRun:
     created_at = datetime(2026, 7, 21, 7, 0, 19)
-    return WorkflowRun(
+    workflow_record = WorkflowRun(
         id="workflow-run-1",
         tenant_id="tenant-1",
         app_id="workflow-app-1",
@@ -132,9 +132,10 @@ def _agent_observability_service_workflow_run(*, workflow_type: WorkflowType = W
         total_steps=1,
         created_by_role=CreatorUserRole.END_USER,
         created_by="end-user-1",
-        created_at=created_at,
         finished_at=created_at,
     )
+    workflow_record.created_at = created_at
+    return workflow_record
 
 
 def _agent_observability_service_node_execution(
@@ -143,7 +144,7 @@ def _agent_observability_service_node_execution(
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.SUCCEEDED,
 ) -> WorkflowNodeExecutionModel:
     created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
-    return WorkflowNodeExecutionModel(
+    node_record = WorkflowNodeExecutionModel(
         id=execution_id,
         tenant_id="tenant-1",
         app_id="workflow-app-1",
@@ -178,11 +179,12 @@ def _agent_observability_service_node_execution(
                 }
             }
         ),
-        created_at=created_at,
         created_by_role=CreatorUserRole.END_USER,
         created_by="end-user-1",
         finished_at=None,
     )
+    node_record.created_at = created_at
+    return node_record
 
 
 def _agent_observability_service_workflow_binding(

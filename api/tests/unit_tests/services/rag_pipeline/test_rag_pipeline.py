@@ -37,6 +37,7 @@ from models.dataset import (
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.workflow import Workflow, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
@@ -141,20 +142,20 @@ def _make_workflow(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version=version,
         marked_name="",
         marked_comment="",
         graph=json.dumps(graph or {"nodes": []}),
-        features=json.dumps(features or {}),
+        _features=json.dumps(features or {}),
         created_by=created_by,
-        created_at=datetime(2024, 1, 1),
         updated_by=None,
-        updated_at=datetime(2024, 1, 1),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=rag_pipeline_variables or [],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=rag_pipeline_variables or [],
     )
+    workflow.updated_at = datetime(2024, 1, 1)
+    workflow.created_at = datetime(2024, 1, 1)
     return workflow
 
 

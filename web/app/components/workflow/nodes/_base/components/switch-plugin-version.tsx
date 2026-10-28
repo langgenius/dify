@@ -16,13 +16,13 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
@@ -112,7 +112,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
           )}
         </DialogContent>
       </Dialog>
-      <DropdownMenu
+      <Menu
         open={requestedOpen && !!pluginDetail && canUpdatePlugin && !loadingVersions}
         onOpenChange={setRequestedOpen}
       >
@@ -120,7 +120,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
           <Tooltip disabled={!tooltip || requestedOpen}>
             <TooltipTrigger
               render={
-                <DropdownMenuTrigger
+                <MenuTrigger
                   ref={triggerRef}
                   render={
                     <Button
@@ -145,18 +145,18 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             <TooltipContent>{tooltip}</TooltipContent>
           </Tooltip>
         )}
-        <DropdownMenuContent
+        <MenuContent
           className="max-h-[min(16rem,var(--available-height))]"
           align="start"
           aria-labelledby={versionMenuLabelId}
         >
-          <DropdownMenuGroup>
-            <DropdownMenuGroupLabel id={versionMenuLabelId}>
+          <MenuGroup>
+            <MenuGroupLabel id={versionMenuLabelId}>
               {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
-            </DropdownMenuGroupLabel>
+            </MenuGroupLabel>
             {versionsQuery.data && pluginDetail ? (
               versionsQuery.data.data.versions.map((item) => (
-                <DropdownMenuItem
+                <MenuItem
                   key={item.unique_identifier}
                   disabled={pluginDetail.version === item.version}
                   onClick={() => {
@@ -171,16 +171,16 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                   <span className="ms-auto text-text-tertiary">
                     {formatDate(item.created_at, dateFormat)}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               ))
             ) : (
-              <DropdownMenuItem closeOnClick={false} onClick={() => void versionsQuery.refetch()}>
+              <MenuItem closeOnClick={false} onClick={() => void versionsQuery.refetch()}>
                 {t(($) => $['operation.retry'], { ns: 'common' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

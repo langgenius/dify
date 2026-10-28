@@ -1,6 +1,6 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { consoleClient } from '@/service/console'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -12,8 +12,6 @@ import DatasetCard from '../index'
 const api = vi.hoisted(() => ({
   push: vi.fn(),
   bindTags: vi.fn<typeof consoleClient.tagBindings.post>(),
-  checkUsage: vi.fn<typeof consoleClient.datasets.byDatasetId.useCheck.get>(),
-  deleteDataset: vi.fn<typeof consoleClient.datasets.byDatasetId.delete>(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -27,8 +25,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'tags.get': async () => [{ id: 'tag-1', name: 'Research', type: 'knowledge' }],
-      'datasets.byDatasetId.useCheck.get': api.checkUsage,
-      'datasets.byDatasetId.delete': api.deleteDataset,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'tagBindings.post': api.bindTags,
@@ -39,8 +35,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 beforeEach(() => {
   api.push.mockReset()
   api.bindTags.mockReset().mockResolvedValue({ result: 'success' })
-  api.checkUsage.mockReset().mockResolvedValue({ is_using: false })
-  api.deleteDataset.mockReset().mockResolvedValue(undefined)
 })
 afterEach(() => act(() => toast.dismiss()))
 
@@ -53,7 +47,7 @@ function setup(
   renderWithConsoleQuery(
     <>
       <AppToaster />
-      <DatasetCard dataset={dataset} onSuccess={onSuccess} />
+      <DatasetCard onDelete={vi.fn()} dataset={dataset} onSuccess={onSuccess} />
     </>,
     {
       accountProfile: { id: 'user-1' },
@@ -156,34 +150,4 @@ it('opens access configuration from the real card menu', async () => {
     await screen.findByRole('menuitem', { name: 'navigation.settings.resourceAccess' }),
   )
   expect(api.push).toHaveBeenCalledExactlyOnceWith('/datasets/dataset-1/access-config')
-})
-
-it('rechecks usage after cancellation and deletes only after confirmation', async () => {
-  const { user, onSuccess } = setup({ permission_keys: [DatasetACLPermission.Delete] })
-  const openDelete = async () => {
-    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
-    return screen.findByRole('alertdialog', { name: 'dataset.deleteDatasetConfirmTitle' })
-  }
-  const firstDialog = await openDelete()
-  expect(firstDialog).toHaveTextContent('dataset.deleteDatasetConfirmContent')
-  expect(api.deleteDataset).not.toHaveBeenCalled()
-  await user.click(within(firstDialog).getByRole('button', { name: 'common.operation.cancel' }))
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  expect(api.deleteDataset).not.toHaveBeenCalled()
-  expect(onSuccess).not.toHaveBeenCalled()
-
-  api.checkUsage.mockResolvedValueOnce({ is_using: true })
-  const secondDialog = await openDelete()
-  expect(secondDialog).toHaveTextContent('dataset.datasetUsedByApp')
-  expect(api.checkUsage).toHaveBeenCalledTimes(2)
-  expect(api.checkUsage).toHaveBeenLastCalledWith({ params: { dataset_id: 'dataset-1' } })
-  await user.click(within(secondDialog).getByRole('button', { name: 'common.operation.confirm' }))
-  await waitFor(() =>
-    expect(api.deleteDataset).toHaveBeenCalledExactlyOnceWith({
-      params: { dataset_id: 'dataset-1' },
-    }),
-  )
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-  expect(onSuccess).toHaveBeenCalledOnce()
 })

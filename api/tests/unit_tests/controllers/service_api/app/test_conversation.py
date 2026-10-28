@@ -1,24 +1,17 @@
-import sys
 import uuid
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask, request
 from pydantic import ValidationError
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.console.explore.conversation import ConversationRenamePayload as ConsolePayload
 from controllers.service_api.app.conversation import (
-    ConversationApi,
-    ConversationDetailApi,
     ConversationListQuery,
-    ConversationRenameApi,
     ConversationRenamePayload,
     ConversationVariableDetailApi,
     ConversationVariableInfiniteScrollPaginationResponse,
@@ -491,20 +484,10 @@ class TestConversationCases:
     class TestConversationService:
         """Test ConversationService integration patterns."""
 
-        def test_pagination_by_last_id_method_exists(self):
-            """Test that ConversationService.pagination_by_last_id exists."""
-            assert hasattr(ConversationService, "pagination_by_last_id")
-            assert callable(ConversationService.pagination_by_last_id)
-
         def test_delete_method_exists(self):
             """Test that ConversationService.delete exists."""
             assert hasattr(ConversationService, "delete")
             assert callable(ConversationService.delete)
-
-        def test_rename_method_exists(self):
-            """Test that ConversationService.rename exists."""
-            assert hasattr(ConversationService, "rename")
-            assert callable(ConversationService.rename)
 
         def test_get_conversational_variable_method_exists(self):
             """Test that ConversationService.get_conversational_variable exists."""
@@ -515,48 +498,6 @@ class TestConversationCases:
             """Test that ConversationService.update_conversation_variable exists."""
             assert hasattr(ConversationService, "update_conversation_variable")
             assert callable(ConversationService.update_conversation_variable)
-
-        @patch.object(ConversationService, "pagination_by_last_id")
-        def test_pagination_returns_expected_format(self, mock_pagination):
-            """Test pagination returns expected data format."""
-            mock_result = Mock()
-            mock_result.data = []
-            mock_result.limit = 20
-            mock_result.has_more = False
-            mock_pagination.return_value = mock_result
-
-            result = ConversationService.pagination_by_last_id(
-                app_model=_app(),
-                user=_end_user(),
-                last_id=None,
-                limit=20,
-                invoke_from=Mock(),
-                sort_by="-updated_at",
-            )
-
-            assert hasattr(result, "data")
-            assert hasattr(result, "limit")
-            assert hasattr(result, "has_more")
-
-        def test_rename_returns_conversation(self, sqlite_session: Session):
-            """Test rename returns updated conversation."""
-            conversation_id = "00000000-0000-0000-0000-000000000001"
-            conversation = _conversation(conversation_id=conversation_id)
-            sqlite_session.add(conversation)
-            sqlite_session.commit()
-
-            result = ConversationService.rename(
-                app_model=App(id="app-1"),
-                conversation_id=conversation_id,
-                user=_end_user(),
-                name="New Name",
-                auto_generate=False,
-                session=sqlite_session,
-            )
-
-            assert result.name == "New Name"
-            sqlite_session.refresh(conversation)
-            assert conversation.name == "New Name"
 
     class TestConversationPayloadsController:
         def test_rename_requires_name(self) -> None:
@@ -572,119 +513,6 @@ class TestConversationCases:
         def test_variables_query_invalid_name(self) -> None:
             with pytest.raises(ValueError, match="1 validation error for ConversationVariablesQuery\\\nvariable_name"):
                 ConversationVariablesQuery(variable_name="bad;")
-
-    class TestConversationApiController:
-        def test_list_not_chat(self, app: Flask) -> None:
-            api = ConversationApi()
-            handler = unwrap(api.get)
-            app_model = _app(mode=AppMode.COMPLETION)
-            end_user = _end_user()
-
-            with app.test_request_context("/conversations", method="GET"):
-                with pytest.raises(NotChatAppError):
-                    handler(
-                        api,
-                        ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
-                        app_model=app_model,
-                        end_user=end_user,
-                    )
-
-        def test_list_last_not_found(
-            self,
-            app: Flask,
-            monkeypatch: pytest.MonkeyPatch,
-            sqlite_engine: Engine,
-            sqlite_session: Session,
-        ) -> None:
-            last_id = "00000000-0000-0000-0000-000000000001"
-            # The id exists for a different app, proving pagination cannot cross app boundaries.
-            sqlite_session.add(_conversation(conversation_id=last_id, app_id="other-app"))
-            sqlite_session.commit()
-
-            conversation_module = sys.modules["controllers.service_api.app.conversation"]
-            monkeypatch.setattr(conversation_module, "db", SimpleNamespace(engine=sqlite_engine))
-
-            api = ConversationApi()
-            handler = unwrap(api.get)
-            app_model = _app()
-            end_user = _end_user()
-
-            with app.test_request_context(
-                f"/conversations?last_id={last_id}&limit=20",
-                method="GET",
-            ):
-                with pytest.raises(NotFound):
-                    handler(
-                        api,
-                        ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
-                        app_model=app_model,
-                        end_user=end_user,
-                    )
-
-    class TestConversationDetailApiController:
-        def test_delete_not_chat(self, app: Flask) -> None:
-            api = ConversationDetailApi()
-            handler = unwrap(api.delete)
-            app_model = _app(mode=AppMode.COMPLETION)
-            end_user = _end_user()
-
-            with app.test_request_context("/conversations/1", method="DELETE"):
-                with pytest.raises(NotChatAppError):
-                    handler(
-                        api,
-                        app_model=app_model,
-                        end_user=end_user,
-                        conversation_id="00000000-0000-0000-0000-000000000001",
-                    )
-
-        def test_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            monkeypatch.setattr(
-                ConversationService,
-                "delete",
-                lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-            )
-
-            api = ConversationDetailApi()
-            handler = unwrap(api.delete)
-            app_model = _app()
-            end_user = _end_user()
-
-            with app.test_request_context("/conversations/1", method="DELETE"):
-                with pytest.raises(NotFound):
-                    handler(
-                        api,
-                        app_model=app_model,
-                        end_user=end_user,
-                        conversation_id="00000000-0000-0000-0000-000000000001",
-                    )
-
-    class TestConversationRenameApiController:
-        def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            monkeypatch.setattr(
-                ConversationService,
-                "rename",
-                lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-            )
-
-            api = ConversationRenameApi()
-            handler = unwrap(api.post)
-            app_model = _app()
-            end_user = _end_user()
-
-            with app.test_request_context(
-                "/conversations/1/name",
-                method="POST",
-                json={"auto_generate": True},
-            ):
-                payload = ConversationRenamePayload.model_validate(request.get_json() or {})
-                with pytest.raises(NotFound):
-                    handler(
-                        api,
-                        payload,
-                        app_model=app_model,
-                        end_user=end_user,
-                        conversation_id="00000000-0000-0000-0000-000000000001",
-                    )
 
     class TestConversationVariablesApiController:
         def test_not_chat(self, app: Flask) -> None:
