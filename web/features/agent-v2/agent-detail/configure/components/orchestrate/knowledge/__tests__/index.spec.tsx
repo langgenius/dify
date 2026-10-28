@@ -10,6 +10,7 @@ import {
   ComparisonOperator,
   LogicalOperator,
   MetadataFilteringModeEnum,
+  MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import {
   agentSoulConfigToFormState,
@@ -572,6 +573,213 @@ describe('shared knowledge binding dialog', () => {
       reranking_enable: false,
     })
   })
+
+  it('removes a dataset with an unavailable embedding model before selecting a replacement', async () => {
+    const user = userEvent.setup()
+    const unavailable = createDatasetFixture({
+      name: 'Unavailable docs',
+      embedding_available: false,
+    })
+    const replacement = createDatasetFixture({ id: 'replacement', name: 'Replacement docs' })
+    getDataset.mockResolvedValue(unavailable)
+    getDatasets.mockResolvedValue(datasetPage([unavailable, replacement]))
+    setup(
+      [
+        {
+          id: 'group',
+          name: 'Saved group',
+          datasetRefs: [{ id: unavailable.id, name: unavailable.name }],
+          queryMode: 'custom',
+          customQuery: 'support question',
+          multipleRetrievalConfig: { top_k: 7, score_threshold: 0.4, reranking_enable: false },
+        },
+      ],
+      { enabled: false },
+    )
+    const original = snapshot().knowledge
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    await user.click(
+      await within(dialog).findByRole('button', {
+        name: 'common.operation.remove Unavailable docs',
+      }),
+    )
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+      }),
+    )
+    const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+    expect(await within(picker).findByRole('button', { name: /Unavailable docs/ })).toBeDisabled()
+    await user.click(within(picker).getByRole('button', { name: /Replacement docs/ }))
+    await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    expect(snapshot().knowledge).toEqual(original)
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets).toEqual([
+      expect.objectContaining({
+        id: 'group',
+        name: 'Saved group',
+        datasets: [expect.objectContaining({ id: replacement.id })],
+        query: { mode: 'user_query', value: 'support question' },
+        retrieval: expect.objectContaining({ top_k: 7, score_threshold: 0.4 }),
+      }),
+    ])
+  })
+
+  it.each([
+    {
+      title: 'rejects unsupported operators even when field types match',
+      from: MetadataFilteringVariableType.number,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.contains,
+      value: 12,
+      valid: false,
+      keepOriginal: false,
+    },
+    {
+      title: 'requires reconfiguration when the field type changes',
+      from: MetadataFilteringVariableType.string,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.empty,
+      value: undefined,
+      valid: false,
+      keepOriginal: false,
+    },
+    {
+      title: 'retains compatible empty-value conditions',
+      from: MetadataFilteringVariableType.number,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.empty,
+      value: undefined,
+      valid: true,
+      keepOriginal: false,
+    },
+    {
+      title: 'retains compatible timestamp conditions',
+      from: MetadataFilteringVariableType.time,
+      to: MetadataFilteringVariableType.time,
+      operator: ComparisonOperator.after,
+      value: 1700000000,
+      valid: true,
+      keepOriginal: false,
+    },
+    {
+      title: 'rejects string operators on a replacement numeric field',
+      from: MetadataFilteringVariableType.string,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.contains,
+      value: 'abc',
+      valid: false,
+      keepOriginal: false,
+    },
+    {
+      title: 'rejects nonnumeric values on numeric fields',
+      from: MetadataFilteringVariableType.number,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.equal,
+      value: 'abc',
+      valid: false,
+      keepOriginal: false,
+    },
+    {
+      title: 'retains compatible numeric conditions',
+      from: MetadataFilteringVariableType.number,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.equal,
+      value: 12,
+      valid: true,
+      keepOriginal: false,
+    },
+    {
+      title: 'retains compatible list membership conditions',
+      from: MetadataFilteringVariableType.string,
+      to: MetadataFilteringVariableType.string,
+      operator: ComparisonOperator.in,
+      value: ['abc', 'def'],
+      valid: true,
+      keepOriginal: false,
+    },
+    {
+      title: 'rejects same-name fields with conflicting types within a group',
+      from: MetadataFilteringVariableType.string,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.contains,
+      value: 'abc',
+      valid: false,
+      keepOriginal: true,
+    },
+  ])(
+    '$title when changing datasets',
+    async ({ from, to, operator, value, valid, keepOriginal }) => {
+      const user = userEvent.setup()
+      const source = createDatasetFixture({
+        name: 'Original docs',
+        doc_metadata: [{ id: 'old-code', name: 'code', type: from }],
+      })
+      const replacement = createDatasetFixture({
+        id: 'replacement',
+        name: 'Replacement docs',
+        doc_metadata: [{ id: 'new-code', name: 'code', type: to }],
+      })
+      getDatasets.mockResolvedValue(datasetPage([source, replacement]))
+      setup(
+        [
+          {
+            id: 'group',
+            name: 'Saved group',
+            selectedDatasets: [source],
+            metadataFilterMode: MetadataFilteringModeEnum.manual,
+            metadataFilteringConditions: {
+              logical_operator: LogicalOperator.and,
+              conditions: [
+                {
+                  id: 'condition',
+                  metadata_id: 'old-code',
+                  name: 'code',
+                  comparison_operator: operator,
+                  value,
+                },
+              ],
+            },
+          },
+        ],
+        { enabled: false },
+      )
+      const original = snapshot().knowledge
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: /operation.add.*nodes.knowledgeRetrieval.knowledge/,
+        }),
+      )
+      const picker = await screen.findByRole('dialog', { name: /feature.dataSet.selectTitle/ })
+      if (!keepOriginal)
+        await user.click(await within(picker).findByRole('button', { name: /Original docs/ }))
+      await user.click(await within(picker).findByRole('button', { name: /Replacement docs/ }))
+      await user.click(within(picker).getByRole('button', { name: 'common.operation.add' }))
+      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      if (valid) {
+        expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual([
+          {
+            id: 'condition',
+            metadata_id: 'new-code',
+            name: 'code',
+            comparison_operator: operator,
+            value,
+          },
+        ])
+      } else {
+        expect(dialog).toBeInTheDocument()
+        expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(
+          /metadata.panel.conditions/,
+        )
+        expect(snapshot().knowledge).toEqual(original)
+      }
+    },
+  )
 
   it('retains Classic bindings when dataset lookup fails and supports retry', async () => {
     const user = userEvent.setup()

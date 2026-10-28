@@ -13,6 +13,7 @@ import type { KnowledgeValidationIssueCode } from '@/features/agent-v2/agent-com
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQueries } from '@tanstack/react-query'
@@ -26,6 +27,10 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
+import {
+  comparisonOperatorNotRequireValue,
+  getOperators,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/utils'
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
 import {
@@ -70,20 +75,51 @@ const createDefaultMetadataFilteringConditions = () => ({
 
 const getSharedMetadata = (datasets: DatasetDetailWithPartialMembersResponse[]) =>
   datasets.length
-    ? intersectionBy(...datasets.map((dataset) => dataset.doc_metadata ?? []), 'name')
+    ? intersectionBy(...datasets.map((dataset) => dataset.doc_metadata ?? []), (field) =>
+        JSON.stringify([field.name, field.type]),
+      )
     : []
+
+const isMetadataConditionCompatible = (
+  condition: MetadataFilteringCondition,
+  field: DatasetDocMetadataResponse,
+) => {
+  const { type } = field
+  if (!getOperators(type).some((operator) => operator === condition.comparison_operator))
+    return false
+  if (comparisonOperatorNotRequireValue(condition.comparison_operator)) return true
+  if (type === MetadataFilteringVariableType.number || type === MetadataFilteringVariableType.time)
+    return typeof condition.value === 'number' && Number.isFinite(condition.value)
+  if (
+    condition.comparison_operator === ComparisonOperator.in ||
+    condition.comparison_operator === ComparisonOperator.notIn
+  )
+    return (
+      typeof condition.value === 'string' ||
+      (Array.isArray(condition.value) &&
+        condition.value.every((value) => typeof value === 'string'))
+    )
+  return typeof condition.value === 'string'
+}
 
 const reconcileMetadataConditions = (
   conditions: AgentKnowledgeRetrievalItem['metadataFilteringConditions'],
   datasets: DatasetDetailWithPartialMembersResponse[],
+  previousDatasets: DatasetDetailWithPartialMembersResponse[],
 ) => {
   if (!conditions) return conditions
   const metadata = getSharedMetadata(datasets)
+  const previousMetadata = getSharedMetadata(previousDatasets)
   return {
     ...conditions,
     conditions: conditions.conditions.flatMap((condition) => {
       const field = metadata.find((field) => field.name === condition.name)
-      return field ? [{ ...condition, metadata_id: field.id }] : []
+      const previousField = previousMetadata.find((field) => field.name === condition.name)
+      return field &&
+        (!previousField || previousField.type === field.type) &&
+        isMetadataConditionCompatible(condition, field)
+        ? [{ ...condition, metadata_id: field.id }]
+        : []
     }),
   }
 }
@@ -108,7 +144,7 @@ function ClassicSettingsFields({
   errors,
   selectedDatasets,
 }: Props & { selectedDatasets: DatasetDetailWithPartialMembersResponse[] }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'common'])
   const getValidationMessage = useKnowledgeValidationMessage()
   const [rerankModelOpen, setRerankModelOpen] = useState(false)
   const queryModeLabelId = useId()
@@ -158,10 +194,13 @@ function ClassicSettingsFields({
     if (!datasetsChanged) return
     onChange({
       selectedDatasets: nextDatasets,
-      metadataFilteringConditions: reconcileMetadataConditions(
-        item.metadataFilteringConditions,
-        nextDatasets,
-      ),
+      metadataFilteringConditions: nextDatasets.length
+        ? reconcileMetadataConditions(
+            item.metadataFilteringConditions,
+            nextDatasets,
+            selectedDatasets,
+          )
+        : item.metadataFilteringConditions,
       multipleRetrievalConfig:
         retrievalMode === RETRIEVE_TYPE.multiWay && nextDatasets.length > 0
           ? resolveMultipleRetrievalConfig(multipleRetrievalConfig, nextDatasets)
@@ -310,6 +349,7 @@ function ClassicSettingsFields({
               />
               <div className="h-3 w-px bg-divider-regular" />
               <AddKnowledge
+                key={selectedDatasets.map((dataset) => dataset.id).join(',')}
                 selectedIds={selectedDatasets.map((dataset) => dataset.id)}
                 modal
                 onChange={handleSelectedDatasetsChange}
@@ -320,7 +360,19 @@ function ClassicSettingsFields({
           <>
             <ul className="space-y-1 system-xs-regular text-text-secondary">
               {selectedDatasets.map((dataset) => (
-                <li key={dataset.id}>{dataset.name}</li>
+                <li key={dataset.id} className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 wrap-break-word">{dataset.name}</span>
+                  <IconButton
+                    aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${dataset.name}`}
+                    onClick={() =>
+                      handleSelectedDatasetsChange(
+                        selectedDatasets.filter((current) => current.id !== dataset.id),
+                      )
+                    }
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                </li>
               ))}
             </ul>
             {(datasetsError || retrievalError) && (
@@ -479,6 +531,7 @@ export function ClassicKnowledgeSettings(props: Props) {
                                 ? reconcileMetadataConditions(
                                     props.item.metadataFilteringConditions,
                                     remainingDatasets,
+                                    datasets,
                                   )
                                 : props.item.metadataFilteringConditions,
                             }
