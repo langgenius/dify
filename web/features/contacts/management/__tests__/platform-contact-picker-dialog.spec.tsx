@@ -234,9 +234,9 @@ describe('Enterprise Platform contact import', () => {
     const { context, addPlatformContacts, queryClient, onOpenChange, renderPicker } = setup()
     const keys = [
       ['contacts-management', context.workspaceId, 'directory'],
-      consoleQuery.workspace.current.humanInput.v2.contacts.key(),
-      consoleQuery.workspace.current.humanInput.v2.contactOptions.key(),
-      consoleQuery.workspace.current.humanInput.v2.organizationCandidates.key(),
+      consoleQuery.workspaces.current.humanInput.v2.contacts.key(),
+      consoleQuery.workspaces.current.humanInput.v2.contactOptions.key(),
+      consoleQuery.workspaces.current.humanInput.v2.organizationCandidates.key(),
     ]
     keys.forEach((key) => queryClient.setQueryData(key, { data: [] }))
     renderPicker()

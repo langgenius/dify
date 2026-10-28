@@ -61,7 +61,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-history', () => ({
 
 vi.mock('@/service/console', () => ({
   consoleClient: {
-    workspace: {
+    workspaces: {
       current: {
         humanInput: {
           v2: {

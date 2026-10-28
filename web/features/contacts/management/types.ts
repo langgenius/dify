@@ -6,7 +6,7 @@ import type {
   HumanInputContactType,
   ImBinding,
   ImIdentity,
-} from '@dify/contracts/api/console/workspace/types.gen'
+} from '@dify/contracts/api/console/workspaces/types.gen'
 
 export type ContactsDeployment = 'ce' | 'saas' | 'ee'
 

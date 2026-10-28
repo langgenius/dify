@@ -1,4 +1,4 @@
-import type { ContactOption } from '@dify/contracts/api/console/workspace/types.gen'
+import type { ContactOption } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -39,7 +39,7 @@ export function createContactRecipientOptionProvider(
   workspaceId: string,
   queryClient: QueryClient,
 ): ContactRecipientOptionProvider {
-  const contactOptions = consoleQuery.workspace.current.humanInput.v2.contactOptions
+  const contactOptions = consoleQuery.workspaces.current.humanInput.v2.contactOptions
   const searchPage = async (keyword: string, page: number) => {
     if (!workspaceId) return { data: [], page, hasMore: false }
     const input = { query: { keyword: keyword.trim(), page, limit: 20 } }

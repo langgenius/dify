@@ -1,7 +1,7 @@
 import type {
   BatchGetContactOptionsResponse,
   ListContactOptionsResponse,
-} from '@dify/contracts/api/console/workspace/types.gen'
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { createContactRecipientOptionProvider } from '../contact-provider'
 import { mockContactRecipientOptionProvider } from './fixtures/contact-provider'
@@ -23,7 +23,7 @@ vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
   return {
     consoleQuery: createTanstackQueryUtils({
-      workspace: {
+      workspaces: {
         current: {
           humanInput: { v2: { contactOptions: { get: api.search, batch: { get: api.resolve } } } },
         },

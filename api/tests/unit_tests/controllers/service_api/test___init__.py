@@ -248,7 +248,7 @@ def test_console_node_data_migration_documents_canonical_delivery_method_union(
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
     schemas = payload["components"]["schemas"]
-    operation = payload["paths"]["/workspace/current/human-input/v2/node-data-migration"]["post"]
+    operation = payload["paths"]["/workspaces/current/human-input/v2/node-data-migration"]["post"]
     request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
 
     assert request_schema == {"$ref": "#/components/schemas/NodeDataMigrationPayload"}

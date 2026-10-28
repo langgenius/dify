@@ -1,4 +1,4 @@
-import type { ChannelSummary } from '@dify/contracts/api/console/workspace/types.gen'
+import type { ChannelSummary } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { HumanInputV2DebugMode } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -114,7 +114,7 @@ describe('Human Input v2 Debug Mode', () => {
   it('does not fall back to all channels after a load failure and can retry', async () => {
     const user = userEvent.setup()
     const queryKey =
-      consoleQuery.workspace.current.humanInput.v2.channels.get.queryOptions().queryKey
+      consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey
     const response = createChannelsQueryClient().getQueryData(queryKey)
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(

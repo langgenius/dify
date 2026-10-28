@@ -1,4 +1,4 @@
-import type { ImSyncRun } from '@dify/contracts/api/console/workspace/types.gen'
+import type { ImSyncRun } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

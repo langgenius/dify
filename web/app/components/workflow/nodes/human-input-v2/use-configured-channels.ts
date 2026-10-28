@@ -1,4 +1,4 @@
-import type { ListChannelsResponse } from '@dify/contracts/api/console/workspace/types.gen'
+import type { ListChannelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { useQuery } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
 import { HUMAN_INPUT_V2_DEBUG_CHANNELS } from './types'
@@ -12,7 +12,7 @@ const selectConfiguredChannels = ({ channels }: ListChannelsResponse) =>
 
 const useConfiguredChannels = () => {
   const query = useQuery(
-    consoleQuery.workspace.current.humanInput.v2.channels.get.queryOptions({
+    consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions({
       select: selectConfiguredChannels,
       retry: false,
     }),

@@ -15,10 +15,10 @@ const repeatedQueryArrayRules = [
   { path: /\/trial-apps\/[^/]+\/datasets$/, fields: ['ids'] },
   { path: /\/workspaces\/current\/customized-snippets$/, fields: ['tag_ids', 'creators'] },
   {
-    path: /\/workspace\/current\/human-input\/v2\/contact-options\/batch$/,
+    path: /\/workspaces\/current\/human-input\/v2\/contact-options\/batch$/,
     fields: ['contact_ids'],
   },
-  { path: /\/workspace\/current\/human-input\/v2\/contacts\/batch$/, fields: ['contact_ids'] },
+  { path: /\/workspaces\/current\/human-input\/v2\/contacts\/batch$/, fields: ['contact_ids'] },
   { path: /\/workspaces\/current\/skills$/, fields: ['tag'] },
   { path: /\/workspaces\/current\/plugin\/[^/]+\/list$/, fields: ['tags'] },
   {

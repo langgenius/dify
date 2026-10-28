@@ -19,7 +19,7 @@ vi.mock('@/service/console', async (importOriginal) => ({
     },
   },
   consoleClient: {
-    workspace: {
+    workspaces: {
       current: {
         humanInput: {
           v2: {
@@ -150,7 +150,7 @@ describe('ExternalContactDialog pending state', () => {
 
   it('retains the draft after an API failure and closes only after a successful retry', async () => {
     const createContact = vi.mocked(
-      consoleClient.workspace.current.humanInput.v2.contacts.external.post,
+      consoleClient.workspaces.current.humanInput.v2.contacts.external.post,
     )
     createContact.mockRejectedValueOnce(
       Object.assign(new Error('Service unavailable'), { status: 503 }),
@@ -228,7 +228,7 @@ describe('ExternalContactDialog pending state', () => {
         created_at: 1,
         type: 'external' as const,
       }
-      const contactsClient = consoleClient.workspace.current.humanInput.v2.contacts
+      const contactsClient = consoleClient.workspaces.current.humanInput.v2.contacts
       vi.mocked(contactsClient.external.post).mockResolvedValue({ contact: savedContact })
       vi.mocked(contactsClient.external.byContactId.patch).mockResolvedValue({
         contact: savedContact,
@@ -312,7 +312,7 @@ describe('ExternalContactDialog pending state', () => {
       avatar_url: '',
     }
     const updateContact = vi.mocked(
-      consoleClient.workspace.current.humanInput.v2.contacts.external.byContactId.patch,
+      consoleClient.workspaces.current.humanInput.v2.contacts.external.byContactId.patch,
     )
     updateContact.mockResolvedValue({
       contact: { ...contact, name: 'Evan', created_at: 1, type: 'external' },
@@ -360,7 +360,7 @@ describe('ExternalContactDialog pending state', () => {
   it.each(['create', 'edit'] as const)(
     'rejects an overlong name before %s and allows correcting the Unicode boundary',
     async (mode) => {
-      const contacts = consoleClient.workspace.current.humanInput.v2.contacts
+      const contacts = consoleClient.workspaces.current.humanInput.v2.contacts
       const contact = {
         id: 'name-boundary-contact',
         name: 'Partner',
@@ -437,7 +437,7 @@ describe('ExternalContactDialog pending state', () => {
         await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
         expect(await screen.findByText('contacts.external.validation.email_invalid')).toBeVisible()
         expect(
-          consoleClient.workspace.current.humanInput.v2.contacts.external.post,
+          consoleClient.workspaces.current.humanInput.v2.contacts.external.post,
         ).not.toHaveBeenCalled()
       } finally {
         validity.mockRestore()
@@ -448,7 +448,7 @@ describe('ExternalContactDialog pending state', () => {
   it.each(['evan+qa@example.com', 'evan@xn--bcher-kva.de'])(
     'keeps accepting the valid email %s',
     async (email) => {
-      const contacts = consoleClient.workspace.current.humanInput.v2.contacts
+      const contacts = consoleClient.workspaces.current.humanInput.v2.contacts
       vi.mocked(contacts.external.post).mockResolvedValue({
         contact: {
           id: 'valid-email-contact',

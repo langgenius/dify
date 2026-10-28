@@ -29,7 +29,7 @@ from tests.e2e_tests.containers.controllers.console.helpers import (
     create_console_account_and_tenant,
 )
 
-_BASE_PATH = "/console/api/workspace/current/human-input/v2/channels/im"
+_BASE_PATH = "/console/api/workspaces/current/human-input/v2/channels/im"
 _SLACK_CREDENTIALS = {
     "provider": "slack",
     "client_id": "slack-client-1",

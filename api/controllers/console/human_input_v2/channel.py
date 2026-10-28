@@ -338,7 +338,7 @@ def _workspace_im_channel_service(tenant_id: str, account: Account) -> Workspace
     return build_workspace_im_channel_service(TenantId(tenant_id), _actor_id(account))
 
 
-@console_ns.route("/workspace/current/human-input/v2/channel-providers")
+@console_ns.route("/workspaces/current/human-input/v2/channel-providers")
 class ListChannelProvidersApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[ListChannelProvidersResponse.__name__])
     @require_admin_or_owner
@@ -353,7 +353,7 @@ class ListChannelProvidersApi(WorkspaceChannelResource):
         ).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels")
+@console_ns.route("/workspaces/current/human-input/v2/channels")
 class ListChannelsApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[ListChannelsResponse.__name__])
     @require_admin_or_owner
@@ -371,7 +371,7 @@ class ListChannelsApi(WorkspaceChannelResource):
         return ListChannelsResponse(channels=channels).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/email/test")
+@console_ns.route("/workspaces/current/human-input/v2/channels/email/test")
 class EmailChannelTestApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelTestPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
@@ -396,7 +396,7 @@ class EmailChannelTestApi(WorkspaceChannelResource):
         ).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/email/<uuid:channel_id>/test")
+@console_ns.route("/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>/test")
 class EmailChannelSavedTestApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
@@ -425,7 +425,7 @@ class EmailChannelSavedTestApi(WorkspaceChannelResource):
         return ChannelTestResponse(status=ChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/email")
+@console_ns.route("/workspaces/current/human-input/v2/channels/email")
 class EmailChannelCreateApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[EmailChannelMutationResponse.__name__])
@@ -447,7 +447,7 @@ class EmailChannelCreateApi(WorkspaceChannelResource):
         return EmailChannelMutationResponse(summary=_email_channel_summary_response(snapshot)).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/email/<uuid:channel_id>")
+@console_ns.route("/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>")
 class EmailChannelApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[EmailChannelDetailResponse.__name__])
     @require_admin_or_owner
@@ -513,7 +513,7 @@ class EmailChannelApi(WorkspaceChannelResource):
         return ChannelDeleteResponse(channel_id=deleted_id).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/im/test")
+@console_ns.route("/workspaces/current/human-input/v2/channels/im/test")
 class IMChannelTestApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelTestPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
@@ -535,7 +535,7 @@ class IMChannelTestApi(WorkspaceChannelResource):
         ).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/test")
+@console_ns.route("/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>/test")
 class IMChannelSavedTestApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
@@ -567,7 +567,7 @@ class IMChannelSavedTestApi(WorkspaceChannelResource):
         return ChannelTestResponse(status=ChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/im")
+@console_ns.route("/workspaces/current/human-input/v2/channels/im")
 class IMChannelCreateApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
@@ -587,7 +587,7 @@ class IMChannelCreateApi(WorkspaceChannelResource):
         return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/im/<uuid:channel_id>")
+@console_ns.route("/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>")
 class IMChannelApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[IMChannelDetailResponse.__name__])
     @require_admin_or_owner
@@ -649,7 +649,7 @@ class IMChannelApi(WorkspaceChannelResource):
         return ChannelDeleteResponse(channel_id=deleted_id).model_dump(mode="json")
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/replacement")
+@console_ns.route("/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>/replacement")
 class IMChannelReplacementApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelReplacementPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from flask import Flask
 
-_CHANNEL_PATH_PREFIX = "/workspace/current/human-input/v2"
+_CHANNEL_PATH_PREFIX = "/workspaces/current/human-input/v2"
 _HTTP_METHODS = {"delete", "get", "patch", "post", "put"}
 _EXPECTED_OPERATIONS = {
     f"{_CHANNEL_PATH_PREFIX}/channel-providers": {"get"},

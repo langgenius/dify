@@ -2,7 +2,7 @@ import type {
   ChannelSummary,
   EmailProviderCredentialsWritable,
   ImProviderCredentialsInputWritable,
-} from '@dify/contracts/api/console/workspace/types.gen'
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { TestContactImConnectionCommand } from '../types'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { createContactImApiRepository } from '../repository'

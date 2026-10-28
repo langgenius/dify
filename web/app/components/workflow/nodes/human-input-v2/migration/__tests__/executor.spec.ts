@@ -10,7 +10,7 @@ import { createHumanInputMigrationApi, executeHumanInputV2Migration } from '../e
 
 vi.mock('@/service/console', () => ({
   consoleClient: {
-    workspace: { current: { humanInput: { v2: { nodeDataMigration: { post: vi.fn() } } } } },
+    workspaces: { current: { humanInput: { v2: { nodeDataMigration: { post: vi.fn() } } } } },
   },
 }))
 

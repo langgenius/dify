@@ -9,7 +9,7 @@ import type {
   ImSyncResultItem,
   ImSyncRun,
   UnchangedInput,
-} from '@dify/contracts/api/console/workspace/types.gen'
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactsImPlatformOrganizationContext } from './context'
 import type {
   AuthorizeContactImProviderCommand,
@@ -27,7 +27,7 @@ import type {
   SaveContactImCredentialsCommand,
   TestContactImConnectionCommand,
 } from './types'
-import { zChannelConflictResponse } from '@dify/contracts/api/console/workspace/zod.gen'
+import { zChannelConflictResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { ORPCError } from '@orpc/client'
 import { z } from 'zod'
 import { consoleClient } from '@/service/console'
@@ -163,8 +163,8 @@ const toContactImSyncItemView = ({ id, result }: ImSyncResultItem): ContactImSyn
 /** The server exposes the latest run only; run IDs guard against showing another run's results. */
 export function createContactImSyncApi(
   workspaceId: string,
-  client: Pick<typeof consoleClient.workspace.current.humanInput.v2, 'imSyncRuns'> = consoleClient
-    .workspace.current.humanInput.v2,
+  client: Pick<typeof consoleClient.workspaces.current.humanInput.v2, 'imSyncRuns'> = consoleClient
+    .workspaces.current.humanInput.v2,
 ): Pick<
   ContactImPlatformRepository,
   'getActiveSync' | 'getSyncRun' | 'getSyncItems' | 'startSync'
@@ -489,9 +489,9 @@ async function channelRequest<T>(request: () => Promise<T>): Promise<T> {
 export function createContactImApiRepository(
   organization: ContactsImPlatformOrganizationContext,
   client: Pick<
-    typeof consoleClient.workspace.current.humanInput.v2,
+    typeof consoleClient.workspaces.current.humanInput.v2,
     'channelProviders' | 'channels'
-  > = consoleClient.workspace.current.humanInput.v2,
+  > = consoleClient.workspaces.current.humanInput.v2,
 ): ContactImPlatformRepository {
   const requestOptions = { context: { silent: true } }
   const guard = (organizationId: string) => {

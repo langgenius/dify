@@ -33,17 +33,17 @@ from services.human_input_v2.im_channel_service import IMChannelView
 from tests.helpers.unit.model_factories import make_tenant
 
 _CANONICAL_ROUTES = {
-    "/workspace/current/human-input/v2/channel-providers": {"GET"},
-    "/workspace/current/human-input/v2/channels": {"GET"},
-    "/workspace/current/human-input/v2/channels/email": {"POST"},
-    "/workspace/current/human-input/v2/channels/email/test": {"POST"},
-    "/workspace/current/human-input/v2/channels/email/<uuid:channel_id>/test": {"POST"},
-    "/workspace/current/human-input/v2/channels/email/<uuid:channel_id>": {"GET", "PUT", "DELETE"},
-    "/workspace/current/human-input/v2/channels/im": {"POST"},
-    "/workspace/current/human-input/v2/channels/im/test": {"POST"},
-    "/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/test": {"POST"},
-    "/workspace/current/human-input/v2/channels/im/<uuid:channel_id>": {"GET", "PUT", "DELETE"},
-    "/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/replacement": {"POST"},
+    "/workspaces/current/human-input/v2/channel-providers": {"GET"},
+    "/workspaces/current/human-input/v2/channels": {"GET"},
+    "/workspaces/current/human-input/v2/channels/email": {"POST"},
+    "/workspaces/current/human-input/v2/channels/email/test": {"POST"},
+    "/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>/test": {"POST"},
+    "/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>": {"GET", "PUT", "DELETE"},
+    "/workspaces/current/human-input/v2/channels/im": {"POST"},
+    "/workspaces/current/human-input/v2/channels/im/test": {"POST"},
+    "/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>/test": {"POST"},
+    "/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>": {"GET", "PUT", "DELETE"},
+    "/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>/replacement": {"POST"},
 }
 
 
@@ -63,14 +63,14 @@ def test_canonical_route_inventory_has_no_kind_specific_discovery_authority() ->
             method.upper() for method in ("get", "post", "put", "patch", "delete") if method in resource.__dict__
         }
         for url in urls:
-            if url.startswith("/workspace/current/human-input/v2/channel"):
+            if url.startswith("/workspaces/current/human-input/v2/channel"):
                 registered_routes[url] = resource_methods
 
     assert registered_routes == _CANONICAL_ROUTES
-    assert "/workspace/current/human-input/v2/channels/email" not in {
+    assert "/workspaces/current/human-input/v2/channels/email" not in {
         route for route, methods in registered_routes.items() if "GET" in methods
     }
-    assert "/workspace/current/human-input/v2/channels/im" not in {
+    assert "/workspaces/current/human-input/v2/channels/im" not in {
         route for route, methods in registered_routes.items() if "GET" in methods
     }
 

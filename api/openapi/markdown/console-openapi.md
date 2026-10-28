@@ -14252,571 +14252,6 @@ Returns information about why and where the workflow is paused.
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [GET] /workspace/current/human-input/v2/channel-providers
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ListChannelProvidersResponse](#listchannelprovidersresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/channels
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ListChannelsResponse](#listchannelsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/channels/email
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [EmailChannelCreatePayload](#emailchannelcreatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/channels/email/test
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [EmailChannelTestPayload](#emailchanneltestpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [DELETE] /workspace/current/human-input/v2/channels/email/{channel_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| expected_config_version | query |  | Yes | string |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ChannelDeleteResponse](#channeldeleteresponse)<br> |
-| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/channels/email/{channel_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [EmailChannelDetailResponse](#emailchanneldetailresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [PUT] /workspace/current/human-input/v2/channels/email/{channel_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [EmailChannelUpdatePayload](#emailchannelupdatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
-| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/channels/email/{channel_id}/test
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [EmailChannelUpdatePayload](#emailchannelupdatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
-| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/channels/im
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [IMChannelCreatePayload](#imchannelcreatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/channels/im/test
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [IMChannelTestPayload](#imchanneltestpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [DELETE] /workspace/current/human-input/v2/channels/im/{channel_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| expected_config_version | query |  | Yes | string |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ChannelDeleteResponse](#channeldeleteresponse)<br> |
-| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/channels/im/{channel_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [IMChannelDetailResponse](#imchanneldetailresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [PUT] /workspace/current/human-input/v2/channels/im/{channel_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [IMChannelUpdatePayload](#imchannelupdatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
-| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/channels/im/{channel_id}/replacement
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [IMChannelReplacementPayload](#imchannelreplacementpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
-| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/channels/im/{channel_id}/test
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| channel_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [IMChannelUpdatePayload](#imchannelupdatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
-| 400 | The test provider must match the saved IM Channel. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/contact-options
-List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| keyword | query | Free-text search against selectable contact names. | No | string |
-| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
-| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ListContactOptionsResponse](#listcontactoptionsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/contact-options/batch
-Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_ids | query | Contact IDs persisted in workflow recipient configuration. | Yes | [ string ] |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BatchGetContactOptionsResponse](#batchgetcontactoptionsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/contacts
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| group | query | Optional contact type filter. None means all contacts. | No | string, <br>**Available values:** "external", "platform", "workspace" |
-| keyword | query | Free-text search against contact name or email. | No | string |
-| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
-| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ListContactsResponse](#listcontactsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/contacts/batch
-Admin-only batch lookup for Contact management clients. Workflow editors must use the editor-safe contact-options/batch projection.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_ids | query | List of contact IDs to retrieve. | Yes | [ string ] |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BatchGetContactsResponse](#batchgetcontactsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/contacts/external
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ExternalContactCreateRequest](#externalcontactcreaterequest)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ExternalContactCreateResponse](#externalcontactcreateresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [PATCH] /workspace/current/human-input/v2/contacts/external/{contact_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ExternalContactUpdateRequest](#externalcontactupdaterequest)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ExternalContactUpdateResponse](#externalcontactupdateresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/contacts/platform
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AddPlatformContactsRequest](#addplatformcontactsrequest)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AddPlatformContactsResponse](#addplatformcontactsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/contacts/remove
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [RemoveContactsRequest](#removecontactsrequest)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RemoveContactsResponse](#removecontactsresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/contacts/{contact_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GetContactResponse](#getcontactresponse)<br> |
-| 404 | Contact not found or absent in the current workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [DELETE] /workspace/current/human-input/v2/contacts/{contact_id}/im-bindings
-Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DeleteIMBindingResponse](#deleteimbindingresponse)<br> |
-| 403 | Centrally managed IM bindings cannot be edited from a workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | IM binding not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [PUT] /workspace/current/human-input/v2/contacts/{contact_id}/im-bindings
-Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [CreateIMBindingRequest](#createimbindingrequest)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [CreateIMBindingResponse](#createimbindingresponse)<br> |
-| 403 | Centrally managed IM bindings cannot be edited from a workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Contact or IM identity not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | IM binding conflict | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [DELETE] /workspace/current/human-input/v2/contacts/{contact_id}/im-override
-Reset the IM override for a contact. This endpoint is used to clear the IM identity override for a contact in the workspace.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ResetContactIMOverrideResponse](#resetcontactimoverrideresponse)<br> |
-| 403 | Workspace overrides require centrally managed IM bindings | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Contact not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 422 | Invalid binding scope | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [PUT] /workspace/current/human-input/v2/contacts/{contact_id}/im-override
-Set or reset the IM override for a contact. This endpoint is used to override the IM identity for a contact in the workspace.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| contact_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [SetContactIMOverrideRequest](#setcontactimoverriderequest)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SetContactIMOverrideResponse](#setcontactimoverrideresponse)<br> |
-| 403 | Workspace overrides require centrally managed IM bindings | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Contact or IM identity not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | IM binding conflict | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 422 | Invalid binding scope | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/im-identities
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| keyword | query | Free-text search against identity display name, email, or provider user ID. | No | string |
-| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
-| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ListIMIdentitiesResponse](#listimidentitiesresponse)<br> |
-| 404 | IM Integration not configured | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/im-sync-runs
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [CreateIMSyncRunResponse](#createimsyncrunresponse)<br> |
-| 404 | IM Integration not configured | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | IM Integration revision changed | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | IM synchronization temporarily unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/im-sync-runs/latest
-Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GetLatestIMSyncRunResponse](#getlatestimsyncrunresponse)<br> |
-| 404 | Latest IM sync run not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/im-sync-runs/latest/results
-Return one required result bucket from the latest IM sync run using page and limit pagination. There is no all filter; the response contains page, limit, and total metadata without a run summary.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
-| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
-| result | query | Required result bucket to paginate from the latest sync run. There is no `all` bucket or unfiltered results mode. | Yes | string, <br>**Available values:** "added", "failed", "not_matched", "removed", "skipped" |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ListLatestIMSyncRunResultsResponse](#listlatestimsyncrunresultsresponse)<br> |
-| 404 | Latest IM sync run not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /workspace/current/human-input/v2/node-data-migration
-Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Every legacy Email recipient becomes onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [NodeDataMigrationPayload](#nodedatamigrationpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [NodeDataMigrationResponse](#nodedatamigrationresponse)<br> |
-| 400 | Migration failed | **application/json**: [NodeDataMigrationFailureResponse](#nodedatamigrationfailureresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [GET] /workspace/current/human-input/v2/organization-candidates
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| keyword | query | Free-text search against candidate name or email. | No | string |
-| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
-| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ListOrganizationCandidatesResponse](#listorganizationcandidatesresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [GET] /workspaces
 #### Responses
 
@@ -15294,6 +14729,571 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint updated successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channel-providers
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListChannelProvidersResponse](#listchannelprovidersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channels
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListChannelsResponse](#listchannelsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/email
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelCreatePayload](#emailchannelcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/email/test
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelTestPayload](#emailchanneltestpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/channels/email/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_config_version | query |  | Yes | string |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelDeleteResponse](#channeldeleteresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channels/email/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EmailChannelDetailResponse](#emailchanneldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/channels/email/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelUpdatePayload](#emailchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/email/{channel_id}/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailChannelUpdatePayload](#emailchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelCreatePayload](#imchannelcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im/test
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelTestPayload](#imchanneltestpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/channels/im/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_config_version | query |  | Yes | string |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelDeleteResponse](#channeldeleteresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/channels/im/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelDetailResponse](#imchanneldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/channels/im/{channel_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelUpdatePayload](#imchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im/{channel_id}/replacement
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelReplacementPayload](#imchannelreplacementpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/channels/im/{channel_id}/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| channel_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IMChannelUpdatePayload](#imchannelupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
+| 400 | The test provider must match the saved IM Channel. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contact-options
+List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Free-text search against selectable contact names. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListContactOptionsResponse](#listcontactoptionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contact-options/batch
+Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_ids | query | Contact IDs persisted in workflow recipient configuration. | Yes | [ string ] |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BatchGetContactOptionsResponse](#batchgetcontactoptionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contacts
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group | query | Optional contact type filter. None means all contacts. | No | string, <br>**Available values:** "external", "platform", "workspace" |
+| keyword | query | Free-text search against contact name or email. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListContactsResponse](#listcontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contacts/batch
+Admin-only batch lookup for Contact management clients. Workflow editors must use the editor-safe contact-options/batch projection.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_ids | query | List of contact IDs to retrieve. | Yes | [ string ] |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BatchGetContactsResponse](#batchgetcontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/contacts/external
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalContactCreateRequest](#externalcontactcreaterequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ExternalContactCreateResponse](#externalcontactcreateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /workspaces/current/human-input/v2/contacts/external/{contact_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalContactUpdateRequest](#externalcontactupdaterequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ExternalContactUpdateResponse](#externalcontactupdateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/contacts/platform
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AddPlatformContactsRequest](#addplatformcontactsrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AddPlatformContactsResponse](#addplatformcontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/contacts/remove
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RemoveContactsRequest](#removecontactsrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RemoveContactsResponse](#removecontactsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/contacts/{contact_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GetContactResponse](#getcontactresponse)<br> |
+| 404 | Contact not found or absent in the current workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/contacts/{contact_id}/im-bindings
+Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DeleteIMBindingResponse](#deleteimbindingresponse)<br> |
+| 403 | Centrally managed IM bindings cannot be edited from a workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | IM binding not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/contacts/{contact_id}/im-bindings
+Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateIMBindingRequest](#createimbindingrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CreateIMBindingResponse](#createimbindingresponse)<br> |
+| 403 | Centrally managed IM bindings cannot be edited from a workspace | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Contact or IM identity not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | IM binding conflict | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /workspaces/current/human-input/v2/contacts/{contact_id}/im-override
+Reset the IM override for a contact. This endpoint is used to clear the IM identity override for a contact in the workspace.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResetContactIMOverrideResponse](#resetcontactimoverrideresponse)<br> |
+| 403 | Workspace overrides require centrally managed IM bindings | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Contact not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid binding scope | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/human-input/v2/contacts/{contact_id}/im-override
+Set or reset the IM override for a contact. This endpoint is used to override the IM identity for a contact in the workspace.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| contact_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SetContactIMOverrideRequest](#setcontactimoverriderequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SetContactIMOverrideResponse](#setcontactimoverrideresponse)<br> |
+| 403 | Workspace overrides require centrally managed IM bindings | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Contact or IM identity not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | IM binding conflict | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid binding scope | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM write unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/im-identities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Free-text search against identity display name, email, or provider user ID. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListIMIdentitiesResponse](#listimidentitiesresponse)<br> |
+| 404 | IM Integration not configured | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/im-sync-runs
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CreateIMSyncRunResponse](#createimsyncrunresponse)<br> |
+| 404 | IM Integration not configured | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | IM Integration revision changed | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | IM synchronization temporarily unavailable | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest
+Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GetLatestIMSyncRunResponse](#getlatestimsyncrunresponse)<br> |
+| 404 | Latest IM sync run not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest/results
+Return one required result bucket from the latest IM sync run using page and limit pagination. There is no all filter; the response contains page, limit, and total metadata without a run summary.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+| result | query | Required result bucket to paginate from the latest sync run. There is no `all` bucket or unfiltered results mode. | Yes | string, <br>**Available values:** "added", "failed", "not_matched", "removed", "skipped" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListLatestIMSyncRunResultsResponse](#listlatestimsyncrunresultsresponse)<br> |
+| 404 | Latest IM sync run not found | **application/json**: [IMContactSyncErrorResponse](#imcontactsyncerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/current/human-input/v2/node-data-migration
+Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Every legacy Email recipient becomes onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NodeDataMigrationPayload](#nodedatamigrationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [NodeDataMigrationResponse](#nodedatamigrationresponse)<br> |
+| 400 | Migration failed | **application/json**: [NodeDataMigrationFailureResponse](#nodedatamigrationfailureresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/organization-candidates
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Free-text search against candidate name or email. | No | string |
+| limit | query | Maximum number of records returned per page. | No | integer, <br>**Default:** 20 |
+| page | query | 1-based page number. | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ListOrganizationCandidatesResponse](#listorganizationcandidatesresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members

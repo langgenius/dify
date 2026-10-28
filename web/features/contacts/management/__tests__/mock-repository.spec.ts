@@ -1,4 +1,4 @@
-import type { GetContactResponse } from '@dify/contracts/api/console/workspace/types.gen'
+import type { GetContactResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactsManagementRepository } from '../repository'
 import type { ContactsFeatureContextValue } from '../types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,7 +9,7 @@ import { ContactsMockScenario, createContactsMockScenario } from './fixtures/sce
 
 vi.mock('@/service/console', () => ({
   consoleClient: {
-    workspace: {
+    workspaces: {
       current: {
         humanInput: {
           v2: {
@@ -253,7 +253,7 @@ describe('contacts mock repository', () => {
 })
 
 describe('Enterprise Platform contact API repository', () => {
-  const client = consoleClient.workspace.current.humanInput.v2
+  const client = consoleClient.workspaces.current.humanInput.v2
   const context: ContactsFeatureContextValue = {
     deployment: 'ee',
     imBindingCentrallyManaged: true,
@@ -440,7 +440,7 @@ describe('Enterprise Platform contact API repository', () => {
 })
 
 describe('contacts API repository', () => {
-  const contacts = consoleClient.workspace.current.humanInput.v2.contacts
+  const contacts = consoleClient.workspaces.current.humanInput.v2.contacts
   const externalContact = {
     avatar_url: '',
     created_at: 1_778_000_000,
@@ -692,7 +692,7 @@ describe('contacts API repository', () => {
 })
 
 describe('contacts IM API repository', () => {
-  const client = consoleClient.workspace.current.humanInput.v2
+  const client = consoleClient.workspaces.current.humanInput.v2
   const contact = {
     avatar_url: '',
     id: 'contact-workspace',
@@ -704,7 +704,7 @@ describe('contacts IM API repository', () => {
   beforeEach(() => vi.resetAllMocks())
 
   it('reads configured IM channels without exposing email channels or application identifiers as identities', async () => {
-    const channelClient = consoleClient.workspace.current.humanInput.v2.channels
+    const channelClient = consoleClient.workspaces.current.humanInput.v2.channels
     const base = {
       config_version: 'version-1',
       created_at: 1,

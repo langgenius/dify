@@ -1,7 +1,7 @@
 import type {
   ChannelSummary,
   ListChannelsResponse,
-} from '@dify/contracts/api/console/workspace/types.gen'
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps } from 'react'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape } from '@/app/components/workflow/hooks-store/store'
@@ -391,7 +391,7 @@ describe('Human Input v2 Message Template', () => {
     const { queryClient } = renderTemplate()
     await openTest(user)
     const channelQueryKey =
-      consoleQuery.workspace.current.humanInput.v2.channels.get.queryOptions().queryKey
+      consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey
     const configured = queryClient.getQueryData<ListChannelsResponse>(channelQueryKey)
 
     await act(async () => {
@@ -431,7 +431,7 @@ describe('Human Input v2 Message Template', () => {
     expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
 
     const queryKey =
-      consoleQuery.workspace.current.humanInput.v2.channels.get.queryOptions().queryKey
+      consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey
     const configured = queryClient.getQueryData<ListChannelsResponse>(queryKey)
     await act(async () => {
       queryClient.setQueryData(queryKey, {

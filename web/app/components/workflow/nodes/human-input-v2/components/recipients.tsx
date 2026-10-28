@@ -939,7 +939,7 @@ const RuntimeRecipients = (props: RecipientsProps) => {
   const workspace = useAtomValue(currentWorkspaceAtom)
   const canManageContacts = useAtomValue(isCurrentWorkspaceManagerAtom)
   const input = { query: { group: 'workspace' as const, page: 1, limit: 1 } }
-  const contactsQuery = consoleQuery.workspace.current.humanInput.v2.contacts.get
+  const contactsQuery = consoleQuery.workspaces.current.humanInput.v2.contacts.get
   const count = useQuery({
     ...contactsQuery.queryOptions({
       input,

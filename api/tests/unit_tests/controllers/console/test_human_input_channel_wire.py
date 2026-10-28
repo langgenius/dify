@@ -26,7 +26,7 @@ from services.human_input_v2.errors import (
 )
 
 _CHANNEL_ID = "00000000-0000-0000-0000-000000000001"
-_BASE_PATH = "/console/api/workspace/current/human-input/v2"
+_BASE_PATH = "/console/api/workspaces/current/human-input/v2"
 _EXPECTED_ROUTES = {
     f"{_BASE_PATH}/channel-providers": {"GET"},
     f"{_BASE_PATH}/channels": {"GET"},

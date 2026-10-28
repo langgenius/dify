@@ -1,9 +1,9 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type {
+  CurrentWorkspaceSummaryResponse,
   ListContactOptionsResponse,
   ListContactsResponse,
-} from '@dify/contracts/api/console/workspace/types.gen'
-import type { CurrentWorkspaceSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement, ReactNode } from 'react'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
@@ -45,7 +45,7 @@ vi.mock('@/service/console', async () => {
   return {
     consoleQuery: createTanstackQueryUtils({
       features: { get: runtimeApi.features },
-      workspace: {
+      workspaces: {
         current: {
           humanInput: {
             v2: {
@@ -53,10 +53,6 @@ vi.mock('@/service/console', async () => {
               contactOptions: { get: runtimeApi.options },
             },
           },
-        },
-      },
-      workspaces: {
-        current: {
           summary: { get: runtimeApi.summary },
         },
       },

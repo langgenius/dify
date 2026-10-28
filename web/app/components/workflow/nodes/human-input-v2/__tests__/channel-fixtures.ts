@@ -1,7 +1,7 @@
 import type {
   ChannelSummary,
   ListChannelsResponse,
-} from '@dify/contracts/api/console/workspace/types.gen'
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
 
@@ -27,7 +27,7 @@ export const createChannelsQueryClient = (
     webhook_url: null,
   }))
   queryClient.setQueryData(
-    consoleQuery.workspace.current.humanInput.v2.channels.get.queryOptions().queryKey,
+    consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey,
     { channels } satisfies ListChannelsResponse,
   )
   return queryClient

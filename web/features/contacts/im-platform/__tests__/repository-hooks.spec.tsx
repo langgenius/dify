@@ -1,4 +1,4 @@
-import type { ImSyncRun } from '@dify/contracts/api/console/workspace/types.gen'
+import type { ImSyncRun } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { ContactImPlatformRepository } from '../repository'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -102,9 +102,9 @@ describe('Contact IM repository hooks', () => {
 
     for (const queryKey of [
       ['contacts-management', organization.workspaceId],
-      consoleQuery.workspace.current.humanInput.v2.channels.key(),
-      consoleQuery.workspace.current.humanInput.v2.contactOptions.key(),
-      consoleQuery.workspace.current.humanInput.v2.imIdentities.key(),
+      consoleQuery.workspaces.current.humanInput.v2.channels.key(),
+      consoleQuery.workspaces.current.humanInput.v2.contactOptions.key(),
+      consoleQuery.workspaces.current.humanInput.v2.imIdentities.key(),
     ])
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey })
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -198,8 +198,8 @@ describe('Contact IM repository hooks', () => {
     expect(error).toMatchObject({ code: 'saved_details_unavailable' })
     expect(save).toHaveBeenCalledTimes(1)
     for (const queryKey of [
-      consoleQuery.workspace.current.humanInput.v2.channels.key(),
-      consoleQuery.workspace.current.humanInput.v2.contactOptions.key(),
+      consoleQuery.workspaces.current.humanInput.v2.channels.key(),
+      consoleQuery.workspaces.current.humanInput.v2.contactOptions.key(),
       contactImPlatformQueryKeys.integrations(organization.organizationId, repository.queryKey),
       contactImPlatformQueryKeys.activeSync(organization.organizationId, repository.queryKey),
     ])
