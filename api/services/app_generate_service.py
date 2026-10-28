@@ -34,6 +34,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -353,6 +354,7 @@ class AppGenerateService:
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
+                            execution_identity=build_workflow_execution_identity(user),
                             args=args,
                             invoke_from=invoke_from,
                             streaming=False,
@@ -431,6 +433,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,
@@ -480,6 +483,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,

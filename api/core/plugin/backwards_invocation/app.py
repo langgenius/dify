@@ -25,6 +25,7 @@ from models.model import (
     load_annotation_reply_config,
 )
 from models.workflow import Workflow
+from services.workflow_execution_identity import build_workflow_execution_identity
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -211,6 +212,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             app_model=app,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,

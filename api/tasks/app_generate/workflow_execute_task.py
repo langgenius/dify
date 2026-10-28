@@ -41,6 +41,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, Workfl
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from services.app_task_service import AppTaskService
+from services.workflow_execution_identity import build_workflow_execution_identity
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +236,7 @@ class _AppRunner:
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,

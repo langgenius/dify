@@ -40,6 +40,7 @@ from services.workflow.entities import (
     WorkflowResumeTaskData,
     WorkflowTaskData,
 )
+from services.workflow_execution_identity import build_workflow_execution_identity
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
@@ -169,6 +170,7 @@ def _execute_workflow_common(
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
