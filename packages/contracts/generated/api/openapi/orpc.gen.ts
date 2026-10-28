@@ -2341,7 +2341,6 @@ export const post31 = oc
     method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdSkillsImports',
     path: '/workspaces/{workspace_id}/skills/imports',
-    successStatus: 201,
     summary: 'Import never publishes',
     tags: ['openapi'],
   })

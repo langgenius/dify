@@ -3845,7 +3845,7 @@ export const zPostWorkspacesByWorkspaceIdSkillsImportsPath = z.object({
 })
 
 /**
- * Created, or overwritten with 200
+ * Overwritten
  */
 export const zPostWorkspacesByWorkspaceIdSkillsImportsResponse = zSkillImportResponse
 

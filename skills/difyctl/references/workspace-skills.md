@@ -25,6 +25,8 @@ A name already taken gives 409. The hint is an import with `--skill-id`; use it 
 5. `difyctl import skill --files <dir> --skill-id <skill_id> --draft-hash <draft_hash>`
 6. `difyctl publish skill --skill-id <skill_id>`
 
+Leaving out `--draft-hash` on an overwrite skips the conflict check, so the import replaces whatever the draft holds now.
+
 The folder replaces the whole draft. A file you leave out of the folder is deleted from the draft.
 
 If step 5 gives 409, someone else changed the draft after your `describe`. Run steps 1 to 4 again and redo your edits on the new export.

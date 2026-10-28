@@ -10,6 +10,7 @@ import pytest
 from flask import Flask, Response
 from flask.ctx import RequestContext as FlaskRequestContext
 from flask_restx import Resource
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, UnprocessableEntity
@@ -472,3 +473,9 @@ def test_import_unknown_body_field_rejected(app: Flask) -> None:
         pytest.raises(UnprocessableEntity),
     ):
         handler()
+
+
+def test_import_draft_hash_without_skill_id_is_rejected() -> None:
+    with pytest.raises(ValidationError) as exc:
+        SkillImportBody.model_validate({"files": _folder(**{"SKILL.md": b"x"}), "draft_hash": "1761200000"})
+    assert [error["loc"] for error in exc.value.errors()] == [("draft_hash",)]
