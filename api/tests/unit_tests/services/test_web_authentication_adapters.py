@@ -16,7 +16,7 @@ from services.web_authentication_adapters import (
     TokenManagerWebAuthenticationGateway,
 )
 from services.web_authentication_service import WebEmailDeliveryRateLimitError
-from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, web_identities
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, web_identities, webapp_login_claims
 
 
 def token_gateway(*, limited: bool = False) -> tuple[TokenManagerWebAuthenticationGateway, MagicMock]:
@@ -89,6 +89,21 @@ def test_verify_access_token_rejects_invalid_passport() -> None:
         passport_service.return_value.verify.side_effect = ValueError("bad signature")
 
         assert gateway.verify_access_token("signed-token") is False
+
+
+@pytest.mark.parametrize(
+    ("claims", "expected"),
+    [
+        (webapp_login_claims(), ACCOUNT_ID),
+        ({"sub": "Console API Passport", "user_id": ACCOUNT_ID, "exp": 2_000_000_000}, None),
+        (webapp_login_claims(sub="Web API Passport", token_source="webapp_login_token"), None),
+    ],
+)
+def test_account_cookie_identity_rejects_other_token_purposes(claims: dict[str, object], expected: str | None) -> None:
+    gateway, _ = token_gateway()
+    with patch("services.web_authentication_adapters.PassportService") as signer:
+        signer.return_value.verify.return_value = claims
+        assert gateway.account_id("cookie-token") == expected
 
 
 def test_send_email_login_code_persists_challenge_and_queues_mail() -> None:
@@ -575,7 +590,11 @@ def test_reset_password_failure_exits_the_reservation_with_the_original_error(fa
 
 
 @pytest.mark.parametrize("mapped_account", [None, ACCOUNT_ID])
-def test_app_session_verification_requires_only_its_own_passport(mapped_account: str | None) -> None:
+@pytest.mark.parametrize("login_account", [None, ACCOUNT_ID, "another-account"])
+@pytest.mark.parametrize("require_account", [False, True])
+def test_account_session_requires_matching_login(
+    mapped_account: str | None, login_account: str | None, require_account: bool
+) -> None:
     gateway, _, _ = passport_session_gateway(
         session=WebAppSessionRecord(end_user_session_id="opaque-session", account_id=mapped_account)
     )
@@ -584,7 +603,13 @@ def test_app_session_verification_requires_only_its_own_passport(mapped_account:
         claims.update(token_source="webapp_account", exp=2_000_000_000)
     with patch("services.web_authentication_adapters.PassportService") as signer:
         signer.return_value.verify.return_value = claims
-        assert gateway.verify(token="passport", app_code="site-code", user_id=None)
+        assert gateway.verify(
+            token="passport",
+            app_code="site-code",
+            user_id=None,
+            account_id=login_account,
+            require_account=require_account,
+        ) is ((not require_account) if mapped_account is None else mapped_account == login_account)
         signer.return_value.verify.assert_called_once_with("passport")
 
 

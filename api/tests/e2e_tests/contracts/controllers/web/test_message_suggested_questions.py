@@ -34,6 +34,7 @@ from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, Site
 from models.provider import Provider, TenantDefaultModel
 from models.workflow import Workflow
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.message_repository import MessageRepository
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
@@ -41,12 +42,14 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestions,
     MessageSuggestedQuestionsService,
 )
+from services.web_identity_service import WebIdentityService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
 @dataclass
 class _Services:
     message_suggested_questions: MessageSuggestedQuestions
+    web_identity: WebIdentityService
 
 
 @dataclass(frozen=True)
@@ -149,7 +152,9 @@ def harness(
 
     event.listen(admission_factory, "after_begin", track_admission)
     event.listen(read_factory, "after_begin", track_session)
-    passport = PassportService().issue({"app_code": site.code, "app_id": target.id, "end_user_id": end_user.id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_code": site.code, "app_id": target.id, "end_user_id": end_user.id}
+    )
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)
@@ -157,7 +162,16 @@ def harness(
     queries = SuggestedQuestionsQuery(
         session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
     )
-    services = _Services(MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()))
+    services = _Services(
+        message_suggested_questions=MessageSuggestedQuestionsService(
+            queries=queries, generator=SuggestedQuestionsGenerator()
+        ),
+        web_identity=WebIdentityService(
+            accounts=SQLAlchemyAccountRepository(session_factory=admission_factory),
+            allow_console_login=False,
+            allow_webapp_login=False,
+        ),
+    )
     app.extensions["application_services"] = services
     api = ExternalApi(app)
     api.add_resource(message_controller.MessageSuggestedQuestionApi, "/messages/<uuid:message_id>/suggested-questions")

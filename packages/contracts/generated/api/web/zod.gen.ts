@@ -1747,6 +1747,7 @@ export const zWebAppConnectionRequirement = z.object({
   node_ids: z.array(z.string()),
   plugin_unique_identifier: z.string(),
   provider: z.string(),
+  provider_label: z.string(),
   purpose: z.string(),
   title: z.string(),
 })

@@ -869,7 +869,7 @@ Get authentication passport for web application access
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /passport
-Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and a Web-only login proof for subsequent visits.
+Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns the App Passport and sets the Web-only Account login proof in an HttpOnly cookie. Account Passports require the matching WebApp login cookie on subsequent requests.
 
 #### Parameters
 
@@ -887,7 +887,7 @@ Redeem a one-use S256 PKCE login code after returning to /webapp-signin. Returns
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Web login completed | **application/json**: [PassportLoginResponse](#passportloginresponse)<br> |
+| 200 | Web login completed | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2181,13 +2181,6 @@ Form input definition.
 | code_verifier | string |  | Yes |
 | login_code | string |  | Yes |
 
-#### PassportLoginResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| access_token | string |  | Yes |
-| webapp_access_token | string | Web-only login proof for subsequent login-status and Passport requests; never a Console token | Yes |
-
 #### PassportQuery
 
 | Name | Type | Description | Required |
@@ -2613,6 +2606,7 @@ in form definition, or a variable while the workflow is running.
 | node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
 | plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |
 | provider | string |  | Yes |
+| provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
 | purpose | string |  | Yes |
 | title | string |  | Yes |
 

@@ -13,6 +13,7 @@ from sqlalchemy import Connection, Engine, delete, event, select, text
 from sqlalchemy.orm import Session, SessionTransaction, object_session, sessionmaker
 from werkzeug.test import TestResponse
 
+from clients.plugin.auth import PluginCredentialAuthClient
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.service_api.app.message import MessageSuggestedApi
 from controllers.service_api.flask_admission import service_api_end_user_admission
@@ -31,10 +32,13 @@ from models.resource_access_token import ResourceAccessToken, ResourceAccessToke
 from models.workflow import Workflow, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from repositories.message_repository import MessageRepository
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenCreateResult, ResourceAccessTokenResource
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
@@ -44,6 +48,7 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
 )
 from services.resource_access_token_service import ResourceAccessTokenService
+from services.workflow.tool_credentials import get_tool_connection_requirements
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
@@ -189,7 +194,13 @@ def harness(
     service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""
+            definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
+            builtin_icon_url_prefix="",
+            get_connection_requirements=get_tool_connection_requirements,
+            connection_revisions=PluginConnectionRevisions(
+                providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
+                snapshots=EndUserConnectionRepository(session_factory=admission_factory),
+            ),
         ),
         message_suggested_questions=service,
         app_scoped_end_users=_EndUsers(

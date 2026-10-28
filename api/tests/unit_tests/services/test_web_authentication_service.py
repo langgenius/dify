@@ -154,8 +154,16 @@ class AppAccessGatewayFake:
 class AppSessionGatewayFake:
     valid: bool = False
 
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None, account_id: str | None = None) -> bool:
-        del app_code, user_id, account_id
+    def verify(
+        self,
+        *,
+        token: str | None,
+        app_code: str,
+        user_id: str | None,
+        account_id: str | None = None,
+        require_account: bool = False,
+    ) -> bool:
+        del app_code, user_id, account_id, require_account
         return self.valid and token == "valid-passport"
 
 
@@ -735,7 +743,7 @@ def test_password_reset_rejects_failed_repository_update(service_fixture: Servic
 
 
 @pytest.mark.parametrize("access_token", [None, "invalid-token", "valid-token", "another-account-token"])
-def test_account_login_state_does_not_invalidate_existing_app_session(
+def test_guest_session_does_not_require_account_login(
     service_fixture: ServiceFixture,
     access_token: str | None,
 ) -> None:
@@ -763,6 +771,21 @@ def test_end_user_status_does_not_treat_public_access_as_account_login(
         access_token=access_token,
         app_session_token="valid-passport",
         mode=LoginMode.END_USER,
+        account_login_token=access_token,
     )
     assert result.logged_in is logged_in
     assert result.app_logged_in is logged_in
+
+
+def test_end_user_status_does_not_accept_bearer_without_cookie(service_fixture: ServiceFixture) -> None:
+    service_fixture.app_sessions.valid = True
+    result = service_fixture.service.get_login_status(
+        app_code="site-code",
+        user_id=None,
+        access_token="valid-access",
+        account_login_token=None,
+        app_session_token="valid-passport",
+        mode=LoginMode.END_USER,
+    )
+    assert result.logged_in is False
+    assert result.app_logged_in is False

@@ -1061,6 +1061,7 @@ def test_web_parameters_derive_connection_requirements_from_selected_published_g
     result = repository.get_web_parameter_config(_APP_ID, _TENANT_ID)
     assert result is not None
     assert result.workflow_id == _WORKFLOW_ID
+    assert result.default_language == "en-US"
     assert result.parameters.features_dict["opening_statement"] == "Published"
     assert result.requires_end_user_connections == (root_source == "end_user")
     assert result.graph == {"nodes": nodes}

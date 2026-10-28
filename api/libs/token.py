@@ -99,7 +99,12 @@ def is_admin_api_key_request(request: Request) -> bool:
 
 
 def extract_webapp_access_token(request: Request) -> str | None:
-    return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)) or _try_extract_from_header(request)
+    return extract_webapp_cookie_token(request) or _try_extract_from_header(request)
+
+
+def extract_webapp_cookie_token(request: Request) -> str | None:
+    """Read the WebApp session without accepting Console cookies or bearer fallback."""
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN))
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
@@ -130,6 +135,19 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
         secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
+        path="/",
+    )
+
+
+def set_webapp_access_token_to_cookie(response: Response, token: str, *, expires_at: int) -> None:
+    response.set_cookie(
+        _real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN),
+        value=token,
+        httponly=True,
+        domain=_cookie_domain(),
+        secure=is_secure(),
+        samesite="Lax",
+        expires=expires_at,
         path="/",
     )
 

@@ -1032,6 +1032,7 @@ export type WebAppConnectionRequirement = {
   node_ids: Array<string>
   plugin_unique_identifier: string
   provider: string
+  provider_label: string
   purpose: string
   title: string
 }

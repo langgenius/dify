@@ -21,6 +21,7 @@ class AppParameterConfig(NamedTuple):
 
 class WebAppParameterConfig(NamedTuple):
     parameters: AppParameterConfig
+    default_language: str
     # Non-workflow app modes have no workflow version or personal tool requirements.
     workflow_id: str | None
     requires_end_user_connections: bool
@@ -28,6 +29,9 @@ class WebAppParameterConfig(NamedTuple):
 
 
 class WebAppConnectionRequirement(ToolConnectionRequirement):
+    provider_label: str = Field(
+        description="Tool provider display name in the WebApp's configured language, falling back to English."
+    )
     plugin_unique_identifier: str = Field(description="Exact plugin artifact recorded in connection_revision.")
     icon: str = Field(description="Plugin icon URL, using the Integrations asset endpoint.")
     icon_dark: str | None = Field(description="Dark plugin icon URL; null when the plugin has no dark icon.")
@@ -200,9 +204,16 @@ class AppDefinitionQueryService:
             web_requirements = []
             for requirement in requirements:
                 metadata = providers_by_name[requirement.provider]
+                provider_labels = {
+                    "en-US": metadata.provider_label.en_US,
+                    "zh-Hans": metadata.provider_label.zh_Hans,
+                    "pt-BR": metadata.provider_label.pt_BR,
+                    "ja-JP": metadata.provider_label.ja_JP,
+                }
                 web_requirements.append(
                     WebAppConnectionRequirement(
                         **requirement.model_dump(),
+                        provider_label=provider_labels.get(config.default_language) or metadata.provider_label.en_US,
                         plugin_unique_identifier=metadata.plugin_unique_identifier,
                         icon=metadata.icon,
                         icon_dark=metadata.icon_dark,
