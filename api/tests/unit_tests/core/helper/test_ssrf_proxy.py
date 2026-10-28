@@ -15,6 +15,7 @@ from core.helper.ssrf_proxy import (
     UnsupportedResponseEncodingError,
     _build_ssrf_client,
     _get_user_provided_host_header,
+    _SendScopedCookieJar,
     _to_graphon_http_response,
     buffer_response,
     graphon_ssrf_proxy,
@@ -221,7 +222,78 @@ def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports(
         mounts={"http://": http_transport, "https://": https_transport},
         verify=False,
         limits=ANY,
+        cookies=ANY,
     )
+
+
+@pytest.mark.parametrize(
+    "proxy_config",
+    [
+        {"SSRF_PROXY_ALL_URL": "http://proxy.example.com:3128"},
+        {
+            "SSRF_PROXY_ALL_URL": None,
+            "SSRF_PROXY_HTTP_URL": "http://proxy.example.com:8080",
+            "SSRF_PROXY_HTTPS_URL": "http://proxy.example.com:8443",
+        },
+        {"SSRF_PROXY_ALL_URL": None, "SSRF_PROXY_HTTP_URL": None, "SSRF_PROXY_HTTPS_URL": None},
+    ],
+    ids=["all-proxy", "scheme-proxies", "direct"],
+)
+def test_build_ssrf_client_scopes_cookie_jar_to_one_send(
+    config_overrides: Callable[..., None],
+    proxy_config: dict[str, str | None],
+) -> None:
+    config_overrides(**proxy_config)
+
+    with _build_ssrf_client(verify=True) as client:
+        assert isinstance(client.cookies.jar, _SendScopedCookieJar)
+
+
+@pytest.fixture
+def vendor_requests(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[httpx.Request]]:
+    """Route requests to a vendor whose ``/login`` sets a session cookie and redirects to ``/home``."""
+    received: list[httpx.Request] = []
+
+    def vendor(request: httpx.Request) -> httpx.Response:
+        received.append(request)
+        if request.url.path == "/login":
+            return httpx.Response(302, headers={"Set-Cookie": "session=tenant-a; Path=/", "Location": "/home"})
+        return httpx.Response(200)
+
+    with httpx.Client(transport=httpx.MockTransport(vendor), cookies=_SendScopedCookieJar()) as client:
+        monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
+        yield received
+
+
+def test_response_cookies_are_not_sent_on_later_requests(vendor_requests: list[httpx.Request]) -> None:
+    login = make_request("GET", "https://vendor.example.com/login", max_retries=0)
+    make_request("GET", "https://vendor.example.com/data", max_retries=0)
+
+    assert login.cookies["session"] == "tenant-a"
+    assert "cookie" not in vendor_requests[-1].headers
+
+
+def test_redirect_hops_send_cookies_set_by_earlier_hops_of_the_same_request(
+    vendor_requests: list[httpx.Request],
+) -> None:
+    response = make_request("GET", "https://vendor.example.com/login", max_retries=0, follow_redirects=True)
+    make_request("GET", "https://vendor.example.com/data", max_retries=0)
+
+    assert response.status_code == 200
+    assert [request.url.path for request in vendor_requests] == ["/login", "/home", "/data"]
+    assert vendor_requests[1].headers["cookie"] == "session=tenant-a"
+    assert "cookie" not in vendor_requests[2].headers
+
+
+def test_explicitly_passed_cookies_are_sent(vendor_requests: list[httpx.Request]) -> None:
+    make_request("GET", "https://vendor.example.com/login", max_retries=0)
+    make_request("GET", "https://vendor.example.com/data", max_retries=0, headers={"Cookie": "session=from-header"})
+    make_request("GET", "https://vendor.example.com/data", max_retries=0, cookies={"session": "from-argument"})
+
+    assert [request.headers["cookie"] for request in vendor_requests[1:]] == [
+        "session=from-header",
+        "session=from-argument",
+    ]
 
 
 class TestGetUserProvidedHostHeader:
