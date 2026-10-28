@@ -21,19 +21,24 @@ import { generateCompatibilitySources } from './scripts/generate-compatibility-s
 const root = import.meta.dirname
 
 describe('compatible contracts exports', () => {
-  it('generates descriptors for new modules, preserves no-op mtimes and removes obsolete descriptors', async () => {
+  it('generates subpath entries, preserves no-op mtimes and removes obsolete generated files', async () => {
     const directory = mkdtempSync(resolve(tmpdir(), 'dify-contracts-descriptors-'))
     try {
       const generated = resolve(directory, 'generated/api/console/new-feature')
       const descriptor = resolve(directory, 'mapper/console/new-feature.openapi-types')
+      const declaration = resolve(directory, 'mapper/console/new-feature.d.ts')
       mkdirSync(generated, { recursive: true })
       writeFileSync(resolve(generated, 'types.gen.ts'), 'export type NewFeature = string')
       await generateCompatibilitySources(directory, resolve(directory, 'mapper'))
       expect(JSON.parse(readFileSync(descriptor, 'utf8')).args[0]).toBe('api/console/new-feature')
+      expect(readFileSync(declaration, 'utf8')).toContain(
+        "export type * from './new-feature.openapi-types'",
+      )
       const files = [
         descriptor,
         resolve(directory, 'mapper/community.source.json'),
         resolve(directory, 'mapper/enterprise.source.json'),
+        declaration,
       ]
       const timestamps = files.map((file) => statSync(file).mtimeMs)
       expect(readFileSync(files[1]!, 'utf8')).toContain(
@@ -44,6 +49,7 @@ describe('compatible contracts exports', () => {
       rmSync(resolve(generated, 'types.gen.ts'))
       await generateCompatibilitySources(directory, resolve(directory, 'mapper'))
       expect(existsSync(descriptor)).toBe(false)
+      expect(existsSync(declaration)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }
@@ -67,9 +73,14 @@ describe('compatible contracts exports', () => {
       const key = subpath.startsWith('console/') ? './console/*' : `./${subpath}`
       const entry = pkg.exports[key]
       expect(Object.keys(entry)).toEqual(['types'])
-      const descriptorPath = resolve(
+      const declarationPath = resolve(
         mapper,
         entry.types.replace('*', subpath.slice('console/'.length)),
+      )
+      expect(declarationPath).toMatch(/\.d\.ts$/)
+      const descriptorPath = declarationPath.replace(/\.d\.ts$/, '.openapi-types')
+      expect(readFileSync(declarationPath, 'utf8')).toContain(
+        `export type * from './${subpath.split('/').at(-1)}.openapi-types'`,
       )
       const descriptor = JSON.parse(readFileSync(descriptorPath, 'utf8'))
       expect(Object.keys(descriptor)).toEqual(['extends', 'args'])

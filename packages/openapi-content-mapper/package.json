@@ -71,22 +71,22 @@
       "default": "./dist/errors.js"
     },
     "./console/*": {
-      "types": "./contracts/console/*.openapi-types"
+      "types": "./contracts/console/*.d.ts"
     },
     "./service": {
-      "types": "./contracts/service.openapi-types"
+      "types": "./contracts/service.d.ts"
     },
     "./web": {
-      "types": "./contracts/web.openapi-types"
+      "types": "./contracts/web.d.ts"
     },
     "./openapi": {
-      "types": "./contracts/openapi.openapi-types"
+      "types": "./contracts/openapi.d.ts"
     },
     "./enterprise": {
-      "types": "./contracts/enterprise.openapi-types"
+      "types": "./contracts/enterprise.d.ts"
     },
     "./enterprise-app-deploy": {
-      "types": "./contracts/enterprise-app-deploy.openapi-types"
+      "types": "./contracts/enterprise-app-deploy.d.ts"
     }
   },
   "publishConfig": {

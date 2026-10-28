@@ -383,12 +383,17 @@ contracts modules. Those retained types update with regular Enterprise generatio
 rather than with unavailable private backend sources.
 
 The three contracts generation commands also regenerate the mapper's thin subpath
-selectors. To refresh them alone after adding modules, run
+selectors and `.d.ts` entry points. To refresh them alone after adding modules, run
 `pnpm --filter @dify/contracts gen-compatibility-sources`. Each selector contains
 only an `extends` path and module argument; exporter commands and watched inputs
-live in two shared source configurations. New names inside an existing module are
-discovered automatically. No additional OpenAPI snapshot or declarations are
-written.
+live in two shared source configurations. Each declaration entry contains only an
+`export type *` pointing to its selector; model declarations remain virtual and new
+names are discovered automatically. No additional OpenAPI snapshots are written.
+
+Package exports resolve through these standard `.d.ts` entries so TypeScript 7's
+language service does not report a missing-declaration hint for the custom source
+extension. Consumers need no `compilerOptions.paths` overrides or ambient module
+declarations; they only register the mapper and sources as shown above.
 
 Dify-specific subpaths require the repository's Python and JavaScript development
 dependencies, but no running API or database. They are workspace integrations and
