@@ -13,7 +13,7 @@ from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult
 from clients.plugin.errors import PluginNotImplementedError
 from constants.end_user_connections import ConnectionCredentialType
-from core.entities.provider_entities import ProviderConfigType
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.encrypter import decrypt_token, encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonError, PluginDaemonNotFoundError, PluginNotFoundError
@@ -114,6 +114,23 @@ class PluginApiKeyCredentialGateway:
 
     def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
         return PluginService.is_plugin_verified(tenant_id, identifier)
+
+    def get_schema(self, tenant_id: str, provider: str, *, plugin_unique_identifier: str) -> tuple[ProviderConfig, ...]:
+        controller = self.provider(tenant_id, provider)
+        if controller.plugin_unique_identifier != plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
+        schema = controller.get_credentials_schema_by_type(CredentialType.API_KEY)
+        if not schema:
+            raise ConnectionConfigurationError()
+        fields: list[ProviderConfig] = []
+        for config in schema:
+            if config.type not in {"secret-input", "text-input", "select", "boolean"} or config.multiple:
+                raise ConnectionConfigurationError()
+            field = config.model_copy(deep=True)
+            if field.type == ProviderConfigType.SECRET_INPUT:
+                field.default = None
+            fields.append(field)
+        return tuple(fields)
 
     def validate_format(
         self,

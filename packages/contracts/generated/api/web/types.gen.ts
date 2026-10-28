@@ -74,6 +74,8 @@ export type AppPermissionQuery = {
   appId: string
 }
 
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
 export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
   code: 'app_suggested_questions_after_answer_disabled'
   status: 403
@@ -226,6 +228,8 @@ export type ConnectionConflictError = ErrorResponse & {
   code: 'connection_conflict'
   status: 409
 }
+
+export type ConnectionCredentialSchemaResponse = Array<ProviderConfig>
 
 export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
 
@@ -619,6 +623,13 @@ export type HumanInputUploadTokenResponse = {
   upload_token: string
 }
 
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
 export type InvalidEmailError = ErrorResponse & {
   code: 'invalid_email'
   status: 400
@@ -725,6 +736,15 @@ export type ModelCurrentlyNotSupportError = ErrorResponse & {
   status: 400
 }
 
+export type ModelSelectorScope =
+  | 'llm'
+  | 'moderation'
+  | 'rerank'
+  | 'speech2text'
+  | 'text-embedding'
+  | 'tts'
+  | 'vision'
+
 export type NoAudioUploadedError = ErrorResponse & {
   code: 'no_audio_uploaded'
   status: 400
@@ -752,6 +772,11 @@ export type NotWorkflowAppError = ErrorResponse & {
   status: 400
 }
 
+export type Option = {
+  label: I18nObject
+  value: string
+}
+
 export type ParagraphInputConfig = {
   default?: StringSource | null
   output_variable_name: string
@@ -765,11 +790,6 @@ export type PassportAccessTokenResponse = {
 export type PassportLoginPayload = {
   code_verifier: string
   login_code: string
-}
-
-export type PassportLoginResponse = {
-  access_token: string
-  webapp_access_token: string
 }
 
 export type PassportQuery = {
@@ -797,6 +817,29 @@ export type PluginInstallationScope =
   | 'none'
   | 'official_and_specific_partners'
   | 'official_only'
+
+export type ProviderConfig = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<Option> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type: ProviderConfigType
+  url?: string | null
+}
+
+export type ProviderConfigType =
+  | 'app-selector'
+  | 'array[tools]'
+  | 'boolean'
+  | 'model-selector'
+  | 'secret-input'
+  | 'select'
+  | 'text-input'
 
 export type ProviderNotInitializeError = ErrorResponse & {
   code: 'provider_not_initialize'
@@ -1030,6 +1073,8 @@ export type TooManyFilesError = ErrorResponse & {
   code: 'too_many_files'
   status: 400
 }
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
 
 export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
   code: 'trigger_workflow_service_mode_unavailable'
@@ -1823,6 +1868,34 @@ export type GetConnectionsConfigurationResponses = {
 export type GetConnectionsConfigurationResponse =
   GetConnectionsConfigurationResponses[keyof GetConnectionsConfigurationResponses]
 
+export type GetConnectionsCredentialSchemaData = {
+  body?: never
+  path?: never
+  query: {
+    connection_revision: string
+    node_id: string
+  }
+  url: '/connections/credential-schema'
+}
+
+export type GetConnectionsCredentialSchemaErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: ConnectionRevisionChangedError | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsCredentialSchemaError =
+  GetConnectionsCredentialSchemaErrors[keyof GetConnectionsCredentialSchemaErrors]
+
+export type GetConnectionsCredentialSchemaResponses = {
+  200: ConnectionCredentialSchemaResponse
+}
+
+export type GetConnectionsCredentialSchemaResponse =
+  GetConnectionsCredentialSchemaResponses[keyof GetConnectionsCredentialSchemaResponses]
+
 export type PostConnectionsOauthAuthorizationUrlData = {
   body: EndUserConnectionOAuthPayload
   path?: never
@@ -1957,6 +2030,36 @@ export type PatchConnectionsByConnectionIdResponses = {
 
 export type PatchConnectionsByConnectionIdResponse =
   PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
+
+export type GetConnectionsByConnectionIdCredentialSchemaData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query: {
+    connection_revision: string
+  }
+  url: '/connections/{connection_id}/credential-schema'
+}
+
+export type GetConnectionsByConnectionIdCredentialSchemaErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionRevisionChangedError | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsByConnectionIdCredentialSchemaError =
+  GetConnectionsByConnectionIdCredentialSchemaErrors[keyof GetConnectionsByConnectionIdCredentialSchemaErrors]
+
+export type GetConnectionsByConnectionIdCredentialSchemaResponses = {
+  200: ConnectionCredentialSchemaResponse
+}
+
+export type GetConnectionsByConnectionIdCredentialSchemaResponse =
+  GetConnectionsByConnectionIdCredentialSchemaResponses[keyof GetConnectionsByConnectionIdCredentialSchemaResponses]
 
 export type PostConnectionsByConnectionIdReauthorizeData = {
   body: EndUserConnectionReauthorizePayload
@@ -2743,7 +2846,7 @@ export type PostPassportErrors = {
 export type PostPassportError = PostPassportErrors[keyof PostPassportErrors]
 
 export type PostPassportResponses = {
-  200: PassportLoginResponse
+  200: PassportAccessTokenResponse
 }
 
 export type PostPassportResponse = PostPassportResponses[keyof PostPassportResponses]

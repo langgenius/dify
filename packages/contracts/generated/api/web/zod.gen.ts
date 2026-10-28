@@ -81,6 +81,11 @@ export const zAppPermissionQuery = z.object({
 })
 
 /**
+ * AppSelectorScope
+ */
+export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'])
+
+/**
  * AudioToTextResponse
  */
 export const zAudioToTextResponse = z.object({
@@ -891,6 +896,18 @@ export const zHumanInputUploadTokenResponse = z.object({
 })
 
 /**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zI18nObject = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
  * InvalidEmailError
  *
  * The email address is not valid.
@@ -1116,6 +1133,19 @@ export const zModelCurrentlyNotSupportError = zErrorResponse.and(
 )
 
 /**
+ * ModelSelectorScope
+ */
+export const zModelSelectorScope = z.enum([
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+  'vision',
+])
+
+/**
  * NoAudioUploadedError
  *
  * Please upload your audio.
@@ -1207,6 +1237,14 @@ export const zNotWorkflowAppError = zErrorResponse.and(
 )
 
 /**
+ * Option
+ */
+export const zOption = z.object({
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
  * PassportAccessTokenResponse
  */
 export const zPassportAccessTokenResponse = z.object({
@@ -1219,14 +1257,6 @@ export const zPassportAccessTokenResponse = z.object({
 export const zPassportLoginPayload = z.object({
   code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/),
   login_code: z.string().min(1).max(256),
-})
-
-/**
- * PassportLoginResponse
- */
-export const zPassportLoginResponse = z.object({
-  access_token: z.string(),
-  webapp_access_token: z.string(),
 })
 
 /**
@@ -1278,6 +1308,19 @@ export const zPluginInstallationPermissionModel = z.object({
   plugin_installation_scope: zPluginInstallationScope.default('all'),
   restrict_to_marketplace_only: z.boolean().default(false),
 })
+
+/**
+ * ProviderConfigType
+ */
+export const zProviderConfigType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
 
 /**
  * ProviderNotInitializeError
@@ -1606,6 +1649,35 @@ export const zTooManyFilesError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * ToolSelectorScope
+ */
+export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
+
+/**
+ * ProviderConfig
+ *
+ * Model class for common provider settings like credentials
+ */
+export const zProviderConfig = z.object({
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject.nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zOption).nullish(),
+  placeholder: zI18nObject.nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
+  type: zProviderConfigType,
+  url: z.string().nullish(),
+})
+
+/**
+ * ConnectionCredentialSchemaResponse
+ */
+export const zConnectionCredentialSchemaResponse = z.array(zProviderConfig)
 
 /**
  * TriggerWorkflowServiceModeUnavailableError
@@ -2460,6 +2532,16 @@ export const zGetConnectionsConfigurationQuery = z.object({
  */
 export const zGetConnectionsConfigurationResponse = zConnectionConfigurationResponse
 
+export const zGetConnectionsCredentialSchemaQuery = z.object({
+  connection_revision: z.uuid(),
+  node_id: z.string().min(1).max(255),
+})
+
+/**
+ * API-key form schema
+ */
+export const zGetConnectionsCredentialSchemaResponse = zConnectionCredentialSchemaResponse
+
 export const zPostConnectionsOauthAuthorizationUrlBody = zEndUserConnectionOAuthPayload
 
 /**
@@ -2502,6 +2584,20 @@ export const zPatchConnectionsByConnectionIdPath = z.object({
  * Connection updated
  */
 export const zPatchConnectionsByConnectionIdResponse = zEndUserConnectionResponse
+
+export const zGetConnectionsByConnectionIdCredentialSchemaPath = z.object({
+  connection_id: z.uuid(),
+})
+
+export const zGetConnectionsByConnectionIdCredentialSchemaQuery = z.object({
+  connection_revision: z.uuid(),
+})
+
+/**
+ * API-key form schema
+ */
+export const zGetConnectionsByConnectionIdCredentialSchemaResponse =
+  zConnectionCredentialSchemaResponse
 
 export const zPostConnectionsByConnectionIdReauthorizeBody = zEndUserConnectionReauthorizePayload
 
@@ -2770,7 +2866,7 @@ export const zPostPassportHeaders = z.object({
 /**
  * Web login completed
  */
-export const zPostPassportResponse = zPassportLoginResponse
+export const zPostPassportResponse = zPassportAccessTokenResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

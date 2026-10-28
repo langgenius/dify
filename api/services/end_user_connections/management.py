@@ -7,12 +7,14 @@ from uuid import UUID
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
+from core.entities.provider_entities import ProviderConfig
 from services.end_user_connections.contracts import (
     ConnectionCheckOutcome,
     ConnectionCheckView,
     ConnectionPage,
     ConnectionRevisionView,
     ConnectionSummary,
+    ConnectionTargetInput,
     ConnectionTargetResolver,
     CreateApiKeyConnectionInput,
     ListConnectionsInput,
@@ -85,6 +87,10 @@ class ConnectionCipher(Protocol):
 
 
 class ApiKeyCredentialGateway(Protocol):
+    def get_schema(
+        self, tenant_id: str, provider: str, *, plugin_unique_identifier: str
+    ) -> tuple[ProviderConfig, ...]: ...
+
     def validate_format(
         self,
         tenant_id: str,
@@ -188,6 +194,35 @@ class ConnectionService:
             revision_acceptance=self._revisions.acceptance(
                 context, target.provider, command.connection_revision, admitted
             ),
+        )
+
+    def get_api_key_schema(
+        self, context: WebConnectionContext, reference: ConnectionTargetInput
+    ) -> tuple[ProviderConfig, ...]:
+        require_personal_connection_access(context)
+        target = self._targets.resolve(context, reference)
+        require_creation_target(
+            context,
+            workflow_id=target.workflow_id,
+            node_id=reference.node_id,
+            credential_type=ConnectionCredentialType.API_KEY,
+            target=target,
+        )
+        return self._get_credential_schema(context, target.provider, reference.connection_revision)
+
+    def get_connection_schema(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> tuple[ProviderConfig, ...]:
+        record = self._load(context, connection_id)
+        self._require_api_key(record)
+        return self._get_credential_schema(context, record.access.provider, connection_revision)
+
+    def _get_credential_schema(
+        self, context: WebConnectionContext, provider: str, revision: str
+    ) -> tuple[ProviderConfig, ...]:
+        admitted = self._revisions.require(context, provider, revision)
+        return self._credentials.get_schema(
+            context.tenant_id, provider, plugin_unique_identifier=admitted.plugin_unique_identifier
         )
 
     def update_connection(

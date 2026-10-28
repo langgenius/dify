@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, computed_field, fi
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, NodeConnectionStatus
+from core.entities.provider_entities import ProviderConfig
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.revision import ConnectionRevision
 
@@ -219,6 +220,14 @@ class ConnectionManagement(Protocol):
     def get_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionSummary: ...
 
     def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView: ...
+
+    def get_api_key_schema(
+        self, context: WebConnectionContext, reference: ConnectionTargetInput
+    ) -> tuple[ProviderConfig, ...]: ...
+
+    def get_connection_schema(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> tuple[ProviderConfig, ...]: ...
 
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
         """Validate schema and target, check credentials, encrypt, then persist.
