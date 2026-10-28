@@ -1,3 +1,5 @@
+import json
+import logging
 from collections.abc import Generator
 from copy import deepcopy
 from typing import Literal
@@ -21,7 +23,9 @@ from graphon.model_runtime.entities import (
     PromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
+    UserPromptMessage,
 )
+from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought
 from services.agent.message_history import AgentMessageHistory
 from services.workflow_run_agg import WorkflowRunAgg
@@ -116,6 +120,82 @@ def test_tool_rounds_and_persisted_history_preserve_model_messages(
     runner.message.id = "next-message"
     history = runner.organize_agent_history([], session=sqlite_session)
     assert [item for item in history if isinstance(item, AssistantPromptMessage)] == replies
+
+
+@pytest.mark.usefixtures("agent_runtime_app")
+def test_invalid_persisted_model_history_falls_back_to_legacy_tool_turn(
+    sqlite_session: Session,
+    agent_records: tuple[Conversation, Message],
+    agent_generate_entity: AgentChatAppGenerateEntity,
+    agent_queue_manager: MessageBasedAppQueueManager,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    conversation, message = agent_records
+    app_config = agent_generate_entity.app_config
+    assert isinstance(app_config, AgentChatAppConfig)
+    assert app_config.agent is not None
+    thought = MessageAgentThought(
+        message_id=message.id,
+        position=1,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=agent_generate_entity.user_id,
+        thought="Checking the saved result.",
+        tool="lookup",
+        tool_input=json.dumps({"lookup": {"city": "Boston"}}),
+        observation=json.dumps({"lookup": "sunny"}),
+        model_messages=json.dumps(
+            {
+                "provider": agent_generate_entity.model_conf.provider,
+                "model": agent_generate_entity.model_conf.model,
+                "messages": [
+                    {"role": "assistant", "content": "Discard this", "opaque_body": {"signature": "stale"}},
+                    {"role": "invalid", "content": "Corrupt message"},
+                ],
+            }
+        ),
+    )
+    thought_id = thought.id
+    sqlite_session.add(thought)
+    sqlite_session.commit()
+    next_message = deepcopy(message)
+    next_message.id = "next-message"
+    sqlite_session.expunge_all()
+
+    with caplog.at_level(logging.WARNING, logger="core.agent.base_agent_runner"):
+        runner = FunctionCallAgentRunner(
+            execution_driver=WorkflowRunAgg.run,
+            session=sqlite_session,
+            tenant_id=app_config.tenant_id,
+            application_generate_entity=agent_generate_entity,
+            conversation=conversation,
+            app_config=app_config,
+            model_config=agent_generate_entity.model_conf,
+            config=app_config.agent,
+            queue_manager=agent_queue_manager,
+            message=next_message,
+            user_id=agent_generate_entity.user_id,
+            model_instance=ModelInstance(
+                provider_model_bundle=agent_generate_entity.model_conf.provider_model_bundle,
+                model=agent_generate_entity.model_conf.model,
+            ),
+        )
+
+    history = runner.history_prompt_messages
+    user, assistant, observation = history
+    assert user == UserPromptMessage(content=message.query)
+    assert isinstance(assistant, AssistantPromptMessage)
+    assert assistant.content == "Checking the saved result."
+    (tool_call,) = assistant.tool_calls
+    assert tool_call.function.name == "lookup"
+    assert json.loads(tool_call.function.arguments) == {"city": "Boston"}
+    assert observation == ToolPromptMessage(tool_call_id=tool_call.id, name="lookup", content="sunny")
+    assert assistant.opaque_body is None
+    assert any(
+        record.name == "core.agent.base_agent_runner"
+        and record.levelno == logging.WARNING
+        and thought_id in record.getMessage()
+        for record in caplog.records
+    )
 
 
 def test_history_keeps_empty_tool_results_and_completes_interrupted_calls() -> None:

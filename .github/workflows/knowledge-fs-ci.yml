@@ -87,6 +87,7 @@ jobs:
               - 'api/tests/unit_tests/models/test_agent_config_entities.py'
               - 'api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py'
               - 'api/tests/unit_tests/core/agent/test_base_agent_runner.py'
+              - 'api/tests/unit_tests/core/agent/test_message_replay.py'
               - 'api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py'
               - 'api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py'
               - 'api/tests/unit_tests/core/workflow/test_node_runtime.py'
@@ -263,6 +264,7 @@ jobs:
             api/tests/unit_tests/controllers/console/test_wraps.py
             api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py
             api/tests/unit_tests/core/agent/test_base_agent_runner.py
+            api/tests/unit_tests/core/agent/test_message_replay.py
             api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py
             api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py
             api/tests/unit_tests/core/workflow/test_node_runtime.py
