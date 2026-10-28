@@ -165,6 +165,27 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /connections/credential-schema
+Read API-key form fields for an authorized published tool node; no credential values.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_revision | query | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes | string (uuid) |
+| node_id | query |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API-key form schema | **application/json**: [ConnectionCredentialSchemaResponse](#connectioncredentialschemaresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /connections/oauth/authorization-url
 #### Request Body
 
@@ -833,6 +854,41 @@ Retrieve the metadata for a specific app.
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /migration/claim
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConnectionClaimPayload](#connectionclaimpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /migration/claimable-passports
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ClaimablePassportsPayload](#claimablepassportspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Claimable browser Passports | **application/json**: [ClaimablePassportsResponse](#claimablepassportsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /parameters
 **Retrieve app parameters**
 
@@ -1313,6 +1369,12 @@ The 'More like this' feature is disabled. Please refresh your page.
 | ---- | ---- | ----------- | -------- |
 | appId | string | Application ID | Yes |
 
+#### AppSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSelectorScope | string |  |  |
+
 #### AppSuggestedQuestionsAfterAnswerDisabledError
 
 The 'Suggested Questions After Answer' feature is disabled. Please refresh your page.
@@ -1389,6 +1451,27 @@ Button styles for user actions.
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
+#### ClaimablePassportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| app_name | string |  | Yes |
+| connection_count | integer | Current Guest Connection count; does not determine Passport eligibility | Yes |
+| index | integer | Index of the candidate in the request's passports list | Yes |
+
+#### ClaimablePassportsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passports | [ string ] |  | Yes |
+
+#### ClaimablePassportsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ClaimablePassportResponse](#claimablepassportresponse) ] |  | Yes |
+
 #### CompletionMessagePayload
 
 | Name | Type | Description | Required |
@@ -1406,6 +1489,66 @@ Completion request failed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
+
+#### ConnectionClaimErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_login_required", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_login_required"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### ConnectionClaimFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [ConnectionClaimErrorResponse](#connectionclaimerrorresponse) |  | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
+
+#### ConnectionClaimPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passports | [ string ] |  | Yes |
+
+#### ConnectionClaimPreflightDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| failures | [ [ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+
+#### ConnectionClaimPreflightFailedError
+
+Connection claim preflight failed. No Connections were transferred.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimPreflightFailedError |  | Connection claim preflight failed. No Connections were transferred. |  |
+
+#### ConnectionClaimResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConnectionClaimSuccessResponse](#connectionclaimsuccessresponse)<br>[ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+
+#### ConnectionClaimSuccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| app_code | string |  | Yes |
+| claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
+
+#### ConnectionClaimUnavailableError
+
+Connection claim is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimUnavailableError |  | Connection claim is temporarily unavailable. Please retry. |  |
 
 #### ConnectionConfigurationInvalidError
 
@@ -1428,6 +1571,12 @@ Connection changed during the operation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConnectionConflictError |  | Connection changed during the operation. |  |
+
+#### ConnectionCredentialSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialSchemaResponse | array |  |  |
 
 #### ConnectionCredentialStatus
 
@@ -1943,6 +2092,17 @@ This form has already been submitted by another user, form_id={form_id}
 | expires_at | integer |  | Yes |
 | upload_token | string |  | Yes |
 
+#### I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
+| zh_Hans | string |  | No |
+
 #### InvalidEmailError
 
 The email address is not valid.
@@ -2110,6 +2270,12 @@ Dify Hosted OpenAI trial currently not support the GPT-4 model.
 | ---- | ---- | ----------- | -------- |
 | ModelCurrentlyNotSupportError |  | Dify Hosted OpenAI trial currently not support the GPT-4 model. |  |
 
+#### ModelSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelSelectorScope | string |  |  |
+
 #### NoAudioUploadedError
 
 Please upload your audio.
@@ -2157,6 +2323,13 @@ Please check if your Workflow app mode matches the right API route.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NotWorkflowAppError |  | Please check if your Workflow app mode matches the right API route. |  |
+
+#### Option
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
 
 #### ParagraphInputConfig
 
@@ -2216,6 +2389,30 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
+
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [ProviderConfigType](#providerconfigtype) | The type of the credentials | Yes |
+| url | string |  | No |
+
+#### ProviderConfigType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderConfigType | string |  |  |
 
 #### ProviderNotInitializeError
 
@@ -2518,6 +2715,12 @@ Only one file is allowed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TooManyFilesError |  | Only one file is allowed. |  |
+
+#### ToolSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolSelectorScope | string |  |  |
 
 #### TriggerWorkflowServiceModeUnavailableError
 

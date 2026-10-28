@@ -11,9 +11,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from controllers.web import bp, connections, wraps
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.tools.entities.common_entities import I18nObject
 from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
-from tests.helpers.end_user_api_key import ConnectionHarness, make_harness
+from tests.helpers.end_user_api_key import ConnectionHarness, TestProviders, make_harness
 
 
 @pytest.fixture
@@ -36,7 +38,7 @@ def client(harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch) -> Itera
         connections, "application_services", lambda: SimpleNamespace(end_user_connections=harness.service)
     )
     app = Flask(__name__)
-    app.config["TESTING"] = True
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False)
     app.register_blueprint(bp)
     with app.test_client() as client:
         yield client
@@ -310,3 +312,95 @@ def test_name_only_patch_does_not_require_provider_access(
     response = client.patch(f"/api/connections/{connection.id}", json={"name": "Renamed"})
     assert response.status_code == 200
     assert response.get_json()["name"] == "Renamed"
+
+
+def test_credential_schema_preserves_provider_fields_and_drives_creation(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    assert isinstance(harness.service._credentials, TestProviders)
+    harness.service._credentials.controller.entity.credentials_schema = [
+        ProviderConfig(
+            name="access_tokens",
+            type=ProviderConfigType.SECRET_INPUT,
+            required=True,
+            label=I18nObject(en_US="Access token", zh_Hans="Token"),
+            default="must-not-be-exposed",
+            help=I18nObject(en_US="Create a personal token"),
+            url="https://provider.example/tokens",
+            placeholder=I18nObject(en_US="Enter a token"),
+        ),
+        ProviderConfig(name="endpoint", type=ProviderConfigType.TEXT_INPUT, default="https://provider.example"),
+        ProviderConfig(name="enabled", type=ProviderConfigType.BOOLEAN, default=False),
+        ProviderConfig(
+            name="region",
+            type=ProviderConfigType.SELECT,
+            default="us",
+            options=[ProviderConfig.Option(value="us", label=I18nObject(en_US="US"))],
+        ),
+    ]
+    revision = harness.connection_revision
+    response = client.get(
+        "/api/connections/credential-schema", query_string={"node_id": "tool-1", "connection_revision": revision}
+    )
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    fields = response.get_json()
+    assert [field["name"] for field in fields] == ["access_tokens", "endpoint", "enabled", "region"]
+    assert fields[0]["type"] == "secret-input"
+    assert fields[0]["required"] is True
+    assert fields[0]["default"] is None
+    assert fields[0]["label"]["en_US"] == "Access token"
+    assert fields[0]["help"]["en_US"] == "Create a personal token"
+    assert fields[0]["url"] == "https://provider.example/tokens"
+    assert fields[0]["placeholder"]["en_US"] == "Enter a token"
+    assert fields[1]["label"] is None
+    assert fields[2]["default"] is False
+    assert fields[3]["options"][0]["value"] == "us"
+    assert "must-not-be-exposed" not in response.get_data(as_text=True)
+    assert harness.auth.calls == []
+    assert harness.cipher.values == {}
+    payload = {
+        "node_id": "tool-1",
+        "connection_revision": revision,
+        "name": "Personal token",
+        "credentials": {fields[0]["name"]: "submitted-token"},
+    }
+    created = client.post("/api/connections", json=payload)
+    assert created.status_code == 201
+    assert harness.auth.calls[0][3]["access_tokens"] == "submitted-token"
+
+
+@pytest.mark.parametrize(
+    ("query", "status", "code"),
+    [
+        ({}, 400, "invalid_param"),
+        ({"provider": "foreign/provider"}, 400, "invalid_param"),
+        ({"node_id": "missing"}, 400, "connection_configuration_invalid"),
+        ({"connection_revision": "00000000-0000-7000-8000-000000000001"}, 409, "connection_revision_changed"),
+    ],
+)
+def test_credential_schema_rejects_invalid_targets(
+    client: FlaskClient, harness: ConnectionHarness, query: dict[str, str], status: int, code: str
+) -> None:
+    params: dict[str, str] = (
+        {"node_id": "tool-1", "connection_revision": harness.connection_revision, **query} if query else {}
+    )
+    response = client.get("/api/connections/credential-schema", query_string=params)
+    assert response.status_code == status
+    assert response.get_json()["code"] == code
+    assert harness.auth.calls == []
+    assert harness.cipher.values == {}
+
+
+def test_schema_queries_follow_anonymous_connection_policy(
+    client: FlaskClient, harness: ConnectionHarness, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    with harness.sessions.begin() as session:
+        session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
+    query = {"connection_revision": harness.connection_revision, "node_id": "tool-1"}
+    response = client.get("/api/connections/credential-schema", query_string=query)
+    assert response.status_code == 401
+    assert response.get_json()["code"] == "end_user_login_required"
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
+    assert client.get("/api/connections/credential-schema", query_string=query).status_code == 200

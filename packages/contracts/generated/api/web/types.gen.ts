@@ -79,6 +79,8 @@ export type AppPermissionQuery = {
   appId: string
 }
 
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
 export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
   code: 'app_suggested_questions_after_answer_disabled'
   status: 403
@@ -135,6 +137,21 @@ export type ChatMessagePayload = {
   retriever_from?: string
 }
 
+export type ClaimablePassportResponse = {
+  app_code: string
+  app_name: string
+  connection_count: number
+  index: number
+}
+
+export type ClaimablePassportsPayload = {
+  passports: Array<string>
+}
+
+export type ClaimablePassportsResponse = {
+  data: Array<ClaimablePassportResponse>
+}
+
 export type CompletionMessagePayload = {
   files?: Array<{
     [key: string]: unknown
@@ -152,6 +169,55 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionClaimErrorResponse = {
+  code:
+    | 'app_not_found'
+    | 'connection_claim_unavailable'
+    | 'connection_conflict'
+    | 'end_user_login_required'
+    | 'unauthorized'
+    | 'web_app_access_denied'
+  message: string
+  status: number
+}
+
+export type ConnectionClaimFailureResponse = {
+  error: ConnectionClaimErrorResponse
+  index: number
+  status: 'failed'
+}
+
+export type ConnectionClaimPayload = {
+  passports: Array<string>
+}
+
+export type ConnectionClaimPreflightDetails = {
+  failures: Array<ConnectionClaimFailureResponse>
+}
+
+export type ConnectionClaimPreflightFailedError = ErrorResponse & {
+  code: 'connection_claim_preflight_failed'
+  details?: ConnectionClaimPreflightDetails
+  status: 400
+}
+
+export type ConnectionClaimResponse = {
+  data: Array<ConnectionClaimSuccessResponse | ConnectionClaimFailureResponse>
+}
+
+export type ConnectionClaimSuccessResponse = {
+  access_token: string
+  app_code: string
+  claimed_connections: number
+  index: number
+  status: 'success'
+}
+
+export type ConnectionClaimUnavailableError = ErrorResponse & {
+  code: 'connection_claim_unavailable'
+  status: 503
+}
+
 export type ConnectionConfigurationInvalidError = ErrorResponse & {
   code: 'connection_configuration_invalid'
   status: 400
@@ -167,6 +233,8 @@ export type ConnectionConflictError = ErrorResponse & {
   code: 'connection_conflict'
   status: 409
 }
+
+export type ConnectionCredentialSchemaResponse = Array<ProviderConfig>
 
 export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
 
@@ -560,6 +628,13 @@ export type HumanInputUploadTokenResponse = {
   upload_token: string
 }
 
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
 export type InvalidEmailError = ErrorResponse & {
   code: 'invalid_email'
   status: 400
@@ -671,6 +746,15 @@ export type ModelCurrentlyNotSupportError = ErrorResponse & {
   status: 400
 }
 
+export type ModelSelectorScope =
+  | 'llm'
+  | 'moderation'
+  | 'rerank'
+  | 'speech2text'
+  | 'text-embedding'
+  | 'tts'
+  | 'vision'
+
 export type NoAudioUploadedError = ErrorResponse & {
   code: 'no_audio_uploaded'
   status: 400
@@ -698,6 +782,11 @@ export type NotWorkflowAppError = ErrorResponse & {
   status: 400
 }
 
+export type Option = {
+  label: I18nObject
+  value: string
+}
+
 export type ParagraphInputConfig = {
   default?: StringSource | null
   output_variable_name: string
@@ -711,11 +800,6 @@ export type PassportAccessTokenResponse = {
 export type PassportLoginPayload = {
   code_verifier: string
   login_code: string
-}
-
-export type PassportLoginResponse = {
-  access_token: string
-  webapp_access_token: string
 }
 
 export type PassportQuery = {
@@ -743,6 +827,29 @@ export type PluginInstallationScope =
   | 'none'
   | 'official_and_specific_partners'
   | 'official_only'
+
+export type ProviderConfig = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<Option> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type: ProviderConfigType
+  url?: string | null
+}
+
+export type ProviderConfigType =
+  | 'app-selector'
+  | 'array[tools]'
+  | 'boolean'
+  | 'model-selector'
+  | 'secret-input'
+  | 'select'
+  | 'text-input'
 
 export type ProviderNotInitializeError = ErrorResponse & {
   code: 'provider_not_initialize'
@@ -976,6 +1083,8 @@ export type TooManyFilesError = ErrorResponse & {
   code: 'too_many_files'
   status: 400
 }
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
 
 export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
   code: 'trigger_workflow_service_mode_unavailable'
@@ -1768,6 +1877,34 @@ export type GetConnectionsConfigurationResponses = {
 
 export type GetConnectionsConfigurationResponse =
   GetConnectionsConfigurationResponses[keyof GetConnectionsConfigurationResponses]
+
+export type GetConnectionsCredentialSchemaData = {
+  body?: never
+  path?: never
+  query: {
+    connection_revision: string
+    node_id: string
+  }
+  url: '/connections/credential-schema'
+}
+
+export type GetConnectionsCredentialSchemaErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: ConnectionRevisionChangedError | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsCredentialSchemaError =
+  GetConnectionsCredentialSchemaErrors[keyof GetConnectionsCredentialSchemaErrors]
+
+export type GetConnectionsCredentialSchemaResponses = {
+  200: ConnectionCredentialSchemaResponse
+}
+
+export type GetConnectionsCredentialSchemaResponse =
+  GetConnectionsCredentialSchemaResponses[keyof GetConnectionsCredentialSchemaResponses]
 
 export type PostConnectionsOauthAuthorizationUrlData = {
   body: EndUserConnectionOAuthPayload
@@ -2582,6 +2719,50 @@ export type GetMetaResponses = {
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses]
 
+export type PostMigrationClaimData = {
+  body: ConnectionClaimPayload
+  path?: never
+  query?: never
+  url: '/migration/claim'
+}
+
+export type PostMigrationClaimErrors = {
+  400: ConnectionClaimPreflightFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  503: ConnectionClaimUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostMigrationClaimError = PostMigrationClaimErrors[keyof PostMigrationClaimErrors]
+
+export type PostMigrationClaimResponses = {
+  200: ConnectionClaimResponse
+}
+
+export type PostMigrationClaimResponse =
+  PostMigrationClaimResponses[keyof PostMigrationClaimResponses]
+
+export type PostMigrationClaimablePassportsData = {
+  body: ClaimablePassportsPayload
+  path?: never
+  query?: never
+  url: '/migration/claimable-passports'
+}
+
+export type PostMigrationClaimablePassportsErrors = {
+  default: ErrorResponse
+}
+
+export type PostMigrationClaimablePassportsError =
+  PostMigrationClaimablePassportsErrors[keyof PostMigrationClaimablePassportsErrors]
+
+export type PostMigrationClaimablePassportsResponses = {
+  200: ClaimablePassportsResponse
+}
+
+export type PostMigrationClaimablePassportsResponse =
+  PostMigrationClaimablePassportsResponses[keyof PostMigrationClaimablePassportsResponses]
+
 export type GetParametersData = {
   body?: never
   path?: never
@@ -2648,7 +2829,7 @@ export type PostPassportErrors = {
 export type PostPassportError = PostPassportErrors[keyof PostPassportErrors]
 
 export type PostPassportResponses = {
-  200: PassportLoginResponse
+  200: PassportAccessTokenResponse
 }
 
 export type PostPassportResponse = PostPassportResponses[keyof PostPassportResponses]
