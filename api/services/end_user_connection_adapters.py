@@ -104,6 +104,7 @@ class PluginApiKeyCredentialGateway:
         identity = installed.declaration.identity
         return ConnectionProviderMetadata(
             provider=str(ToolProviderID(provider)),
+            provider_label=identity.label,
             plugin_unique_identifier=installed.plugin_unique_identifier,
             icon=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon),
             icon_dark=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon_dark)

@@ -2596,6 +2596,7 @@ in form definition, or a variable while the workflow is running.
 | node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
 | plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |
 | provider | string |  | Yes |
+| provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
 | purpose | string |  | Yes |
 | title | string |  | Yes |
 
