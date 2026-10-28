@@ -23,7 +23,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -176,16 +176,13 @@ export default function StepByStepTourMount({
   const uncompleteTask = useSetAtom(uncompleteStepByStepTourTaskAtom)
   const shellMode = useStepByStepTourShellModeValue()
   const setShellMode = useSetStepByStepTourShellMode()
-  const anchorRef = useRef<HTMLDivElement>(null)
   const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
   const restoreTriggerRef = useRef<HTMLButtonElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
   const shownAnalyticsKeyRef = useRef<string | undefined>(undefined)
-  const skipTimeoutRef = useRef<number | undefined>(undefined)
   const stepShownAnalyticsKeyRef = useRef<string | undefined>(undefined)
-  const [checklistExiting, setChecklistExiting] = useState(false)
   const currentWorkspaceId = currentWorkspace.id
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const homeGuideGroup: Extract<StepByStepTourGuideGroup, 'homeNoCreate'> | undefined = canCreateApp
@@ -202,13 +199,6 @@ export default function StepByStepTourMount({
     | Extract<StepByStepTourGuideGroup, 'integrationLimitedAccess'>
     | undefined = isCurrentWorkspaceManager ? undefined : 'integrationLimitedAccess'
   const hasIntegrationWalkthroughPermissions = !integrationGuideGroup
-
-  useEffect(
-    () => () => {
-      if (skipTimeoutRef.current) window.clearTimeout(skipTimeoutRef.current)
-    },
-    [],
-  )
 
   const learnDifyEnabled = systemFeatures.enable_learn_app
   const stepByStepTourFeatureEnabled = systemFeatures.enable_step_by_step_tour
@@ -529,21 +519,11 @@ export default function StepByStepTourMount({
           })
 
           const skipTour = () => {
-            if (checklistExiting) return
-
-            setChecklistExiting(true)
-
-            skipTimeoutRef.current = window.setTimeout(() => {
-              patchSkipTour({
-                onSuccess: trackTourSkipped,
-                onError: () => {
-                  setChecklistExiting(false)
-                  setSkipRecoveryVisible(false)
-                },
-              })
-              setChecklistExiting(false)
-              if (recoveryAnchorRef) setSkipRecoveryVisible(true)
-            }, 160)
+            patchSkipTour({
+              onSuccess: trackTourSkipped,
+              onError: () => setSkipRecoveryVisible(false),
+            })
+            if (recoveryAnchorRef) setSkipRecoveryVisible(true)
           }
 
           const skipActiveGuide = () => {
@@ -756,10 +736,6 @@ export default function StepByStepTourMount({
                   },
                 })
               }}
-              className={cn(
-                'transition-opacity duration-150 ease-out motion-reduce:transition-none',
-                checklistExiting && 'opacity-0',
-              )}
             />
           )
 
@@ -796,31 +772,39 @@ export default function StepByStepTourMount({
               {visible && (!allTasksCompleted || completionPromptVisible) && (
                 <Popover
                   open={overlayVisible && expanded}
-                  onOpenChange={(open) => {
-                    if (open) setShellMode('expanded')
+                  onOpenChange={(open, { event, reason }) => {
+                    if (open) {
+                      setShellMode('expanded')
+                      return
+                    }
+                    // Outside presses keep the checklist; Tab past it leaves through a focus guard.
+                    const tabbedOut =
+                      reason === 'focus-out' &&
+                      event.target instanceof Element &&
+                      event.target.hasAttribute('data-base-ui-focus-guard')
+                    if (reason === 'escape-key' || reason === 'trigger-press' || tabbedOut)
+                      setShellMode('collapsed')
                   }}
                 >
-                  <div
-                    ref={anchorRef}
-                    aria-hidden="true"
-                    className="pointer-events-none absolute bottom-0 left-0 h-0 w-full"
+                  <PopoverTrigger
+                    ref={restoreTriggerRef}
+                    aria-label={t(($) => $['stepByStepTour.restore'], { ns: 'onboarding' })}
+                    render={(props) => (
+                      <MinimizedTourPill
+                        {...props}
+                        className={cn(props.className, 'data-popup-open:opacity-0')}
+                        title={title}
+                        progress={progress}
+                      />
+                    )}
                   />
-                  {checklistMinimized && (
-                    <PopoverTrigger
-                      ref={restoreTriggerRef}
-                      aria-label={t(($) => $['stepByStepTour.restore'], { ns: 'onboarding' })}
-                      render={(props) => (
-                        <MinimizedTourPill {...props} title={title} progress={progress} />
-                      )}
-                    />
-                  )}
                   {overlayVisible && (
                     <PopoverPortal>
                       <PopoverPositioner
                         side="top"
                         align="start"
-                        sideOffset={0}
-                        anchor={anchorRef}
+                        // The expanded checklist covers its pill.
+                        sideOffset={({ anchor }) => -anchor.height}
                         collisionPadding={8}
                         collisionAvoidance={{
                           side: 'shift',

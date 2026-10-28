@@ -676,7 +676,31 @@ describe('StepByStepTourMount', () => {
       await screen.findByRole('region', { name: 'Step-by-step Tour completed' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Open step-by-step tour' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
+  it('minimizes the checklist with Escape and returns focus to its trigger', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument(),
+    )
+    expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('collapsed')
+    expect(screen.getByRole('button', { name: 'Open step-by-step tour' })).toHaveFocus()
   })
 
   it('hides expanded tour overlays while a blocking modal is open', async () => {
