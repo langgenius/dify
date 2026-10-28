@@ -20,8 +20,16 @@ from sqlalchemy.orm import Session
 
 from core.app.file_access import FileAccessScope
 from enums import DeploymentEdition
-from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
-from models.agent_config_entities import AgentSoulConfig
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import AppStatus
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode
@@ -111,18 +119,6 @@ class FakeAppCapabilities:
 class FakeRuntime:
     broker: FakeBroker = field(default_factory=FakeBroker)
     app_capabilities: FakeAppCapabilities = field(default_factory=FakeAppCapabilities)
-
-
-@dataclass
-class _ScalarsSession:
-    """Captures the snapshot query and returns preloaded rows."""
-
-    rows: list[AgentConfigSnapshot]
-    statements: list[object] = field(default_factory=list)
-
-    def scalars(self, statement: object) -> list[AgentConfigSnapshot]:
-        self.statements.append(statement)
-        return self.rows
 
 
 class CommandArgs(TypedDict, total=False):
@@ -464,19 +460,48 @@ def test_only_trusted_tool_metadata_produces_sources() -> None:
     assert sources[0].score is None
 
 
-def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul() -> None:
-    snapshots = _ScalarsSession(
-        rows=[
-            AgentConfigSnapshot(tenant_id="tenant", agent_id="agent-1", version=1, config_snapshot=SOUL),
-            AgentConfigSnapshot(tenant_id="tenant", agent_id="agent-2", version=1, config_snapshot=SOUL),
+def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul(sqlite_session: Session) -> None:
+    other_space = KnowledgeFsBinding(id="other", control_space_id="00000000-0000-4000-8000-000000000009", name="other")
+    other_soul = AgentSoulConfig.model_validate({"knowledge": {"spaces": [other_space.model_dump()]}})
+
+    def binding(node_id: str, agent_id: str, snapshot_id: str, workflow_version: str) -> WorkflowAgentNodeBinding:
+        return WorkflowAgentNodeBinding(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            workflow_version=workflow_version,
+            node_id=node_id,
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id=agent_id,
+            current_snapshot_id=snapshot_id,
+            node_job_config=WorkflowNodeJobConfig(),
+        )
+
+    sqlite_session.add_all(
+        [
+            AgentConfigSnapshot(
+                id="snapshot-1", tenant_id="tenant", agent_id="agent-1", version=1, config_snapshot=SOUL
+            ),
+            AgentConfigSnapshot(
+                id="snapshot-2", tenant_id="tenant", agent_id="agent-2", version=1, config_snapshot=SOUL
+            ),
+            # A newer snapshot of agent-1 that the published binding does not point at.
+            AgentConfigSnapshot(
+                id="snapshot-1-newer", tenant_id="tenant", agent_id="agent-1", version=2, config_snapshot=other_soul
+            ),
+            AgentConfigSnapshot(
+                id="snapshot-draft", tenant_id="tenant", agent_id="agent-3", version=1, config_snapshot=other_soul
+            ),
+            binding("node-1", "agent-1", "snapshot-1", "published"),
+            binding("node-2", "agent-2", "snapshot-2", "published"),
+            # The draft copy of the same workflow binds a different Agent.
+            binding("node-1", "agent-3", "snapshot-draft", "draft"),
         ]
     )
+    sqlite_session.flush()
+
     workflow = Workflow(tenant_id="tenant", app_id="app", id="workflow", version="published")
-    assert collect_workflow_agent_knowledge_space_ids(session=cast(Session, snapshots), workflow=workflow) == (SPACE,)
-    assert len(snapshots.statements) == 1
-    sql = str(snapshots.statements[0])
-    assert "workflow_agent_node_bindings.current_snapshot_id" in sql
-    assert "workflow_agent_node_bindings.workflow_version" in sql
+    assert collect_workflow_agent_knowledge_space_ids(session=sqlite_session, workflow=workflow) == (SPACE,)
 
 
 def test_investigation_capture_reauthorizes_agent_and_keeps_stable_id(
