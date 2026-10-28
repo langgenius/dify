@@ -400,7 +400,7 @@ def _raise_contact_error(error: ContactError) -> Never:
     raise AssertionError("unreachable")
 
 
-@console_ns.route("/workspaces/current/human-input/contacts")
+@console_ns.route("/workspace/current/human-input/v2/contacts")
 class WorkspaceContactsApi(Resource):
     @console_ns.doc(params=query_params_from_model(ContactListQuery))
     @console_ns.response(200, "Success", console_ns.models[ListContactsResponse.__name__])
@@ -431,7 +431,7 @@ class WorkspaceContactsApi(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>")
+@console_ns.route("/workspace/current/human-input/v2/contacts/<uuid:contact_id>")
 class WorkspaceContactApi(Resource):
     """Read one contact only when it resolves in the current workspace scope."""
 
@@ -463,7 +463,7 @@ class WorkspaceContactApi(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/contact-options")
+@console_ns.route("/workspace/current/human-input/v2/contact-options")
 class WorkspaceContactOptionsApi(Resource):
     """Search the current workspace's selectable Contact projection for workflow editors."""
 
@@ -501,7 +501,7 @@ class WorkspaceContactOptionsApi(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/organization-candidates")
+@console_ns.route("/workspace/current/human-input/v2/organization-candidates")
 class WorkspaceOrganizationCandidatesApi(Resource):
     @console_ns.doc(params=query_params_from_model(OrganizationCandidatesQuery))
     @console_ns.response(200, "Success", console_ns.models[ListOrganizationCandidatesResponse.__name__])
@@ -536,7 +536,7 @@ class WorkspaceOrganizationCandidatesApi(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/platform")
+@console_ns.route("/workspace/current/human-input/v2/contacts/platform")
 class WorkspacePlatformContactsApi(Resource):
     @console_ns.expect(console_ns.models[AddPlatformContactsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AddPlatformContactsResponse.__name__])
@@ -558,7 +558,7 @@ class WorkspacePlatformContactsApi(Resource):
         return dump_response(AddPlatformContactsResponse, {"data": [_contact_payload(contact) for contact in contacts]})
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/external")
+@console_ns.route("/workspace/current/human-input/v2/contacts/external")
 class WorkspaceExternalContactsApi(Resource):
     @console_ns.expect(console_ns.models[ExternalContactCreateRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[ExternalContactCreateResponse.__name__])
@@ -581,7 +581,7 @@ class WorkspaceExternalContactsApi(Resource):
         return dump_response(ExternalContactCreateResponse, {"contact": _contact_payload(contact)})
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/external/<uuid:contact_id>")
+@console_ns.route("/workspace/current/human-input/v2/contacts/external/<uuid:contact_id>")
 class WorkspaceExternalContactApi(Resource):
     @console_ns.expect(console_ns.models[ExternalContactUpdateRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[ExternalContactUpdateResponse.__name__])
@@ -617,7 +617,7 @@ class WorkspaceExternalContactApi(Resource):
         return dump_response(ExternalContactUpdateResponse, {"contact": _contact_payload(contact)})
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/remove")
+@console_ns.route("/workspace/current/human-input/v2/contacts/remove")
 class WorkspaceContactsRemoveApi(Resource):
     @console_ns.expect(console_ns.models[RemoveContactsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[RemoveContactsResponse.__name__])
@@ -644,7 +644,7 @@ class WorkspaceContactsRemoveApi(Resource):
         return dump_response(RemoveContactsResponse, {"removed_contact_ids": removed_ids})
 
 
-@console_ns.route("/workspaces/current/human-input/im-sync-runs")
+@console_ns.route("/workspace/current/human-input/v2/im-sync-runs")
 class WorkspaceIMSyncRunsApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[CreateIMSyncRunResponse.__name__])
     @console_ns.response(404, "IM Integration not configured", console_ns.models[IMContactSyncErrorResponse.__name__])
@@ -673,7 +673,7 @@ class WorkspaceIMSyncRunsApi(Resource):
         return dump_response(CreateIMSyncRunResponse, {"run": _sync_run_payload(run)})
 
 
-@console_ns.route("/workspaces/current/human-input/im-sync-runs/latest")
+@console_ns.route("/workspace/current/human-input/v2/im-sync-runs/latest")
 class WorkspaceLatestIMSyncRunApi(Resource):
     @console_ns.doc(
         description=(
@@ -693,7 +693,7 @@ class WorkspaceLatestIMSyncRunApi(Resource):
         return dump_response(GetLatestIMSyncRunResponse, {"run": _sync_run_payload(run)})
 
 
-@console_ns.route("/workspaces/current/human-input/im-sync-runs/latest/results")
+@console_ns.route("/workspace/current/human-input/v2/im-sync-runs/latest/results")
 class WorkspaceLatestIMSyncRunResultsApi(Resource):
     @console_ns.doc(
         params=query_params_from_model(ListLatestIMSyncRunResultsQuery),
@@ -728,7 +728,7 @@ class WorkspaceLatestIMSyncRunResultsApi(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/im-identities")
+@console_ns.route("/workspace/current/human-input/v2/im-identities")
 class WorkspaceIMIdentitiesApi(Resource):
     @console_ns.doc(params=query_params_from_model(ListIMIdentitiesQuery))
     @console_ns.response(200, "Success", console_ns.models[ListIMIdentitiesResponse.__name__])
@@ -757,7 +757,7 @@ class WorkspaceIMIdentitiesApi(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override")
+@console_ns.route("/workspace/current/human-input/v2/contacts/<uuid:contact_id>/im-override")
 class WorkspaceContactIMOverrideApi(Resource):
     @console_ns.doc(
         description=(
@@ -824,7 +824,7 @@ class WorkspaceContactIMOverrideApi(Resource):
         return dump_response(ResetContactIMOverrideResponse, {"contact": _contact_binding_payload(contact)})
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-bindings")
+@console_ns.route("/workspace/current/human-input/v2/contacts/<uuid:contact_id>/im-bindings")
 class WorkspaceContactIMBindingsApi(Resource):
     @console_ns.doc(
         description=(
@@ -892,7 +892,7 @@ class WorkspaceContactIMBindingsApi(Resource):
         return dump_response(DeleteIMBindingResponse, {})
 
 
-@console_ns.route("/workspaces/current/human-input/contacts/batch")
+@console_ns.route("/workspace/current/human-input/v2/contacts/batch")
 class BatchGetContactsAPI(Resource):
     @console_ns.doc(
         params=query_params_from_model(BatchGetContactsQuery),
@@ -917,7 +917,7 @@ class BatchGetContactsAPI(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/contact-options/batch")
+@console_ns.route("/workspace/current/human-input/v2/contact-options/batch")
 class BatchGetContactOptionsAPI(Resource):
     """Resolve persisted Contact IDs through the same editor-safe selection projection."""
 
@@ -947,7 +947,7 @@ class BatchGetContactOptionsAPI(Resource):
         )
 
 
-@console_ns.route("/workspaces/current/human-input/node-data-migration")
+@console_ns.route("/workspace/current/human-input/v2/node-data-migration")
 class NodeDataMigrationAPI(Resource):
     @console_ns.doc(
         description=(

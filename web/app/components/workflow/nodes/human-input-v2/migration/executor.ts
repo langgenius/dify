@@ -9,7 +9,7 @@ import type {
 import {
   zNodeDataMigrationFailureResponse,
   zNodeDataMigrationResponse,
-} from '@dify/contracts/api/console/workspaces/zod.gen'
+} from '@dify/contracts/api/console/workspace/zod.gen'
 import { ORPCError } from '@orpc/client'
 import { isEqual } from 'es-toolkit'
 import { cloneDeep } from 'es-toolkit/object'
@@ -21,8 +21,8 @@ import { HumanInputMigrationBlockerCode } from './types'
 
 /** The backend owns legacy alias handling and recipient conversion. */
 export const createHumanInputMigrationApi = (
-  client: typeof consoleClient.workspaces.current.humanInput.nodeDataMigration = consoleClient
-    .workspaces.current.humanInput.nodeDataMigration,
+  client: typeof consoleClient.workspace.current.humanInput.v2.nodeDataMigration = consoleClient
+    .workspace.current.humanInput.v2.nodeDataMigration,
 ): HumanInputMigrationApi => ({
   async migrate(request) {
     try {

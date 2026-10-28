@@ -1,4 +1,4 @@
-import type { HumanInputContact } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { HumanInputContact } from '@dify/contracts/api/console/workspace/types.gen'
 import type {
   AddPlatformContactsCommand,
   AddPlatformContactsResult,
@@ -119,7 +119,7 @@ async function requestContactIM<T>(request: () => Promise<T>): Promise<T> {
 }
 
 export function createContactsApiRepository(
-  client = consoleClient.workspaces.current.humanInput,
+  client = consoleClient.workspace.current.humanInput.v2,
   context?: ContactsFeatureContextValue,
 ): ContactsManagementRepository {
   const unsupported = async (): Promise<never> => {

@@ -206,7 +206,7 @@ async function openAdminRemoval(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole('alertdialog')
 }
 
-const contactOptionsKey = consoleQuery.workspaces.current.humanInput.contactOptions.get.key({
+const contactOptionsKey = consoleQuery.workspace.current.humanInput.v2.contactOptions.get.key({
   type: 'query',
 })
 

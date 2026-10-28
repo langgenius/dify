@@ -77,7 +77,7 @@ def test_console_blueprint_registers_only_the_canonical_channel_routes(wire_app:
     registered_routes = {
         rule.rule: set(rule.methods or ()) - {"HEAD", "OPTIONS"}
         for rule in wire_app.url_map.iter_rules()
-        if rule.rule.startswith(_BASE_PATH)
+        if rule.rule.startswith(f"{_BASE_PATH}/channel")
     }
 
     assert registered_routes == _EXPECTED_ROUTES

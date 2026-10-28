@@ -95,7 +95,7 @@ def test_channel_openapi_uses_only_canonical_routes_and_registered_dtos(
     channel_paths = {
         path: {method for method in path_item if method in _HTTP_METHODS}
         for path, path_item in paths.items()
-        if isinstance(path, str) and path.startswith(_CHANNEL_PATH_PREFIX) and isinstance(path_item, dict)
+        if isinstance(path, str) and path.startswith(f"{_CHANNEL_PATH_PREFIX}/channel") and isinstance(path_item, dict)
     }
 
     assert channel_paths == _EXPECTED_OPERATIONS

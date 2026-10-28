@@ -1,4 +1,4 @@
-import type { GetContactResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetContactResponse } from '@dify/contracts/api/console/workspace/types.gen'
 import type { ContactsManagementRepository } from '../repository'
 import type { ContactsFeatureContextValue } from '../types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,26 +11,24 @@ vi.mock('@/service/console', () => ({
   consoleClient: {
     workspace: {
       current: {
-        humanInput: { v2: { channels: { get: vi.fn() } } },
-      },
-    },
-    workspaces: {
-      current: {
         humanInput: {
-          contacts: {
-            get: vi.fn(),
-            batch: { get: vi.fn() },
-            platform: { post: vi.fn() },
-            byContactId: {
+          v2: {
+            channels: { get: vi.fn() },
+            contacts: {
               get: vi.fn(),
-              imBindings: { put: vi.fn(), delete: vi.fn() },
-              imOverride: { put: vi.fn(), delete: vi.fn() },
+              batch: { get: vi.fn() },
+              platform: { post: vi.fn() },
+              byContactId: {
+                get: vi.fn(),
+                imBindings: { put: vi.fn(), delete: vi.fn() },
+                imOverride: { put: vi.fn(), delete: vi.fn() },
+              },
+              external: { post: vi.fn(), byContactId: { patch: vi.fn() } },
+              remove: { post: vi.fn() },
             },
-            external: { post: vi.fn(), byContactId: { patch: vi.fn() } },
-            remove: { post: vi.fn() },
+            imIdentities: { get: vi.fn() },
+            organizationCandidates: { get: vi.fn() },
           },
-          imIdentities: { get: vi.fn() },
-          organizationCandidates: { get: vi.fn() },
         },
       },
     },
@@ -255,7 +253,7 @@ describe('contacts mock repository', () => {
 })
 
 describe('Enterprise Platform contact API repository', () => {
-  const client = consoleClient.workspaces.current.humanInput
+  const client = consoleClient.workspace.current.humanInput.v2
   const context: ContactsFeatureContextValue = {
     deployment: 'ee',
     imBindingCentrallyManaged: true,
@@ -442,7 +440,7 @@ describe('Enterprise Platform contact API repository', () => {
 })
 
 describe('contacts API repository', () => {
-  const contacts = consoleClient.workspaces.current.humanInput.contacts
+  const contacts = consoleClient.workspace.current.humanInput.v2.contacts
   const externalContact = {
     avatar_url: '',
     created_at: 1_778_000_000,
@@ -694,7 +692,7 @@ describe('contacts API repository', () => {
 })
 
 describe('contacts IM API repository', () => {
-  const client = consoleClient.workspaces.current.humanInput
+  const client = consoleClient.workspace.current.humanInput.v2
   const contact = {
     avatar_url: '',
     id: 'contact-workspace',

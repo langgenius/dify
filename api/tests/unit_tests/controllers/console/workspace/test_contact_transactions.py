@@ -17,7 +17,7 @@ from libs.external_api import ExternalApi
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole
 from models.human_input_v2 import HumanInputExternalContactProfile
 
-_CONTACTS_URL = "/console/api/workspaces/current/human-input/contacts"
+_CONTACTS_URL = "/console/api/workspace/current/human-input/v2/contacts"
 _TENANT_ID = "00000000-0000-0000-0000-000000000101"
 
 

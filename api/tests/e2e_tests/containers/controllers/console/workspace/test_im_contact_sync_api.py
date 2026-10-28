@@ -66,7 +66,7 @@ _CONTACT_ID = ContactId("00000000-0000-0000-0000-000000000101")
 _CHANNEL_ID = IMChannelId("00000000-0000-0000-0000-000000000201")
 _PRIMARY_IDENTITY_ID = IMIdentityId("00000000-0000-0000-0000-000000000301")
 _SECONDARY_IDENTITY_ID = IMIdentityId("00000000-0000-0000-0000-000000000302")
-_SYNC_RUNS_PATH = "/console/api/workspaces/current/human-input/im-sync-runs"
+_SYNC_RUNS_PATH = "/console/api/workspace/current/human-input/v2/im-sync-runs"
 
 
 def _seed_control_plane(
@@ -150,8 +150,8 @@ def test_manual_binding_http_commands_use_real_guarded_postgresql_writes(
 ) -> None:
     account, _tenant, contact, _channel, _primary, _secondary = _seed_control_plane(db_session_with_containers)
     headers = authenticate_console_client(test_client_with_containers, account)
-    binding_path = f"/console/api/workspaces/current/human-input/contacts/{contact.id}/im-bindings"
-    override_path = f"/console/api/workspaces/current/human-input/contacts/{contact.id}/im-override"
+    binding_path = f"/console/api/workspace/current/human-input/v2/contacts/{contact.id}/im-bindings"
+    override_path = f"/console/api/workspace/current/human-input/v2/contacts/{contact.id}/im-override"
 
     created = test_client_with_containers.put(
         binding_path,
@@ -243,7 +243,7 @@ def test_sync_command_and_identity_queries_use_real_postgresql(
     replayed = test_client_with_containers.post(_SYNC_RUNS_PATH, headers=headers)
     latest = test_client_with_containers.get(f"{_SYNC_RUNS_PATH}/latest", headers=headers)
     identities = test_client_with_containers.get(
-        "/console/api/workspaces/current/human-input/im-identities",
+        "/console/api/workspace/current/human-input/v2/im-identities",
         query_string={"keyword": "provider-user", "page": 1, "limit": 1},
         headers=headers,
     )
@@ -397,7 +397,7 @@ def test_missing_control_plane_state_returns_stable_http_errors(
     headers = authenticate_console_client(test_client_with_containers, account)
 
     missing_integration = test_client_with_containers.get(
-        "/console/api/workspaces/current/human-input/im-identities",
+        "/console/api/workspace/current/human-input/v2/im-identities",
         headers=headers,
     )
     missing_sync_integration = test_client_with_containers.post(_SYNC_RUNS_PATH, headers=headers)

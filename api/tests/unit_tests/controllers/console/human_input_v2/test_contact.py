@@ -16,7 +16,7 @@ from enums import DeploymentEdition
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole
 from models.human_input_v2 import HumanInputExternalContactProfile
 
-_BASE_URL = "/console/api/workspaces/current/human-input"
+_BASE_URL = "/console/api/workspace/current/human-input/v2"
 _CONTACT_ID = "00000000-0000-0000-0000-000000000123"
 _MANAGEMENT_REQUESTS = (
     ("GET", "/contacts"),

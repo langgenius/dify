@@ -1,4 +1,4 @@
-import type { GetContactResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetContactResponse } from '@dify/contracts/api/console/workspace/types.gen'
 import type { ReactNode } from 'react'
 import type { ContactsManagementRepository } from '../repository'
 import type {

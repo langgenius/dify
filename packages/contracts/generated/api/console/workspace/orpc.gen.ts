@@ -9,12 +9,36 @@ import {
   zDeleteWorkspaceCurrentHumanInputV2ChannelsImByChannelIdPath,
   zDeleteWorkspaceCurrentHumanInputV2ChannelsImByChannelIdQuery,
   zDeleteWorkspaceCurrentHumanInputV2ChannelsImByChannelIdResponse,
+  zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsPath,
+  zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsResponse,
+  zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImOverridePath,
+  zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImOverrideResponse,
   zGetWorkspaceCurrentHumanInputV2ChannelProvidersResponse,
   zGetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdPath,
   zGetWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponse,
   zGetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdPath,
   zGetWorkspaceCurrentHumanInputV2ChannelsImByChannelIdResponse,
   zGetWorkspaceCurrentHumanInputV2ChannelsResponse,
+  zGetWorkspaceCurrentHumanInputV2ContactOptionsBatchQuery,
+  zGetWorkspaceCurrentHumanInputV2ContactOptionsBatchResponse,
+  zGetWorkspaceCurrentHumanInputV2ContactOptionsQuery,
+  zGetWorkspaceCurrentHumanInputV2ContactOptionsResponse,
+  zGetWorkspaceCurrentHumanInputV2ContactsBatchQuery,
+  zGetWorkspaceCurrentHumanInputV2ContactsBatchResponse,
+  zGetWorkspaceCurrentHumanInputV2ContactsByContactIdPath,
+  zGetWorkspaceCurrentHumanInputV2ContactsByContactIdResponse,
+  zGetWorkspaceCurrentHumanInputV2ContactsQuery,
+  zGetWorkspaceCurrentHumanInputV2ContactsResponse,
+  zGetWorkspaceCurrentHumanInputV2ImIdentitiesQuery,
+  zGetWorkspaceCurrentHumanInputV2ImIdentitiesResponse,
+  zGetWorkspaceCurrentHumanInputV2ImSyncRunsLatestResponse,
+  zGetWorkspaceCurrentHumanInputV2ImSyncRunsLatestResultsQuery,
+  zGetWorkspaceCurrentHumanInputV2ImSyncRunsLatestResultsResponse,
+  zGetWorkspaceCurrentHumanInputV2OrganizationCandidatesQuery,
+  zGetWorkspaceCurrentHumanInputV2OrganizationCandidatesResponse,
+  zPatchWorkspaceCurrentHumanInputV2ContactsExternalByContactIdBody,
+  zPatchWorkspaceCurrentHumanInputV2ContactsExternalByContactIdPath,
+  zPatchWorkspaceCurrentHumanInputV2ContactsExternalByContactIdResponse,
   zPostWorkspaceCurrentHumanInputV2ChannelsEmailBody,
   zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestBody,
   zPostWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdTestPath,
@@ -32,12 +56,27 @@ import {
   zPostWorkspaceCurrentHumanInputV2ChannelsImResponse,
   zPostWorkspaceCurrentHumanInputV2ChannelsImTestBody,
   zPostWorkspaceCurrentHumanInputV2ChannelsImTestResponse,
+  zPostWorkspaceCurrentHumanInputV2ContactsExternalBody,
+  zPostWorkspaceCurrentHumanInputV2ContactsExternalResponse,
+  zPostWorkspaceCurrentHumanInputV2ContactsPlatformBody,
+  zPostWorkspaceCurrentHumanInputV2ContactsPlatformResponse,
+  zPostWorkspaceCurrentHumanInputV2ContactsRemoveBody,
+  zPostWorkspaceCurrentHumanInputV2ContactsRemoveResponse,
+  zPostWorkspaceCurrentHumanInputV2ImSyncRunsResponse,
+  zPostWorkspaceCurrentHumanInputV2NodeDataMigrationBody,
+  zPostWorkspaceCurrentHumanInputV2NodeDataMigrationResponse,
   zPutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdBody,
   zPutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdPath,
   zPutWorkspaceCurrentHumanInputV2ChannelsEmailByChannelIdResponse,
   zPutWorkspaceCurrentHumanInputV2ChannelsImByChannelIdBody,
   zPutWorkspaceCurrentHumanInputV2ChannelsImByChannelIdPath,
   zPutWorkspaceCurrentHumanInputV2ChannelsImByChannelIdResponse,
+  zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsBody,
+  zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsPath,
+  zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsResponse,
+  zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImOverrideBody,
+  zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImOverridePath,
+  zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImOverrideResponse,
 } from './zod.gen.ts'
 
 export const get = oc
@@ -295,9 +334,376 @@ export const channels = {
   im,
 }
 
+/**
+ * Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+ */
+export const get5 = oc
+  .route({
+    description:
+      'Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2ContactOptionsBatch',
+    path: '/workspace/current/human-input/v2/contact-options/batch',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetWorkspaceCurrentHumanInputV2ContactOptionsBatchQuery }))
+  .output(zGetWorkspaceCurrentHumanInputV2ContactOptionsBatchResponse)
+
+export const batch = {
+  get: get5,
+}
+
+/**
+ * List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+ */
+export const get6 = oc
+  .route({
+    description:
+      'List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2ContactOptions',
+    path: '/workspace/current/human-input/v2/contact-options',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ query: zGetWorkspaceCurrentHumanInputV2ContactOptionsQuery.optional() }).optional(),
+  )
+  .output(zGetWorkspaceCurrentHumanInputV2ContactOptionsResponse)
+
+export const contactOptions = {
+  get: get6,
+  batch,
+}
+
+/**
+ * Admin-only batch lookup for Contact management clients. Workflow editors must use the editor-safe contact-options/batch projection.
+ */
+export const get7 = oc
+  .route({
+    description:
+      'Admin-only batch lookup for Contact management clients. Workflow editors must use the editor-safe contact-options/batch projection.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2ContactsBatch',
+    path: '/workspace/current/human-input/v2/contacts/batch',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetWorkspaceCurrentHumanInputV2ContactsBatchQuery }))
+  .output(zGetWorkspaceCurrentHumanInputV2ContactsBatchResponse)
+
+export const batch2 = {
+  get: get7,
+}
+
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchWorkspaceCurrentHumanInputV2ContactsExternalByContactId',
+    path: '/workspace/current/human-input/v2/contacts/external/{contact_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchWorkspaceCurrentHumanInputV2ContactsExternalByContactIdBody,
+      params: zPatchWorkspaceCurrentHumanInputV2ContactsExternalByContactIdPath,
+    }),
+  )
+  .output(zPatchWorkspaceCurrentHumanInputV2ContactsExternalByContactIdResponse)
+
+export const byContactId = {
+  patch,
+}
+
+export const post8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspaceCurrentHumanInputV2ContactsExternal',
+    path: '/workspace/current/human-input/v2/contacts/external',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspaceCurrentHumanInputV2ContactsExternalBody }))
+  .output(zPostWorkspaceCurrentHumanInputV2ContactsExternalResponse)
+
+export const external = {
+  post: post8,
+  byContactId,
+}
+
+export const post9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspaceCurrentHumanInputV2ContactsPlatform',
+    path: '/workspace/current/human-input/v2/contacts/platform',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspaceCurrentHumanInputV2ContactsPlatformBody }))
+  .output(zPostWorkspaceCurrentHumanInputV2ContactsPlatformResponse)
+
+export const platform = {
+  post: post9,
+}
+
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspaceCurrentHumanInputV2ContactsRemove',
+    path: '/workspace/current/human-input/v2/contacts/remove',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspaceCurrentHumanInputV2ContactsRemoveBody }))
+  .output(zPostWorkspaceCurrentHumanInputV2ContactsRemoveResponse)
+
+export const remove = {
+  post: post10,
+}
+
+/**
+ * Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.
+ */
+export const delete3 = oc
+  .route({
+    description:
+      'Delete the current default IM binding for the contact identified by the path. Workspace IM overrides are not modified. This endpoint is not used for resetting workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.delete instead.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspaceCurrentHumanInputV2ContactsByContactIdImBindings',
+    path: '/workspace/current/human-input/v2/contacts/{contact_id}/im-bindings',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsPath }))
+  .output(zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsResponse)
+
+/**
+ * Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.
+ */
+export const put3 = oc
+  .route({
+    description:
+      'Set a default IM binding for a contact, atomically replacing any default binding for either the contact or the selected identity. Identical assignments preserve their binding ID; changed assignments receive a new binding ID. This endpoint is not used for creating workspace IM override. For that purpose, use WorkspaceContactIMOverrideApi.put instead.',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspaceCurrentHumanInputV2ContactsByContactIdImBindings',
+    path: '/workspace/current/human-input/v2/contacts/{contact_id}/im-bindings',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsBody,
+      params: zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsPath,
+    }),
+  )
+  .output(zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImBindingsResponse)
+
+export const imBindings = {
+  delete: delete3,
+  put: put3,
+}
+
+/**
+ * Reset the IM override for a contact. This endpoint is used to clear the IM identity override for a contact in the workspace.
+ */
+export const delete4 = oc
+  .route({
+    description:
+      'Reset the IM override for a contact. This endpoint is used to clear the IM identity override for a contact in the workspace.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspaceCurrentHumanInputV2ContactsByContactIdImOverride',
+    path: '/workspace/current/human-input/v2/contacts/{contact_id}/im-override',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImOverridePath }))
+  .output(zDeleteWorkspaceCurrentHumanInputV2ContactsByContactIdImOverrideResponse)
+
+/**
+ * Set or reset the IM override for a contact. This endpoint is used to override the IM identity for a contact in the workspace.
+ */
+export const put4 = oc
+  .route({
+    description:
+      'Set or reset the IM override for a contact. This endpoint is used to override the IM identity for a contact in the workspace.',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putWorkspaceCurrentHumanInputV2ContactsByContactIdImOverride',
+    path: '/workspace/current/human-input/v2/contacts/{contact_id}/im-override',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImOverrideBody,
+      params: zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImOverridePath,
+    }),
+  )
+  .output(zPutWorkspaceCurrentHumanInputV2ContactsByContactIdImOverrideResponse)
+
+export const imOverride = {
+  delete: delete4,
+  put: put4,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2ContactsByContactId',
+    path: '/workspace/current/human-input/v2/contacts/{contact_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspaceCurrentHumanInputV2ContactsByContactIdPath }))
+  .output(zGetWorkspaceCurrentHumanInputV2ContactsByContactIdResponse)
+
+export const byContactId2 = {
+  get: get8,
+  imBindings,
+  imOverride,
+}
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2Contacts',
+    path: '/workspace/current/human-input/v2/contacts',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetWorkspaceCurrentHumanInputV2ContactsQuery.optional() }).optional())
+  .output(zGetWorkspaceCurrentHumanInputV2ContactsResponse)
+
+export const contacts = {
+  get: get9,
+  batch: batch2,
+  external,
+  platform,
+  remove,
+  byContactId: byContactId2,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2ImIdentities',
+    path: '/workspace/current/human-input/v2/im-identities',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ query: zGetWorkspaceCurrentHumanInputV2ImIdentitiesQuery.optional() }).optional(),
+  )
+  .output(zGetWorkspaceCurrentHumanInputV2ImIdentitiesResponse)
+
+export const imIdentities = {
+  get: get10,
+}
+
+/**
+ * Return one required result bucket from the latest IM sync run using page and limit pagination. There is no all filter; the response contains page, limit, and total metadata without a run summary.
+ */
+export const get11 = oc
+  .route({
+    description:
+      'Return one required result bucket from the latest IM sync run using page and limit pagination. There is no all filter; the response contains page, limit, and total metadata without a run summary.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2ImSyncRunsLatestResults',
+    path: '/workspace/current/human-input/v2/im-sync-runs/latest/results',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetWorkspaceCurrentHumanInputV2ImSyncRunsLatestResultsQuery }))
+  .output(zGetWorkspaceCurrentHumanInputV2ImSyncRunsLatestResultsResponse)
+
+export const results = {
+  get: get11,
+}
+
+/**
+ * Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
+ */
+export const get12 = oc
+  .route({
+    description:
+      'Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2ImSyncRunsLatest',
+    path: '/workspace/current/human-input/v2/im-sync-runs/latest',
+    tags: ['console'],
+  })
+  .output(zGetWorkspaceCurrentHumanInputV2ImSyncRunsLatestResponse)
+
+export const latest = {
+  get: get12,
+  results,
+}
+
+export const post11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspaceCurrentHumanInputV2ImSyncRuns',
+    path: '/workspace/current/human-input/v2/im-sync-runs',
+    tags: ['console'],
+  })
+  .output(zPostWorkspaceCurrentHumanInputV2ImSyncRunsResponse)
+
+export const imSyncRuns = {
+  post: post11,
+  latest,
+}
+
+/**
+ * Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Every legacy Email recipient becomes onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
+ */
+export const post12 = oc
+  .route({
+    description:
+      'Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Every legacy Email recipient becomes onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspaceCurrentHumanInputV2NodeDataMigration',
+    path: '/workspace/current/human-input/v2/node-data-migration',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspaceCurrentHumanInputV2NodeDataMigrationBody }))
+  .output(zPostWorkspaceCurrentHumanInputV2NodeDataMigrationResponse)
+
+export const nodeDataMigration = {
+  post: post12,
+}
+
+export const get13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspaceCurrentHumanInputV2OrganizationCandidates',
+    path: '/workspace/current/human-input/v2/organization-candidates',
+    tags: ['console'],
+  })
+  .input(
+    z
+      .object({ query: zGetWorkspaceCurrentHumanInputV2OrganizationCandidatesQuery.optional() })
+      .optional(),
+  )
+  .output(zGetWorkspaceCurrentHumanInputV2OrganizationCandidatesResponse)
+
+export const organizationCandidates = {
+  get: get13,
+}
+
 export const v2 = {
   channelProviders,
   channels,
+  contactOptions,
+  contacts,
+  imIdentities,
+  imSyncRuns,
+  nodeDataMigration,
+  organizationCandidates,
 }
 
 export const humanInput = {

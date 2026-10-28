@@ -61,10 +61,12 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-history', () => ({
 
 vi.mock('@/service/console', () => ({
   consoleClient: {
-    workspaces: {
+    workspace: {
       current: {
         humanInput: {
-          nodeDataMigration: { post: (...args: unknown[]) => mocks.postMigration(...args) },
+          v2: {
+            nodeDataMigration: { post: (...args: unknown[]) => mocks.postMigration(...args) },
+          },
         },
       },
     },

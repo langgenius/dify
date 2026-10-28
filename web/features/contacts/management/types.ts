@@ -1,12 +1,12 @@
-import type { ChannelSummary } from '@dify/contracts/api/console/workspace/types.gen'
 import type {
+  ChannelSummary,
   ExternalContactCreateRequest,
   GetContactResponse,
   HumanInputContact,
   HumanInputContactType,
   ImBinding,
   ImIdentity,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+} from '@dify/contracts/api/console/workspace/types.gen'
 
 export type ContactsDeployment = 'ce' | 'saas' | 'ee'
 

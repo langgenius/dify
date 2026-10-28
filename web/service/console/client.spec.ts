@@ -542,7 +542,7 @@ describe('normalizeConsoleOpenAPIURL', () => {
     'serializes %s batch IDs as repeated parameters for the backend getlist parser',
     (resource) => {
       const url = normalizeConsoleOpenAPIURL(
-        `https://example.com/console/api/workspaces/current/human-input/${resource}/batch?contact_ids%5B1%5D=contact-2&contact_ids%5B0%5D=contact-1&keyword=kept`,
+        `https://example.com/console/api/workspace/current/human-input/v2/${resource}/batch?contact_ids%5B1%5D=contact-2&contact_ids%5B0%5D=contact-1&keyword=kept`,
       )
       const searchParams = new URL(url).searchParams
 
@@ -555,7 +555,7 @@ describe('normalizeConsoleOpenAPIURL', () => {
 
   it('does not rewrite contact IDs on other endpoints', () => {
     const url =
-      'https://example.com/console/api/workspaces/current/human-input/contacts?contact_ids%5B0%5D=contact-1'
+      'https://example.com/console/api/workspace/current/human-input/v2/contacts?contact_ids%5B0%5D=contact-1'
 
     expect(normalizeConsoleOpenAPIURL(url)).toBe(url)
   })

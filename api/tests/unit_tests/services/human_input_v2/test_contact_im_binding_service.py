@@ -767,7 +767,7 @@ def test_delete_binding_through_uuid_route(
     )
     app = Flask(__name__)
 
-    @app.delete("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-bindings")
+    @app.delete("/workspace/current/human-input/v2/contacts/<uuid:contact_id>/im-bindings")
     def delete_binding(contact_id: UUID) -> ResponseReturnValue:
         # Isolate authentication while retaining Flask's path conversion and the real binding service.
         return unwrap(human_input.WorkspaceContactIMBindingsApi.delete)(
@@ -775,7 +775,7 @@ def test_delete_binding_through_uuid_route(
         )
 
     response = app.test_client().delete(
-        f"/workspaces/current/human-input/contacts/{contact_id}/im-bindings",
+        f"/workspace/current/human-input/v2/contacts/{contact_id}/im-bindings",
     )
 
     assert response.status_code == expected_status

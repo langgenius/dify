@@ -31,6 +31,70 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         current: {
           humanInput: {
             v2: {
+              contacts: {
+                platform: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                },
+                byContactId: {
+                  imBindings: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                  imOverride: {
+                    put: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                    delete: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                external: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                  byContactId: {
+                    patch: {
+                      mutationOptions: {
+                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          invalidateHumanInputContactQueries(consoleQuery, context.client),
+                      },
+                    },
+                  },
+                },
+                remove: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        invalidateHumanInputContactQueries(consoleQuery, context.client),
+                    },
+                  },
+                },
+              },
               channels: {
                 email: {
                   post: {
@@ -415,72 +479,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
-          humanInput: {
-            contacts: {
-              platform: {
-                post: {
-                  mutationOptions: {
-                    onSuccess: (_data, _variables, _onMutateResult, context) =>
-                      invalidateHumanInputContactQueries(consoleQuery, context.client),
-                  },
-                },
-              },
-              byContactId: {
-                imBindings: {
-                  put: {
-                    mutationOptions: {
-                      onSuccess: (_data, _variables, _onMutateResult, context) =>
-                        invalidateHumanInputContactQueries(consoleQuery, context.client),
-                    },
-                  },
-                  delete: {
-                    mutationOptions: {
-                      onSuccess: (_data, _variables, _onMutateResult, context) =>
-                        invalidateHumanInputContactQueries(consoleQuery, context.client),
-                    },
-                  },
-                },
-                imOverride: {
-                  put: {
-                    mutationOptions: {
-                      onSuccess: (_data, _variables, _onMutateResult, context) =>
-                        invalidateHumanInputContactQueries(consoleQuery, context.client),
-                    },
-                  },
-                  delete: {
-                    mutationOptions: {
-                      onSuccess: (_data, _variables, _onMutateResult, context) =>
-                        invalidateHumanInputContactQueries(consoleQuery, context.client),
-                    },
-                  },
-                },
-              },
-              external: {
-                post: {
-                  mutationOptions: {
-                    onSuccess: (_data, _variables, _onMutateResult, context) =>
-                      invalidateHumanInputContactQueries(consoleQuery, context.client),
-                  },
-                },
-                byContactId: {
-                  patch: {
-                    mutationOptions: {
-                      onSuccess: (_data, _variables, _onMutateResult, context) =>
-                        invalidateHumanInputContactQueries(consoleQuery, context.client),
-                    },
-                  },
-                },
-              },
-              remove: {
-                post: {
-                  mutationOptions: {
-                    onSuccess: (_data, _variables, _onMutateResult, context) =>
-                      invalidateHumanInputContactQueries(consoleQuery, context.client),
-                  },
-                },
-              },
-            },
-          },
           members: {
             byMemberId: {
               delete: {
@@ -3010,10 +3008,10 @@ export function invalidateHumanInputContactQueries(
 ) {
   return invalidateQueryKeys(client, [
     workspaceId ? ['contacts-management', workspaceId] : ['contacts-management'],
-    query.workspaces.current.humanInput.contacts.key(),
-    query.workspaces.current.humanInput.contactOptions.key(),
-    query.workspaces.current.humanInput.imIdentities.key(),
-    query.workspaces.current.humanInput.organizationCandidates.key(),
+    query.workspace.current.humanInput.v2.contacts.key(),
+    query.workspace.current.humanInput.v2.contactOptions.key(),
+    query.workspace.current.humanInput.v2.imIdentities.key(),
+    query.workspace.current.humanInput.v2.organizationCandidates.key(),
   ])
 }
 
@@ -3027,8 +3025,8 @@ export function invalidateHumanInputChannelQueries(
     invalidateQueryKeys(client, [
       workspaceId ? ['contacts', 'im-platform', `api:${workspaceId}`] : ['contacts', 'im-platform'],
       query.workspace.current.humanInput.v2.channels.key(),
-      query.workspaces.current.humanInput.imIdentities.key(),
-      query.workspaces.current.humanInput.imSyncRuns.key(),
+      query.workspace.current.humanInput.v2.imIdentities.key(),
+      query.workspace.current.humanInput.v2.imSyncRuns.key(),
     ]),
   ])
 }

@@ -1,5 +1,5 @@
 {
-  "console DELETE /workspaces/current/human-input/contacts/{contact_id}/im-override": [
+  "console DELETE /workspace/current/human-input/v2/contacts/{contact_id}/im-override": [
     "compatible",
     "parsed-vs-wire-output"
   ],
@@ -234,20 +234,20 @@
   "console GET /workspaces/current/default-model": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/endpoints/list": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/endpoints/list/plugin": ["compatible", "parsed-vs-wire-output"],
-  "console GET /workspaces/current/human-input/contacts": ["compatible", "parsed-vs-wire-output"],
-  "console GET /workspaces/current/human-input/contacts/{contact_id}": [
+  "console GET /workspace/current/human-input/v2/contacts": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspace/current/human-input/v2/contacts/{contact_id}": [
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console GET /workspaces/current/human-input/contacts/batch": [
+  "console GET /workspace/current/human-input/v2/contacts/batch": [
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console GET /workspaces/current/human-input/im-sync-runs/latest": [
+  "console GET /workspace/current/human-input/v2/im-sync-runs/latest": [
     "no-input-schema",
     "compatible"
   ],
-  "console GET /workspaces/current/human-input/im-sync-runs/latest/results": [
+  "console GET /workspace/current/human-input/v2/im-sync-runs/latest/results": [
     "compatible",
     "parsed-vs-wire-output"
   ],
@@ -516,7 +516,7 @@
     "parsed-vs-wire-output"
   ],
   "console PATCH /onboarding/step-by-step-tour/state": ["compatible", "parsed-vs-wire-output"],
-  "console PATCH /workspaces/current/human-input/contacts/external/{contact_id}": [
+  "console PATCH /workspace/current/human-input/v2/contacts/external/{contact_id}": [
     "compatible",
     "parsed-vs-wire-output"
   ],
@@ -634,16 +634,16 @@
   "console POST /trial-apps/{app_id}/workflows/run": ["compatible", "undocumented-output"],
   "console POST /workflow-generate": ["compatible", "parsed-vs-wire-output"],
   "console POST /workflow-generate/stream": ["compatible", "parsed-vs-wire-output"],
-  "console POST /workspaces/current/human-input/contacts/external": [
+  "console POST /workspace/current/human-input/v2/contacts/external": [
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console POST /workspaces/current/human-input/contacts/platform": [
+  "console POST /workspace/current/human-input/v2/contacts/platform": [
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console POST /workspaces/current/human-input/im-sync-runs": ["no-input-schema", "compatible"],
-  "console POST /workspaces/current/human-input/node-data-migration": [
+  "console POST /workspace/current/human-input/v2/im-sync-runs": ["no-input-schema", "compatible"],
+  "console POST /workspace/current/human-input/v2/node-data-migration": [
     "compatible",
     "parsed-vs-wire-output"
   ],
@@ -707,11 +707,11 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console PUT /workspaces/current/human-input/contacts/{contact_id}/im-bindings": [
+  "console PUT /workspace/current/human-input/v2/contacts/{contact_id}/im-bindings": [
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console PUT /workspaces/current/human-input/contacts/{contact_id}/im-override": [
+  "console PUT /workspace/current/human-input/v2/contacts/{contact_id}/im-override": [
     "compatible",
     "parsed-vs-wire-output"
   ],

@@ -6,9 +6,10 @@ import type {
   ImChannelDetailResponse,
   ImProviderCredentialsInputWritable,
   ImProviderCredentialsUpdateInputWritable,
+  ImSyncResultItem,
+  ImSyncRun,
   UnchangedInput,
 } from '@dify/contracts/api/console/workspace/types.gen'
-import type { ImSyncResultItem, ImSyncRun } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ContactsImPlatformOrganizationContext } from './context'
 import type {
   AuthorizeContactImProviderCommand,
@@ -162,8 +163,8 @@ const toContactImSyncItemView = ({ id, result }: ImSyncResultItem): ContactImSyn
 /** The server exposes the latest run only; run IDs guard against showing another run's results. */
 export function createContactImSyncApi(
   workspaceId: string,
-  client: Pick<typeof consoleClient.workspaces.current.humanInput, 'imSyncRuns'> = consoleClient
-    .workspaces.current.humanInput,
+  client: Pick<typeof consoleClient.workspace.current.humanInput.v2, 'imSyncRuns'> = consoleClient
+    .workspace.current.humanInput.v2,
 ): Pick<
   ContactImPlatformRepository,
   'getActiveSync' | 'getSyncRun' | 'getSyncItems' | 'startSync'
@@ -487,7 +488,10 @@ async function channelRequest<T>(request: () => Promise<T>): Promise<T> {
 /** Adapts the generated channel contract to the existing settings views. Secrets stay in commands only. */
 export function createContactImApiRepository(
   organization: ContactsImPlatformOrganizationContext,
-  client = consoleClient.workspace.current.humanInput.v2,
+  client: Pick<
+    typeof consoleClient.workspace.current.humanInput.v2,
+    'channelProviders' | 'channels'
+  > = consoleClient.workspace.current.humanInput.v2,
 ): ContactImPlatformRepository {
   const requestOptions = { context: { silent: true } }
   const guard = (organizationId: string) => {

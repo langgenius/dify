@@ -1,4 +1,4 @@
-import type { NodeDataMigrationBlocker } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { NodeDataMigrationBlocker } from '@dify/contracts/api/console/workspace/types.gen'
 import type { HumanInputNodeType } from '../../human-input/types'
 import type { HumanInputV2NodeType } from '../types'
 import type { Edge, Node } from '@/app/components/workflow/types'

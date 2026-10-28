@@ -63,7 +63,7 @@ def test_canonical_route_inventory_has_no_kind_specific_discovery_authority() ->
             method.upper() for method in ("get", "post", "put", "patch", "delete") if method in resource.__dict__
         }
         for url in urls:
-            if url.startswith("/workspace/current/human-input/v2"):
+            if url.startswith("/workspace/current/human-input/v2/channel"):
                 registered_routes[url] = resource_methods
 
     assert registered_routes == _CANONICAL_ROUTES
