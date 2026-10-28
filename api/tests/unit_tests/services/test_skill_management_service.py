@@ -365,6 +365,33 @@ def test_list_skills_keyword_matches_display_name() -> None:
     assert [item["name"] for item in result["data"]] == ["employee-onboarding"]
 
 
+def test_list_skills_keyword_treats_like_wildcards_literally() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="percent-skill", description="Report % growth"),
+    )
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="underscore-skill", description="my_key"),
+    )
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="plain-skill", description="my key"),
+    )
+
+    percent_result = service.list_skills(tenant_id=TENANT, keyword="%")
+
+    assert [item["name"] for item in percent_result["data"]] == ["percent-skill"]
+
+    underscore_result = service.list_skills(tenant_id=TENANT, keyword="my_key")
+
+    assert [item["name"] for item in underscore_result["data"]] == ["underscore-skill"]
+
+
 def test_list_skills_returns_pagination_metadata() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     for name in ["alpha-skill", "beta-skill", "gamma-skill"]:
