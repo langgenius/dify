@@ -40,7 +40,7 @@ from services.tracing.collection import (
     workflow_has_agent_v2,
 )
 from services.tracing.collection_ports import ScheduleTraceExport, TraceRunQuery, TraceRunRepository, TraceSourceQuery
-from services.tracing.delivery import TraceCollector, TraceRecordSource
+from services.tracing.delivery import CollectedTrace, StoredTraceDestination, TraceCollector, TraceRecordSource
 from services.tracing.errors import (
     ProviderConfigUnreadableError,
     TraceCollectionConflictError,
@@ -337,8 +337,7 @@ class ApplicationTracingService(TraceCollector):
                 correlation=TraceCorrelation(
                     external_trace_id=None,
                     session_id=run.session_id if run else source.conversation_id,
-                    parent_workflow_run_id=None,
-                    parent_node_execution_id=None,
+                    parent=None,
                 ),
                 payload=MessageCompleted(message_id=message_id, conversation_id=source.conversation_id),
             )
@@ -432,24 +431,20 @@ class ApplicationTracingService(TraceCollector):
         return False
 
     @override
-    def link_managed_parent(self, *, tenant_id: str, info: WorkflowTraceInfo) -> WorkflowTraceInfo:
-        """A provider-exported nested workflow names the Agent-collected parent it cannot attach to."""
-        parent_run_id, parent_node_id = info.resolved_parent_context
-        if not parent_run_id:
-            return info
-        parent = self._run_query.workflow_run_trace(tenant_id=tenant_id, workflow_run_id=parent_run_id)
-        if parent is None:
-            return info
-        if self._sources.workflow_run(tenant_id=tenant_id, app_id=parent.app_id, workflow_run_id=parent_run_id) is None:
-            return info
-        metadata = dict(info.metadata)
-        metadata.pop("parent_trace_context", None)
-        metadata["linked_parent_workflow_run_id"] = parent_run_id
-        if parent_node_id:
-            metadata["linked_parent_node_execution_id"] = parent_node_id
-        metadata["linked_parent_application_trace_id"] = parent.id
-        metadata["linked_parent_trace_id"] = parent.trace_id
-        return info.model_copy(update={"metadata": metadata})
+    def collected_trace(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> CollectedTrace | None:
+        run = self._run_query.workflow_run_trace(tenant_id=tenant_id, workflow_run_id=workflow_run_id)
+        if run is not None and run.app_id != app_id:
+            # A collected run of another app is not the run that started the nested run.
+            return CollectedTrace(trace_id=None, destination=None)
+        if run is not None:
+            destination = (
+                StoredTraceDestination(provider_id=run.provider, config=run.provider_config) if run.provider else None
+            )
+            return CollectedTrace(trace_id=run.trace_id, destination=destination)
+        app = self._sources.app(tenant_id=tenant_id, app_id=app_id)
+        if app is None or not self._managed_owner(app, None, workflow_run_id):
+            return None
+        return CollectedTrace(trace_id=None, destination=None)
 
     @override
     def capture_terminal(self, *, tenant_id: str, info: BaseTraceInfo) -> bool:

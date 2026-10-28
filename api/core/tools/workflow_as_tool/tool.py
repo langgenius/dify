@@ -255,17 +255,9 @@ class WorkflowTool(Tool):
         forked._trace_session_id = self._trace_session_id
         return forked
 
-    def set_parent_trace_context(
-        self,
-        *,
-        parent_workflow_run_id: str,
-        parent_node_execution_id: str,
-    ) -> None:
+    def set_parent_trace_context(self, context: ParentTraceContext) -> None:
         """Attach outer workflow trace context without exposing it as tool input."""
-        self._parent_trace_context = ParentTraceContext(
-            parent_workflow_run_id=parent_workflow_run_id,
-            parent_node_execution_id=parent_node_execution_id,
-        )
+        self._parent_trace_context = context
 
     def clear_parent_trace_context(self) -> None:
         """Remove parent trace context before invoking this tool outside a nested workflow."""

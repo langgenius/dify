@@ -59,6 +59,7 @@ def test_trace_requires_parent_first_order() -> None:
             session_id=None,
             user_id=None,
             parent=None,
+            trace_root=None,
             spans=(_span(root, None), _span(span_id_for("orphan"), child)),
         )
     with pytest.raises(ValidationError, match="root of this unit"):
@@ -68,6 +69,7 @@ def test_trace_requires_parent_first_order() -> None:
             session_id=None,
             user_id=None,
             parent=None,
+            trace_root=None,
             spans=(_span(child, root),),
         )
 
@@ -81,8 +83,34 @@ def test_fragment_root_must_point_at_its_external_parent() -> None:
             session_id=None,
             user_id=None,
             parent=parent,
+            trace_root=parent,
             spans=(_span(span_id_for("tool"), None),),
         )
+
+
+def test_fragment_names_its_parent_and_the_root_of_its_trace_together() -> None:
+    trace_root = SpanRef(span_id=span_id_for("workflow"), start_time=STARTED_AT)
+    tool_node = SpanRef(span_id=span_id_for("tool-node"), start_time=STARTED_AT)
+    nested = _span(span_id_for("nested-workflow"), tool_node.span_id)
+
+    def fragment(parent: SpanRef | None, root: SpanRef | None, spans: tuple[Span, ...]) -> Trace:
+        return Trace(
+            trace_id=trace_id_for("t"),
+            external_trace_id=None,
+            session_id=None,
+            user_id=None,
+            parent=parent,
+            trace_root=root,
+            spans=spans,
+        )
+
+    assert fragment(tool_node, trace_root, (nested,)).trace_root == trace_root
+    with pytest.raises(ValidationError, match="set together"):
+        fragment(tool_node, None, (nested,))
+    with pytest.raises(ValidationError, match="set together"):
+        fragment(None, trace_root, (_span(span_id_for("root"), None),))
+    with pytest.raises(ValidationError, match="trace root cannot be a span of this unit"):
+        fragment(tool_node, SpanRef(span_id=nested.span_id, start_time=STARTED_AT), (nested,))
 
 
 def test_cost_must_be_finite() -> None:

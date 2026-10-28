@@ -153,8 +153,10 @@ class Trace(BaseModel):
     """A parent-first span tree, delivered as one unit.
 
     ``parent`` is set when this tree joins a trace whose root was sent in
-    another unit, e.g. a tool call under its message. ``parent`` is always the
-    root span of that trace, and the first span of this unit points at it.
+    another unit: a tool call under its message, or a nested workflow run under
+    the tool node that started it. The first span of this unit points at it.
+    ``trace_root`` is the root span of that trace, the same span as ``parent``
+    when the unit hangs directly from it.
     """
 
     trace_id: str
@@ -163,6 +165,8 @@ class Trace(BaseModel):
     session_id: str | None
     user_id: str | None
     parent: SpanRef | None
+    trace_root: SpanRef | None
+    """Set exactly when ``parent`` is set."""
     spans: tuple[Span, ...] = Field(min_length=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -187,6 +191,10 @@ class Trace(BaseModel):
             seen.add(span.span_id)
         if expected_root_parent in seen:
             raise ValueError("the external parent cannot be a span of this unit")
+        if (self.parent is None) != (self.trace_root is None):
+            raise ValueError("parent and trace_root must be set together")
+        if self.trace_root is not None and self.trace_root.span_id in seen:
+            raise ValueError("the trace root cannot be a span of this unit")
         return self
 
     @property

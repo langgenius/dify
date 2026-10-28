@@ -226,8 +226,8 @@ class OpikProvider(TraceProvider[OpikConfig]):
             settings = _settings(config)
         except VerificationError as error:
             raise ExportRejectedError(f"Opik configuration is invalid ({error.code})") from None
-        # A fragment's parent is the root of its trace, so both units derive the same trace ID.
-        trace_start = trace.parent.start_time if trace.parent is not None else trace.root.start_time
+        # A fragment names the root of its trace, so both units derive the same trace ID.
+        trace_start = trace.trace_root.start_time if trace.trace_root is not None else trace.root.start_time
         trace_id = _opik_id(trace.trace_id, "trace", trace_start)
         try:
             requests = self._requests(trace, trace_id, settings)
@@ -278,6 +278,9 @@ class OpikProvider(TraceProvider[OpikConfig]):
     def _requests(self, trace: Trace, trace_id: str, settings: _Settings) -> list[tuple[str, bytes]]:
         """Encode every request before the first is sent, so a bad value cannot leave a partial trace."""
         span_ids = {span.span_id: _opik_id(trace.trace_id, span.span_id, span.start_time) for span in trace.spans}
+        if trace.parent is not None and trace.parent != trace.trace_root:
+            # A parent below the trace root is a span another unit sent; its ID is derivable.
+            span_ids[trace.parent.span_id] = _opik_id(trace.trace_id, trace.parent.span_id, trace.parent.start_time)
         spans = [self._span(trace, span, trace_id, span_ids, settings.project) for span in trace.spans]
         requests: list[tuple[str, bytes]] = []
         if trace.parent is None:
@@ -312,7 +315,7 @@ class OpikProvider(TraceProvider[OpikConfig]):
             "id": span_ids[span.span_id],
             "project_name": project,
             "trace_id": trace_id,
-            # The unit's root is top-level, and so is a fragment's root: its parent belongs to another unit.
+            # The unit's root is top-level, and so is a fragment's root that hangs from the trace root.
             "parent_span_id": span_ids.get(span.parent_span_id) if span.parent_span_id is not None else None,
             "name": span.name,
             "type": _SPAN_TYPES.get(span.kind, "general"),

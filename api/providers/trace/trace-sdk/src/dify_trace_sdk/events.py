@@ -20,13 +20,29 @@ def json_safe(value: object) -> JsonValue:
     return json.loads(json.dumps(value, ensure_ascii=False, default=str), parse_constant=str)
 
 
+class TraceParent(BaseModel):
+    """The workflow run, and its tool node execution, that started a nested workflow run."""
+
+    workflow_run_id: str
+    app_id: str | None
+    """``None`` when the context that started the nested run did not record it."""
+    node_execution_id: str | None
+    """``None`` when the starting node execution is unknown."""
+    external_trace_id: str | None
+    """The trace ID that run's caller supplied; only an outermost run has one."""
+    parent: "TraceParent | None"
+    """The run that started that run in turn; ``None`` when that run is not nested."""
+
+    model_config = _EVENT_CONFIG
+
+
 class TraceCorrelation(BaseModel):
     """Caller-supplied correlation, propagated unchanged to the trace."""
 
     external_trace_id: str | None
     session_id: str | None
-    parent_workflow_run_id: str | None
-    parent_node_execution_id: str | None
+    parent: TraceParent | None
+    """The run that started this nested workflow run; ``None`` outside nested workflows."""
 
     model_config = _EVENT_CONFIG
 

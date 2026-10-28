@@ -28,6 +28,7 @@ from dify_trace_sdk.testing import (
     RecordedRequest,
     RecordingEgress,
     message_trace,
+    nested_workflow_fragment,
     response,
     tool_fragment,
     workflow_trace,
@@ -348,6 +349,22 @@ class TestMLflowProvider:
         assert tool.get_attribute(SpanAttributeKey.SESSION_ID) == "conversation-1"
         assert result.trace_id == f"tr-{own_trace_id}"
         assert own_trace_id != fragment.trace_id
+
+    @staticmethod
+    def test_nested_workflow_is_its_own_trace_naming_the_tool_node_it_hangs_from() -> None:
+        provider, egress = _mlflow_provider(ACK)
+        fragment = nested_workflow_fragment()
+        assert fragment.parent is not None
+        own_trace_id = trace_id_for(f"{fragment.trace_id}:{fragment.root.span_id}")
+
+        provider.send(MLFLOW_CONFIG, fragment)
+
+        run, node = _exported(egress)
+        assert (run.trace_id, node.trace_id) == (f"tr-{own_trace_id}", f"tr-{own_trace_id}")
+        assert run.parent_id is None
+        assert run.get_attribute("dify.parent_trace_id") == fragment.trace_id
+        assert run.get_attribute("dify.parent_span_id") == fragment.parent.span_id
+        assert node.parent_id == run.span_id
 
     @staticmethod
     def test_runs_that_share_a_caller_trace_id_become_separate_traces() -> None:

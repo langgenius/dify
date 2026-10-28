@@ -95,8 +95,7 @@ def _trace_scope(recorder: _TraceRecorder) -> TraceScope:
         correlation=TraceCorrelation(
             external_trace_id=None,
             session_id="trace-session-1",
-            parent_workflow_run_id=None,
-            parent_node_execution_id=None,
+            parent=None,
         ),
     )
 
@@ -437,9 +436,7 @@ def _timeline_trace_scope(recorder: _TimelineTraceRecorder) -> TraceScope:
         tenant_id="tenant",
         app_id="app",
         user_id="session",
-        correlation=TraceCorrelation(
-            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-        ),
+        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
     )
 
 

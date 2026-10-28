@@ -455,9 +455,7 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
                 tenant_id="test-tenant-id",
                 app_id="test-app-id",
                 user_id="test-user-id",
-                correlation=TraceCorrelation(
-                    external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-                ),
+                correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
             )
             queue_manager.messages = [queue_message(QueueMessageEndEvent(llm_result=None))]
             saved_sessions: list[Session] = []
@@ -562,9 +560,7 @@ def _trace_scope(recorder: _TimelineTraceRecorder) -> TraceScope:
         tenant_id="tenant",
         app_id="app",
         user_id="user",
-        correlation=TraceCorrelation(
-            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-        ),
+        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
     )
 
 

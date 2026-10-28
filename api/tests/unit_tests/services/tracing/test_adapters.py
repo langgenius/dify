@@ -24,9 +24,7 @@ from services.tracing.delivery import ExportJob
 from services.tracing.scopes import TraceScopes, TracingPolicyQuery
 
 STARTED_AT = datetime(2026, 3, 4, 5, 6, tzinfo=UTC)
-CORRELATION = TraceCorrelation(
-    external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-)
+CORRELATION = TraceCorrelation(external_trace_id=None, session_id=None, parent=None)
 
 
 class _Broker:
@@ -152,6 +150,7 @@ def test_export_retries_persist_the_trace_and_run_after_their_delay(broker: _Bro
             session_id=None,
             user_id=None,
             parent=None,
+            trace_root=None,
             spans=(
                 Span(
                     span_id="b" * 16,

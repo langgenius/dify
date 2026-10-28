@@ -128,9 +128,7 @@ def test_worker_records_carry_no_enterprise_names(sqlite_session_factory: sessio
             app_id=case.run.app_id,
             user_id=None,
             occurred_at=datetime.now(UTC),
-            correlation=TraceCorrelation(
-                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-            ),
+            correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
             payload=MessageCompleted(message_id=case.run.source_id, conversation_id=conversation_id),
         )
     )

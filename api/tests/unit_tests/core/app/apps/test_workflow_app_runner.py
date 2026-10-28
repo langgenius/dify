@@ -48,6 +48,7 @@ from core.app.entities.queue_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
+from core.helper.trace_id_helper import ParentTraceContext
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl, HumanInputFormSubmissionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -344,10 +345,19 @@ class TestWorkflowAppRunnerCoreCases:
                 invoke_from=InvokeFrom.DEBUGGER,
                 root_node_id="root",
                 trace_session_id="session-1",
+                external_trace_id="caller-trace",
+                parent_trace_context=ParentTraceContext(
+                    parent_workflow_run_id="outer-run", parent_node_execution_id="outer-node-execution"
+                ),
                 call_depth=3,
             )
 
-            assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+            dify_context = captured["run_context"][DIFY_RUN_CONTEXT_KEY]
+            assert dify_context.trace_session_id == "session-1"
+            assert dify_context.external_trace_id == "caller-trace"
+            assert dify_context.parent_trace_context == ParentTraceContext(
+                parent_workflow_run_id="outer-run", parent_node_execution_id="outer-node-execution"
+            )
             assert captured["call_depth"] == 3
             assert captured["runtime_state"] is runtime_state
 
@@ -1180,6 +1190,8 @@ class TestWorkflowAppRunnerSingleNodeCases:
             user_id="user",
             app_type=CreditUsageAppType.WORKFLOW,
             trace_session_id="session-1",
+            external_trace_id=None,
+            parent_trace_context=None,
         )
         init_graph.assert_not_called()
 

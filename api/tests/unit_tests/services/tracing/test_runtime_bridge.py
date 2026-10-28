@@ -18,10 +18,11 @@ from dify_trace_sdk.events import (
     ModerationChecked,
     TraceCorrelation,
     TraceEvent,
+    TraceParent,
     TracePayload,
     WorkflowRunCompleted,
 )
-from dify_trace_sdk.ids import span_id_for
+from dify_trace_sdk.ids import span_id_for, span_uuid, trace_id_for, trace_uuid
 from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
 from dify_trace_sdk.testing import RecordingEgress, response
 from flask import Flask
@@ -310,9 +311,7 @@ def trace_event(run: TraceRun, payload: TracePayload) -> TraceEvent:
         app_id=run.app_id,
         user_id=None,
         occurred_at=datetime.now(UTC),
-        correlation=TraceCorrelation(
-            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
-        ),
+        correlation=TraceCorrelation(external_trace_id=None, session_id=None, parent=None),
         payload=payload,
     )
 
@@ -349,6 +348,7 @@ def terminal(collection: Collection) -> None:
         session_id=run.session_id,
         user_id=None,
         parent=None,
+        trace_root=None,
         spans=(root,),
     )
     capture(collection.repository, run.id, trace)
@@ -384,8 +384,10 @@ def setup(sessions: sessionmaker[Session], name: str, mode: AppMode, *, snapshot
 def deliver(case: Case, event: TraceEvent, destination: RecordingEgress) -> None:
     """Deliver one event the way the trace worker does, with this case's service as the Agent collector."""
     sessions = case.collection.sessions
+    records = record_source(sessions)
     TraceDeliveryService(
-        records=record_source(sessions),
+        records=records,
+        outer_runs=records,
         destinations=SQLAlchemyAppTracingConfigRepository(session_factory=sessions),
         providers=InstalledTraceProviders(LangfuseProvider),
         codec=ProviderConfigCodec(WorkspaceBoundCipher()),
@@ -420,8 +422,15 @@ def workflow_event(row: WorkflowRun, parent: WorkflowRun | None) -> TraceEvent:
         correlation=TraceCorrelation(
             external_trace_id=None,
             session_id=None,
-            parent_workflow_run_id=parent.id if parent else None,
-            parent_node_execution_id=identifier("parent-tool-node") if parent else None,
+            parent=TraceParent(
+                workflow_run_id=parent.id,
+                app_id=parent.app_id,
+                node_execution_id=identifier("parent-tool-node"),
+                external_trace_id=None,
+                parent=None,
+            )
+            if parent
+            else None,
         ),
         payload=WorkflowRunCompleted(workflow_run_id=row.id, conversation_id=None, total_tokens=None),
     )
@@ -477,6 +486,46 @@ def workflow(case: Case, name: str, *, has_agent: bool, snapshot: bool) -> tuple
     return row, trace_run
 
 
+def tool_node(case: Case, row: WorkflowRun) -> None:
+    """Persist the tool node execution of ``row`` that starts the nested runs of these cases."""
+    with case.collection.sessions.begin() as session:
+        node = WorkflowNodeExecutionModel(
+            id=identifier("parent-tool-node"),
+            node_execution_id=identifier("parent-tool-node"),
+            tenant_id=row.tenant_id,
+            app_id=row.app_id,
+            workflow_id=row.workflow_id,
+            workflow_run_id=row.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            index=1,
+            node_id="tool",
+            node_type="tool",
+            title="Nested workflow",
+            inputs="{}",
+            outputs="{}",
+            process_data="{}",
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            elapsed_time=0,
+            execution_metadata="{}",
+            finished_at=None,
+            created_by=row.created_by,
+            created_by_role=CreatorUserRole.ACCOUNT,
+        )
+        node.created_at = row.created_at + timedelta(seconds=1)
+        session.add(node)
+
+
+def nested_root(destination: RecordingEgress, trace_id: str, child: WorkflowRun) -> dict[str, object]:
+    """The Langfuse observation of a nested run's root, after checking it was sent as a fragment."""
+    events = ingested(destination)
+    assert all(item["type"] != "trace-create" for item in events)
+    bodies = [item["body"] for item in events if isinstance(item["body"], dict)]
+    (root,) = [body for body in bodies if body["id"] == str(span_uuid(trace_id, span_id_for(child.id)))]
+    assert root["traceId"] == str(trace_uuid(trace_id))
+    assert root["parentObservationId"] == str(span_uuid(trace_id, span_id_for(identifier("parent-tool-node"))))
+    return root
+
+
 def workflow_info(row: WorkflowRun, parent: WorkflowRun | None) -> WorkflowTraceInfo:
     assert row.finished_at is not None
     metadata: dict[str, object] = {"app_id": row.app_id}
@@ -505,6 +554,7 @@ def workflow_info(row: WorkflowRun, parent: WorkflowRun | None) -> WorkflowTrace
         file_list=[],
         invoked_by=None,
         query="",
+        parent=None,
         metadata=metadata,
         start_time=row.created_at,
         end_time=row.finished_at,
@@ -628,11 +678,12 @@ class TestApplicationTraceHandoffCases:
         assert run_count(case.collection.sessions) == 0
 
     @staticmethod
-    def test_plain_nested_workflow_keeps_its_parent_context_for_the_provider(
+    def test_plain_nested_workflow_hangs_from_the_tool_node_of_its_parent(
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         parent_case = setup(sqlite_session_factory, "plain-parent", AppMode.WORKFLOW, snapshot=False)
         parent, _ = workflow(parent_case, "plain-parent", has_agent=False, snapshot=False)
+        tool_node(parent_case, parent)
         child_case = setup(sqlite_session_factory, "plain-child", AppMode.WORKFLOW, snapshot=False)
         child, _ = workflow(child_case, "plain-child", has_agent=False, snapshot=False)
         add_app_owner(child_case.collection, "plain-child")
@@ -640,15 +691,19 @@ class TestApplicationTraceHandoffCases:
         record = record_source(sqlite_session_factory).assemble(event)
         assert isinstance(record, WorkflowTraceInfo)
         assert child_case.service.capture_terminal(tenant_id=child.tenant_id, info=record) is False
-        assert child_case.service.link_managed_parent(tenant_id=child.tenant_id, info=record) is record
+        assert (
+            child_case.service.collected_trace(
+                tenant_id=parent.tenant_id, app_id=parent.app_id, workflow_run_id=parent.id
+            )
+            is None
+        )
         destination = exported()
         deliver(child_case, event, destination)
-        trace = next(item for item in ingested(destination) if item["type"] == "trace-create")
-        body = trace["body"]
-        assert isinstance(body, dict)
-        assert body["metadata"]["parent_workflow_run_id"] == parent.id
-        assert body["metadata"]["parent_node_execution_id"] == identifier("parent-tool-node")
-        assert "linked_parent_workflow_run_id" not in body["metadata"]
+        root = nested_root(destination, trace_id_for(parent.id), child)
+        metadata = root["metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["parent_workflow_run_id"] == parent.id
+        assert metadata["parent_node_execution_id"] == identifier("parent-tool-node")
         assert run_count(sqlite_session_factory) == 0
 
     @staticmethod
@@ -674,32 +729,40 @@ class TestApplicationTraceHandoffCases:
         assert len(destination.requests) == 1
 
     @staticmethod
-    def test_provider_exported_child_of_managed_parent_names_the_collected_parent(
+    def test_provider_exported_child_of_a_collected_parent_hangs_in_its_agent_trace(
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         parent_case = setup(sqlite_session_factory, "managed-parent", AppMode.WORKFLOW, snapshot=False)
         parent, parent_trace = workflow(parent_case, "managed-parent", has_agent=True, snapshot=True)
         assert parent_trace is not None
+        tool_node(parent_case, parent)
         child_case = setup(sqlite_session_factory, "provider-child", AppMode.WORKFLOW, snapshot=False)
         child, _ = workflow(child_case, "provider-child", has_agent=False, snapshot=False)
-        info = workflow_info(child, parent)
-        assert child_case.service.capture_terminal(tenant_id=child.tenant_id, info=info) is False
-        linked = child_case.service.link_managed_parent(tenant_id=child.tenant_id, info=info)
-        assert linked.resolved_parent_context == (None, None)
-        assert linked.metadata["linked_parent_workflow_run_id"] == parent.id
-        assert linked.metadata["linked_parent_node_execution_id"] == identifier("parent-tool-node")
-        assert linked.metadata["linked_parent_application_trace_id"] == parent_trace.id
-        assert linked.metadata["linked_parent_trace_id"] == parent_trace.trace_id
-        # Records are frozen: the delivered record is a copy, the original keeps its unavailable context.
-        assert info.resolved_parent_context == (parent.id, identifier("parent-tool-node"))
+        collected = child_case.service.collected_trace(
+            tenant_id=parent.tenant_id, app_id=parent.app_id, workflow_run_id=parent.id
+        )
+        assert collected is not None
+        assert collected.trace_id == parent_trace.trace_id
+        assert collected.destination is not None
+        assert collected.destination.provider_id == parent_trace.provider
         add_app_owner(child_case.collection, "provider-child")
         destination = exported()
         deliver(child_case, workflow_event(child, parent), destination)
-        trace = next(item for item in ingested(destination) if item["type"] == "trace-create")
-        body = trace["body"]
-        assert isinstance(body, dict)
-        assert body["metadata"]["linked_parent_trace_id"] == parent_trace.trace_id
-        assert "parent_workflow_run_id" not in body["metadata"]
+        nested_root(destination, parent_trace.trace_id, child)
+
+    @staticmethod
+    def test_a_collected_parent_lends_no_trace_before_its_collection_starts(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        parent_case = setup(sqlite_session_factory, "pending-parent", AppMode.WORKFLOW, snapshot=False)
+        parent, _ = workflow(parent_case, "pending-parent", has_agent=True, snapshot=False)
+
+        collected = parent_case.service.collected_trace(
+            tenant_id=parent.tenant_id, app_id=parent.app_id, workflow_run_id=parent.id
+        )
+
+        assert collected is not None
+        assert (collected.trace_id, collected.destination) == (None, None)
 
     @staticmethod
     def test_collector_database_failure_redelivers_without_provider_fallback(
@@ -1414,6 +1477,7 @@ class TestWorkflowToolTracingBoundaryCases:
             file_list=[],
             invoked_by=None,
             query="",
+            parent=None,
             metadata={"app_id": ids["root"]},
             start_time=workflow.created_at,
             end_time=workflow.finished_at,
