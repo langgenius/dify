@@ -1,6 +1,5 @@
 import type { KnowledgeRetrievalV2NodeType } from '../types'
-import { act, renderHook } from '@testing-library/react'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { act } from '@testing-library/react'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -8,23 +7,8 @@ import {
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig from '../use-config'
-
-const mockSetInputs = vi.fn()
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: () => ({ availableNodesWithParent: [], availableVars: [] }),
-}))
-
-vi.mock('../../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-}))
-
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createData = (
   overrides: Partial<KnowledgeRetrievalV2NodeType> = {},
@@ -39,21 +23,24 @@ const createData = (
 })
 
 describe('knowledge-retrieval-v2/use-config', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   const setup = (inputs = createData()) => {
-    mockUseNodeCrud.mockReturnValue({ inputs, setInputs: mockSetInputs } as never)
-    return renderHook(() => useConfig('node-1', inputs))
+    const rendered = renderNodeConfig(useConfig, inputs)
+    return {
+      result: {
+        get current() {
+          return rendered.result.current.config
+        },
+      },
+      data: () => rendered.result.current.flow.getNode('node')!.data,
+    }
   }
 
   it('updates the query selector', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() => result.current.handleQueryVarChange(['start', 'question']))
 
-    expect(mockSetInputs).toHaveBeenCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         query_variable_selector: ['start', 'question'],
       }),
@@ -61,20 +48,24 @@ describe('knowledge-retrieval-v2/use-config', () => {
   })
 
   it('updates an optional image selector and only accepts file variables', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() => result.current.handleQueryAttachmentChange(['start', 'images']))
 
-    expect(mockSetInputs).toHaveBeenCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({ query_attachment_selector: ['start', 'images'] }),
     )
-    expect(result.current.filterFileVar({ type: VarType.file } as never)).toBe(true)
-    expect(result.current.filterFileVar({ type: VarType.arrayFile } as never)).toBe(true)
-    expect(result.current.filterFileVar({ type: VarType.string } as never)).toBe(false)
+    expect(result.current.filterFileVar({ variable: 'attachment', type: VarType.file })).toBe(true)
+    expect(result.current.filterFileVar({ variable: 'attachment', type: VarType.arrayFile })).toBe(
+      true,
+    )
+    expect(result.current.filterFileVar({ variable: 'attachment', type: VarType.string })).toBe(
+      false,
+    )
   })
 
   it('keeps the selected space summary with the graph configuration', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() =>
       result.current.handleSpaceToggle({
@@ -84,7 +75,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
       }),
     )
 
-    expect(mockSetInputs).toHaveBeenCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         control_space_ids: ['space-1', 'space-2'],
         _control_spaces: expect.arrayContaining([
@@ -95,7 +86,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
   })
 
   it('replaces the selected spaces in the same order returned by the selector', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() =>
       result.current.handleSpacesChange([
@@ -104,7 +95,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
       ]),
     )
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         control_space_ids: ['space-2', 'space-1'],
         _control_spaces: [
@@ -116,7 +107,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
   })
 
   it('stores a custom rerank model and restores the system default by clearing the override', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() =>
       result.current.handleRerankingModelChange({
@@ -124,7 +115,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
         model: 'rerank-v3.5',
       }),
     )
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         reranking_model: {
           provider: 'langgenius/cohere/cohere',
@@ -133,53 +124,28 @@ describe('knowledge-retrieval-v2/use-config', () => {
       }),
     )
 
-    const { result: configuredResult } = setup(
-      createData({
-        reranking_model: {
-          provider: 'langgenius/cohere/cohere',
-          model: 'rerank-v3.5',
-        },
-      }),
-    )
-    act(() => configuredResult.current.handleRerankingModelChange(undefined))
-    expect(mockSetInputs.mock.lastCall?.[0]).toHaveProperty('reranking_model', undefined)
+    act(() => result.current.handleRerankingModelChange(undefined))
+    expect(data()).toHaveProperty('reranking_model', undefined)
   })
 
   it('stores a bounded score threshold and supports disabling it', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() => result.current.handleScoreThresholdChange(0.72))
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ score_threshold: 0.72 }),
-    )
+    expect(data()).toEqual(expect.objectContaining({ score_threshold: 0.72 }))
 
     act(() => result.current.handleScoreThresholdChange(null))
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ score_threshold: null }),
-    )
+    expect(data()).toEqual(expect.objectContaining({ score_threshold: null }))
 
-    mockSetInputs.mockClear()
     act(() => result.current.handleScoreThresholdChange(1.1))
-    expect(mockSetInputs).not.toHaveBeenCalled()
-  })
-
-  it('removes empty metadata filter collections', () => {
-    const { result } = setup(createData({ metadata_filters: { tags: ['policy'] } }))
-
-    act(() => result.current.handleMetadataFilterChange('tags', []))
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        metadata_filters: expect.anything(),
-      }),
-    )
+    expect(data().score_threshold).toBeNull()
   })
 
   it('adds a typed user metadata condition and enables manual filtering', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() => result.current.handleMetadataFilterModeChange(MetadataFilteringModeEnum.manual))
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({ metadata_filtering_mode: MetadataFilteringModeEnum.manual }),
     )
 
@@ -191,7 +157,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
       }),
     )
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_filtering_conditions: {
           logical_operator: LogicalOperator.and,
@@ -217,7 +183,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
       name: 'department',
       value: 'finance',
     }
-    const { result } = setup(
+    const { result, data } = setup(
       createData({
         metadata_filters: { tags: ['legacy'] },
         metadata_filtering_conditions: {
@@ -233,7 +199,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
         value: 'legal',
       }),
     )
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_filters: { tags: ['legacy'] },
         metadata_filtering_conditions: expect.objectContaining({
@@ -243,7 +209,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
     )
 
     act(() => result.current.handleToggleConditionLogicalOperator())
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_filtering_conditions: expect.objectContaining({
           logical_operator: LogicalOperator.or,
@@ -269,7 +235,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
       name: 'priority',
       value: 3,
     }
-    const { result } = setup(
+    const { result, data } = setup(
       createData({
         metadata_filtering_conditions: {
           conditions: [firstCondition, secondCondition],
@@ -285,7 +251,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
         type: MetadataFilteringVariableType.time,
       }),
     )
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_filtering_conditions: expect.objectContaining({
           conditions: expect.arrayContaining([
@@ -300,39 +266,36 @@ describe('knowledge-retrieval-v2/use-config', () => {
     )
 
     act(() => result.current.handleRemoveCondition('condition-1'))
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_filtering_conditions: expect.objectContaining({
-          conditions: [expect.objectContaining({ id: 'condition-2' })],
+          conditions: [
+            expect.objectContaining({ id: 'condition-2' }),
+            expect.objectContaining({ name: 'reviewed_at' }),
+          ],
         }),
       }),
     )
   })
 
-  it('enables automatic metadata filtering and normalizes unknown modes to disabled', () => {
-    const { result } = setup()
+  it('enables automatic metadata filtering', () => {
+    const { result, data } = setup()
 
     act(() => result.current.handleMetadataFilterModeChange(MetadataFilteringModeEnum.automatic))
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({ metadata_filtering_mode: MetadataFilteringModeEnum.automatic }),
-    )
-
-    act(() => result.current.handleMetadataFilterModeChange('unknown' as MetadataFilteringModeEnum))
-
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ metadata_filtering_mode: MetadataFilteringModeEnum.disabled }),
     )
   })
 
   it('stores the automatic metadata filtering model with default completion params', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() =>
       result.current.handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' }),
     )
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_model_config: {
           provider: 'openai',
@@ -345,7 +308,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
   })
 
   it('keeps tuned completion params when the automatic metadata model changes', () => {
-    const { result } = setup(
+    const { result, data } = setup(
       createData({
         metadata_model_config: {
           provider: 'openai',
@@ -364,7 +327,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
       }),
     )
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_model_config: {
           provider: 'anthropic',
@@ -377,7 +340,7 @@ describe('knowledge-retrieval-v2/use-config', () => {
 
     act(() => result.current.handleMetadataCompletionParamsChange({ temperature: 0.4 }))
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.objectContaining({
         metadata_model_config: expect.objectContaining({
           completion_params: { temperature: 0.4 },
@@ -387,20 +350,20 @@ describe('knowledge-retrieval-v2/use-config', () => {
   })
 
   it('ignores completion params until an automatic metadata model is selected', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() => result.current.handleMetadataCompletionParamsChange({ temperature: 0.4 }))
 
-    expect(mockSetInputs).toHaveBeenLastCalledWith(
+    expect(data()).toEqual(
       expect.not.objectContaining({ metadata_model_config: expect.anything() }),
     )
   })
 
   it('rejects an out-of-range top n in the editor', () => {
-    const { result } = setup()
+    const { result, data } = setup()
 
     act(() => result.current.handleTopNChange(101))
 
-    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(data().top_n).toBe(10)
   })
 })

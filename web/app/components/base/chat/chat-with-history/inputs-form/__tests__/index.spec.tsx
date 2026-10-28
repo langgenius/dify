@@ -1,45 +1,49 @@
-import type { ChatWithHistoryContextValue } from '../../context'
-import { act, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { InputVarType } from '@/app/components/workflow/types'
-import { ChatWithHistoryContext, useChatWithHistoryContext } from '../../context'
+import { fetchChatList, fetchConversations } from '@/service/share'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
+import { renderChatHistory } from '../../__tests__/chat-history-test-env'
 import InputsFormNode from '../index'
 
-function Conversation({
-  overrides = {},
-  initiallyCollapsed = true,
-}: {
-  overrides?: Partial<ChatWithHistoryContextValue>
-  initiallyCollapsed?: boolean
-}) {
-  const defaults = useChatWithHistoryContext()
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  fetchChatList: vi.fn(),
+  fetchConversations: vi.fn(),
+}))
+
+function Conversation({ initiallyCollapsed = true }: { initiallyCollapsed?: boolean }) {
   const [collapsed, setCollapsed] = useState(initiallyCollapsed)
-  return (
-    <ChatWithHistoryContext.Provider
-      value={{
-        ...defaults,
-        inputsForms: [{ variable: 'topic', type: InputVarType.textInput, label: 'Topic' }],
-        ...overrides,
-      }}
-    >
-      <InputsFormNode collapsed={collapsed} setCollapsed={setCollapsed} />
-    </ChatWithHistoryContext.Provider>
-  )
+  return <InputsFormNode collapsed={collapsed} setCollapsed={setCollapsed} />
 }
+const topic = { label: 'Topic', variable: 'topic', required: true, default: '' }
+const appParams = createChatConfigFixture({ user_input_form: [{ 'text-input': topic }] })
+
+beforeEach(() => {
+  vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
+  vi.mocked(fetchConversations).mockResolvedValue({ data: [], has_more: false, limit: 100 })
+})
+afterEach(() => {
+  localStorage.removeItem(CONVERSATION_ID_INFO)
+  sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
+  localStorage.removeItem('webappSidebarCollapse')
+})
 
 describe('InputsFormNode', () => {
-  it.each([{ allInputsHidden: true }, { inputsForms: [] }])(
-    'omits settings when no inputs are available: %j',
-    (overrides) => {
-      const { container } = render(<Conversation overrides={overrides} />)
-      expect(container).toBeEmptyDOMElement()
-    },
-  )
+  it.each([
+    { name: 'hidden inputs', user_input_form: [{ 'text-input': { ...topic, hide: true } }] },
+    { name: 'no inputs', user_input_form: [] },
+  ])('omits settings for $name', ({ user_input_form }) => {
+    const { container } = renderChatHistory(<Conversation />, {
+      appParams: createChatConfigFixture({ user_input_form }),
+    })
+    expect(container).toBeEmptyDOMElement()
+  })
 
   it('opens and closes settings for an existing conversation', async () => {
     const user = userEvent.setup()
-    render(<Conversation overrides={{ currentConversationId: 'conv-1' }} />)
+    renderChatHistory(<Conversation />, { appParams })
     expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     expect(screen.getByRole('textbox', { name: 'Topic' })).toBeInTheDocument()
@@ -50,13 +54,15 @@ describe('InputsFormNode', () => {
 
   it('collapses new conversation settings only after starting chat succeeds', async () => {
     const user = userEvent.setup()
-    const handleStartChat = vi.fn<ChatWithHistoryContextValue['handleStartChat']>()
-    render(<Conversation initiallyCollapsed={false} overrides={{ handleStartChat }} />)
+    renderChatHistory(<Conversation initiallyCollapsed={false} />, {
+      currentConversationId: '',
+      appParams,
+    })
     await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
-    expect(handleStartChat).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('textbox', { name: 'Topic' })).toBeInTheDocument()
-    act(() => handleStartChat.mock.calls[0]![0]?.())
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toBeVisible()
+    await user.type(screen.getByRole('textbox', { name: 'Topic' }), 'Travel')
+    await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
     expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeVisible()
   })
 })

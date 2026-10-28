@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Sumber daya",
   "resourceAccessToken.searchPlaceholder": "Cari token…",
   "resourceAccessToken.searchResourcesPlaceholder": "Cari aplikasi atau basis pengetahuan…",
-  "resourceAccessToken.tabAll": "Semua",
+  "resourceAccessToken.tabAllTypes": "Semua jenis",
   "resourceAccessToken.tabApps": "Aplikasi",
   "resourceAccessToken.tabKnowledgeBases": "Basis pengetahuan",
   "resourceAccessToken.token": "Token",

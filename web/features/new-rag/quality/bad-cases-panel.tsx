@@ -4,12 +4,7 @@ import type { KnowledgeFsBadCaseResponse } from '@dify/contracts/api/console/kno
 import type { GoldenQuestionDraft } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator } from '@langgenius/dify-ui/menu'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -288,7 +283,7 @@ function BadCaseRow({
         {formatQualityUpdatedAt(item.updated_at, i18n.language)}
       </td>
       <td>
-        <DropdownMenu modal={false}>
+        <Menu modal={false}>
           <QualityRowMenuTrigger
             disabled={pending}
             label={t(($) => $['qualityPage.questionActions'], {
@@ -296,54 +291,46 @@ function BadCaseRow({
               question: item.question ?? '',
             })}
           />
-          <DropdownMenuContent className="w-50">
+          <MenuContent align="end" className="w-50">
             {canEdit &&
               (item.status === 'fixed' ? (
-                <DropdownMenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
+                <MenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
                   <span aria-hidden className="i-ri-star-line size-4" />
                   {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
-                </DropdownMenuItem>
+                </MenuItem>
               ) : (
-                <DropdownMenuItem
+                <MenuItem
                   className="gap-2 px-3"
                   disabled={item.status === 'replaying' || pending}
                   onClick={() => void openTrace(true)}
                 >
                   <span aria-hidden className="i-ri-restart-line size-4" />
                   {t(($) => $['qualityPage.replay'], { ns: 'knowledgeQuality' })}
-                </DropdownMenuItem>
+                </MenuItem>
               ))}
-            <DropdownMenuItem
+            <MenuItem
               className="gap-2 px-3"
               disabled={pending}
               onClick={() => void openTrace(false)}
             >
               <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
               {t(($) => $['qualityPage.openTrace'], { ns: 'knowledgeQuality' })}
-            </DropdownMenuItem>
+            </MenuItem>
             {canEdit && item.status !== 'fixed' && (
-              <DropdownMenuItem
-                className="gap-2 px-3"
-                disabled={pending}
-                onClick={() => onPromote(item)}
-              >
+              <MenuItem className="gap-2 px-3" disabled={pending} onClick={() => onPromote(item)}>
                 <span aria-hidden className="i-ri-star-line size-4" />
                 {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-            {canEdit && <DropdownMenuSeparator />}
+            {canEdit && <MenuSeparator />}
             {canEdit && (
-              <DropdownMenuItem
-                className="gap-2 px-3"
-                disabled={pending}
-                onClick={() => void ignore()}
-              >
+              <MenuItem className="gap-2 px-3" disabled={pending} onClick={() => void ignore()}>
                 <span aria-hidden className="i-ri-eye-off-line size-4" />
                 {t(($) => $['qualityPage.ignore'], { ns: 'knowledgeQuality' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </MenuContent>
+        </Menu>
       </td>
     </tr>
   )

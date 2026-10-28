@@ -15,6 +15,52 @@ from repositories.knowledge.dataset_read_repository import get_dataset_keyword_t
 from repositories.knowledge.keyword_table_repository import persist_keyword_table
 
 
+def delete_index_entries(
+    dataset: Dataset,
+    *,
+    vector_node_ids: Sequence[str],
+    vector_type: str | None,
+    keyword_node_ids: Sequence[str],
+    new_session: Callable[[], Session],
+) -> None:
+    """Delete index entries by node id; the single owner of how each index type is removed.
+
+    High-quality datasets delete ``vector_node_ids`` from the vector store; other datasets
+    delete ``keyword_node_ids`` from the keyword table under the dataset keyword lock.
+    """
+    if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+        if vector_node_ids:
+            Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(list(vector_node_ids))
+        return
+    if not keyword_node_ids:
+        return
+
+    # The keyword adapter owns its lock and storage I/O; callbacks only do SQL.
+    def read() -> tuple[str, str | None]:
+        with new_session() as session:
+            row = get_dataset_keyword_table(dataset, session=session)
+            return (row.data_source_type, row.keyword_table) if row else (dify_config.KEYWORD_DATA_SOURCE_TYPE, None)
+
+    def write(storage_type: str, data: str, keywords: Mapping[str, Sequence[str]]) -> None:
+        with new_session() as session, session.begin():
+            persist_keyword_table(
+                session,
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                storage_type=storage_type,
+                data=data,
+                keywords=keywords,
+            )
+
+    Jieba(dataset).update_texts(
+        [],
+        read=read,
+        write=write,
+        lock=redis_client.lock(f"keyword_indexing_lock_{dataset.id}", timeout=600),
+        deleted_ids=keyword_node_ids,
+    )
+
+
 def clean_document_indexes(
     *, dataset_id: str, document_ids: Sequence[str], doc_form: str | None, new_session: Callable[[], Session]
 ) -> str | None:
@@ -68,36 +114,13 @@ def clean_document_indexes(
     if not node_ids and not summary_ids and not child_ids:
         return None
 
-    if high_quality:
-        if node_ids:
-            Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(node_ids)
-    elif body_node_ids:
-        # The keyword adapter owns its lock and storage I/O; callbacks only do SQL.
-        def read() -> tuple[str, str | None]:
-            with new_session() as session:
-                row = get_dataset_keyword_table(dataset, session=session)
-                return (
-                    (row.data_source_type, row.keyword_table) if row else (dify_config.KEYWORD_DATA_SOURCE_TYPE, None)
-                )
-
-        def write(storage_type: str, data: str, keywords: Mapping[str, Sequence[str]]) -> None:
-            with new_session() as session, session.begin():
-                persist_keyword_table(
-                    session,
-                    tenant_id=tenant_id,
-                    dataset_id=dataset_id,
-                    storage_type=storage_type,
-                    data=data,
-                    keywords=keywords,
-                )
-
-        Jieba(dataset).update_texts(
-            [],
-            read=read,
-            write=write,
-            lock=redis_client.lock(f"keyword_indexing_lock_{dataset_id}", timeout=600),
-            deleted_ids=body_node_ids,
-        )
+    delete_index_entries(
+        dataset,
+        vector_node_ids=node_ids,
+        vector_type=vector_type,
+        keyword_node_ids=body_node_ids,
+        new_session=new_session,
+    )
 
     with new_session() as session, session.begin():
         if summary_ids:

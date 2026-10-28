@@ -113,7 +113,7 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
 }
 
 // The group owns the horizontal padding and the gap, so an icon, the input, and the controls sit in
-// it without margins of their own, like `DropdownMenuInputGroup`. The input keeps a narrow inset so
+// it without margins of their own, like `MenuInputGroup`. The input keeps a narrow inset so
 // its text lands where a standalone `Input` of the same size puts it.
 const comboboxInputGroupVariants = cva(
   [
@@ -217,7 +217,7 @@ const comboboxControlVariants = cva(
 
 type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
-// Same look as `DropdownMenuClear`; change both together.
+// Same look as `MenuClear`; change both together.
 function ComboboxClear({
   className,
   children,
@@ -409,7 +409,7 @@ function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
 
 type ComboboxEmptyProps = BaseCombobox.Empty.Props
 
-// Same look as `DropdownMenuEmpty`; change both together.
+// Same look as `MenuEmpty`; change both together.
 function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
   return (
     <BaseCombobox.Empty

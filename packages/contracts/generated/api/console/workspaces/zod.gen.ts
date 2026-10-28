@@ -504,13 +504,6 @@ export const zWorkspacePermissionResponse = z.object({
 })
 
 /**
- * BinaryFileResponse
- */
-export const zBinaryFileResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
-
-/**
  * PluginError
  *
  * Plugin operation failed.
@@ -5220,7 +5213,9 @@ export const zGetWorkspacesCurrentPluginAssetQuery = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginAssetResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentPluginAssetResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostWorkspacesCurrentPluginAutoUpgradeChangeBody = zParserAutoUpgradeChange
 
@@ -5268,7 +5263,9 @@ export const zGetWorkspacesCurrentPluginIconQuery = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentPluginIconResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentPluginIconResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostWorkspacesCurrentPluginInstallGithubBody = zParserGithubInstall
 
@@ -6073,6 +6070,13 @@ export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRol
 export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponse =
   zRoleBindingsResponse
 
+export const zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
+})
+
 /**
  * Success
  */
@@ -6112,6 +6116,13 @@ export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleB
  */
 export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse =
   zRoleBindingsResponse
+
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
+})
 
 /**
  * Success
@@ -6154,6 +6165,13 @@ export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdR
 export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse =
   zRoleBindingsResponse
 
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
+})
+
 /**
  * Success
  */
@@ -6186,6 +6204,10 @@ export const zPostWorkspacesCurrentSkillsFilesUploadBody = z.object({
  * Skill draft file uploaded
  */
 export const zPostWorkspacesCurrentSkillsFilesUploadResponse = zSkillFileUploadResponse
+
+export const zPostWorkspacesCurrentSkillsImportBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
 
 /**
  * Skill imported
@@ -6306,7 +6328,9 @@ export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentQuery = z.object({
 /**
  * Skill file content
  */
-export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse = zBinaryFileResponse
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewPath = z.object({
   skill_id: z.string(),

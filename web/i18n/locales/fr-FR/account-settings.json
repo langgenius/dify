@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Ressources",
   "resourceAccessToken.searchPlaceholder": "Rechercher des jetons…",
   "resourceAccessToken.searchResourcesPlaceholder": "Rechercher des applications ou des bases de connaissances…",
-  "resourceAccessToken.tabAll": "Tout",
+  "resourceAccessToken.tabAllTypes": "Tous les types",
   "resourceAccessToken.tabApps": "Applications",
   "resourceAccessToken.tabKnowledgeBases": "Bases de connaissances",
   "resourceAccessToken.token": "Jeton",

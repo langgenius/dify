@@ -5,12 +5,7 @@ import type { RetrievalEvidence } from './model'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValueRawSync } from 'jotai'
 import { createContext, use, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -500,22 +495,22 @@ export function QualityActions({
   return (
     <div className="flex shrink-0 items-center justify-end gap-3 border-t border-divider-regular pt-4 pb-1">
       {badCaseAvailable && (
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             render={<Button loading={pending} variant={noResults ? 'secondary' : 'ghost'} />}
           >
             <span aria-hidden className="i-ri-thumb-down-line size-4" />
             {t(($) => $['retrievalTest.makeBadCase'], { ns: 'knowledgeRetrieval' })}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" className="w-44">
-            <DropdownMenuItem onClick={() => void onBadCase('low-score')}>
+          </MenuTrigger>
+          <MenuContent side="top" className="w-44">
+            <MenuItem onClick={() => void onBadCase('low-score')}>
               {t(($) => $['qualityPage.reasonValues.lowScore'], { ns: 'knowledgeSpace' })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void onBadCase('retrieval-miss')}>
+            </MenuItem>
+            <MenuItem onClick={() => void onBadCase('retrieval-miss')}>
               {t(($) => $['qualityPage.reasonValues.retrievalMiss'], { ns: 'knowledgeSpace' })}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       )}
       {!noResults && (
         <Button loading={pending} variant="secondary" onClick={() => void onGolden()}>

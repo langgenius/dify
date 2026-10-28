@@ -26,7 +26,7 @@ import { toast } from '@/app/notifications'
 import { updateDatasetSetting } from '@/service/datasets'
 
 type RenameDatasetModalProps = {
-  show: boolean
+  open: boolean
   dataset: {
     description?: string | null
     external_knowledge_info?: {
@@ -43,9 +43,30 @@ type RenameDatasetModalProps = {
     name: string
   }
   onSuccess?: () => void
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
 }
-const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDatasetModalProps) => {
+const RenameDatasetModal = ({
+  open,
+  onOpenChange,
+  dataset,
+  onSuccess,
+}: RenameDatasetModalProps) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="w-130">
+      <RenameDatasetForm
+        dataset={dataset}
+        onSuccess={onSuccess}
+        onClose={() => onOpenChange(false)}
+      />
+    </DialogContent>
+  </Dialog>
+)
+
+function RenameDatasetForm({
+  dataset,
+  onSuccess,
+  onClose,
+}: Pick<RenameDatasetModalProps, 'dataset' | 'onSuccess'> & { onClose: () => void }) {
   const { t } = useTranslation(['common', 'datasetSettings'])
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
@@ -112,80 +133,67 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     t,
   ])
   return (
-    <Dialog
-      open={show}
-      onOpenChange={(open) => {
-        if (!open) onClose()
+    <form
+      className="contents"
+      onSubmit={(event) => {
+        event.preventDefault()
+        onConfirm()
       }}
     >
-      <DialogContent className="w-130">
-        <form
-          className="contents"
-          onSubmit={(event) => {
-            event.preventDefault()
-            onConfirm()
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
-            <DialogHeaderCloseButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
-          </DialogHeader>
-          <DialogBody>
-            <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
-              <Field name="name" className="gap-0 py-4">
-                <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
-                  {t(($) => $['form.name'], { ns: 'datasetSettings' })}
-                </FieldLabel>
-                <div className="flex items-center gap-x-2">
-                  <IconPickerTrigger
-                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                    className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
-                  >
-                    <IconPickerIcon size="medium" />
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
-                    >
-                      <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
-                    </span>
-                  </IconPickerTrigger>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-9 grow"
-                    placeholder={
-                      t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''
-                    }
-                  />
-                </div>
-              </Field>
-              <IconPickerContent />
-            </IconPicker>
-            <Field name="description" className="gap-0 py-4">
-              <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
-                {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
-              </FieldLabel>
-              <Textarea
-                value={description}
-                onValueChange={(value) => setDescription(value)}
-                className="resize-none"
-                placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+      <DialogHeader>
+        <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody>
+        <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+          <Field name="name" className="gap-0 py-4">
+            <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+              {t(($) => $['form.name'], { ns: 'datasetSettings' })}
+            </FieldLabel>
+            <div className="flex items-center gap-x-2">
+              <IconPickerTrigger
+                aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
+                className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
+              >
+                <IconPickerIcon size="medium" />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                >
+                  <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
+                </span>
+              </IconPickerTrigger>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-9 grow"
+                placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
               />
-            </Field>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button type="submit" loading={loading} variant="primary">
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            </div>
+          </Field>
+          <IconPickerContent />
+        </IconPicker>
+        <Field name="description" className="gap-0 py-4">
+          <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+            {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+          </FieldLabel>
+          <Textarea
+            value={description}
+            onValueChange={(value) => setDescription(value)}
+            className="resize-none"
+            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+          />
+        </Field>
+      </DialogBody>
+      <DialogFooter>
+        <Button type="button" onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button type="submit" loading={loading} variant="primary">
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
 export default RenameDatasetModal
