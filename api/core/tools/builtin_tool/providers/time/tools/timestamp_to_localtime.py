@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from datetime import datetime
 from typing import Any, override
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -45,7 +45,7 @@ class TimestampToLocaltimeTool(BuiltinTool):
             if local_tz is None:
                 local_tz = datetime.now().astimezone().tzinfo
             if isinstance(local_tz, str):
-                local_tz = pytz.timezone(local_tz)
+                local_tz = ZoneInfo(local_tz)
             local_time = datetime.fromtimestamp(timestamp, local_tz)
             return local_time
         except Exception as e:
