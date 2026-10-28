@@ -27,6 +27,7 @@ import contextlib
 import logging
 from enum import StrEnum
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
@@ -604,3 +605,12 @@ class SkillRequestRejected(OpenApiError):  # noqa: N818
     ) -> None:
         super().__init__(message, details=details)
         self.code = status_code
+
+
+def require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
+    """Parse a path id as a UUID or raise 404; an unparsed id would otherwise reach
+    a UUID-typed database column and fail as a 500."""
+    try:
+        return str(UUID(value))
+    except ValueError as e:
+        raise not_found() from e

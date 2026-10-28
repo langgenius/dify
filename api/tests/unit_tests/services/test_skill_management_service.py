@@ -2923,6 +2923,29 @@ def test_import_skill_package_rejects_missing_frontmatter_description() -> None:
     assert exc_info.value.details == {"path": "SKILL.md", "field": "description", "line": 2}
 
 
+_BAD_NAME_FRONTMATTERS = [
+    ("description: Expenses\n", "missing_skill_name"),
+    ("name: Expense SOP\ndescription: Expenses\n", "invalid_skill_name"),
+]
+
+
+@pytest.mark.parametrize(("frontmatter", "code"), _BAD_NAME_FRONTMATTERS)
+def test_import_skill_package_reports_a_bad_name_as_a_service_error(frontmatter: str, code: str) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.import_skill(
+            tenant_id=TENANT,
+            user_id=USER,
+            payload=SkillImportPayload(
+                content=_zip_payload({"SKILL.md": f"---\n{frontmatter}---\n# Expenses"}), filename="skill.zip"
+            ),
+        )
+
+    assert exc_info.value.code == code
+    assert exc_info.value.details["field"] == "name"
+
+
 def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, UPLOAD_SKILL_FILE_SIZE_LIMIT=0)
 
@@ -3914,6 +3937,19 @@ def test_overwrite_requires_description() -> None:
         )
 
     assert exc_info.value.code == "missing_skill_description"
+
+
+@pytest.mark.parametrize(("frontmatter", "code"), _BAD_NAME_FRONTMATTERS)
+def test_overwrite_reports_a_bad_name_as_a_service_error(frontmatter: str, code: str) -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="expense-sop"))
+    payload = SkillOverwritePayload(content=_zip_payload({"SKILL.md": f"---\n{frontmatter}---\n# Expenses"}))
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.overwrite_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=payload)
+
+    assert exc_info.value.code == code
+    assert exc_info.value.details["field"] == "name"
 
 
 def test_overwrite_rejects_oversized_archive(monkeypatch: pytest.MonkeyPatch) -> None:

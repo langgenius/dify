@@ -1401,7 +1401,9 @@ class SkillImportBody(BaseModel):
     files: UploadParts = Field(description="The skill folder, one part per file; SKILL.md at its root")
     skill_id: UUIDStr | None = Field(None, description="Overwrite this skill's draft; omit to create a new skill")
     draft_hash: str | None = Field(
-        None, description="From describe.skill; rejects the overwrite if the draft changed since"
+        None,
+        pattern=r"^\d+$",
+        description="From describe.skill; rejects the overwrite if the draft changed since",
     )
 
     @field_validator("draft_hash")

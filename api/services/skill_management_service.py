@@ -55,7 +55,7 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
-from libs.archive_writer import is_os_junk
+from libs.archive_writer import BYTES_PER_MIB, is_os_junk
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from models.account import Account
@@ -545,6 +545,10 @@ class SkillFileContent:
     content: str | None
     size: int
     hash: str
+
+
+def max_skill_archive_bytes() -> int:
+    return dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * BYTES_PER_MIB
 
 
 def validate_skill_name(name: str) -> str:
@@ -1761,15 +1765,14 @@ class SkillManagementService:
         with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
-            max_archive_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
-            if len(payload.content) > max_archive_bytes:
+            if len(payload.content) > max_skill_archive_bytes():
                 raise SkillManagementServiceError("archive_too_large", "skill archive exceeds size limit")
-            draft_payload, metadata, _skill_md_content = self._draft_payload_from_zip(
+            draft_payload, metadata, skill_md_content = self._draft_payload_from_zip(
                 tenant_id=tenant_id,
                 user_id=user_id,
                 archive_bytes=payload.content,
             )
-            name = validate_skill_name(str(metadata.get("name") or ""))
+            name = self._require_frontmatter_name(metadata, content=skill_md_content)
             if name != skill.name:
                 raise SkillManagementServiceError(
                     "skill_name_mismatch",
@@ -2180,8 +2183,7 @@ class SkillManagementService:
             }
 
     def import_skill(self, *, tenant_id: str, user_id: str, payload: SkillImportPayload) -> dict[str, Any]:
-        max_archive_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
-        if len(payload.content) > max_archive_bytes:
+        if len(payload.content) > max_skill_archive_bytes():
             raise SkillManagementServiceError("archive_too_large", "skill archive exceeds size limit")
 
         draft_payload, metadata, skill_md_content = self._draft_payload_from_zip(
@@ -2189,7 +2191,7 @@ class SkillManagementService:
             user_id=user_id,
             archive_bytes=payload.content,
         )
-        name = validate_skill_name(str(metadata.get("name") or ""))
+        name = self._require_frontmatter_name(metadata, content=skill_md_content)
         description = self._require_frontmatter_description(metadata, content=skill_md_content)
         display_name = self._display_name_from_frontmatter(metadata=metadata, name=name)
         with self._session_scope() as session:
@@ -4963,6 +4965,7 @@ __all__ = [
     "SkillPublishPayload",
     "SkillRestorePayload",
     "SkillVersionUpdatePayload",
+    "max_skill_archive_bytes",
     "normalize_skill_file_path",
     "validate_skill_description",
     "validate_skill_name",

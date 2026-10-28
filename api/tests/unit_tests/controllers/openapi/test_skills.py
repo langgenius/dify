@@ -13,7 +13,7 @@ from flask_restx import Resource
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import BadRequest, UnprocessableEntity
+from werkzeug.exceptions import UnprocessableEntity
 
 from configs import dify_config
 from controllers.openapi._contract import accepts
@@ -70,6 +70,7 @@ from services.skill_management_service import SkillPublishPayload as ServiceSkil
 from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_ctx
 
 WORKSPACE_ID = "ws-id"
+SKILL_ID = "11111111-1111-4111-8111-111111111111"
 UPDATED_AT = 1761200000
 
 
@@ -92,7 +93,7 @@ def _context() -> RequestContext:
 
 def _skill(**extra: object) -> Record:
     return {
-        "id": "skill-1",
+        "id": SKILL_ID,
         "name": "expense-sop",
         "display_name": "Expense SOP",
         "description": "How to file expenses",
@@ -108,7 +109,7 @@ def _skill(**extra: object) -> Record:
 def _version(number: int, *, latest: bool = False) -> Record:
     return {
         "id": f"ver-{number}",
-        "skill_id": "skill-1",
+        "skill_id": SKILL_ID,
         "version_number": number,
         "version_name": None,
         "publish_note": "",
@@ -173,8 +174,20 @@ def test_draft_hash_is_epoch_seconds() -> None:
     assert _draft_hash(1761200000) == "1761200000"
     assert _expected_updated_at("1761200000") == 1761200000
     assert _expected_updated_at(None) is None
-    with pytest.raises(BadRequest):
-        _expected_updated_at("not-a-number")
+
+
+@pytest.mark.parametrize(
+    ("api", "view", "kwargs"),
+    [
+        (SkillDescribeApi, SkillDescribeApi.get, {}),
+        (SkillVersionListApi, SkillVersionListApi.get, {"query": SkillVersionListQuery(page=1, limit=2)}),
+        (SkillExportApi, SkillExportApi.get, {"query": SkillExportQuery()}),
+        (SkillPublishApi, SkillPublishApi.post, {"body": SkillPublishPayload()}),
+    ],
+)
+def test_non_uuid_skill_id_is_404(api: type[Resource], view: object, kwargs: dict[str, object]) -> None:
+    with pytest.raises(SkillNotFound):
+        _call(api(), view, "not-a-uuid", **kwargs)
 
 
 def test_list_skills_passes_filters_and_pages(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -195,7 +208,7 @@ def test_list_skills_passes_filters_and_pages(monkeypatch: pytest.MonkeyPatch) -
 def test_describe_skill_returns_draft_hash_and_latest_version(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub(monkeypatch, "get_skill", lambda **_: _skill())
     _stub(monkeypatch, "list_versions", lambda **_: {"data": [_version(2, latest=True), _version(1)]})
-    result = cast(SkillDescribeResponse, _call(SkillDescribeApi(), SkillDescribeApi.get, "skill-1"))
+    result = cast(SkillDescribeResponse, _call(SkillDescribeApi(), SkillDescribeApi.get, SKILL_ID))
     assert result.draft_hash == str(UPDATED_AT)
     assert result.latest_version is not None
     assert result.latest_version.id == "ver-2"
@@ -206,21 +219,21 @@ def test_describe_skill_returns_draft_hash_and_latest_version(monkeypatch: pytes
 def test_describe_skill_without_versions_has_no_latest_version(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub(monkeypatch, "get_skill", lambda **_: _skill(latest_published_version_id=None))
     _stub(monkeypatch, "list_versions", lambda **_: {"data": []})
-    result = cast(SkillDescribeResponse, _call(SkillDescribeApi(), SkillDescribeApi.get, "skill-1"))
+    result = cast(SkillDescribeResponse, _call(SkillDescribeApi(), SkillDescribeApi.get, SKILL_ID))
     assert result.latest_version is None
 
 
 def test_describe_unknown_skill_is_404(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub(monkeypatch, "get_skill", _missing)
     with pytest.raises(SkillNotFound):
-        _call(SkillDescribeApi(), SkillDescribeApi.get, "skill-1")
+        _call(SkillDescribeApi(), SkillDescribeApi.get, SKILL_ID)
 
 
 def test_list_versions_newest_first_and_paged(monkeypatch: pytest.MonkeyPatch) -> None:
     _stub(monkeypatch, "list_versions", lambda **_: {"data": [_version(3, latest=True), _version(2), _version(1)]})
     result = cast(
         SkillVersionListResponse,
-        _call(SkillVersionListApi(), SkillVersionListApi.get, "skill-1", query=SkillVersionListQuery(page=1, limit=2)),
+        _call(SkillVersionListApi(), SkillVersionListApi.get, SKILL_ID, query=SkillVersionListQuery(page=1, limit=2)),
     )
     assert [row.version_number for row in result.data] == [3, 2]
     assert result.has_more is True
@@ -237,7 +250,7 @@ def _archive(filename: str) -> PublishedSkillArchive:
 def test_export_draft_sends_zip_attachment(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     _stub(monkeypatch, "export_draft_archive", lambda **_: _archive("expense-sop.zip"))
     with app.test_request_context():
-        response = cast(Response, _call(SkillExportApi(), SkillExportApi.get, "skill-1", query=SkillExportQuery()))
+        response = cast(Response, _call(SkillExportApi(), SkillExportApi.get, SKILL_ID, query=SkillExportQuery()))
     assert response.mimetype == "application/zip"
     assert "filename=expense-sop.zip" in response.headers["Content-Disposition"]
     assert "attachment" in response.headers["Content-Disposition"]
@@ -253,13 +266,13 @@ def test_export_version_uses_version_archive(app: Flask, monkeypatch: pytest.Mon
         return _archive("expense-sop-v2.zip")
 
     _stub(monkeypatch, "export_version_archive", export_version)
-    version_id = "11111111-1111-4111-8111-111111111111"
+    version_id = SKILL_ID
     with app.test_request_context():
         response = cast(
             Response,
-            _call(SkillExportApi(), SkillExportApi.get, "skill-1", query=SkillExportQuery(version_id=version_id)),
+            _call(SkillExportApi(), SkillExportApi.get, SKILL_ID, query=SkillExportQuery(version_id=version_id)),
         )
-    assert seen == [{"tenant_id": "ws-id", "skill_id": "skill-1", "version_id": version_id}]
+    assert seen == [{"tenant_id": "ws-id", "skill_id": SKILL_ID, "version_id": version_id}]
     assert "filename=expense-sop-v2.zip" in response.headers["Content-Disposition"]
 
 
@@ -272,8 +285,8 @@ def test_export_version_of_other_skill_is_404(app: Flask, monkeypatch: pytest.Mo
         _call(
             SkillExportApi(),
             SkillExportApi.get,
-            "skill-1",
-            query=SkillExportQuery(version_id="11111111-1111-4111-8111-111111111111"),
+            SKILL_ID,
+            query=SkillExportQuery(version_id=SKILL_ID),
         )
 
 
@@ -290,13 +303,13 @@ def test_publish_passes_name_and_note(monkeypatch: pytest.MonkeyPatch) -> None:
         _call(
             SkillPublishApi(),
             SkillPublishApi.post,
-            "skill-1",
+            SKILL_ID,
             body=SkillPublishPayload(version_name="v2", publish_note="retry"),
         ),
     )
     assert len(calls.publish) == 1
     sent = calls.publish[0]
-    assert (sent["tenant_id"], sent["user_id"], sent["skill_id"]) == ("ws-id", "acct-id", "skill-1")
+    assert (sent["tenant_id"], sent["user_id"], sent["skill_id"]) == ("ws-id", "acct-id", SKILL_ID)
     assert sent["payload"] == ServiceSkillPublishPayload(version_name="v2", publish_note="retry")
     assert result.version_number == 2
     assert result.created_by == "acct-id"
@@ -308,7 +321,7 @@ def test_publish_invalid_frontmatter_is_package_invalid(monkeypatch: pytest.Monk
 
     _stub(monkeypatch, "publish_skill", invalid)
     with pytest.raises(SkillPackageInvalid):
-        _call(SkillPublishApi(), SkillPublishApi.post, "skill-1", body=SkillPublishPayload())
+        _call(SkillPublishApi(), SkillPublishApi.post, SKILL_ID, body=SkillPublishPayload())
 
 
 def _folder(**files: bytes) -> UploadParts:
@@ -336,14 +349,14 @@ def test_import_folder_creates_skill(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (sent[0]["tenant_id"], sent[0]["user_id"]) == ("ws-id", "acct-id")
     assert zipfile.ZipFile(io.BytesIO(payload.content)).namelist() == ["SKILL.md", "scripts/run.py"]
     assert (response.id, response.name, response.draft_hash, response.file_count) == (
-        "skill-1",
+        SKILL_ID,
         "expense-sop",
         str(UPDATED_AT),
         2,
     )
     [hint] = response.hints
     assert hint.op == "publish.skill"
-    assert hint.input == {"workspace_id": WORKSPACE_ID, "skill_id": "skill-1"}
+    assert hint.input == {"workspace_id": WORKSPACE_ID, "skill_id": SKILL_ID}
 
 
 def test_import_with_skill_id_overwrites(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -355,19 +368,36 @@ def test_import_with_skill_id_overwrites(monkeypatch: pytest.MonkeyPatch) -> Non
 
     _stub(monkeypatch, "overwrite_skill", overwrite)
     _stub(monkeypatch, "import_skill", lambda **_: pytest.fail("must not create"))
-    skill_id = "11111111-1111-4111-8111-111111111111"
-    response, status = _import(_folder(**{"SKILL.md": b"x"}), skill_id=skill_id, draft_hash="1761200000")
+    response, status = _import(_folder(**{"SKILL.md": b"x"}), skill_id=SKILL_ID, draft_hash="1761200000")
     assert status == 200
     payload = cast(SkillOverwritePayload, sent[0]["payload"])
-    assert sent[0]["skill_id"] == skill_id
+    assert sent[0]["skill_id"] == SKILL_ID
     assert payload.expected_updated_at == 1761200000
     assert response.hints[0].op == "publish.skill"
 
 
 def test_import_with_foreign_draft_hash_is_rejected() -> None:
-    skill_id = "11111111-1111-4111-8111-111111111111"
-    with pytest.raises(BadRequest):
-        _import(_folder(**{"SKILL.md": b"x"}), skill_id=skill_id, draft_hash="abc")
+    with pytest.raises(ValidationError) as exc:
+        _import(_folder(**{"SKILL.md": b"x"}), skill_id=SKILL_ID, draft_hash="abc")
+    assert [error["loc"] for error in exc.value.errors()] == [("draft_hash",)]
+
+
+def test_import_with_non_uuid_skill_id_is_rejected() -> None:
+    with pytest.raises(ValidationError) as exc:
+        _import(_folder(**{"SKILL.md": b"x"}), skill_id="not-a-uuid")
+    assert [error["loc"] for error in exc.value.errors()] == [("skill_id",)]
+
+
+@pytest.mark.parametrize("code", ["missing_skill_name", "invalid_skill_name"])
+@pytest.mark.parametrize("method", ["import_skill", "overwrite_skill"])
+def test_import_bad_skill_name_is_package_invalid(monkeypatch: pytest.MonkeyPatch, method: str, code: str) -> None:
+    def invalid(**_kwargs: object) -> Record:
+        raise SkillManagementServiceError(code, "SKILL.md frontmatter name is not valid")
+
+    _stub(monkeypatch, method, invalid)
+    fields = {"skill_id": SKILL_ID} if method == "overwrite_skill" else {}
+    with pytest.raises(SkillPackageInvalid):
+        _import(_folder(**{"SKILL.md": b"x"}), **fields)
 
 
 def test_import_name_taken_hints_overwrite(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -388,7 +418,7 @@ def test_import_name_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
 
     _stub(monkeypatch, "overwrite_skill", mismatch)
     with pytest.raises(SkillNameMismatch):
-        _import(_folder(**{"SKILL.md": b"x"}), skill_id="11111111-1111-4111-8111-111111111111")
+        _import(_folder(**{"SKILL.md": b"x"}), skill_id=SKILL_ID)
 
 
 def test_import_folder_too_big_is_413_naming_limit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -420,7 +450,7 @@ def test_import_part_cap_counts_files_and_fields(
 
     def post(*paths: str) -> FlaskRequestContext:
         data: dict[str, object] = {
-            "skill_id": '"11111111-1111-4111-8111-111111111111"',
+            "skill_id": f'"{SKILL_ID}"',
             "draft_hash": '"1761200000"',
             **{f"files[{path}]": (io.BytesIO(b"x"), path) for path in paths},
         }

@@ -39,6 +39,7 @@ from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect, EndpointSpec, Example, Kind
 from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
+from libs.archive_writer import BYTES_PER_MIB
 
 __all__ = [
     "MULTIPART_HEADER_BYTES_PER_PART",
@@ -55,7 +56,6 @@ __all__ = [
 ]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
-_BYTES_PER_MIB: Final = 1024 * 1024
 MULTIPART_HEADER_BYTES_PER_PART: Final = 1024
 
 
@@ -108,7 +108,7 @@ def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
             raise
         raise RequestOverRouteLimits(
             f"{RequestOverRouteLimits.description}: at most {request.max_form_parts} parts"
-            f" and {limit / _BYTES_PER_MIB:g} MiB"
+            f" and {limit / BYTES_PER_MIB:g} MiB"
         ) from exc
 
 
