@@ -201,6 +201,7 @@ export type HumanInputFormSubmitResponse = {
 }
 
 export type IterationNodeRunPayload = {
+  draft_hash?: string | null
   inputs?: {
     [key: string]: unknown
   } | null
@@ -208,7 +209,19 @@ export type IterationNodeRunPayload = {
 
 export type GeneratedAppResponse = ShallowJsonValue
 
+export type TestCredentialsNotReadyError = ErrorResponse & {
+  code: 'test_credentials_not_ready'
+  details?: TestCredentialPreflight
+  status: 400
+}
+
+export type TestCredentialDraftChangedError = ErrorResponse & {
+  code: 'test_credential_draft_changed'
+  status: 409
+}
+
 export type LoopNodeRunPayload = {
+  draft_hash?: string | null
   inputs?: {
     [key: string]: unknown
   } | null
@@ -216,6 +229,7 @@ export type LoopNodeRunPayload = {
 
 export type AdvancedChatWorkflowRunPayload = {
   conversation_id?: string | null
+  draft_hash?: string | null
   files?: Array<{
     [key: string]: unknown
   }> | null
@@ -1420,6 +1434,7 @@ export type WorkflowRunNodeExecutionResponse = {
 }
 
 export type DraftWorkflowNodeRunPayload = {
+  draft_hash?: string | null
   files?: Array<{
     [key: string]: unknown
   }> | null
@@ -1435,6 +1450,7 @@ export type WorkflowTriggerRunErrorResponse = {
 }
 
 export type DraftWorkflowRunPayload = {
+  draft_hash?: string | null
   files?: Array<{
     [key: string]: unknown
   }> | null
@@ -1482,6 +1498,17 @@ export type OutputPreviewView = {
 export type NodeOutputNotDeclaredError = ErrorResponse & {
   code: 'node_output_not_declared'
   status: 404
+}
+
+export type TestCredentialPreflightPayload = {
+  draft_hash: string
+  node_id?: string | null
+}
+
+export type TestCredentialPreflightResponse = {
+  credentials: Array<TestCredentialState>
+  draft_hash: string
+  readonly ready: boolean
 }
 
 export type DraftWorkflowTriggerRunPayload = {
@@ -1788,6 +1815,12 @@ export type ShallowJsonValue =
     }
   | Array<unknown>
   | null
+
+export type TestCredentialPreflight = {
+  credentials: Array<TestCredentialState>
+  draft_hash: string
+  readonly ready: boolean
+}
 
 export type AgentConfigVersionResponse = {
   id: string
@@ -2761,6 +2794,20 @@ export type NodeOutputStatus =
 
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
+export type TestCredentialState = {
+  check: TestCredentialCheck | null
+  credential_id: string | null
+  node_id: string
+  node_ids: Array<string>
+  status:
+    | 'connected'
+    | 'disconnected'
+    | 'incompatible'
+    | 'invalid'
+    | 'reconnect_required'
+    | 'temporarily_unavailable'
+}
+
 export type WorkflowDraftVariableWithoutValueResponse = {
   description: string
   edited: boolean
@@ -3639,6 +3686,12 @@ export type AgentComposerKnowledgeSetCandidateResponse = {
 export type CheckResultView = {
   passed: boolean
   reason?: string | null
+}
+
+export type TestCredentialCheck = {
+  reason_code: string | null
+  retryable: boolean
+  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
 }
 
 export type AppAgentPromptResponse = {
@@ -4529,6 +4582,12 @@ export type RecentAppListResponseWritable = {
 
 export type GeneratedAppResponseWritable = ShallowJsonValue
 
+export type TestCredentialsNotReadyErrorWritable = ErrorResponse & {
+  code: 'test_credentials_not_ready'
+  details?: TestCredentialPreflightWritable
+  status: 400
+}
+
 export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
 }
@@ -4552,6 +4611,11 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type TestCredentialPreflightResponseWritable = {
+  credentials: Array<TestCredentialState>
+  draft_hash: string
 }
 
 export type AppPartialWritable = {
@@ -4620,6 +4684,11 @@ export type RecentAppResponseWritable = {
   name: string
   permission_keys?: Array<string>
   updated_at: number
+}
+
+export type TestCredentialPreflightWritable = {
+  credentials: Array<TestCredentialState>
+  draft_hash: string
 }
 
 export type WorkflowCommentBasicWritable = {
@@ -5106,8 +5175,10 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunDa
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors = {
+  400: TestCredentialsNotReadyError | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: TestCredentialDraftChangedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5132,8 +5203,10 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunData = 
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors = {
+  400: TestCredentialsNotReadyError | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: TestCredentialDraftChangedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5157,9 +5230,10 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunData = {
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
-  400: ErrorResponse
+  400: TestCredentialsNotReadyError | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: TestCredentialDraftChangedError | ErrorResponse
   429: RateLimitError | ErrorResponse
   default: ErrorResponse
 }
@@ -8482,8 +8556,10 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
+  400: TestCredentialsNotReadyError | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: TestCredentialDraftChangedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8508,8 +8584,10 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
+  400: TestCredentialsNotReadyError | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: TestCredentialDraftChangedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8756,8 +8834,10 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors = {
+  400: TestCredentialsNotReadyError | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: TestCredentialDraftChangedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8859,8 +8939,10 @@ export type PostAppsByAppIdWorkflowsDraftRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunErrors = {
+  400: TestCredentialsNotReadyError | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  409: TestCredentialDraftChangedError | ErrorResponse
   429: RateLimitError | ErrorResponse
   default: ErrorResponse
 }
@@ -9007,6 +9089,30 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponses = {
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponse =
   GetAppsByAppIdWorkflowsDraftSystemVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesResponses]
+
+export type PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightData = {
+  body: TestCredentialPreflightPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/test-credentials/preflight'
+}
+
+export type PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightErrors = {
+  409: TestCredentialDraftChangedError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightError =
+  PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightErrors[keyof PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightErrors]
+
+export type PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightResponses = {
+  200: TestCredentialPreflightResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightResponse =
+  PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightResponses[keyof PostAppsByAppIdWorkflowsDraftTestCredentialsPreflightResponses]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
   body: DraftWorkflowTriggerRunPayload

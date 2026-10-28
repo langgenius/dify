@@ -36,6 +36,7 @@ from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
+from services.workflow_test_execution import prepare_workflow_test_execution
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
 logger = logging.getLogger(__name__)
@@ -248,6 +249,16 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if invoke_from == InvokeFrom.DEBUGGER:
+                    if not isinstance(user, Account):
+                        raise ValueError("Builder tests require an Account.")
+                    args = prepare_workflow_test_execution(
+                        app=app_model,
+                        user=user,
+                        workflow=workflow,
+                        args=args,
+                        node_id=None,
+                    )
                 workflow_run_id = str(uuid.uuid4())
                 connection_context = (
                     prepare_web_connection_execution(
@@ -321,6 +332,16 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = None if invoke_from == InvokeFrom.WEB_APP else args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if invoke_from == InvokeFrom.DEBUGGER:
+                    if not isinstance(user, Account):
+                        raise ValueError("Builder tests require an Account.")
+                    args = prepare_workflow_test_execution(
+                        app=app_model,
+                        user=user,
+                        workflow=workflow,
+                        args=args,
+                        node_id=None,
+                    )
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 workflow_run_id = str(uuid.uuid4())
                 connection_context = (
@@ -434,6 +455,13 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                prepare_workflow_test_execution(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    args=args,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -447,6 +475,13 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                prepare_workflow_test_execution(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    args=args,
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
                         app_model=app_model,
@@ -479,6 +514,13 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                prepare_workflow_test_execution(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    args={"draft_hash": args.draft_hash},
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,
@@ -492,6 +534,13 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                prepare_workflow_test_execution(
+                    app=app_model,
+                    user=user,
+                    workflow=workflow,
+                    args={"draft_hash": args.draft_hash},
+                    node_id=node_id,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
                         app_model=app_model,

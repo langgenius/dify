@@ -1177,10 +1177,20 @@ class WorkflowService:
         account: Account,
         query: str = "",
         files: Sequence[File] | None = None,
+        draft_hash: str | None = None,
     ) -> WorkflowNodeExecutionModel:
         """
         Run draft workflow node
         """
+        from services.workflow_test_execution import prepare_workflow_test_execution
+
+        prepare_workflow_test_execution(
+            app=app_model,
+            user=account,
+            workflow=draft_workflow,
+            args={"draft_hash": draft_hash},
+            node_id=node_id,
+        )
         files = files or []
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)

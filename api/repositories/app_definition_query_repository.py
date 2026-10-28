@@ -9,7 +9,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from models.account import Tenant, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -25,6 +25,7 @@ from services.app_definition_query_service import (
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 from services.workflow.tool_credentials import requires_end_user_connections
+from services.workflow_test_credentials import BuilderScope, TestDraft
 
 
 def map_site_configuration(site: Site) -> AppSiteConfiguration:
@@ -119,6 +120,27 @@ def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppPara
 class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_test_draft(self, scope: BuilderScope) -> TestDraft | None:
+        with self._session_factory() as session:
+            row = session.execute(
+                select(Workflow, App.created_by, TenantAccountJoin.role)
+                .join(App, App.id == Workflow.app_id)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == App.tenant_id)
+                .join(Account, Account.id == TenantAccountJoin.account_id)
+                .where(
+                    Workflow.tenant_id == scope.tenant_id,
+                    Workflow.app_id == scope.app_id,
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                    App.tenant_id == scope.tenant_id,
+                    Account.id == scope.account_id,
+                    Account.status == AccountStatus.ACTIVE,
+                )
+            ).one_or_none()
+            if row is None:
+                return None
+            workflow, owner_id, role = row
+            return TestDraft(workflow.id, workflow.unique_hash, workflow.graph_dict, owner_id, role.value)
 
     @override
     def get_mode(self, app_id: str) -> str | None:

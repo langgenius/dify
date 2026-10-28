@@ -146,6 +146,7 @@ from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.rbac_service import RBACService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -233,6 +234,12 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workflow_test_credential_adapters import (
+    AuthorizedTestDraftQuery,
+    DraftTestCredentialPlanner,
+    WorkspaceTestCredentialGateway,
+)
+from services.workflow_test_credentials import WorkflowTestCredentialService
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -288,6 +295,7 @@ class ApplicationServices:
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
+    workflow_test_credentials: WorkflowTestCredentialService
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
@@ -605,6 +613,24 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
+        workflow_test_credentials=WorkflowTestCredentialService(
+            drafts=AuthorizedTestDraftQuery(
+                drafts=AppDefinitionQueryRepository(session_factory=database_client),
+                rbac_enabled=dify_config.RBAC_ENABLED,
+                can_run=lambda scope: RBACService.CheckAccess.check(
+                    scope.tenant_id,
+                    scope.account_id,
+                    scene="app_test_and_run",
+                    resource_type="app",
+                    resource_id=scope.app_id,
+                ),
+            ),
+            planner=DraftTestCredentialPlanner(),
+            credentials=WorkspaceTestCredentialGateway(
+                queries=CredentialQueryRepository(session_factory=database_client),
+                auth=PluginCredentialAuthClient(),
+            ),
+        ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,

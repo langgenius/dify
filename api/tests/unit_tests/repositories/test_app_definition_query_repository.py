@@ -1147,3 +1147,47 @@ def test_web_model_app_parameters_have_no_workflow_requirements(sqlite_session_f
     assert result.graph is None
     assert result.requires_end_user_connections is False
     assert result.parameters.features_dict["opening_statement"] == "Hello"
+
+
+def test_builder_draft_lookup_requires_complete_owner_chain_and_active_membership(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from dataclasses import replace
+
+    from models.account import AccountStatus, TenantAccountJoin, TenantAccountRole
+    from services.workflow_test_credentials import BuilderScope
+
+    with sqlite_session_factory.begin() as session:
+        _persist_app(session, mode=AppMode.WORKFLOW, created_by=_ACCOUNT_ID)
+        account = Account(name="Builder", email="builder@example.com", status=AccountStatus.ACTIVE)
+        account.id = _ACCOUNT_ID
+        session.add(account)
+        membership = TenantAccountJoin(tenant_id=_TENANT_ID, account_id=_ACCOUNT_ID, role=TenantAccountRole.EDITOR)
+        session.add(membership)
+        session.add(
+            Workflow(
+                id=_WORKFLOW_ID,
+                tenant_id=_TENANT_ID,
+                app_id=_APP_ID,
+                type=WorkflowType.WORKFLOW,
+                version="draft",
+                graph='{"nodes": []}',
+                features="{}",
+                created_by=_ACCOUNT_ID,
+            )
+        )
+    scope = BuilderScope(_TENANT_ID, _APP_ID, _ACCOUNT_ID)
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+    draft = repository.get_test_draft(scope)
+    assert draft is not None
+    assert draft.workflow_id == _WORKFLOW_ID
+    assert draft.owner_id == _ACCOUNT_ID
+    assert draft.member_role == "editor"
+    assert repository.get_test_draft(replace(scope, tenant_id=_OTHER_TENANT_ID)) is None
+    assert repository.get_test_draft(replace(scope, app_id=_OTHER_TENANT_ID)) is None
+    assert repository.get_test_draft(replace(scope, account_id=_OTHER_TENANT_ID)) is None
+    with sqlite_session_factory.begin() as session:
+        account = session.get(Account, _ACCOUNT_ID)
+        assert account is not None
+        account.status = AccountStatus.BANNED
+    assert repository.get_test_draft(scope) is None

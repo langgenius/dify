@@ -39,6 +39,7 @@ from controllers.console.app.error import (
     DraftWorkflowNotSync,
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
+from controllers.console.app.test_credentials import test_credential_errors
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
@@ -160,6 +161,9 @@ class SyncDraftWorkflowPayload(BaseModel):
 
 
 class BaseWorkflowRunPayload(BaseModel):
+    draft_hash: str | None = Field(
+        default=None, min_length=1, description="Required for EndUser test credentials; hash of the saved draft."
+    )
     files: list[dict[str, Any]] | None = Field(default=None)
 
 
@@ -178,10 +182,16 @@ class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
 
 
 class IterationNodeRunPayload(BaseModel):
+    draft_hash: str | None = Field(
+        default=None, min_length=1, description="Required when the tested subgraph uses EndUser credentials."
+    )
     inputs: dict[str, Any] | None = Field(default=None)
 
 
 class LoopNodeRunPayload(BaseModel):
+    draft_hash: str | None = Field(
+        default=None, min_length=1, description="Required when the tested subgraph uses EndUser credentials."
+    )
     inputs: dict[str, Any] | None = Field(default=None)
 
 
@@ -742,6 +752,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @with_session
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @model_validate(AdvancedChatWorkflowRunPayload)
+    @test_credential_errors
     def post(self, payload: AdvancedChatWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -797,6 +808,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(IterationNodeRunPayload)
+    @test_credential_errors
     def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
@@ -846,6 +858,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(IterationNodeRunPayload)
+    @test_credential_errors
     def post(self, payload: IterationNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
@@ -891,6 +904,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(LoopNodeRunPayload)
+    @test_credential_errors
     def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
@@ -939,6 +953,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(LoopNodeRunPayload)
+    @test_credential_errors
     def post(self, args: LoopNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow loop node
@@ -1190,6 +1205,7 @@ class DraftWorkflowRunApi(Resource):
     @with_session
     @get_app_model(mode=[AppMode.WORKFLOW])
     @model_validate(DraftWorkflowRunPayload)
+    @test_credential_errors
     def post(self, payload: DraftWorkflowRunPayload, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
@@ -1265,6 +1281,7 @@ class DraftWorkflowNodeRunApi(Resource):
     @with_current_user
     @edit_permission_required
     @model_validate(DraftWorkflowNodeRunPayload)
+    @test_credential_errors
     def post(self, payload: DraftWorkflowNodeRunPayload, current_user: Account, app_model: App, node_id: str):
         """
         Run draft workflow node
@@ -1291,6 +1308,7 @@ class DraftWorkflowNodeRunApi(Resource):
             account=current_user,
             query=args.get("query", ""),
             files=files,
+            draft_hash=payload.draft_hash,
         )
 
         return WorkflowRunNodeExecutionResponse.model_validate(
