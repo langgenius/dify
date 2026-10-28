@@ -1,6 +1,9 @@
 'use client'
 
-import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsSpaceListItemResponse,
+  KnowledgeFsTechnicalSummary,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RefObject } from 'react'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
@@ -59,7 +62,7 @@ const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
 type SpaceOption = {
   id: string
   name: string
-  description?: string | null
+  description?: KnowledgeFsTechnicalSummary['description']
   unavailable: boolean
 }
 
