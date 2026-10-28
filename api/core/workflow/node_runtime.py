@@ -59,7 +59,7 @@ from graphon.model_runtime.entities.llm_entities import (
     LLMUsage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.llm.runtime_protocols import (
     LLMPollingCapableProtocol,
@@ -221,6 +221,11 @@ class DifyPreparedLLM(LLMProtocol):
         )
         if model_schema is None:
             raise ValueError(f"Model schema not found for {self._model_instance.model_name}")
+        # Dify supplies prompt-based structured output; polling delegates to the provider.
+        if not model_schema.support_structure_output and not isinstance(self, LLMPollingCapableProtocol):
+            return model_schema.model_copy(
+                update={"features": [*(model_schema.features or []), ModelFeature.STRUCTURED_OUTPUT]}
+            )
         return model_schema
 
     @override
@@ -302,7 +307,7 @@ class DifyPreparedLLM(LLMProtocol):
     ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
         return invoke_llm_with_structured_output(
             provider=self.provider,
-            model_schema=self.get_model_schema(),
+            model_schema=self._model_instance.get_model_schema(),
             model_instance=self._model_instance,
             prompt_messages=prompt_messages,
             json_schema=json_schema,

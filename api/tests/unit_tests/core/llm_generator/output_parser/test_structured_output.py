@@ -17,7 +17,6 @@ from core.llm_generator.output_parser.structured_output import (
     _parse_structured_output,
     _prepare_schema_for_model,
     _set_response_format,
-    convert_boolean_to_string,
     invoke_llm_with_structured_output,
     remove_additional_properties,
 )
@@ -86,23 +85,18 @@ class TestStructuredOutput:
         remove_additional_properties(None)  # Should not raise
         remove_additional_properties([])  # Should not raise
 
-    def test_convert_boolean_to_string(self):
+    def test_prepare_schema_preserves_boolean_types(self):
         schema = {
             "type": "object",
             "properties": {
                 "is_active": {"type": "boolean"},
                 "tags": {"type": "array", "items": {"type": "boolean"}},
-                "list_schema": [{"type": "boolean"}],
+                "nested": {"type": "object", "properties": {"enabled": {"type": "boolean"}}},
             },
         }
-        convert_boolean_to_string(schema)
-        assert schema["properties"]["is_active"]["type"] == "string"
-        assert schema["properties"]["tags"]["items"]["type"] == "string"
-        assert schema["properties"]["list_schema"][0]["type"] == "string"
-
-        # Test with non-dict input
-        convert_boolean_to_string(None)  # Should not raise
-        convert_boolean_to_string([])  # Should not raise
+        result = _prepare_schema_for_model("openai", make_model_schema("gpt-4"), schema)
+        assert result == {"schema": schema, "name": "llm_response"}
+        assert result["schema"] is not schema
 
     def test_parse_structured_output_valid(self):
         text = '{"key": "value"}'
@@ -972,7 +966,7 @@ def test_model_specific_schema_preparation() -> None:
     model_instance = get_model_instance()
     model_instance.invoke_llm.return_value = LLMResult(
         model="gemini-pro",
-        message=AssistantPromptMessage(content='{"result": "true"}'),
+        message=AssistantPromptMessage(content='{"result": true}'),
         usage=create_mock_usage(prompt_tokens=10, completion_tokens=5),
     )
 
@@ -993,5 +987,8 @@ def test_model_specific_schema_preparation() -> None:
     model_instance.invoke_llm.assert_called_once()
     call_args = model_instance.invoke_llm.call_args
 
-    # For Gemini, the schema should not have additionalProperties and boolean should be converted to string
-    assert "json_schema" in call_args.kwargs["model_parameters"]
+    assert result.structured_output == {"result": True}
+    assert json.loads(call_args.kwargs["model_parameters"]["json_schema"]) == {
+        "type": "object",
+        "properties": {"result": {"type": "boolean"}},
+    }

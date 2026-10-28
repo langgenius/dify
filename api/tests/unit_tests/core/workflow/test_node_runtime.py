@@ -25,7 +25,7 @@ from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCal
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
-from core.model_manager import QuotaManagedModelInstance
+from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -181,10 +181,11 @@ def _llm_node_execution_behavior_mock_db_session_close(monkeypatch: pytest.Monke
 
 class TestLlmNodeExecutionBehaviorCases:
     @staticmethod
+    @pytest.mark.parametrize("features", [None, [], [ModelFeature.TOOL_CALL], [ModelFeature.STRUCTURED_OUTPUT]])
     @pytest.mark.parametrize("streamed", [False, True], ids=["blocking", "streaming"])
-    @pytest.mark.parametrize("response_kind", ["valid", "schema_echo", "missing_field", "wrong_type"])
+    @pytest.mark.parametrize("response_kind", ["valid", "schema_echo", "missing_field", "wrong_type", "string_boolean"])
     def test_structured_output_validation_crosses_dify_model_boundary(
-        monkeypatch: pytest.MonkeyPatch, streamed: bool, response_kind: str
+        monkeypatch: pytest.MonkeyPatch, streamed: bool, response_kind: str, features: list[ModelFeature] | None
     ) -> None:
         """A parsed JSON object must satisfy the node schema before success (#44722)."""
         from graphon.model_runtime.entities.llm_entities import (
@@ -197,20 +198,26 @@ class TestLlmNodeExecutionBehaviorCases:
 
         output_schema = {
             "type": "object",
-            "properties": {"platform_name": {"type": "string"}, "post_content": {"type": "string"}},
-            "required": ["platform_name", "post_content"],
+            "properties": {
+                "platform_name": {"type": "string"},
+                "post_content": {"type": "string"},
+                "is_public": {"type": "boolean"},
+            },
+            "required": ["platform_name", "post_content", "is_public"],
             "additionalProperties": False,
         }
         responses = {
-            "valid": {"platform_name": "RED", "post_content": "A short post"},
+            "valid": {"platform_name": "RED", "post_content": "A short post", "is_public": False},
             "schema_echo": output_schema,
             "missing_field": {"platform_name": "RED"},
             "wrong_type": {"platform_name": "RED", "post_content": 42},
+            "string_boolean": {"platform_name": "RED", "post_content": "A short post", "is_public": "false"},
         }
         response = responses[response_kind]
         text = json.dumps(response)
         model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
         model_schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
+        model_schema.features = features
         monkeypatch.setattr(
             model_instance.model_type_instance, "get_model_schema", lambda *_args, **_kwargs: model_schema
         )
@@ -218,6 +225,16 @@ class TestLlmNodeExecutionBehaviorCases:
 
         def invoke_model(**kwargs: object) -> LLMResult | Generator[LLMResultChunk]:
             assert kwargs["stream"] is True
+            parameters = kwargs["model_parameters"]
+            assert isinstance(parameters, dict)
+            if ModelFeature.STRUCTURED_OUTPUT in (features or []):
+                assert json.loads(parameters["json_schema"])["schema"] == output_schema
+            else:
+                assert "json_schema" not in parameters
+                prompts = kwargs["prompt_messages"]
+                assert isinstance(prompts, list)
+                assert json.dumps(output_schema) in prompts[0].content
+                assert "Do not output boolean value" not in prompts[0].content
             if not streamed:
                 return LLMResult(
                     model=model_schema.model,
@@ -265,6 +282,7 @@ class TestLlmNodeExecutionBehaviorCases:
         completions = [event.node_run_result for event in node._run() if isinstance(event, StreamCompletedEvent)]
 
         assert len(completions) == 1
+        assert model_schema.features == features
         result = completions[0]
         if response_kind == "valid":
             assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
@@ -1448,7 +1466,7 @@ class _ModelTypeInstanceStub(LargeLanguageModel):
         self.get_model_schema = Mock(return_value=model_schema)
 
 
-class _ModelInstanceStub:
+class _ModelInstanceStub(ModelInstance):
     def __init__(
         self,
         *,
@@ -1564,7 +1582,7 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
-        model_schema = _build_model_schema()
+        model_schema = _build_model_schema(features=[ModelFeature.STRUCTURED_OUTPUT])
         model_instance = _ModelInstanceStub(model_schema=model_schema)
         model_type_instance = model_instance.model_type_instance
         prepared = DifyPreparedLLM(model_instance, request_metadata={"app_id": "app-id"})
@@ -1597,6 +1615,21 @@ class TestNodeRuntimeCases:
         )
 
     @staticmethod
+    @pytest.mark.parametrize("features", [None, [], [ModelFeature.TOOL_CALL], [ModelFeature.STRUCTURED_OUTPUT]])
+    def test_dify_prepared_llm_exposes_fallback_capability_without_changing_provider(
+        features: list[ModelFeature] | None,
+    ) -> None:
+        model_schema = _build_model_schema(features=features)
+        model_instance = _ModelInstanceStub(model_schema=model_schema)
+
+        exposed_schema = DifyPreparedLLM(model_instance).get_model_schema()
+
+        assert exposed_schema.support_structure_output
+        assert set(exposed_schema.features or []) == {*(features or []), ModelFeature.STRUCTURED_OUTPUT}
+        assert DifyPreparedPollingLLM(model_instance).get_model_schema() is model_schema
+        assert model_schema.features == features
+
+    @staticmethod
     def test_dify_prepared_llm_requires_model_schema() -> None:
         model_instance = _ModelInstanceStub(model_schema=None)
         model_instance.credentials = {}
@@ -1623,7 +1656,7 @@ class TestNodeRuntimeCases:
         assert result is sentinel.structured
         invoke_structured.assert_called_once_with(
             provider="langgenius/openai/openai",
-            model_schema=prepared.get_model_schema(),
+            model_schema=model_instance.get_model_schema(),
             model_instance=model_instance,
             prompt_messages=[],
             json_schema={"type": "object"},
