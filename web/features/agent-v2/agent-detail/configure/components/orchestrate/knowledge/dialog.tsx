@@ -59,7 +59,7 @@ const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
 type SpaceOption = {
   id: string
   name: string
-  description?: string
+  description?: string | null
   unavailable: boolean
 }
 
@@ -165,7 +165,7 @@ function AgentKnowledgeRetrievalForm({
       options.set(space.control_space_id, {
         id: space.control_space_id,
         name: space.technical_summary?.name || fallbackName,
-        description: space.technical_summary?.description ?? undefined,
+        description: space.technical_summary?.description,
         unavailable: false,
       })
     }
