@@ -247,8 +247,9 @@ class TestExcelExtractor:
         class FakeExcelFile:
             sheet_names = ["Sheet1"]
 
-            def parse(self, sheet_name):
+            def parse(self, sheet_name, keep_default_na=True):
                 assert sheet_name == "Sheet1"
+                assert keep_default_na is False
                 return pd.DataFrame([{"A": "x", "B": 1}, {"A": None, "B": None}])
 
         monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
@@ -264,7 +265,7 @@ class TestExcelExtractor:
         class FakeExcelFile:
             sheet_names = ["Sheet1"]
 
-            def parse(self, sheet_name):
+            def parse(self, sheet_name, keep_default_na=True):
                 return pd.DataFrame([{"note": 'he said "hi"', "plain": "text"}])
 
         monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
@@ -274,6 +275,61 @@ class TestExcelExtractor:
 
         assert len(docs) == 1
         assert docs[0].page_content == '"note":"he said \\"hi\\"";"plain":"text"'
+
+    def test_extract_xls_reads_with_the_default_na_list_off(self, monkeypatch: pytest.MonkeyPatch):
+        """A cell that literally says N/A must survive.
+
+        pandas reads "N/A", "NA", "n/a", "NULL", "None", "NaN" and "nan" as
+        missing values, so such a cell was dropped along with its column name
+        while the .xlsx branch, which goes through openpyxl, kept it.
+        """
+        seen = {}
+
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name, keep_default_na=True):
+                seen["keep_default_na"] = keep_default_na
+                # What pandas hands back once the default list is off.
+                return pd.DataFrame([{"Code": "A1", "Status": "N/A"}])
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        docs = ExcelExtractor("/tmp/sample.xls").extract()
+
+        assert seen["keep_default_na"] is False
+        assert docs[0].page_content == '"Code":"A1";"Status":"N/A"'
+
+    def test_extract_xls_skips_a_blank_cell(self, monkeypatch: pytest.MonkeyPatch):
+        """With the default list off a blank arrives as "" instead of NaN."""
+
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name, keep_default_na=True):
+                return pd.DataFrame([{"Code": "A1", "Status": "", "Units": "12"}])
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        docs = ExcelExtractor("/tmp/sample.xls").extract()
+
+        assert docs[0].page_content == '"Code":"A1";"Units":"12"'
+
+    def test_extract_xls_skips_an_all_blank_row(self, monkeypatch: pytest.MonkeyPatch):
+        """`dropna` no longer sees such a row, so it must be skipped here."""
+
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+
+            def parse(self, sheet_name, keep_default_na=True):
+                return pd.DataFrame([{"Code": "A1", "Status": "ok"}, {"Code": "", "Status": ""}])
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        docs = ExcelExtractor("/tmp/sample.xls").extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == '"Code":"A1";"Status":"ok"'
 
     def test_extract_unsupported_extension_raises(self):
         extractor = ExcelExtractor("/tmp/sample.txt")
