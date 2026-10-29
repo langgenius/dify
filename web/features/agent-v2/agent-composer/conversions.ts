@@ -555,7 +555,7 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
     name: file.name,
     icon: getFileIconType(file.name, file.mime_type ?? undefined),
     fileId: file.file_id,
-    isMissing: isConfigReferenceMissing(file) || undefined,
+    ...(isConfigReferenceMissing(file) ? { isMissing: true } : {}),
     configName: file.name,
     size: file.size ?? undefined,
     hash: file.hash ?? undefined,

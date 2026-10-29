@@ -110,8 +110,6 @@
   "agentDetail.configure.files.upload.dropzone": "Letakkan file di sini, atau",
   "agentDetail.configure.files.upload.failed": "Gagal mengunggah file.",
   "agentDetail.configure.files.upload.fileType": "FILE",
-  "agentDetail.configure.files.upload.invalidFile": "Hanya satu file yang dapat diunggah dalam satu waktu.",
-  "agentDetail.configure.files.upload.success": "File diunggah.",
   "agentDetail.configure.files.upload.title": "Unggah file",
   "agentDetail.configure.knowledgeFs.add": "Pilih basis pengetahuan Agent",
   "agentDetail.configure.knowledgeFs.alias": "Nama untuk Agen",

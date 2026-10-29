@@ -106,13 +106,19 @@ export function AgentPromptSlashMenu({
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation(['agentV2'])
   const title = categories.find((category) => category.key === view)?.label
+  const insertTokens = (tokens: string[]) => {
+    if (tokens.length > 0) onInsertToken(tokens.join(' '))
+  }
   const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
       onAddSkill?.({
         skillSource,
-        onAdded: (item) => {
-          if (isPromptReferenceItem(item))
-            onInsertToken(createConfigReferenceToken('skill', item.id, item.name))
+        onAdded: (items) => {
+          insertTokens(
+            items
+              .filter(isPromptReferenceItem)
+              .map((item) => createConfigReferenceToken('skill', item.id, item.name)),
+          )
         },
       })
       return
@@ -120,9 +126,14 @@ export function AgentPromptSlashMenu({
 
     if (view === 'files') {
       onAddFile?.({
-        onAdded: (item) => {
-          if (isAgentFileNode(item))
-            onInsertToken(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
+        onAdded: (items) => {
+          insertTokens(
+            items
+              .filter(isAgentFileNode)
+              .map((item) =>
+                createConfigReferenceToken('file', item.configName ?? item.id, item.name),
+              ),
+          )
         },
       })
       return
@@ -130,11 +141,14 @@ export function AgentPromptSlashMenu({
 
     if (view === 'knowledge') {
       onAddKnowledge?.({
-        onAdded: (item) => {
-          if (isKnowledgeRetrievalItem(item))
-            onInsertToken(
-              createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)),
-            )
+        onAdded: (items) => {
+          insertTokens(
+            items
+              .filter(isKnowledgeRetrievalItem)
+              .map((item) =>
+                createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)),
+              ),
+          )
         },
       })
     }
@@ -208,9 +222,12 @@ export function AgentPromptSlashMenu({
             ENABLE_AGENT_CLI_TOOLS
               ? () => {
                   onAddCliTool?.({
-                    onAdded: (item) => {
-                      if (isCliToolItem(item))
-                        onInsertToken(createReferenceToken('cli_tool', item.id, item.name))
+                    onAdded: (items) => {
+                      insertTokens(
+                        items
+                          .filter(isCliToolItem)
+                          .map((item) => createReferenceToken('cli_tool', item.id, item.name)),
+                      )
                     },
                   })
                 }
