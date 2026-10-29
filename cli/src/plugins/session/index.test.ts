@@ -15,6 +15,7 @@ const LOGIN: Login = {
   workspaceId: 'ws-1',
   tokenStorage: 'file',
   insecure: false,
+  sessionId: 'tok-1',
 }
 let dir: string
 beforeEach(() => {
@@ -98,6 +99,7 @@ it('reads a login.yml with only its identity, defaulting the rest and ignoring u
     workspaceId: null,
     tokenStorage: 'file',
     insecure: false,
+    sessionId: null,
   })
   expect(streams.errBuf()).toMatch(/ignoring the invalid value of insecure\n$/)
 })

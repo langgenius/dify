@@ -19,11 +19,25 @@ function catalogFiles(dir: string): string[] {
   return existsSync(catalogDir) ? readdirSync(catalogDir) : []
 }
 
+async function accountLogin(w: TestWorld, sessionId: string | null = 'tok-1'): Promise<void> {
+  const sessionService = await w.ctx.get(session)
+  const login = await sessionService.require()
+  await sessionService.save({
+    ...login,
+    account: { id: 'acc-1', email: login.email, name: 'Me' },
+    sessionId,
+  })
+}
+
 it('revokes the session on the server and clears local state', async () => {
   const w = await testContext({ login: true, argv: ['logout'] })
   worlds.push(w)
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w.io.outBuf())).toEqual({ logged_out: true, server: w.mock.url })
+  expect(JSON.parse(w.io.outBuf())).toEqual({
+    logged_out: true,
+    server: w.mock.url,
+    revoked: true,
+  })
   expect(w.io.errBuf()).toBe('')
 
   expect(await (await w.ctx.get(session)).current()).toBeNull()
@@ -54,9 +68,22 @@ it('drops a pending --no-wait login when nobody is logged in', async () => {
 it('still clears local state and reports a failed server revoke', async () => {
   const w = await testContext({ login: true, argv: ['logout'] })
   worlds.push(w)
+  await accountLogin(w)
   w.mock.setScenario('server-5xx')
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.io.errBuf()).toMatch(/^server revoke failed:/)
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ logged_out: true, revoked: false })
+  expect(JSON.parse(w.io.outBuf()).revoke_error).toEqual(expect.any(String))
+  expect(JSON.parse(w.io.outBuf()).hints).toEqual([
+    {
+      summary: 'revoke it from another login',
+      op: 'delete.account.session',
+      input: { session_id: 'tok-1' },
+    },
+  ])
+  expect(w.io.errBuf()).toContain(
+    'revoke it from another login: difyctl delete account session --session-id tok-1',
+  )
 
   expect(await (await w.ctx.get(session)).current()).toBeNull()
   expect(catalogFiles(w.dir)).toEqual([])
