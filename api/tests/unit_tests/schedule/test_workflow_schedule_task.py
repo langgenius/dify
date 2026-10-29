@@ -1,11 +1,18 @@
 import uuid
 from datetime import datetime
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from models.trigger import AppTrigger, AppTriggerStatus, AppTriggerType, WorkflowSchedulePlan
 from schedule.workflow_schedule_task import _fetch_due_schedules
 
 
-def _add_due_schedule_with_triggers(session, *, duplicate_trigger_count: int, trigger_status=AppTriggerStatus.ENABLED):
+def _add_due_schedule_with_triggers(
+    session: Session,
+    *,
+    duplicate_trigger_count: int,
+    trigger_status: AppTriggerStatus = AppTriggerStatus.ENABLED,
+) -> WorkflowSchedulePlan:
     tenant_id = str(uuid.uuid4())
     app_id = str(uuid.uuid4())
     node_id = "schedule-node"
@@ -33,7 +40,9 @@ def _add_due_schedule_with_triggers(session, *, duplicate_trigger_count: int, tr
     return plan
 
 
-def test_due_schedule_returned_once_with_duplicate_app_trigger_rows(sqlite_session_factory):
+def test_due_schedule_returned_once_with_duplicate_app_trigger_rows(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     """Concurrent publishes can insert duplicate AppTrigger rows for the same node.
 
     The due-schedule query must return the plan once, not once per duplicate row.
@@ -47,7 +56,7 @@ def test_due_schedule_returned_once_with_duplicate_app_trigger_rows(sqlite_sessi
     assert [schedule.id for schedule in due_schedules] == [plan.id]
 
 
-def test_disabled_trigger_does_not_dispatch_schedule(sqlite_session_factory):
+def test_disabled_trigger_does_not_dispatch_schedule(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory() as session:
         _add_due_schedule_with_triggers(session, duplicate_trigger_count=1, trigger_status=AppTriggerStatus.DISABLED)
 
