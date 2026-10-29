@@ -583,6 +583,20 @@ export const post5Errors = {
 
 export const getErrors = {
   connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+}
+
+export const putErrors = {
+  connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+  connection_conflict: { status: 409, data: zConnectionConflictError },
+  connection_not_found: { status: 404, data: zConnectionNotFoundError },
+  connection_reauthorization_required: {
+    status: 409,
+    data: zConnectionReauthorizationRequiredError,
+  },
+  connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+  credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+  end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
 }
 
 export const get2Errors = {

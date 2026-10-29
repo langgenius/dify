@@ -168,7 +168,6 @@ def test_saved_defaults_are_not_execution_selection_fallback(
                 node_id="tool-1",
                 provider=connection.provider,
                 connection_id=connection.id,
-                source_run_id=str(uuid4()),
             )
         )
     result = service.check(harness.base.context, command(harness, {}))

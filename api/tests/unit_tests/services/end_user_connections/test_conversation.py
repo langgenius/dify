@@ -45,12 +45,15 @@ def test_conversations_restore_their_own_last_accepted_choices(harness: Conversa
     first = base.service.create_api_key(base.context, base.command("first-secret"))
     second = base.service.create_api_key(base.context, base.command("second-secret"))
     a, b = harness.create_conversation(), harness.create_conversation()
+    harness.save(a, {"tool-1": first.id})
     original = harness.run(a, {"tool-1": first.id})
+    harness.save(b, {"tool-1": second.id})
     harness.run(b, {"tool-1": second.id})
     base.auth.calls.clear()
     assert harness.run(a).selections[0].connection_id == first.id
     assert harness.run(b).selections[0].connection_id == second.id
     assert len(base.auth.calls) == 2
+    harness.save(a, {"tool-1": second.id})
     harness.run(a, {"tool-1": second.id})
     assert harness.run(a).selections[0].connection_id == second.id
     assert original.selections[0].connection_id == first.id
@@ -74,6 +77,7 @@ def test_explicit_choices_do_not_merge_missing_nodes_or_select_reuse_nodes(harne
     a = base.service.create_api_key(base.context, base.command("a"))
     b = base.service.create_api_key(base.context, base.command("b"))
     conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": a.id, "tool-2": b.id})
     harness.run(conversation_id, {"tool-1": a.id, "tool-2": b.id})
     assert {item.node_id: item.connection_id for item in harness.run(conversation_id).selections} == {
         "tool-1": a.id,
@@ -91,6 +95,7 @@ def test_republishing_unchanged_requirements_preserves_saved_choices(harness: Co
     base = harness.oauth.base
     connection = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": connection.id})
     accepted = harness.run(conversation_id, {"tool-1": connection.id})
     with harness.sessions.begin() as session:
         old = session.get(Workflow, base.workflow_id)
@@ -119,6 +124,7 @@ def test_reuse_rechecks_connection_ownership_and_validity(harness: ConversationH
     base = harness.oauth.base
     connection = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": connection.id})
     harness.run(conversation_id, {"tool-1": connection.id})
     with harness.sessions.begin() as session:
         if change == "delete":
@@ -146,9 +152,11 @@ def test_reused_request_never_overwrites_a_newer_explicit_selection(harness: Con
     first = base.service.create_api_key(base.context, base.command("a"))
     second = base.service.create_api_key(base.context, base.command("b"))
     conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": first.id})
     harness.run(conversation_id, {"tool-1": first.id})
 
     def accept_new_selection() -> None:
+        harness.save(conversation_id, {"tool-1": second.id})
         harness.run(conversation_id, {"tool-1": second.id})
 
     base.auth.on_check = accept_new_selection
@@ -199,6 +207,7 @@ def test_initial_configuration_is_atomic_and_existing_worker_does_not_save(
         else:
             conversation, _ = MessageBasedAppGenerator()._init_generate_records(entity, session=session)
             assert harness.saved(conversation.id) == {"tool-1": first.id}
+            harness.save(conversation.id, {"tool-1": second.id})
             harness.run(conversation.id, {"tool-1": second.id})
             MessageBasedAppGenerator()._init_generate_records(entity, conversation, session=session)
             assert harness.saved(conversation.id) == {"tool-1": second.id}
@@ -212,6 +221,7 @@ def test_guest_can_restore_only_its_own_choices(harness: ConversationHarness) ->
     base.context = replace(base.context, account_id=None)
     connection = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": connection.id})
     harness.run(conversation_id, {"tool-1": connection.id})
     assert harness.run(conversation_id).selections[0].connection_id == connection.id
     with harness.sessions.begin() as session:
@@ -241,6 +251,7 @@ def test_delayed_first_conversation_does_not_overwrite_newer_app_defaults(harnes
     first = base.service.create_api_key(base.context, base.command("a"))
     second = base.service.create_api_key(base.context, base.command("b"))
     entity = generate_entity(harness, first.id)
+    harness.save(None, {"tool-1": second.id})
     harness.run(None, {"tool-1": second.id})
     with harness.sessions() as session:
         conversation, _ = MessageBasedAppGenerator()._init_generate_records(entity, session=session)
@@ -250,12 +261,13 @@ def test_delayed_first_conversation_does_not_overwrite_newer_app_defaults(harnes
     assert selected.id == second.id
 
 
-def test_workspace_only_run_clears_old_defaults_without_preflight(harness: ConversationHarness) -> None:
+def test_workspace_only_run_preserves_saved_configuration_without_preflight(harness: ConversationHarness) -> None:
     from services.end_user_connection_execution_adapters import prepare_web_connection_execution
 
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": selected.id})
     harness.run(conversation_id, {"tool-1": selected.id})
     base.auth.calls.clear()
     with harness.sessions.begin() as session:
@@ -272,12 +284,13 @@ def test_workspace_only_run_clears_old_defaults_without_preflight(harness: Conve
             user=user,
             workflow=workflow,
             args={"conversation_id": conversation_id},
-            workflow_run_id=str(uuid4()),
         )
         is None
     )
-    assert harness.service.get(base.context, None).connections == {}
-    assert harness.saved(conversation_id) == {}
+    saved = harness.service.get(base.context, None).connections["tool-1"]
+    assert saved is not None
+    assert saved.id == selected.id
+    assert base.repository.configuration(base.context, conversation_id)[0].connection_id == selected.id
     assert base.auth.calls == []
 
 
@@ -306,6 +319,7 @@ def test_changed_authorization_requirements_need_explicit_saved_choice_confirmat
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": selected.id})
     harness.run(conversation_id, {"tool-1": selected.id})
     with harness.sessions.begin() as session:
         previous = session.get(Workflow, base.workflow_id)
@@ -329,4 +343,5 @@ def test_changed_authorization_requirements_need_explicit_saved_choice_confirmat
         base.workflow_id = current.id
     with pytest.raises(ConnectionRevisionChangedError):
         harness.run(conversation_id)
-    assert harness.run(conversation_id, {"tool-1": selected.id}).selections[0].connection_id == selected.id
+    harness.save(conversation_id, {"tool-1": selected.id})
+    assert harness.run(conversation_id).selections[0].connection_id == selected.id

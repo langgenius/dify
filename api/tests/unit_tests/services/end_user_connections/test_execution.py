@@ -23,6 +23,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ConversationInvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
 from models.tools import ToolOAuthTenantClient
 from models.workflow import Workflow, WorkflowRun
@@ -48,10 +49,10 @@ from services.end_user_connections.execution import (
 )
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
 from services.end_user_connections.revision import ConnectionContractSnapshot
-from services.end_user_connections.selections import ConnectionSelectionService
 from services.errors.conversation import ConversationNotExistsError
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.end_user_api_key import make_harness
+from tests.helpers.end_user_conversation import make_selection_service
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
 
@@ -243,7 +244,7 @@ def test_existing_conversation_must_belong_to_authenticated_user(
             from_source=ConversationFromSource.API,
             from_end_user_id=harness.base.context.end_user_id,
             from_account_id=None,
-            invoke_from=InvokeFrom.WEB_APP,
+            invoke_from=ConversationInvokeFrom.WEB_APP,
             _inputs={},
             is_deleted=False,
         )
@@ -366,7 +367,7 @@ def test_entry_ignores_client_authority_fields(
         "application_services",
         lambda: SimpleNamespace(
             end_user_connection_execution=service,
-            connection_selections=ConnectionSelectionService(store=harness.base.repository),
+            connection_selections=make_selection_service(harness),
         ),
     )
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
@@ -381,7 +382,6 @@ def test_entry_ignores_client_authority_fields(
         app=app,
         user=user,
         workflow=workflow,
-        workflow_run_id=str(uuid4()),
         args={
             "connection_revision": harness.base.connection_revision,
             "connections": {"tool-1": connection.id},
@@ -406,7 +406,7 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
-        lambda: SimpleNamespace(connection_selections=ConnectionSelectionService(store=harness.base.repository)),
+        lambda: SimpleNamespace(connection_selections=make_selection_service(harness)),
     )
     with harness.base.sessions.begin() as session:
         app = session.get(App, harness.base.context.app_id)
@@ -432,21 +432,12 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
         )
     if pin == "stale":
         with pytest.raises(ConnectionRevisionChangedError):
-            prepare_web_connection_execution(
-                app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
-            )
+            prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
     elif selection in {"unused", "unused-null"}:
         with pytest.raises(ConnectionConfigurationError):
-            prepare_web_connection_execution(
-                app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
-            )
+            prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
     else:
-        assert (
-            prepare_web_connection_execution(
-                app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
-            )
-            is None
-        )
+        assert prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args) is None
 
 
 @pytest.mark.parametrize("choices", [None, {}, {"tool-1": None}])
@@ -469,7 +460,6 @@ def test_missing_selection_never_uses_saved_defaults(
                 node_id="tool-1",
                 provider=connection.provider,
                 connection_id=connection.id,
-                source_run_id=str(uuid4()),
             )
         )
         if saved_scope == "session":
@@ -483,7 +473,7 @@ def test_missing_selection_never_uses_saved_defaults(
                 from_source=ConversationFromSource.API,
                 from_end_user_id=harness.base.context.end_user_id,
                 from_account_id=None,
-                invoke_from=InvokeFrom.WEB_APP,
+                invoke_from=ConversationInvokeFrom.WEB_APP,
                 _inputs={},
                 is_deleted=False,
             )
