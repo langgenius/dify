@@ -141,7 +141,7 @@ describe('API Key connection management', () => {
     expect(trigger).not.toHaveAccessibleDescription(/share.connections.apiKeys.warning/)
   })
 
-  it('offers Remove for API Keys and adds keys without exposing OAuth actions', async () => {
+  it('offers API Key actions and retains both allowed creation methods', async () => {
     const user = userEvent.setup()
     const onConnect = vi.fn()
     const onRemove = vi.fn()
@@ -161,8 +161,8 @@ describe('API Key connection management', () => {
     await user.click(screen.getByRole('button', { name: 'Google Search' }))
     let popover = await screen.findByRole('dialog', { name: popoverName })
     expect(
-      within(popover).queryByRole('button', { name: 'share.connections.accounts.addAccount' }),
-    ).not.toBeInTheDocument()
+      within(popover).getByRole('button', { name: 'share.connections.accounts.addAccount' }),
+    ).toBeEnabled()
     for (const { name, id } of [
       { name: 'Personal key', id: 'invalid-key' },
       { name: 'Backup key', id: 'backup-key' },

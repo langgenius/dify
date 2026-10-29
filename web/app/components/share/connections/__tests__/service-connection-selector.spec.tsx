@@ -445,41 +445,88 @@ describe('Service connection management', () => {
     expect(screen.getByRole('button', { name: 'Gmail' })).toHaveTextContent('expired@example.com')
   })
 
-  it('adds an OAuth account or API Key through the provider-specific callback', async () => {
-    const user = userEvent.setup()
-    const onConnect = vi.fn()
-    render(
-      <RequiredServices services={[service]} onConnect={onConnect} onConnectionChange={vi.fn()} />,
-    )
-    await user.click(screen.getByRole('button', { name: 'Gmail' }))
-    const popover = await screen.findByRole('dialog', { name: popoverName })
-    await user.click(
-      within(popover).getByRole('button', { name: 'share.connections.accounts.addAccount' }),
-    )
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: popoverName })).not.toBeInTheDocument(),
-    )
-    await user.click(screen.getByRole('button', { name: 'Gmail' }))
-    const reopenedPopover = await screen.findByRole('dialog', { name: popoverName })
-    await user.click(
-      within(reopenedPopover).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
-    )
-    expect(onConnect.mock.calls).toEqual([['gmail', 'oauth']])
-    const addDialog = await screen.findByRole('dialog', {
-      name: 'share.connections.setup.addApiKey',
-    })
-    await user.type(
-      within(addDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
-      'Work key',
-    )
-    await user.type(
-      within(addDialog).getByLabelText(/share\.connections\.setup\.apiKey/),
-      'sk-work-secret',
-    )
-    await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
-    expect(onConnect.mock.calls).toEqual([
-      ['gmail', 'oauth'],
-      ['gmail', 'api-key', { name: 'Work key', credentials: { api_key: 'sk-work-secret' } }],
-    ])
-  })
+  it.each(['expired', 'key'])(
+    'adds either allowed method when the selected connection is %s',
+    async (selectedConnectionId) => {
+      const pickerName =
+        selectedConnectionId === 'key'
+          ? 'share.connections.apiKeys.title:{"provider":"Gmail"}'
+          : popoverName
+      const user = userEvent.setup()
+      const onConnect = vi.fn()
+      render(
+        <RequiredServices
+          services={[{ ...service, selectedConnectionId }]}
+          onConnect={onConnect}
+          onConnectionChange={vi.fn()}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: 'Gmail' }))
+      const popover = await screen.findByRole('dialog', { name: pickerName })
+      expect(
+        within(popover).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
+      ).toBeEnabled()
+      await user.click(
+        within(popover).getByRole('button', { name: 'share.connections.accounts.addAccount' }),
+      )
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: pickerName })).not.toBeInTheDocument(),
+      )
+      await user.click(screen.getByRole('button', { name: 'Gmail' }))
+      const reopenedPopover = await screen.findByRole('dialog', { name: pickerName })
+      await user.click(
+        within(reopenedPopover).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
+      )
+      expect(onConnect.mock.calls).toEqual([['gmail', 'oauth']])
+      const addDialog = await screen.findByRole('dialog', {
+        name: 'share.connections.setup.addApiKey',
+      })
+      await user.type(
+        within(addDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+        'Work key',
+      )
+      await user.type(
+        within(addDialog).getByLabelText(/share\.connections\.setup\.apiKey/),
+        'sk-work-secret',
+      )
+      await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
+      expect(onConnect.mock.calls).toEqual([
+        ['gmail', 'oauth'],
+        ['gmail', 'api-key', { name: 'Work key', credentials: { api_key: 'sk-work-secret' } }],
+      ])
+    },
+  )
+
+  it.each(['oauth', 'api-key'] as const)(
+    'only offers the allowed %s creation method',
+    async (method) => {
+      const user = userEvent.setup()
+      render(
+        <RequiredServices
+          services={[
+            {
+              ...service,
+              methods: [method],
+              selectedConnectionId: method === 'oauth' ? 'personal' : 'key',
+              availableConnections: service.availableConnections.filter(
+                (connection) => connection.method === method,
+              ),
+            },
+          ]}
+          onConnect={vi.fn()}
+          onConnectionChange={vi.fn()}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: 'Gmail' }))
+      const picker = await screen.findByRole('dialog')
+      const oauthAction = within(picker).queryByRole('button', {
+        name: 'share.connections.accounts.addAccount',
+      })
+      const apiKeyAction = within(picker).queryByRole('button', {
+        name: 'share.connections.setup.addApiKey',
+      })
+      expect(method === 'oauth' ? oauthAction : apiKeyAction).toBeEnabled()
+      expect(method === 'oauth' ? apiKeyAction : oauthAction).not.toBeInTheDocument()
+    },
+  )
 })

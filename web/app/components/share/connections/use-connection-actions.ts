@@ -71,7 +71,7 @@ export default function useConnectionActions({
   onRemoved,
   refreshConnections,
 }: Props) {
-  const { t } = useTranslation(['common', 'share'])
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const context = { address, authSession, silent: true }
   const create = useMutation(webAppQuery.connections.post.mutationOptions({ context }))
@@ -265,7 +265,6 @@ export default function useConnectionActions({
             connection_revision: connectionRevision,
             node_id: source.node_id,
             ...apiKeyValues,
-            name: apiKeyValues.name || t(($) => $['connections.setup.apiKey'], { ns: 'share' }),
           },
         })
         await saveResult(source, connection, assertCurrent)

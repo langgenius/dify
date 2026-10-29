@@ -372,7 +372,7 @@ export default function ServiceConnectionSelector({
             })}
           </ul>
           <div className="mt-1 flex flex-col border-t border-divider-regular pt-1">
-            {service.methods.includes('oauth') && !isApiKey && (
+            {service.methods.includes('oauth') && (
               <PopoverClose
                 render={
                   <Button variant="ghost" disabled={disabled} className="justify-start px-2" />
