@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import BinaryIO, Final, Protocol, cast, override
 
+from constants import BYTES_PER_MIB
+
 _COPY_CHUNK_SIZE = 1024 * 1024
 _SPOOL_MAX_MEMORY = 16 * 1024 * 1024
 _FILE_MODE = stat.S_IFREG | 0o644
@@ -38,8 +40,16 @@ class ArchiveCompression(StrEnum):
 
 
 class ArchiveLimitKind(StrEnum):
-    ENTRIES = "entries"
-    BYTES = "bytes"
+    exceeded: Callable[[int], str]
+
+    ENTRIES = ("entries", lambda limit: f"has more than {limit} files")
+    BYTES = ("bytes", lambda limit: f"is over {limit // BYTES_PER_MIB} MiB")
+
+    def __new__(cls, value: str, exceeded: Callable[[int], str]) -> ArchiveLimitKind:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.exceeded = exceeded
+        return member
 
 
 class ArchivePathReason(StrEnum):
