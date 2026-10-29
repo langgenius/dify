@@ -15,10 +15,10 @@ from flask import send_file
 from flask_restx import Resource
 
 from configs import dify_config
-from constants import BYTES_PER_MIB
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
+from controllers.openapi._archive import FolderRejections, build_folder_archive
 from controllers.openapi._contract import (
     CapRequestBody,
     Example,
@@ -55,7 +55,6 @@ from controllers.openapi._models import (
     SkillVersionListResponse,
     SkillVersionRow,
 )
-from controllers.openapi._multipart import folder_streams
 from controllers.openapi._upload import UploadParts, file_fields
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
@@ -65,18 +64,7 @@ from controllers.openapi.auth.requirements import (
     Requirement,
     workspace_write_guards,
 )
-from libs.archive_writer import (
-    ArchiveEmptyError,
-    ArchiveError,
-    ArchiveLimitKind,
-    ArchiveLimits,
-    ArchiveOptions,
-    ArchivePathError,
-    ArchiveTooLargeError,
-    StrictPathPolicy,
-    entries_from_folder,
-    write_archive,
-)
+from libs.archive_writer import ArchiveLimits
 from machinery.context import RequestContext
 from services.skill_management_service import (
     SkillErrorDetail,
@@ -127,10 +115,7 @@ _NO_HINTS: Final[Mapping[type[OpenApiError], HintsFor]] = MappingProxyType({})
 
 _IMPORT_FILENAME: Final = "skill.zip"
 
-_LIMIT_MESSAGES: Final[Mapping[ArchiveLimitKind, Callable[[int], str]]] = {
-    ArchiveLimitKind.ENTRIES: lambda limit: f"The skill folder has more than {limit} files",
-    ArchiveLimitKind.BYTES: lambda limit: f"The skill folder is over {limit // BYTES_PER_MIB} MiB",
-}
+_SKILL_FOLDER: Final = FolderRejections("skill folder", SkillPackageInvalid, SkillPackageTooLarge)
 
 _READ_GUARDS: Final = (
     CheckSkillEnabled(),
@@ -203,26 +188,9 @@ _UPLOAD_CAP: Final = CapRequestBody(
 )
 
 
-def _archive_rejection(error: ArchiveError) -> OpenApiError:
-    if isinstance(error, ArchiveTooLargeError):
-        return SkillPackageTooLarge(_LIMIT_MESSAGES[error.kind](error.limit))
-    if isinstance(error, ArchivePathError):
-        detail = ErrorDetail(type=error.reason.value, loc=[error.path], msg=error.reason.message)
-        return SkillPackageInvalid(str(error), details=[detail])
-    if isinstance(error, ArchiveEmptyError):
-        return SkillPackageInvalid("The skill folder has no files")
-    raise error
-
-
 def _archive_of(folder: UploadParts) -> bytes:
-    options = ArchiveOptions(
-        StrictPathPolicy(),
-        ArchiveLimits(max_entries=dify_config.SKILL_PACKAGE_MAX_ENTRIES, max_bytes=max_skill_archive_bytes()),
-    )
-    try:
-        result = write_archive(entries_from_folder(folder_streams(folder)), options)
-    except ArchiveError as error:
-        raise _archive_rejection(error) from error
+    limits = ArchiveLimits(max_entries=dify_config.SKILL_PACKAGE_MAX_ENTRIES, max_bytes=max_skill_archive_bytes())
+    result = build_folder_archive(folder, limits=limits, rejections=_SKILL_FOLDER)
     try:
         return result.file.read()
     finally:
