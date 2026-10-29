@@ -2179,22 +2179,6 @@ export const zI18nObject = z.object({
 })
 
 /**
- * PluginParameterOption
- */
-export const zPluginParameterOption = z.object({
-  icon: z.string().nullish(),
-  label: zI18nObject,
-  value: z.string(),
-})
-
-/**
- * PluginDynamicOptionsResponse
- */
-export const zPluginDynamicOptionsResponse = z.object({
-  options: z.array(zPluginParameterOption),
-})
-
-/**
  * ToolLabel
  *
  * Tool label
@@ -2861,6 +2845,36 @@ export const zPluginTasksResponse = z.object({
  */
 export const zPluginTaskResponse = z.object({
   task: zPluginInstallTask,
+})
+
+/**
+ * PluginParameterShowOnCondition
+ *
+ * YAML ``show_on`` entry: AND-joined sibling parameter visibility.
+ *
+ * The field (or select option) is shown only when every listed sibling's
+ * configured value equals the given string literal.
+ */
+export const zPluginParameterShowOnCondition = z.object({
+  value: z.string(),
+  variable: z.string(),
+})
+
+/**
+ * PluginParameterOption
+ */
+export const zPluginParameterOption = z.object({
+  icon: z.string().nullish(),
+  label: zI18nObject,
+  show_on: z.array(zPluginParameterShowOnCondition).optional(),
+  value: z.string(),
+})
+
+/**
+ * PluginDynamicOptionsResponse
+ */
+export const zPluginDynamicOptionsResponse = z.object({
+  options: z.array(zPluginParameterOption),
 })
 
 /**
@@ -4108,6 +4122,7 @@ export const zToolParameter = z.object({
   precision: z.int().nullish(),
   required: z.boolean().optional().default(false),
   scope: z.string().nullish(),
+  show_on: z.array(zPluginParameterShowOnCondition).optional(),
   template: zPluginParameterTemplate.nullish(),
   type: zToolParameterType,
 })
@@ -4322,6 +4337,7 @@ export const zAgentStrategyParameter = z.object({
   precision: z.int().nullish(),
   required: z.boolean().optional().default(false),
   scope: z.string().nullish(),
+  show_on: z.array(zPluginParameterShowOnCondition).optional(),
   template: zPluginParameterTemplate.nullish(),
   type: zAgentStrategyParameterType,
 })

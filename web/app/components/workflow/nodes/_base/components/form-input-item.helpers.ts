@@ -8,6 +8,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { toolSettingShowOnConditionMet } from '@/app/components/plugins/plugin-detail-panel/tool-selector/utils/show-on'
 import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../types'
 
@@ -26,8 +27,8 @@ export type FormInputSchema = Omit<CredentialFormSchema, 'default'> &
 type FormInputValue = ResourceVarInputs[string] | undefined
 
 type ShowOnCondition = {
-  value: unknown
   variable: string
+  value: string
 }
 
 type OptionLabel = string | Record<string, string>
@@ -73,8 +74,7 @@ type FormInputState = {
 }
 
 const optionMatchesValue = (values: ResourceVarInputs, showOnItem: ShowOnCondition) =>
-  values[showOnItem.variable]?.value === showOnItem.value ||
-  values[showOnItem.variable] === showOnItem.value
+  toolSettingShowOnConditionMet(values, showOnItem)
 
 const getOptionLabel = (option: SelectableOption, language: string) => {
   if (typeof option.label === 'string') return option.label
@@ -219,6 +219,7 @@ export const mapSelectItems = (options: SelectableOption[], language: string): S
     name: getOptionLabel(option, language),
     value: option.value,
   }))
+
 export const getSelectedLabels = (
   selectedValues: string[] | undefined,
   options: SelectableOption[],
