@@ -331,7 +331,7 @@ function PromptSkillAddProbe() {
         onClick={() =>
           actions.skills?.({
             skillSource: 'library',
-            onAdded: (item) => setAddedSkill('name' in item ? (item.name ?? '') : ''),
+            onAdded: ([item]) => setAddedSkill(item && 'name' in item ? (item.name ?? '') : ''),
           })
         }
       >

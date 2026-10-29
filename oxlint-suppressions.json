@@ -4331,11 +4331,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -6453,11 +6448,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/access/components/workflow-references-table.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/__tests__/configure-test-env.tsx": {
     "typescript/no-deprecated": {
       "count": 1
@@ -6601,17 +6591,7 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/logs/components/logs-table.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
   "web/features/agent-v2/agent-detail/logs/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/features/agent-v2/agent-detail/monitoring/chart.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
@@ -6806,21 +6786,6 @@
       "count": 2
     }
   },
-  "web/features/new-rag/quality/bad-cases-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 10
-    }
-  },
-  "web/features/new-rag/quality/golden-questions-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 16
-    }
-  },
-  "web/features/new-rag/quality/quality-evaluation-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 22
-    }
-  },
   "web/features/new-rag/quality/quality-row-menu-trigger.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -6874,11 +6839,6 @@
   "web/features/new-rag/sources/create/website-crawl-preview.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/features/new-rag/sources/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/features/new-rag/sources/setup/connected-source-configuration.tsx": {
@@ -6972,11 +6932,6 @@
     },
     "no-restricted-globals": {
       "count": 1
-    }
-  },
-  "web/features/skills/detail/markdown-editor.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 15
     }
   },
   "web/features/skills/detail/page.tsx": {

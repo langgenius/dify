@@ -890,6 +890,29 @@ Stop a running Agent App chat message generation
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /agent/{agent_id}/config/files/batch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentConfigFilesUploadPayload](#agentconfigfilesuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Bound config files | **application/json**: [AgentConfigFilesUploadResponse](#agentconfigfilesuploadresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [DELETE] /agent/{agent_id}/config/files/{name}
 #### Parameters
 
@@ -2290,6 +2313,31 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/agent/config/files/batch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentConfigFilesUploadPayload](#agentconfigfilesuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Bound config files | **application/json**: [AgentConfigFilesUploadResponse](#agentconfigfilesuploadresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -19096,6 +19144,19 @@ Stable Agent Soul reference to one config file payload.
 | config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
 | file | [AgentConfigFileItemResponse](#agentconfigfileitemresponse) |  | Yes |
 
+#### AgentConfigFilesUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file_ids | [ string (uuid) ] | UploadFile UUIDs from POST /console/api/files/upload, in replacement order | Yes |
+
+#### AgentConfigFilesUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
+| files | [ [AgentConfigFileItemResponse](#agentconfigfileitemresponse) ] |  | Yes |
+
 #### AgentConfigManifestResponse
 
 | Name | Type | Description | Required |
@@ -22751,7 +22812,7 @@ Rate limit exceeded for downloading compliance report.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) | For Agent draft saves and workflow node_job_only updates, omit config_files to preserve the latest server-managed files. An explicit list replaces the files, including an empty list to clear them. | No |
 | binding | [ComposerBindingPayload](#composerbindingpayload) |  | No |
 | client_revision_id | string |  | No |
 | description | string |  | No |

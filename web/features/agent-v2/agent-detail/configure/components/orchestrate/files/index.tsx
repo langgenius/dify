@@ -24,7 +24,7 @@ import {
   agentComposerFilesAtom,
   clearAgentConfigNoteAtom,
   removeAgentFileAtom,
-  upsertAgentFileAtom,
+  upsertAgentFilesAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob, downloadUrl } from '@/utils/download'
@@ -436,12 +436,13 @@ export function AgentFiles() {
   const readOnly = useAgentOrchestrateReadOnly()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
+  const uploadedFilesRef = useRef<AgentFileNode[]>([])
   const apiContext = useAgentConfigApiContext()
   const draft = useAtomValue(agentComposerDraftAtom)
   const files = useAtomValue(agentComposerFilesAtom)
   const clearAgentConfigNote = useSetAtom(clearAgentConfigNoteAtom)
   const removeAgentFile = useSetAtom(removeAgentFileAtom)
-  const upsertAgentFile = useSetAtom(upsertAgentFileAtom)
+  const upsertAgentFiles = useSetAtom(upsertAgentFilesAtom)
   const buildNoteFile = getBuildNoteFile(draft.configNote)
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
   const previewFiles = visibleFiles.filter((file) => !file.isMissing)
@@ -513,15 +514,19 @@ export function AgentFiles() {
   }, [])
   useRegisterAgentOrchestrateAddAction('files', handleOpenUpload)
   const handleUploaded = useCallback(
-    (file: AgentFileNode) => {
-      upsertAgentFile(file)
-      promptAddCallbackRef.current?.(file)
-      promptAddCallbackRef.current = undefined
+    (uploadedFiles: AgentFileNode[]) => {
+      upsertAgentFiles(uploadedFiles)
+      uploadedFilesRef.current.push(...uploadedFiles)
     },
-    [upsertAgentFile],
+    [upsertAgentFiles],
   )
   const handleUploadOpenChange = useCallback((open: boolean) => {
-    if (!open) promptAddCallbackRef.current = undefined
+    if (!open) {
+      if (uploadedFilesRef.current.length > 0)
+        promptAddCallbackRef.current?.(uploadedFilesRef.current)
+      promptAddCallbackRef.current = undefined
+      uploadedFilesRef.current = []
+    }
     setIsUploadOpen(open)
   }, [])
 
