@@ -25,6 +25,7 @@ class DatasetDetailRecord(TypedDict):
     permission: str
     data_source_type: str | None
     indexing_technique: str | None
+    keyword_number: int | None
     app_count: int
     document_count: int
     word_count: int
@@ -59,6 +60,8 @@ class DatasetDetailRecord(TypedDict):
     # Detail/create responses may omit membership or explicitly return null;
     # listing and updates materialize a list, including an empty one.
     partial_member_list: NotRequired[list[str] | None]
+    # Listing attaches Classic-to-Agent knowledge base upgrade availability.
+    knowledge_fs_upgrade: NotRequired[Mapping[str, JsonValue]]
 
 
 class DatasetPage(TypedDict):

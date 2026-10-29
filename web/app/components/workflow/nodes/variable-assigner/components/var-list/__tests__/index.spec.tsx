@@ -1,23 +1,10 @@
 import type { ComponentProps } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
-import { createNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { renderAssigner as renderWorkflowFlowComponent } from '../../../__tests__/test-helpers'
 import VarList from '../index'
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: ({ onOpen, onChange }: { onOpen?: () => void; onChange: (value: string[]) => void }) => (
-    <div>
-      <button type="button" data-testid="var-reference-picker-trigger" onClick={onOpen}>
-        open-picker
-      </button>
-      <button type="button" onClick={() => onChange(['node-a', 'answer'])}>
-        select-answer
-      </button>
-    </div>
-  ),
-}))
 
 const sourceNode = createNode({
   id: 'node-a',
@@ -26,6 +13,7 @@ const sourceNode = createNode({
     title: 'Source Node',
     outputs: {
       answer: { type: VarType.string },
+      other: { type: VarType.string },
     },
   },
 })
@@ -53,7 +41,8 @@ const renderVarList = (props: Partial<ComponentProps<typeof VarList>> = {}) => {
     />,
     {
       nodes: [sourceNode, currentNode],
-      edges: [],
+      edges: [createEdge({ source: 'node-a', target: 'node-current' })],
+      initialStoreState: { isWorkflowDataLoaded: true },
       hooksStoreProps: {},
     },
   )
@@ -66,37 +55,15 @@ const renderVarList = (props: Partial<ComponentProps<typeof VarList>> = {}) => {
 }
 
 describe('variable-assigner/var-list', () => {
-  beforeEach(() => {
-    resetFixtureCounters()
-  })
-
-  it('renders the empty placeholder when no variables are configured', () => {
-    renderVarList()
-
-    expect(screen.getByText('workflowLogic.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
-  })
-
-  it('opens the picker and removes an assigned variable', () => {
-    const { handleChange, handleOpen } = renderVarList({
-      list: [['node-a', 'answer']],
-    })
-
-    fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
+  it('selects a replacement through the real picker and removes the assigned variable', async () => {
+    const user = userEvent.setup()
+    const { handleChange, handleOpen } = renderVarList({ list: [['node-a', 'other']] })
+    await user.click(await screen.findByTestId('var-reference-picker-trigger'))
     expect(handleOpen).toHaveBeenCalledWith(0)
-
-    const buttons = screen.getAllByRole('button')
-    fireEvent.click(buttons[buttons.length - 1]!)
-
-    expect(handleChange).toHaveBeenLastCalledWith([])
-  })
-
-  it('updates a selected variable through the reference picker', async () => {
-    const { handleChange } = renderVarList({
-      list: [['node-a', 'answer']],
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'select-answer' }))
-
+    const popup = await screen.findByRole('dialog')
+    await user.click(await within(popup).findByText('answer'))
     expect(handleChange).toHaveBeenLastCalledWith([['node-a', 'answer']], ['node-a', 'answer'])
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    expect(handleChange).toHaveBeenLastCalledWith([])
   })
 })

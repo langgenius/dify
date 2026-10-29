@@ -1,5 +1,6 @@
-import type { DataSourceAuth } from './types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTheme } from 'next-themes'
@@ -7,7 +8,6 @@ import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -15,11 +15,13 @@ import Link from '@/next/link'
 import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
+  marketplace: MarketplaceLinks
   onOpenMarketplace?: () => void
-  providers: DataSourceAuth[]
+  providers: DatasourceProviderAuthResponse[]
   searchText: string
 }
 const InstallFromMarketplace = ({
+  marketplace,
   onOpenMarketplace,
   providers,
   searchText,
@@ -33,11 +35,21 @@ const InstallFromMarketplace = ({
     searchText,
   )
 
-  const cardRender = useCallback((plugin: Plugin) => {
-    if (plugin.type === 'bundle') return null
+  const cardRender = useCallback(
+    (plugin: Plugin) => {
+      if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
-  }, [])
+      return (
+        <ProviderCard
+          key={plugin.plugin_id}
+          className="h-36.5"
+          marketplace={marketplace}
+          payload={plugin}
+        />
+      )
+    },
+    [marketplace],
+  )
 
   return (
     <div className="mb-2">
@@ -46,7 +58,7 @@ const InstallFromMarketplace = ({
         <button
           type="button"
           aria-expanded={!collapse}
-          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-md-semibold text-text-primary"
+          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-start system-md-semibold text-text-primary"
           onClick={() => setCollapse(!collapse)}
         >
           <span
@@ -56,7 +68,7 @@ const InstallFromMarketplace = ({
           {t(($) => $['modelProvider.installDataSource'], { ns: 'modelProvider' })}
         </button>
         <div className="mb-2 flex flex-wrap items-center pt-2">
-          <span className="pr-1 system-sm-regular text-text-tertiary">
+          <span className="pe-1 system-sm-regular text-text-tertiary">
             {t(($) => $['modelProvider.discoverMore'], { ns: 'modelProvider' })}
           </span>
           {onOpenMarketplace ? (
@@ -66,17 +78,23 @@ const InstallFromMarketplace = ({
               onClick={onOpenMarketplace}
             >
               {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              <span
+                className="i-ri-arrow-right-up-line size-4 rtl:-scale-x-100"
+                aria-hidden="true"
+              />
             </button>
           ) : (
             <Link
               target="_blank"
               rel="noopener noreferrer"
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.datasource, { theme })}
+              href={marketplace.category(PluginCategoryEnum.datasource, { theme })}
               className="inline-flex items-center system-sm-medium text-text-accent"
             >
               {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              <span
+                className="i-ri-arrow-right-up-line size-4 rtl:-scale-x-100"
+                aria-hidden="true"
+              />
             </Link>
           )}
         </div>

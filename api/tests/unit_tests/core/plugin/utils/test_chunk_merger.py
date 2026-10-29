@@ -125,7 +125,9 @@ class TestChunkMerger:
                 ),
             )
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="File is too large which reached the limit of 0\\.00095367431640625MB"
+        ) as exc_info:
             list(merge_blob_chunks(mock_generator(), max_file_size=1000))
         assert "File is too large" in str(exc_info.value)
 
@@ -141,7 +143,7 @@ class TestChunkMerger:
                 ),
             )
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="File chunk is too large which reached the limit of 8\\.0KB") as exc_info:
             list(merge_blob_chunks(mock_generator(), max_chunk_size=8192))
         assert "File chunk is too large" in str(exc_info.value)
 
@@ -216,7 +218,7 @@ class TestChunkMerger:
                 ),
             )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="File is too large which reached the limit of 0\\.000286102294921875MB"):
             list(merge_blob_chunks(mock_generator2(), max_file_size=300))
 
     def test_merge_blob_chunks_data_integrity(self):

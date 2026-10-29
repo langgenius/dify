@@ -6,7 +6,7 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
@@ -470,10 +470,7 @@ class DatasetRetrieval:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = self._get_available_datasets(tenant_id, dataset_ids)
 
-        if inputs:
-            inputs = {key: str(value) for key, value in inputs.items()}
-        else:
-            inputs = {}
+        inputs = {key: str(value) for key, value in inputs.items()} if inputs else {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
         metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
             session,
@@ -566,10 +563,7 @@ class DatasetRetrieval:
                         segment_content = sign_segment_content(segment, session=session)
 
                     # If summary exists, prepend it to the content
-                    if record.summary:
-                        final_content = f"{record.summary}\n{segment_content}"
-                    else:
-                        final_content = segment_content
+                    final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                     document_context_list.append(
                         DocumentContext(
@@ -1696,7 +1690,12 @@ class DatasetRetrieval:
 
             case "not contains":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
+                filters.append(
+                    or_(
+                        json_field.is_(None),
+                        json_field.notlike(f"%{escaped_value}%", escape="\\"),
+                    )
+                )
 
             case "start with":
                 escaped_value = escape_like_pattern(str(value))
@@ -1716,9 +1715,11 @@ class DatasetRetrieval:
             case "is not" | "≠":
                 match value:
                     case str():
-                        filters.append(json_field != value)
+                        filters.append(or_(json_field.is_(None), json_field != value))
                     case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        filters.append(
+                            or_(json_field.is_(None), DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        )
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1749,9 +1750,10 @@ class DatasetRetrieval:
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
                     filters.append(literal(condition == "not in"))
+                elif condition == "in":
+                    filters.append(json_field.in_(value_list))
                 else:
-                    op = json_field.in_ if condition == "in" else json_field.notin_
-                    filters.append(op(value_list))
+                    filters.append(or_(json_field.is_(None), json_field.notin_(value_list)))
             case _:
                 pass
 
@@ -1828,7 +1830,7 @@ class DatasetRetrieval:
         model_mode = ModelMode(mode)
         input_text = query
 
-        prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+        prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
         if model_mode == ModelMode.CHAT:
             prompt_template = []
             system_prompt_messages = ChatModelMessage(role=PromptMessageRole.SYSTEM, text=METADATA_FILTER_SYSTEM_PROMPT)

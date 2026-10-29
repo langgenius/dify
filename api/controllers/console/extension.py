@@ -35,9 +35,15 @@ class APIBasedExtensionPayload(BaseModel):
     api_key: str = Field(description="API key for authentication")
 
 
+class CodeBasedExtensionItemResponse(ResponseModel):
+    name: str
+    label: dict[str, Any] | None = None
+    form_schema: list[dict[str, Any]] | None = None
+
+
 class CodeBasedExtensionResponse(ResponseModel):
     module: str = Field(description="Module name")
-    data: Any = Field(description="Extension data")
+    data: list[CodeBasedExtensionItemResponse] = Field(description="Non-builtin extensions of the module")
 
 
 def _mask_api_key(api_key: str) -> str:

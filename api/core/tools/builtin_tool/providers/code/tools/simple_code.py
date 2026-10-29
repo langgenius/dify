@@ -34,4 +34,4 @@ class SimpleCode(BuiltinTool):
             result = CodeExecutor.execute_code(language, "", code)
             yield self.create_text_message(result)
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

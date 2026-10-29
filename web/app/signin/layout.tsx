@@ -4,7 +4,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Header from './_header'
 
-export default function SignInLayout({ children }: any) {
+export default function SignInLayout({ children }: { children: React.ReactNode }) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   return (
     <>

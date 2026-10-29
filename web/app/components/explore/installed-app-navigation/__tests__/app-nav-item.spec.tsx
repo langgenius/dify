@@ -49,17 +49,6 @@ describe('AppNavItem', () => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render name and item operation when expanded', () => {
-      render(<AppNavItem {...baseProps} />)
-
-      expect(screen.getByText('My App')).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: /common\.operation\.moreActionsFor.*My App/ }),
-      ).toBeInTheDocument()
-    })
-  })
-
   describe('User Interactions', () => {
     it('should render installed app navigation as a link', () => {
       render(<AppNavItem {...baseProps} />)

@@ -1,11 +1,12 @@
 import type { SelectorParam } from 'i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { toast } from '@/app/notifications'
-import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import {
@@ -35,7 +36,7 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation(['appDebug'])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
-  const { appId } = useParams<{ appId?: string }>()
+  const appId = useAtomValue(editorAppIdAtom)
   const queryClient = useQueryClient()
   const { isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 

@@ -24,6 +24,26 @@ export const zAccessTokenResultResponse = z.object({
   result: z.string(),
 })
 
+export const zAnyJsonValue = z.unknown()
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
 /**
  * AppAccessModeQuery
  */
@@ -211,6 +231,18 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * AppMoreLikeThisDisabledError
  *
  * The 'More like this' feature is disabled. Please refresh your page.
@@ -279,6 +311,42 @@ export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
   }),
 )
 
@@ -563,43 +631,9 @@ export const zInvalidUploadTokenError = zErrorResponse.and(
   }),
 )
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
-
-/**
- * AgentThought
- */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
-})
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
-
 export const zJsonValueType = z.unknown()
 
-export const zJsonValue2 = z.unknown()
+export const zJsonValue = z.unknown()
 
 /**
  * HumanInputFormSubmissionData
@@ -610,7 +644,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -618,7 +652,28 @@ export const zHumanInputFormSubmissionData = z.object({
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
+  inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
 })
 
 /**
@@ -676,6 +731,18 @@ export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })
+
+/**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * MessageFile
@@ -988,12 +1055,16 @@ export const zRetrieverResource = z.object({
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
   doc_metadata: z.record(z.string(), zJsonValueType).nullish(),
+  document_asset_id: z.uuid().nullish(),
   document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
+  document_revision: z.int().nullish(),
+  document_version: z.int().nullish(),
   files: z.array(z.record(z.string(), zJsonValueType)).nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
   message_id: z.uuid().optional(),
   page: z.int().nullish(),
   position: z.int(),
@@ -1026,13 +1097,29 @@ export const zSavedMessageListQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
+export const zShallowJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
+
+/**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponse = zShallowJsonValue
+
 /**
  * SimpleConversation
  */
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
   id: z.uuid(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zAnyJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
@@ -1597,10 +1684,10 @@ export const zParagraphInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
@@ -1664,6 +1751,7 @@ export const zWebAppAuthModel = z.object({
  * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
  */
 export const zSystemFeatureModel = z.object({
+  agent_tracing_api_collection_enabled: z.boolean(),
   branding: zBrandingModel.default({
     application_title: '',
     enabled: false,
@@ -1685,7 +1773,6 @@ export const zSystemFeatureModel = z.object({
   enable_step_by_step_tour: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
-  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseStatusModel.default({ status: 'none' }),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',
@@ -1862,7 +1949,7 @@ export const zWorkflowRunPayload = z.object({
 /**
  * GeneratedAppResponse
  */
-export const zGeneratedAppResponseWritable = zJsonValue
+export const zGeneratedAppResponseWritable = zShallowJsonValue
 
 /**
  * HumanInputFormSubmitResponse
@@ -1980,7 +2067,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 })
 
 /**
- * Conversation renamed successfully
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 

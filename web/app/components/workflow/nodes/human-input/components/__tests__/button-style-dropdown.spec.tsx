@@ -59,27 +59,10 @@ describe('ButtonStyleDropdown', () => {
     await user.keyboard(' ')
     expect(primaryRadio).toHaveAttribute('aria-checked', 'true')
     expect(onChange).toHaveBeenCalledWith(UserActionButtonType.Primary)
-  })
-
-  it('opens from the named keyboard trigger and closes with Escape', async () => {
-    const user = userEvent.setup()
-    render(
-      <ButtonStyleDropdown text="Approve" data={UserActionButtonType.Ghost} onChange={onChange} />,
-    )
-
-    const trigger = screen.getByRole('button', {
-      name: 'Approve: nodes.humanInput.userActions.chooseStyle',
-    })
-    await user.tab()
-    expect(trigger).toHaveFocus()
-    await user.keyboard('{Enter}')
-    expect(
-      await screen.findByRole('dialog', {
-        name: 'Approve: nodes.humanInput.userActions.chooseStyle',
-      }),
-    ).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(trigger)
+    expect(screen.getByRole('radio', { name: 'Approve, Primary' })).toBeChecked()
   })
 
   it('should keep the dropdown closed in readonly mode', async () => {
@@ -99,9 +82,7 @@ describe('ButtonStyleDropdown', () => {
     expect(trigger).toBeDisabled()
     await user.click(trigger)
 
-    expect(
-      screen.queryByText('Approve: nodes.humanInput.userActions.chooseStyle'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 })

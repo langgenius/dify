@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
@@ -243,16 +244,16 @@ export function EnvironmentWebAppCard({
       )}
       <AlertDialog open={showRegenerate} onOpenChange={setShowRegenerate}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['overview.appInfo.regenerateNotice'], {
                 ns: 'appOverview',
               })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

@@ -20,8 +20,8 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
 from models.account import Account, TenantAccountRole
 from services.entities.dsl_entities import ImportStatus
 from services.rbac import contracts as rbac_contracts
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account
 
 
 def _account(*, editor: bool) -> Account:
@@ -171,7 +171,9 @@ class TestCreateRagPipelineDatasetApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError, match="1 validation error for RagPipelineDatasetImportPayload\\\nyaml_content"
+            ):
                 method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
 

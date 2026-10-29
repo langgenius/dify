@@ -25,7 +25,7 @@ export type EmojiIcon = {
   background: string
 }
 
-export type ImageIcon = {
+type ImageIcon = {
   type: 'image'
   fileId: string
   url: string
@@ -111,7 +111,7 @@ export function IconPickerContent({ enableImageUpload }: IconPickerContentProps)
       initialFocus={(interaction) =>
         interaction === 'touch' ? popupRef.current : (focusTargetRef.current ?? true)
       }
-      className="flex max-h-[calc(100dvh-2rem)] w-80.5 flex-col overflow-hidden p-0 text-left"
+      className="w-80.5 overflow-hidden"
     >
       <DialogTitle className="sr-only">
         {t(($) => $['iconPicker.title'], { ns: 'app' })}

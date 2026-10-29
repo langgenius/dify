@@ -1,74 +1,17 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { renderNodePanel } from '../../__tests__/render-node-panel'
 import Panel from '../panel'
-import useConfig from '../use-config'
 
-vi.mock('../use-config', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => (
-    <div>
-      <div>{title}</div>
-      <div>{operations}</div>
-      <div>{children}</div>
-    </div>
-  ),
-}))
-
-vi.mock('../components/frequency-selector', () => ({
-  default: ({ frequency, onChange }: any) => (
-    <button type="button" onClick={() => onChange('weekly')}>
-      {frequency}
-    </button>
-  ),
-}))
-
-vi.mock('../components/mode-toggle', () => ({
-  default: ({ mode, onChange }: any) => (
-    <button type="button" onClick={() => onChange(mode === 'visual' ? 'cron' : 'visual')}>
-      {mode}
-    </button>
-  ),
-}))
-
-vi.mock('../components/monthly-days-selector', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange([1, 'last'])}>
-      monthly-days
-    </button>
-  ),
-}))
-
-vi.mock('../components/next-execution-times', () => ({
-  default: ({ data }: any) => <div>next-times-{data.mode}</div>,
-}))
-
-vi.mock('../components/on-minute-selector', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange(25)}>
-      minute-selector
-    </button>
-  ),
-}))
-
-vi.mock('../components/weekday-selector', () => ({
-  default: ({ onChange }: any) => (
-    <button type="button" onClick={() => onChange(['mon', 'wed'])}>
-      weekday-selector
-    </button>
-  ),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
+// Execution previews own their scheduling service; this suite edits the persisted schedule.
+vi.mock('../components/next-execution-times', () => ({ default: () => null }))
 
 const createData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
   title: 'Schedule Trigger',
   desc: '',
-  type: 'trigger-schedule' as ScheduleTriggerNodeType['type'],
+  type: BlockEnum.TriggerSchedule,
   mode: 'visual',
   frequency: 'daily',
   timezone: 'UTC',
@@ -81,223 +24,143 @@ const createData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleT
   ...overrides,
 })
 
-const panelProps: PanelProps = {
-  getInputVars: vi.fn(() => []),
-  toVarInputs: vi.fn(() => []),
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  setRunInputData: vi.fn(),
-  runResult: null,
-}
-
-const renderPanel = (id: string, data: ScheduleTriggerNodeType) =>
-  render(<Panel id={id} data={data} panelProps={panelProps} />)
+const renderPanel = (data = createData(), readOnly = false) =>
+  renderNodePanel(Panel, data, {
+    initialStoreState: { canvasReadOnly: readOnly },
+  })
+const cronButton = () =>
+  screen.getByRole('button', {
+    name: 'workflowIntegrations.nodes.triggerSchedule.useCronExpression',
+  })
+const frequencyPicker = () => screen.getByRole('combobox', { name: /frequencyLabel/ })
 
 describe('TriggerSchedulePanel', () => {
-  const setInputs = vi.fn()
-  const handleModeChange = vi.fn()
-  const handleFrequencyChange = vi.fn()
-  const handleCronExpressionChange = vi.fn()
-  const handleWeekdaysChange = vi.fn()
-  const handleTimeChange = vi.fn()
-  const handleOnMinuteChange = vi.fn()
+  it('prevents time editing when the workflow is read only', async () => {
+    const user = userEvent.setup()
+    const { data } = renderPanel(createData(), true)
+    const trigger = screen.getByRole('button', { name: /11:30 AM.*UTC/ })
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(data()).toMatchObject(createData())
+  })
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue({
-      readOnly: false,
-      inputs: createData(),
-      setInputs,
-      handleModeChange,
-      handleFrequencyChange,
-      handleCronExpressionChange,
-      handleWeekdaysChange,
-      handleTimeChange,
-      handleOnMinuteChange,
+  it('saves frequency and time before switching to cron mode', async () => {
+    const user = userEvent.setup()
+    const { data } = renderPanel()
+    await user.click(frequencyPicker())
+    await user.click(
+      screen.getByRole('option', {
+        name: 'workflowIntegrations.nodes.triggerSchedule.frequency.weekly',
+      }),
+    )
+    await user.click(screen.getByText('workflow.nodes.triggerSchedule.time', { exact: true }))
+    const trigger = screen.getByRole('button', { name: /11:30 AM.*UTC/ })
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await user.click(screen.getByRole('option', { name: '2' }))
+    await user.click(screen.getByText('45'))
+    await user.click(screen.getByText('PM'))
+    await user.click(screen.getByRole('button', { name: /operation\.ok/i }))
+    expect(data()).toMatchObject({
+      frequency: 'weekly',
+      visual_config: { time: '2:45 PM' },
+      timezone: 'UTC',
+    })
+    expect(screen.getByRole('button', { name: /2:45 PM.*UTC/ })).toBeInTheDocument()
+    await user.click(cronButton())
+    expect(data().mode).toBe('cron')
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.nodes.triggerSchedule.cronExpression' }),
+    ).toBeInTheDocument()
+  })
+
+  it('updates weekly and monthly selections while preserving other schedule settings', async () => {
+    const user = userEvent.setup()
+    const { data } = renderPanel(createData({ frequency: 'weekly' }))
+    await user.click(screen.getByRole('button', { name: 'Wed' }))
+    expect(data().visual_config?.weekdays).toEqual(['mon', 'wed'])
+    await user.click(frequencyPicker())
+    await user.click(
+      screen.getByRole('option', {
+        name: 'workflowIntegrations.nodes.triggerSchedule.frequency.monthly',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowIntegrations.nodes.triggerSchedule.lastDay',
+        pressed: false,
+      }),
+    )
+    expect(data()).toMatchObject({
+      frequency: 'monthly',
+      timezone: 'UTC',
+      visual_config: { monthly_days: [1, 'last'], time: '11:30 AM' },
     })
   })
 
-  // The panel should wire the visual and cron controls back to the schedule config handlers.
-  describe('Panel Wiring', () => {
-    it('prevents time editing when the workflow is read only', async () => {
+  it('saves an edited cron expression', async () => {
+    const user = userEvent.setup()
+    const { data } = renderPanel(
+      createData({ mode: 'cron', frequency: undefined, cron_expression: '0 0 * * *' }),
+    )
+    const input = screen.getByRole('textbox', {
+      name: 'workflow.nodes.triggerSchedule.cronExpression',
+    })
+    await user.clear(input)
+    await user.type(input, '*/5 * * * *')
+    expect(data().cron_expression).toBe('*/5 * * * *')
+    expect(input).toHaveValue('*/5 * * * *')
+  })
+
+  it('uses daily and empty cron defaults when schedule values are missing', async () => {
+    const user = userEvent.setup()
+    renderPanel(createData({ frequency: undefined }))
+    expect(frequencyPicker()).toHaveTextContent(
+      'workflowIntegrations.nodes.triggerSchedule.frequency.daily',
+    )
+    expect(screen.getByRole('button', { name: /11:30 AM/ })).toBeInTheDocument()
+    await user.click(cronButton())
+    expect(
+      screen.getByRole('textbox', { name: 'workflow.nodes.triggerSchedule.cronExpression' }),
+    ).toHaveValue('')
+  })
+
+  it('saves the hourly minute selected with the slider', async () => {
+    const user = userEvent.setup()
+    const { data } = renderPanel(createData({ frequency: 'hourly' }))
+    screen.getByRole('slider').focus()
+    await user.keyboard('{ArrowRight}')
+    expect(data().visual_config?.on_minute).toBe(16)
+  })
+
+  it.each(['weekly', 'monthly', 'hourly'] as const)(
+    'disables schedule editing in read-only %s mode',
+    async (frequency) => {
       const user = userEvent.setup()
-      mockUseConfig.mockReturnValue({ ...mockUseConfig('node-1', createData()), readOnly: true })
-      renderPanel('node-1', createData())
-      const trigger = screen.getByRole('button', { name: /11:30 AM.*UTC/ })
-      await user.click(trigger)
-      expect(trigger).toHaveAttribute('aria-disabled', 'true')
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(handleTimeChange).not.toHaveBeenCalled()
+      const initial = createData({ frequency })
+      const { data } = renderPanel(initial, true)
+      expect(cronButton()).toBeDisabled()
+      await user.click(cronButton())
+      expect(frequencyPicker()).toBeDisabled()
+      if (frequency !== 'hourly') {
+        const day = screen.getByRole('button', { name: frequency === 'weekly' ? 'Wed' : '2' })
+        expect(day).toBeDisabled()
+        await user.click(day)
+      } else expect(screen.getByRole('slider')).toBeDisabled()
+      expect(data()).toMatchObject(initial)
+    },
+  )
+
+  it('keeps cron expressions read-only when editing is denied', async () => {
+    const user = userEvent.setup()
+    const initial = createData({ mode: 'cron', cron_expression: '0 0 * * *' })
+    const { data } = renderPanel(initial, true)
+    const input = screen.getByRole('textbox', {
+      name: 'workflow.nodes.triggerSchedule.cronExpression',
     })
-    it('should render the visual controls and forward their callbacks', async () => {
-      const user = userEvent.setup()
-      renderPanel('node-1', createData())
-
-      await user.click(screen.getByRole('button', { name: 'visual' }))
-      await user.click(screen.getByRole('button', { name: 'daily' }))
-      await user.click(screen.getByText('workflow.nodes.triggerSchedule.time', { exact: true }))
-      const timeTrigger = screen.getByRole('button', { name: /11:30 AM.*UTC/ })
-      expect(timeTrigger).toHaveFocus()
-      expect(timeTrigger).toHaveAttribute('aria-expanded', 'false')
-      await user.keyboard('{Enter}')
-      await user.click(screen.getByRole('option', { name: '2' }))
-      await user.click(screen.getByText('45'))
-      await user.click(screen.getByText('PM'))
-      await user.click(screen.getByRole('button', { name: /operation\.ok/i }))
-
-      expect(handleModeChange).toHaveBeenCalledWith('cron')
-      expect(handleFrequencyChange).toHaveBeenCalledWith('weekly')
-      expect(handleTimeChange).toHaveBeenCalledWith('2:45 PM')
-      expect(screen.getByText('next-times-visual')).toBeInTheDocument()
-    })
-
-    it('should render weekday and monthly helpers for the matching frequencies', async () => {
-      const user = userEvent.setup()
-      mockUseConfig.mockReturnValueOnce({
-        readOnly: false,
-        inputs: createData({ frequency: 'weekly' }),
-        setInputs,
-        handleModeChange,
-        handleFrequencyChange,
-        handleCronExpressionChange,
-        handleWeekdaysChange,
-        handleTimeChange,
-        handleOnMinuteChange,
-      })
-
-      renderPanel('node-1', createData({ frequency: 'weekly' }))
-      await user.click(screen.getByRole('button', { name: 'weekday-selector' }))
-      expect(handleWeekdaysChange).toHaveBeenCalledWith(['mon', 'wed'])
-
-      mockUseConfig.mockReturnValueOnce({
-        readOnly: false,
-        inputs: createData({ frequency: 'weekly', visual_config: undefined as any }),
-        setInputs,
-        handleModeChange,
-        handleFrequencyChange,
-        handleCronExpressionChange,
-        handleWeekdaysChange,
-        handleTimeChange,
-        handleOnMinuteChange,
-      })
-
-      renderPanel('node-5', createData({ frequency: 'weekly', visual_config: undefined as any }))
-      await user.click(screen.getAllByRole('button', { name: 'weekday-selector' })[1]!)
-      expect(handleWeekdaysChange).toHaveBeenCalledTimes(2)
-
-      mockUseConfig.mockReturnValueOnce({
-        readOnly: false,
-        inputs: createData({ frequency: 'monthly', visual_config: undefined as any }),
-        setInputs,
-        handleModeChange,
-        handleFrequencyChange,
-        handleCronExpressionChange,
-        handleWeekdaysChange,
-        handleTimeChange,
-        handleOnMinuteChange,
-      })
-
-      renderPanel('node-2', createData({ frequency: 'monthly', visual_config: undefined as any }))
-      await user.click(screen.getByRole('button', { name: 'monthly-days' }))
-      expect(setInputs).toHaveBeenCalled()
-    })
-
-    it('should render cron mode and forward expression changes', () => {
-      mockUseConfig.mockReturnValueOnce({
-        readOnly: false,
-        inputs: createData({ mode: 'cron', frequency: undefined, cron_expression: '0 0 * * *' }),
-        setInputs,
-        handleModeChange,
-        handleFrequencyChange,
-        handleCronExpressionChange,
-        handleWeekdaysChange,
-        handleTimeChange,
-        handleOnMinuteChange,
-      })
-
-      renderPanel('node-3', createData({ mode: 'cron' }))
-
-      fireEvent.change(
-        screen.getByRole('textbox', {
-          name: 'workflow.nodes.triggerSchedule.cronExpression',
-        }),
-        { target: { value: '*/5 * * * *' } },
-      )
-
-      expect(handleCronExpressionChange).toHaveBeenCalledWith('*/5 * * * *')
-    })
-
-    it('should use daily and empty cron defaults when the schedule values are missing', () => {
-      mockUseConfig.mockReturnValueOnce({
-        readOnly: false,
-        inputs: createData({ frequency: undefined }),
-        setInputs,
-        handleModeChange,
-        handleFrequencyChange,
-        handleCronExpressionChange,
-        handleWeekdaysChange,
-        handleTimeChange,
-        handleOnMinuteChange,
-      })
-
-      const { rerender } = renderPanel('node-6', createData({ frequency: undefined }) as any)
-      expect(screen.getByRole('button', { name: 'daily' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /11:30 AM/ })).toBeInTheDocument()
-
-      mockUseConfig.mockReturnValueOnce({
-        readOnly: false,
-        inputs: createData({
-          mode: 'cron',
-          frequency: undefined,
-          cron_expression: undefined as any,
-        }),
-        setInputs,
-        handleModeChange,
-        handleFrequencyChange,
-        handleCronExpressionChange,
-        handleWeekdaysChange,
-        handleTimeChange,
-        handleOnMinuteChange,
-      })
-
-      rerender(
-        <Panel
-          id="node-7"
-          data={
-            createData({
-              mode: 'cron',
-              frequency: undefined,
-              cron_expression: undefined as any,
-            }) as any
-          }
-          panelProps={panelProps}
-        />,
-      )
-      expect(
-        screen.getByRole('textbox', {
-          name: 'workflow.nodes.triggerSchedule.cronExpression',
-        }),
-      ).toHaveValue('')
-    })
-
-    it('should render the hourly minute selector when the frequency is hourly', async () => {
-      const user = userEvent.setup()
-      mockUseConfig.mockReturnValueOnce({
-        readOnly: false,
-        inputs: createData({ frequency: 'hourly' }),
-        setInputs,
-        handleModeChange,
-        handleFrequencyChange,
-        handleCronExpressionChange,
-        handleWeekdaysChange,
-        handleTimeChange,
-        handleOnMinuteChange,
-      })
-
-      renderPanel('node-4', createData({ frequency: 'hourly' }))
-      await user.click(screen.getByRole('button', { name: 'minute-selector' }))
-
-      expect(handleOnMinuteChange).toHaveBeenCalledWith(25)
-    })
+    await user.type(input, '5')
+    expect(input).toHaveValue('0 0 * * *')
+    expect(data()).toMatchObject(initial)
   })
 })

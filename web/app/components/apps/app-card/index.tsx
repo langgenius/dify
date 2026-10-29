@@ -5,7 +5,7 @@ import type { WorkflowOnlineUser } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useId, useMemo } from 'react'
+import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -15,8 +15,6 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
-import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
   getAppACLCapabilities,
@@ -24,12 +22,14 @@ import {
   hasPermission,
 } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
+import { StudioListLink } from '../list-navigation'
 import { AppCardInteractions } from './interactions'
 
 const EMPTY_ONLINE_USERS: WorkflowOnlineUser[] = []
 
 type AppCardProps = {
   app: AppPartial
+  onDelete: (item: HTMLLIElement | null) => void
   onlineUsers?: WorkflowOnlineUser[]
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuOpen?: boolean
@@ -41,6 +41,7 @@ type AppCardProps = {
 export const AppCard = memo(
   ({
     app,
+    onDelete,
     onlineUsers = EMPTY_ONLINE_USERS,
     onOpenTagManagement,
     stepByStepTourActionMenuOpen = false,
@@ -48,6 +49,7 @@ export const AppCard = memo(
     stepByStepTourCardHighlightPart,
     stepByStepTourActionMenuHighlightPart,
   }: AppCardProps) => {
+    const itemRef = useRef<HTMLLIElement>(null)
     const { t } = useTranslation(['app', 'common', 'time'])
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const { data: currentUserId } = useSuspenseQuery({
@@ -86,15 +88,15 @@ export const AppCard = memo(
 
     const appModeLabel = useMemo(() => {
       switch (app.mode) {
-        case AppModeEnum.CHAT:
+        case 'chat':
           return t(($) => $['types.chatbot'], { ns: 'app' })
-        case AppModeEnum.ADVANCED_CHAT:
+        case 'advanced-chat':
           return t(($) => $['types.advanced'], { ns: 'app' })
-        case AppModeEnum.AGENT_CHAT:
+        case 'agent-chat':
           return t(($) => $['types.agent'], { ns: 'app' })
-        case AppModeEnum.COMPLETION:
+        case 'completion':
           return t(($) => $['types.completion'], { ns: 'app' })
-        case AppModeEnum.WORKFLOW:
+        case 'workflow':
           return t(($) => $['types.workflow'], { ns: 'app' })
         default:
           return app.mode
@@ -178,6 +180,7 @@ export const AppCard = memo(
 
     return (
       <li
+        ref={itemRef}
         className={cn(
           "group relative isolate col-span-1 h-41.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
           !isPreviewOnly &&
@@ -199,10 +202,11 @@ export const AppCard = memo(
         ) : (
           <AppCardInteractions
             app={app}
+            onDelete={() => onDelete(itemRef.current)}
             stepByStepTourActionMenuOpen={stepByStepTourActionMenuOpen}
             stepByStepTourActionMenuHighlightPart={stepByStepTourActionMenuHighlightPart}
           >
-            <Link
+            <StudioListLink
               href={appHref}
               aria-labelledby={appNameId}
               aria-describedby={app.description ? appDescriptionId : undefined}
@@ -211,7 +215,7 @@ export const AppCard = memo(
               className={appCardClassName}
             >
               {appCardContent}
-            </Link>
+            </StudioListLink>
           </AppCardInteractions>
         )}
         <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">

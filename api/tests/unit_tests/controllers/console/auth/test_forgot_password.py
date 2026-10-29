@@ -20,7 +20,7 @@ from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from enums import DeploymentEdition
 from services import account_errors
 from services.entities.account_entities import ForgotPasswordVerification
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class FakeForgotPasswordService:

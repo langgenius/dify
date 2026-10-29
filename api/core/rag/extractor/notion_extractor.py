@@ -127,10 +127,7 @@ class NotionExtractor(BaseExtractor):
                         # join them all so no part of the value is dropped.
                         value = "".join(segment.get("plain_text", "") for segment in property_value[type])
                     elif type in {"select", "status"}:
-                        if property_value[type]:
-                            value = property_value[type]["name"]
-                        else:
-                            value = ""
+                        value = property_value[type]["name"] if property_value[type] else ""
                     else:
                         value = property_value[type]
                     data[property_name] = value
@@ -361,8 +358,6 @@ class NotionExtractor(BaseExtractor):
         else:
             retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=obj_id)
 
-        query_dict: Mapping[str, Any] = MappingProxyType({})
-
         res = httpx.request(
             "GET",
             retrieve_page_url,
@@ -371,7 +366,6 @@ class NotionExtractor(BaseExtractor):
                 "Content-Type": "application/json",
                 "Notion-Version": "2022-06-28",
             },
-            json=query_dict,
             timeout=_REQUEST_TIMEOUT,
         )
 

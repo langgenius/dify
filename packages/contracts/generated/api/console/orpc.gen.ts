@@ -41,6 +41,8 @@ export const contractLoaders = {
     import('./instruction-generate/orpc.gen.ts').then(({ instructionGenerate }) => ({
       instructionGenerate,
     })),
+  knowledgeFs: () =>
+    import('./knowledge-fs/orpc.gen.ts').then(({ knowledgeFs }) => ({ knowledgeFs })),
   login: () => import('./login/orpc.gen.ts').then(({ login }) => ({ login })),
   logout: () => import('./logout/orpc.gen.ts').then(({ logout }) => ({ logout })),
   notification: () =>

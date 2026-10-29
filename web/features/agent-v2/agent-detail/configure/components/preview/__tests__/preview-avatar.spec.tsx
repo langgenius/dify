@@ -45,22 +45,6 @@ describe('Agent preview avatar', () => {
 
   afterEach(() => vi.restoreAllMocks())
 
-  it('renders an uploaded image from its signed URL instead of its file ID', () => {
-    const { container } = renderPreview(
-      createAgentFixture({
-        icon_type: 'image',
-        icon: 'uploaded-file-id',
-        icon_url: 'https://files.example.com/avatar.png?sign=signature',
-      }),
-    )
-
-    expect(container.querySelector('img')).toHaveAttribute(
-      'src',
-      'https://files.example.com/avatar.png?sign=signature',
-    )
-    expect(screen.queryByRole('img')).not.toBeInTheDocument()
-  })
-
   it('renders an external image from the raw icon when icon_url is null', () => {
     const { container } = renderPreview(
       createAgentFixture({
@@ -97,7 +81,11 @@ describe('Agent preview avatar', () => {
       }),
     )
 
-    expect(container.querySelector('img')).toBeInTheDocument()
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://files.example.com/avatar.png?sign=signature',
+    )
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByText('Original Agent')).toBeInTheDocument()
 
     await act(async () => {

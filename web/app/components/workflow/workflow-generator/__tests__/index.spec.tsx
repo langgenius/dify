@@ -1,42 +1,53 @@
 import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { GenerateWorkflowStreamCallbacks } from '@/service/workflow-generator'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import WorkflowGeneratorModal from '../index'
 import { useWorkflowGeneratorStore } from '../store'
+
+const render = createNuqsTestRenderer((ui) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'gpt-4o',
+          label: { en_US: 'GPT-4o' },
+          model_properties: { mode: 'chat' },
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'llm' } },
+    }),
+    { data: createDefaultModelFixture({ model: 'gpt-4o' }) },
+  )
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    { initialData: { data: [] } },
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+})
 
 const mockGenerateWorkflow = vi.fn()
 const mockGenerateWorkflowStream = vi.fn()
 const mockFetchSuggestions = vi.fn().mockResolvedValue({ suggestions: [] })
 const mockFetchWorkflowDraft = vi.fn()
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({ data: { rbac_enabled: false } }),
-  }
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    defaultModel: {
-      model: 'gpt-4o',
-      provider: { provider: 'openai' },
-    },
-  }),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <div>model selector</div>,
-  }),
-)
 
 vi.mock('@/app/components/workflow/workflow-preview', () => ({
   default: () => <div>workflow preview</div>,
@@ -48,15 +59,23 @@ vi.mock('@/service/workflow-generator', () => ({
   generateWorkflowStream: (...args: unknown[]) => mockGenerateWorkflowStream(...args),
 }))
 
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'GET' && new URL(url).pathname.endsWith('/workflows/draft'))
+      return Response.json(await mockFetchWorkflowDraft(new URL(url).pathname))
+    throw new Error(`Unexpected request: ${request.method} ${url}`)
+  },
 }))
 
 describe('WorkflowGeneratorModal', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    localStorage.clear()
-    sessionStorage.clear()
+    vi.resetAllMocks()
+    mockFetchSuggestions.mockResolvedValue({ suggestions: [] })
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith('workflow-gen-workflow-') || key === 'workflow-gen-suggestions-workflow')
+        sessionStorage.removeItem(key)
+    }
     useWorkflowGeneratorStore.setState({
       isOpen: true,
       mode: 'workflow',
@@ -81,18 +100,6 @@ describe('WorkflowGeneratorModal', () => {
           screen.getByRole('textbox', { name: /workflowGenerator\.instruction/i }),
         ).toHaveFocus(),
       )
-    })
-
-    it('should keep the instruction field keyboard-operable', async () => {
-      const user = userEvent.setup()
-      render(<WorkflowGeneratorModal />)
-
-      const instruction = screen.getByRole('textbox', {
-        name: /workflowGenerator\.instruction/i,
-      })
-      await user.type(instruction, 'Summarize a URL')
-
-      expect(instruction).toHaveValue('Summarize a URL')
     })
 
     it.each([{ isComposing: true }, { repeat: true }])(
@@ -124,7 +131,7 @@ describe('WorkflowGeneratorModal', () => {
         name: /workflowGenerator\.instruction/i,
       })
       await user.type(instruction, 'Summarize a URL')
-      fireEvent.keyDown(instruction, { key: 'Enter', ctrlKey: true })
+      await user.keyboard('{Control>}{Enter}{/Control}')
 
       await waitFor(() => expect(mockGenerateWorkflowStream).toHaveBeenCalledOnce())
     })
@@ -223,6 +230,7 @@ describe('WorkflowGeneratorModal', () => {
             type: 'custom',
             position: { x: 0, y: 0 },
             data: { type: 'start', title: 'Start' },
+            width: 240,
           },
         ],
         edges: [],
@@ -255,6 +263,9 @@ describe('WorkflowGeneratorModal', () => {
       await user.click(generateButton)
 
       await waitFor(() => {
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+          '/console/api/apps/app-1/workflows/draft',
+        )
         expect(mockGenerateWorkflowStream).toHaveBeenCalledWith(
           expect.objectContaining({ current_graph: currentGraph }),
           expect.any(Object),

@@ -23,7 +23,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAgentWebAppUrl } from '../../web-app-access'
 import { useWebAppAccessControl } from './use-web-app-access-control'
 
@@ -325,7 +324,7 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
 
   return {
     id: appId,
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     site: {
       title: site.title ?? agent.name,
       description: site.description ?? '',

@@ -17,26 +17,26 @@ from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
-class Parser(BaseModel):
+class DatasourceContentPreviewPayload(BaseModel):
     inputs: dict[str, Any]
     datasource_type: str
     credential_id: str | None = None
 
 
-register_schema_models(console_ns, Parser)
+register_schema_models(console_ns, DatasourceContentPreviewPayload)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
 class DataSourceContentPreviewApi(Resource):
-    @console_ns.expect(console_ns.models[Parser.__name__])
+    @console_ns.expect(console_ns.models[DatasourceContentPreviewPayload.__name__])
     @console_ns.response(200, "Success")
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
     @with_current_user
-    @model_validate(Parser)
-    def post(self, req_data: Parser, current_user: Account, pipeline: Pipeline, node_id: str):
+    @model_validate(DatasourceContentPreviewPayload)
+    def post(self, req_data: DatasourceContentPreviewPayload, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run datasource content preview
         """

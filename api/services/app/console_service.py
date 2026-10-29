@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Sequence
 from contextlib import AbstractContextManager, closing
 from dataclasses import replace
 from typing import BinaryIO, Literal, Protocol
@@ -11,16 +13,17 @@ from machinery.context import RequestContext
 from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppChange,
     AppCreationSettings,
     AppDeletion,
     AppExportOptions,
+    AppFieldChanges,
     AppListParams,
     AppPage,
     AppRecord,
     AppReference,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     ImportedAppPackage,
@@ -32,9 +35,14 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DslImportWarning,
     Import,
     ImportStatus,
+    PackagedWorkflowTool,
 )
+from services.workflow_tool_references import WorkflowToolTarget, retarget_workflow_tool_dsl
+
+logger = logging.getLogger(__name__)
 
 
 class ConsoleAppNotFoundError(Exception):
@@ -98,6 +106,8 @@ class ConsoleApps(Protocol):
 
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord: ...
 
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord: ...
+
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord: ...
 
     def update_icon(
@@ -108,13 +118,15 @@ class ConsoleApps(Protocol):
 
     def set_api_enabled(self, context: RequestContext, app_id: str, enabled: bool) -> AppChange: ...
 
+    def access_ready(self, context: RequestContext, app_id: str) -> bool: ...
+
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None: ...
+
     def set_starred(self, context: RequestContext, app_id: str, starred: bool) -> None: ...
 
     def get_reference(self, context: RequestContext, app_id: str) -> AppReference: ...
 
     def get_trace(self, context: RequestContext, app_id: str) -> AppTraceSettings: ...
-
-    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None: ...
 
 
 class AppTransfers(Protocol):
@@ -129,9 +141,11 @@ class AppTransfers(Protocol):
         context: RequestContext,
         params: AppImportParams,
         *,
-        as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import: ...
+
+    def import_copy(self, context: RequestContext, params: AppImportParams) -> Import: ...
 
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]: ...
 
@@ -142,6 +156,14 @@ class AppTransfers(Protocol):
     def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage: ...
 
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult: ...
+
+    def plan_workflow_tools(
+        self, context: RequestContext, tools: Sequence[PackagedWorkflowTool], *, creates_root_app: bool
+    ) -> dict[str, WorkflowToolTarget]: ...
+
+    def create_workflow_tool(
+        self, context: RequestContext, *, app_id: str, tool: PackagedWorkflowTool, target: WorkflowToolTarget
+    ) -> None: ...
 
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str: ...
 
@@ -164,14 +186,14 @@ class CreatorsPlatform(Protocol):
     def redirect_url(self, claim_code: str, oauth_code: str | None) -> str: ...
 
 
-class AppTraceProvider(Protocol):
-    def validate_provider(self, tracing_provider: str) -> None: ...
-
-    def require_provider_available(self, tracing_provider: str) -> None: ...
+class AppTracingSettings(Protocol):
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None: ...
 
 
 class AppLifecycle(Protocol):
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord: ...
+
+    def create_draft(self, context: RequestContext, app_id: str) -> None: ...
 
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion: ...
 
@@ -194,7 +216,7 @@ class ConsoleAppService:
         access: ConsoleAppAccess,
         transfers: AppTransfers,
         creators: CreatorsPlatform,
-        tracing: AppTraceProvider,
+        tracing: AppTracingSettings,
         lifecycle: AppLifecycle,
     ) -> None:
         self._apps = apps
@@ -203,6 +225,14 @@ class ConsoleAppService:
         self._creators = creators
         self._tracing = tracing
         self._lifecycle = lifecycle
+
+    def access_ready(self, context: RequestContext, app_id: str) -> bool:
+        """Whether an agent app has a published version its web app and Service API can serve."""
+        return self._apps.access_ready(context, app_id)
+
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None:
+        """The role of an agent app's backing agent; None for other apps."""
+        return self._apps.agent_role(context, app_id)
 
     def import_app(self, context: RequestContext, params: AppImportParams, *, source: BinaryIO | None = None) -> Import:
         if source is not None:
@@ -244,6 +274,8 @@ class ConsoleAppService:
         package = self._transfers.read_app_package(source)
         if package is not None:
             with closing(package):
+                if package.workflow_tools:
+                    return self._import_with_workflow_tools(context, params, package)
                 return self._import_dsl(
                     context,
                     params.model_copy(update={"mode": "yaml-content", "yaml_content": package.dsl, "yaml_url": None}),
@@ -254,6 +286,84 @@ class ConsoleAppService:
             raise InvalidRosterAgentPackageError("Roster Agent package import does not support overwriting an App")
         result = self._transfers.import_agent_package(context, source)
         return self._import_agent_result(result)
+
+    def _import_with_workflow_tools(
+        self, context: RequestContext, params: AppImportParams, package: AppImportPackage
+    ) -> Import:
+        """Create the workflows a package calls as Workflow Tools, then import the App that calls them.
+
+        Workflow Tools already in the workspace are reused. New tools get their ids up front, so a DSL can
+        reference a tool that is created after it and workflows that call each other need no order. Apps
+        created before a failure are deleted.
+        """
+        self._access.require_import(context, "dsl")
+        targets = self._transfers.plan_workflow_tools(
+            context, package.workflow_tools, creates_root_app=not params.app_id
+        )
+        created_app_ids: list[str] = []
+        warnings: list[DslImportWarning] = []
+        try:
+            for tool in package.workflow_tools:
+                target = targets[tool.provider_id]
+                if not target.create:
+                    continue
+                with closing(package.open_workflow_tool(tool)) as workflow_package:
+                    imported = self._import_dsl(
+                        context,
+                        AppImportParams(
+                            mode="yaml-content",
+                            yaml_content=retarget_workflow_tool_dsl(workflow_package.dsl, targets),
+                        ),
+                        package=workflow_package,
+                    )
+                if imported.app_id and imported.app_created:
+                    created_app_ids.append(imported.app_id)
+                if (
+                    imported.status not in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
+                    or not imported.app_id
+                ):
+                    raise InvalidRosterAgentPackageError(
+                        f"Workflow tool {tool.name!r} could not be imported: {imported.error}"
+                    )
+                try:
+                    self._transfers.create_workflow_tool(context, app_id=imported.app_id, tool=tool, target=target)
+                except ValueError as exc:
+                    # Publishing validates the workflow against this workspace, e.g. its Knowledge Bases.
+                    raise InvalidRosterAgentPackageError(
+                        f"Workflow tool {tool.name!r} could not be created: {exc}"
+                    ) from exc
+                warnings.extend(
+                    warning.model_copy(update={"path": f"workflow_tools.{tool.id}.{warning.path}"})
+                    for warning in imported.warnings
+                )
+            result = self._import_dsl(
+                context,
+                params.model_copy(
+                    update={
+                        "mode": "yaml-content",
+                        "yaml_content": retarget_workflow_tool_dsl(package.dsl, targets),
+                        "yaml_url": None,
+                    }
+                ),
+                package=package,
+            )
+        except Exception:
+            self._discard_imported_apps(context, created_app_ids)
+            raise
+        if result.status == ImportStatus.FAILED:
+            self._discard_imported_apps(context, created_app_ids)
+            return result
+        result.warnings = [*warnings, *result.warnings]
+        if result.warnings and result.status == ImportStatus.COMPLETED:
+            result.status = ImportStatus.COMPLETED_WITH_WARNINGS
+        return result
+
+    def _discard_imported_apps(self, context: RequestContext, app_ids: list[str]) -> None:
+        for app_id in reversed(app_ids):
+            try:
+                self.delete(context, app_id)
+            except Exception:
+                logger.exception("Failed to delete App %s left by a failed package import", app_id)
 
     def _import_agent_result(self, result: ImportedAppPackage) -> Import:
         return Import(
@@ -270,22 +380,34 @@ class ConsoleAppService:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
         self._set_import_permissions(context, result, created=result.app_created)
-        if result.app_id:
-            self._access.initialize_import_access(result.app_id)
+        self._initialize_import_access(result, created=result.app_created)
         return result
 
     def confirm_import(self, context: RequestContext, import_id: str) -> Import:
         result, created = self._transfers.confirm_import(context, import_id)
         self._set_import_permissions(context, result, created=created)
+        self._initialize_import_access(result, created=created)
         return result
 
     def _set_import_permissions(self, context: RequestContext, result: Import, *, created: bool) -> None:
+        if app_id := self._created_app_id(result, created=created):
+            result.permission_keys = self._access.imported_permissions(context, app_id)
+
+    def _initialize_import_access(self, result: Import, *, created: bool) -> None:
+        # Only newly created apps get the default access mode; overwrites keep the target app's setting.
+        if app_id := self._created_app_id(result, created=created):
+            self._access.initialize_import_access(app_id)
+
+    @staticmethod
+    def _created_app_id(result: Import, *, created: bool) -> str | None:
+        """The app id when the import completed by creating a new app; None for overwrites and unfinished imports."""
         if (
             created
             and result.app_id
             and result.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
         ):
-            result.permission_keys = self._access.imported_permissions(context, result.app_id)
+            return result.app_id
+        return None
 
     def get_reference(self, context: RequestContext, app_id: str) -> AppReference:
         """Admit an existing console app without retaining its database session."""
@@ -332,8 +454,24 @@ class ConsoleAppService:
         self._access.initialize_created_app(context, app.id)
         return self._lifecycle.present(context, replace(app, permission_keys=keys))
 
+    def create_with_draft(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
+        """Create a workflow-type app with the starter draft the editor saves on first open, so it exports as DSL.
+        An app whose draft could not be saved is deleted again."""
+        app = self.create(context, params)
+        try:
+            self._lifecycle.create_draft(context, app.id)
+        except Exception:
+            self.delete(context, app.id)
+            raise
+        return app
+
     def update(self, context: RequestContext, app_id: str, params: UpdateAppParams) -> AppRecord:
         app = self._apps.update(context, app_id, params)
+        self._lifecycle.updated(context, app)
+        return self.get(context, app_id)
+
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord:
+        app = self._apps.update_fields(context, app_id, changes)
         self._lifecycle.updated(context, app)
         return self.get(context, app_id)
 
@@ -372,10 +510,8 @@ class ConsoleAppService:
         dsl = self._transfers.export_dsl(
             context, app_id, AppExportOptions(include_secret=True, preserve_agent_bindings=True)
         )
-        result = self._transfers.import_dsl(
-            context,
-            AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),
-            as_copy=True,
+        result = self._transfers.import_copy(
+            context, AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump())
         )
         if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
             return result, None
@@ -424,9 +560,4 @@ class ConsoleAppService:
 
     def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
         self._apps.get_reference(context, app_id)
-        if settings.tracing_provider is not None:
-            if settings.enabled:
-                self._tracing.require_provider_available(settings.tracing_provider)
-            else:
-                self._tracing.validate_provider(settings.tracing_provider)
-        self._apps.set_trace(context, app_id, settings)
+        self._tracing.set_trace(context, app_id, settings)

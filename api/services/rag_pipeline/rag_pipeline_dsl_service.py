@@ -113,8 +113,8 @@ class RagPipelineDslService:
         # Validate import mode
         try:
             mode = ImportMode(import_mode)
-        except ValueError:
-            raise ValueError(f"Invalid import_mode: {import_mode}")
+        except ValueError as caught_error:
+            raise ValueError(f"Invalid import_mode: {import_mode}") from caught_error
 
         # Get YAML content
         content: str = ""
@@ -295,7 +295,7 @@ class RagPipelineDslService:
                         names = [dataset.name for dataset in datasets]
                         generate_name = generate_incremental_name(names, name)
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=generate_name,
                             description=description,
                             icon_info={
@@ -440,7 +440,7 @@ class RagPipelineDslService:
                     if not dataset:
                         dataset_created = True
                         dataset = Dataset(
-                            tenant_id=account.current_tenant_id,
+                            tenant_id=cast(str, account.current_tenant_id),
                             name=name,
                             description=description,
                             icon_info={
@@ -634,14 +634,14 @@ class RagPipelineDslService:
             workflow = Workflow(
                 tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
-                features="{}",
+                _features="{}",
                 type=WorkflowType.RAG_PIPELINE,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-                rag_pipeline_variables=rag_pipeline_variables_list,
+                _environment_variables=environment_variables,
+                _conversation_variables=conversation_variables,
+                _rag_pipeline_variables=rag_pipeline_variables_list,
             )
             self._session.add(workflow)
             self._session.flush()

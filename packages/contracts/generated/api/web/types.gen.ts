@@ -39,8 +39,15 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
+export type AnyJsonValue = unknown
 
 export type AppAccessModeQuery = {
   appCode?: string | null
@@ -141,6 +148,16 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConversationCursorNotFoundError = ErrorResponse & {
+  code: 'conversation_cursor_not_found'
+  status: 404
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -152,6 +169,11 @@ export type ConversationListQuery = {
   limit?: number
   pinned?: boolean | null
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+}
+
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
 }
 
 export type ConversationRenamePayload = (
@@ -306,7 +328,7 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = ShallowJsonValue
 
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
@@ -358,14 +380,14 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
 }
 
@@ -408,20 +430,25 @@ export type InvalidUploadTokenError = ErrorResponse & {
   status: 403
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
-
 export type JsonValueType = unknown
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
 
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
 
@@ -452,6 +479,11 @@ export type MalformedUploadTokenError = ErrorResponse & {
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
 }
 
 export type MessageFile = {
@@ -937,14 +969,18 @@ export type RetrieverResource = {
   doc_metadata?: {
     [key: string]: JsonValueType
   } | null
+  document_asset_id?: string | null
   document_id?: string | null
   document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
   files?: Array<{
     [key: string]: JsonValueType
   }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
   message_id?: string
   page?: number | null
   position: number
@@ -992,11 +1028,22 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
+export type ShallowJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: unknown
+    }
+  | Array<unknown>
+  | null
+
 export type SimpleConversation = {
   created_at?: number | null
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   introduction?: string | null
   name: string
@@ -1039,6 +1086,7 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type SystemFeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
@@ -1054,7 +1102,6 @@ export type SystemFeatureModel = {
   enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  knowledge_fs_enabled: boolean
   license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
   rbac_enabled: boolean
@@ -1249,7 +1296,7 @@ export type WorkflowRunPayload = {
   }
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type GeneratedAppResponseWritable = ShallowJsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: unknown
@@ -1452,7 +1499,7 @@ export type GetConversationsData = {
 export type GetConversationsErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationCursorNotFoundError | ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1477,7 +1524,7 @@ export type DeleteConversationsByCIdData = {
 export type DeleteConversationsByCIdErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1507,7 +1554,8 @@ export type PostConversationsByCIdNameData = {
 export type PostConversationsByCIdNameErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationFirstMessageNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1534,7 +1582,7 @@ export type PatchConversationsByCIdPinData = {
 export type PatchConversationsByCIdPinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1561,7 +1609,7 @@ export type PatchConversationsByCIdUnpinData = {
 export type PatchConversationsByCIdUnpinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1874,6 +1922,8 @@ export type GetLoginStatusData = {
 
 export type GetLoginStatusErrors = {
   401: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
   default: ErrorResponse
 }
 
@@ -1916,7 +1966,7 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1944,8 +1994,9 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   401: ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -1974,6 +2025,7 @@ export type GetMessagesByMessageIdMoreLikeThisData = {
 
 export type GetMessagesByMessageIdMoreLikeThisErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotCompletionAppError
@@ -2008,6 +2060,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsData = {
 
 export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
@@ -2016,7 +2069,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

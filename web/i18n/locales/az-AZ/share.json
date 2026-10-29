@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Köməyə ehtiyacınız varsa, tətbiq administratoru ilə əlaqə saxlayın.",
+  "appNotAccessible.documentTitle": "Tətbiq əlçatan deyil · Dify",
+  "appNotAccessible.ipAddress": "IP ünvanınız: <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Bu tətbiq mövcud deyil və ya şəbəkənizdən əlçatan deyil.",
   "chat.chatFormTip": "Söhbət başladıqdan sonra söhbət parametrləri dəyişdirilə bilməz.",
   "chat.chatSettingsTitle": "Yeni söhbətin qurulması",
   "chat.collapse": "Yığ",

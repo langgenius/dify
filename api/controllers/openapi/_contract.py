@@ -26,36 +26,38 @@ from pydantic import BaseModel, ValidationError
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
-from controllers.openapi._hints import next_page_hint
+from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, EndpointSpec, Example, Kind
+from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect, EndpointSpec, Example, Kind
 from enums import DeploymentEdition
 
-__all__ = ["Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+__all__ = ["Effect", "Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
 
 def paginated(op: str) -> Callable:
-    """Fill the ``Next page`` hint on a bare ``PaginationEnvelope`` result (one with no hints
-    of its own). Sits inside ``accepts`` so it sees the validated ``query`` and the path
-    kwargs the hint echoes; only this layer knows both those and the op id.
+    """Add the ``Next page`` hint to a ``PaginationEnvelope`` result, unless the view already
+    built one for this op. Sits inside ``accepts`` so it sees the validated ``query`` and the
+    path kwargs the hint echoes; only this layer knows both those and the op id.
     """
 
     def decorator(view: Callable) -> Callable:
         @wraps(view)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
-            if not isinstance(result, PaginationEnvelope) or result.hints:
+            if not isinstance(result, PaginationEnvelope) or any(h.op == op for h in result.hints):
                 return result
             path_args = {name: value for name, value in kwargs.items() if name not in _INJECTED_KWARGS}
-            hint = next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), envelope=result)
-            if hint is not None:
-                result.hints = [hint]
+            page = page_after(page=result.page, limit=result.limit, has_more=result.has_more)
+            result.hints = [
+                *result.hints,
+                *next_page_hint(op=op, path_args=path_args, query=kwargs.get("query"), page=page),
+            ]
             return result
 
         return wrapper
@@ -109,10 +111,10 @@ def returns(code: int, model: type[BaseModel], description: str | None = None) -
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = view(*args, **kwargs)
             if isinstance(result, BaseModel):
-                return result.model_dump(mode="json"), code
+                return result.model_dump(mode="json", by_alias=True), code
             if isinstance(result, tuple) and result and isinstance(result[0], BaseModel):
                 payload, *rest = result
-                return (payload.model_dump(mode="json"), *rest)
+                return (payload.model_dump(mode="json", by_alias=True), *rest)
             return result
 
         openapi_ns.response(code, description or model.__name__, openapi_ns.models[model.__name__])(wrapper)
@@ -157,6 +159,7 @@ def endpoint(
     context: AdmissionContext | None = "orm",
     internal: bool = False,
     deprecated: bool = False,
+    effect: Effect | None = None,
     examples: Sequence[Example] = (),
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
@@ -183,7 +186,8 @@ def endpoint(
 
     ``op``/``kind``/``summary`` feed the catalog (see ``_catalog.py``); ``internal``
     hides the op from the CLI's default listing; ``deprecated`` marks it as kept
-    for compatibility only; ``examples`` are complete inputs the catalog shows
+    for compatibility only; ``effect`` overrides the effect the HTTP method implies;
+    ``examples`` are complete inputs the catalog shows
     next to the schema.
     """
     requirements = tuple(requirements)
@@ -202,6 +206,7 @@ def endpoint(
             body=body,
             internal=internal,
             deprecated=deprecated,
+            effect=effect,
             examples=tuple(examples),
         ),
     )

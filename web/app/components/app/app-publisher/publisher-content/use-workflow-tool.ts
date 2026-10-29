@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
 import { appDefaultIconBackground } from '@/config'
-import { AppModeEnum } from '@/types/app'
 
 type UseWorkflowToolParams = {
   appDescription?: string
@@ -18,7 +17,6 @@ type UseWorkflowToolParams = {
   appMode?: AppMode
   appName?: string
   appPublished: boolean
-  hasHumanInputNode: boolean
   hasPublishedVersion: boolean
   hasTriggerNode: boolean
   inputs?: InputVar[]
@@ -39,7 +37,6 @@ export function useWorkflowTool({
   appMode,
   appName,
   appPublished,
-  hasHumanInputNode,
   hasPublishedVersion,
   hasTriggerNode,
   inputs,
@@ -50,10 +47,10 @@ export function useWorkflowTool({
   toolPublished,
   workflowToolAvailable,
 }: UseWorkflowToolParams) {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const canManageTools = useCanManageTools()
-  const visible = appMode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const visible = appMode === 'workflow' && !hasTriggerNode
   const published = Boolean(toolPublished)
   const message =
     !hasPublishedVersion || !workflowToolAvailable
@@ -101,5 +98,6 @@ export function useWorkflowTool({
     message,
     openDrawer,
     published,
+    visible,
   }
 }

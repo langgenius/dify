@@ -1,5 +1,6 @@
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import SSOAuth from '../sso-auth'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -26,16 +27,17 @@ vi.mock('@/service/share', () => serviceMocks)
 
 describe('SSOAuth redirect security', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    Object.values(serviceMocks).forEach((mock) => mock.mockReset())
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: 'https://evil.example/chatbot/evil-app',
     })
   })
 
   it('should use the login fallback without calling SSO when the redirect target is external', async () => {
+    const user = userEvent.setup()
     render(<SSOAuth protocol={zSsoProtocol.enum.saml} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'login.withSSO' }))
+    await user.click(screen.getByRole('button', { name: 'login.withSSO' }))
 
     await waitFor(() => {
       expect(navigationMocks.replace).toHaveBeenCalledWith('/')
@@ -50,13 +52,14 @@ describe('SSOAuth redirect security', () => {
     [zSsoProtocol.enum.oidc, serviceMocks.fetchMembersOIDCSSOUrl],
     [zSsoProtocol.enum.oauth2, serviceMocks.fetchMembersOAuth2SSOUrl],
   ])('should send the sanitized redirect target to %s SSO', async (protocol, serviceMock) => {
+    const user = userEvent.setup()
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: encodeURIComponent('/chatbot/share-app?foo=bar'),
     })
     serviceMock.mockResolvedValue({ url: 'https://idp.example/authorize' })
     render(<SSOAuth protocol={protocol} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'login.withSSO' }))
+    await user.click(screen.getByRole('button', { name: 'login.withSSO' }))
 
     await waitFor(() => {
       expect(serviceMock).toHaveBeenCalledWith('share-app', '/chatbot/share-app?foo=bar')

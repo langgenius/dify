@@ -29,11 +29,15 @@ it('keeps the full node name inside the form panel', async () => {
       />
     </div>,
   )
+  await expect.element(screen.getByRole('navigation', { name })).toBeVisible()
+  await expect.element(screen.getByText(name, { exact: true })).toBeVisible()
   const navigation = screen.getByRole('navigation', { name }).element()
   const bounds = navigation.getBoundingClientRect()
   const text = document.createRange()
   text.selectNodeContents(screen.getByText(name, { exact: true }).element())
-  for (const line of text.getClientRects()) {
+  const lines = Array.from(text.getClientRects())
+  expect(lines.length).toBeGreaterThan(0)
+  for (const line of lines) {
     expect(line.right).toBeLessThanOrEqual(bounds.right)
     expect(line.bottom).toBeLessThanOrEqual(bounds.bottom)
   }

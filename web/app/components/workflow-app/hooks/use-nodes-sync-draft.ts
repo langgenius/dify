@@ -1,17 +1,19 @@
+import type { WorkflowFeaturesConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   SyncDraftCallback,
   SyncDraftOptions,
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
-import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { safe } from '@orpc/client'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
@@ -21,7 +23,7 @@ import {
   isAgentV2NodeData,
   needsInlineAgentBindingCreation,
 } from '@/app/components/workflow/nodes/agent-v2/types'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { API_PREFIX } from '@/config'
@@ -38,11 +40,11 @@ const isEmptyGraph = (graph: { nodes: unknown[]; edges: unknown[] }) =>
   graph.nodes.length === 0 && graph.edges.length === 0
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const appId = useStore((state) => state.appId)
+  const appId = useAtomValue(workflowAppIdentityAtom).appId
   const { data: appMode } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
@@ -55,6 +57,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     select: (s) => s.enable_collaboration_mode,
   })
   const isMountedRef = useRef(false)
+  const emptySyncPendingRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)
 
   useEffect(() => {
@@ -87,7 +90,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         .map((node) => node.id),
     )
     const [x, y, zoom] = transform
-    const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
+    const { conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
       workflowStore.getState()
 
     if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
@@ -115,7 +118,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         })
       },
     )
-    const featuresPayload: WorkflowDraftFeaturesPayload = {
+    const featuresPayload: WorkflowFeaturesConfigPayload = {
       opening_statement: features.opening?.enabled ? features.opening?.opening_statement || '' : '',
       suggested_questions: features.opening?.enabled
         ? features.opening?.suggested_questions || []
@@ -147,7 +150,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
-  }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode])
+  }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode, appId])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
@@ -171,10 +174,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
-      force?: boolean,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+      const { isWorkflowDataLoaded } = workflowStore.getState()
       if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
         callback?.onSettled?.()
         return null
@@ -185,100 +187,54 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
-      if (force) {
+      const emptyGraph = isEmptyGraph(baseParams.params.graph)
+      const canSaveEmptyGraph = () => {
         const currentParams = getPostParams()
-        if (
-          !currentParams ||
-          currentParams.url !== baseParams.url ||
-          !isEmptyGraph(currentParams.params.graph)
-        ) {
-          callback?.onSettled?.()
-          return null
-        }
+        return (
+          isMountedRef.current &&
+          !getNodesReadOnly() &&
+          (!isCollaborationEnabled || collaborationManager.canPersistLocalGraph()) &&
+          currentParams?.url === baseParams.url &&
+          isEmptyGraph(currentParams.params.graph)
+        )
+      }
+      if (emptyGraph && !canSaveEmptyGraph()) {
+        callback?.onSettled?.()
+        return null
       }
 
-      const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
-
-      try {
-        const latestHash = workflowStore.getState().syncWorkflowDraftHash
-
-        const body = {
-          ...baseParams.params,
-          hash: latestHash || null,
-          ...(force ? { force: true } : {}),
-          ...(options?.environmentVariablePatch
-            ? {
-                environment_variable_patch: {
-                  environment_variables: options.environmentVariablePatch.environmentVariables,
-                  deleted_environment_variable_ids:
-                    options.environmentVariablePatch.deletedEnvironmentVariableIds,
-                },
-              }
-            : {}),
-        }
-
-        const [error, res, isDefined] = await safe(
-          consoleClient.apps.byAppId.workflows.draft.post(
-            { params: { app_id: baseParams.appId }, body },
+      if (emptyGraph && isCollaborationEnabled) {
+        // CRDT updates do not carry the persisted revision from another collaborator's save.
+        const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
+        const [error, draft] = await safe(
+          consoleClient.apps.byAppId.workflows.draft.get(
+            { params: { app_id: baseParams.appId } },
             { context: { silent: true } },
           ),
         )
-        if (error) {
-          const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-          if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
-
-          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-            handleRefreshWorkflowDraft(true)
+        if (!canSaveEmptyGraph()) {
+          callback?.onSettled?.()
+          return null
+        }
+        if (error || !Array.isArray(draft.graph.nodes) || !Array.isArray(draft.graph.edges)) {
           callback?.onError?.()
+          callback?.onSettled?.()
           return null
         }
 
-        setSyncWorkflowDraftHash(res.hash)
-        setDraftUpdatedAt(res.updated_at)
-        callback?.onSuccess?.()
-        return { hash: res.hash, updatedAt: res.updated_at }
-      } finally {
-        callback?.onSettled?.()
-      }
-    },
-    [
-      workflowStore,
-      getNodesReadOnly,
-      getPostParams,
-      handleRefreshWorkflowDraft,
-      isCollaborationEnabled,
-    ],
-  )
-
-  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
-  const doSyncWorkflowDraft = useCallback(
-    async (
-      notRefreshWhenSyncError?: boolean,
-      callback?: SyncDraftCallback,
-      options?: SyncDraftOptions,
-    ): Promise<SyncDraftResult | null> => {
-      if (getNodesReadOnly()) return null
-      const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
-        callback?.onSettled?.()
-        return null
+        const { syncWorkflowDraftHash, setSyncWorkflowDraftHash } = workflowStore.getState()
+        // Another hook may have saved a newer revision while this request was in flight.
+        if (syncWorkflowDraftHash === hashBeforeRefresh)
+          setSyncWorkflowDraftHash(draft.hash, {
+            nodes: draft.graph.nodes,
+            edges: draft.graph.edges,
+          })
       }
 
-      // Capture before ReactFlow resets its store during route unmount.
-      const baseParams = getPostParams()
-      if (!baseParams) {
-        callback?.onSettled?.()
-        return null
-      }
-
-      const emptyGraph = isEmptyGraph(baseParams.params.graph)
-      if (emptyGraph) {
+      // Check after queued saves finish so a newly persisted nonempty draft is protected too.
+      if (emptyGraph && workflowStore.getState().syncWorkflowDraftIsEmpty !== true) {
         const { showConfirm, setShowConfirm } = workflowStore.getState()
-        if (
-          !isMountedRef.current ||
-          showConfirm ||
-          (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph())
-        ) {
+        if (!isMountedRef.current || showConfirm) {
           callback?.onSettled?.()
           return null
         }
@@ -301,10 +257,97 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           })
         })
 
-        if (!confirmed) {
+        if (!confirmed || !canSaveEmptyGraph()) {
           callback?.onSettled?.()
           return null
         }
+      }
+
+      const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
+
+      try {
+        const latestHash = workflowStore.getState().syncWorkflowDraftHash
+
+        const body = {
+          ...baseParams.params,
+          hash: latestHash || null,
+          ...(emptyGraph ? { force: true } : {}),
+          ...(options?.environmentVariablePatch
+            ? {
+                environment_variable_patch: {
+                  environment_variables: options.environmentVariablePatch.environmentVariables,
+                  deleted_environment_variable_ids:
+                    options.environmentVariablePatch.deletedEnvironmentVariableIds,
+                },
+              }
+            : {}),
+        }
+
+        const [error, res, isDefined] = await safe(
+          consoleClient.apps.byAppId.workflows.draft.post(
+            { params: { app_id: baseParams.appId }, body },
+            { context: { silent: true } },
+          ),
+        )
+        if (error) {
+          const { isWorkflowDataLoaded } = workflowStore.getState()
+          if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft(true)
+          callback?.onError?.()
+          return null
+        }
+
+        setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
+        setDraftUpdatedAt(res.updated_at)
+        callback?.onSuccess?.()
+        return { hash: res.hash, updatedAt: res.updated_at }
+      } finally {
+        callback?.onSettled?.()
+      }
+    },
+    [
+      workflowStore,
+      getNodesReadOnly,
+      getPostParams,
+      handleRefreshWorkflowDraft,
+      isCollaborationEnabled,
+      t,
+      appId,
+    ],
+  )
+
+  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
+  const doSyncWorkflowDraft = useCallback(
+    async (
+      notRefreshWhenSyncError?: boolean,
+      callback?: SyncDraftCallback,
+      options?: SyncDraftOptions,
+    ): Promise<SyncDraftResult | null> => {
+      if (getNodesReadOnly()) return null
+      const { isWorkflowDataLoaded } = workflowStore.getState()
+      if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) {
+        callback?.onSettled?.()
+        return null
+      }
+
+      // Capture before ReactFlow resets its store during route unmount.
+      const baseParams = getPostParams()
+      if (!baseParams) {
+        callback?.onSettled?.()
+        return null
+      }
+
+      const emptyGraph = isEmptyGraph(baseParams.params.graph)
+      if (
+        emptyGraph &&
+        (!isMountedRef.current ||
+          emptySyncPendingRef.current ||
+          workflowStore.getState().showConfirm)
+      ) {
+        callback?.onSettled?.()
+        return null
       }
 
       const shouldRequestLeader =
@@ -315,25 +358,29 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         !options?.forceLocal
 
       if (!shouldRequestLeader) {
-        // The user grants consent in this tab, so persist a confirmed empty graph here.
-        return doSyncWorkflowDraftLocally(
-          baseParams,
-          notRefreshWhenSyncError,
-          callback,
-          options,
-          emptyGraph,
-        )
+        // Empty graphs stay in this tab so any required consent belongs to the initiating user.
+        if (emptyGraph) emptySyncPendingRef.current = true
+        try {
+          return await doSyncWorkflowDraftLocally(
+            baseParams,
+            notRefreshWhenSyncError,
+            callback,
+            options,
+          )
+        } finally {
+          if (emptyGraph) emptySyncPendingRef.current = false
+        }
       }
 
       try {
         const result = await collaborationManager.requestWorkflowSync()
         const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
-        setSyncWorkflowDraftHash(result.hash)
+        setSyncWorkflowDraftHash(result.hash, baseParams.params.graph)
         setDraftUpdatedAt(result.updatedAt)
         callback?.onSuccess?.()
         return result
       } catch {
-        const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+        const { isWorkflowDataLoaded } = workflowStore.getState()
         if (!shouldSkipDraftSync(appId, isWorkflowDataLoaded)) callback?.onError?.()
         return null
       } finally {
@@ -345,8 +392,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       getNodesReadOnly,
       getPostParams,
       isCollaborationEnabled,
-      t,
       workflowStore,
+      appId,
     ],
   )
 

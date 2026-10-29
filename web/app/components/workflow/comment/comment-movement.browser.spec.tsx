@@ -1,23 +1,24 @@
-import type { WorkflowCommentList } from './types'
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, useState } from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import { CommentIcon } from './comment-icon'
 import { CommentInput } from './comment-input'
 import 'reactflow/dist/style.css'
 
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
-    queryKey: ['profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
     queryFn: async () => ({ profile: { id: 'author', name: 'Alice', avatar_url: null } }),
   }),
 }))
 vi.mock('./comment-preview', () => ({ default: () => null }))
 vi.mock('./mention-input', () => ({ MentionInput: () => <textarea aria-label="Comment text" /> }))
 
-const comment: WorkflowCommentList = {
+const comment: WorkflowCommentBasic = {
   id: 'comment',
   content: 'Comment',
   created_by: 'author',
@@ -113,8 +114,10 @@ it('preserves draft mouse dragging and lets keyboard users move the same handle'
   const dragged = handle.element().getBoundingClientRect()
   await userEvent.keyboard('{Enter}')
   await expect.element(handle).toHaveAttribute('aria-pressed', 'true')
-  await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowDown}{/Shift}{Enter}')
+  await userEvent.keyboard('{ArrowRight}')
   await expect.poll(() => handle.element().getBoundingClientRect().x).toBe(dragged.x + 5)
-  expect(handle.element().getBoundingClientRect().y).toBe(dragged.y + 20)
+  await userEvent.keyboard('{Shift>}{ArrowDown}{/Shift}')
+  await expect.poll(() => handle.element().getBoundingClientRect().y).toBe(dragged.y + 20)
+  await userEvent.keyboard('{Enter}')
   await expect.element(handle).toHaveAttribute('aria-pressed', 'false')
 })

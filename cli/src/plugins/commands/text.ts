@@ -1,16 +1,16 @@
 import type { CommandEffect } from './command'
 import type { Descriptor } from './describe'
 import type { HelpEntry, HelpHead, HelpListing, HelpMap } from './help'
-import type { Example, JsonSchema } from '@/plugins/catalog'
-import type { Style } from '@/sys/io/color'
+import type { JsonSchema } from '@/plugins/catalog'
+import type { ColorScheme } from '@/sys/io/color'
 import type { View } from '@/sys/io/view'
 import { inputSchema } from '@/plugins/argv/parse'
 import { GLOBAL_INPUT } from '@/plugins/global-flags'
 import { COMMAND_SEPARATOR } from '@/protocol/op-id'
-import { isRepeatable, isScalar, labelOf, propertiesOf, shapeOf } from '@/protocol/shape'
+import { labelOf, propertiesOf, shapeOf } from '@/protocol/shape'
 import { view } from '@/sys/io/view'
-import { flagFor } from '@/util/flag-name'
-import { BINARY } from '@/version/info'
+import { argToken, flagToken } from '@/util/flag-name'
+import { skeletonExample } from './examples'
 
 export type FieldRow = Readonly<{
   name: string
@@ -20,12 +20,11 @@ export type FieldRow = Readonly<{
   positional: boolean
 }>
 
-type Section = Readonly<{ title: string; lines: (d: Descriptor, style: Style) => string[] }>
+type Section = Readonly<{ title: string; lines: (d: Descriptor, style: ColorScheme) => string[] }>
 type Tagged = Readonly<{ effect?: CommandEffect; kind?: string; deprecated?: boolean }>
 
 const PRESENCE = { Required: 'required', Optional: 'optional' } as const
 const FIRST_LINE = /\r?\n/
-const PLACEHOLDER = /^<[^<>]*>$/
 const GAP = '  '
 const MAX_COLUMN_WIDTH = 60
 const WORD_SEPARATOR = ' '
@@ -37,7 +36,6 @@ const LIST_SEPARATOR = ', '
 const COMMAND_NOUN = { one: 'command', many: 'commands' } as const
 const DEPRECATED = 'deprecated'
 const NO_PIN = '(none)'
-const SKELETON_TITLE = 'Required fields'
 const COMMENT = '#'
 const NO_POSITIONAL: readonly string[] = []
 
@@ -100,53 +98,12 @@ export function fieldRows(schema: JsonSchema, positional: readonly string[]): Fi
 function rowsToLines(rows: readonly FieldRow[]): string[] {
   return aligned(
     rows.map((row) => [
-      row.positional ? `<${row.name}>` : `--${flagFor(row.name)}`,
+      row.positional ? argToken(row.name) : flagToken(row.name),
       row.label,
       row.presence,
       row.description,
     ]),
   )
-}
-
-// A placeholder stands for a value the caller fills in, whatever the field's shape.
-function valueToken(property: JsonSchema | undefined, value: unknown): string {
-  const placeholder = typeof value === 'string' && PLACEHOLDER.test(value)
-  const scalar = property !== undefined && isScalar(shapeOf(property))
-  return placeholder || scalar ? String(value) : `'${JSON.stringify(value)}'`
-}
-
-// How the field is typed: a boolean as its presence, a repeatable list as the flag
-// once per item, anything else as one value.
-function flagTokens(name: string, property: JsonSchema | undefined, value: unknown): string[] {
-  const flag = `--${flagFor(name)}`
-  if (value === true) return [flag]
-  if (value === false) return [`${flag}=false`]
-  if (property !== undefined && isRepeatable(shapeOf(property)) && Array.isArray(value))
-    return value.flatMap((item) => [flag, String(item)])
-  return [flag, valueToken(property, value)]
-}
-
-// Positionals keep their declared order, so an example that skips one does not shift the
-// rest along: the one it skipped prints as itself.
-export function exampleLine(d: Descriptor, example: Example): string {
-  const properties = propertiesOf(d.input)
-  const flags = Object.keys(example.input).filter((name) => !d.positional.includes(name))
-  return [
-    BINARY,
-    d.id,
-    ...d.positional.map((name) =>
-      name in example.input ? valueToken(properties[name], example.input[name]) : `<${name}>`,
-    ),
-    ...flags.flatMap((name) => flagTokens(name, properties[name], example.input[name])),
-  ].join(COMMAND_SEPARATOR)
-}
-
-// A server that ships no example still gets a runnable line: the required fields,
-// each standing for itself.
-function examplesOf(d: Descriptor): readonly Example[] {
-  if (d.examples.length > 0) return d.examples
-  const required = Array.isArray(d.input.required) ? d.input.required.map(String) : []
-  return [{ title: SKELETON_TITLE, input: Object.fromEntries(required.map((n) => [n, `<${n}>`])) }]
 }
 
 export const SECTIONS: readonly Section[] = [
@@ -170,9 +127,9 @@ export const SECTIONS: readonly Section[] = [
   {
     title: 'Examples',
     lines: (d, style) =>
-      examplesOf(d).flatMap((example) => [
+      (d.examples.length > 0 ? d.examples : [skeletonExample(d)]).flatMap((example) => [
         style.dim(`${COMMENT} ${example.title}`),
-        exampleLine(d, example),
+        example.command,
       ]),
   },
   {
@@ -187,12 +144,12 @@ function tagsOf(tagged: Tagged): string[] {
 }
 
 // Empty is no cell at all: a styled empty string is escape codes, not nothing.
-function tagCell(tagged: Tagged, style: Style): string[] {
+function tagCell(tagged: Tagged, style: ColorScheme): string[] {
   const tags = tagsOf(tagged)
   return tags.length === 0 ? [] : [style.dim(tags.join(COMMAND_SEPARATOR))]
 }
 
-function descriptorText(d: Descriptor, style: Style): string {
+function descriptorText(d: Descriptor, style: ColorScheme): string {
   const header = [style.bold(d.id), d.summary, ...tagCell(d, style)]
   const blocks = [header.join(GAP)]
   for (const section of SECTIONS) {
@@ -214,7 +171,7 @@ export function descriptorsView(rows: readonly Descriptor[]): View<{ commands: D
   )
 }
 
-function headText(head: HelpHead | undefined, style: Style): string {
+function headText(head: HelpHead | undefined, style: ColorScheme): string {
   if (head === undefined) return ''
   if (head.summary !== undefined) return head.summary
   const noun = head.count === 1 ? COMMAND_NOUN.one : COMMAND_NOUN.many
@@ -232,7 +189,7 @@ export function mapView(map: HelpMap): View<HelpMap> {
   )
 }
 
-function listingRow(entry: HelpEntry, style: Style): string[] {
+function listingRow(entry: HelpEntry, style: ColorScheme): string[] {
   return [entry.id, entry.summary, ...tagCell(entry, style)]
 }
 

@@ -211,6 +211,18 @@ class GeneratorResponse(RootModel[Any]):
     root: Any
 
 
+class RuleGenerateResponse(ResponseModel):
+    prompt: str
+    variables: list[str]
+    opening_statement: str
+    error: str
+
+
+class StructuredOutputGenerateResponse(ResponseModel):
+    output: str = Field(description="Generated JSON Schema, empty when generation failed")
+    error: str = Field(description="Failure reason, empty on success")
+
+
 register_enum_models(console_ns, LLMMode)
 register_schema_models(
     console_ns,
@@ -226,6 +238,8 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     GeneratorResponse,
+    RuleGenerateResponse,
+    StructuredOutputGenerateResponse,
     SimpleDataResponse,
     WorkflowGenerateResponse,
     WorkflowGenerateRejectedResponse,
@@ -251,7 +265,7 @@ class RuleGenerateApi(Resource):
     @console_ns.response(
         200,
         "Rule configuration generated successfully",
-        console_ns.models[GeneratorResponse.__name__],
+        console_ns.models[RuleGenerateResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -260,19 +274,18 @@ class RuleGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(RuleGeneratePayload)
     def post(self, req_data: RuleGeneratePayload, current_tenant_id: str):
-
         try:
             rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=req_data)
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
 
-        return rules
+        return dump_response(RuleGenerateResponse, rules)
 
 
 @console_ns.route("/rule-code-generate")
@@ -294,20 +307,19 @@ class RuleCodeGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(RuleCodeGeneratePayload)
     def post(self, req_data: RuleCodeGeneratePayload, current_tenant_id: str):
-
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
                 args=req_data,
             )
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
 
         return code_result
 
@@ -323,7 +335,11 @@ class RuleStructuredOutputGenerateApi(Resource):
     @console_ns.doc("generate_structured_output")
     @console_ns.doc(description="Generate structured output rules using LLM")
     @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
-    @console_ns.response(200, "Structured output generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(
+        200,
+        "Structured output generated successfully",
+        console_ns.models[StructuredOutputGenerateResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
@@ -331,20 +347,19 @@ class RuleStructuredOutputGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(RuleStructuredOutputPayload)
     def post(self, req_data: RuleStructuredOutputPayload, current_tenant_id: str):
-
         try:
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
                 args=req_data,
             )
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
 
         return structured_output
 
@@ -451,13 +466,13 @@ class InstructionGenerateApi(Resource):
                 )
             return {"error": "incompatible parameters"}, 400
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
 
 
 @console_ns.route("/instruction-generate/template")
@@ -545,7 +560,6 @@ class WorkflowGenerateApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowGeneratePayload)
     def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
-
         # Reject empty / over-length instructions at the boundary (shared with
         # the streaming endpoint) before spending a planner+builder roundtrip.
         guard = _workflow_instruction_guard(req_data)
@@ -564,13 +578,13 @@ class WorkflowGenerateApi(Resource):
                 else None,
             )
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
 
         return dump_response(WorkflowGenerateResponse, result)
 
@@ -638,7 +652,6 @@ class WorkflowGenerateStreamApi(Resource):
     @with_current_tenant_id
     @model_validate(WorkflowGeneratePayload)
     def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
-
         # Same boundary guards as the blocking endpoint — return a normal 400
         # JSON for these BEFORE opening the stream.
         guard = _workflow_instruction_guard(req_data)

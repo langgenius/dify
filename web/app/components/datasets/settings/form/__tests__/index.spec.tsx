@@ -1,16 +1,13 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactElement } from 'react'
-import type { DataSet } from '@/models/datasets'
-import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { RETRIEVE_METHOD } from '@/types/app'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
-import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
 
 const { mockToastError } = vi.hoisted(() => ({
@@ -19,7 +16,6 @@ const { mockToastError } = vi.hoisted(() => ({
 
 // Mock contexts
 const mockMutateDatasets = vi.fn()
-const mockInvalidDatasetList = vi.fn()
 
 const mockUserProfile = {
   id: 'user-1',
@@ -54,81 +50,22 @@ function render(ui: ReactElement) {
   return renderWithConsoleState(ui, { wrapper })
 }
 
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-  id: 'dataset-1',
-  name: 'Test Dataset',
-  description: 'Test description',
-  permission: DatasetPermission.onlyMe,
-  icon_info: {
-    icon_type: 'emoji',
-    icon: '📚',
-    icon_background: '#FFFFFF',
-    icon_url: '',
-  },
-  indexing_technique: IndexingType.QUALIFIED,
-  indexing_status: 'completed',
-  data_source_type: DataSourceType.FILE,
-  doc_form: ChunkingMode.text,
-  embedding_model: 'text-embedding-ada-002',
-  embedding_model_provider: 'openai',
-  embedding_available: true,
-  app_count: 0,
-  document_count: 5,
-  total_document_count: 5,
-  word_count: 1000,
-  provider: 'vendor',
-  tags: [],
-  partial_member_list: [],
-  external_knowledge_info: {
-    external_knowledge_id: 'ext-1',
-    external_knowledge_api_id: 'api-1',
-    external_knowledge_api_name: 'External API',
-    external_knowledge_api_endpoint: 'https://api.example.com',
-  },
-  external_retrieval_model: {
-    top_k: 3,
-    score_threshold: 0.7,
-    score_threshold_enabled: true,
-  },
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-  } as RetrievalConfig,
-  retrieval_model: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-  } as RetrievalConfig,
-  built_in_field_enabled: false,
-  keyword_number: 10,
-  created_by: 'user-1',
-  updated_by: 'user-1',
-  updated_at: Date.now(),
-  runtime_mode: 'general',
-  enable_api: true,
-  is_multimodal: false,
-  permission_keys: [DatasetACLPermission.Edit],
-  ...overrides,
-})
+const createMockDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse =>
+  createDatasetFixture({
+    permission_keys: [DatasetACLPermission.Edit],
+    ...overrides,
+  })
 
-let mockDataset: DataSet = createMockDataset()
+let mockDataset: DatasetDetailWithPartialMembersResponse = createMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
+    selector: (state: {
+      dataset: DatasetDetailWithPartialMembersResponse | null
+      mutateDatasetRes: () => void
+    }) => unknown,
   ) => {
     const state = {
       dataset: mockDataset,
@@ -143,72 +80,6 @@ vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn().mockResolvedValue({}),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          id: 'user-1',
-          name: 'User 1',
-          email: 'user1@example.com',
-          role: 'owner',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-        {
-          id: 'user-2',
-          name: 'User 2',
-          email: 'user2@example.com',
-          role: 'admin',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useCurrentProviderAndModel: () => ({ currentProvider: undefined, currentModel: undefined }),
-  useDefaultModel: () => ({ data: undefined, mutate: vi.fn(), isLoading: false }),
-  useModelListAndDefaultModel: () => ({ modelList: [], defaultModel: undefined }),
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    modelList: [],
-    defaultModel: undefined,
-    currentProvider: undefined,
-    currentModel: undefined,
-  }),
-  useUpdateModelList: () => vi.fn(),
-  useUpdateModelProviders: () => vi.fn(),
-  useLanguage: () => 'en_US',
-  useSystemDefaultModelAndModelList: () => [undefined, vi.fn()],
-  useProviderCredentialsAndLoadBalancing: () => ({
-    credentials: undefined,
-    loadBalancing: undefined,
-    mutate: vi.fn(),
-    isLoading: false,
-  }),
-  useAnthropicBuyQuota: () => vi.fn(),
-  useMarketplaceAllPlugins: () => ({ plugins: [], isLoading: false }),
-  useRefreshModel: () => ({ handleRefreshModel: vi.fn() }),
-  useModelModalHandler: () => vi.fn(),
-}))
-
-vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
-  isReRankModelSelected: () => true,
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
@@ -216,341 +87,102 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('../components/indexing-section', () => ({
-  default: ({
-    currentDataset,
-    indexMethod,
-  }: {
-    currentDataset?: DataSet
-    indexMethod?: IndexingType
-  }) => (
-    <div data-testid="indexing-section">
-      {!!currentDataset?.doc_form && (
-        <>
-          <div>form.chunkStructure.title</div>
-          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text">
-            form.chunkStructure.learnMore
-          </a>
-        </>
-      )}
-      {!!(
-        currentDataset &&
-        currentDataset.doc_form !== ChunkingMode.parentChild &&
-        currentDataset.indexing_technique &&
-        indexMethod
-      ) && <div>form.indexMethod</div>}
-      {indexMethod === IndexingType.QUALIFIED && <div>form.embeddingModel</div>}
-      {currentDataset?.provider !== 'external' && indexMethod && (
-        <>
-          <div>form.retrievalSetting.title</div>
-          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/setting-indexing-methods">
-            form.retrievalSetting.learnMore
-          </a>
-        </>
-      )}
-    </div>
-  ),
-}))
+// Indexing controls have their own integration suite; these cases exercise the form save owner.
+vi.mock('../components/indexing-section', () => ({ default: () => null }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({ accounts: [] }),
+      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+    }),
+  }
+})
 
-describe('Form', () => {
+describe('Dataset settings form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createMockDataset()
     mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
-  describe('Rendering', () => {
-    it('should render dataset name input with initial value', () => {
-      render(<Form />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput).toBeInTheDocument()
+  it('saves edited basic information, prevents duplicate submissions, and refreshes the dataset', async () => {
+    const user = userEvent.setup()
+    const { updateDatasetSetting } = await import('@/service/datasets')
+    const pending = createDeferred<Awaited<ReturnType<typeof updateDatasetSetting>>>()
+    vi.mocked(updateDatasetSetting).mockReturnValueOnce(pending.promise)
+    render(<Form />)
+    await user.clear(screen.getByDisplayValue('Test Dataset'))
+    await user.type(
+      screen.getByRole('textbox', { name: 'datasetSettings.form.name' }),
+      'Updated Dataset',
+    )
+    await user.clear(screen.getByDisplayValue('Test description'))
+    await user.type(screen.getByRole('textbox', { name: /form.desc/ }), 'Updated description')
+    const save = screen.getByRole('button', { name: /form.save/ })
+    await user.click(save)
+    await waitFor(() => expectLoadingButton(save))
+    await user.click(save)
+    expect(updateDatasetSetting).toHaveBeenCalledTimes(1)
+    expect(updateDatasetSetting).toHaveBeenCalledWith({
+      datasetId: 'dataset-1',
+      body: expect.objectContaining({
+        name: 'Updated Dataset',
+        description: 'Updated description',
+      }),
     })
-
-    it('should render dataset description textarea', () => {
-      render(<Form />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-      expect(descriptionTextarea).toBeInTheDocument()
-    })
-
-    it('should render save button', () => {
-      render(<Form />)
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      expect(saveButton).toBeInTheDocument()
-    })
-
-    it('should render permission selector', () => {
-      render(<Form />)
-      // Permission selector renders the current permission text
-      expect(screen.getByText(/form\.permissionsOnlyMe/i)).toBeInTheDocument()
-    })
+    expect(mockMutateDatasets).not.toHaveBeenCalled()
+    await act(async () => pending.resolve(mockDataset))
+    await waitFor(() => expect(mockMutateDatasets).toHaveBeenCalledTimes(1))
+    expect(save).toBeEnabled()
   })
 
-  describe('BasicInfoSection', () => {
-    it('should allow editing dataset name', () => {
-      render(<Form />)
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-
-      fireEvent.change(nameInput, { target: { value: 'Updated Dataset Name' } })
-
-      expect(nameInput).toHaveValue('Updated Dataset Name')
-    })
-
-    it('should allow editing dataset description', () => {
-      render(<Form />)
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-
-      fireEvent.change(descriptionTextarea, { target: { value: 'Updated description' } })
-
-      expect(descriptionTextarea).toHaveValue('Updated description')
-    })
+  it('rejects a blank name without submitting', async () => {
+    const user = userEvent.setup()
+    const { updateDatasetSetting } = await import('@/service/datasets')
+    render(<Form />)
+    await user.clear(screen.getByDisplayValue('Test Dataset'))
+    await user.type(screen.getByRole('textbox', { name: 'datasetSettings.form.name' }), '   ')
+    await user.click(screen.getByRole('button', { name: /form.save/ }))
+    expect(mockToastError).toHaveBeenCalledWith('datasetSettings.form.nameError')
+    expect(updateDatasetSetting).not.toHaveBeenCalled()
   })
 
-  describe('IndexingSection - Internal Provider', () => {
-    it('should render chunk structure section when doc_form is set', () => {
-      render(<Form />)
-      expect(screen.getByText(/form\.chunkStructure\.title/i)).toBeInTheDocument()
-    })
-
-    it('should render index method section', () => {
-      render(<Form />)
-      // May match multiple elements (label and descriptions)
-      expect(screen.getAllByText(/form\.indexMethod/i).length).toBeGreaterThan(0)
-    })
-
-    it('should render embedding model section when indexMethod is high_quality', () => {
-      render(<Form />)
-      expect(screen.getByText(/form\.embeddingModel/i)).toBeInTheDocument()
-    })
-
-    it('should render retrieval settings section', () => {
-      render(<Form />)
-      expect(screen.getByText(/form\.retrievalSetting\.title/i)).toBeInTheDocument()
-    })
-
-    it('should render learn more links', () => {
-      render(<Form />)
-      const learnMoreLinks = screen.getAllByText(/learnMore/i)
-      expect(learnMoreLinks.length).toBeGreaterThan(0)
-    })
+  it('keeps edits after a failed save and allows retrying', async () => {
+    const user = userEvent.setup()
+    const { updateDatasetSetting } = await import('@/service/datasets')
+    vi.mocked(updateDatasetSetting).mockRejectedValueOnce(new Error('offline'))
+    render(<Form />)
+    await user.type(screen.getByDisplayValue('Test Dataset'), ' updated')
+    await user.click(screen.getByRole('button', { name: /form.save/ }))
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
+    )
+    expect(screen.getByDisplayValue('Test Dataset updated')).toBeInTheDocument()
+    expect(mockMutateDatasets).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /form.save/ }))
+    await waitFor(() => expect(mockMutateDatasets).toHaveBeenCalledTimes(1))
+    expect(updateDatasetSetting).toHaveBeenCalledTimes(2)
   })
 
-  describe('ExternalKnowledgeSection - External Provider', () => {
-    beforeEach(() => {
-      mockDataset = createMockDataset({ provider: 'external' })
-    })
-
-    it('should render external knowledge API info when provider is external', () => {
-      render(<Form />)
-      expect(screen.getByText(/form\.externalKnowledgeAPI/i)).toBeInTheDocument()
-    })
-
-    it('should render external knowledge ID when provider is external', () => {
-      render(<Form />)
-      expect(screen.getByText(/form\.externalKnowledgeID/i)).toBeInTheDocument()
-    })
-
-    it('should display external API name', () => {
-      render(<Form />)
-      expect(screen.getByText('External API')).toBeInTheDocument()
-    })
-
-    it('should display external API endpoint', () => {
-      render(<Form />)
-      expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
-    })
-
-    it('should display external knowledge ID value', () => {
-      render(<Form />)
-      expect(screen.getByText('ext-1')).toBeInTheDocument()
-    })
+  it('disables basic information when the embedding model is unavailable', () => {
+    mockDataset = createMockDataset({ embedding_available: false })
+    render(<Form />)
+    expect(screen.getByDisplayValue('Test Dataset')).toBeDisabled()
+    expect(screen.getByDisplayValue('Test description')).toBeDisabled()
   })
 
-  describe('Save Functionality', () => {
-    it('should call save when save button is clicked', async () => {
-      const { updateDatasetSetting } = await import('@/service/datasets')
-      render(<Form />)
-
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(updateDatasetSetting).toHaveBeenCalled()
-      })
-    })
-
-    it('should show loading state on save button while saving', async () => {
-      const { updateDatasetSetting } = await import('@/service/datasets')
-      vi.mocked(updateDatasetSetting).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100)),
-      )
-
-      render(<Form />)
-
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expectLoadingButton(saveButton)
-      })
-    })
-
-    it('should show error when trying to save with empty name', async () => {
-      const { toast } = await import('@/app/notifications')
-      render(<Form />)
-
-      // Clear the name
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      fireEvent.change(nameInput, { target: { value: '' } })
-
-      // Try to save
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
-      })
-    })
-
-    it('should save with updated name', async () => {
-      const { updateDatasetSetting } = await import('@/service/datasets')
-      render(<Form />)
-
-      // Update name
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      fireEvent.change(nameInput, { target: { value: 'New Dataset Name' } })
-
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(updateDatasetSetting).toHaveBeenCalledWith(
-          expect.objectContaining({
-            body: expect.objectContaining({
-              name: 'New Dataset Name',
-            }),
-          }),
-        )
-      })
-    })
-
-    it('should save with updated description', async () => {
-      const { updateDatasetSetting } = await import('@/service/datasets')
-      render(<Form />)
-
-      // Update description
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-      fireEvent.change(descriptionTextarea, { target: { value: 'New description' } })
-
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      fireEvent.click(saveButton)
-
-      await waitFor(() => {
-        expect(updateDatasetSetting).toHaveBeenCalledWith(
-          expect.objectContaining({
-            body: expect.objectContaining({
-              description: 'New description',
-            }),
-          }),
-        )
-      })
-    })
+  it('prevents readonly users from saving settings', async () => {
+    const user = userEvent.setup()
+    const { updateDatasetSetting } = await import('@/service/datasets')
+    mockWorkspacePermissionKeys = []
+    mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+    render(<Form />)
+    const save = screen.getByRole('button', { name: /form.save/ })
+    expect(save).toBeDisabled()
+    await user.click(save)
+    expect(updateDatasetSetting).not.toHaveBeenCalled()
   })
-
-  describe('Disabled States', () => {
-    it('should disable inputs when embedding is not available', () => {
-      mockDataset = createMockDataset({ embedding_available: false })
-      render(<Form />)
-
-      const nameInput = screen.getByDisplayValue('Test Dataset')
-      expect(nameInput).toBeDisabled()
-
-      const descriptionTextarea = screen.getByDisplayValue('Test description')
-      expect(descriptionTextarea).toBeDisabled()
-    })
-
-    it('should disable save when dataset only has readonly ACL permission', () => {
-      mockWorkspacePermissionKeys = []
-      mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
-      render(<Form />)
-
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      expect(saveButton).toBeDisabled()
-    })
-  })
-
-  describe('Conditional Rendering', () => {
-    it('should not render chunk structure when doc_form is not set', () => {
-      mockDataset = createMockDataset({ doc_form: undefined as unknown as ChunkingMode })
-      render(<Form />)
-
-      // Chunk structure should not be present
-      expect(screen.queryByText(/form\.chunkStructure\.title/i)).not.toBeInTheDocument()
-    })
-
-    it('should render IndexingSection for internal provider', () => {
-      mockDataset = createMockDataset({ provider: 'vendor' })
-      render(<Form />)
-
-      // May match multiple elements (label and descriptions)
-      expect(screen.getAllByText(/form\.indexMethod/i).length).toBeGreaterThan(0)
-      expect(screen.queryByText(/form\.externalKnowledgeAPI/i)).not.toBeInTheDocument()
-    })
-
-    it('should render ExternalKnowledgeSection for external provider', () => {
-      mockDataset = createMockDataset({ provider: 'external' })
-      render(<Form />)
-
-      expect(screen.getByText(/form\.externalKnowledgeAPI/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('Permission Selection', () => {
-    it('should open permission dropdown when clicked', async () => {
-      render(<Form />)
-
-      const permissionTrigger = screen.getByText(/form\.permissionsOnlyMe/i)
-      fireEvent.click(permissionTrigger)
-
-      await waitFor(() => {
-        // Should show all permission options
-        expect(screen.getAllByText(/form\.permissionsOnlyMe/i).length).toBeGreaterThanOrEqual(1)
-      })
-    })
-  })
-
-  describe('Integration', () => {
-    it('should render all main sections', () => {
-      render(<Form />)
-
-      // Basic info
-      expect(screen.getByText(/form\.nameAndIcon/i)).toBeInTheDocument()
-      expect(screen.getByText(/form\.desc/i)).toBeInTheDocument()
-      // form.permissions matches multiple elements (label and permission options)
-      expect(screen.getAllByText(/form\.permissions/i).length).toBeGreaterThan(0)
-
-      // Indexing (for internal provider)
-      expect(screen.getByText(/form\.chunkStructure\.title/i)).toBeInTheDocument()
-      // form.indexMethod matches multiple elements
-      expect(screen.getAllByText(/form\.indexMethod/i).length).toBeGreaterThan(0)
-
-      // Save button
-      expect(screen.getByRole('button', { name: /form\.save/i })).toBeInTheDocument()
-    })
-  })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: [], refetch: vi.fn(), isPending: false }
-    },
-  }
 })

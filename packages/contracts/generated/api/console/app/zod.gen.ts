@@ -3,14 +3,6 @@
 import * as z from 'zod'
 
 /**
- * AdvancedPromptTemplateResponse
- */
-export const zAdvancedPromptTemplateResponse = z.object({
-  chat_prompt_config: z.record(z.string(), z.unknown()).nullish(),
-  completion_prompt_config: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -24,6 +16,53 @@ export const zErrorResponse = z.object({
   message: z.string(),
   params: z.string().optional(),
   status: z.int(),
+})
+
+/**
+ * PromptTemplateMessageResponse
+ */
+export const zPromptTemplateMessageResponse = z.object({
+  role: z.enum(['assistant', 'system', 'user']),
+  text: z.string(),
+})
+
+/**
+ * ChatPromptTemplateResponse
+ */
+export const zChatPromptTemplateResponse = z.object({
+  prompt: z.array(zPromptTemplateMessageResponse),
+})
+
+/**
+ * ConversationHistoriesRoleResponse
+ */
+export const zConversationHistoriesRoleResponse = z.object({
+  assistant_prefix: z.string(),
+  user_prefix: z.string(),
+})
+
+/**
+ * CompletionPromptTemplateTextResponse
+ */
+export const zCompletionPromptTemplateTextResponse = z.object({
+  text: z.string(),
+})
+
+/**
+ * CompletionPromptTemplateResponse
+ */
+export const zCompletionPromptTemplateResponse = z.object({
+  conversation_histories_role: zConversationHistoriesRoleResponse.nullish(),
+  prompt: zCompletionPromptTemplateTextResponse,
+})
+
+/**
+ * AdvancedPromptTemplateResponse
+ */
+export const zAdvancedPromptTemplateResponse = z.object({
+  chat_prompt_config: zChatPromptTemplateResponse.nullish(),
+  completion_prompt_config: zCompletionPromptTemplateResponse.nullish(),
+  stop: z.array(z.string()).nullish(),
 })
 
 export const zGetAppPromptTemplatesQuery = z.object({

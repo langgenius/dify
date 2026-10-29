@@ -3,12 +3,14 @@ import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiAddLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { selectPipelineTemplate } from '@/app/components/rag-pipeline/utils/query-select'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { usePipelineTemplateById } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import ChunkStructureCard from './chunk-structure-card'
 import { useChunkStructureConfig } from './hooks'
 
@@ -23,12 +25,11 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
   const structureLabelId = React.useId()
 
   const { t } = useTranslation(['datasetPipeline', 'common'])
-  const { data: pipelineTemplateInfo } = usePipelineTemplateById(
-    {
-      template_id: id,
-      type,
-    },
-    true,
+  const { data: pipelineTemplateInfo } = useQuery(
+    consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
+      input: { params: { template_id: id }, query: { type } },
+      select: selectPipelineTemplate,
+    }),
   )
 
   const chunkStructureConfig = useChunkStructureConfig()
@@ -59,7 +60,8 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
               <AppIcon size="large" icon={pipelineTemplateInfo.icon_info} />
               <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
                 <DialogTitle
-                  className="truncate system-md-semibold text-text-secondary"
+                  // oxlint-disable-next-line shadcn/no-restyle -- Full-page template header keeps its compact template name.
+                  className="truncate text-sm/5 text-text-secondary"
                   title={pipelineTemplateInfo.name}
                 >
                   {pipelineTemplateInfo.name}

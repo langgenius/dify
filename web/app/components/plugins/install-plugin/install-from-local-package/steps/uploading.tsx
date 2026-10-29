@@ -48,7 +48,7 @@ const Uploading: FC<Props> = ({
     (response: unknown) => {
       if (isBundle) {
         if (Array.isArray(response)) {
-          onBundleUploaded(response as Dependency[])
+          onBundleUploaded(response)
           return
         }
         onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))

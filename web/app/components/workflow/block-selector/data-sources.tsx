@@ -6,7 +6,6 @@ import type { OnSelectBlock } from '../types'
 import type { DataSourceDefaultValue } from './types'
 import type { ListRef } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import dynamic from 'next/dynamic'
 import { useCallback, useMemo, useRef } from 'react'
@@ -14,7 +13,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
@@ -89,28 +88,20 @@ function DataSources({
     [onSelect, language],
   )
 
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
 
   const trimmedSearchText = searchText.trim()
   const debouncedMarketplaceSearchText = useDebounce(trimmedSearchText, { wait: 500 })
   const isMarketplaceSearchSettled = debouncedMarketplaceSearchText === trimmedSearchText
   const marketplaceSearchParams = useMemo(
     () =>
-      enable_marketplace && trimmedSearchText && isMarketplaceSearchSettled
+      marketplace !== null && trimmedSearchText && isMarketplaceSearchSettled
         ? {
             query: debouncedMarketplaceSearchText,
             category: PluginCategoryEnum.datasource,
           }
         : undefined,
-    [
-      debouncedMarketplaceSearchText,
-      enable_marketplace,
-      isMarketplaceSearchSettled,
-      trimmedSearchText,
-    ],
+    [debouncedMarketplaceSearchText, marketplace, isMarketplaceSearchSettled, trimmedSearchText],
   )
   const { data: marketplacePluginsData } = useMarketplacePlugins(marketplaceSearchParams)
   const notInstalledPlugins = useMemo(() => {
@@ -135,8 +126,9 @@ function DataSources({
           onSelect={handleSelect}
           hasSearchText={!!searchText}
         />
-        {enable_marketplace && (
+        {marketplace && (
           <PluginList
+            marketplace={marketplace}
             ref={pluginRef}
             wrapElemRef={wrapElemRef}
             list={notInstalledPlugins}

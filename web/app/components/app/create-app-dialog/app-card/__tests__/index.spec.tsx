@@ -4,7 +4,6 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
@@ -16,7 +15,7 @@ const app = {
   can_trial: true,
   app: {
     id: 'app-1',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: 'emoji',
     icon: '🤖',
     icon_background: '#FFEAD5',

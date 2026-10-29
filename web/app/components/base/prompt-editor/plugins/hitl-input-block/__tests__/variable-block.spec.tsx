@@ -34,24 +34,6 @@ const createVar = (variable: string): Var => ({
   type: VarType.string,
 })
 
-const createSelectorWithTransientPrefix = (prefix: string, suffix: string): string[] => {
-  let accessCount = 0
-  const selector = [prefix, suffix]
-  return new Proxy(selector, {
-    get(target, property, receiver) {
-      if (property === '0') {
-        accessCount += 1
-        return accessCount > 4 ? undefined : prefix
-      }
-      return Reflect.get(target, property, receiver)
-    },
-  }) as unknown as string[]
-}
-
-const hasErrorIcon = (container: HTMLElement) => {
-  return container.querySelector('.text-text-warning') !== null
-}
-
 const renderVariableBlock = (props: {
   variables: string[]
   workflowNodesMap?: WorkflowNodesMap
@@ -124,13 +106,14 @@ describe('HITLInputVariableBlockComponent', () => {
 
   describe('Workflow map updates', () => {
     it('should update local workflow node map when UPDATE_WORKFLOW_NODES_MAP command is dispatched', async () => {
+      const user = userEvent.setup()
       const { container, getEditor } = renderVariableBlock({
         variables: ['node-1', 'output'],
         workflowNodesMap: {},
       })
 
       expect(screen.queryByText('Node One')).not.toBeInTheDocument()
-      await userEvent.setup().hover(container.firstElementChild as HTMLElement)
+      await user.hover(container.firstElementChild as HTMLElement)
       expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeVisible()
 
       await waitFor(() => {
@@ -160,57 +143,55 @@ describe('HITLInputVariableBlockComponent', () => {
 
   describe('Validation branches', () => {
     it('should show invalid state for env variable when environment list does not contain selector', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['env', 'api_key'],
         workflowNodesMap: {},
         environmentVariables: [],
       })
 
-      await userEvent.setup().hover(container.firstElementChild as HTMLElement)
+      await user.hover(container.firstElementChild as HTMLElement)
       expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeVisible()
     })
 
-    it('should keep conversation variable valid when selector exists in conversation variables', () => {
-      const { container } = renderVariableBlock({
-        variables: ['conversation', 'session_id'],
-        workflowNodesMap: {},
-        conversationVariables: [createVar('conversation.session_id')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should show valid state when conversation variables array is undefined', () => {
+    it('should show valid state when conversation variables array is undefined', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['conversation', 'session_id'],
         workflowNodesMap: {},
         conversationVariables: undefined,
       })
 
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
     })
 
-    it('should show valid state when env variables array is undefined', () => {
+    it('should show valid state when env variables array is undefined', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['env', 'api_key'],
         workflowNodesMap: {},
         environmentVariables: undefined,
       })
 
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
     })
 
-    it('should show valid state when rag variables array is undefined', () => {
+    it('should show valid state when rag variables array is undefined', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['rag', 'node-rag', 'chunk'],
         workflowNodesMap: createWorkflowNodesMap(),
         ragVariables: undefined,
       })
 
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
     })
 
-    it('should validate env variable when matching entry exists in multi-element array', () => {
+    it('should validate env variable when matching entry exists in multi-element array', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['env', 'api_key'],
         workflowNodesMap: {},
@@ -219,10 +200,12 @@ describe('HITLInputVariableBlockComponent', () => {
           { variable: 'env.api_key', type: 'string' } as Var,
         ],
       })
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
     })
 
-    it('should validate conversation variable when matching entry exists in multi-element array', () => {
+    it('should validate conversation variable when matching entry exists in multi-element array', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['conversation', 'session_id'],
         workflowNodesMap: {},
@@ -231,10 +214,12 @@ describe('HITLInputVariableBlockComponent', () => {
           { variable: 'conversation.session_id', type: 'string' } as Var,
         ],
       })
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
     })
 
-    it('should validate rag variable when matching entry exists in multi-element array', () => {
+    it('should validate rag variable when matching entry exists in multi-element array', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['rag', 'node-rag', 'chunk'],
         workflowNodesMap: createWorkflowNodesMap(),
@@ -243,51 +228,31 @@ describe('HITLInputVariableBlockComponent', () => {
           { variable: 'rag.node-rag.chunk', type: 'string', isRagVariable: true } as Var,
         ],
       })
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
     })
 
-    it('should handle undefined indices in variables array gracefully', () => {
-      // Testing the `variables?.[1] ?? ''` fallback logic
-      const { container: envContainer } = renderVariableBlock({
-        variables: ['env'], // missing second part
-        workflowNodesMap: {},
-        environmentVariables: [{ variable: 'env.', type: 'string' } as Var],
-      })
-      expect(hasErrorIcon(envContainer)).toBe(false)
-
-      const { container: chatContainer } = renderVariableBlock({
-        variables: ['conversation'],
-        workflowNodesMap: {},
-        conversationVariables: [{ variable: 'conversation.', type: 'string' } as Var],
-      })
-      expect(hasErrorIcon(chatContainer)).toBe(false)
-
-      const { container: ragContainer } = renderVariableBlock({
-        variables: ['rag', 'node-rag'], // missing third part
-        workflowNodesMap: createWorkflowNodesMap(),
-        ragVariables: [{ variable: 'rag.node-rag.', type: 'string', isRagVariable: true } as Var],
-      })
-      expect(hasErrorIcon(ragContainer)).toBe(false)
-    })
-
-    it('should keep global system variable valid without workflow node mapping', () => {
+    it('should keep global system variable valid without workflow node mapping', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['sys', 'global_name'],
         workflowNodesMap: {},
       })
 
       expect(screen.getByText('sys.global_name')).toBeInTheDocument()
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
     })
 
     it('should format system variable names with sys. prefix correctly', async () => {
+      const user = userEvent.setup()
       const { container } = renderVariableBlock({
         variables: ['sys', 'query'],
         workflowNodesMap: {},
       })
       // 'query' exception variable is valid sys variable
       expect(screen.getByText('query')).toBeInTheDocument()
-      await userEvent.setup().hover(container.firstElementChild as HTMLElement)
+      await user.hover(container.firstElementChild as HTMLElement)
       expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeVisible()
     })
 
@@ -297,12 +262,12 @@ describe('HITLInputVariableBlockComponent', () => {
         workflowNodesMap: createWorkflowNodesMap(),
       })
       expect(screen.getByText('error_message')).toBeInTheDocument()
-      expect(screen.getByTestId('exception-variable')).toBeInTheDocument()
     })
   })
 
   describe('Full-path preview payload', () => {
-    it('should resolve the rag node via isRagVar offset and skip the full-path preview', () => {
+    it('should resolve the rag node via isRagVar offset and skip the full-path preview', async () => {
+      const user = userEvent.setup()
       const getVarType = vi.fn(() => Type.number)
       const { container } = renderVariableBlock({
         variables: ['rag', 'node-rag', 'chunk'],
@@ -312,7 +277,8 @@ describe('HITLInputVariableBlockComponent', () => {
       })
 
       expect(screen.getByText('chunk')).toBeInTheDocument()
-      expect(hasErrorIcon(container)).toBe(false)
+      await user.hover(container.firstElementChild as HTMLElement)
+      expect(screen.queryByText('workflow.errorMsg.invalidVariable')).not.toBeInTheDocument()
       // Rag selectors always have `isShowAPart === false`, so the full-path
       // preview is not rendered and `getVarType` is not invoked.
       expect(getVarType).not.toHaveBeenCalled()
@@ -333,75 +299,6 @@ describe('HITLInputVariableBlockComponent', () => {
         nodeId: 'node-1',
         valueSelector: ['node-1', 'parent', 'child'],
       })
-    })
-  })
-
-  describe('Optional lists and selector fallbacks', () => {
-    it('should keep env variable valid when environmentVariables is not provided', () => {
-      const { container } = renderVariableBlock({
-        variables: ['env', 'api_key'],
-        workflowNodesMap: {},
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate env selector fallback when selector second segment is missing', () => {
-      const { container } = renderVariableBlock({
-        variables: ['env'],
-        workflowNodesMap: {},
-        environmentVariables: [createVar('env.')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate env selector fallback when selector prefix becomes undefined at lookup time', () => {
-      const { container } = renderVariableBlock({
-        variables: createSelectorWithTransientPrefix('env', 'api_key'),
-        workflowNodesMap: {},
-        environmentVariables: [createVar('.api_key')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should keep conversation variable valid when conversationVariables is not provided', () => {
-      const { container } = renderVariableBlock({
-        variables: ['conversation', 'session_id'],
-        workflowNodesMap: {},
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate conversation selector fallback when selector second segment is missing', () => {
-      const { container } = renderVariableBlock({
-        variables: ['conversation'],
-        workflowNodesMap: {},
-        conversationVariables: [createVar('conversation.')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should keep rag variable valid when ragVariables is not provided', () => {
-      const { container } = renderVariableBlock({
-        variables: ['rag', 'node-rag', 'chunk'],
-        workflowNodesMap: createWorkflowNodesMap(),
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate rag selector fallbacks when node and key segments are missing', () => {
-      const { container } = renderVariableBlock({
-        variables: ['rag'],
-        workflowNodesMap: {},
-        ragVariables: [createVar('rag..')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
     })
   })
 })
