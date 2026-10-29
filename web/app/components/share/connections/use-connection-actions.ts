@@ -59,7 +59,7 @@ export default function useConnectionActions({
   onRemoved,
   refreshConnections,
 }: Props) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'share'])
   const queryClient = useQueryClient()
   const context = { address, authSession, silent: true }
   const create = useMutation(webAppQuery.connections.post.mutationOptions({ context }))
@@ -127,7 +127,7 @@ export default function useConnectionActions({
     return source
   }
   const getApiKeyValues = (values: ApiKeyValues | undefined) => {
-    if (!values?.name.trim()) throw new Error('Connection configuration is incomplete.')
+    if (!values) throw new Error('Connection configuration is incomplete.')
     return { name: values.name.trim(), credentials: values.credentials }
   }
   const getApiKeySchemaOptions = (
@@ -206,6 +206,7 @@ export default function useConnectionActions({
             connection_revision: connectionRevision,
             node_id: source.node_id,
             ...apiKeyValues,
+            name: apiKeyValues.name || t(($) => $['connections.setup.apiKey'], { ns: 'share' }),
           },
         })
         await saveResult(source, connection, assertCurrent)
@@ -250,7 +251,8 @@ export default function useConnectionActions({
         params: { connection_id: connectionId },
         body: {
           connection_revision: revision.connection_revision,
-          ...apiKeyValues,
+          credentials: apiKeyValues.credentials,
+          ...(apiKeyValues.name ? { name: apiKeyValues.name } : {}),
         },
       })
       if (connection.id !== connectionId)

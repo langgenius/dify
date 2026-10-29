@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import RequiredConnections from '../required-connections'
 
-const navigation = vi.hoisted(() => ({ pathname: '/connections-demo', query: '' }))
+const navigation = vi.hoisted(() => ({ pathname: '/preview', query: '' }))
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -27,9 +27,9 @@ const github: RequiredConnection = {
 describe('RequiredConnections', () => {
   const originalUrl = window.location.href
   beforeEach(() => {
-    navigation.pathname = '/connections-demo'
+    navigation.pathname = '/preview'
     navigation.query = ''
-    window.history.replaceState({}, '', '/connections-demo')
+    window.history.replaceState({}, '', '/preview')
     vi.stubGlobal('crypto', webcrypto)
     vi.spyOn(window.location, 'assign').mockImplementation(() => {})
   })
@@ -63,13 +63,13 @@ describe('RequiredConnections', () => {
     expect(within(list).getByText('GitHub')).toBeVisible()
   })
 
-  it('encodes a demo page and special query characters once in the sign-in return URL', async () => {
+  it('encodes a non-WebApp page and special query characters once in the sign-in return URL', async () => {
     const user = userEvent.setup()
     navigation.query = new URLSearchParams({
       prompt: 'Hello 世界 & more',
       conversation: 'a&b',
     }).toString()
-    window.history.replaceState({}, '', `/connections-demo?${navigation.query}`)
+    window.history.replaceState({}, '', `/preview?${navigation.query}`)
     render(<RequiredConnections connections={[gmail]} />)
 
     await user.click(screen.getByRole('button', { name: 'share.connections.required.signIn' }))
@@ -80,15 +80,13 @@ describe('RequiredConnections', () => {
       window.location.origin,
     )
     expect(destination.pathname).toBe('/signin')
-    expect(destination.searchParams.get('redirect_url')).toBe(
-      `/connections-demo?${navigation.query}`,
-    )
+    expect(destination.searchParams.get('redirect_url')).toBe(`/preview?${navigation.query}`)
     const returnUrl = new URL(destination.searchParams.get('redirect_url')!, window.location.origin)
     expect(returnUrl.searchParams.get('prompt')).toBe('Hello 世界 & more')
     expect(returnUrl.searchParams.get('conversation')).toBe('a&b')
   })
 
-  it('starts PKCE for the current App after navigating away from the demo', async () => {
+  it('starts PKCE for the current App after navigating from a non-WebApp page', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<RequiredConnections connections={[gmail]} />)
     await user.click(screen.getByRole('button', { name: 'share.connections.required.signIn' }))

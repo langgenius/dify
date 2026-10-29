@@ -125,7 +125,7 @@ function mockCredentialRequests({
       const payload = await request.json()
       savedConnection = connection({
         id: initialConnection?.id ?? firstId,
-        name: payload.name,
+        name: payload.name ?? initialConnection?.name,
         credential_type: 'api-key',
         account_label: null,
       })
@@ -290,7 +290,7 @@ describe('WebAppConnectionsProvider', () => {
   })
 
   it.each(['authenticated', 'anonymous'] as const)(
-    'loads the provider schema and sends every credential using the %s App session',
+    'loads the provider schema and creates a key with a blank authorization name using the %s App session',
     async (account) => {
       const user = userEvent.setup()
       const schemaResponse = deferred<Response>()
@@ -333,10 +333,11 @@ describe('WebAppConnectionsProvider', () => {
       await act(async () => {
         schemaResponse.resolve(Response.json(credentialSchema))
       })
-      await user.type(
-        await within(dialog).findByRole('textbox', { name: 'plugin.auth.authorizationName' }),
-        '  Research  ',
-      )
+      const name = await within(dialog).findByRole('textbox', {
+        name: 'plugin.auth.authorizationName',
+      })
+      expect(name).toHaveValue('')
+      if (account === 'anonymous') await user.type(name, '   ')
       await user.type(within(dialog).getByLabelText('Access token'), '  provider-secret  ')
       const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
       expect(save).toBeDisabled()
@@ -355,17 +356,17 @@ describe('WebAppConnectionsProvider', () => {
       expect(await created.json()).toEqual({
         connection_revision: connectionRevision,
         node_id: 'source-a',
-        name: 'Research',
+        name: 'share.connections.setup.apiKey',
         credentials: { access_token: '  provider-secret  ', name: 'provider-user', sandbox: false },
       })
       expect(selections()['source-a']).toBe(firstId)
       expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
-        'Research',
+        'share.connections.setup.apiKey',
       )
     },
   )
 
-  it('loads the same provider fields when replacing a key and patches the complete credentials', async () => {
+  it('replaces a key with complete credentials while preserving its name when authorization name is blank', async () => {
     const user = userEvent.setup()
     const requests = mockCredentialRequests({
       initialConnection: connection({
@@ -389,14 +390,18 @@ describe('WebAppConnectionsProvider', () => {
     })
     expect(name).toHaveValue('Old key')
     await user.clear(name)
-    await user.type(name, 'Replacement')
+    await user.type(name, '   ')
     await user.type(within(dialog).getByLabelText('Access token'), 'replacement-secret')
+    const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    expect(save).toBeDisabled()
+    await user.click(save)
+    expect(requests.some((request) => request.method === 'PATCH')).toBe(false)
     await user.type(
       within(dialog).getByRole('textbox', { name: 'Provider user name' }),
       'replacement-user',
     )
     await user.click(within(dialog).getByRole('radio', { name: 'True' }))
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await user.click(save)
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(requests.filter((request) => request.url.includes('/credential-schema'))).toHaveLength(1)
@@ -409,11 +414,10 @@ describe('WebAppConnectionsProvider', () => {
     expect(new URL(updated.url).pathname).toMatch(new RegExp(`/connections/${firstId}$`))
     expect(await updated.json()).toEqual({
       connection_revision: connectionRevision,
-      name: 'Replacement',
       credentials: { access_token: 'replacement-secret', name: 'replacement-user', sandbox: true },
     })
     expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
-      'Replacement',
+      'Old key',
     )
   })
 

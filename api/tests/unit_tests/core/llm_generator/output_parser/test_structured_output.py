@@ -100,7 +100,9 @@ class TestStructuredOutput:
         ],
         ids=["openai-native", "gemini-native", "ollama-native", "prompt-fallback"],
     )
-    def test_invoke_preserves_boolean_schema_and_values(self, provider: str, model: str, native: bool, streamed: bool):
+    def test_invoke_preserves_boolean_schema_and_values(
+        self, provider: str, model: str, native: bool, streamed: bool
+    ) -> None:
         schema = {
             "type": "object",
             "properties": {
@@ -169,6 +171,7 @@ class TestStructuredOutput:
             if isinstance(result, LLMResultWithStructuredOutput)
             else list(result)[-1].structured_output
         )
+        assert output is not None
         assert output == response
         assert output["is_active"] is False
         Draft7Validator(schema).validate(output)
@@ -195,12 +198,13 @@ class TestStructuredOutput:
             prompts = invocation["prompt_messages"]
             assert isinstance(prompts, list)
             assert isinstance(prompts[0], SystemPromptMessage)
+            assert isinstance(prompts[0].content, str)
             assert json.dumps(schema) in prompts[0].content
             assert "Use JSON true or false for boolean values, never strings." in prompts[0].content
             assert "Do not output boolean value" not in prompts[0].content
 
     @pytest.mark.parametrize("value", [False, True, None, "false", "true"])
-    def test_parse_structured_output_preserves_value_types(self, value: bool | str | None):
+    def test_parse_structured_output_preserves_value_types(self, value: bool | str | None) -> None:
         result = _parse_structured_output(json.dumps({"value": value}))
         assert result["value"] == value
         assert type(result["value"]) is type(value)
@@ -1099,4 +1103,5 @@ def test_model_specific_schema_preparation() -> None:
     prepared_schema = json.loads(call_args.kwargs["model_parameters"]["json_schema"])
     assert "additionalProperties" not in prepared_schema
     assert prepared_schema["properties"]["result"]["type"] == "boolean"
+    assert result.structured_output is not None
     assert result.structured_output["result"] is True

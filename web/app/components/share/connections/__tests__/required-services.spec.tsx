@@ -308,7 +308,7 @@ describe('RequiredServices', () => {
     expect(save).toBeDisabled()
     await user.type(apiKey, 'sk-draft-secret')
     await user.type(name, '   ')
-    expect(save).toBeDisabled()
+    expect(save).toBeEnabled()
     await user.clear(name)
     await user.type(name, 'Notion key')
     await user.clear(apiKey)

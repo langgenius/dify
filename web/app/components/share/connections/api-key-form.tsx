@@ -12,7 +12,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { ORPCError } from '@orpc/client'
 import { useForm, useSelector } from '@tanstack/react-form'
@@ -91,9 +91,9 @@ export function ApiKeyForm({
   const form = useForm({ defaultValues })
   const credentials = useSelector(form.store, (state) => state.values)
   const credentialsInvalid = rejectedCredentials === credentials
-  const complete =
-    !!name.trim() &&
-    schemas.every((schema) => !schema.required || hasRequiredValue(credentials[schema.name]))
+  const complete = schemas.every(
+    (schema) => !schema.required || hasRequiredValue(credentials[schema.name]),
+  )
 
   const save = async () => {
     if (disabled || savingRef.current || credentialsInvalid || !complete) return
@@ -143,21 +143,9 @@ export function ApiKeyForm({
             {t(($) => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' })}
           </a>
         )}
-        <Field
-          name="name"
-          disabled={disabled || saving}
-          validate={(value) =>
-            typeof value === 'string' && value.trim() ? undefined : requiredMessage(nameLabel)
-          }
-        >
-          <FieldLabel>
-            {nameLabel}
-            <span aria-hidden="true" className="ms-1 text-text-destructive">
-              *
-            </span>
-          </FieldLabel>
-          <Input form={formId} required value={name} autoComplete="off" onValueChange={setName} />
-          <FieldError role="alert" />
+        <Field name="name" disabled={disabled || saving}>
+          <FieldLabel>{nameLabel}</FieldLabel>
+          <Input form={formId} value={name} autoComplete="off" onValueChange={setName} />
         </Field>
         {schemas.length ? (
           <AuthForm

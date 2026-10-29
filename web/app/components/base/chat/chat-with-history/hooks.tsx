@@ -504,12 +504,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     setConversationSession((session) => session + 1)
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
-    handleChangeConversation('')
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
       conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
+    handleChangeConversation('')
     setClearChatList(true)
   }, [
     handleChangeConversation,

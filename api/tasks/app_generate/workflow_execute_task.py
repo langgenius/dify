@@ -44,6 +44,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPa
 from services.app_task_service import AppTaskService
 from services.end_user_connection_execution_adapters import validate_connection_execution
 from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
@@ -249,6 +250,7 @@ class _AppRunner:
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
                 connection_context=exec_params.connection_context,
                 invoke_from=exec_params.invoke_from,
