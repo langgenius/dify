@@ -11,7 +11,7 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_flask_app_with_configs
-from constants.oauth_bearer import TokenType
+from constants.oauth_bearer import OAuthScope, TokenType
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
@@ -48,7 +48,12 @@ class AdmittedWorld:
     app_id: str
     member_id: str
     headers: dict[str, str]
-    auth: AuthContext
+
+
+@pytest.fixture
+def admitted_oauth_scopes() -> frozenset[OAuthScope] | None:
+    """The OAuth scopes `admitted_bearer` was granted; None is a device login's full access."""
+    return None
 
 
 @pytest.fixture
@@ -57,6 +62,7 @@ def admitted_bearer(
     sqlite_session: Session,
     config_overrides: Callable[..., None],
     monkeypatch: pytest.MonkeyPatch,
+    admitted_oauth_scopes: frozenset[OAuthScope] | None,
 ) -> AdmittedWorld:
     """A caller every guarded route admits, so a request reaches `@accepts`.
 
@@ -110,6 +116,7 @@ def admitted_bearer(
         token_id=uuid.uuid4(),
         token_type=TokenType.OAUTH_ACCOUNT,
         expires_at=None,
+        oauth_scopes=admitted_oauth_scopes,
     )
     monkeypatch.setattr(
         "controllers.openapi.auth.router.get_authenticator",
@@ -123,7 +130,6 @@ def admitted_bearer(
         app_id=app_id,
         member_id=str(uuid.uuid4()),
         headers={"Authorization": "Bearer dfoa_admitted", CATALOG_HEADER: catalog_for(openapi_app)[1]},
-        auth=token,
     )
 
 
