@@ -203,6 +203,34 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
+      if (emptyGraph && isCollaborationEnabled) {
+        // CRDT updates do not carry the persisted revision from another collaborator's save.
+        const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
+        const [error, draft] = await safe(
+          consoleClient.apps.byAppId.workflows.draft.get(
+            { params: { app_id: baseParams.appId } },
+            { context: { silent: true } },
+          ),
+        )
+        if (!canSaveEmptyGraph()) {
+          callback?.onSettled?.()
+          return null
+        }
+        if (error || !Array.isArray(draft.graph.nodes) || !Array.isArray(draft.graph.edges)) {
+          callback?.onError?.()
+          callback?.onSettled?.()
+          return null
+        }
+
+        const { syncWorkflowDraftHash, setSyncWorkflowDraftHash } = workflowStore.getState()
+        // Another hook may have saved a newer revision while this request was in flight.
+        if (syncWorkflowDraftHash === hashBeforeRefresh)
+          setSyncWorkflowDraftHash(draft.hash, {
+            nodes: draft.graph.nodes,
+            edges: draft.graph.edges,
+          })
+      }
+
       // Check after queued saves finish so a newly persisted nonempty draft is protected too.
       if (emptyGraph && workflowStore.getState().syncWorkflowDraftIsEmpty !== true) {
         const { showConfirm, setShowConfirm } = workflowStore.getState()

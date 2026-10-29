@@ -1,4 +1,4 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppMode, WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Features } from '@/app/components/base/features/types'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -15,7 +15,9 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockPostWithKeepalive = vi.fn()
@@ -41,6 +43,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
+const mockFetchWorkflowDraft = vi.fn()
 // Stand in for the draft sync request at the client boundary. Calls are recorded as the
 // request they send (endpoint and body), and rejections pass through the console link's
 // contract error validation, as they do in production.
@@ -49,6 +52,13 @@ vi.mock('@/service/console', async (importOriginal) => {
   const { apps } = await import('@dify/contracts/api/console/apps/orpc.gen')
   const { validateDefinedErrors } = await import('@/service/console/defined-errors')
   const validate = validateDefinedErrors({ apps })
+  const get = (input: { params: { app_id: string } }) =>
+    validate({
+      context: {},
+      input,
+      path: ['apps', 'byAppId', 'workflows', 'draft', 'get'],
+      next: () => mockFetchWorkflowDraft(input),
+    })
   const post = (input: { params: { app_id: string }; body: unknown }) =>
     validate({
       context: {},
@@ -60,7 +70,10 @@ vi.mock('@/service/console', async (importOriginal) => {
           params: input.body,
         }),
     })
-  return { ...actual, consoleClient: { apps: { byAppId: { workflows: { draft: { post } } } } } }
+  return {
+    ...actual,
+    consoleClient: { apps: { byAppId: { workflows: { draft: { get, post } } } } },
+  }
 })
 
 vi.mock('@/service/fetch', async (importOriginal) => {
@@ -184,6 +197,9 @@ describe('useNodesSyncDraft', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new', updated_at: 1 })
+    mockFetchWorkflowDraft.mockResolvedValue(
+      createWorkflowResponseFixture({ hash: 'hash-123', graph: { nodes: [startNode], edges: [] } }),
+    )
     useCollaborationSession({ connected: false, leader: true })
     mockCollaborationRequestWorkflowSync.mockResolvedValue({ hash: 'remote-hash', updatedAt: 2 })
   })
@@ -1086,6 +1102,170 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('collaboration', () => {
+    it('saves without confirmation after another collaborator has already cleared the draft', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      const { result, store, setCanvas } = renderUseNodesSyncDraft({
+        isCollaborationEnabled: true,
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
+      // The peer's committed clear arrives through CRDT without updating this client's save metadata.
+      mockFetchWorkflowDraft.mockResolvedValue(
+        createWorkflowResponseFixture({ hash: 'peer-empty-hash' }),
+      )
+      setCanvas({ nodes: [] })
+      const { syncPromise } = await startEmptySave(result)
+
+      expect(store.getState().showConfirm).toBeUndefined()
+
+      await act(async () => {
+        await expect(syncPromise).resolves.toEqual({ hash: 'new', updatedAt: 1 })
+      })
+
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith({
+        params: { app_id: 'app-1' },
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        draftRequest(
+          expect.objectContaining({
+            hash: 'peer-empty-hash',
+            graph: expect.objectContaining({ nodes: [], edges: [] }),
+            force: true,
+          }),
+        ),
+      )
+      expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+    })
+
+    it('confirms a newly populated server draft even when the last local save was empty', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      mockFetchWorkflowDraft.mockResolvedValue(
+        createWorkflowResponseFixture({
+          hash: 'peer-populated-hash',
+          graph: { nodes: [startNode], edges: [] },
+        }),
+      )
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        isCollaborationEnabled: true,
+        initialStoreState: { syncWorkflowDraftIsEmpty: true },
+      })
+      const { syncPromise } = await startEmptySave(result)
+
+      expect(store.getState().showConfirm).toBeDefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await syncPromise
+      })
+
+      // Refreshing persisted metadata must leave the initiating client's empty canvas intact.
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        draftRequest(
+          expect.objectContaining({
+            hash: 'peer-populated-hash',
+            graph: expect.objectContaining({ nodes: [], edges: [] }),
+            force: true,
+          }),
+        ),
+      )
+    })
+
+    it('does not clear a collaborative draft when its persisted state cannot be refreshed', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      mockFetchWorkflowDraft.mockRejectedValue(new Error('Draft refresh failed'))
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        isCollaborationEnabled: true,
+        initialStoreState: { syncWorkflowDraftIsEmpty: true },
+      })
+
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
+      })
+
+      expect(store.getState().showConfirm).toBeUndefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(callbacks.onError).toHaveBeenCalledOnce()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('keeps a newer successful save when another hook finishes an older metadata refresh', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      const olderRefresh = createDeferred<WorkflowResponse>()
+      const newerRefresh = createDeferred<WorkflowResponse>()
+      mockFetchWorkflowDraft
+        .mockReturnValueOnce(olderRefresh.promise)
+        .mockReturnValueOnce(newerRefresh.promise)
+      const { result, store } = renderSyncDraft(
+        () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
+        {
+          nodes: [],
+          isCollaborationEnabled: true,
+          initialStoreState: { syncWorkflowDraftIsEmpty: true },
+        },
+      )
+      const [first, second] = result.current
+      const { syncPromise: firstSave } = await startEmptySave({ current: first })
+      const { syncPromise: secondSave } = await startEmptySave({ current: second })
+
+      await act(async () => {
+        newerRefresh.resolve(createWorkflowResponseFixture({ hash: 'peer-empty-hash' }))
+        await secondSave
+      })
+      await act(async () => {
+        olderRefresh.resolve(
+          createWorkflowResponseFixture({
+            hash: 'hash-123',
+            graph: { nodes: [startNode], edges: [] },
+          }),
+        )
+      })
+
+      expect(store.getState().showConfirm).toBeUndefined()
+
+      await act(async () => {
+        await firstSave
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenLastCalledWith(
+        draftRequest(
+          expect.objectContaining({ hash: 'new', graph: expect.objectContaining({ nodes: [] }) }),
+        ),
+      )
+    })
+
+    it.each(['a node is restored', 'the hook unmounts', 'the graph becomes untrusted'] as const)(
+      'skips a collaborative clear when %s during persisted-state refresh',
+      async (change) => {
+        useCollaborationSession({ connected: true, leader: false })
+        const refresh = createDeferred<WorkflowResponse>()
+        mockFetchWorkflowDraft.mockReturnValue(refresh.promise)
+        const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+        const { result, store, setCanvas, unmount } = renderUseNodesSyncDraft({
+          nodes: [],
+          isCollaborationEnabled: true,
+          initialStoreState: { syncWorkflowDraftIsEmpty: true },
+        })
+        const { syncPromise } = await startEmptySave(result, false, callbacks)
+
+        if (change === 'a node is restored') setCanvas({ nodes: [startNode] })
+        else if (change === 'the hook unmounts') unmount()
+        else mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
+
+        await act(async () => {
+          refresh.resolve(createWorkflowResponseFixture({ hash: 'peer-empty-hash' }))
+          await expect(syncPromise).resolves.toBeNull()
+        })
+
+        expect(store.getState().showConfirm).toBeUndefined()
+        expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+        expect(callbacks.onError).not.toHaveBeenCalled()
+        expect(callbacks.onSettled).toHaveBeenCalledOnce()
+      },
+    )
+
     it('waits for the leader save result when the current user is a follower', async () => {
       useCollaborationSession({ connected: true, leader: false })
       const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
