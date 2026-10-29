@@ -618,9 +618,6 @@
     }
   },
   "web/app/components/app/configuration/debug/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
@@ -631,11 +628,6 @@
   "web/app/components/app/configuration/debug/types.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/app/configuration/tools/external-data-tool-modal.tsx": {
