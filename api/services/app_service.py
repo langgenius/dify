@@ -1133,7 +1133,7 @@ class AppService:
                     AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
                 )
             )
-        if account_id is ...:
+        if isinstance(account_id, EllipsisType):
             account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
