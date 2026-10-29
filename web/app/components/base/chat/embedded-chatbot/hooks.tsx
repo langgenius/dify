@@ -143,21 +143,29 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     })
   }, [setConversationIdInfo])
   const allowResetChat = !conversationId
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '', [appId, conversationIdInfo, userId, conversationId])
+  // Web apps key the saved conversation by end user: an access mode change issues a new end user,
+  // which must not resume a conversation owned by the previous one.
+  const conversationOwnerId = isTryApp ? (userId || 'DEFAULT') : (appInfo as unknown as AppData | undefined)?.end_user_id
+  const currentConversationId = useMemo(() => {
+    const savedConversationId = conversationOwnerId ? conversationIdInfo?.[appId || '']?.[conversationOwnerId] : undefined
+    return savedConversationId || conversationId || ''
+  }, [appId, conversationIdInfo, conversationOwnerId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
-    if (appId) {
-      let prevValue = conversationIdInfo?.[appId || '']
-      if (typeof prevValue === 'string')
-        prevValue = {}
-      setConversationIdInfo({
-        ...conversationIdInfo,
-        [appId || '']: {
-          ...prevValue,
-          [userId || 'DEFAULT']: changeConversationId,
-        },
-      })
-    }
-  }, [appId, conversationIdInfo, setConversationIdInfo, userId])
+    if (!appId)
+      return
+    if (!conversationOwnerId)
+      return
+    let prevValue = conversationIdInfo?.[appId]
+    if (typeof prevValue === 'string')
+      prevValue = {}
+    setConversationIdInfo({
+      ...conversationIdInfo,
+      [appId]: {
+        ...prevValue,
+        [conversationOwnerId]: changeConversationId,
+      },
+    })
+  }, [appId, conversationIdInfo, conversationOwnerId, setConversationIdInfo])
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
