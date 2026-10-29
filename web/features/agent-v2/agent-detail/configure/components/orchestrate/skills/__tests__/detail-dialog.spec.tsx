@@ -141,6 +141,32 @@ describe('AgentSkillDetailDialog file preview', () => {
   })
 })
 
+describe('AgentSkillDetailDialog header download', () => {
+  it('should keep the header download focusable but inert while it downloads', async () => {
+    const user = userEvent.setup()
+    const onDownloadFile = vi.fn()
+    renderPreview(
+      { content: 'first line', fileName: 'notes.txt', downloadActionLoadingTarget: 'header' },
+      undefined,
+      onDownloadFile,
+    )
+
+    const download = screen.getByRole('button', { name: 'common.operation.downloading notes.txt' })
+    expect(download).toHaveAttribute('aria-disabled', 'true')
+    await user.click(download)
+    expect(onDownloadFile).not.toHaveBeenCalled()
+  })
+
+  it('should request the header download', async () => {
+    const user = userEvent.setup()
+    const onDownloadFile = vi.fn()
+    renderPreview({ content: 'first line', fileName: 'notes.txt' }, undefined, onDownloadFile)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.download notes.txt' }))
+    expect(onDownloadFile).toHaveBeenCalledWith('header')
+  })
+})
+
 describe('AgentSkillDetailDialog PDF preview', () => {
   afterEach(() => {
     vi.restoreAllMocks()

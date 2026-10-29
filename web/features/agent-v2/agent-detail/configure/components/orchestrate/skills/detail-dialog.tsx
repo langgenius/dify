@@ -17,6 +17,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useCallback, useId, useMemo } from 'react'
@@ -464,6 +465,9 @@ export function AgentSkillDetailBody({
   const dialogTitleId = useId()
   const previewTitle = detail.filePreview?.fileName
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
+  const headerDownloadLabel = isHeaderDownloadLoading
+    ? tCommon(($) => $['operation.downloading'])
+    : tCommon(($) => $['operation.download'])
 
   return (
     <>
@@ -509,23 +513,31 @@ export function AgentSkillDetailBody({
             </div>
             <div className="-my-0.5 flex shrink-0 items-center gap-1">
               {detail.onDownloadFile && previewTitle && (
-                <button
-                  type="button"
-                  aria-label={`${isHeaderDownloadLoading ? tCommon(($) => $['operation.downloading']) : tCommon(($) => $['operation.download'])} ${previewTitle}`}
-                  onClick={() => detail.onDownloadFile?.('header')}
-                  disabled={isHeaderDownloadLoading}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'size-4',
-                      isHeaderDownloadLoading
-                        ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                        : 'i-ri-download-line',
-                    )}
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        aria-label={`${headerDownloadLabel} ${previewTitle}`}
+                        size="lg"
+                        className="shrink-0"
+                        disabled={isHeaderDownloadLoading}
+                        focusableWhenDisabled
+                        onClick={() => detail.onDownloadFile?.('header')}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'size-4',
+                            isHeaderDownloadLoading
+                              ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                              : 'i-ri-download-line',
+                          )}
+                        />
+                      </IconButton>
+                    }
                   />
-                </button>
+                  <TooltipContent>{headerDownloadLabel}</TooltipContent>
+                </Tooltip>
               )}
               <DialogClose
                 render={

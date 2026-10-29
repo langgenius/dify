@@ -16,6 +16,7 @@ import type {
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -1098,21 +1099,20 @@ export function AgentPromptEditor() {
           <TooltipTrigger
             closeOnClick={false}
             render={
-              <button
-                type="button"
+              <IconButton
                 aria-label={
                   copied
                     ? t(($) => $['agentDetail.configure.prompt.copied'])
                     : t(($) => $['agentDetail.configure.prompt.copy'])
                 }
-                className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="shrink-0"
                 onClick={handleCopyPrompt}
               >
                 <span
                   aria-hidden
                   className={copied ? 'i-ri-check-line size-4' : 'i-ri-clipboard-line size-4'}
                 />
-              </button>
+              </IconButton>
             }
           />
           <TooltipContent>
