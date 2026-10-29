@@ -7,10 +7,12 @@ from flask import Flask
 from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
+from controllers.common.rbac import DatasetId, RBACPermission
 from controllers.console import console_ns
 from controllers.console.datasets.hit_testing import HitTestingApi
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 
 @pytest.fixture
@@ -235,3 +237,10 @@ class TestHitTestingApi:
         ):
             with pytest.raises(ValueError, match="Invalid parameters"):
                 method(api, MagicMock(), account, "tenant-1", dataset_id)
+
+
+def test_hit_testing_requires_retrieval_recall_permission() -> None:
+    [check] = rbac_checks(HitTestingApi.post)
+
+    assert check.scene is RBACPermission.DATASET_RETRIEVAL_RECALL
+    assert isinstance(check.locator, DatasetId)
