@@ -142,15 +142,15 @@ const renderSyncDraft = <R>(
 const renderUseNodesSyncDraft = (canvas?: SyncDraftCanvas) =>
   renderSyncDraft(() => useNodesSyncDraft(), canvas)
 
-const startEmptySave = (
+const startEmptySave = async (
   result: { current: ReturnType<typeof useNodesSyncDraft> },
   ...args: Parameters<ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']>
 ) => {
   let syncPromise!: ReturnType<ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']>
-  act(() => {
+  await act(async () => {
     syncPromise = result.current.doSyncWorkflowDraft(...args)
   })
-  return syncPromise
+  return { syncPromise }
 }
 
 const draftNotSyncError = () =>
@@ -494,10 +494,47 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('empty graph confirmation', () => {
+    it.each([
+      { scenario: 'no nodes', nodes: [] },
+      {
+        scenario: 'only the local start placeholder',
+        nodes: [
+          createNode({ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }),
+        ],
+      },
+    ])('saves an already empty draft with $scenario without confirmation', async ({ nodes }) => {
+      const callbacks = { onSuccess: vi.fn(), onSettled: vi.fn() }
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes,
+        initialStoreState: { syncWorkflowDraftIsEmpty: true },
+      })
+      const { syncPromise } = await startEmptySave(result, false, callbacks)
+
+      expect(store.getState().showConfirm).toBeUndefined()
+
+      await act(async () => {
+        await expect(syncPromise).resolves.toEqual({ hash: 'new', updatedAt: 1 })
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: expect.objectContaining({ nodes: [], edges: [] }),
+            force: true,
+          }),
+        }),
+      )
+      expect(callbacks.onSuccess).toHaveBeenCalledOnce()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
     it('waits for confirmation before force-saving an empty graph', async () => {
       const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
-      const { result, store } = renderUseNodesSyncDraft({ nodes: [] })
-      const syncPromise = startEmptySave(result, false, callbacks)
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
+      const { syncPromise } = await startEmptySave(result, false, callbacks)
 
       expect(store.getState().showConfirm).toEqual(
         expect.objectContaining({
@@ -527,10 +564,127 @@ describe('useNodesSyncDraft', () => {
       expect(callbacks.onSettled).toHaveBeenCalledOnce()
     })
 
+    it('does not confirm again when another hook saves the successfully cleared draft', async () => {
+      const { result, store } = renderSyncDraft(
+        () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
+        { nodes: [], initialStoreState: { syncWorkflowDraftIsEmpty: false } },
+      )
+      const [first, second] = result.current
+      const { syncPromise: firstSave } = await startEmptySave({ current: first })
+
+      expect(store.getState().showConfirm).toBeDefined()
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await firstSave
+      })
+
+      const { syncPromise: secondSave } = await startEmptySave({ current: second })
+
+      expect(store.getState().showConfirm).toBeUndefined()
+
+      await act(async () => {
+        await expect(secondSave).resolves.toEqual({ hash: 'new', updatedAt: 1 })
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+    })
+
+    it('requires confirmation again when clearing the draft failed to save', async () => {
+      mockSyncWorkflowDraft.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 500 })),
+      )
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
+      const { syncPromise: firstSave } = await startEmptySave(result)
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await expect(firstSave).resolves.toBeNull()
+      })
+
+      const { syncPromise: retry } = await startEmptySave(result)
+
+      expect(store.getState().showConfirm).toBeDefined()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        store.getState().showConfirm?.onCancel?.()
+        await expect(retry).resolves.toBeNull()
+      })
+    })
+
+    it('confirms clearing a previously empty draft after another hook saved nodes', async () => {
+      const { result, store, setCanvas } = renderSyncDraft(
+        () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
+        { initialStoreState: { syncWorkflowDraftIsEmpty: true } },
+      )
+      const [first, second] = result.current
+
+      await act(async () => {
+        await first.doSyncWorkflowDraft()
+      })
+      setCanvas({ nodes: [] })
+
+      const { syncPromise } = await startEmptySave({ current: second })
+
+      expect(store.getState().showConfirm).toBeDefined()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await syncPromise
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+    })
+
+    it('confirms a queued clear when an earlier save populates an initially empty draft', async () => {
+      let finishEarlierSave!: (response: { hash: string; updated_at: number }) => void
+      mockSyncWorkflowDraft.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishEarlierSave = resolve
+          }),
+      )
+      const { result, store, setCanvas } = renderUseNodesSyncDraft({
+        initialStoreState: { syncWorkflowDraftIsEmpty: true },
+      })
+      const { syncPromise: earlierSave } = await startEmptySave(result)
+      setCanvas({ nodes: [] })
+      const { syncPromise: emptySave } = await startEmptySave(result)
+
+      expect(store.getState().showConfirm).toBeUndefined()
+
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft()).resolves.toBeNull()
+      })
+
+      await act(async () => {
+        finishEarlierSave({ hash: 'populated-draft', updated_at: 1 })
+        await earlierSave
+      })
+
+      expect(store.getState().showConfirm).toBeDefined()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await emptySave
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(2)
+    })
+
     it('settles a canceled empty save without posting or reporting an error', async () => {
       const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
-      const { result, store } = renderUseNodesSyncDraft({ nodes: [] })
-      const syncPromise = startEmptySave(result, false, callbacks)
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
+      const { syncPromise } = await startEmptySave(result, false, callbacks)
 
       await act(async () => {
         store.getState().showConfirm?.onCancel?.()
@@ -546,6 +700,7 @@ describe('useNodesSyncDraft', () => {
 
     it('treats a graph with only placeholders and temporary entities as empty', async () => {
       const { result, store } = renderUseNodesSyncDraft({
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
         nodes: [
           createNode({ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }),
           createNode({
@@ -563,7 +718,7 @@ describe('useNodesSyncDraft', () => {
           }),
         ],
       })
-      const syncPromise = startEmptySave(result)
+      const { syncPromise } = await startEmptySave(result)
 
       expect(store.getState().showConfirm).toBeDefined()
       expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
@@ -584,7 +739,10 @@ describe('useNodesSyncDraft', () => {
     })
 
     it('skips an empty page-close save without opening confirmation', () => {
-      const { result, store } = renderUseNodesSyncDraft({ nodes: [] })
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -594,16 +752,37 @@ describe('useNodesSyncDraft', () => {
       expect(store.getState().showConfirm).toBeUndefined()
     })
 
+    it('skips repeated saves from the same hook while confirmation is open', async () => {
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
+      const callbacks = { onSettled: vi.fn() }
+      const { syncPromise: firstSave } = await startEmptySave(result)
+      const { syncPromise: repeatedSave } = await startEmptySave(result, false, callbacks)
+
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        store.getState().showConfirm?.onCancel?.()
+        await expect(firstSave).resolves.toBeNull()
+        await expect(repeatedSave).resolves.toBeNull()
+      })
+
+      expect(store.getState().showConfirm).toBeUndefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    })
+
     it('keeps one confirmation when another hook instance tries to save the empty graph', async () => {
       const { result, store } = renderSyncDraft(
         () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
-        { nodes: [] },
+        { nodes: [], initialStoreState: { syncWorkflowDraftIsEmpty: false } },
       )
       const [first, second] = result.current
       const secondCallbacks = { onError: vi.fn(), onSettled: vi.fn() }
       let firstSave!: ReturnType<typeof first.doSyncWorkflowDraft>
 
-      act(() => {
+      await act(async () => {
         firstSave = first.doSyncWorkflowDraft()
       })
       const confirmation = store.getState().showConfirm
@@ -626,8 +805,11 @@ describe('useNodesSyncDraft', () => {
 
     it('does not save the old empty graph when a node is added before confirmation', async () => {
       const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
-      const { result, setCanvas, store } = renderUseNodesSyncDraft({ nodes: [] })
-      const syncPromise = startEmptySave(result, false, callbacks)
+      const { result, setCanvas, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
+      const { syncPromise } = await startEmptySave(result, false, callbacks)
 
       setCanvas({ nodes: [createNode({ id: 'new-node', data: { type: BlockEnum.Start } })] })
 
@@ -641,30 +823,21 @@ describe('useNodesSyncDraft', () => {
       expect(callbacks.onSettled).toHaveBeenCalledOnce()
     })
 
-    it('rechecks a confirmed empty graph after an earlier save finishes', async () => {
+    it('rechecks the canvas before saving a queued empty graph', async () => {
       let finishEarlierSave!: (response: { hash: string; updated_at: number }) => void
-      let notifySaveStarted!: () => void
-      const saveStarted = new Promise<void>((resolve) => {
-        notifySaveStarted = resolve
-      })
       mockSyncWorkflowDraft.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
             finishEarlierSave = resolve
-            notifySaveStarted()
           }),
       )
       const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
-      const { result, setCanvas, store } = renderUseNodesSyncDraft()
-      const earlierSave = startEmptySave(result)
-      await saveStarted
-      setCanvas({ nodes: [] })
-      const emptySave = startEmptySave(result, false, callbacks)
-
-      await act(async () => {
-        store.getState().showConfirm?.onConfirm()
+      const { result, setCanvas, store } = renderUseNodesSyncDraft({
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
       })
-
+      const { syncPromise: earlierSave } = await startEmptySave(result)
+      setCanvas({ nodes: [] })
+      const { syncPromise: emptySave } = await startEmptySave(result, false, callbacks)
       setCanvas({ nodes: [createNode({ id: 'restored-node', data: { type: BlockEnum.Start } })] })
 
       await act(async () => {
@@ -673,6 +846,7 @@ describe('useNodesSyncDraft', () => {
         await expect(emptySave).resolves.toBeNull()
       })
 
+      expect(store.getState().showConfirm).toBeUndefined()
       expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
       expect(callbacks.onError).not.toHaveBeenCalled()
       expect(callbacks.onSettled).toHaveBeenCalledOnce()
@@ -680,8 +854,11 @@ describe('useNodesSyncDraft', () => {
 
     it('cancels a pending empty save when its owning hook unmounts', async () => {
       const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
-      const { result, store, unmount } = renderUseNodesSyncDraft({ nodes: [] })
-      const syncPromise = startEmptySave(result, false, callbacks)
+      const { result, store, unmount } = renderUseNodesSyncDraft({
+        nodes: [],
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
+      })
+      const { syncPromise } = await startEmptySave(result, false, callbacks)
       expect(store.getState().showConfirm).toBeDefined()
 
       unmount()
@@ -698,8 +875,9 @@ describe('useNodesSyncDraft', () => {
       const { result, store } = renderUseNodesSyncDraft({
         nodes: [],
         isCollaborationEnabled: true,
+        initialStoreState: { syncWorkflowDraftIsEmpty: false },
       })
-      const syncPromise = startEmptySave(result)
+      const { syncPromise } = await startEmptySave(result)
 
       expect(store.getState().showConfirm).toBeDefined()
       expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
@@ -821,7 +999,7 @@ describe('useNodesSyncDraft', () => {
       )
       const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
       const { result } = renderUseNodesSyncDraft()
-      const syncPromise = startEmptySave(result, false, callbacks)
+      const { syncPromise } = await startEmptySave(result, false, callbacks)
       await started
       markAppDeletionStarted('app-1')
 
