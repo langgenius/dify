@@ -66,6 +66,7 @@ from repositories.human_input_v2.im_integration.mappers import (
     sync_result_to_record,
     sync_run_from_record,
 )
+from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.human_input_v2.im_credential_codec import IMCredentialError
@@ -133,6 +134,16 @@ class IMChannelReconciliationService:
         adapter: IMProviderAdapter | None = None
         try:
             run = self._require_run(sync_run_id)
+            if run.channel_revision.channel_id != str(self._channel.id):
+                raise IMSyncRunNotFoundError("IM synchronization run was not found")
+            if run.channel_revision.config_version < self._channel.config_version:
+                with self._session_factory() as session, session.begin():
+                    stale_run = SQLAlchemyIMControlPlaneRepository(session, self._channel).finish_stale_run(
+                        sync_run_id, now=self._clock()
+                    )
+                if stale_run is None:
+                    raise IMSyncRetryableError("IM Channel revision changed during stale run completion")
+                return stale_run
             if not self._run_matches_channel(run):
                 raise IMSyncRunNotFoundError("IM synchronization run was not found")
             if not run.is_active:

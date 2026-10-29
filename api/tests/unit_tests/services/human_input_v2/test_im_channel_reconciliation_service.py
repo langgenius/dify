@@ -53,7 +53,7 @@ from repositories.human_input_v2.im_channel_repository import (
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
 from services.human_input_v2.im_contact_sync import coordinator as coordinator_module
-from services.human_input_v2.im_contact_sync.coordinator import IMChannelReconciliationService
+from services.human_input_v2.im_contact_sync.coordinator import IMChannelReconciliationService, IMSyncRetryableError
 from services.human_input_v2.im_contact_sync.service import IMSyncRunNotFoundError
 
 _NOW = datetime(2026, 8, 11, 8)
@@ -677,3 +677,95 @@ def test_sync_replacement_insert_failure_restores_old_bindings_and_history(
             sa.select(HumanInputIMSyncResult).where(HumanInputIMSyncResult.sync_run_id == str(_SECOND_RUN_ID))
         ).one()
         assert result.result_type is IMSyncResultType.FAILED
+
+
+@pytest.mark.parametrize("status", [IMSyncRunStatus.QUEUED, IMSyncRunStatus.RUNNING])
+def test_worker_with_current_channel_finishes_old_revision_without_provider_access(
+    reconciliation_context: _ReconciliationContext,
+    status: IMSyncRunStatus,
+) -> None:
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 2
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status = status
+
+    def unexpected_adapter(_channel: IMChannel) -> _Adapter:
+        pytest.fail("stale synchronization must not access the provider")
+
+    service = IMChannelReconciliationService(
+        reconciliation_context.sessions,
+        replace(reconciliation_context.channel, config_version=2),
+        unexpected_adapter,
+        lambda _session: _ContactReader(),
+        clock=lambda: _NOW,
+    )
+    run = service.reconcile(_RUN_ID)
+    assert run.status is IMSyncRunStatus.FAILED
+    assert run.error_code == "stale_revision"
+    assert run.finished_at == _NOW
+    assert service.reconcile(_RUN_ID) == run
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 1
+        diagnostic = session.scalar(sa.select(HumanInputIMSyncResult))
+        assert diagnostic is not None
+        assert diagnostic.reason_code == "stale_revision"
+        assert diagnostic.sync_run_id == str(_RUN_ID)
+        assert diagnostic.channel_id == str(_CHANNEL_ID)
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
+
+
+@pytest.mark.parametrize("status", [IMSyncRunStatus.QUEUED, IMSyncRunStatus.RUNNING])
+def test_trigger_retires_abandoned_old_revision_and_creates_current_run(
+    reconciliation_context: _ReconciliationContext,
+    status: IMSyncRunStatus,
+) -> None:
+    current_channel = replace(reconciliation_context.channel, config_version=2)
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 2
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status = status
+    with reconciliation_context.sessions.begin() as session:
+        repository = SQLAlchemyIMControlPlaneRepository(session, current_channel)
+        decision = repository.create_or_get_active_run(
+            sync_run_id=_SECOND_RUN_ID, started_by_account_id=_ACCOUNT_ID, now=_NOW
+        )
+        assert decision.run is not None
+        assert decision.run.id == _SECOND_RUN_ID
+        assert decision.run.channel_revision.config_version == 2
+        assert decision.run.status is IMSyncRunStatus.QUEUED
+    with reconciliation_context.sessions() as session:
+        old_run = session.get_one(HumanInputIMSyncRun, str(_RUN_ID))
+        assert old_run.status is IMSyncRunStatus.FAILED
+        assert old_run.error_code == "stale_revision"
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 1
+
+
+def test_old_channel_snapshot_cannot_terminate_a_newer_run(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 2
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).channel_config_version = 2
+    with pytest.raises(IMSyncRunNotFoundError):
+        reconciliation_context.service(_Adapter(_successful_directory())).reconcile(_RUN_ID)
+    with reconciliation_context.sessions() as session:
+        assert session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status is IMSyncRunStatus.QUEUED
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 0
+
+
+def test_revision_change_during_stale_completion_requires_worker_retry(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 3
+    service = IMChannelReconciliationService(
+        reconciliation_context.sessions,
+        replace(reconciliation_context.channel, config_version=2),
+        lambda _channel: pytest.fail("stale synchronization must not access the provider"),
+        lambda _session: _ContactReader(),
+        clock=lambda: _NOW,
+    )
+    with pytest.raises(IMSyncRetryableError):
+        service.reconcile(_RUN_ID)
+    with reconciliation_context.sessions() as session:
+        assert session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status is IMSyncRunStatus.QUEUED
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 0
