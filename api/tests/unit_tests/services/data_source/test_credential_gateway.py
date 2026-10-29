@@ -437,10 +437,13 @@ def test_concurrent_refresh_fails_closed_if_latest_snapshot_is_still_expired() -
 
 
 def test_actor_stored_and_provider_callers_share_one_refresh() -> None:
+    class ReaderState(local):
+        first = True
+
     class SharedCatalog:
         record = _record(expires_at=1)
         barrier = Barrier(3)
-        reader = local()
+        reader = ReaderState()
         writes = 0
 
         def _read(
@@ -453,8 +456,8 @@ def test_actor_stored_and_provider_callers_share_one_refresh() -> None:
                 record.provider,
                 record.plugin_id,
             )
-            if not getattr(self.reader, "read", False):
-                self.reader.read = True
+            if self.reader.first:
+                self.reader.first = False
                 self.barrier.wait(timeout=2)
             return record
 
