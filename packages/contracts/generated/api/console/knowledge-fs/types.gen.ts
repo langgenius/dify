@@ -20,7 +20,6 @@ export type ErrorResponse = {
 
 export type KnowledgeFsFeaturesResponse = {
   agent_enabled: boolean
-  enabled: boolean
   upload_enabled: boolean
 }
 
