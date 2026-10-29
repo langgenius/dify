@@ -1178,3 +1178,36 @@ def test_builder_membership_lookup_requires_complete_owner_chain_and_active_memb
         assert account is not None
         account.status = AccountStatus.BANNED
     assert repository.get_test_membership(scope) is None
+
+
+def test_test_preflight_graph_uses_saved_draft_and_scopes_both_owners(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from dataclasses import replace
+
+    from services.workflow_test_credentials import BuilderScope
+
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session, mode=AppMode.WORKFLOW)
+        for version in ("published", "draft"):
+            session.add(
+                Workflow(
+                    tenant_id=_TENANT_ID,
+                    app_id=app.id,
+                    type=WorkflowType.WORKFLOW,
+                    version=version,
+                    graph=json.dumps({"nodes": [{"id": version}]}),
+                    features="{}",
+                    created_by=_ACCOUNT_ID,
+                )
+            )
+    scope = BuilderScope(_TENANT_ID, _APP_ID, _ACCOUNT_ID)
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+    assert repository.get_test_draft_graph(scope) == {"nodes": [{"id": "draft"}]}
+    assert repository.get_test_draft_graph(replace(scope, app_id=_OTHER_TENANT_ID)) is None
+    assert repository.get_test_draft_graph(replace(scope, tenant_id=_OTHER_TENANT_ID)) is None
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, _APP_ID)
+        assert app is not None
+        app.tenant_id = _OTHER_TENANT_ID
+    assert repository.get_test_draft_graph(scope) is None

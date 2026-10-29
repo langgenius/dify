@@ -5221,6 +5221,22 @@ Get system variables for workflow
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/workflows/draft/test-credentials/preflight
+Check all EndUser test credentials in the current saved draft. No request body or draft hash is required. Returns readiness without creating a Run or executing tools; existing workspace OAuth credentials may be refreshed. Actual test execution checks credentials again.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Full draft test credential readiness | **application/json**: [TestCredentialPreflightResponse](#testcredentialpreflightresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
 **Poll for trigger events and execute full workflow when event arrives**
 
@@ -33591,6 +33607,13 @@ Tag type
 | reason_code | string |  | Yes |
 | retryable | boolean |  | Yes |
 | status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+
+#### TestCredentialPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
+| ready | boolean |  | Yes |
 
 #### TestCredentialReadiness
 

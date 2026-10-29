@@ -3981,6 +3981,62 @@ export const zWorkflowRunSnapshotView = z.object({
 })
 
 /**
+ * TestCredentialCheck
+ */
+export const zTestCredentialCheck = z.object({
+  reason_code: z.string().nullable(),
+  retryable: z.boolean(),
+  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
+})
+
+/**
+ * TestCredentialState
+ */
+export const zTestCredentialState = z.object({
+  check: zTestCredentialCheck.nullable(),
+  credential_id: z.string().nullable(),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  status: z.enum([
+    'connected',
+    'disconnected',
+    'incompatible',
+    'invalid',
+    'reconnect_required',
+    'temporarily_unavailable',
+  ]),
+})
+
+/**
+ * TestCredentialPreflightResponse
+ */
+export const zTestCredentialPreflightResponse = z.object({
+  credentials: z.array(zTestCredentialState),
+  ready: z.boolean().readonly(),
+})
+
+/**
+ * TestCredentialReadiness
+ */
+export const zTestCredentialReadiness = z.object({
+  credentials: z.array(zTestCredentialState),
+  ready: z.boolean().readonly(),
+})
+
+/**
+ * TestCredentialsNotReadyError
+ *
+ * Required test credentials are not ready.
+ */
+export const zTestCredentialsNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('test_credentials_not_ready'),
+    details: zTestCredentialReadiness.optional(),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AppAgentPromptResponse
  */
 export const zAppAgentPromptResponse = z.object({
@@ -4353,54 +4409,6 @@ export const zAppExternalDataToolFormResponse = z.object({
 export const zAppJsonObjectFormResponse = z.object({
   json_object: zAppUserInputFormConfigResponse,
 })
-
-/**
- * TestCredentialCheck
- */
-export const zTestCredentialCheck = z.object({
-  reason_code: z.string().nullable(),
-  retryable: z.boolean(),
-  status: z.enum(['invalid', 'temporarily_unavailable', 'unsupported', 'valid']),
-})
-
-/**
- * TestCredentialState
- */
-export const zTestCredentialState = z.object({
-  check: zTestCredentialCheck.nullable(),
-  credential_id: z.string().nullable(),
-  node_id: z.string(),
-  node_ids: z.array(z.string()),
-  status: z.enum([
-    'connected',
-    'disconnected',
-    'incompatible',
-    'invalid',
-    'reconnect_required',
-    'temporarily_unavailable',
-  ]),
-})
-
-/**
- * TestCredentialReadiness
- */
-export const zTestCredentialReadiness = z.object({
-  credentials: z.array(zTestCredentialState),
-  ready: z.boolean().readonly(),
-})
-
-/**
- * TestCredentialsNotReadyError
- *
- * Required test credentials are not ready.
- */
-export const zTestCredentialsNotReadyError = zErrorResponse.and(
-  z.object({
-    code: z.literal('test_credentials_not_ready'),
-    details: zTestCredentialReadiness.optional(),
-    status: z.literal(400),
-  }),
-)
 
 /**
  * AppLegacyGoogleSearchToolPayload
@@ -6165,6 +6173,13 @@ export const zComposerSavePayload = z.object({
  * GeneratedAppResponse
  */
 export const zGeneratedAppResponseWritable = zShallowJsonValue
+
+/**
+ * TestCredentialPreflightResponse
+ */
+export const zTestCredentialPreflightResponseWritable = z.object({
+  credentials: z.array(zTestCredentialState),
+})
 
 /**
  * AppPartial
@@ -8476,6 +8491,16 @@ export const zGetAppsByAppIdWorkflowsDraftSystemVariablesPath = z.object({
  */
 export const zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse =
   zWorkflowDraftVariableListResponse
+
+export const zPostAppsByAppIdWorkflowsDraftTestCredentialsPreflightPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Full draft test credential readiness
+ */
+export const zPostAppsByAppIdWorkflowsDraftTestCredentialsPreflightResponse =
+  zTestCredentialPreflightResponse
 
 export const zPostAppsByAppIdWorkflowsDraftTriggerRunBody = zDraftWorkflowTriggerRunPayload
 

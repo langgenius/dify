@@ -96,3 +96,54 @@ def test_resolution_returns_process_local_secret_without_exposing_it_in_repr() -
     result = harness.service.resolve(SCOPE, graph=harness.graph, node_id="a")
     assert result.credentials == {"access_token": "secret"}
     assert "secret" not in repr(result)
+
+
+def test_full_preflight_reports_every_root_without_rewriting_saved_selections() -> None:
+    graph = {
+        "nodes": [
+            tool_node("a", "first"),
+            tool_node("b", None),
+            tool_node("c", None, credential_source="reuse_node", reuse_node_id="a", end_user_auth=None),
+        ]
+    }
+    original = deepcopy(graph)
+    harness = BuilderCredentialHarness(graph)
+    result = harness.service.preflight(SCOPE)
+    assert not result.ready
+    assert [item.node_id for item in result.credentials] == ["a", "b"]
+    assert result.credentials[0].node_ids == ("a", "c")
+    assert result.credentials[1].status == "disconnected"
+    assert harness.calls == ["first"]
+    assert graph == original
+    assert "secret" not in result.model_dump_json()
+    assert "draft_hash" not in result.model_dump()
+
+
+def test_full_preflight_reads_the_current_draft_on_each_call() -> None:
+    harness = BuilderCredentialHarness({"nodes": [tool_node("a", "first")]})
+    assert harness.service.preflight(SCOPE).ready
+    harness.graph = {"nodes": [tool_node("replacement", None)]}
+    result = harness.service.preflight(SCOPE)
+    assert not result.ready
+    assert result.credentials[0].node_id == "replacement"
+    assert harness.calls == ["first"]
+
+
+def test_full_preflight_requires_access_and_a_saved_draft() -> None:
+    harness = BuilderCredentialHarness({"nodes": [tool_node("a")]})
+    harness.available = False
+    with pytest.raises(CredentialError, match="cannot run"):
+        harness.service.preflight(SCOPE)
+    harness.available = True
+    harness.draft_available = False
+    with pytest.raises(CredentialError, match="draft not found"):
+        harness.service.preflight(SCOPE)
+    assert not harness.calls
+
+
+def test_full_preflight_is_ready_without_end_user_requirements() -> None:
+    harness = BuilderCredentialHarness({"nodes": []})
+    result = harness.service.preflight(SCOPE)
+    assert result.ready
+    assert result.credentials == ()
+    assert not harness.calls

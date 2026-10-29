@@ -48,14 +48,21 @@ class BuilderCredentialHarness:
         self.graph = graph
         self.membership = BuilderTestMembership("builder", "editor")
         self.available = True
+        self.draft_available = True
         self.calls: list[str] = []
         self.check = TestCredentialCheck(status="valid", reason_code=None, retryable=False)
         self.failure: TestCredentialUnavailableError | None = None
         self.service = WorkflowTestCredentialService(
             access=self,
+            drafts=self,
             planner=DraftTestCredentialPlanner(),
             credentials=self,
         )
+
+    def get_test_draft_graph(self, scope: BuilderScope) -> Mapping[str, Any] | None:
+        assert scope == SCOPE
+        assert self.available
+        return self.graph if self.draft_available else None
 
     def get_test_membership(self, scope: BuilderScope) -> BuilderTestMembership | None:
         assert scope == SCOPE

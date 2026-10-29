@@ -1,5 +1,6 @@
 """Database repository for externally visible app definitions."""
 
+from collections.abc import Mapping
 from typing import Any, cast, override
 
 from sqlalchemy import select
@@ -120,6 +121,21 @@ def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppPara
 class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_test_draft_graph(self, scope: BuilderScope) -> Mapping[str, Any] | None:
+        with self._session_factory() as session:
+            workflow = session.scalar(
+                select(Workflow)
+                .join(App, App.id == Workflow.app_id)
+                .where(
+                    Workflow.tenant_id == scope.tenant_id,
+                    Workflow.app_id == scope.app_id,
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                    App.tenant_id == scope.tenant_id,
+                    App.mode.in_([AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]),
+                )
+            )
+            return workflow.graph_dict if workflow is not None else None
 
     def get_test_membership(self, scope: BuilderScope) -> BuilderTestMembership | None:
         with self._session_factory() as session:

@@ -106,6 +106,15 @@ class BuilderTestAccess(Protocol):
     def require_access(self, scope: BuilderScope) -> None: ...
 
 
+class TestDraftGraphQuery(Protocol):
+    """Read the current saved draft through its tenant/App owner chain.
+
+    The caller must authorize the Builder first. None means no draft is available.
+    """
+
+    def get_test_draft_graph(self, scope: BuilderScope) -> Mapping[str, Any] | None: ...
+
+
 class TestCredentialPlanner(Protocol):
     """Resolve only the requested node/subgraph and explicit authentication roots."""
 
@@ -125,18 +134,37 @@ class TestCredentialGateway(Protocol):
 
 class WorkflowTestCredentialService:
     def __init__(
-        self, *, access: BuilderTestAccess, planner: TestCredentialPlanner, credentials: TestCredentialGateway
+        self,
+        *,
+        access: BuilderTestAccess,
+        drafts: TestDraftGraphQuery,
+        planner: TestCredentialPlanner,
+        credentials: TestCredentialGateway,
     ) -> None:
         self._access = access
+        self._drafts = drafts
         self._planner = planner
         self._credentials = credentials
 
+    def preflight(self, scope: BuilderScope) -> TestCredentialReadiness:
+        """Report all saved test selections without creating a Run or changing the graph."""
+        self._access.require_access(scope)
+        graph = self._drafts.get_test_draft_graph(scope)
+        if graph is None:
+            raise TestCredentialError("Workflow draft not found.")
+        return self._readiness(scope, graph=graph, node_id=None)
+
     def require_ready(self, scope: BuilderScope, *, graph: Mapping[str, Any], node_id: str | None) -> None:
         self._access.require_access(scope)
-        requirements = self._planner.requirements(graph, node_id)
-        result = TestCredentialReadiness(credentials=tuple(self._state(scope, item) for item in requirements))
+        result = self._readiness(scope, graph=graph, node_id=node_id)
         if not result.ready:
             raise TestCredentialNotReadyError(result)
+
+    def _readiness(
+        self, scope: BuilderScope, *, graph: Mapping[str, Any], node_id: str | None
+    ) -> TestCredentialReadiness:
+        requirements = self._planner.requirements(graph, node_id)
+        return TestCredentialReadiness(credentials=tuple(self._state(scope, item) for item in requirements))
 
     def resolve(self, scope: BuilderScope, *, graph: Mapping[str, Any], node_id: str) -> ResolvedTestCredential:
         self._access.require_access(scope)
