@@ -307,7 +307,12 @@ def stop_control_facts(sql, *, request, ref):
     return native, node, source, binding
 
 
-def ordinary_stop_proof(sql, *, request, ref):
+def ordinary_stop_proof(sql, *, request, ref, allow_claimed: bool = False):
+    """Verify the saved observation against the durable ordinary stop fence.
+
+    Expiry reconciliation may retain the exact claimed source while cancellation
+    settlement is retried. Public terminal projection still requires it cancelled.
+    """
     facts = stop_control_facts(sql, request=request, ref=ref)
     if facts is None:
         return False
@@ -315,7 +320,7 @@ def ordinary_stop_proof(sql, *, request, ref):
     records = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
     return (
         native.status == "stopped"
-        and source.state == "cancelled"
+        and (source.state == "cancelled" or (allow_claimed and source.state == "claimed"))
         and sql.scalar(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id == native.id)) is None
         and len(records) == 1
         and stop_observation_matches(records[0], binding)
