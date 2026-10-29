@@ -2,7 +2,7 @@
 
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { lazy, Suspense, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +18,6 @@ import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
@@ -40,11 +39,6 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
   })
   const agentV2Enabled = isAgentV2Enabled()
   const canViewSkills = useCanViewSkills()
-  const { data: enableSkill } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.enable_skill,
-    }),
-  )
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
   const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -56,7 +50,6 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
           canViewSkills,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled,
-          skillEnabled: enableSkill === true,
         }),
       ).map((route) => ({
         href: route.href,
@@ -68,7 +61,6 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
     [
       agentV2Enabled,
       canViewSkills,
-      enableSkill,
       isCurrentWorkspaceDatasetOperator,
       marketplaceEnabled,
       t,

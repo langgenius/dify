@@ -55,7 +55,6 @@ type MainNavConsoleState = ConsoleStateFixture & {
 const mockConsoleState = vi.hoisted(() => ({
   current: undefined as MainNavConsoleState | undefined,
 }))
-let skillEnabled = true
 let educationEnabled = false
 
 vi.mock('@tanstack/react-virtual')
@@ -332,7 +331,6 @@ const renderMainNav = (
       systemFeatures: resolvedSystemFeatures,
       features: {
         billing: { subscription: { plan: 'sandbox' } },
-        enable_skill: skillEnabled,
         education: { enabled: educationEnabled },
       },
       educationStatus: options.educationStatus,
@@ -390,7 +388,6 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     mockConsoleState.current = consoleState
-    skillEnabled = true
     educationEnabled = false
 
     mockInstalledAppsRequest.mockImplementation(
@@ -488,16 +485,6 @@ describe('MainNav', () => {
 
     expect(
       screen.queryByRole('link', { name: /navigation.mainNav.marketplace/ }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('hides the skills entry when skill is disabled', () => {
-    skillEnabled = false
-
-    renderMainNav()
-
-    expect(
-      screen.queryByRole('link', { name: /navigation.mainNav.skills/ }),
     ).not.toBeInTheDocument()
   })
 

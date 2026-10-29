@@ -1379,13 +1379,6 @@ class DataSetConfig(BaseSettings):
     )
 
 
-class SkillConfig(BaseSettings):
-    ENABLE_SKILL: bool = Field(
-        description="Enable or disable Skill feature entry points",
-        default=True,
-    )
-
-
 class WorkspaceConfig(BaseSettings):
     """
     Configuration for workspace management
@@ -1797,7 +1790,6 @@ class FeatureConfig(
     RepositoryConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
-    SkillConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,

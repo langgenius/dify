@@ -51,7 +51,6 @@ type AgentPromptSlashMenuProps = {
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
   onAddSkill?: AgentOrchestrateAddAction
-  canAddWorkspaceSkill?: boolean
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onBack: () => void
   onOpenCategory: (view: Exclude<SlashMenuView, 'main'>) => void
@@ -98,7 +97,6 @@ export function AgentPromptSlashMenu({
   onAddFile,
   onAddKnowledge,
   onAddSkill,
-  canAddWorkspaceSkill = true,
   knowledgeRetrievals,
   onBack,
   onOpenCategory,
@@ -219,13 +217,11 @@ export function AgentPromptSlashMenu({
         />
       ) : view === 'skills' ? (
         <div className="flex flex-col border-t border-divider-subtle p-1">
-          {canAddWorkspaceSkill && (
-            <AgentPromptSkillAddButton
-              icon="i-custom-vender-agent-v2-building-blocks"
-              label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
-              onClick={() => handleAddFromFooter('library')}
-            />
-          )}
+          <AgentPromptSkillAddButton
+            icon="i-custom-vender-agent-v2-building-blocks"
+            label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
+            onClick={() => handleAddFromFooter('library')}
+          />
           <AgentPromptSkillAddButton
             icon="i-ri-upload-cloud-2-line"
             label={t(($) => $['agentDetail.configure.skills.addMenu.upload.label'])}

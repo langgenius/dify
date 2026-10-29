@@ -455,11 +455,6 @@ export function AgentSkills() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
-  const { data: enableSkill } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.enable_skill,
-    }),
-  )
   const skills = useAtomValue(agentComposerSkillsAtom)
   const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
   const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
@@ -477,10 +472,7 @@ export function AgentSkills() {
         },
       },
     })
-  const agentSkillBindingsQuery = useQuery({
-    ...agentSkillBindingsQueryOptions,
-    enabled: enableSkill === true,
-  })
+  const agentSkillBindingsQuery = useQuery(agentSkillBindingsQueryOptions)
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
     useMutation(consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions())
@@ -565,7 +557,7 @@ export function AgentSkills() {
   const handlePromptAdd = useCallback(
     (options?: AgentOrchestrateAddActionOptions) => {
       promptAddCallbackRef.current = options?.onAdded
-      if (options?.skillSource === 'library' && enableSkill) {
+      if (options?.skillSource === 'library') {
         setAddMenuView('workspace-selector')
         setAddMenuOpen(true)
         return
@@ -579,7 +571,7 @@ export function AgentSkills() {
       setAddMenuView('menu')
       setAddMenuOpen(true)
     },
-    [enableSkill],
+    [],
   )
   useRegisterAgentOrchestrateAddAction('skills', handlePromptAdd)
 
@@ -592,10 +584,8 @@ export function AgentSkills() {
   }, [])
 
   const handleOpenWorkspaceSelector = useCallback(() => {
-    if (!enableSkill) return
-
     setAddMenuView('workspace-selector')
-  }, [enableSkill])
+  }, [])
 
   const handleOpenUploadFromMenu = useCallback(() => {
     setAddMenuOpen(false)
@@ -614,7 +604,6 @@ export function AgentSkills() {
   const handleSelectWorkspaceSkill = useCallback(
     (skill: SkillResponse) => {
       if (
-        !enableSkill ||
         !hasLoadedAgentSkillBindings ||
         !skill.latest_published_version_id ||
         boundSkillIds.includes(skill.id)
@@ -636,7 +625,7 @@ export function AgentSkills() {
         setAddMenuView('menu')
       })
     },
-    [boundSkillIds, enableSkill, hasLoadedAgentSkillBindings, replaceWorkspaceSkillBindings, t],
+    [boundSkillIds, hasLoadedAgentSkillBindings, replaceWorkspaceSkillBindings, t],
   )
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
@@ -730,16 +719,14 @@ export function AgentSkills() {
               >
                 {addMenuView === 'menu' ? (
                   <>
-                    {enableSkill && (
-                      <AgentSkillAddMenuItem
-                        iconClassName="i-custom-vender-agent-v2-building-blocks"
-                        label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
-                        description={t(
-                          ($) => $['agentDetail.configure.skills.addMenu.workspace.description'],
-                        )}
-                        onClick={handleOpenWorkspaceSelector}
-                      />
-                    )}
+                    <AgentSkillAddMenuItem
+                      iconClassName="i-custom-vender-agent-v2-building-blocks"
+                      label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
+                      description={t(
+                        ($) => $['agentDetail.configure.skills.addMenu.workspace.description'],
+                      )}
+                      onClick={handleOpenWorkspaceSelector}
+                    />
                     <AgentSkillAddMenuItem
                       badge={t(($) => $['agentDetail.configure.skills.addMenu.upload.badge'])}
                       iconClassName="i-ri-upload-cloud-2-line"
@@ -751,15 +738,11 @@ export function AgentSkills() {
                     />
                   </>
                 ) : (
-                  enableSkill && (
-                    <WorkspaceSkillSelector
-                      boundSkillIds={boundSkillIds}
-                      isBindingPending={
-                        !hasLoadedAgentSkillBindings || isReplacingAgentSkillBindings
-                      }
-                      onSelect={handleSelectWorkspaceSkill}
-                    />
-                  )
+                  <WorkspaceSkillSelector
+                    boundSkillIds={boundSkillIds}
+                    isBindingPending={!hasLoadedAgentSkillBindings || isReplacingAgentSkillBindings}
+                    onSelect={handleSelectWorkspaceSkill}
+                  />
                 )}
               </PopoverContent>
             </Popover>

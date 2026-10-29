@@ -21,7 +21,6 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { useQuery } from '@tanstack/react-query'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
@@ -47,7 +46,6 @@ import {
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { agentKnowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
-import { consoleQuery } from '@/service/console'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import {
@@ -421,11 +419,6 @@ function AgentPromptSelectionBridge({
 export function AgentPromptEditor() {
   const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
-  const { data: enableSkill } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.enable_skill,
-    }),
-  )
   const [value, setValue] = useAtom(agentComposerPromptAtom)
   const { skills: embeddedSkills } = useAgentConfigSkills()
   const workspaceSkillBindingsQuery = useAgentWorkspaceSkillBindings()
@@ -1066,7 +1059,6 @@ export function AgentPromptEditor() {
           onAddFile={addActions.files}
           onAddKnowledge={knowledgeEnabled ? addActions.knowledge : undefined}
           onAddSkill={addActions.skills}
-          canAddWorkspaceSkill={enableSkill === true}
           knowledgeRetrievals={retrievals}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}

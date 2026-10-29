@@ -29,6 +29,11 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.tools.builtin.get': emptyToolList,
       'workspaces.current.tools.mcp.get': emptyToolList,
       'workspaces.current.tools.workflow.get': emptyToolList,
+      'workspaces.current.agents.byAgentId.skills.get': async () => ({
+        agent_id: 'agent-1',
+        skill_ids: [],
+        data: [],
+      }),
     }),
   }
 })
@@ -113,7 +118,6 @@ function setup({
     </AgentComposerProvider>,
     {
       queryClient,
-      features: { enable_skill: false },
       knowledgeFsFeatures: { agent_enabled: enabled },
     },
   )

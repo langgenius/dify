@@ -41,22 +41,16 @@ export const useAgentConfigSkills = () => {
 
 export const useAgentWorkspaceSkillBindings = () => {
   const { agentId } = useAgentConfigApiContext()
-  const { data: enableSkill } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.enable_skill,
-    }),
-  )
 
-  return useQuery({
-    ...consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryOptions({
+  return useQuery(
+    consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryOptions({
       input: {
         params: {
           agent_id: agentId,
         },
       },
     }),
-    enabled: enableSkill === true,
-  })
+  )
 }
 
 export const useAgentConfigFiles = () => {
