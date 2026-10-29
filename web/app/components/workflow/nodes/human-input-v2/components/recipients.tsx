@@ -1,10 +1,12 @@
 'use client'
 
+import type { KeyboardEvent } from 'react'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
 import type { Node, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
@@ -351,8 +353,30 @@ const RecipientsContent = ({
                 'rounded-[5px] bg-util-colors-blue-blue-50 text-text-accent',
               invalid && 'bg-state-destructive-hover text-text-destructive',
               !readonly &&
-                'border-0 text-start focus:bg-util-colors-blue-blue-50 focus:inset-ring-1 focus:inset-ring-state-accent-solid focus-visible:ring-1 focus-visible:ring-state-accent-solid',
+                'focus-within:bg-util-colors-blue-blue-50 focus-within:inset-ring-1 focus-within:inset-ring-state-accent-solid',
             )
+            const label = contact ? getOptionLabel(contact) : getRecipientLabel(recipient)
+            const removeChip = () => {
+              onChange(removeRecipient(value, index))
+              setSearchFromInput(true)
+              setOpen(false)
+              recipientInputRef.current?.focus()
+            }
+            const handleChipKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+              if (
+                event.nativeEvent.isComposing ||
+                event.altKey ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.shiftKey ||
+                (event.key !== 'Backspace' && event.key !== 'Delete')
+              )
+                return
+              event.preventDefault()
+              event.stopPropagation()
+              if (event.repeat) return
+              removeChip()
+            }
             const chipContent = (
               <>
                 {invalidEmail && (
@@ -435,62 +459,56 @@ const RecipientsContent = ({
             )
             const chip =
               readonly && !contact && !invalidEmail ? (
-                <span key={key} className={chipClassName}>
-                  {chipContent}
-                </span>
+                <span className="flex min-w-0 items-center gap-1">{chipContent}</span>
               ) : (
                 <button
-                  key={key}
                   type="button"
-                  aria-label={contact ? getOptionLabel(contact) : getRecipientLabel(recipient)}
+                  aria-label={label}
                   aria-keyshortcuts={readonly ? undefined : 'Backspace Delete'}
-                  className={cn(
-                    chipClassName,
-                    'focus-visible:ring-1 focus-visible:ring-state-accent-solid',
-                  )}
-                  onKeyDown={
-                    readonly
-                      ? undefined
-                      : (event) => {
-                          if (
-                            event.nativeEvent.isComposing ||
-                            event.altKey ||
-                            event.ctrlKey ||
-                            event.metaKey ||
-                            event.shiftKey ||
-                            (event.key !== 'Backspace' && event.key !== 'Delete')
-                          )
-                            return
-                          event.preventDefault()
-                          event.stopPropagation()
-                          if (event.repeat) return
-                          onChange(removeRecipient(value, index))
-                          setSearchFromInput(true)
-                          setOpen(false)
-                          recipientInputRef.current?.focus()
-                        }
-                  }
+                  className="flex min-w-0 items-center gap-1 rounded-[inherit] border-0 text-start focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+                  onKeyDown={readonly ? undefined : handleChipKeyDown}
                 >
                   {chipContent}
                 </button>
               )
-            if (invalidEmail)
-              return (
-                <Tooltip key={key}>
-                  <TooltipTrigger render={chip} />
-                  <TooltipContent>
-                    {t(($) => $['nodes.humanInputV2.recipients.emailInvalidOrDuplicate'], {
-                      ns: 'workflow',
-                    })}
-                  </TooltipContent>
-                </Tooltip>
-              )
-            return contact ? (
-              <RecipientContactPreview key={key} contact={contact} selectOnClick={!readonly}>
+            const preview = invalidEmail ? (
+              <Tooltip>
+                <TooltipTrigger render={chip} />
+                <TooltipContent>
+                  {t(($) => $['nodes.humanInputV2.recipients.emailInvalidOrDuplicate'], {
+                    ns: 'workflow',
+                  })}
+                </TooltipContent>
+              </Tooltip>
+            ) : contact ? (
+              <RecipientContactPreview contact={contact} selectOnClick={!readonly}>
                 {chip}
               </RecipientContactPreview>
             ) : (
               chip
+            )
+            return (
+              <span key={key} className={chipClassName}>
+                {preview}
+                {!readonly && (
+                  <IconButton
+                    size="xs"
+                    className="shrink-0"
+                    aria-label={t(($) => $['nodes.humanInputV2.recipients.remove'], {
+                      ns: 'workflow',
+                      recipient: label,
+                    })}
+                    aria-keyshortcuts="Backspace Delete"
+                    onKeyDown={handleChipKeyDown}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      removeChip()
+                    }}
+                  >
+                    <span aria-hidden className="i-ri-close-line size-3" />
+                  </IconButton>
+                )}
+              </span>
             )
           })}
           {!readonly && (

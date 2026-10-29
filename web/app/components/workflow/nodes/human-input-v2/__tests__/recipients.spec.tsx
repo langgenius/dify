@@ -948,6 +948,109 @@ describe('Human Input v2 Recipients', () => {
     ])
   })
 
+  describe('Recipient remove buttons', () => {
+    it.each([
+      { recipient: { type: 'contact', contact_id: contact.id }, label: 'Evan Zhang' },
+      {
+        recipient: { type: 'onetime_email', email: 'owner@example.com' },
+        label: 'owner@example.com',
+      },
+      { recipient: { type: 'onetime_email', email: 'invalid-email' }, label: 'invalid-email' },
+      { recipient: { type: 'dynamic_email', selector: ['start', 'email'] }, label: 'email' },
+      { recipient: { type: 'initiator' }, label: 'recipients.type.initiator' },
+      { recipient: { type: 'all_workspace_contacts' }, label: 'recipients.allWorkspaceContacts' },
+    ] satisfies { recipient: HumanInputV2Recipient; label: string }[])(
+      'removes only the $recipient.type recipient through its named button',
+      async ({ recipient, label }) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        const retained: HumanInputV2Recipient = {
+          type: 'onetime_email',
+          email: 'retained@example.com',
+        }
+        render(<Harness initial={[recipient, retained]} observe={observe} />)
+
+        await user.click(
+          await screen.findByRole('button', { name: new RegExp(`recipients\\.remove.*${label}`) }),
+        )
+
+        expect(observe).toHaveBeenCalledExactlyOnceWith([retained])
+        expect(
+          screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
+        ).toHaveFocus()
+        expect(screen.queryByRole('dialog', { name: contact.name })).not.toBeInTheDocument()
+      },
+    )
+
+    it('provides a separate removal button that works with touch without opening the contact preview', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(<Harness initial={[{ type: 'contact', contact_id: contact.id }]} observe={observe} />)
+      const chip = await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+      const remove = await screen.findByRole('button', { name: /recipients\.remove.*Evan Zhang/ })
+      expect(chip).not.toContainElement(remove)
+
+      await user.pointer([{ keys: '[TouchA>]', target: remove }, { keys: '[/TouchA]' }])
+
+      expect(observe).toHaveBeenCalledExactlyOnceWith([])
+      expect(screen.queryByRole('dialog', { name: contact.name })).not.toBeInTheDocument()
+    })
+
+    it.each(['Backspace', 'Delete'])(
+      'consumes %s on a remove button before workflow shortcuts can process it',
+      async (key) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        const parentKeyDown = vi.fn()
+        render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+        const remove = screen.getByRole('button', { name: /recipients\.remove/ })
+        act(() => remove.focus())
+
+        document.addEventListener('keydown', parentKeyDown)
+        try {
+          await user.keyboard(`{${key}}`)
+        } finally {
+          document.removeEventListener('keydown', parentKeyDown)
+        }
+
+        expect(observe).toHaveBeenCalledExactlyOnceWith([])
+        expect(parentKeyDown).not.toHaveBeenCalled()
+        expect(
+          screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
+        ).toHaveFocus()
+      },
+    )
+
+    it('removes only the chosen duplicate occurrence', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(<Harness initial={[{ type: 'initiator' }, { type: 'initiator' }]} observe={observe} />)
+
+      await user.click(screen.getAllByRole('button', { name: /recipients\.remove/ })[1]!)
+
+      expect(observe).toHaveBeenCalledExactlyOnceWith([{ type: 'initiator' }])
+    })
+
+    it('does not expose removal buttons for readonly recipients', async () => {
+      render(
+        <Harness
+          readonly
+          initial={[
+            { type: 'contact', contact_id: contact.id },
+            { type: 'onetime_email', email: 'owner@example.com' },
+            { type: 'onetime_email', email: 'invalid-email' },
+            { type: 'dynamic_email', selector: ['start', 'email'] },
+            { type: 'initiator' },
+            { type: 'all_workspace_contacts' },
+          ]}
+        />,
+      )
+
+      await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+      expect(screen.queryByRole('button', { name: /recipients\.remove/ })).not.toBeInTheDocument()
+    })
+  })
+
   describe('Keyboard deletion of a focused recipient', () => {
     it.each(['Backspace', 'Delete'])(
       'removes only the focused middle recipient with %s and returns focus to the input',
@@ -963,7 +1066,7 @@ describe('Human Input v2 Recipients', () => {
             observe={observe}
           />,
         )
-        const chip = screen.getByRole('button', { name: /middle@example.com/ })
+        const chip = screen.getByRole('button', { name: 'middle@example.com' })
         await user.click(chip)
         expect(chip).toHaveFocus()
         expect(observe).not.toHaveBeenCalled()
@@ -1300,7 +1403,7 @@ describe('Human Input v2 Recipients', () => {
           readonly={readonly}
         />,
       )
-      const chip = screen.getByRole('button', { name: /invalid-email/ })
+      const chip = screen.getByRole('button', { name: 'invalid-email' })
 
       await user.hover(chip)
       expect(
