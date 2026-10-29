@@ -11,7 +11,7 @@ import { operationConfig } from './operation-config.js'
 import { createRouter, routerModule, routerModuleId } from './router.js'
 import { operationConfigFile, runtimeConfigFile } from './runtime-config.js'
 import { schemaTypes } from './schema-types.js'
-import { isSource, resolveDocument } from './source.js'
+import { isSource, isTypeSource, resolveDocument } from './source.js'
 import { typeDocument } from './type-document.js'
 
 // Positions use UTF-16, as do YAML's ranges and JavaScript string offsets.
@@ -75,6 +75,14 @@ function parseSpec(content: string, fileName: string) {
 
 export function transformSpec(content: string, fileName: string): Transform {
   try {
+    // Explicit type-only command sources preserve a generator's public exports.
+    // Consumers use import type; runtime values remain in the original contracts.
+    if (isTypeSource(fileName)) {
+      const { typescript } = record(JSON.parse(content))
+      if (typeof typescript !== 'string' || !typescript.trim())
+        throw new Error('Expected a non-empty typescript string from the type exporter')
+      return { text: typescript, extension: '.ts', mappings: [] }
+    }
     const { document, value, router } = parseSpec(content, fileName)
     // Only the literal type is needed. An initializer makes TS check the entire
     // object expression as well as constructing its type, even for unused routes.
@@ -205,6 +213,8 @@ export function transformSpec(content: string, fileName: string): Transform {
       'export declare const api: import("@dify/openapi-content-mapper").RpcRouter<Document, Routes, Context, Errors>;\n'
     text +=
       'export declare const query: import("@dify/openapi-content-mapper").RpcQueryRouter<Document, Routes, Context, Errors>;\n'
+    text += 'export type Inputs = import("@dify/openapi-content-mapper").RpcInputs<typeof api>;\n'
+    text += 'export type Outputs = import("@dify/openapi-content-mapper").RpcOutputs<typeof api>;\n'
     // Exporter output has no source positions in the authored command descriptor.
     return { text, extension: '.ts', mappings: isSource(fileName) ? [] : mappings }
   } catch (error) {

@@ -333,7 +333,9 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
             {**entity_args, "query": "hello", "conversation_id": conversation_id}
         )
         if chatflow
-        else WorkflowAppGenerateEntity.model_validate({**entity_args, "workflow_execution_id": params.workflow_run_id})
+        else WorkflowAppGenerateEntity.model_validate(
+            {**entity_args, "workflow_execution_id": params.workflow_run_id, "user_from": UserFrom.END_USER}
+        )
     )
     paused = WorkflowResumptionContext.model_validate(
         {

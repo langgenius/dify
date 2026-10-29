@@ -83,6 +83,11 @@ _registered_schemas: WeakKeyDictionary[Namespace, dict[str, tuple[str, str, dict
 _NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]")
 
 
+def registered_schema_sources(namespace: Namespace) -> dict[str, str]:
+    """Return component identities for editor tooling without exposing mutable schemas."""
+    return {name: source for name, source, _ in _registered_schemas.get(namespace, {}).values()}
+
+
 def _normalized_schema_name(name: str) -> str:
     """Fold names that client code generators turn into the same identifier (`JSONValue` / `JsonValue`)."""
 

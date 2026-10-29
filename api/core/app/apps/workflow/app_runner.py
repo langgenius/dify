@@ -79,7 +79,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         # if only single iteration or single loop run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             invoke_from = InvokeFrom.DEBUGGER
-        user_from = self._resolve_user_from(invoke_from)
+        user_from = self.application_generate_entity.user_from
 
         resume_state = self._resume_graph_runtime_state
 

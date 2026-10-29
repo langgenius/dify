@@ -5,8 +5,7 @@ import { selectAppParameters } from './console/app-parameters-select'
 /** Adapt generated Web parameters for the existing Chat and Workflow configuration UI. */
 export function selectWebAppParameters(parameters: WebAppParametersResponse): WebAppParameters {
   const config = selectAppParameters(parameters)
-  // The legacy Console adapter assumes string defaults. Public forms also support
-  // file references and JSON objects, and an omitted file limit must stay optional.
+  // Preserve structured JSON defaults and optional file limits in public forms.
   const userInputForm = config.user_input_form.map((form, index) => {
     const source = parameters.user_input_form[index]
     if (!source) return form
@@ -14,7 +13,6 @@ export function selectWebAppParameters(parameters: WebAppParametersResponse): We
       return {
         file: {
           ...form.file,
-          default: source.file.default,
           max_length: source.file.max_length ?? undefined,
         },
       }
@@ -22,7 +20,6 @@ export function selectWebAppParameters(parameters: WebAppParametersResponse): We
       return {
         'file-list': {
           ...form['file-list'],
-          default: source['file-list'].default,
           max_length: source['file-list'].max_length ?? undefined,
         },
       }
