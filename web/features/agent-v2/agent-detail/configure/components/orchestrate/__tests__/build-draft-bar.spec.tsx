@@ -21,6 +21,7 @@ const changeSummary: AgentBuildDraftChangeSummary = {
     { id: 'file-1', name: 'index.json', operation: 'added', icon: 'json' },
   ],
   envVariables: [{ id: 'env-1', name: 'API_KEY', operation: 'updated' }],
+  appVariables: [],
 }
 
 describe('AgentBuildDraftBar', () => {
