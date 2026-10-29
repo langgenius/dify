@@ -225,6 +225,15 @@ export const zConnectionClaimResponse = z.object({
 })
 
 /**
+ * ConnectionConfigurationPayload
+ */
+export const zConnectionConfigurationPayload = z.object({
+  connection_revision: z.uuid(),
+  connections: z.record(z.string(), z.uuid().nullable()),
+  conversation_id: z.uuid().nullish(),
+})
+
+/**
  * ConnectionCredentialStatus
  *
  * Last known credential lifecycle state, not readiness for a particular node.
@@ -334,7 +343,7 @@ export const zEndUserConnectionListQuery = z.object({
  */
 export const zEndUserConnectionOAuthPayload = z.object({
   connection_revision: z.uuid(),
-  name: z.string().min(1).max(100),
+  name: z.string().max(100).nullish(),
   node_id: z.string().min(1).max(255),
 })
 
@@ -382,6 +391,7 @@ export const zEndUserConnectionResponse = z.object({
  */
 export const zConnectionConfigurationResponse = z.object({
   connections: z.record(z.string(), zEndUserConnectionResponse.nullable()),
+  reauthorization_required: z.boolean(),
 })
 
 /**
@@ -1021,7 +1031,7 @@ export const zJsonValue = z.unknown()
 export const zEndUserConnectionCreatePayload = z.object({
   connection_revision: z.uuid(),
   credentials: z.record(z.string(), zJsonValue),
-  name: z.string().min(1).max(100),
+  name: z.string().max(100).nullish(),
   node_id: z.string().min(1).max(255),
 })
 
@@ -2591,6 +2601,13 @@ export const zGetConnectionsConfigurationQuery = z.object({
  * Saved Connection configuration
  */
 export const zGetConnectionsConfigurationResponse = zConnectionConfigurationResponse
+
+export const zPutConnectionsConfigurationBody = zConnectionConfigurationPayload
+
+/**
+ * Connection configuration saved
+ */
+export const zPutConnectionsConfigurationResponse = zConnectionConfigurationResponse
 
 export const zGetConnectionsCredentialSchemaQuery = z.object({
   connection_revision: z.uuid(),

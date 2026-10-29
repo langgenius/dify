@@ -251,9 +251,7 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 workflow_run_id = str(uuid.uuid4())
                 connection_context = (
-                    prepare_web_connection_execution(
-                        app=app_model, user=user, workflow=workflow, args=args, workflow_run_id=workflow_run_id
-                    )
+                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
                     if invoke_from == InvokeFrom.WEB_APP
                     else None
                 )
@@ -325,9 +323,7 @@ class AppGenerateService:
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 workflow_run_id = str(uuid.uuid4())
                 connection_context = (
-                    prepare_web_connection_execution(
-                        app=app_model, user=user, workflow=workflow, args=args, workflow_run_id=workflow_run_id
-                    )
+                    prepare_web_connection_execution(app=app_model, user=user, workflow=workflow, args=args)
                     if invoke_from == InvokeFrom.WEB_APP
                     else None
                 )

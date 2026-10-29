@@ -149,13 +149,13 @@ Stop a running completion message task.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /connections/configuration
-Read saved App or Conversation choices without validating or refreshing credentials.
+Read saved choices and whether authorization must be renewed, without checking credentials.
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| conversation_id | query | Chatflow Conversation to read. If omitted or the Conversation has no saved choices, return the current App user's last choices for form initialization. | No | string (uuid) |
+| conversation_id | query | Existing Chatflow Conversation whose choices to read, including an empty set. Omit for App defaults when initializing a new conversation or plain Workflow. | No | string (uuid) |
 
 #### Responses
 
@@ -163,6 +163,28 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | ---- | ----------- | ------ |
 | 200 | Saved Connection configuration | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /connections/configuration
+Replace saved choices and explicitly approve their authorization contract atomically.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConnectionConfigurationPayload](#connectionconfigurationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection configuration saved | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /connections/credential-schema
@@ -1559,11 +1581,20 @@ The connection is not compatible with this tool configuration.
 | ---- | ---- | ----------- | -------- |
 | ConnectionConfigurationInvalidError |  | The connection is not compatible with this tool configuration. |  |
 
+#### ConnectionConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Complete choices keyed by independent authorization node ID. Missing/null nodes are unselected; an empty map clears the configuration. Saving explicitly approves the submitted authorization contract. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
 #### ConnectionConfigurationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | connections | object | Saved Connection details keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
+| reauthorization_required | boolean | Whether this App user must renew authorization for the current requirements; not credential readiness. | Yes |
 
 #### ConnectionConflictError
 
@@ -1785,7 +1816,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 | credentials | object |  | Yes |
-| name | string |  | Yes |
+| name | string | Omit or leave empty to generate an incremental API KEY name. | No |
 | node_id | string |  | Yes |
 
 #### EndUserConnectionListQuery
@@ -1809,7 +1840,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
-| name | string |  | Yes |
+| name | string | Omit or leave empty to generate an incremental AUTH name. | No |
 | node_id | string |  | Yes |
 
 #### EndUserConnectionOAuthResponse

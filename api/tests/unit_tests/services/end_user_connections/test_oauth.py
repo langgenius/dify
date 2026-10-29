@@ -21,6 +21,7 @@ from models.model import App, EndUser, Site
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
 from services.end_user_connection_oauth_adapters import PluginService
+from services.end_user_connections.contracts import StartConnectionOAuthInput
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionConflictError,
@@ -70,6 +71,24 @@ def test_authorization_persists_encrypted_grant_and_masked_identity_only(harness
     with pytest.raises(ConnectionOAuthError):
         harness.finish(started)
     assert harness.handler.exchanges == 1
+
+
+def test_unnamed_authorizations_generate_names_when_callbacks_complete(harness: OAuthHarness) -> None:
+    command = StartConnectionOAuthInput.model_validate(harness.command().model_dump(exclude={"name"}))
+    pending = [
+        harness.service.start_oauth(
+            harness.base.context, command, callback_url="http://web-api.example/api/connections/oauth"
+        )
+        for _ in range(2)
+    ]
+    named = harness.service.start_oauth(
+        harness.base.context,
+        command.model_copy(update={"name": "AUTH 7"}),
+        callback_url="http://web-api.example/api/connections/oauth",
+    )
+    assert harness.finish(named).name == "AUTH 7"
+    assert harness.finish(pending[1]).name == "AUTH 8"
+    assert harness.finish(pending[0]).name == "AUTH 9"
 
 
 @pytest.mark.parametrize(
@@ -184,8 +203,14 @@ def test_oauth_does_not_depend_on_site_after_authenticated_start(
         assert stored.access.revision == 2
 
 
-def test_reauthorization_preserves_id_and_name_and_replaces_grant(harness: OAuthHarness) -> None:
-    connection = harness.finish(harness.start())
+@pytest.mark.parametrize("name", [None, "My calendar"])
+def test_reauthorization_preserves_id_and_name_and_replaces_grant(harness: OAuthHarness, name: str | None) -> None:
+    initial = harness.service.start_oauth(
+        harness.base.context,
+        harness.command().model_copy(update={"name": name}),
+        callback_url="http://web-api.example/api/connections/oauth",
+    )
+    connection = harness.finish(initial)
     with harness.base.sessions.begin() as session:
         session.execute(
             sa.update(EndUserConnection)
