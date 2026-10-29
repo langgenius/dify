@@ -47,6 +47,8 @@ from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.native_testing.repository import admitted_workflow_revision
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
+CANCELLED_CHILD_OBSERVATION = "confirmed_agent_cancelled_child_v1"
+
 
 def _native_run_id(request: DifyBuilderExecutionRequest) -> str | None:
     try:
@@ -161,12 +163,44 @@ def _terminal_proof(sql, *, request, ref):
     return outcome
 
 
-def cancelled_parent_proof(sql, *, request, ref, allow_claimed):
-    """SQL-only proof of the ordinary owner's consumed child cancellation.
+def settled_physical_facts(sql, *, ref, tenant_id, operations):
+    """Owned durable terminal outcomes for every physical claim, shared by cancel proofs."""
+    outcomes = sql.scalars(select(NativeEffectOutcome).where(NativeEffectOutcome.request_id == ref.request_id)).all()
+    claims = sql.scalars(
+        select(NativeEffectDispatchClaim).where(NativeEffectDispatchClaim.request_id == ref.request_id)
+    ).all()
+    if any(
+        (outcome.tenant_id, outcome.invocation_id) != (tenant_id, ref.invocation_id)
+        or outcome.outcome not in {"completed", "failed", "not_dispatched"}
+        for outcome in outcomes
+    ) or any(
+        (claim.tenant_id, claim.invocation_id) != (tenant_id, ref.invocation_id)
+        or not any(
+            (outcome.operation_id, outcome.attempt_id) == (claim.operation_id, claim.attempt_id)
+            and outcome.outcome in {"completed", "failed"}
+            and any(
+                operation.id == outcome.operation_id
+                and operation.state == outcome.outcome
+                and operation.result_ref == outcome.result_ref
+                for operation in operations
+            )
+            for outcome in outcomes
+        )
+        for claim in claims
+    ):
+        return None
+    return claims, outcomes
+
+
+def cancelled_parent_proof(sql, *, request, ref, allow_claimed, allow_unobserved_guard=False):
+    """Prove consumed cancellation or a saved observation of the original child.
 
     The caller holds the request/scope lock when writing. A current claimed
     source may close from this exact terminal producer; unknown sources and
     unresolved physical effects never become cancellation acknowledgements.
+    ``allow_unobserved_guard`` only discovers a guarded original child for the
+    cancellation owner's read outside SQL; its binding must be rechecked and
+    an actual cancelled observation saved before that caller can seal.
     """
     states = sql.scalars(select(NativeInvocationState).where(NativeInvocationState.request_id == request.id)).all()
     invocations = sql.scalars(select(NativeTestInvocation).where(NativeTestInvocation.request_id == request.id)).all()
@@ -230,13 +264,11 @@ def cancelled_parent_proof(sql, *, request, ref, allow_claimed):
     ):
         return None
     node = failed[0]
-    child = node.execution_metadata_dict.get("agent_backend", {})
-    if (
-        not isinstance(child, dict)
-        or child.get("status") != "cancelled"
-        or not child.get("run_id")
-        or not child.get("terminal_event_id")
-    ):
+    agent_log = node.execution_metadata_dict.get("agent_log", {})
+    if not isinstance(agent_log, dict):
+        return None
+    child = agent_log.get("agent_backend", {})
+    if not isinstance(child, dict):
         return None
     # Reuse the ordinary create owner's durable child association. Terminal
     # metadata alone cannot select an unrelated cancelled backend run.
@@ -244,14 +276,32 @@ def cancelled_parent_proof(sql, *, request, ref, allow_claimed):
         intents = WorkflowAgentRunRecovery._intents(node)
     except ValueError:
         return None
-    binding = (node.process_data_dict or {}).get("workflow_agent_binding_id")
+    workflow_binding = (node.process_data_dict or {}).get("workflow_agent_binding_id")
     if (
         not intents
         or not node.agent_workspace_binding_id
-        or not isinstance(binding, str)
-        or not binding
-        or max(intents, key=lambda intent: intent.attempt).child_run_id != child["run_id"]
+        or not isinstance(workflow_binding, str)
+        or not workflow_binding
     ):
+        return None
+    intent = max(intents, key=lambda intent: intent.attempt)
+    if not intent.child_run_id or child.get("run_id") not in (None, intent.child_run_id):
+        return None
+    consumed = (
+        child.get("run_id") == intent.child_run_id
+        and child.get("status") == "cancelled"
+        and child.get("terminal_event_id")
+    )
+    guarded = (
+        node.error
+        in {
+            "Builder execution policy refused: native_invocation_mismatch",
+            "Builder execution policy refused: native_cancelled",
+        }
+        and not child.get("terminal_event_id")
+        and child.get("status") in {None, "not_started", "running", "waiting"}
+    )
+    if not consumed and not guarded:
         return None
     sources = sql.scalars(select(NativeDispatch).where(NativeDispatch.request_id == request.id)).all()
     current = [source for source in sources if source.generation == state.generation]
@@ -273,31 +323,59 @@ def cancelled_parent_proof(sql, *, request, ref, allow_claimed):
         for operation in operations
     ):
         return None
-    outcomes = sql.scalars(select(NativeEffectOutcome).where(NativeEffectOutcome.request_id == request.id)).all()
-    claims = sql.scalars(
-        select(NativeEffectDispatchClaim).where(NativeEffectDispatchClaim.request_id == request.id)
-    ).all()
-    if any(
-        (outcome.tenant_id, outcome.invocation_id) != (request.tenant_id, ref.invocation_id)
-        or outcome.outcome not in {"completed", "failed", "not_dispatched"}
-        for outcome in outcomes
-    ) or any(
-        (claim.tenant_id, claim.invocation_id) != (request.tenant_id, ref.invocation_id)
-        or not any(
-            (outcome.operation_id, outcome.attempt_id) == (claim.operation_id, claim.attempt_id)
-            and outcome.outcome in {"completed", "failed"}
-            and any(
-                operation.id == outcome.operation_id
-                and operation.state == outcome.outcome
-                and operation.result_ref == outcome.result_ref
-                for operation in operations
-            )
-            for outcome in outcomes
-        )
-        for claim in claims
-    ):
+    physical = settled_physical_facts(sql, ref=ref, tenant_id=request.tenant_id, operations=operations)
+    if physical is None:
         return None
-    return native, child, current[0] if current else None
+    claims, outcomes = physical
+    source = current[0] if current else None
+    if not consumed:
+        # The normal producer can fail its revoked restore guard before it
+        # consumes the actual child's terminal event. Bind the bounded SDK
+        # observation to this original SQL lineage and all settled facts.
+        binding = {
+            "request_id": request.id,
+            "invocation_id": ref.invocation_id,
+            "native_run_id": native.id,
+            "node_execution_id": node.id,
+            "child_run_id": intent.child_run_id,
+            "create_digest": canonical_digest(intent.model_dump(mode="json")),
+            "generation": state.generation,
+            "source_id": source.id if source else None,
+            "snapshot_digest": canonical_digest(
+                {
+                    "context": ref.context_digest,
+                    "context_object_id": state.context_object_id,
+                    "checkpoint_id": state.checkpoint_id,
+                    "cancellation_key": state.cancellation_key,
+                    "native_error": native.error,
+                    "native_finished_at": native.finished_at.isoformat(),
+                    "workspace_binding": node.agent_workspace_binding_id,
+                    "workflow_binding": workflow_binding,
+                    "sources": sorted((s.id, s.generation, s.checkpoint_id, s.idempotency_digest) for s in sources),
+                    "operations": sorted((o.id, o.state, o.result_ref) for o in operations),
+                    "claims": sorted((c.id, c.operation_id, c.attempt_id) for c in claims),
+                    "outcomes": sorted((o.id, o.operation_id, o.attempt_id, o.outcome, o.result_ref) for o in outcomes),
+                }
+            ),
+        }
+        records = [
+            record[CANCELLED_CHILD_OBSERVATION]
+            for record in request.observations
+            if CANCELLED_CHILD_OBSERVATION in record
+        ]
+        observed = (
+            len(records) == 1
+            and isinstance(records[0], dict)
+            and set(records[0]) == {*binding, "status", "backend_updated_at"}
+            and all(records[0].get(key) == value for key, value in binding.items())
+            and records[0].get("status") == "cancelled"
+            and isinstance(records[0].get("backend_updated_at"), str)
+            and bool(records[0]["backend_updated_at"])
+        )
+        if not observed and (records or not allow_unobserved_guard):
+            return None
+        child = {"run_id": intent.child_run_id, "observation_binding": binding, "needs_observation": not observed}
+    return native, child, source
 
 
 def _write_run(row, run):

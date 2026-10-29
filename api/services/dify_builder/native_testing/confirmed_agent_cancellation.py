@@ -29,10 +29,12 @@ from runtime_contracts.builder.native.agent_contracts import AgentNodeAssociatio
 from runtime_contracts.builder.native.contracts import CheckpointRef
 from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NativeWorkflowOutcome
 from services.dify_builder.native_testing.confirmed_agent_completion import (
+    CANCELLED_CHILD_OBSERVATION,
     _native_run_id,
     _request,
     _terminal_proof,
     cancelled_parent_proof,
+    settled_physical_facts,
 )
 from services.dify_builder.native_testing.confirmed_agent_continuation import validate_parent_snapshot
 from services.dify_builder.native_testing.private_reads import validate_private_read
@@ -77,6 +79,34 @@ class ConfirmedAgentCancellation:
             key=itemgetter(0),
         )
 
+    @staticmethod
+    def _unclaimed_resume(source, proof):
+        checkpoint_generation = proof.get("checkpoint_generation", proof["generation"])
+        return (
+            type(checkpoint_generation) is int
+            and checkpoint_generation + 1 == proof["generation"]
+            and source.generation == proof["generation"]
+            and source.checkpoint_id == proof["checkpoint"]["checkpoint_id"]
+            and source.state in {"queued", "published", "cancelled"}
+            and source.claim_expires_at is None
+        )
+
+    def _sources_match(self, sql, ref, proof):
+        current = [list(source) for source in self._sources(sql, ref)]
+        original = proof["sources"]
+        if len(current) != len(original):
+            return False
+        for selected, saved in zip(current, original, strict=True):
+            # Broker publication and durable revocation do not claim the
+            # original paused continuation. All other receipt facts stay exact.
+            if (
+                selected[3] == saved[3] == proof["generation"]
+                and saved[4] in {"queued", "published"}
+                and selected[4] in {"queued", "published", "cancelled"}
+            ):
+                selected[4] = saved[4]
+        return current == original
+
     def _rows(self, sql, owned, run_id, *, lock):
         query = select(WorkflowRun).where(
             WorkflowRun.id == run_id,
@@ -101,13 +131,15 @@ class ConfirmedAgentCancellation:
         with self.loader.session_factory() as sql:
             owned, _ = self.loader._load(sql, ref=ref, lock=False)
             state = invocation_state(sql, ref, owned.tenant_id)
+            prior_state = state.state
+            checkpoint_generation = state.generation - (1 if prior_state == "queued" else 0)
             continuation = sql.scalar(
                 owner_query(NativeContinuation, ref, owned.tenant_id).where(
                     NativeContinuation.checkpoint_id == state.checkpoint_id,
-                    NativeContinuation.generation == state.generation,
+                    NativeContinuation.generation == checkpoint_generation,
                 )
             )
-            if state.state != "waiting" or continuation is None:
+            if prior_state not in {"waiting", "queued"} or continuation is None:
                 return
             checkpoint = CheckpointRef(
                 checkpoint_id=continuation.checkpoint_id, payload_digest=continuation.payload_digest
@@ -119,7 +151,7 @@ class ConfirmedAgentCancellation:
         executions = {item.execution_id for item in paused.runtime.graph_execution.node_executions.values()}
         if (
             payload.native_run_id != paused.native_run_id
-            or payload.generation != generation
+            or payload.generation != checkpoint_generation
             or payload.graph_runtime_state_json != paused.state.serialized_graph_runtime_state
             or not payload.agent_associations
             or any(
@@ -136,6 +168,7 @@ class ConfirmedAgentCancellation:
             children.append(protected.association.agent_run_id)
         proof = {
             "generation": generation,
+            "checkpoint_generation": checkpoint_generation,
             "checkpoint": checkpoint.model_dump(mode="json"),
             "pause_id": paused.pause_id,
             "state_object_key": paused.state_object_key,
@@ -156,7 +189,7 @@ class ConfirmedAgentCancellation:
                 return
             if (
                 _native_run_id(request) != paused.native_run_id
-                or invocation_state(sql, ref, owned.tenant_id).state != "waiting"
+                or invocation_state(sql, ref, owned.tenant_id).state != prior_state
             ):
                 return
             if not any(PREPARATION in record for record in request.observations):
@@ -169,7 +202,7 @@ class ConfirmedAgentCancellation:
             owner_query(NativeContinuation, ref, owned.tenant_id).where(
                 NativeContinuation.checkpoint_id == proof["checkpoint"]["checkpoint_id"],
                 NativeContinuation.payload_digest == proof["checkpoint"]["payload_digest"],
-                NativeContinuation.generation == proof["generation"],
+                NativeContinuation.generation == proof.get("checkpoint_generation", proof["generation"]),
             )
         ).all()
         states = sql.scalars(
@@ -200,7 +233,7 @@ class ConfirmedAgentCancellation:
             and all(
                 source.tenant_id == owned.tenant_id
                 and source.invocation_id == ref.invocation_id
-                and source.state == "completed"
+                and (source.state == "completed" or self._unclaimed_resume(source, proof))
                 and source.generation <= state.generation
                 for source in sources
             )
@@ -210,8 +243,9 @@ class ConfirmedAgentCancellation:
                 and operation.state in {"completed", "failed", "not_dispatched", "denied", "pending"}
                 for operation in operations
             )
+            and settled_physical_facts(sql, ref=ref, tenant_id=owned.tenant_id, operations=operations) is not None
             and self._objects(sql, ref, owned.tenant_id) == proof["objects"]
-            and [list(source) for source in self._sources(sql, ref)] == proof["sources"]
+            and self._sources_match(sql, ref, proof)
         )
 
     def stop_is_saved(self, *, ref):
@@ -270,7 +304,7 @@ class ConfirmedAgentCancellation:
                     owner_query(NativeContinuation, ref, request.tenant_id).where(
                         NativeContinuation.checkpoint_id == checkpoint.checkpoint_id,
                         NativeContinuation.payload_digest == checkpoint.payload_digest,
-                        NativeContinuation.generation == state.generation,
+                        NativeContinuation.generation == proof.get("checkpoint_generation", state.generation),
                     )
                 ).all()
                 if (
@@ -282,12 +316,12 @@ class ConfirmedAgentCancellation:
                     or proof.get("context_object_id") != state.context_object_id
                     or proof.get("native_run_id") != _native_run_id(request)
                     or not proof.get("children")
-                    or proof.get("sources") != [list(source) for source in self._sources(sql, ref)]
+                    or not self._sources_match(sql, ref, proof)
                     or proof.get("objects") != self._objects(sql, ref, request.tenant_id)
                     or not any(source.generation == state.generation for source in sources)
                     or any(
                         (source.tenant_id, source.invocation_id) != (request.tenant_id, ref.invocation_id)
-                        or source.state != "completed"
+                        or not (source.state == "completed" or self._unclaimed_resume(source, proof))
                         or not 0 <= source.generation <= state.generation
                         for source in sources
                     )
@@ -301,6 +335,8 @@ class ConfirmedAgentCancellation:
                 or operation.state not in {"completed", "failed", "not_dispatched"}
                 for operation in operations
             ):
+                return False
+            if settled_physical_facts(sql, ref=ref, tenant_id=request.tenant_id, operations=operations) is None:
                 return False
             outcome = _terminal_proof(sql, request=request, ref=ref)
             return outcome is not None and outcome.status == "stopped" and outcome.reason_code == "effect_denied"
@@ -333,7 +369,7 @@ class ConfirmedAgentCancellation:
         payload = NativeCheckpointPayload.model_validate(self.commands.api.store._read_object(checkpoint))
         if (
             payload.native_run_id != proof["native_run_id"]
-            or payload.generation != proof["generation"]
+            or payload.generation != proof.get("checkpoint_generation", proof["generation"])
             or canonical_digest(payload.graph_runtime_state_json) != proof["runtime_digest"]
             or not payload.agent_associations
         ):
@@ -449,12 +485,42 @@ class ConfirmedAgentCancellation:
             return True
 
     def settle_terminal(self, *, ref):
-        """Seal the ordinary producer's consumed cancellation, using durable SQL.
+        """Seal consumed cancellation or observe a revoked restore guard's child.
 
-        Its failed Agent node retains the original create association and the
-        actual cancelled event. No live backend read or cleanup acknowledgement
-        is needed. Proof and source settlement share the existing scope lock.
+        A consumed native event needs SQL only. If revocation prevented event
+        consumption, read only the original child outside the writer, then bind
+        its actual cancelled status to the rechecked SQL snapshot. No Graphon
+        producer metadata or physical cleanup acknowledgement is manufactured.
         """
+        with self.loader.session_factory() as sql:
+            self.loader._load(sql, ref=ref, lock=False, settlement=True)
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            state = invocation_state(sql, ref, request.tenant_id)
+            if state.outcome is not None:
+                outcome = _terminal_proof(sql, request=request, ref=ref)
+                return outcome is not None and outcome.reason_code == "native_cancelled"
+            proof = cancelled_parent_proof(
+                sql, request=request, ref=ref, allow_claimed=True, allow_unobserved_guard=True
+            )
+            if proof is None:
+                return False
+            _, child, _ = proof
+        observation = None
+        if child.get("needs_observation"):
+            binding = child.get("observation_binding")
+            if not isinstance(binding, dict):
+                return False
+            status = self.commands.backend.client.get_run_sync(child["run_id"])
+            status = RunStatusResponse.model_validate(status.model_dump(mode="json"))
+            if status.run_id != child["run_id"] or status.status != "cancelled":
+                return False
+            observation = {
+                **binding,
+                "status": "cancelled",
+                "backend_updated_at": status.updated_at.isoformat(),
+            }
         with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
             request = _request(sql, actor=self.commands.actor, ref=ref)
             if request is None:
@@ -463,10 +529,21 @@ class ConfirmedAgentCancellation:
             if state.outcome is not None:
                 outcome = _terminal_proof(sql, request=request, ref=ref)
                 return outcome is not None and outcome.reason_code == "native_cancelled"
-            proof = cancelled_parent_proof(sql, request=request, ref=ref, allow_claimed=True)
+            proof = cancelled_parent_proof(
+                sql, request=request, ref=ref, allow_claimed=True, allow_unobserved_guard=True
+            )
             if proof is None:
                 return False
-            native, _, source = proof
+            native, child, source = proof
+            if child.get("needs_observation"):
+                binding = child.get("observation_binding")
+                if (
+                    not isinstance(binding, dict)
+                    or observation is None
+                    or any(observation.get(key) != value for key, value in binding.items())
+                ):
+                    return False
+                request.observations = [*request.observations, {CANCELLED_CHILD_OBSERVATION: observation}]
             if source is not None:
                 source.state = "completed"
             state.pending_ids, state.wait_reason = [], None
