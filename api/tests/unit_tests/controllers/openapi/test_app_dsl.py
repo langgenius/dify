@@ -589,7 +589,7 @@ _WORKFLOW_ID = "6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
 def _export_package(app: Flask, query: AppPackageExportQuery) -> Response:
     api = AppPackageExportApi()
     with app.test_request_context("/openapi/v1/apps/app-1/package"):
-        return cast(_PackageView, api.get).__handler__(api, _EXPORT_CONTEXT, "app-1", query=query)
+        return cast(_PackageView, api.get).__handler__(api, _CONTEXT, "app-1", query=query)
 
 
 def _stub_package_export(
@@ -598,7 +598,8 @@ def _stub_package_export(
     seen: list[AppExportOptions] = []
     package = RosterAgentPackageExport(archive=BytesIO(b"zip-bytes"), filename="release-summary.ifpkg", size=9)
 
-    def export(_context: RequestContext, _app_id: str, options: AppExportOptions) -> RosterAgentPackageExport:
+    def export(context: RequestContext, _app_id: str, options: AppExportOptions) -> RosterAgentPackageExport:
+        assert context == _CONTEXT
         seen.append(options)
         return package
 
