@@ -199,14 +199,44 @@ def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent(sqlite
     assert retirement_candidates == {"old-inline-agent"}
 
 
-def test_publish_copy_uses_current_roster_snapshot() -> None:
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(App, Agent, WorkflowAgentNodeBinding)],
+    indirect=True,
+)
+def test_publish_copy_uses_current_roster_snapshot(
+    sqlite_session: Session,
+) -> None:
     draft_workflow = _workflow()
     draft_workflow.graph = (
         '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2",'
         '"agent_node_kind":"dify_agent"}}],"edges":[]}'
     )
     published_workflow = _workflow(workflow_id="published", version="published")
-    binding = WorkflowAgentNodeBinding(
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        mode=AppMode.WORKFLOW,
+        workflow_id="workflow-1",
+        status=AppStatus.NORMAL,
+        enable_site=False,
+        enable_api=False,
+        api_rpm=0,
+        api_rph=0,
+    )
+    active_agent = Agent(
+        id="roster-agent",
+        tenant_id="tenant-1",
+        name="Roster Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.ROSTER,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="active-snapshot",
+    )
+    draft_binding = WorkflowAgentNodeBinding(
+        id="draft-binding",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
@@ -218,22 +248,24 @@ def test_publish_copy_uses_current_roster_snapshot() -> None:
         node_job_config={},
         created_by="account-1",
     )
-    session = Mock()
-    active_agent = SimpleNamespace(
-        id="roster-agent",
-        scope=AgentScope.ROSTER,
-        active_config_snapshot_id="active-snapshot",
-    )
-    session.scalar.return_value = active_agent
-    session.scalars.return_value = SimpleNamespace(all=lambda: [binding])
+    sqlite_session.add_all([app, active_agent, draft_binding])
+    sqlite_session.commit()
 
     WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
-        session=session,
+        session=sqlite_session,
         draft_workflow=draft_workflow,
         published_workflow=published_workflow,
     )
+    sqlite_session.flush()
 
-    copied = session.add.call_args.args[0]
+    copied = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(
+            WorkflowAgentNodeBinding.workflow_id == "published",
+            WorkflowAgentNodeBinding.workflow_version == "published",
+            WorkflowAgentNodeBinding.node_id == "agent-node",
+        )
+    )
+    assert copied is not None
     assert copied.agent_id == "roster-agent"
     assert copied.current_snapshot_id == "active-snapshot"
 
