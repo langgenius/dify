@@ -27,6 +27,7 @@ from services.dify_builder.native_testing.agent_preparation import (
     AgentPreparationService,
     AgentRuntimeIdentityReader,
 )
+from services.dify_builder.native_testing.state_store import native_payload_read_scope
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +49,7 @@ class NativeAgentEndpointLineage:
     backend: AgentRuntimeIdentityReader
     preparation_for_ref: Callable[..., AgentPreparationService]
 
+    @native_payload_read_scope()
     def resolve(
         self,
         *,
