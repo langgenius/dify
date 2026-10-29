@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from datetime import datetime
+from operator import itemgetter
 from pathlib import Path
 from typing import cast
 from unittest.mock import Mock, create_autospec
@@ -352,6 +353,24 @@ class TestMetadataServiceSessionBoundaryCases:
         metadata_service.create_metadata(REF, MetadataArgs(type="string", name="author"), actor_id="actor")
         with pytest.raises(ValueError, match="already exists"):
             metadata_service.create_metadata(REF, MetadataArgs(type="string", name="author"), actor_id="actor")
+
+    @staticmethod
+    def test_rename_to_same_name_succeeds(metadata_service: MetadataService) -> None:
+        field = metadata_service.create_metadata(REF, MetadataArgs(type="string", name="author"), actor_id="actor")
+        result = metadata_service.update_metadata_name(REF, field.id, name="author", actor_id="actor")
+        assert result.name == "author"
+
+    @staticmethod
+    def test_rename_to_existing_name_fails(metadata_service: MetadataService) -> None:
+        field1 = metadata_service.create_metadata(REF, MetadataArgs(type="string", name="author"), actor_id="actor")
+        field2 = metadata_service.create_metadata(REF, MetadataArgs(type="string", name="writer"), actor_id="actor")
+        with pytest.raises(ValueError, match="already exists"):
+            metadata_service.update_metadata_name(REF, field2.id, name="author", actor_id="actor")
+        fields = metadata_service.get_dataset_metadatas(REF)
+        assert sorted(fields["doc_metadata"], key=itemgetter("name")) == [
+            {"id": field1.id, "type": "string", "name": "author", "count": 0},
+            {"id": field2.id, "type": "string", "name": "writer", "count": 0},
+        ]
 
     @staticmethod
     @pytest.mark.parametrize("partial", [True, False])
