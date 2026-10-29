@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { ContactsImPlatformProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
+import { createContactImApiRepository } from '../repository'
 import {
   ContactImConnectionStatus,
   ContactImProvider,
@@ -13,6 +14,7 @@ import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,
 } from '../types'
+import { channelSummary, createChannelClient, imDetail } from './fixtures/channel-client'
 import { createContactImMockRepository } from './fixtures/repository'
 import { ContactImMockScenario } from './fixtures/scenarios'
 
@@ -715,6 +717,196 @@ describe('Contacts IM platform binding flows', () => {
   })
 })
 
+describe('Replacing a tenant in the configured IM provider', () => {
+  const setupChannel = (provider: 'feishu' | 'slack' = 'feishu') => {
+    const client = createChannelClient()
+    const current = channelSummary({ provider, id: 'current-channel' })
+    const replacement = channelSummary({
+      provider,
+      id: 'replacement-channel',
+      config_version: 'replacement-version',
+      webhook_url: 'https://example.test/replacement-callback',
+    })
+    client.channelProviders.get.mockResolvedValue({
+      email_providers: [],
+      im_providers: [{ provider, connection_mode: 'custom_app' }],
+    })
+    client.channels.get.mockResolvedValue({ channels: [current] })
+    client.channels.im.byChannelId.get.mockImplementation(async ({ params }) =>
+      imDetail(params.channel_id === replacement.id ? replacement : current),
+    )
+    client.channels.im.byChannelId.put.mockRejectedValue(
+      Response.json(
+        { code: 'replacement_required', message: 'Explicit replacement required' },
+        { status: 409 },
+      ),
+    )
+    client.channels.im.byChannelId.replacement.post.mockImplementation(async () => {
+      client.channels.get.mockResolvedValue({ channels: [replacement] })
+      return { summary: replacement }
+    })
+    const repository = createContactImApiRepository(organization, client)
+    vi.spyOn(repository, 'getActiveSync').mockResolvedValue(null)
+    renderSurface({ repository })
+    return { client, current, replacement }
+  }
+
+  const editFeishuTenant = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Feishu' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    await user.clear(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'new-tenant-app',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+      'new-tenant-secret',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+  }
+
+  it('offers explicit same-provider tenant replacement and saves the new channel callback', async () => {
+    const user = userEvent.setup()
+    const { client, replacement } = setupChannel()
+    await editFeishuTenant(user)
+
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+
+    expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
+      replacement.webhook_url,
+    )
+    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { channel_id: 'current-channel' },
+        body: {
+          expected_config_version: 'snapshot-version',
+          credentials: {
+            provider: 'feishu',
+            app_id: 'new-tenant-app',
+            app_secret: 'new-tenant-secret',
+            encrypt_key: null,
+            verification_token: null,
+          },
+        },
+      },
+      { context: { silent: true } },
+    )
+    expect(screen.queryByDisplayValue('new-tenant-secret')).not.toBeInTheDocument()
+    expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels tenant replacement without mutating and saves a corrected same-tenant draft normally', async () => {
+    const user = userEvent.setup()
+    const { client, current } = setupChannel()
+    await editFeishuTenant(user)
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.cancel',
+      }),
+    )
+
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')).toHaveValue(
+      'new-tenant-secret',
+    )
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    await user.clear(appId)
+    await user.type(appId, 'corrected-same-tenant-app')
+    client.channels.im.byChannelId.put.mockResolvedValue({ summary: current })
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
+      current.webhook_url,
+    )
+    expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(2)
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+  })
+
+  it('requires complete fresh Slack credentials after confirming replacement and keeps them after a version conflict', async () => {
+    const user = userEvent.setup()
+    const { client } = setupChannel('slack')
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.botToken'),
+      'new-tenant-bot-token',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'contacts.imPlatform.replacement.confirm',
+      }),
+    )
+
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret')
+    const signingSecret = screen.getByLabelText(
+      'contacts.imPlatform.bindingDialog.field.signingSecret',
+    )
+    expect(secret).toBeRequired()
+    expect(signingSecret).toBeRequired()
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+    await user.type(secret, 'new-client-secret')
+    await user.type(signingSecret, 'new-signing-secret')
+    client.channels.im.byChannelId.replacement.post.mockRejectedValue(
+      Response.json(
+        { code: 'provider_configuration_updated', message: 'Configuration updated' },
+        { status: 409 },
+      ),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'contacts.imPlatform.replacement.confirm',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.configurationUpdated',
+    )
+    expect(secret).toHaveValue('new-client-secret')
+    expect(signingSecret).toHaveValue('new-signing-secret')
+    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { channel_id: 'current-channel' },
+        body: {
+          expected_config_version: 'snapshot-version',
+          credentials: {
+            provider: 'slack',
+            client_id: 'client-1',
+            client_secret: 'new-client-secret',
+            signing_secret: 'new-signing-secret',
+            bot_token: 'new-tenant-bot-token',
+            app_token: null,
+          },
+        },
+      },
+      { context: { silent: true } },
+    )
+    expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('Contacts IM platform manual sync', () => {
   it('enables manual sync only for a manageable connected provider with directory capability', async () => {
     renderSurface({ scenario: ContactImMockScenario.Connected })
@@ -1072,6 +1264,11 @@ describe('Contacts channel credential API contracts', () => {
     })
     await user.click(saveButton)
 
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.cancel',
+      }),
+    )
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'contacts.imPlatform.bindingDialog.replacementRequired',
     )

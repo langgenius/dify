@@ -1,6 +1,16 @@
 'use client'
 
 import type { ContactImIntegrationView, ContactImProviderDefinition } from './types'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -71,6 +81,8 @@ export function ContactImBindingDialog({
   const [clearedFields, setClearedFields] = useState<ContactImProviderField[]>([])
   const [credentialsEdited, setCredentialsEdited] = useState(false)
   const [testSucceeded, setTestSucceeded] = useState(false)
+  const [replaceTenant, setReplaceTenant] = useState(false)
+  const [replacementConfirmationOpen, setReplacementConfirmationOpen] = useState(false)
   const isCurrentProvider = Boolean(savedIntegration)
   const isPending = saveCredentials.isPending || testConnection.isPending
   const savedDetailsUnavailable =
@@ -86,14 +98,15 @@ export function ContactImBindingDialog({
   const canContinueWithoutSaving = Boolean(callbackUrl) && !credentialsEdited
   const targetIntegration = savedIntegration ?? replacedIntegration
   const canRetainField = (field: ContactImProviderField) =>
+    !replaceTenant &&
     canRetainCredential(savedIntegration, field, provider.requiresFreshCredentials)
 
   useEffect(() => {
     if (step === 'credentials') firstCredentialRef.current?.focus()
   }, [step])
   const credentialCommand = () => ({
-    channelId: savedIntegration?.channelId,
-    expectedConfigVersion: savedIntegration?.configVersion,
+    channelId: replaceTenant ? undefined : savedIntegration?.channelId,
+    expectedConfigVersion: replaceTenant ? undefined : savedIntegration?.configVersion,
     provider: provider.provider,
     clearedFields,
     secret: secret.trim() || undefined,
@@ -152,7 +165,7 @@ export function ContactImBindingDialog({
     }
   }
 
-  const handleSave = async () => {
+  const save = async (replaceCurrentTenant = false) => {
     if (credentialsDisabled) return
     setTestSucceeded(false)
     try {
@@ -160,15 +173,23 @@ export function ContactImBindingDialog({
         ...credentialCommand(),
         channelId: targetIntegration?.channelId,
         expectedConfigVersion: targetIntegration?.configVersion,
-        replaceActiveProvider: replaceActiveProvider && !savedIntegration,
+        replaceActiveProvider: replaceCurrentTenant || (replaceActiveProvider && !savedIntegration),
       })
       setSavedIntegration(saved)
+      setReplaceTenant(false)
       setValues(saved.configuredValues)
       setCredentialsEdited(false)
       clearSecrets()
       if (saved.callbackUrl) setStep('callbacks')
       else onOpenChange(false)
     } catch (error) {
+      if (
+        error instanceof ContactImRepositoryError &&
+        error.code === ContactImRepositoryErrorCode.ReplacementRequired &&
+        savedIntegration
+      ) {
+        setReplacementConfirmationOpen(true)
+      }
       if (
         error instanceof ContactImRepositoryError &&
         error.code === ContactImRepositoryErrorCode.SavedDetailsUnavailable
@@ -178,6 +199,24 @@ export function ContactImBindingDialog({
       }
       // Ordinary write failures keep the draft available for correction and retry.
     }
+  }
+
+  const handleSave = () => {
+    if (replaceTenant) setReplacementConfirmationOpen(true)
+    else return save()
+  }
+
+  const confirmReplacement = () => {
+    setReplacementConfirmationOpen(false)
+    setReplaceTenant(true)
+    saveCredentials.reset()
+    testConnection.reset()
+    const hasCompleteCredentials = adapter.fields.every(
+      ({ field, required }) =>
+        !required ||
+        Boolean((field === ContactImProviderField.Secret ? secret : values[field])?.trim()),
+    )
+    if (hasCompleteCredentials) return save(true)
   }
 
   const fieldLabels: Record<ContactImProviderField, string> = {
@@ -307,7 +346,7 @@ export function ContactImBindingDialog({
             onFormSubmit={handleSave}
           >
             <div className="space-y-4 overflow-y-auto px-6 py-3">
-              {isCurrentProvider && provider.requiresFreshCredentials && (
+              {isCurrentProvider && (provider.requiresFreshCredentials || replaceTenant) && (
                 <p className="system-sm-regular text-text-tertiary">
                   {t(($) => $['imPlatform.bindingDialog.freshCredentials'])}
                 </p>
@@ -459,6 +498,29 @@ export function ContactImBindingDialog({
           </Form>
         )}
       </DialogContent>
+      <AlertDialog open={replacementConfirmationOpen} onOpenChange={setReplacementConfirmationOpen}>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['imPlatform.replacement.title'], {
+                current: provider.displayName,
+                next: provider.displayName,
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['imPlatform.bindingDialog.replacementRequired'])}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton tone="default" onClick={confirmReplacement}>
+              {t(($) => $['imPlatform.replacement.confirm'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
