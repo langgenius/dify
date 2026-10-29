@@ -379,7 +379,7 @@ def _world(
                 usage=usage,
             )
         ),
-        authorize=OAuthAuthorizeService(clients=clients, codes=codes, settings=settings),
+        authorize=OAuthAuthorizeService(clients=clients, codes=codes),
         accounts=accounts,
         revoker=revoker,
         factory=factory,

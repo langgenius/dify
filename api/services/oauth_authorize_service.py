@@ -7,7 +7,9 @@ are verified, other errors go back to the client by redirect (RFC 6749 §4.1.2.1
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import StrEnum
+from typing import Final
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from machinery.context import RequestContext
@@ -16,7 +18,10 @@ from services.oauth_clients import OAuthClientRegistry, ResolvedClient
 from services.oauth_pkce import PkceMethod, is_valid_challenge
 from services.oauth_redirect import is_loopback_only, is_valid_redirect_uri, redirect_host, redirect_uri_allowed
 from services.oauth_resource import InvalidResourceError, resolve_resource
-from services.oauth_token_contracts import GrantType, OAuthTokenSettings
+from services.oauth_token_contracts import GrantType
+
+# The longest lifetime RFC 6749 §4.1.2 recommends.
+AUTHORIZATION_CODE_TTL: Final = timedelta(minutes=10)
 
 
 class AuthorizeErrorCode(StrEnum):
@@ -88,11 +93,9 @@ class OAuthAuthorizeService:
         *,
         clients: OAuthClientRegistry,
         codes: RedisAuthorizationCodeRepository,
-        settings: OAuthTokenSettings,
     ) -> None:
         self._clients = clients
         self._codes = codes
-        self._settings = settings
 
     def describe_client(self, client_id: str, redirect_uri: str) -> ConsentClientView:
         client = self._verified_client(client_id, redirect_uri)
@@ -123,7 +126,7 @@ class OAuthAuthorizeService:
                 account_id=context.account_id,
                 workspace_id=context.active_workspace_id,
             ),
-            ttl=self._settings.authorization_code_ttl,
+            ttl=AUTHORIZATION_CODE_TTL,
         )
         return self._client_redirect(request, issuer=issuer, outcome={RedirectParam.CODE: code})
 

@@ -465,7 +465,7 @@ def _build_oauth_services(
         clients=clients,
         registration=OAuthClientRegistrationService(clients=client_repository),
         token=OAuthTokenService(handlers=handlers),
-        authorize=OAuthAuthorizeService(clients=clients, codes=codes, settings=settings),
+        authorize=OAuthAuthorizeService(clients=clients, codes=codes),
         revocation=OAuthRevocationService(clients=clients, grants=grants),
     )
 

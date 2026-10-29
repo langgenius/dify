@@ -29,17 +29,9 @@ DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 1
 MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 1
 MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 8760
 
-DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 600
-MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 60
-MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 600
-
 DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 30
 MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 1
 MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 365
-
-DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 7
-MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 1
-MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 365
 
 DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 60
 MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 0
@@ -1213,26 +1205,6 @@ class AuthConfig(BaseSettings):
             maximum=MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
         )
 
-    OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: int = Field(
-        description="Lifetime in seconds of a single-use OAuth authorization code. "
-        f"Values outside {MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS}-{MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS} "
-        "are clamped; a non-integer falls back to the default.",
-        ge=MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
-        le=MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
-        default=DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
-    )
-
-    @field_validator("OAUTH_AUTHORIZATION_CODE_TTL_SECONDS", mode="before")
-    @classmethod
-    def _clamp_oauth_authorization_code_ttl_seconds(cls, v: object) -> int:
-        return _clamp_int_setting(
-            "OAUTH_AUTHORIZATION_CODE_TTL_SECONDS",
-            v,
-            default=DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
-            minimum=MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
-            maximum=MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
-        )
-
     OAUTH_REFRESH_TOKEN_TTL_DAYS: int = Field(
         description="Days an authorization code flow login can keep refreshing, counted from the login; "
         f"refreshing never extends it. Values outside {MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS}-"
@@ -1251,26 +1223,6 @@ class AuthConfig(BaseSettings):
             default=DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS,
             minimum=MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS,
             maximum=MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS,
-        )
-
-    OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: int = Field(
-        description="Days a dynamically registered OAuth client may stay without ever getting a token before the "
-        f"cleanup task deletes it. Values outside {MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS}-"
-        f"{MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS} are clamped; a non-integer falls back to the default.",
-        ge=MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
-        le=MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
-        default=DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
-    )
-
-    @field_validator("OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS", mode="before")
-    @classmethod
-    def _clamp_oauth_unused_dcr_client_retention_days(cls, v: object) -> int:
-        return _clamp_int_setting(
-            "OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS",
-            v,
-            default=DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
-            minimum=MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
-            maximum=MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
         )
 
     OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: int = Field(

@@ -22,7 +22,6 @@ from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     WEB_REDIRECT,
     WORKSPACE_ID,
     DictRedis,
-    FakeTokenSettings,
     native_client,
     registry,
     web_client,
@@ -62,7 +61,7 @@ def service(codes: RedisAuthorizationCodeRepository) -> OAuthAuthorizeService:
         web_client(client_id="no-code-grant", grant_types=frozenset({GrantType.REFRESH_TOKEN})),
         native_client(),
     )
-    return OAuthAuthorizeService(clients=clients, codes=codes, settings=FakeTokenSettings())
+    return OAuthAuthorizeService(clients=clients, codes=codes)
 
 
 def _query(url: str) -> dict[str, list[str]]:

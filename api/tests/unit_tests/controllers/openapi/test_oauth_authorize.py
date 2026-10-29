@@ -26,7 +26,6 @@ from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     WEB_REDIRECT,
     WORKSPACE_ID,
     DictRedis,
-    FakeTokenSettings,
     RateLimitHits,
     install_rate_limit_store,
     registry,
@@ -60,7 +59,6 @@ def world(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
         oauth_authorize=OAuthAuthorizeService(
             clients=registry(web_client(redirect_uris=(WEB_REDIRECT, QUERY_REDIRECT))),
             codes=RedisAuthorizationCodeRepository(DictRedis()),
-            settings=FakeTokenSettings(),
         )
     )
     account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
