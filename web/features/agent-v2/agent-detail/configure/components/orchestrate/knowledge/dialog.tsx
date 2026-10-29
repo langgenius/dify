@@ -390,7 +390,7 @@ function AgentKnowledgeRetrievalForm({
   return (
     <form
       noValidate
-      className="flex max-h-[80dvh] min-h-0 flex-col text-text-primary"
+      className="flex min-h-0 flex-1 flex-col text-text-primary"
       onSubmit={(event) => {
         event.preventDefault()
         setSubmitted(true)
@@ -428,7 +428,7 @@ function AgentKnowledgeRetrievalForm({
             />
           </ComboboxInputGroup>
         </div>
-        <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-6 pb-4 system-sm-regular">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-6 pb-4 system-sm-regular">
           {knowledgeFsEnabled &&
             draft.some((item) => item.isMissing && !unavailableBindingIds.has(item.id)) && (
               <p role="alert" className="system-xs-regular text-text-warning">
@@ -597,7 +597,9 @@ export function AgentKnowledgeRetrievalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent initialFocus={filterRef} className="w-xl overflow-hidden">
+      {/* A fixed height keeps the centered dialog still while knowledge is ticked;
+          growing would re-center it and slide the list under the pointer. */}
+      <DialogContent initialFocus={filterRef} className="h-[min(40rem,80dvh)] w-xl overflow-hidden">
         <AgentKnowledgeRetrievalForm
           initialBindings={initialBindings}
           knowledgeFsEnabled={knowledgeFsEnabled}

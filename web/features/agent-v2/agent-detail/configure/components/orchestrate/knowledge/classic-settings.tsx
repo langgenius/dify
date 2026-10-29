@@ -214,7 +214,7 @@ function ClassicSettingsFields({
   )
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
-      <div className="flex flex-col gap-1 px-4 py-2">
+      <div className="flex flex-col gap-1 py-2">
         <div id={queryModeLabelId} className="system-sm-medium text-text-secondary">
           {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
         </div>
@@ -281,7 +281,7 @@ function ClassicSettingsFields({
         )}
       </div>
 
-      <div className="px-4 py-2">
+      <div className="py-2">
         <Field
           title={t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'])}
           required
@@ -373,7 +373,8 @@ function ClassicSettingsFields({
         </Field>
       </div>
 
-      <div className="py-2">
+      {/* The shared workflow filter brings its own px-4 gutter; cancel it to line up with the fields above. */}
+      <div className="-mx-4 py-2">
         {/* Keep saved conditions until an explicit edit; catalog loading must not prune them. */}
         <MetadataFilter
           metadataList={metadataList}
