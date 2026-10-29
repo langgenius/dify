@@ -21,6 +21,8 @@ type Props = Readonly<{
   placeholder?: string
   readOnly?: boolean
   isSupportFile?: boolean
+  singleLine?: boolean
+  onCommit?: () => void
   insertVarTipToLeft?: boolean
 }>
 
@@ -35,6 +37,8 @@ const InputItem: FC<Props> = ({
   placeholder,
   readOnly,
   isSupportFile,
+  singleLine,
+  onCommit,
   insertVarTipToLeft,
 }) => {
   const { t } = useTranslation(['workflowIntegrations'])
@@ -80,6 +84,8 @@ const InputItem: FC<Props> = ({
           })!}
           placeholderClassName="leading-[21px]!"
           insertVarTipToLeft={insertVarTipToLeft}
+          singleLine={singleLine}
+          onCommit={onCommit}
         />
       ) : (
         <div className="h-full w-full pl-0.5 leading-4.5">
