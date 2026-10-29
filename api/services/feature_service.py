@@ -4,6 +4,7 @@ from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class FeatureService:
@@ -124,6 +125,7 @@ class FeatureService:
             dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
         )
         features.enable_skill = dify_config.ENABLE_SKILL
+        features.enable_knowledge_fs = get_knowledge_fs_features().enabled
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):

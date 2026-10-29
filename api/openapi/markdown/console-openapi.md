@@ -8339,7 +8339,7 @@ Get instruction generation template
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/features
-Get which Agent Knowledge Base surfaces this deployment offers
+Get which Agent Knowledge Base capabilities this deployment offers
 
 #### Responses
 
@@ -25221,6 +25221,7 @@ Effective feature availability and limits for the current workspace.
 | can_replace_logo | boolean |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
+| enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
@@ -26844,7 +26845,6 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | agent_enabled | boolean |  | Yes |
-| enabled | boolean |  | Yes |
 | upload_enabled | boolean |  | Yes |
 
 #### KnowledgeFSGoldenQuestionBulkImportItemResponse
