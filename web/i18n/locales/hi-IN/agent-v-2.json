@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "फ़ाइल नहीं मिली",
   "agentDetail.configure.files.preview.empty": "कोई पूर्वावलोकन सामग्री नहीं।",
   "agentDetail.configure.files.preview.failed": "पूर्वावलोकन लोड करने में विफल।",
+  "agentDetail.configure.files.preview.truncated": "इस फ़ाइल का केवल शुरुआती भाग दिखाया गया है।",
   "agentDetail.configure.files.preview.unsupported": "यह फ़ाइल पूर्वावलोकन का समर्थन नहीं करती।",
   "agentDetail.configure.files.remove": "{{name}} हटाएँ",
   "agentDetail.configure.files.richTip": "Prompt में चिपकाने के लिए बहुत लंबी संदर्भ सामग्री के लिए: स्पेक्स, टेम्पलेट, दिशानिर्देश। <docLink>ज़्यादा जानें</docLink>\n\nBuild mode में, एजेंट इन्हें आपके लिए सेट कर सकता है।",

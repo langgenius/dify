@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "File not found",
   "agentDetail.configure.files.preview.empty": "No preview content.",
   "agentDetail.configure.files.preview.failed": "Failed to load preview.",
+  "agentDetail.configure.files.preview.truncated": "Only the beginning of this file is shown.",
   "agentDetail.configure.files.preview.unsupported": "Preview is not supported for this file.",
   "agentDetail.configure.files.remove": "Remove {{name}}",
   "agentDetail.configure.files.richTip": "For reference material too long to paste into the Prompt: specs, templates, guidelines. <docLink>Learn more</docLink>\n\nIn Build mode, the agent can set these up for you.",

@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "ບໍ່ພົບໄຟລ໌",
   "agentDetail.configure.files.preview.empty": "ບໍ່ມີເນື້ອຫາຕົວຢ່າງ.",
   "agentDetail.configure.files.preview.failed": "ໂຫຼດຕົວຢ່າງບໍ່ສຳເລັດ.",
+  "agentDetail.configure.files.preview.truncated": "ສະແດງພຽງສ່ວນຕົ້ນຂອງໄຟລ໌ນີ້ເທົ່ານັ້ນ.",
   "agentDetail.configure.files.preview.unsupported": "ບໍ່ຮອງຮັບການເບິ່ງຕົວຢ່າງສຳລັບໄຟລ໌ນີ້.",
   "agentDetail.configure.files.remove": "ລຶບ {{name}} ອອກ",
   "agentDetail.configure.files.richTip": "ສຳລັບເອກະສານອ້າງອີງທີ່ມີເນື້ອຫາຍາວເກີນໄປທີ່ຈະວາງລົງໃນ Prompt ເຊັ່ນ: ຂໍ້ກຳນົດ, ເທມເພຼດ, ຄຳແນະນຳ. <docLink>ຮຽນຮູ້ເພີ່ມເຕີມ</docLink>\n\nໃນໂໝດສ້າງ, ຕົວແທນສາມາດຕັ້ງຄ່າເຫຼົ່ານີ້ໃຫ້ທ່ານໄດ້.",

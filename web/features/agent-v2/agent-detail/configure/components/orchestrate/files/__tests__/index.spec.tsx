@@ -49,6 +49,9 @@ const mocks = vi.hoisted(() => ({
   })),
   previewQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
   downloadQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
+  downloadFile: vi.fn(async (input: ConfigFileQueryOptionsInput['input']) => ({
+    url: `https://example.com/${input.params.name}`,
+  })),
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
   fileUploadConfig: {
@@ -58,6 +61,11 @@ const mocks = vi.hoisted(() => ({
     video_file_size_limit: 100,
     workflow_file_upload_limit: 10,
   },
+}))
+
+vi.mock('@/app/components/base/file-uploader/pdf-highlighter-adapter', () => ({
+  PdfLoader: ({ url }: { url: string }) => <div data-testid="pdf-loader" data-url={url} />,
+  PdfHighlighter: () => null,
 }))
 
 vi.mock('@/utils/download', () => ({
@@ -168,6 +176,9 @@ vi.mock('@/service/console', async (importOriginal) => {
       'files.upload.post': mocks.uploadFileMutationFn,
       'agent.byAgentId.config.files.batch.post': mocks.commitFileMutationFn,
       'apps.byAppId.agent.config.files.batch.post': mocks.commitFileMutationFn,
+      'agent.byAgentId.config.files.byName.download.get': mocks.downloadFile,
+      'apps.byAppId.agent.config.files.byName.download.get': mocks.downloadFile,
+      'trialApps.byAppId.agent.config.files.byName.download.get': mocks.downloadFile,
     }),
   }
 })
@@ -312,6 +323,94 @@ describe('AgentFiles', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).queryByText('missing.pdf')).not.toBeInTheDocument()
     expect(within(dialog).getAllByText('available.pdf').length).toBeGreaterThan(0)
+  })
+
+  it('should preview PDFs from the download URL without loading the text preview', async () => {
+    const user = userEvent.setup()
+    const previewQueryFn = vi.fn(async () => ({
+      name: 'guide.pdf',
+      binary: true,
+      truncated: false,
+      text: null,
+    }))
+    mocks.previewQueryOptions.mockImplementation(() => ({ queryFn: previewQueryFn }))
+    renderAgentFiles({
+      initialDraft: createInitialDraft({
+        files: [
+          {
+            id: 'guide.pdf',
+            name: 'guide.pdf',
+            icon: 'pdf',
+            fileId: 'guide-file-id',
+            configName: 'guide.pdf',
+          },
+        ],
+      }),
+    })
+
+    await user.click(screen.getByRole('button', { name: 'guide.pdf' }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(await within(dialog).findByTestId('pdf-loader')).toHaveAttribute(
+      'data-url',
+      'https://example.com/guide.pdf',
+    )
+    expect(previewQueryFn).not.toHaveBeenCalled()
+  })
+
+  it('should keep an open PDF preview when downloading it from the header', async () => {
+    const user = userEvent.setup()
+    const downloadQueryFn = vi.fn(async () => ({ url: 'https://example.com/preview-guide.pdf' }))
+    mocks.downloadQueryOptions.mockImplementation(() => ({ queryFn: downloadQueryFn }))
+    renderAgentFiles({
+      initialDraft: createInitialDraft({
+        files: [
+          {
+            id: 'guide.pdf',
+            name: 'guide.pdf',
+            icon: 'pdf',
+            fileId: 'guide-file-id',
+            configName: 'guide.pdf',
+          },
+        ],
+      }),
+    })
+
+    await user.click(screen.getByRole('button', { name: 'guide.pdf' }))
+    const dialog = await screen.findByRole('dialog')
+    const loader = await within(dialog).findByTestId('pdf-loader')
+    await user.click(
+      within(dialog).getByRole('button', { name: /common\.operation\.download.*guide\.pdf/ }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/guide.pdf',
+        fileName: 'guide.pdf',
+      })
+    })
+    expect(downloadQueryFn).toHaveBeenCalledOnce()
+    expect(within(dialog).getByTestId('pdf-loader')).toBe(loader)
+    expect(loader).toHaveAttribute('data-url', 'https://example.com/preview-guide.pdf')
+  })
+
+  it('should note when a text preview is truncated', async () => {
+    const user = userEvent.setup()
+    mocks.previewQueryOptions.mockImplementation(({ input }) => ({
+      queryFn: async () => ({
+        name: input.params.name,
+        binary: false,
+        truncated: true,
+        text: 'First 64 KiB',
+      }),
+    }))
+    renderAgentFiles()
+
+    await user.click(screen.getByRole('button', { name: 'brief.md' }))
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.files.preview.truncated'),
+    ).toBeInTheDocument()
   })
 
   it('should delete configured files by config name', async () => {
@@ -554,20 +653,14 @@ describe('AgentFiles', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: expect.objectContaining({
-            params: {
-              agent_id: 'agent-1',
-              name: 'diagram.png',
-            },
-          }),
-        }),
-      )
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/diagram.png',
+        fileName: 'diagram.png',
+      })
     })
-    expect(mocks.downloadUrl).toHaveBeenCalledWith({
-      url: 'https://example.com/diagram.png',
-      fileName: 'diagram.png',
+    expect(mocks.downloadFile).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1', name: 'diagram.png' },
+      query: { draft_type: 'draft', version_id: undefined },
     })
   })
 
@@ -585,20 +678,14 @@ describe('AgentFiles', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: expect.objectContaining({
-            params: {
-              agent_id: 'agent-1',
-              name: 'diagram.png',
-            },
-          }),
-        }),
-      )
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/diagram.png',
+        fileName: 'diagram.png',
+      })
     })
-    expect(mocks.downloadUrl).toHaveBeenCalledWith({
-      url: 'https://example.com/diagram.png',
-      fileName: 'diagram.png',
+    expect(mocks.downloadFile).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1', name: 'diagram.png' },
+      query: { draft_type: 'draft', version_id: undefined },
     })
     const trialFile = consoleQuery.trialApps.byAppId.agent.config.files.byName
     for (const operation of [trialFile.preview.get, trialFile.download.get]) {

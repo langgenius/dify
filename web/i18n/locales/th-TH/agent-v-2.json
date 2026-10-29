@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "ไม่พบไฟล์",
   "agentDetail.configure.files.preview.empty": "ไม่มีเนื้อหาสำหรับแสดงตัวอย่าง",
   "agentDetail.configure.files.preview.failed": "โหลดตัวอย่างไม่สำเร็จ",
+  "agentDetail.configure.files.preview.truncated": "แสดงเฉพาะส่วนต้นของไฟล์นี้",
   "agentDetail.configure.files.preview.unsupported": "ไฟล์นี้ไม่รองรับการแสดงตัวอย่าง",
   "agentDetail.configure.files.remove": "ลบ {{name}}",
   "agentDetail.configure.files.richTip": "สำหรับเอกสารอ้างอิงที่ยาวเกินกว่าจะวางใน Prompt: สเปก เทมเพลต แนวทาง <docLink>ดูข้อมูลเพิ่มเติม</docLink>\n\nในโหมด Build agent สามารถตั้งค่าสิ่งเหล่านี้ให้คุณได้",

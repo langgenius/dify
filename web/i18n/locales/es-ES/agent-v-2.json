@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Archivo no encontrado",
   "agentDetail.configure.files.preview.empty": "Sin contenido de vista previa.",
   "agentDetail.configure.files.preview.failed": "Error al cargar la vista previa.",
+  "agentDetail.configure.files.preview.truncated": "Solo se muestra el comienzo de este archivo.",
   "agentDetail.configure.files.preview.unsupported": "Este archivo no admite vista previa.",
   "agentDetail.configure.files.remove": "Eliminar {{name}}",
   "agentDetail.configure.files.richTip": "Para material de referencia demasiado largo para pegar en el Prompt: especificaciones, plantillas, guías. <docLink>Más información</docLink>\n\nEn modo Build, el agente puede configurarlos por ti.",

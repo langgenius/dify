@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "File tidak ditemukan",
   "agentDetail.configure.files.preview.empty": "Tidak ada konten pratinjau.",
   "agentDetail.configure.files.preview.failed": "Gagal memuat pratinjau.",
+  "agentDetail.configure.files.preview.truncated": "Hanya bagian awal file ini yang ditampilkan.",
   "agentDetail.configure.files.preview.unsupported": "File ini tidak mendukung pratinjau.",
   "agentDetail.configure.files.remove": "Hapus {{name}}",
   "agentDetail.configure.files.richTip": "Untuk materi referensi yang terlalu panjang untuk ditempel ke Prompt: spesifikasi, templat, panduan. <docLink>Pelajari selengkapnya</docLink>\n\nDalam mode Build, agen dapat menyiapkannya untuk Anda.",
