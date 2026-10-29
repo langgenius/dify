@@ -1,11 +1,12 @@
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from io import BytesIO
 from typing import Protocol, cast
 from uuid import uuid4
 
 import pytest
 import yaml
-from flask import Flask, request
+from flask import Flask, Response, request
 from flask_restx import Resource
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
@@ -19,17 +20,26 @@ from controllers.openapi._models import (
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    AppPackageExportQuery,
     DslCheckPayload,
     DslCheckResponse,
     Hint,
 )
-from controllers.openapi.app_dsl import AppDslCheckApi, AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
+from controllers.openapi.app_dsl import (
+    AppDslCheckApi,
+    AppDslExportApi,
+    AppDslImportApi,
+    AppDslImportConfirmApi,
+    AppPackageExportApi,
+)
 from controllers.openapi.auth.spec import EndpointSpec
 from libs.external_api import ExternalApi
 from machinery.context import AppRequestContext, RequestContext
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
+from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.app.console_service import ConsoleAppNotFoundError
 from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
 from services.entities.app_entities import AppExportOptions
@@ -567,3 +577,106 @@ def test_export_errors_have_canonical_http_responses(
 
     assert response.status_code == status
     assert (response.get_json()["code"], response.get_json()["status"]) == (error_code, status)
+
+
+class _PackageView(Protocol):
+    __handler__: Callable[..., Response]
+
+
+_WORKFLOW_ID = "6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
+
+
+def _export_package(app: Flask, query: AppPackageExportQuery) -> Response:
+    api = AppPackageExportApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/package"):
+        return cast(_PackageView, api.get).__handler__(api, _EXPORT_CONTEXT, "app-1", query=query)
+
+
+def _stub_package_export(
+    monkeypatch: pytest.MonkeyPatch, app_query_services: ControllerTestServices
+) -> tuple[list[AppExportOptions], RosterAgentPackageExport]:
+    seen: list[AppExportOptions] = []
+    package = RosterAgentPackageExport(archive=BytesIO(b"zip-bytes"), filename="release-summary.ifpkg", size=9)
+
+    def export(_context: RequestContext, _app_id: str, options: AppExportOptions) -> RosterAgentPackageExport:
+        seen.append(options)
+        return package
+
+    monkeypatch.setattr(app_query_services.apps.console, "export", export)
+    return seen, package
+
+
+def test_package_export_sends_the_ifpkg_as_an_attachment(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen, _package = _stub_package_export(monkeypatch, app_query_services)
+
+    response = _export_package(app, AppPackageExportQuery())
+
+    assert response.mimetype == "application/zip"
+    assert "release-summary.ifpkg" in response.headers["Content-Disposition"]
+    assert (seen[0].format, seen[0].preserve_agent_bindings) == ("ifpkg", True)
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        (AppPackageExportQuery(preserve_agent_bindings=False), {"preserve_agent_bindings": False}),
+        (AppPackageExportQuery(workflow_id=_WORKFLOW_ID), {"workflow_id": _WORKFLOW_ID}),
+        (AppPackageExportQuery(include_secret=True), {"include_secret": True}),
+    ],
+)
+def test_package_export_passes_the_query_through(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    query: AppPackageExportQuery,
+    expected: dict[str, object],
+) -> None:
+    seen, _package = _stub_package_export(monkeypatch, app_query_services)
+
+    _export_package(app, query)
+
+    assert expected.items() <= asdict(seen[0]).items()
+
+
+def test_package_export_closes_the_package_when_sending_fails(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _seen, package = _stub_package_export(monkeypatch, app_query_services)
+
+    def fail(*_args: object, **_kwargs: object) -> Response:
+        raise OSError("disk gone")
+
+    monkeypatch.setattr(app_dsl, "send_file", fail)
+
+    with pytest.raises(OSError, match="disk gone"):
+        _export_package(app, AppPackageExportQuery())
+
+    assert package.archive.closed
+
+
+@pytest.mark.parametrize(
+    ("workflow_id", "raised", "expected"),
+    [
+        (_WORKFLOW_ID, WorkflowNotFoundError("no version"), VersionNotFound),
+        (_WORKFLOW_ID, IsDraftWorkflowError("draft"), VersionNotFound),
+        (None, WorkflowNotFoundError("no draft"), DraftNotFound),
+        (None, ConsoleAppNotFoundError("app not found"), NotFound),
+    ],
+)
+def test_package_export_answers_a_missing_version_with_the_openapi_error(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_id: str | None,
+    raised: Exception,
+    expected: type[Exception],
+) -> None:
+    def export(*_args: object) -> RosterAgentPackageExport:
+        raise raised
+
+    monkeypatch.setattr(app_query_services.apps.console, "export", export)
+
+    with pytest.raises(expected):
+        _export_package(app, AppPackageExportQuery(workflow_id=workflow_id))
