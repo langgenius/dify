@@ -11,10 +11,12 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import wraps
-from typing import Literal, Protocol
+from typing import Literal, NotRequired, Protocol
 
+from pydantic import TypeAdapter
 from sqlalchemy import update
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 from werkzeug.exceptions import ServiceUnavailable
 
 from configs import dify_config
@@ -73,6 +75,18 @@ def try_get_auth_ctx() -> AuthContext | None:
     return _auth_ctx_var.get(None)
 
 
+class _CachedResolvedRow(TypedDict):
+    subject_email: str | None
+    subject_issuer: str | None
+    account_id: str | None
+    client_id: NotRequired[str | None]
+    token_id: str
+    expires_at: str | None
+
+
+_RESOLVED_ROW_CACHE_ADAPTER = TypeAdapter(_CachedResolvedRow)
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedRow:
     subject_email: str | None
@@ -82,7 +96,7 @@ class ResolvedRow:
     token_id: uuid.UUID
     expires_at: datetime | None
 
-    def to_cache(self) -> dict:
+    def to_cache(self) -> _CachedResolvedRow:
         return {
             "subject_email": self.subject_email,
             "subject_issuer": self.subject_issuer,
@@ -93,7 +107,7 @@ class ResolvedRow:
         }
 
     @classmethod
-    def from_cache(cls, data: dict) -> ResolvedRow:
+    def from_cache(cls, data: _CachedResolvedRow) -> ResolvedRow:
         return cls(
             subject_email=data["subject_email"],
             subject_issuer=data["subject_issuer"],
@@ -193,11 +207,11 @@ class OAuthAccessTokenResolver:
         raw = self._redis.get(self._cache_key(token_hash))
         if raw is None:
             return None
-        text = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
-        if text == "invalid":
+        if raw in ("invalid", b"invalid"):
             return "invalid"
         try:
-            return ResolvedRow.from_cache(json.loads(text))
+            data = _RESOLVED_ROW_CACHE_ADAPTER.validate_json(raw, strict=True)
+            return ResolvedRow.from_cache(data)
         except (ValueError, KeyError):
             logger.warning("auth:token cache entry malformed; treating as miss")
             return None
