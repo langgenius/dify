@@ -136,6 +136,7 @@ export type AgentWebApp = {
 
 export type AppDescribeInfo = {
   description?: string | null
+  draft_hash?: string | null
   id: string
   is_agent?: boolean
   mode: string
@@ -247,6 +248,28 @@ export type AppMode =
   | 'completion'
   | 'rag-pipeline'
   | 'workflow'
+
+export type AppPackageExportQuery = {
+  include_secret?: boolean
+  preserve_agent_bindings?: boolean
+  workflow_id?: string | null
+}
+
+export type AppPackageImportPayload = {
+  app_id?: string | null
+  description?: string | null
+  draft_hash?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  name?: string | null
+  package:
+    | Blob
+    | File
+    | {
+        [key: string]: Blob | File | Array<Blob | File>
+      }
+}
 
 export type AppSettingsInfo = {
   description?: string | null
@@ -1046,6 +1069,7 @@ export type NodeTypeRow = {
 export type OpenApiErrorCode =
   | 'agent_not_published'
   | 'app_mode_mismatch'
+  | 'app_package_invalid'
   | 'app_unavailable'
   | 'bad_gateway'
   | 'bad_request'
@@ -2653,6 +2677,34 @@ export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses = {
 export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse =
   PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses[keyof PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses]
 
+export type GetAppsByAppIdPackageData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    include_secret?: boolean
+    preserve_agent_bindings?: boolean
+    workflow_id?: string
+  }
+  url: '/apps/{app_id}/package'
+}
+
+export type GetAppsByAppIdPackageErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdPackageError =
+  GetAppsByAppIdPackageErrors[keyof GetAppsByAppIdPackageErrors]
+
+export type GetAppsByAppIdPackageResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetAppsByAppIdPackageResponse =
+  GetAppsByAppIdPackageResponses[keyof GetAppsByAppIdPackageResponses]
+
 export type GetAppsByAppIdReleaseCheckData = {
   body?: never
   path: {
@@ -3794,6 +3846,32 @@ export type PostWorkspacesByWorkspaceIdAppsImportsCheckResponses = {
 
 export type PostWorkspacesByWorkspaceIdAppsImportsCheckResponse =
   PostWorkspacesByWorkspaceIdAppsImportsCheckResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsCheckResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesData = {
+  body: AppPackageImportPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/packages'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesErrors = {
+  400: AppDslImportResponse | ErrorBody
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesError =
+  PostWorkspacesByWorkspaceIdAppsPackagesErrors[keyof PostWorkspacesByWorkspaceIdAppsPackagesErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesResponses = {
+  200: AppDslImportResponse
+  202: AppDslImportResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAppsPackagesResponse =
+  PostWorkspacesByWorkspaceIdAppsPackagesResponses[keyof PostWorkspacesByWorkspaceIdAppsPackagesResponses]
 
 export type PostWorkspacesByWorkspaceIdAppsWorkflowData = {
   body: CreateAppPayload
