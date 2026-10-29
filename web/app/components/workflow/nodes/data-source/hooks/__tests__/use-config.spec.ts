@@ -1,150 +1,71 @@
 import type { DataSourceNodeType } from '../../types'
-import { renderHook } from '@testing-library/react'
-import { VarType as VarKindType } from '../../../tool/types'
+import { act } from '@testing-library/react'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { renderNodeConfig } from '../../../__tests__/render-node-config'
 import { useConfig } from '../use-config'
 
-const mockUseStoreApi = vi.hoisted(() => vi.fn())
-const mockUseNodeDataUpdate = vi.hoisted(() => vi.fn())
+const data: DataSourceNodeType = {
+  title: 'Datasource',
+  desc: '',
+  type: BlockEnum.DataSource,
+  plugin_id: 'langgenius/file',
+  provider_type: 'local_file',
+  provider_name: 'file',
+  datasource_name: 'local-file',
+  datasource_label: 'File',
+  datasource_parameters: {},
+  datasource_configurations: {},
+  _dataSourceStartToAdd: true,
+}
+it('persists initialization, extensions and consecutive parameter edits in the datasource graph', () => {
+  const { result } = renderNodeConfig(useConfig, data)
+  expect(result.current.flow.getNode('node')?.data._dataSourceStartToAdd).toBe(false)
+  act(() => result.current.config.handleFileExtensionsChange(['pdf', 'csv']))
+  act(() =>
+    result.current.config.handleParametersChange({
+      count: { type: VarKindType.constant, value: 0 },
+    }),
+  )
+  expect(result.current.flow.getNode('node')?.data).toMatchObject({
+    _dataSourceStartToAdd: false,
+    fileExtensions: ['pdf', 'csv'],
+    datasource_parameters: { count: { type: VarKindType.constant, value: 0 } },
+  })
+})
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => mockUseStoreApi(),
-}))
-
-vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
-
-  return {
-    ...actual,
-    useNodeDataUpdate: () => mockUseNodeDataUpdate(),
+it('reads generated datasource output declarations and safely keeps unknown property schemas visible', () => {
+  const provider = createDatasourceProvider()
+  provider.declaration.datasources![0]!.output_schema = {
+    properties: {
+      metadata: { type: 'object', properties: { title: { type: 'string' } } },
+      names: { type: 'array', items: { type: 'string' }, description: 'Names' },
+      missingItems: { type: 'array' },
+      unrestricted: true,
+      forbidden: false,
+      empty: {},
+      nullable: null,
+    },
   }
+  const { result } = renderNodeConfig((id, payload) => useConfig(id, payload, [provider]), data)
+  expect(result.current.config.hasObjectOutput).toBe(true)
+  expect(result.current.config.outputSchema.map(({ name, type }) => ({ name, type }))).toEqual([
+    { name: 'metadata', type: 'object' },
+    { name: 'names', type: 'array[string]' },
+    { name: 'missingItems', type: 'array[unknown]' },
+    { name: 'unrestricted', type: 'unknown' },
+    { name: 'forbidden', type: 'unknown' },
+    { name: 'empty', type: 'unknown' },
+    { name: 'nullable', type: 'unknown' },
+  ])
 })
 
-const createNode = (
-  overrides: Partial<DataSourceNodeType> = {},
-): { id: string; data: DataSourceNodeType } => ({
-  id: 'data-source-node',
-  data: {
-    title: 'Datasource',
-    desc: '',
-    type: 'data-source',
-    plugin_id: 'plugin-1',
-    provider_type: 'local_file',
-    provider_name: 'provider',
-    datasource_name: 'source-a',
-    datasource_label: 'Source A',
-    datasource_parameters: {},
-    datasource_configurations: {},
-    _dataSourceStartToAdd: true,
-    ...overrides,
-  } as DataSourceNodeType,
-})
-
-describe('data-source/hooks/use-config', () => {
-  const mockHandleNodeDataUpdateWithSyncDraft = vi.fn()
-  let currentNode = createNode()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    currentNode = createNode()
-
-    mockUseStoreApi.mockReturnValue({
-      getState: () => ({
-        getNodes: () => [currentNode],
-      }),
-    })
-    mockUseNodeDataUpdate.mockReturnValue({
-      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-    })
-  })
-
-  it('should clear the local-file auto-add flag on mount and update datasource payloads', () => {
-    const { result } = renderHook(() => useConfig('data-source-node'))
-
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith({
-      id: 'data-source-node',
-      data: expect.objectContaining({
-        _dataSourceStartToAdd: false,
-      }),
-    })
-
-    mockHandleNodeDataUpdateWithSyncDraft.mockClear()
-    result.current.handleFileExtensionsChange(['pdf', 'csv'])
-    result.current.handleParametersChange({
-      dataset: {
-        type: VarKindType.constant,
-        value: 'docs',
-      },
-    })
-
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(1, {
-      id: 'data-source-node',
-      data: expect.objectContaining({
-        fileExtensions: ['pdf', 'csv'],
-      }),
-    })
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenNthCalledWith(2, {
-      id: 'data-source-node',
-      data: expect.objectContaining({
-        datasource_parameters: {
-          dataset: {
-            type: VarKindType.constant,
-            value: 'docs',
-          },
-        },
-      }),
-    })
-  })
-
-  it('should derive output schema metadata and detect object outputs', () => {
-    const dataSourceList = [
-      {
-        plugin_id: 'plugin-1',
-        tools: [
-          {
-            name: 'source-a',
-            output_schema: {
-              properties: {
-                items: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'List of items',
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Object field',
-                },
-                count: {
-                  type: 'number',
-                  description: 'Total count',
-                },
-              },
-            },
-          },
-        ],
-      },
-    ]
-
-    const { result } = renderHook(() => useConfig('data-source-node', dataSourceList))
-
-    expect(result.current.outputSchema).toEqual([
-      {
-        name: 'items',
-        type: 'Array[String]',
-        description: 'List of items',
-      },
-      {
-        name: 'metadata',
-        value: {
-          type: 'object',
-          description: 'Object field',
-        },
-      },
-      {
-        name: 'count',
-        type: 'Number',
-        description: 'Total count',
-      },
-    ])
-    expect(result.current.hasObjectOutput).toBe(true)
-  })
+it('accepts a datasource without declared outputs', () => {
+  const { result } = renderNodeConfig(
+    (id, payload) => useConfig(id, payload, [createDatasourceProvider()]),
+    data,
+  )
+  expect(result.current.config.outputSchema).toEqual([])
+  expect(result.current.config.hasObjectOutput).toBe(false)
 })

@@ -4,6 +4,23 @@ CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH = 1000
 
 
 class SuggestedQuestionsAfterAnswerConfigManager:
+    @staticmethod
+    def validate_optional_fields(config: dict[str, Any]) -> None:
+        feature = config.get("suggested_questions_after_answer")
+        if feature is None:
+            return
+        if not isinstance(feature, dict):
+            raise ValueError("suggested_questions_after_answer must be of dict type")
+        if "prompt" in feature:
+            prompt = feature["prompt"]
+            if not isinstance(prompt, str):
+                raise ValueError("prompt in suggested_questions_after_answer must be of string type")
+            if len(prompt) > CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH:
+                raise ValueError(
+                    f"prompt in suggested_questions_after_answer must be less than or equal to "
+                    f"{CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH} characters"
+                )
+
     @classmethod
     def convert(cls, config: dict[str, Any]) -> bool:
         """
@@ -45,14 +62,7 @@ class SuggestedQuestionsAfterAnswerConfigManager:
         if not isinstance(config["suggested_questions_after_answer"]["enabled"], bool):
             raise ValueError("enabled in suggested_questions_after_answer must be of boolean type")
 
-        prompt = config["suggested_questions_after_answer"].get("prompt")
-        if prompt is not None and not isinstance(prompt, str):
-            raise ValueError("prompt in suggested_questions_after_answer must be of string type")
-        if isinstance(prompt, str) and len(prompt) > CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH:
-            raise ValueError(
-                f"prompt in suggested_questions_after_answer must be less than or equal to "
-                f"{CUSTOM_FOLLOW_UP_PROMPT_MAX_LENGTH} characters"
-            )
+        cls.validate_optional_fields(config)
 
         if "model" in config["suggested_questions_after_answer"]:
             model_config = config["suggested_questions_after_answer"]["model"]

@@ -143,3 +143,6 @@ sync-e2b-template-dev:
 
 sync-e2b-template-prod:
 	E2B_API_KEY=$(E2B_API_KEY_PROD) ./docker/sync-e2b-template.sh
+
+benchmark:
+	go test ./benchmarks/ -bench . -run '^$$' -benchtime 40x

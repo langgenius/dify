@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { NotionPageRow as NotionPageRowData, NotionPageSelectionMode } from './types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Radio } from '@langgenius/dify-ui/radio'
+import { Radio } from '@langgenius/dify-ui/radio-group'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,7 +35,7 @@ const NotionPageRow = ({
   showPreview,
   style,
 }: NotionPageRowProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const pageId = row.page.page_id
   const breadcrumbs = row.ancestors.length
     ? [...row.ancestors, row.page.page_name]
@@ -83,7 +83,7 @@ const NotionPageRow = ({
       {!searchValue && !row.hasChild && row.parentExists && (
         <div className="mr-1 size-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
       )}
-      <NotionIcon className="mr-1 shrink-0" type="page" src={row.page.page_icon} />
+      <NotionIcon decorative className="mr-1 shrink-0" type="page" src={row.page.page_icon} />
       <div
         className="grow truncate text-[13px] leading-4 font-medium text-text-secondary"
         title={row.page.page_name}

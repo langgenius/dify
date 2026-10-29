@@ -45,6 +45,11 @@ export const Basic: Story = {
     await userEvent.click(activityTab)
 
     await expect(activityTab).toHaveAttribute('aria-selected', 'true')
-    await expect(canvas.getByRole('tabpanel', { name: 'Activity' })).toBeVisible()
+    const activityPanel = canvas.getByRole('tabpanel', { name: 'Activity' })
+    await expect(activityPanel).toBeVisible()
+
+    await userEvent.tab()
+
+    await expect(activityPanel).toHaveFocus()
   },
 }

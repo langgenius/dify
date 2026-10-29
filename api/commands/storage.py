@@ -751,7 +751,7 @@ def migrate_oss(
                             UploadFile.storage_type == source_storage_type,
                             UploadFile.key.in_(copied_upload_file_keys),
                         )
-                        .values(storage_type=dify_config.STORAGE_TYPE)
+                        .values(storage_type=StorageType(dify_config.STORAGE_TYPE))
                     ),
                 ).rowcount
                 db.session.commit()

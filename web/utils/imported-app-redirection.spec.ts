@@ -1,9 +1,8 @@
-import { AppModeEnum } from '@/types/app'
 import { resolveImportedAppRedirectionTarget } from './imported-app-redirection'
 
 const mockFetchAppDetail = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {
@@ -15,7 +14,7 @@ vi.mock('@/service/client', () => ({
 
 describe('resolveImportedAppRedirectionTarget', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockFetchAppDetail.mockReset()
   })
 
   it('resolves the backing Agent ID for an imported Agent App', async () => {
@@ -24,12 +23,12 @@ describe('resolveImportedAppRedirectionTarget', () => {
     await expect(
       resolveImportedAppRedirectionTarget({
         id: 'app-1',
-        mode: AppModeEnum.AGENT,
+        mode: 'agent' as const,
         permission_keys: ['app.acl.view_layout'],
       }),
     ).resolves.toEqual({
       id: 'app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       permission_keys: ['app.acl.view_layout'],
       bound_agent_id: 'agent-1',
     })
@@ -42,7 +41,7 @@ describe('resolveImportedAppRedirectionTarget', () => {
     mockFetchAppDetail.mockRejectedValue(new Error('Failed to fetch App detail'))
     const target = {
       id: 'app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
     }
 
     await expect(resolveImportedAppRedirectionTarget(target)).resolves.toEqual(target)

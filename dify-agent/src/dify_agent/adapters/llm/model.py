@@ -10,12 +10,17 @@ and reads that accumulated usage after all model/tool rounds finish.
 from __future__ import annotations
 
 import base64
+import logging
+import math
 import re
+import time
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from datetime import datetime, timezone
 from typing import cast
+
+from opentelemetry.trace import Span, StatusCode, get_current_span
 
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -78,6 +83,7 @@ _THINK_OPEN_TAG = "<think>"
 _THINK_CLOSE_TAG = "</think>"
 _THINK_TAG_PATTERN = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 _DETAIL_HIGH = "high"
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -233,11 +239,34 @@ class DifyStreamedResponse(StreamedResponse):
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
     _dify_usage: LLMUsage | None = field(default=None, init=False, repr=False)
+    # Pydantic AI opens its actual chat span before calling the wrapped model.
+    # Capture that span here; HTTP transport spans may be current while iterating.
+    _model_span: Span = field(default_factory=get_current_span, init=False, repr=False)
+    _request_started_at: float = field(default_factory=time.perf_counter, init=False, repr=False)
+    _first_content_seconds: float | None = field(default=None, init=False, repr=False)
+    _usage_ttft_seconds: float | None = field(default=None, init=False, repr=False)
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        try:
+            async for event in self._iterate_gateway_events():
+                yield event
+        except BaseException as error:
+            # Some instrumentation versions end the chat span without marking
+            # errors raised while consuming an asynchronous response. Keep the
+            # actual model call consistent with the failed Agent envelope.
+            try:
+                if self._model_span.is_recording():
+                    self._model_span.set_status(StatusCode.ERROR, "Model request did not complete")
+                    self._model_span.set_attribute("error.type", type(error).__name__)
+            except Exception:
+                logger.debug("Unable to record model trace failure")
+            raise
+
+    async def _iterate_gateway_events(self) -> AsyncIterator[ModelResponseStreamEvent]:
         chunk_sequence = 0
         async for chunk in self.chunks:
+            self._observe_trace_usage(chunk)
             if chunk.delta.usage is not None:
                 self._dify_usage = chunk.delta.usage
                 self._usage: RequestUsage = _map_usage(chunk.delta.usage)
@@ -256,6 +285,52 @@ class DifyStreamedResponse(StreamedResponse):
 
         for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
+
+    def _observe_trace_usage(self, chunk: LLMResultChunk) -> None:
+        """Attach gateway accounting to the real model span, without inventing usage.
+
+        Dify's usage TTFT is in seconds. If absent, measure from gateway request
+        issue to the first content/tool-call chunk, excluding empty usage chunks.
+        Price is the gateway's billed decimal amount in its accompanying currency.
+        Graphon's current LLMUsage has no cache counters, so none are synthesized.
+        """
+        try:
+            if not self._model_span.is_recording():
+                return
+            if self._first_content_seconds is None and (chunk.delta.message.content or chunk.delta.message.tool_calls):
+                self._first_content_seconds = time.perf_counter() - self._request_started_at
+            usage = chunk.delta.usage
+            attributes: dict[str, str | int | float] = {}
+            ttft = self._first_content_seconds
+            source = "gateway_first_content"
+            if usage is not None:
+                attributes.update(
+                    {
+                        "gen_ai.usage.input_tokens": usage.prompt_tokens,
+                        "gen_ai.usage.output_tokens": usage.completion_tokens,
+                        "gen_ai.usage.total_tokens": usage.total_tokens,
+                    }
+                )
+                if usage.total_price.is_finite() and usage.total_price >= 0 and usage.currency:
+                    attributes["dify.llm.total_price"] = str(usage.total_price)
+                    attributes["dify.llm.currency"] = usage.currency
+                if (
+                    usage.time_to_first_token is not None
+                    and math.isfinite(usage.time_to_first_token)
+                    and usage.time_to_first_token >= 0
+                ):
+                    self._usage_ttft_seconds = usage.time_to_first_token
+            if self._usage_ttft_seconds is not None:
+                ttft = self._usage_ttft_seconds
+                source = "gateway_usage"
+            if ttft is not None and math.isfinite(ttft) and ttft >= 0:
+                attributes["gen_ai.response.time_to_first_token"] = ttft
+                attributes["dify.llm.time_to_first_token_unit"] = "s"
+                attributes["dify.llm.time_to_first_token_source"] = source
+            self._model_span.set_attributes(attributes)
+        except Exception:
+            # Observability must never change a successful/failed model outcome.
+            logger.warning("Failed to annotate Dify LLM accounting span", exc_info=True)
 
     @property
     def dify_usage(self) -> LLMUsage | None:
@@ -304,14 +379,38 @@ def _map_messages_to_prompt_messages(
         for part in (Model._get_instruction_parts(messages, model_request_parameters) or [])
         if part.content.strip()
     ]
-    if instruction_messages:
-        insert_at = next(
-            (index for index, message in enumerate(prompt_messages) if not isinstance(message, SystemPromptMessage)),
-            len(prompt_messages),
-        )
-        prompt_messages[insert_at:insert_at] = instruction_messages
+    prompt_messages = _order_system_messages_first(prompt_messages, instruction_messages)
 
     return prompt_messages
+
+
+def _order_system_messages_first(
+    prompt_messages: Sequence[PromptMessage],
+    instruction_messages: Sequence[SystemPromptMessage],
+) -> list[PromptMessage]:
+    """Merge all system content into a single leading system message.
+
+    Some providers (e.g. vLLM serving Qwen3.5/3.6 chat templates) reject any
+    system message that is not exactly the first message, so sorting alone is
+    not enough: multiple system messages must be merged into one.
+    """
+    system_contents: list[str] = []
+    non_system_messages: list[PromptMessage] = []
+    for message in prompt_messages:
+        if isinstance(message, SystemPromptMessage):
+            text = message.get_text_content()
+            if text.strip():
+                system_contents.append(text)
+        else:
+            non_system_messages.append(message)
+    for instruction in instruction_messages:
+        text = instruction.get_text_content()
+        if text.strip():
+            system_contents.append(text)
+
+    if not system_contents:
+        return non_system_messages
+    return [SystemPromptMessage(content="\n\n".join(system_contents)), *non_system_messages]
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
@@ -319,7 +418,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
 
     for part in message.parts:
         if isinstance(part, SystemPromptPart):
-            prompt_messages.append(SystemPromptMessage(content=part.content))
+            if part.content.strip():
+                prompt_messages.append(SystemPromptMessage(content=part.content))
         elif isinstance(part, UserPromptPart):
             prompt_messages.append(UserPromptMessage(content=_map_user_prompt_content(part.content)))
         elif isinstance(part, ToolReturnPart):

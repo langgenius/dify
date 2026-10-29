@@ -1,73 +1,63 @@
-import type { InputFieldFormProps } from '../types'
-import { render, screen } from '@testing-library/react'
+import type { FormData } from '../types'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useAppForm } from '@/app/components/base/form'
+import { PipelineInputVarType } from '@/models/pipeline'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import HiddenFields from '../hidden-fields'
-import { useHiddenConfigurations } from '../hooks'
 
-const { mockInputField } = vi.hoisted(() => ({
-  mockInputField: vi.fn(({ config }: { config: { variable: string } }) => {
-    return function FieldComponent() {
-      return <div data-testid="input-field">{config.variable}</div>
-    }
-  }),
-}))
+const renderFields = (values: Partial<FormData>) => {
+  const initialData: NonNullable<Parameters<typeof HiddenFields>[0]['initialData']> = {
+    variable: 'source',
+    label: 'Source',
+    required: false,
+    type: PipelineInputVarType.textInput,
+    allowedTypesAndExtensions: {},
+    ...values,
+  }
+  const Fields = HiddenFields({ initialData })
+  const Harness = () => {
+    const form = useAppForm({ defaultValues: initialData })
+    return <Fields form={form} />
+  }
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture({ workflow_file_upload_limit: 10 }),
+  )
+  return renderWithConsoleQuery(<Harness />, { queryClient })
+}
 
-vi.mock('@/app/components/base/form/form-scenarios/input-field/field', () => ({
-  default: mockInputField,
-}))
+it('shows text settings with their saved values and excludes number-only settings', async () => {
+  const user = userEvent.setup()
+  renderFields({ default: 'Saved default', placeholder: 'Enter source', tooltips: 'Help' })
+  const defaultInput = screen.getByRole('textbox', { name: /variableConfig.defaultValue/ })
+  expect(defaultInput).toHaveValue('Saved default')
+  expect(screen.getByRole('textbox', { name: /variableConfig.placeholder/ })).toHaveValue(
+    'Enter source',
+  )
+  expect(screen.getByRole('textbox', { name: /variableConfig.tooltips/ })).toHaveValue('Help')
+  expect(screen.queryByRole('textbox', { name: /variableConfig.unit/ })).not.toBeInTheDocument()
+  await user.clear(defaultInput)
+  await user.type(defaultInput, 'Edited')
+  expect(defaultInput).toHaveValue('Edited')
+})
 
-vi.mock('../hooks', () => ({
-  useHiddenConfigurations: vi.fn(),
-}))
-
-describe('HiddenFields', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('builds the default selection from configured options', async () => {
+  const user = userEvent.setup()
+  renderFields({
+    type: PipelineInputVarType.select,
+    options: ['Option A', 'Option B'],
+    default: 'Option A',
   })
-
-  it('should build fields from the hidden configuration list', () => {
-    vi.mocked(useHiddenConfigurations).mockReturnValue([
-      { variable: 'default' },
-      { variable: 'tooltips' },
-    ] as ReturnType<typeof useHiddenConfigurations>)
-
-    const HiddenFieldsHarness = () => {
-      const initialData: InputFieldFormProps['initialData'] = {
-        variable: 'field_1',
-        options: ['option-a', 'option-b'],
-      }
-      const form = useAppForm({
-        defaultValues: initialData,
-        onSubmit: () => {},
-      })
-      const HiddenFieldsComp = HiddenFields({ initialData })
-      return <HiddenFieldsComp form={form} />
-    }
-    render(<HiddenFieldsHarness />)
-
-    expect(useHiddenConfigurations).toHaveBeenCalledWith({
-      options: ['option-a', 'option-b'],
-    })
-    expect(mockInputField).toHaveBeenCalledTimes(2)
-    expect(screen.getAllByTestId('input-field')).toHaveLength(2)
-    expect(screen.getByText('default')).toBeInTheDocument()
-    expect(screen.getByText('tooltips')).toBeInTheDocument()
-  })
-
-  it('should render nothing when there are no hidden configurations', () => {
-    vi.mocked(useHiddenConfigurations).mockReturnValue([])
-
-    const HiddenFieldsHarness = () => {
-      const initialData: InputFieldFormProps['initialData'] = { options: [] }
-      const form = useAppForm({
-        defaultValues: initialData,
-        onSubmit: () => {},
-      })
-      const HiddenFieldsComp = HiddenFields({ initialData })
-      return <HiddenFieldsComp form={form} />
-    }
-    const { container } = render(<HiddenFieldsHarness />)
-
-    expect(container).toBeEmptyDOMElement()
-  })
+  const select = screen.getByRole('combobox', { name: /variableConfig.startSelectedOption/ })
+  expect(select).toHaveTextContent('Option A')
+  await user.click(select)
+  await user.click(await screen.findByRole('option', { name: 'Option B' }))
+  expect(select).toHaveTextContent('Option B')
+  expect(
+    screen.queryByRole('textbox', { name: /variableConfig.placeholder/ }),
+  ).not.toBeInTheDocument()
 })

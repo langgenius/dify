@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { memo, useId, useState } from 'react'
 
 export type FieldTitleProps = {
   title?: string
@@ -26,6 +26,8 @@ export const FieldTitle = memo(
     collapsed,
     onCollapse,
   }: FieldTitleProps) => {
+    const titleId = useId()
+
     const [collapsedLocal, setCollapsedLocal] = useState(true)
     const collapsedMerged = collapsed !== undefined ? collapsed : collapsedLocal
 
@@ -41,7 +43,7 @@ export const FieldTitle = memo(
           }}
         >
           <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
-            <span className="relative">
+            <span id={titleId} className="relative">
               {warningDot && (
                 <span className="absolute top-1/2 -left-2.25 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary" />
               )}
@@ -57,8 +59,9 @@ export const FieldTitle = memo(
               />
             )}
             {tooltip && (
-              <Infotip aria-label={tooltip} className="ml-1">
-                {tooltip}
+              <Infotip>
+                <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+                <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
               </Infotip>
             )}
           </div>

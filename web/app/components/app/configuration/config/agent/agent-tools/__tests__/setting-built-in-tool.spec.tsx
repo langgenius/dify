@@ -1,287 +1,185 @@
-/* oxlint-disable typescript/no-explicit-any */
-import type { Tool, ToolParameter } from '@/app/components/tools/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import type { Credential } from '@/app/components/plugins/plugin-auth/types'
+import { zToolApiEntity } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { CollectionType } from '@/app/components/tools/types'
+import { selectToolProvider } from '@/app/components/tools/utils/query-select'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import SettingBuiltInTool from '../setting-built-in-tool'
 
-const fetchModelToolList = vi.fn()
-const fetchBuiltInToolList = vi.fn()
-const fetchCustomToolList = vi.fn()
-const fetchWorkflowToolList = vi.fn()
-vi.mock('@/service/tools', () => ({
-  fetchModelToolList: (collectionName: string) => fetchModelToolList(collectionName),
-  fetchBuiltInToolList: (collectionName: string) => fetchBuiltInToolList(collectionName),
-  fetchCustomToolList: (collectionName: string) => fetchCustomToolList(collectionName),
-  fetchWorkflowToolList: (appId: string) => fetchWorkflowToolList(appId),
+const api = vi.hoisted(() => ({
+  builtin:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.builtin.byProvider.tools.get
+    >(),
+  custom:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.tools.get
+    >(),
+  workflow:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.tools.get
+    >(),
+  credentials: vi.fn<
+    (url: string) => Promise<{
+      supported_credential_types: string[]
+      credentials: Credential[]
+      is_oauth_custom_client_enabled: boolean
+    }>
+  >(),
 }))
-
-type MockFormProps = {
-  value: Record<string, any>
-  onChange: (val: Record<string, any>) => void
-}
-let nextFormValue: Record<string, any> = {}
-const FormMock = ({ value, onChange }: MockFormProps) => {
-  return (
-    <div data-testid="mock-form">
-      <div data-testid="form-value">{JSON.stringify(value)}</div>
-      <button type="button" onClick={() => onChange({ ...value, ...nextFormValue })}>
-        update-form
-      </button>
-    </div>
-  )
-}
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: (props: MockFormProps) => <FormMock {...props} />,
-}))
-
-let pluginAuthClickValue = 'credential-from-plugin'
-vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  AuthCategory: { tool: 'tool' },
-  PluginAuthInAgent: (props: { onAuthorizationItemClick?: (id: string) => void }) => (
-    <div data-testid="plugin-auth">
-      <button type="button" onClick={() => props.onAuthorizationItemClick?.(pluginAuthClickValue)}>
-        choose-plugin-credential
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
-  ReadmeEntrance: ({ className }: { className?: string }) => (
-    <div className={className}>readme</div>
-  ),
-}))
-
-const createParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
-  name: 'settingParam',
-  label: {
-    en_US: 'Setting Param',
-    zh_Hans: 'Setting Param',
-  },
-  human_description: {
-    en_US: 'Setting description',
-    zh_Hans: 'Setting description',
-  },
-  type: 'string',
-  form: 'config',
-  llm_description: '',
-  required: true,
-  multiple: false,
-  default: '',
-  ...overrides,
-})
-
-const createTool = (overrides?: Partial<Tool>): Tool => ({
-  name: 'search',
-  author: 'tester',
-  label: {
-    en_US: 'Search Tool',
-    zh_Hans: 'Search Tool',
-  },
-  description: {
-    en_US: 'tool description',
-    zh_Hans: 'tool description',
-  },
-  parameters: [
-    createParameter({
-      name: 'infoParam',
-      label: {
-        en_US: 'Info Param',
-        zh_Hans: 'Info Param',
-      },
-      human_description: {
-        en_US: 'Info description',
-        zh_Hans: 'Info description',
-      },
-      form: 'llm',
-      required: false,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtin,
+      'workspaces.current.toolProvider.api.tools.get': api.custom,
+      'workspaces.current.toolProvider.workflow.tools.get': api.workflow,
     }),
-    createParameter(),
-  ],
-  labels: [],
-  output_schema: {},
-  ...overrides,
+  }
 })
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: api.credentials,
+}))
 
-const baseCollection = {
-  id: 'provider-1',
-  name: 'vendor/provider-1',
-  author: 'tester',
-  description: {
-    en_US: 'desc',
-    zh_Hans: 'desc',
-  },
-  icon: 'https://example.com/icon.png',
-  label: {
-    en_US: 'Provider Label',
-    zh_Hans: 'Provider Label',
-  },
-  type: CollectionType.builtIn,
-  team_credentials: {},
-  is_team_authorization: true,
-  allow_delete: true,
-  labels: [],
-  tools: [createTool()],
-}
-
-const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuiltInTool>>) => {
-  const onHide = vi.fn()
+const tool = zToolApiEntity.parse({
+  name: 'search',
+  author: 'Team',
+  label: { en_US: 'Search Tool' },
+  description: { en_US: 'Search documents' },
+  parameters: [
+    {
+      name: 'query',
+      label: { en_US: 'Query' },
+      type: 'string',
+      form: 'llm',
+      human_description: { en_US: 'Search query' },
+    },
+    {
+      name: 'settingParam',
+      label: { en_US: 'Setting Param' },
+      type: 'string',
+      form: 'form',
+      required: true,
+      human_description: { en_US: 'Setting description' },
+    },
+  ],
+})
+const provider = createToolProviderFixture({
+  id: 'provider-id',
+  name: 'provider',
+  allow_delete: false,
+  tools: [tool],
+})
+const renderTool = (props: Partial<ComponentProps<typeof SettingBuiltInTool>> = {}) => {
   const onSave = vi.fn()
   const onAuthorizationItemClick = vi.fn()
-  const utils = render(
+  renderWithConsoleQuery(
     <SettingBuiltInTool
-      collection={baseCollection as any}
+      collection={selectToolProvider(provider)}
       toolName="search"
-      isModel
       setting={{ settingParam: 'value' }}
-      onHide={onHide}
+      onHide={vi.fn()}
       onSave={onSave}
       onAuthorizationItemClick={onAuthorizationItemClick}
       {...props}
     />,
+    { workspacePermissionKeys: ['credential.use'] },
   )
-  return {
-    ...utils,
-    onHide,
-    onSave,
-    onAuthorizationItemClick,
-  }
+  return { onSave, onAuthorizationItemClick }
 }
-
-describe('SettingBuiltInTool', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    nextFormValue = {}
-    pluginAuthClickValue = 'credential-from-plugin'
+beforeEach(() => {
+  api.builtin.mockReset().mockResolvedValue([tool])
+  api.custom.mockReset().mockResolvedValue([tool])
+  api.workflow.mockReset().mockResolvedValue([tool])
+  api.credentials.mockReset().mockImplementation(async (url) => {
+    if (url !== '/workspaces/current/tool-provider/builtin/vendor/provider/credential/info')
+      throw new Error(`Unexpected credential request: ${url}`)
+    return {
+      supported_credential_types: ['api-key'],
+      is_oauth_custom_client_enabled: false,
+      credentials: [
+        {
+          id: 'credential-id',
+          name: 'Team credential',
+          provider: 'vendor/provider',
+          credential_type: 'api-key',
+          is_default: true,
+        },
+      ],
+    }
   })
+})
+afterEach(async () => {
+  await act(async () => cleanup())
+})
 
-  it('should fetch tool list when collection has no tools', async () => {
-    fetchModelToolList.mockResolvedValueOnce([createTool()])
-    renderComponent({
-      collection: {
-        ...baseCollection,
-        tools: [],
-      },
+it.each(['builtin', 'api', 'workflow'] as const)(
+  'loads %s actions when the provider does not include them',
+  async (type) => {
+    renderTool({
+      collection: selectToolProvider(createToolProviderFixture({ ...provider, type, tools: [] })),
+      isBuiltIn: type === 'builtin',
     })
+    expect(await screen.findByRole('dialog', { name: 'Search Tool' })).toBeInTheDocument()
+    expect(await screen.findByRole('textbox', { name: /Setting Param/ })).toHaveValue('value')
+    if (type === 'builtin')
+      expect(api.builtin).toHaveBeenCalledWith({ params: { provider: 'provider' } })
+    else if (type === 'api')
+      expect(api.custom).toHaveBeenCalledWith({ query: { provider: 'provider' } })
+    else expect(api.workflow).toHaveBeenCalledWith({ query: { workflow_tool_id: 'provider-id' } })
+  },
+)
 
-    await waitFor(() => {
-      expect(fetchModelToolList).toHaveBeenCalledTimes(1)
-      expect(fetchModelToolList).toHaveBeenCalledWith('vendor/provider-1')
-    })
-    expect(await screen.findByText('Search Tool')).toBeInTheDocument()
-  })
+it('requires settings before saving and preserves the draft across the parameter tab', async () => {
+  const user = userEvent.setup()
+  const { onSave } = renderTool({ setting: {} })
+  const input = await screen.findByRole('textbox', { name: /Setting Param/ })
+  expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+  await user.type(input, 'Unsaved draft')
+  await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.parameters' }))
+  expect(
+    screen.getByRole('tabpanel', { name: 'tools.setBuiltInTools.parameters' }),
+  ).toHaveTextContent('Search query')
+  await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.setting' }))
+  expect(screen.getByRole('textbox', { name: /Setting Param/ })).toHaveValue('Unsaved draft')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(onSave).toHaveBeenCalledExactlyOnceWith({ settingParam: 'Unsaved draft' })
+})
 
-  it('should switch between info and setting tabs', async () => {
-    renderComponent()
-    await waitFor(() => {
-      expect(screen.getByTestId('mock-form')).toBeInTheDocument()
-    })
+it('limits the default read-only view to action parameters', async () => {
+  renderTool({ readonly: true })
+  expect(await screen.findByText('Query')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('tab', { name: 'tools.setBuiltInTools.setting' }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+})
 
-    await userEvent.click(screen.getByText('tools.setBuiltInTools.parameters'))
-    expect(screen.getByText('Info Param')).toBeInTheDocument()
-    await userEvent.click(screen.getByText('tools.setBuiltInTools.setting'))
-    expect(screen.getByTestId('mock-form')).toBeInTheDocument()
-  })
-
-  it('should keep the setting tab hidden when readonly by default', async () => {
-    renderComponent({ readonly: true })
-
-    expect(await screen.findByText('Info Param')).toBeInTheDocument()
-    expect(screen.queryByText('tools.setBuiltInTools.setting')).not.toBeInTheDocument()
-  })
-
-  it('should expose readonly setting details when explicitly enabled', async () => {
-    const user = userEvent.setup()
-    renderComponent({ readonly: true, showReadOnlySettingDetails: true })
-
-    expect(await screen.findByText('Info Param')).toBeInTheDocument()
-    await user.click(screen.getByText('tools.setBuiltInTools.setting'))
-
-    expect(screen.getByText('Setting Param')).toBeInTheDocument()
-    expect(screen.getByText('tools.setBuiltInTools.string')).toBeInTheDocument()
-    expect(screen.getByText('Setting description')).toBeInTheDocument()
-    expect(screen.queryByText('Info Param')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('mock-form')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
-  })
-
-  it('should render a masked drawer with balanced vertical offsets', async () => {
-    const { baseElement } = renderComponent()
-    await waitFor(() => {
-      expect(screen.getByTestId('mock-form')).toBeInTheDocument()
-    })
-
-    expect(baseElement.querySelector('.bg-background-overlay')).toBeInTheDocument()
-    const drawerPopup = baseElement.querySelector('[role="dialog"]')
-    expect(drawerPopup).toHaveClass(
-      'data-[swipe-direction=right]:top-6',
-      'data-[swipe-direction=right]:bottom-6',
-    )
-  })
-
-  it('should call onSave with updated values when save button clicked', async () => {
-    const { onSave } = renderComponent()
-    await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
-    nextFormValue = { settingParam: 'updated' }
-    await userEvent.click(screen.getByRole('button', { name: 'update-form' }))
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ settingParam: 'updated' }))
-  })
-
-  it('should keep save disabled until required field provided', async () => {
-    renderComponent({
-      setting: {},
-    })
-    await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
-    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    expect(saveButton).toBeDisabled()
-    nextFormValue = { settingParam: 'filled' }
-    await userEvent.click(screen.getByRole('button', { name: 'update-form' }))
-    expect(saveButton).not.toBeDisabled()
-  })
-
-  it('should call onHide when cancel button is pressed', async () => {
-    const { onHide } = renderComponent()
-    await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    expect(onHide).toHaveBeenCalled()
-  })
-
-  it('should trigger authorization callback from plugin auth section', async () => {
-    const { onAuthorizationItemClick } = renderComponent()
-    await userEvent.click(screen.getByRole('button', { name: 'choose-plugin-credential' }))
-    expect(onAuthorizationItemClick).toHaveBeenCalledWith('credential-from-plugin')
-  })
-
-  it('should call onHide when back button is clicked', async () => {
-    const { onHide } = renderComponent({
-      showBackButton: true,
-    })
-    await userEvent.click(screen.getByText('plugin.detailPanel.operation.back'))
-    expect(onHide).toHaveBeenCalled()
-  })
-
-  it('should load workflow tools when workflow collection is provided', async () => {
-    fetchWorkflowToolList.mockResolvedValueOnce([
-      createTool({
-        name: 'workflow-tool',
+it('selects an available credential through the real authorization menu', async () => {
+  const user = userEvent.setup()
+  const { onAuthorizationItemClick } = renderTool({
+    collection: selectToolProvider(
+      createToolProviderFixture({
+        ...provider,
+        name: 'vendor/provider',
+        plugin_id: 'vendor/provider',
+        allow_delete: true,
+        is_team_authorization: true,
       }),
-    ])
-    renderComponent({
-      collection: {
-        ...baseCollection,
-        type: CollectionType.workflow,
-        tools: [],
-        id: 'workflow-1',
-      } as any,
-      isBuiltIn: false,
-      isModel: false,
-    })
-
-    await waitFor(() => {
-      expect(fetchWorkflowToolList).toHaveBeenCalledWith('workflow-1')
-    })
+    ),
   })
+  await user.click(await screen.findByRole('button', { name: 'plugin.auth.workspaceDefault' }))
+  const menu = await screen.findByRole('dialog', { name: 'plugin.auth.authorizations' })
+  await user.click(within(menu).getByText('Team credential'))
+  expect(onAuthorizationItemClick).toHaveBeenCalledExactlyOnceWith('credential-id')
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'plugin.auth.authorizations' }),
+    ).not.toBeInTheDocument(),
+  )
 })

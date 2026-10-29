@@ -1,131 +1,113 @@
+import type { DatasourceParameter } from '@dify/contracts/api/console/rag/types.gen'
 import type { DataSourceNodeType } from '../../nodes/data-source/types'
-import type { ToolWithProvider } from '../../types'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { BlockEnum } from '../../types'
-import { getDataSourceCheckParams } from '../data-source'
+import { datasourceParametersToFormSchemas, getDataSourceCheckParams } from '../data-source'
 
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolParametersToFormSchemas: vi.fn((params: Array<Record<string, unknown>>) =>
-    params.map((p) => ({
-      variable: p.name,
-      label: p.label || { en_US: p.name },
-      type: p.type || 'string',
-      required: p.required ?? false,
-      form: p.form ?? 'llm',
-      hide: p.hide ?? false,
-    })),
-  ),
-}))
-
-function createDataSourceData(overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType {
-  return {
-    title: 'DataSource',
-    desc: '',
-    type: BlockEnum.DataSource,
-    plugin_id: 'plugin-ds-1',
-    provider_type: 'local_file',
-    datasource_name: 'mysql_query',
-    datasource_parameters: {},
-    datasource_configurations: {},
-    ...overrides,
-  } as DataSourceNodeType
+const node: DataSourceNodeType = {
+  title: 'Datasource',
+  desc: '',
+  type: BlockEnum.DataSource,
+  plugin_id: 'langgenius/file',
+  provider_type: 'local_file',
+  provider_name: 'file',
+  datasource_name: 'local-file',
+  datasource_label: 'File',
+  datasource_parameters: {},
+  datasource_configurations: {},
 }
+const parameter = (
+  type: DatasourceParameter['type'],
+  defaultValue: DatasourceParameter['default'],
+) =>
+  ({
+    name: type,
+    type,
+    default: defaultValue,
+    label: { en_US: 'Parameter', zh_Hans: null },
+    description: { en_US: 'Actual datasource description', ja_JP: null },
+    required: true,
+  }) satisfies DatasourceParameter
 
-function createDataSourceCollection(overrides: Partial<ToolWithProvider> = {}): ToolWithProvider {
-  return {
-    id: 'ds-collection',
-    plugin_id: 'plugin-ds-1',
-    name: 'MySQL',
-    tools: [
-      {
-        name: 'mysql_query',
-        parameters: [
-          {
-            name: 'query',
-            label: { en_US: 'SQL Query', zh_Hans: 'SQL 查询' },
-            type: 'string',
-            required: true,
-          },
-          { name: 'limit', label: { en_US: 'Limit' }, type: 'number', required: false, hide: true },
-        ],
-      },
-    ],
-    allow_delete: true,
+it('projects datasource descriptions, nullable locale fallbacks, and exact default values at the form boundary', () => {
+  const schemas = datasourceParametersToFormSchemas([
+    { ...parameter('number', 0), min: 0, max: 10, placeholder: { en_US: 'Count', zh_Hans: null } },
+    parameter('boolean', false),
+    parameter('string', ''),
+    parameter('secret-input', null),
+    {
+      ...parameter('select', 'one'),
+      options: [{ value: 'one', label: { en_US: 'One', zh_Hans: null }, icon: null }],
+    },
+    parameter('system-files', []),
+  ])
+  expect(schemas.map((schema) => schema.default)).toEqual([0, false, '', null, 'one', []])
+  expect(schemas[0]).toMatchObject({
+    type: FormTypeEnum.textNumber,
+    min: 0,
+    max: 10,
+    tooltip: { en_US: 'Actual datasource description', ja_JP: 'Actual datasource description' },
+    label: { zh_Hans: 'Parameter' },
+    placeholder: { zh_Hans: 'Count' },
+  })
+  expect(schemas[1]).toMatchObject({ type: FormTypeEnum.checkbox, _type: FormTypeEnum.boolean })
+  expect(schemas[4]?.options?.[0]).toMatchObject({ value: 'one', label: { zh_Hans: 'One' } })
+  expect(schemas[5]?.type).toBe(FormTypeEnum.files)
+})
+
+it('derives only required-input metadata and keeps local-file authorization independent', () => {
+  const provider = createDatasourceProvider({ is_authorized: false })
+  provider.declaration.datasources![0]!.parameters = [parameter('string', '')]
+  expect(getDataSourceCheckParams(node, [provider], 'zh_Hans')).toEqual({
+    dataSourceInputsSchema: [{ label: 'Parameter', variable: 'string', required: true }],
+    notAuthed: false,
+    language: 'zh_Hans',
+  })
+  expect(
+    getDataSourceCheckParams({ ...node, provider_type: 'online_document' }, [provider], 'en_US')
+      .notAuthed,
+  ).toBe(true)
+  expect(
+    getDataSourceCheckParams({ ...node, provider_type: 'online_document' }, [], 'en_US').notAuthed,
+  ).toBe(false)
+})
+
+it('finds a saved provider without version metadata and leaves missing datasource parameters empty', () => {
+  const provider = createDatasourceProvider()
+  expect(
+    getDataSourceCheckParams(
+      { ...node, plugin_id: '', provider_name: provider.provider },
+      [provider],
+      'en_US',
+    ).notAuthed,
+  ).toBe(false)
+  expect(
+    getDataSourceCheckParams({ ...node, datasource_name: 'missing' }, [provider], 'en_US')
+      .dataSourceInputsSchema,
+  ).toEqual([])
+})
+
+it('uses the saved plugin authorization and parameter schema when providers share a name', () => {
+  const official = createDatasourceProvider({ is_authorized: true })
+  official.declaration.datasources![0]!.parameters = [
+    { ...parameter('string', ''), name: 'official_input' },
+  ]
+  const fork = createDatasourceProvider({
+    plugin_id: 'acme/file',
+    plugin_unique_identifier: 'acme/file:1.0.0',
     is_authorized: false,
-    ...overrides,
-  } as unknown as ToolWithProvider
-}
-
-describe('getDataSourceCheckParams', () => {
-  it('should extract input schema from matching data source', () => {
-    const result = getDataSourceCheckParams(
-      createDataSourceData(),
-      [createDataSourceCollection()],
-      'en_US',
-    )
-
-    expect(result.dataSourceInputsSchema).toEqual([
-      { label: 'SQL Query', variable: 'query', type: 'string', required: true, hide: false },
-      { label: 'Limit', variable: 'limit', type: 'number', required: false, hide: true },
-    ])
   })
-
-  it('should not require authorization for a local file datasource', () => {
-    const result = getDataSourceCheckParams(
-      createDataSourceData(),
-      [createDataSourceCollection()],
-      'en_US',
-    )
-
-    expect(result.notAuthed).toBe(false)
-  })
-
-  it('should mark an unauthorized online datasource as not authed', () => {
-    const result = getDataSourceCheckParams(
-      createDataSourceData({ provider_type: 'online_document' }),
-      [createDataSourceCollection()],
-      'en_US',
-    )
-
-    expect(result.notAuthed).toBe(true)
-  })
-
-  it('should mark as authed when is_authorized is true', () => {
-    const result = getDataSourceCheckParams(
-      createDataSourceData({ provider_type: 'online_document' }),
-      [createDataSourceCollection({ is_authorized: true })],
-      'en_US',
-    )
-
-    expect(result.notAuthed).toBe(false)
-  })
-
-  it('should return empty schemas when data source is not found', () => {
-    const result = getDataSourceCheckParams(
-      createDataSourceData({ plugin_id: 'non-existent' }),
-      [createDataSourceCollection()],
-      'en_US',
-    )
-
-    expect(result.dataSourceInputsSchema).toEqual([])
-  })
-
-  it('should return empty schemas when datasource item is not found', () => {
-    const result = getDataSourceCheckParams(
-      createDataSourceData({ datasource_name: 'non_existent_ds' }),
-      [createDataSourceCollection()],
-      'en_US',
-    )
-
-    expect(result.dataSourceInputsSchema).toEqual([])
-  })
-
-  it('should include language in result', () => {
-    const result = getDataSourceCheckParams(
-      createDataSourceData(),
-      [createDataSourceCollection()],
-      'zh_Hans',
-    )
-
-    expect(result.language).toBe('zh_Hans')
-  })
+  fork.declaration.datasources![0]!.parameters = [
+    { ...parameter('string', ''), name: 'fork_input' },
+  ]
+  const result = getDataSourceCheckParams(
+    { ...node, provider_type: 'online_document' },
+    [fork, official],
+    'en_US',
+  )
+  expect(result.notAuthed).toBe(false)
+  expect(result.dataSourceInputsSchema).toEqual([
+    { label: 'Parameter', variable: 'official_input', required: true },
+  ])
 })

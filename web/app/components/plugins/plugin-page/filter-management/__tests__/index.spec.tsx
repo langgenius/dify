@@ -35,7 +35,7 @@ describe('FilterManagement', () => {
     render(<FilterManagement onFilterChange={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: /Models/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Agent/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Agent' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('search')).toBeInTheDocument()
   })
 

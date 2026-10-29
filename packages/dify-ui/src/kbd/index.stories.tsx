@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { FormatDisplayOptions, RegisterableHotkey } from '@tanstack/react-hotkeys'
+import type { DisplayHotkeyChord, FormatDisplayOptions } from '@tanstack/react-hotkeys'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { Kbd, KbdGroup } from '.'
 import {
@@ -43,36 +43,26 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const displayKeys = (
-  hotkey: RegisterableHotkey | (string & {}),
-  platform: FormatDisplayOptions['platform'] = 'mac',
-) => {
-  if (typeof hotkey !== 'string') return [formatForDisplay(hotkey, { platform })]
-
-  return hotkey
-    .split('+')
-    .filter(Boolean)
-    .map((key) => formatForDisplay(key, { platform }))
-}
-
-const HotkeyKbdGroup = ({
+function HotkeyKbdGroup({
   hotkey,
   color = 'gray',
   platform = 'mac',
 }: {
-  hotkey: RegisterableHotkey | (string & {})
+  hotkey: DisplayHotkeyChord
   color?: 'gray' | 'white'
   platform?: FormatDisplayOptions['platform']
-}) => (
-  <KbdGroup>
-    {displayKeys(hotkey, platform).map((key, index) => (
-      // oxlint-disable-next-line react/no-array-index-key -- Repeated display keys are static, ordered tokens with no component state.
-      <Kbd key={`${key}-${index}`} color={color}>
-        {key}
-      </Kbd>
-    ))}
-  </KbdGroup>
-)
+}) {
+  return (
+    <KbdGroup>
+      {formatForDisplay(hotkey, { platform, parts: true }).map((key, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- Repeated display keys are static, ordered tokens with no component state.
+        <Kbd key={`${key}-${index}`} color={color}>
+          {key}
+        </Kbd>
+      ))}
+    </KbdGroup>
+  )
+}
 
 export const Default: Story = {
   render: () => <HotkeyKbdGroup hotkey="Mod+K" />,
@@ -171,12 +161,12 @@ export const InTooltip: Story = {
       <TooltipTrigger
         render={
           <IconButton aria-label="Collapse sidebar" size="lg" variant="secondary">
-            <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
+            <span aria-hidden className="i-ri-sidebar-fold-line size-4 [&:dir(rtl)]:-scale-x-100" />
           </IconButton>
         }
       />
       <TooltipContent className="flex items-center gap-1">
-        <span>Collapse sidebar</span>
+        <span className="px-0.5">Collapse sidebar</span>
         <HotkeyKbdGroup hotkey="Mod+B" />
       </TooltipContent>
     </Tooltip>
@@ -210,7 +200,7 @@ export const InContextMenu: Story = {
       >
         Context menu trigger
       </ContextMenuTrigger>
-      <ContextMenuContent popupClassName="w-60">
+      <ContextMenuContent className="w-60">
         {MENU_ITEMS.map(({ label, icon, hotkey }) => (
           <ContextMenuItem key={label} className="justify-between gap-4">
             <span aria-hidden className={`${icon} size-4 shrink-0 text-text-tertiary`} />

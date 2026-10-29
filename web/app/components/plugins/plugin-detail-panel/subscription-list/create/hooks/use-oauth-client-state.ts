@@ -6,9 +6,9 @@ import type {
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,
@@ -16,14 +16,15 @@ import {
   useInitiateTriggerOAuth,
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
+import { getErrorMessage } from '@/utils/error-message'
 
-export const AuthorizationStatusEnum = {
+const AuthorizationStatusEnum = {
   Pending: 'pending',
   Success: 'success',
   Failed: 'failed',
 } as const
 
-export type AuthorizationStatusEnum =
+type AuthorizationStatusEnum =
   (typeof AuthorizationStatusEnum)[keyof typeof AuthorizationStatusEnum]
 
 export const ClientTypeEnum = {
@@ -34,16 +35,6 @@ export const ClientTypeEnum = {
 export type ClientTypeEnum = (typeof ClientTypeEnum)[keyof typeof ClientTypeEnum]
 
 const POLL_INTERVAL_MS = 3000
-
-// Extract error message from various error formats
-export const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error && error.message) return error.message
-  if (typeof error === 'object' && error && 'message' in error) {
-    const message = (error as { message?: string }).message
-    if (typeof message === 'string' && message) return message
-  }
-  return fallback
-}
 
 type UseOAuthClientStateParams = {
   oauthConfig?: TriggerOAuthConfig
@@ -77,7 +68,7 @@ export const useOAuthClientState = ({
   onOpenChange,
   showOAuthCreateModal,
 }: UseOAuthClientStateParams): UseOAuthClientStateReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'pluginTrigger'])
 
   // State management
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<
@@ -148,10 +139,8 @@ export const useOAuthClientState = ({
       },
       onError: (error: unknown) => {
         toast.error(
-          getErrorMessage(
-            error,
+          getErrorMessage(error) ??
             t(($) => $['modal.oauth.remove.failed'], { ns: 'pluginTrigger' }),
-          ),
         )
       },
     })

@@ -1,36 +1,36 @@
 import type { AgentBuildDraftResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { Page, Response } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { readFile } from 'node:fs/promises'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { saveAgentComposerDraft } from '../../agent-v2/support/agent'
 import {
   agentBuildDraftExists,
   saveAgentBuildDraft,
-} from '../../agent-v2/support/agent-build-draft'
+} from '../../agent-v2/support/agent-build-draft.ts'
 import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from '../../agent-v2/support/agent-builder-resources'
+} from '../../agent-v2/support/agent-builder-resources.ts'
 import {
   createAgentSoulConfigWithModel,
   normalAgentPrompt,
   normalAgentSoulConfig,
   updatedAgentPrompt,
   updatedAgentSoulConfig,
-} from '../../agent-v2/support/agent-soul'
-import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/config-assets'
+} from '../../agent-v2/support/agent-soul.ts'
+import { saveAgentComposerDraft } from '../../agent-v2/support/agent.ts'
+import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/config-assets.ts'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,
-} from '../../agent-v2/support/test-materials'
+} from '../../agent-v2/support/test-materials.ts'
 import {
   expectAgentModelRequiredFeedback,
   getAgentEnvVariableValue,
   getCurrentAgentId,
   uploadSummaryConfigSkillForBuildDraft,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 const BUILD_DRAFT_RUNTIME_STEP_TIMEOUT_MS = 180_000
 const BUILD_DRAFT_NOTE_SYNC_TIMEOUT_MS = 30_000
@@ -280,10 +280,9 @@ Then('I should see the Agent v2 Build mode confirmation state', async function (
 
   await expect(page.getByText('Build mode', { exact: true })).toBeVisible()
   await expect(
-    page.getByText('Configure can only be updated by the agent in this mode.'),
-  ).toBeVisible()
-  await expect(
-    page.getByText('Shape this setup through the chat on the right, then Apply.'),
+    page.getByText(
+      "You're in Build mode. Shape this setup by chatting with the agent, then Apply.",
+    ),
   ).toBeVisible()
 })
 

@@ -13,7 +13,7 @@ type Props = Readonly<{
 }>
 
 const PanelWrap: FC<Props> = ({ nodeName, onHide, children }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <div className="absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt">
       <div className="flex h-full flex-col rounded-2xl bg-components-panel-bg">

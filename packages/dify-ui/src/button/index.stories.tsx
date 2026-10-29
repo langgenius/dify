@@ -1,6 +1,29 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { ButtonProps } from '.'
+import * as React from 'react'
 import { expect, fn } from 'storybook/test'
 import { Button, buttonVariants } from '.'
+
+type LoadingButtonExampleProps = Pick<ButtonProps, 'onClick' | 'variant'>
+
+function LoadingButtonExample({ onClick, variant }: LoadingButtonExampleProps) {
+  const [loading, setLoading] = React.useState(false)
+  const labelId = React.useId()
+
+  return (
+    <Button
+      aria-labelledby={labelId}
+      loading={loading}
+      onClick={(event) => {
+        onClick?.(event)
+        setLoading(true)
+      }}
+      variant={variant}
+    >
+      <span id={labelId}>{loading ? 'Saving' : 'Save'}</span>
+    </Button>
+  )
+}
 
 const meta = {
   title: 'Base/UI/Button',
@@ -88,27 +111,30 @@ export const Disabled: Story = {
 export const Loading: Story = {
   args: {
     variant: 'primary',
-    loading: true,
     onClick: fn(),
-    children: 'Loading Button',
   },
+  render: ({ onClick, variant }) => <LoadingButtonExample onClick={onClick} variant={variant} />,
   play: async ({ args, canvas, userEvent }) => {
-    const button = canvas.getByRole('button', { name: 'Loading Button' })
-
-    await expect(button).toHaveAttribute('aria-disabled', 'true')
-    await expect(button).not.toHaveAttribute('aria-busy')
+    const button = canvas.getByRole('button', { name: 'Save' })
 
     button.focus()
     await expect(button).toHaveFocus()
 
     await userEvent.click(button)
-    await expect(args.onClick).not.toHaveBeenCalled()
+    await expect(args.onClick).toHaveBeenCalledTimes(1)
+    await expect(button).toHaveAccessibleName('Saving')
+    await expect(button).toHaveAttribute('aria-disabled', 'true')
+    await expect(button).not.toHaveAttribute('aria-busy')
+    await expect(button).toHaveFocus()
+
+    await userEvent.keyboard('{Enter}')
+    await expect(args.onClick).toHaveBeenCalledTimes(1)
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
+          'When a focused button changes its visible label during loading, give that label a stable ID and reference it with `aria-labelledby`. Loading blocks repeated activation while retaining focus.',
       },
     },
   },

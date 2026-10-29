@@ -1,12 +1,12 @@
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Union
+from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
-from models.engine import db
 from models.model import Message
 
 JSON_DICT_ADAPTER: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
@@ -24,8 +24,8 @@ def filter_none_values(data: dict[str, Any]) -> dict[str, Any]:
     return new_data
 
 
-def get_message_data(message_id: str):
-    return db.session.scalar(select(Message).where(Message.id == message_id))
+def get_message_data(message_id: str, session: Session | scoped_session):
+    return session.scalar(select(Message).where(Message.id == message_id))
 
 
 @contextmanager
@@ -54,7 +54,7 @@ def replace_text_with_content(data):
             return data
 
 
-def generate_dotted_order(run_id: str, start_time: Union[str, datetime], parent_dotted_order: str | None = None) -> str:
+def generate_dotted_order(run_id: str, start_time: str | datetime, parent_dotted_order: str | None = None) -> str:
     """
     generate dotted_order for langsmith
     """

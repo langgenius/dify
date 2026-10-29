@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   AppSourceType,
   fetchChatList,
@@ -9,6 +10,7 @@ import {
   generationConversationName,
 } from './share'
 import {
+  EnvironmentConversationNotFoundError,
   shareQueryKeys,
   useInvalidateShareConversations,
   useShareChatList,
@@ -30,6 +32,9 @@ vi.mock('./share', async (importOriginal) => {
   }
 })
 
+beforeEach(() => window.history.replaceState({}, '', '/'))
+afterEach(() => window.history.replaceState({}, '', '/'))
+
 const mockFetchConversations = vi.mocked(fetchConversations)
 const mockFetchChatList = vi.mocked(fetchChatList)
 const mockGenerationConversationName = vi.mocked(generationConversationName)
@@ -39,6 +44,7 @@ const createQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
+        retryDelay: 0,
       },
     },
   })
@@ -87,6 +93,11 @@ describe('shareQueryKeys', () => {
       shareQueryKeys.appParams(secondAddress),
     )
     expect(shareQueryKeys.appMeta(firstAddress)).not.toEqual(shareQueryKeys.appMeta(secondAddress))
+
+    const params = { appSourceType: AppSourceType.webApp, appId: 'app-1' }
+    expect(shareQueryKeys.conversationList(firstAddress, params)).not.toEqual(
+      shareQueryKeys.conversationList(secondAddress, params),
+    )
   })
 })
 
@@ -99,7 +110,6 @@ describe('useShareConversations', () => {
   it('should fetch conversations when enabled for non-installed apps', async () => {
     // Arrange
     const params = {
-      isInstalledApp: false,
       appId: undefined,
       pinned: true,
       limit: 50,
@@ -125,14 +135,13 @@ describe('useShareConversations', () => {
       expect(result.current.data).toEqual(response)
     })
     expect(
-      queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(params) }),
+      queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(null, params) }),
     ).toBeDefined()
   })
 
   it('should not fetch conversations when installed app lacks appId', async () => {
     // Arrange
     const params = {
-      isInstalledApp: true,
       appId: undefined,
       appSourceType: AppSourceType.installedApp,
     }
@@ -152,13 +161,13 @@ describe('useShareConversations', () => {
 describe('useShareChatList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
   })
 
   it('should fetch chat list when conversationId is provided', async () => {
     // Arrange
     const params = {
       conversationId: 'conversation-1',
-      isInstalledApp: true,
       appId: 'app-1',
       appSourceType: AppSourceType.installedApp,
     }
@@ -185,7 +194,6 @@ describe('useShareChatList', () => {
     // Arrange
     const params = {
       conversationId: '',
-      isInstalledApp: false,
       appId: undefined,
       appSourceType: AppSourceType.webApp,
     }
@@ -200,6 +208,66 @@ describe('useShareChatList', () => {
     expect(mockFetchChatList).not.toHaveBeenCalled()
   })
 
+  it('should translate a missing Environment conversation', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/environment-code')
+    const params = {
+      conversationId: 'stale-conversation',
+      appId: 'app-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+      status: 404,
+    })
+    const apiError = await httpErrorFromResponse(response)
+    mockFetchChatList.mockRejectedValue(apiError)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(EnvironmentConversationNotFoundError)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
+  it('should preserve other Environment errors', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/environment-code')
+    const params = {
+      conversationId: 'conversation-1',
+      appId: 'app-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'OTHER_ERROR' }), { status: 404 })
+    const apiError = await httpErrorFromResponse(response)
+    mockFetchChatList.mockRejectedValue(apiError)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(apiError)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
+  it('should preserve ordinary WebApp handling for the same 404 reason', async () => {
+    window.history.replaceState({}, '', '/chatbot/webapp-code')
+    const params = {
+      conversationId: 'conversation-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+      status: 404,
+    })
+    const apiError = await httpErrorFromResponse(response)
+    mockFetchChatList.mockRejectedValue(apiError)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(apiError)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
   it('should always consider data stale to ensure fresh data on conversation switch (GitHub #30378)', async () => {
     // This test verifies that chat list data is always considered stale (staleTime: 0)
     // which ensures fresh data is fetched when switching back to a conversation.
@@ -208,7 +276,6 @@ describe('useShareChatList', () => {
     const wrapper = createWrapper(queryClient)
     const params = {
       conversationId: 'conversation-1',
-      isInstalledApp: false,
       appId: undefined,
       appSourceType: AppSourceType.webApp,
     }
@@ -262,7 +329,6 @@ describe('useShareConversationName', () => {
     // Arrange
     const params = {
       conversationId: 'conversation-2',
-      isInstalledApp: false,
       appId: undefined,
       appSourceType: AppSourceType.webApp,
     }
@@ -289,7 +355,6 @@ describe('useShareConversationName', () => {
     // Arrange
     const params = {
       conversationId: 'conversation-3',
-      isInstalledApp: false,
       appId: undefined,
       appSourceType: AppSourceType.webApp,
     }
@@ -314,7 +379,18 @@ describe('useInvalidateShareConversations', () => {
   it('should invalidate share conversations query key when invoked', () => {
     // Arrange
     const { result, queryClient } = renderShareHook(() => useInvalidateShareConversations())
-    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const firstKey = shareQueryKeys.conversationList(
+      { kind: 'default', code: 'first' },
+      { appSourceType: AppSourceType.webApp },
+    )
+    const secondKey = shareQueryKeys.conversationList(
+      { kind: 'environment', code: 'second' },
+      { appSourceType: AppSourceType.webApp },
+    )
+    const metadataKey = shareQueryKeys.appInfo({ kind: 'default', code: 'first' })
+    queryClient.setQueryData(firstKey, createConversationData())
+    queryClient.setQueryData(secondKey, createConversationData())
+    queryClient.setQueryData(metadataKey, { title: 'First app' })
 
     // Act
     act(() => {
@@ -322,6 +398,8 @@ describe('useInvalidateShareConversations', () => {
     })
 
     // Assert
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: shareQueryKeys.conversations })
+    expect(queryClient.getQueryState(firstKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(secondKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(metadataKey)?.isInvalidated).toBe(false)
   })
 })

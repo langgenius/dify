@@ -5,9 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
-from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.config import (
     DifyConfigFileConfig,
     DifyConfigLayerConfig,
@@ -35,8 +33,11 @@ from dify_agent.layers.shell import (
     DifyShellLayerConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
+from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol.knowledge_fs import KnowledgeFsError
+from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.exc import OperationalError
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -48,15 +49,18 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
+from graphon.variables.template_resolution import convert_template
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentKnowledgeMetadataFilteringConfig,
     AgentKnowledgeModelConfig,
     AgentKnowledgeRetrievalConfig,
+    AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
     AgentSoulToolsConfig,
     DeclaredArrayItem,
@@ -64,12 +68,11 @@ from models.agent_config_entities import (
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
+    WorkflowOutputRoutes,
     WorkflowPreviousNodeOutputRef,
 )
-from models.agent_config_entities import (
-    effective_declared_outputs as _effective_declared_outputs,
-)
 from models.provider_ids import ModelProviderID
+from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
@@ -138,10 +141,7 @@ class WorkflowAgentRuntimeBuildContext:
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
-    session_snapshot: CompositorSessionSnapshot | None = None
-    # ENG-638: set when resuming after a submitted ask_human HITL form; threads
-    # the human's answer back into the second Agent run keyed by tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    session_snapshot: SessionSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +171,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
         node_job = WorkflowNodeJobConfig.model_validate(context.binding.node_job_config_dict)
+        node_job.output_routes.validate_for_execution()
         if agent_soul.model is None:
             raise WorkflowAgentRuntimeRequestBuildError(
                 "agent_model_not_configured",
@@ -192,6 +193,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                knowledge_fs_spaces=tuple(agent_soul.knowledge.spaces),
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -202,16 +204,27 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
+        runtime_config_skills = load_runtime_agent_skill_configs(
+            tenant_id=context.dify_context.tenant_id,
+            agent_id=context.agent.id,
+        )
         config_layer_config, config_warnings = build_config_layer_config(
             agent_soul,
             agent_id=context.agent.id,
             config_version_id=context.snapshot.id,
             config_version_kind="snapshot",
+            runtime_config_skills=runtime_config_skills,
         )
         append_runtime_warnings(metadata, config_warnings)
-        soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(
+            agent_soul,
+            runtime_config_skills=runtime_config_skills,
+        )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        try:
+            knowledge_fs_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+        except KnowledgeFsError as exc:
+            raise WorkflowAgentRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -222,6 +235,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul.model.plugin_id,
         )
 
+        tracing_hooks = application_tracing_hooks()
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
@@ -252,21 +266,30 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    trace_id=context.dify_context.trace_session_id,
+                    tracing=(
+                        tracing_hooks.prepare_workflow_agent(
+                            context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)
+                        )
+                        if tracing_hooks is not None
+                        else None
+                    ),
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
-                output=self._build_output_config(node_job.declared_outputs),
+                output=self._build_output_config(
+                    node_job.declared_outputs, node_job.output_routes, context.variable_pool
+                ),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=knowledge_config,
+                knowledge=build_knowledge_layer_config(agent_soul),
+                knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
-                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
-                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -288,6 +311,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
     ) -> WorkflowAgentToolLayers:
         # Production workflow runs intentionally keep existing plugin configs on
         # the direct `dify.plugin.tools` route. This builder emits plugin tools
@@ -298,6 +322,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            knowledge_fs_spaces=knowledge_fs_spaces,
         )
 
     @staticmethod
@@ -356,8 +381,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             lines.append(f"- User query: {query}")
 
         if uploaded_files is not None:
-            lines.append("- Uploaded workflow files:")
-            lines.append(f"  - sys.files: {uploaded_files}")
+            lines.extend(("- Uploaded workflow files:", f"  - sys.files: {uploaded_files}"))
 
         if resolved_outputs:
             lines.append("- Previous node outputs:")
@@ -510,18 +534,36 @@ class WorkflowAgentRuntimeRequestBuilder:
         return None
 
     @staticmethod
-    def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
+    def _build_output_config(
+        declared_outputs: Sequence[DeclaredOutputConfig],
+        output_routes: WorkflowOutputRoutes | None = None,
+        variable_pool: VariablePoolReader | None = None,
+    ) -> AgentBackendOutputConfig | None:
         """Build the structured-output layer config sent to Agent backend.
 
-        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
-        PRD-mandated defaults (text / files / json) at runtime so the backend
-        always receives a stable schema and the downstream Inspector + nodes
-        have consistent output names. The defaults are NOT persisted.
+        Enabled routing adds a required system ``switch``
+        in the same Agent call. Omit the structured-output layer only when there
+        are no custom outputs and routing is disabled.
         """
-        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
-        properties: dict[str, Any] = {}
+        if not declared_outputs and (output_routes is None or not output_routes.enabled):
+            return None
+
+        properties: dict[str, Any] = {"text": {"type": "string"}}
         required: list[str] = []
-        for output in effective_outputs:
+        if output_routes is not None and output_routes.enabled:
+            if variable_pool is None:
+                raise ValueError("Output route selection requires a workflow variable pool.")
+            descriptions = [
+                f"{route.id} ({route.label or route.id}): {convert_template(variable_pool, route.name).text}"
+                for route in output_routes.routes
+            ]
+            properties["switch"] = {
+                "type": "string",
+                "enum": [route.id for route in output_routes.routes],
+                "description": "Select exactly one route ID based on the task result:\n" + "\n".join(descriptions),
+            }
+            required.append("switch")
+        for output in declared_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -530,19 +572,8 @@ class WorkflowAgentRuntimeRequestBuilder:
             schema["required"] = required
         return AgentBackendOutputConfig(
             json_schema=schema,
-            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(effective_outputs),
+            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(declared_outputs),
         )
-
-    @staticmethod
-    def effective_declared_outputs(
-        declared_outputs: Sequence[DeclaredOutputConfig],
-    ) -> Sequence[DeclaredOutputConfig]:
-        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
-
-        Kept as a static method on the builder so existing call sites
-        (``agent_node._run``, tests) don't need to change their import.
-        """
-        return _effective_declared_outputs(list(declared_outputs))
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
@@ -835,20 +866,6 @@ def _knowledge_model_config(model: AgentKnowledgeModelConfig | None) -> DifyKnow
     )
 
 
-def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:
-    """Enable the dify.ask_human deferred tool when the soul configures human involvement.
-
-    HITL is opt-in: only when at least one human contact is configured does the
-    model get the ``ask_human`` tool (recipients for the resulting form come from
-    those contacts, ENG-635). Returns ``None`` to leave the tool off entirely.
-    The tool/field guardrails use the layer defaults; ``human.tools`` semantics are
-    out of scope this round.
-    """
-    if not agent_soul.human.contacts:
-        return None
-    return DifyAskHumanLayerConfig()
-
-
 def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, str]]) -> None:
     """Merge build-time warnings into the metadata runtime-support manifest."""
     if not warnings:
@@ -860,11 +877,16 @@ def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, s
             existing.extend(warnings)
 
 
-def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
+def build_config_aware_soul_mention_resolver(
+    agent_soul: AgentSoulConfig,
+    *,
+    runtime_config_skills: Sequence[DifyConfigSkillConfig] = (),
+):
     """Resolve config skill/file mentions and delegate the rest to Agent Soul."""
 
     base_resolver = build_soul_mention_resolver(agent_soul)
     skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
+    skill_names.update(item.name for item in runtime_config_skills)
     file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
 
     def _resolve(mention: object) -> str | None:
@@ -882,12 +904,34 @@ def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
     return _resolve
 
 
+def load_runtime_agent_skill_configs(*, tenant_id: str, agent_id: str) -> list[DifyConfigSkillConfig]:
+    """Return workspace-bound Skills as prompt-safe runtime config skills."""
+    from services.skill_management_service import SkillManagementService
+
+    try:
+        runtime_skills = SkillManagementService().list_runtime_agent_skills(tenant_id=tenant_id, agent_id=agent_id)
+    except OperationalError as exc:
+        if "no such table: agent_skill_bindings" not in str(exc.orig):
+            raise
+        runtime_skills = []
+    return [
+        DifyConfigSkillConfig(
+            name=str(item["name"]),
+            description=str(item.get("description") or ""),
+            size=cast(int | None, item.get("size")),
+            mime_type=cast(str | None, item.get("mime_type")),
+        )
+        for item in runtime_skills
+    ]
+
+
 def build_config_layer_config(
     agent_soul: AgentSoulConfig,
     *,
     agent_id: str | None = None,
     config_version_id: str | None = None,
     config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
+    runtime_config_skills: Sequence[DifyConfigSkillConfig] = (),
 ) -> tuple[DifyConfigLayerConfig, list[dict[str, str]]]:
     """Build the always-present Agent config layer from Agent Soul state.
 
@@ -904,8 +948,23 @@ def build_config_layer_config(
         )
     )
     available_skills = [skill for skill in agent_soul.config_skills if not skill.is_missing]
+    skill_configs = [
+        DifyConfigSkillConfig(
+            name=skill.name,
+            description=skill.description,
+            size=skill.size,
+            mime_type=skill.mime_type,
+        )
+        for skill in available_skills
+    ]
+    seen_skill_names = {skill.name for skill in skill_configs}
+    for skill in runtime_config_skills:
+        if skill.name in seen_skill_names:
+            continue
+        seen_skill_names.add(skill.name)
+        skill_configs.append(skill)
     available_files = [file_ref for file_ref in agent_soul.config_files if not file_ref.is_missing]
-    skill_names = {skill.name for skill in available_skills}
+    skill_names = {skill.name for skill in skill_configs}
     file_names = {file_ref.name for file_ref in available_files}
     warnings: list[dict[str, str]] = [
         {
@@ -942,15 +1001,7 @@ def build_config_layer_config(
                 kind=config_version_kind,
                 writable=config_version_kind == "build_draft",
             ),
-            skills=[
-                DifyConfigSkillConfig(
-                    name=skill.name,
-                    description=skill.description,
-                    size=skill.size,
-                    mime_type=skill.mime_type,
-                )
-                for skill in available_skills
-            ],
+            skills=skill_configs,
             files=[
                 DifyConfigFileConfig(
                     name=file_ref.name,
@@ -980,9 +1031,7 @@ def _cli_tool_enabled(item: object) -> bool:
         return False
     if data.get("pre_authorized") is False or _permission_denied(data):
         return False
-    if _dangerous_without_acknowledgement(data):
-        return False
-    return True
+    return not _dangerous_without_acknowledgement(data)
 
 
 def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:

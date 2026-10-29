@@ -1,0 +1,102 @@
+import type { ReactElement } from 'react'
+import { waitFor } from '@testing-library/react'
+import { REGISTRATION_SUCCESS_STORAGE_KEY } from '@/app/components/base/amplitude/registration-session-state'
+import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { AmplitudeIdentitySync } from '../external-service-sync'
+
+const { mockSetUserId, mockSetUserProperties, mockTrackEvent } = vi.hoisted(() => ({
+  mockSetUserId: vi.fn(),
+  mockSetUserProperties: vi.fn(),
+  mockTrackEvent: vi.fn((..._args: unknown[]) => ({
+    promise: Promise.resolve({ code: 200 }),
+  })),
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  setUserId: (...args: unknown[]) => mockSetUserId(...args),
+  setUserProperties: (...args: unknown[]) => mockSetUserProperties(...args),
+}))
+
+vi.mock('@/app/components/base/amplitude/utils', () => ({
+  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+}))
+
+vi.mock('@/app/components/base/amplitude/init', () => ({
+  getIsAmplitudeInitialized: () => true,
+}))
+
+vi.mock('@/app/components/base/analytics-consent/consent-store', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@/app/components/base/analytics-consent/consent-store')>()
+  return {
+    ...original,
+    getAnalyticsConsent: () => 'granted',
+  }
+})
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfile: {
+      id: 'account-id',
+      email: 'person@example.com',
+      name: 'Person',
+      is_password_set: true,
+    },
+    currentWorkspace: {
+      id: 'workspace-id',
+      name: 'Workspace',
+      plan: 'professional',
+      role: 'owner',
+    },
+  })
+
+describe('AmplitudeIdentitySync', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.sessionStorage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+      '11111111-1111-4111-8111-111111111111',
+    )
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  it('sets identity before flushing a marker that already exists', async () => {
+    rememberRegistrationSuccess({ method: 'oauth' })
+
+    render(<AmplitudeIdentitySync />)
+
+    await waitFor(() => expect(mockTrackEvent).toHaveBeenCalledTimes(1))
+    expect(mockSetUserId).toHaveBeenCalledWith('person@example.com')
+    expect(mockSetUserProperties).toHaveBeenCalledExactlyOnceWith({
+      email: 'person@example.com',
+      name: 'Person',
+      has_password: true,
+      workspace_id: 'workspace-id',
+      workspace_name: 'Workspace',
+      workspace_plan: 'professional',
+      workspace_role: 'owner',
+    })
+    expect(mockSetUserId.mock.invocationCallOrder[0]).toBeLessThan(
+      mockTrackEvent.mock.invocationCallOrder[0]!,
+    )
+    expect(mockSetUserProperties.mock.invocationCallOrder[0]).toBeLessThan(
+      mockTrackEvent.mock.invocationCallOrder[0]!,
+    )
+  })
+
+  it('flushes a marker created after identity sync without repeating unchanged identity updates', async () => {
+    render(<AmplitudeIdentitySync />)
+
+    await waitFor(() => expect(mockSetUserId).toHaveBeenCalledTimes(1))
+    expect(mockTrackEvent).not.toHaveBeenCalled()
+
+    rememberRegistrationSuccess({ method: 'email' })
+
+    await waitFor(() => expect(mockTrackEvent).toHaveBeenCalledTimes(1))
+    expect(mockSetUserId).toHaveBeenCalledTimes(1)
+    expect(mockSetUserProperties).toHaveBeenCalledTimes(1)
+    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+  })
+})

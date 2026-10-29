@@ -1,13 +1,15 @@
-import type { FC } from 'react'
+import type { FC, SubmitEventHandler } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useDocLink } from '@/context/i18n'
 
 type FormProps = {
+  id: string
+  onSubmit: SubmitEventHandler<HTMLFormElement>
   className?: string
   itemClassName?: string
   fieldLabelClassName?: string
@@ -15,10 +17,13 @@ type FormProps = {
   onChange: (val: CreateExternalAPIReq) => void
   formSchemas: FormSchema[]
   inputClassName?: string
+  errors?: Partial<Record<'api_key' | 'endpoint' | 'name', string>>
 }
 
 const Form: FC<FormProps> = React.memo(
   ({
+    id,
+    onSubmit,
     className,
     itemClassName,
     fieldLabelClassName,
@@ -26,8 +31,9 @@ const Form: FC<FormProps> = React.memo(
     onChange,
     formSchemas,
     inputClassName,
+    errors,
   }) => {
-    const { t, i18n } = useTranslation()
+    const { t, i18n } = useTranslation(['common', 'dataset'])
     const docLink = useDocLink()
 
     const handleFormChange = (key: string, val: string) => {
@@ -50,6 +56,8 @@ const Form: FC<FormProps> = React.memo(
         variable === 'name'
           ? value[variable]
           : value.settings[variable as keyof typeof value.settings] || ''
+      const fieldError = errors?.[variable as keyof typeof errors]
+      const errorId = `${variable}-error`
 
       return (
         <div
@@ -78,19 +86,32 @@ const Form: FC<FormProps> = React.memo(
           </div>
           <Input
             type={type === 'secret' ? 'password' : 'text'}
+            autoComplete="off"
+            inputMode={variable === 'endpoint' ? 'url' : undefined}
+            placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+            spellCheck={variable === 'endpoint' || type === 'secret' ? false : undefined}
             id={variable}
             name={variable}
+            aria-describedby={fieldError ? errorId : undefined}
+            aria-invalid={Boolean(fieldError)}
             value={fieldValue}
             onChange={(val) => handleFormChange(variable, val.target.value)}
             required={required}
             className={cn(inputClassName)}
           />
+          {fieldError && (
+            <p id={errorId} className="system-xs-regular text-text-destructive" role="alert">
+              {fieldError}
+            </p>
+          )}
         </div>
       )
     }
 
     return (
       <form
+        id={id}
+        onSubmit={onSubmit}
         className={cn('flex flex-col items-start justify-center gap-4 self-stretch', className)}
       >
         {formSchemas.map((formSchema) => renderField(formSchema))}

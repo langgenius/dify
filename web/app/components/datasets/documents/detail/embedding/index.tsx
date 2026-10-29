@@ -1,11 +1,12 @@
 import type { FC } from 'react'
 import type { IndexingType } from '../../../create/step-two'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useProcessRule } from '@/service/knowledge/use-dataset'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
 import { useEmbeddingStatus, usePauseIndexing, useResumeIndexing } from './hooks'
@@ -25,7 +26,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const contextDatasetId = useDocumentContext((s) => s.datasetId)
   const contextDocumentId = useDocumentContext((s) => s.documentId)
   const datasetId = dstId ?? contextDatasetId
@@ -44,7 +45,12 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     documentId,
     onComplete: detailUpdate,
   })
-  const { data: ruleDetail } = useProcessRule(documentId)
+  const { data: ruleDetail } = useQuery(
+    consoleQuery.datasets.processRule.get.queryOptions({
+      input: { query: { document_id: documentId } },
+      enabled: !!documentId,
+    }),
+  )
   const handleSuccess = useCallback(() => {
     toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [t])
@@ -97,8 +103,8 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
           isError={isError}
         />
         <SegmentProgress
-          completedSegments={indexingStatus?.completed_segments}
-          totalSegments={indexingStatus?.total_segments}
+          completedSegments={indexingStatus?.completed_segments ?? undefined}
+          totalSegments={indexingStatus?.total_segments ?? undefined}
           percent={percent}
         />
         <RuleDetail

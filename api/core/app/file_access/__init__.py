@@ -5,6 +5,7 @@ from .scope import (
     bind_file_access_scope,
     get_current_file_access_scope,
     grant_retriever_segment_access,
+    grant_tool_file_access,
     grant_upload_file_access,
     is_retriever_segment_access_granted,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "bind_file_access_scope",
     "get_current_file_access_scope",
     "grant_retriever_segment_access",
+    "grant_tool_file_access",
     "grant_upload_file_access",
     "is_retriever_segment_access_granted",
 ]

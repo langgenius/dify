@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import { Comment } from '@/app/components/base/icons/src/public/other'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 
@@ -20,7 +19,7 @@ export const CommentCursor: FC = memo(() => {
         transform: 'translate(-50%, -50%)',
       }}
     >
-      <Comment className="text-text-primary" />
+      <span aria-hidden className="i-custom-public-other-comment h-3 w-3.5 text-text-primary" />
     </div>
   )
 })

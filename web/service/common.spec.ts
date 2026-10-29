@@ -1,8 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { emailLoginWithCode, sendEMailLoginCode } from './common'
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook } from '@testing-library/react'
+import { createElement } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  OAUTH_REGISTRATION_GA_SENT_KEY,
+  REGISTRATION_SUCCESS_STORAGE_KEY,
+} from '@/app/components/base/amplitude/registration-session-state'
+import { clearPageLeaveGuards } from '@/utils/page-leave-guard'
+import { useLogout } from './use-common'
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
+  request: vi.fn(),
+  resetUser: vi.fn(),
+  basePath: '',
 }))
 
 vi.mock('./base', () => ({
@@ -10,61 +22,91 @@ vi.mock('./base', () => ({
   get: vi.fn(),
   patch: vi.fn(),
   post: mocks.post,
+  request: mocks.request,
 }))
 
-describe('sendEMailLoginCode', () => {
+vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: mocks.resetUser }))
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return mocks.basePath
+  },
+}))
+
+describe('useLogout', () => {
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: new QueryClient() }, children)
+
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.basePath = ''
+    window.sessionStorage.clear()
   })
 
-  it('includes the Turnstile token when provided', async () => {
-    await sendEMailLoginCode('user@example.com', 'en-US', 'turnstile-token')
-
-    expect(mocks.post).toHaveBeenCalledWith('/email-code-login', {
-      body: {
-        email: 'user@example.com',
-        language: 'en-US',
-        turnstile_token: 'turnstile-token',
-      },
-    })
+  afterEach(() => {
+    clearPageLeaveGuards()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
-  it('omits the Turnstile token when it is not provided', async () => {
-    await sendEMailLoginCode('user@example.com', 'en-US')
+  it.each(['', '/console'])(
+    'clears persisted session identity and replaces the document with base path "%s"',
+    async (basePath) => {
+      mocks.basePath = basePath
+      const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+      window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
+      window.sessionStorage.setItem(OAUTH_REGISTRATION_GA_SENT_KEY, 'true')
+      let finishLogout!: (response: Response) => void
+      mocks.request.mockReturnValue(
+        new Promise<Response>((resolve) => {
+          finishLogout = resolve
+        }),
+      )
+      const { result } = renderHook(() => useLogout(), { wrapper })
+      let logout!: Promise<unknown>
+      await act(async () => {
+        logout = result.current.mutateAsync()
+      })
+      expect(replace).not.toHaveBeenCalled()
+      expect(mocks.resetUser).not.toHaveBeenCalled()
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('pending-marker')
 
-    expect(mocks.post).toHaveBeenCalledWith('/email-code-login', {
-      body: {
-        email: 'user@example.com',
-        language: 'en-US',
-      },
+      await act(async () => {
+        finishLogout(new Response(JSON.stringify({ result: 'success' }), { status: 200 }))
+        await logout
+      })
+
+      expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
+      expect(window.sessionStorage.getItem(OAUTH_REGISTRATION_GA_SENT_KEY)).toBeNull()
+      expect(mocks.resetUser).toHaveBeenCalledOnce()
+      expect(replace).toHaveBeenCalledExactlyOnceWith(`${basePath}/signin`)
+    },
+  )
+
+  it('preserves the OAuth return URL across the document replacement', async () => {
+    mocks.basePath = '/console'
+    mocks.request.mockResolvedValue(
+      new Response(JSON.stringify({ result: 'success' }), { status: 200 }),
+    )
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    const redirectTo = `/signin?redirect_url=${encodeURIComponent('/console/account/oauth/authorize?client_id=app&state=value')}`
+    const { result } = renderHook(() => useLogout({ redirectTo }), { wrapper })
+    await act(async () => {
+      await result.current.mutateAsync()
     })
+    expect(replace).toHaveBeenCalledExactlyOnceWith(`/console${redirectTo}`)
   })
-})
 
-describe('emailLoginWithCode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('includes the verification-specific Turnstile token when provided', async () => {
-    await emailLoginWithCode({
-      code: 'encrypted-code',
-      email: 'user@example.com',
-      language: 'en-US',
-      timezone: 'Asia/Singapore',
-      token: 'email-login-token',
-      turnstile_token: 'verify-turnstile-token',
+  it('keeps the session identity and current document when logout fails', async () => {
+    mocks.request.mockRejectedValue(new Error('Logout failed'))
+    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    const { result } = renderHook(() => useLogout(), { wrapper })
+    await act(async () => {
+      await expect(result.current.mutateAsync()).rejects.toThrow('Logout failed')
     })
-
-    expect(mocks.post).toHaveBeenCalledWith('/email-code-login/validity', {
-      body: {
-        code: 'encrypted-code',
-        email: 'user@example.com',
-        language: 'en-US',
-        timezone: 'Asia/Singapore',
-        token: 'email-login-token',
-        turnstile_token: 'verify-turnstile-token',
-      },
-    })
+    expect(replace).not.toHaveBeenCalled()
+    expect(mocks.resetUser).not.toHaveBeenCalled()
+    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('pending-marker')
   })
 })

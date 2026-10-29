@@ -3,10 +3,14 @@ import type { FC } from 'react'
 import type { Body, BodyPayload, KeyValue as KeyValueType } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldItem } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { uniqueId } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../_base/components/variable/var-reference-picker'
@@ -42,6 +46,9 @@ const bodyTextMap = {
 }
 
 const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
+  const { t: translate } = useTranslation(['workflowIntegrations'])
+  const keyValueBodyTypes: readonly BodyType[] = [BodyType.formData, BodyType.xWwwFormUrlencoded]
+
   const { type, data } = payload
   const bodyPayload = useMemo(() => {
     if (typeof data === 'string') {
@@ -50,9 +57,7 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
     }
     return data
   }, [data])
-  const stringValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(type)
-    ? ''
-    : bodyPayload[0]?.value || ''
+  const stringValue = keyValueBodyTypes.includes(type) ? '' : bodyPayload[0]?.value || ''
 
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -62,9 +67,13 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
   })
 
   const handleTypeChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newType = e.target.value as BodyType
-      const hasKeyValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newType)
+    (newType: BodyType) => {
+      const keyValueBodyTypes: readonly BodyType[] = [
+        BodyType.formData,
+        BodyType.xWwwFormUrlencoded,
+      ]
+
+      const hasKeyValue = keyValueBodyTypes.includes(newType)
       onChange({
         type: newType,
         data: hasKeyValue
@@ -105,7 +114,9 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
   )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+    const fileVariableTypes: readonly VarType[] = [VarType.file, VarType.arrayFile]
+
+    return fileVariableTypes.includes(varPayload.type)
   }
 
   const handleBodyValueChange = useCallback(
@@ -145,27 +156,34 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
   return (
     <div>
       {/* body type */}
-      <div className="flex flex-wrap">
-        {allTypes.map((t) => (
-          <label
-            key={t}
-            htmlFor={`body-type-${t}`}
-            className="mr-4 flex h-7 items-center space-x-2"
-          >
-            <input
-              type="radio"
-              id={`body-type-${t}`}
-              value={t}
-              checked={type === t}
-              onChange={handleTypeChange}
+      <Field className="contents">
+        <Fieldset
+          render={
+            <RadioGroup<BodyType>
+              value={type}
+              onValueChange={handleTypeChange}
               disabled={readonly}
+              className="block"
             />
-            <div className="text-[13px] leading-4.5 font-normal text-text-secondary">
-              {bodyTextMap[t]}
-            </div>
-          </label>
-        ))}
-      </div>
+          }
+        >
+          <FieldsetLegend className="sr-only">
+            {translate(($) => $['nodes.http.body'], { ns: 'workflowIntegrations' })}
+          </FieldsetLegend>
+          <div className="flex flex-wrap">
+            {allTypes.map((t) => (
+              <FieldItem key={t} className="contents">
+                <label className="mr-4 flex h-7 cursor-pointer items-center space-x-2 has-data-disabled:cursor-not-allowed">
+                  <Radio value={t} />
+                  <div className="text-[13px] leading-4.5 font-normal text-text-secondary">
+                    {bodyTextMap[t]}
+                  </div>
+                </label>
+              </FieldItem>
+            ))}
+          </div>
+        </Fieldset>
+      </Field>
       {/* body value */}
       <div className={cn(type !== BodyType.none && 'mt-1')}>
         {type === BodyType.none && null}

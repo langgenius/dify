@@ -29,7 +29,7 @@ class TestChatAppGenerateResponseConverter:
         assert "usage" not in response["metadata"]
 
     def test_convert_stream_responses(self):
-        def stream() -> Generator[ChatbotAppStreamResponse, None, None]:
+        def stream() -> Generator[ChatbotAppStreamResponse]:
             yield ChatbotAppStreamResponse(
                 conversation_id="c1",
                 message_id="m1",

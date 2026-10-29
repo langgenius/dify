@@ -1,20 +1,25 @@
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { toast } from '@langgenius/dify-ui/toast'
-import { QueryClient } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient, skipToken } from '@tanstack/react-query'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AgentConfigApiContextProvider } from '../../config-context'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
-import { AgentFiles } from '../index'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
+import { AgentFiles, AgentTemplateFiles } from '../index'
 
 type ConfigFileQueryOptionsInput = {
   input: {
@@ -54,7 +59,7 @@ const mocks = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -66,51 +71,42 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: mocks.fileUploadConfig }),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-        queryOptions: (options?: Record<string, unknown>) => ({
-          queryKey: ['console', 'systemFeatures', 'get'],
-          queryFn: () => new Promise(() => {}),
-          ...options,
-        }),
-      },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  const { withConsoleQueryOverrides } = await import('@/test/console/service-responses')
+  const query = withConsoleQueryOverrides(actual.consoleQuery, {
+    'agent.byAgentId.config.files.byName.preview.get': { queryOptions: mocks.previewQueryOptions },
+    'agent.byAgentId.config.files.byName.download.get': {
+      queryOptions: mocks.downloadQueryOptions,
     },
-    agent: {
-      byAgentId: {
-        config: {
-          files: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
-            },
-            byName: {
-              delete: {
-                mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
-              },
-              preview: {
-                get: {
-                  queryOptions: mocks.previewQueryOptions,
-                },
-              },
-              download: {
-                get: {
-                  queryOptions: mocks.downloadQueryOptions,
-                },
-              },
-            },
-          },
+    'apps.byAppId.agent.config.files.byName.preview.get': {
+      queryOptions: mocks.previewQueryOptions,
+    },
+    'apps.byAppId.agent.config.files.byName.download.get': {
+      queryOptions: mocks.downloadQueryOptions,
+    },
+    'trialApps.byAppId.agent.config.files.byName.preview.get': {
+      queryOptions: mocks.previewQueryOptions,
+    },
+    'trialApps.byAppId.agent.config.files.byName.download.get': {
+      queryOptions: mocks.downloadQueryOptions,
+    },
+  })
+
+  return {
+    consoleQuery: {
+      systemFeatures: {
+        get: {
+          ...consoleOperationStub('systemFeatures.get'),
+          queryOptions: (options?: Record<string, unknown>) => ({
+            ...consoleOperationStub('systemFeatures.get').queryOptions(options),
+            queryFn: () => new Promise(() => {}),
+          }),
         },
       },
-    },
-    apps: {
-      byAppId: {
-        agent: {
+      agent: {
+        byAgentId: {
           config: {
             files: {
               post: {
@@ -121,13 +117,33 @@ vi.mock('@/service/client', () => ({
                   mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
                 },
                 preview: {
-                  get: {
-                    queryOptions: mocks.previewQueryOptions,
-                  },
+                  get: query.agent.byAgentId.config.files.byName.preview.get,
                 },
                 download: {
-                  get: {
-                    queryOptions: mocks.downloadQueryOptions,
+                  get: query.agent.byAgentId.config.files.byName.download.get,
+                },
+              },
+            },
+          },
+        },
+      },
+      apps: {
+        byAppId: {
+          agent: {
+            config: {
+              files: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
+                },
+                byName: {
+                  delete: {
+                    mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
+                  },
+                  preview: {
+                    get: query.apps.byAppId.agent.config.files.byName.preview.get,
+                  },
+                  download: {
+                    get: query.apps.byAppId.agent.config.files.byName.download.get,
                   },
                 },
               },
@@ -135,16 +151,35 @@ vi.mock('@/service/client', () => ({
           },
         },
       },
-    },
-    files: {
-      upload: {
-        post: {
-          mutationOptions: () => ({ mutationFn: mocks.uploadFileMutationFn }),
+      trialApps: {
+        byAppId: {
+          agent: {
+            config: {
+              files: {
+                byName: {
+                  preview: {
+                    get: query.trialApps.byAppId.agent.config.files.byName.preview.get,
+                  },
+                  download: {
+                    get: query.trialApps.byAppId.agent.config.files.byName.download.get,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      files: {
+        upload: {
+          get: consoleOperationStub('files.upload.get'),
+          post: {
+            mutationOptions: () => ({ mutationFn: mocks.uploadFileMutationFn }),
+          },
         },
       },
     },
-  },
-}))
+  }
+})
 
 function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
@@ -182,34 +217,48 @@ function renderAgentFiles({
   initialDraft = createInitialDraft(),
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
+  template = false,
+  viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
+  template?: boolean
+  viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
+      queries: { retry: false, staleTime: Infinity },
       mutations: { retry: false },
     },
   })
   queryClient.setQueryData(
-    ['console', 'systemFeatures', 'get'],
+    consoleQuery.systemFeatures.get.queryKey(),
     createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
   )
 
-  return render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <AgentConfigApiContextProvider value={apiContext}>
-        <AgentComposerProvider initialDraft={initialDraft}>
-          <AgentOrchestrateReadOnlyContext value={readOnly}>
-            <AgentFiles />
-            <ConfigSnapshotProbe />
-          </AgentOrchestrateReadOnlyContext>
-        </AgentComposerProvider>
-      </AgentConfigApiContextProvider>
-    </QueryClientTestProvider>,
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(mocks.fileUploadConfig),
   )
+
+  return {
+    ...render(
+      <QueryClientTestProvider queryClient={queryClient}>
+        <AgentConfigApiContextProvider value={apiContext}>
+          <AgentComposerProvider initialDraft={initialDraft}>
+            <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+              <AgentOrchestrateReadOnlyContext value={readOnly}>
+                {template ? <AgentTemplateFiles /> : <AgentFiles />}
+                <ConfigSnapshotProbe />
+              </AgentOrchestrateReadOnlyContext>
+            </AgentOrchestrateViewingVersionContext>
+          </AgentComposerProvider>
+        </AgentConfigApiContextProvider>
+      </QueryClientTestProvider>,
+    ),
+    queryClient,
+  }
 }
 
 describe('AgentFiles', () => {
@@ -223,7 +272,6 @@ describe('AgentFiles', () => {
       workflow_file_upload_limit: 10,
     })
     mocks.previewQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['preview-config-file', input],
       queryFn: async () => ({
         name: input.params.name,
         binary: false,
@@ -232,7 +280,6 @@ describe('AgentFiles', () => {
       }),
     }))
     mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
-      queryKey: ['download-config-file', input],
       queryFn: async () => ({
         url: `https://example.com/${input.params.name}`,
       }),
@@ -263,16 +310,6 @@ describe('AgentFiles', () => {
       }),
     })
 
-    const warning = screen.getByRole('button', {
-      name: 'agentV2.agentDetail.configure.files.missing',
-    })
-    expect(warning.querySelector('.i-ri-alert-fill')).toBeInTheDocument()
-    expect(
-      screen.getAllByRole('button', {
-        name: 'agentV2.agentDetail.configure.files.missing',
-      }),
-    ).toHaveLength(1)
-
     expect(screen.getByRole('button', { name: 'missing.pdf' })).toBeDisabled()
     expect(
       screen.queryByRole('button', {
@@ -287,31 +324,52 @@ describe('AgentFiles', () => {
   })
 
   it('should delete configured files by config name', async () => {
-    const { container } = renderAgentFiles()
-
-    const removeButton = container.querySelector('[data-agent-file-remove-button]')
-    expect(removeButton).not.toBeNull()
-
-    fireEvent.click(removeButton!)
+    const user = userEvent.setup()
+    renderAgentFiles()
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.remove.*diagram\.png/,
+      }),
+    )
 
     await waitFor(() => {
-      expect(mocks.deleteFileMutationFn).toHaveBeenCalled()
-      expect(mocks.deleteFileMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
-          name: 'diagram.png',
+      expect(mocks.deleteFileMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+            name: 'diagram.png',
+          },
+          query: {
+            draft_type: 'draft',
+            version_id: undefined,
+          },
         },
-        query: {
-          draft_type: 'draft',
-          version_id: undefined,
-        },
-      })
+        expect.anything(),
+      )
     })
 
     expect(screen.queryByText('diagram.png')).not.toBeInTheDocument()
   })
 
-  it('should upload through the two-step config file flow and persist config_files in draft state', async () => {
+  it('keeps both upload stages open until the committed file reaches the draft', async () => {
+    let finishUpload!: () => void
+    let finishCommit!: () => void
+    const upload = new Promise<void>((resolve) => {
+      finishUpload = resolve
+    })
+    const commit = new Promise<void>((resolve) => {
+      finishCommit = resolve
+    })
+    const uploadFile = mocks.uploadFileMutationFn.getMockImplementation()!
+    const commitFile = mocks.commitFileMutationFn.getMockImplementation()!
+    mocks.uploadFileMutationFn.mockImplementationOnce(async (input) => {
+      await upload
+      return uploadFile(input)
+    })
+    mocks.commitFileMutationFn.mockImplementationOnce(async (input) => {
+      await commit
+      return commitFile(input)
+    })
     const user = userEvent.setup()
     renderAgentFiles({ initialDraft: defaultAgentSoulConfigFormState })
 
@@ -331,29 +389,46 @@ describe('AgentFiles', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.uploadFileMutationFn).toHaveBeenCalled()
-      expect(mocks.uploadFileMutationFn.mock.calls[0]?.[0]).toEqual({
-        body: {
-          file,
+      expect(mocks.uploadFileMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          body: {
+            file,
+          },
         },
-      })
+        expect.anything(),
+      )
     })
 
+    await user.keyboard('{Escape}')
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'common.operation.close' }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(mocks.commitFileMutationFn).not.toHaveBeenCalled()
+    finishUpload()
+
     await waitFor(() => {
-      expect(mocks.commitFileMutationFn).toHaveBeenCalled()
-      expect(mocks.commitFileMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          agent_id: 'agent-1',
+      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+          query: {
+            draft_type: 'draft',
+            version_id: undefined,
+          },
+          body: {
+            upload_file_id: 'upload-1',
+          },
         },
-        query: {
-          draft_type: 'draft',
-          version_id: undefined,
-        },
-        body: {
-          upload_file_id: 'upload-1',
-        },
-      })
+        expect.anything(),
+      )
     })
+
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    finishCommit()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_files).toEqual([
@@ -452,22 +527,25 @@ describe('AgentFiles', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.commitFileMutationFn.mock.calls[0]?.[0]).toEqual({
-        params: {
-          app_id: 'app-1',
+      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: {
+            app_id: 'app-1',
+          },
+          query: {
+            draft_type: 'draft',
+            node_id: 'node-1',
+            version_id: 'draft-1',
+          },
+          body: {
+            upload_file_id: 'upload-1',
+          },
         },
-        query: {
-          draft_type: 'draft',
-          node_id: 'node-1',
-          version_id: 'draft-1',
-        },
-        body: {
-          upload_file_id: 'upload-1',
-        },
-      })
+        expect.anything(),
+      )
     })
 
-    await user.click(screen.getByText('diagram.png').closest('button')!)
+    await user.click(screen.getByRole('button', { name: 'diagram.png' }))
 
     await waitFor(() => {
       expect(mocks.previewQueryOptions).toHaveBeenCalledWith(
@@ -488,42 +566,54 @@ describe('AgentFiles', () => {
     })
   })
 
-  it('should preview and download files through config file endpoints by name', async () => {
+  it('should not expose a stale image URL while the preview refreshes', async () => {
     const user = userEvent.setup()
-    renderAgentFiles()
+    let resolveDownload!: (value: { url: string }) => void
+    const downloadResponse = new Promise<{ url: string }>((resolve) => {
+      resolveDownload = resolve
+    })
+    const downloadQueryFn = vi.fn(() => downloadResponse)
+    mocks.downloadQueryOptions.mockImplementation(() => ({
+      queryFn: downloadQueryFn,
+    }))
+    const { queryClient } = renderAgentFiles()
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.config.files.byName.download.get.queryKey({
+        input: {
+          params: { agent_id: 'agent-1', name: 'diagram.png' },
+          query: { draft_type: 'draft', version_id: undefined },
+        },
+      }),
+      { url: 'https://example.com/expired-diagram.png' },
+    )
 
-    await user.click(screen.getByText('diagram.png').closest('button')!)
+    await user.click(screen.getByRole('button', { name: 'diagram.png' }))
 
-    await waitFor(() => {
-      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: expect.objectContaining({
-            params: {
-              agent_id: 'agent-1',
-              name: 'diagram.png',
-            },
-          }),
-        }),
-      )
+    await waitFor(() => expect(downloadQueryFn).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('img', { name: 'diagram.png' })).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveDownload({ url: 'https://example.com/current-diagram.png' })
     })
 
-    await waitFor(() => {
-      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: expect.objectContaining({
-            params: {
-              agent_id: 'agent-1',
-              name: 'diagram.png',
-            },
-          }),
-        }),
-      )
-    })
+    expect(await screen.findByRole('img', { name: 'diagram.png' })).toHaveAttribute(
+      'src',
+      'https://example.com/current-diagram.png',
+    )
   })
 
   it('should download configured files from the row action by config name', async () => {
     const user = userEvent.setup()
-    renderAgentFiles()
+    const { queryClient } = renderAgentFiles()
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.config.files.byName.download.get.queryKey({
+        input: {
+          params: { agent_id: 'agent-1', name: 'diagram.png' },
+          query: { draft_type: 'draft', version_id: undefined },
+        },
+      }),
+      { url: 'https://example.com/stale-diagram.png' },
+    )
 
     await user.click(
       screen.getByRole('button', {
@@ -551,9 +641,9 @@ describe('AgentFiles', () => {
 
   it('should download the selected file from the preview header action', async () => {
     const user = userEvent.setup()
-    renderAgentFiles()
+    const { queryClient } = renderAgentFiles()
 
-    await user.click(screen.getByText('diagram.png').closest('button')!)
+    await user.click(screen.getByRole('button', { name: 'diagram.png' }))
     const dialog = await screen.findByRole('dialog')
 
     await user.click(
@@ -578,6 +668,14 @@ describe('AgentFiles', () => {
       url: 'https://example.com/diagram.png',
       fileName: 'diagram.png',
     })
+    const trialFile = consoleQuery.trialApps.byAppId.agent.config.files.byName
+    for (const operation of [trialFile.preview.get, trialFile.download.get]) {
+      expect(queryClient.getQueryState(operation.queryKey({ input: skipToken }))).toMatchObject({
+        status: 'pending',
+        fetchStatus: 'idle',
+        error: null,
+      })
+    }
   })
 
   it('should show config note as a virtual build note file and preview its content locally', async () => {
@@ -587,21 +685,20 @@ describe('AgentFiles', () => {
     })
 
     expect(screen.getByText('build_note.md')).toBeInTheDocument()
-    const fileNames = screen
-      .getAllByText(/^(build_note\.md|diagram\.png|brief\.md)$/)
-      .map((element) => element.textContent)
-    expect(fileNames).toEqual(['build_note.md', 'diagram.png', 'brief.md'])
-
     vi.clearAllMocks()
 
-    await user.click(screen.getByText('build_note.md').closest('button')!)
+    await user.click(
+      screen.getByRole('button', {
+        name: /build_note\.md.*agentDetail\.configure\.files\.buildNote\.generated/,
+      }),
+    )
 
     expect(await screen.findByText('Build context from the latest build chat.')).toBeInTheDocument()
     expect(mocks.previewQueryOptions).not.toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
           params: expect.objectContaining({
-            name: 'build_note.md',
+            name: /build_note\.md.*agentDetail\.configure\.files\.buildNote\.generated/,
           }),
         }),
       }),
@@ -610,7 +707,7 @@ describe('AgentFiles', () => {
       expect.objectContaining({
         input: expect.objectContaining({
           params: expect.objectContaining({
-            name: 'build_note.md',
+            name: /build_note\.md.*agentDetail\.configure\.files\.buildNote\.generated/,
           }),
         }),
       }),
@@ -639,7 +736,7 @@ describe('AgentFiles', () => {
       expect.objectContaining({
         input: expect.objectContaining({
           params: expect.objectContaining({
-            name: 'build_note.md',
+            name: /build_note\.md.*agentDetail\.configure\.files\.buildNote\.generated/,
           }),
         }),
       }),
@@ -652,7 +749,11 @@ describe('AgentFiles', () => {
       initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
     })
 
-    await user.click(screen.getByText('build_note.md').closest('button')!)
+    await user.click(
+      screen.getByRole('button', {
+        name: /build_note\.md.*agentDetail\.configure\.files\.buildNote\.generated/,
+      }),
+    )
     const dialog = await screen.findByRole('dialog')
 
     await user.click(
@@ -667,31 +768,6 @@ describe('AgentFiles', () => {
     })
     const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
     await expect(blob.text()).resolves.toBe('Build context from the latest build chat.')
-  })
-
-  it('should show generated build note metadata with an explanatory infotip', async () => {
-    const user = userEvent.setup()
-    renderAgentFiles({
-      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
-    })
-
-    const generatedBadge = screen.getByText(
-      'agentV2.agentDetail.configure.files.buildNote.generated',
-    )
-    const buildNoteRow = generatedBadge.closest('li')
-
-    expect(generatedBadge).toBeInTheDocument()
-    expect(buildNoteRow).not.toBeNull()
-
-    await user.click(
-      within(buildNoteRow!).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.files.buildNote.tooltip',
-      }),
-    )
-
-    expect(
-      await screen.findByText('agentV2.agentDetail.configure.files.buildNote.richTooltip'),
-    ).toBeInTheDocument()
   })
 
   it('should clear config note when deleting the virtual build note file', async () => {
@@ -713,13 +789,77 @@ describe('AgentFiles', () => {
     expect(snapshot.config_note).toBe('')
   })
 
-  it('should keep flat config files visible without drive-prefix filtering and disable add in read-only mode', () => {
-    renderAgentFiles({ readOnly: true })
+  it('should keep flat config files visible without drive-prefix filtering and disable add when viewing a version', () => {
+    renderAgentFiles({ readOnly: true, viewingVersion: true })
 
     expect(screen.getByText('diagram.png')).toBeInTheDocument()
     expect(screen.getByText('brief.md')).toBeInTheDocument()
     expect(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.download.*diagram\.png/,
+      }),
+    ).toBeInTheDocument()
+    expect(
       screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should hide the add action while a build draft is read-only', () => {
+    renderAgentFiles({ readOnly: true })
+
+    expect(
+      screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should preview template files without offering download actions', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderAgentFiles({
+      apiContext: { agentId: 'agent-1', trialAppId: 'trial-1' },
+      readOnly: true,
+      template: true,
+    })
+
+    expect(
+      screen.queryByRole('button', { name: /agentDetail\.configure\.files\.download/ }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'diagram.png' }))
+    const imageDialog = await screen.findByRole('dialog')
+    expect(
+      within(imageDialog).queryByRole('button', { name: /common\.operation\.download/ }),
+    ).not.toBeInTheDocument()
+    expect(await within(imageDialog).findByRole('img', { name: 'diagram.png' })).toHaveAttribute(
+      'src',
+      'https://example.com/diagram.png',
+    )
+    expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({ params: { app_id: 'trial-1', name: 'diagram.png' } }),
+      }),
+    )
+
+    await user.click(within(imageDialog).getByRole('button', { name: 'common.operation.close' }))
+    queryClient.setQueryData(
+      consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryKey({
+        input: {
+          params: { app_id: 'trial-1', name: 'brief.md' },
+          query: { version_id: undefined },
+        },
+      }),
+      { name: 'brief.md', binary: true, truncated: false, text: null },
+    )
+    await user.click(screen.getByRole('button', { name: 'brief.md' }))
+    const binaryDialog = await screen.findByRole('dialog')
+    expect(
+      await within(binaryDialog).findByText(/agentDetail\.configure\.files\.preview\.unsupported/),
+    ).toBeInTheDocument()
+    expect(
+      within(binaryDialog).queryByRole('link', { name: 'common.operation.download' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(binaryDialog).queryByRole('button', { name: /common\.operation\.download/ }),
+    ).not.toBeInTheDocument()
+    expect(mocks.downloadUrl).not.toHaveBeenCalled()
   })
 })

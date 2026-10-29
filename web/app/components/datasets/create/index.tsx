@@ -1,21 +1,17 @@
 'use client'
 
+import type { DatasetAndDocumentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlOptions,
-  CrawlResultItem,
-  createDocumentResponse,
-  FileItem,
-} from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   settingsQueryParamName,
@@ -30,7 +26,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
-import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
@@ -54,7 +50,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const router = useRouter()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const datasetDetail = useDatasetDetailContextWithSelector((state) => state.dataset)
@@ -80,7 +76,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [indexingTypeCache, setIndexTypeCache] = useState('')
   const [retrievalMethodCache, setRetrievalMethodCache] = useState<RETRIEVE_METHOD | ''>('')
   const [fileList, setFiles] = useState<FileItem[]>([])
-  const [result, setResult] = useState<createDocumentResponse | undefined>()
+  const [result, setResult] = useState<DatasetAndDocumentResponse | undefined>()
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const [notionCredentialId, setNotionCredentialId] = useState<string>('')
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
@@ -94,7 +90,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     data: dataSourceList,
     isLoading: isLoadingAuthedDataSourceList,
     isError: fetchingAuthedDataSourceListError,
-  } = useGetDefaultDataSourceListAuth()
+  } = useQuery(consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions())
 
   const updateNotionPages = useCallback((value: NotionPage[]) => {
     setNotionPages(value)
@@ -123,7 +119,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setIndexTypeCache(type)
   }, [])
 
-  const updateResultCache = useCallback((res?: createDocumentResponse) => {
+  const updateResultCache = useCallback((res?: DatasetAndDocumentResponse) => {
     setResult(res)
   }, [])
 
@@ -147,7 +143,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }, [datasetId, router, shouldRedirectToDocuments])
 
   if ((!!datasetId && isLoadingWorkspacePermissionKeys) || shouldRedirectToDocuments)
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
 
   if (fetchingAuthedDataSourceListError)
     return (
@@ -161,7 +157,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-components-panel-bg">
       <TopBar activeIndex={step - 1} datasetId={datasetId} />
       <div className="min-h-0 flex-1">
-        {isLoadingAuthedDataSourceList && <Loading type="app" />}
+        {isLoadingAuthedDataSourceList && <LoadingPlaceholder className="h-full" />}
         {!isLoadingAuthedDataSourceList && (
           <>
             {step === 1 && (
@@ -192,7 +188,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               <StepTwo
                 isAPIKeySet={!!embeddingsDefaultModel}
                 onSetting={() => setSettingsDestination('provider')}
-                indexingType={datasetDetail?.indexing_technique}
+                indexingType={datasetDetail?.indexing_technique ?? undefined}
                 datasetId={datasetId}
                 dataSourceType={dataSourceType}
                 files={fileList.map((file) => file.file)}

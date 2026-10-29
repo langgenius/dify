@@ -1,6 +1,13 @@
 'use client'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
 
@@ -23,6 +30,8 @@ function InputNumberWithSlider({
   readonly,
   onChange,
 }: InputNumberWithSliderProps) {
+  const sliderValue = Number.isFinite(value) ? value : (min ?? 0)
+
   const handleBlur = useCallback(() => {
     if (value === undefined || value === null || Number.isNaN(value)) {
       onChange(defaultValue)
@@ -48,7 +57,7 @@ function InputNumberWithSlider({
       <div className="flex h-8 items-center justify-between space-x-2">
         <input
           aria-label={label}
-          value={value}
+          value={Number.isFinite(value) ? value : ''}
           className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-hidden"
           type="number"
           min={min}
@@ -60,14 +69,21 @@ function InputNumberWithSlider({
         />
         <Slider
           className="grow"
-          value={value}
+          value={sliderValue}
           min={min}
           max={max}
           step={1}
           onValueChange={onChange}
           disabled={readonly}
-          aria-label={label}
-        />
+        >
+          <SliderLabel className="sr-only">{label}</SliderLabel>
+          <SliderControl>
+            <SliderTrack>
+              <SliderIndicator />
+              <SliderThumb />
+            </SliderTrack>
+          </SliderControl>
+        </Slider>
       </div>
     </Fieldset>
   )

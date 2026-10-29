@@ -1,18 +1,6 @@
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-/**
- * Test suite for model configuration transformation utilities
- *
- * This module handles the conversion between two different representations of user input forms:
- * 1. UserInputFormItem: The form structure used in the UI
- * 2. PromptVariable: The variable structure used in prompts and model configuration
- *
- * Key functions:
- * - userInputsFormToPromptVariables: Converts UI form items to prompt variables
- * - promptVariablesToUserInputsForm: Converts prompt variables back to form items
- * - formatBooleanInputs: Ensures boolean inputs are properly typed
- */
 import {
   formatBooleanInputs,
   promptVariablesToUserInputsForm,
@@ -25,27 +13,13 @@ const getTextInput = (item: UserInputFormItem | undefined) => {
   return item['text-input']
 }
 
-const getSelectInput = (item: UserInputFormItem | undefined) => {
-  if (!item || !('select' in item)) throw new Error('Expected select user input form item')
-
-  return item.select
-}
-
 describe('Model Config Utilities', () => {
   describe('userInputsFormToPromptVariables', () => {
-    /**
-     * Test handling of null or undefined input
-     * Should return empty array when no inputs provided
-     */
     it('should return empty array for null input', () => {
       const result = userInputsFormToPromptVariables(null)
       expect(result).toEqual([])
     })
 
-    /**
-     * Test conversion of text-input (string) type
-     * Text inputs are the most common form field type
-     */
     it('should convert text-input to string prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -76,10 +50,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of paragraph type
-     * Paragraphs are multi-line text inputs
-     */
     it('should convert paragraph to paragraph prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -109,10 +79,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of number type
-     * Number inputs should preserve numeric constraints
-     */
     it('should convert number input to number prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -139,10 +105,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of checkbox (boolean) type
-     * Checkboxes are converted to 'checkbox' type in prompt variables
-     */
     it('should convert checkbox to checkbox prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -169,10 +131,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of select (dropdown) type
-     * Select inputs include options array
-     */
     it('should convert select input to select prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -201,10 +159,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of file upload type
-     * File inputs include configuration for allowed types and upload methods
-     */
     it('should convert file input to file prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -239,10 +193,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of file-list type
-     * File lists allow multiple file uploads with a max_length constraint
-     */
     it('should convert file-list input to file-list prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -278,10 +228,21 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of external_data_tool type
-     * External data tools have custom configuration and icons
-     */
+    it.each([
+      [
+        { file: { default: '', label: 'Attachment', variable: 'attachment' } },
+        { number_limits: 1 },
+      ],
+      [{ 'file-list': { label: 'Attachments', variable: 'attachments' } }, {}],
+    ])('should allow publishing a loaded file input with omitted restrictions', (input, config) => {
+      const variables = userInputsFormToPromptVariables([input])
+      const form = promptVariablesToUserInputsForm(variables)
+
+      expect(variables[0]?.config).toEqual(config)
+      expect(Object.keys(form[0]!)).toEqual(Object.keys(input))
+      expect(userInputsFormToPromptVariables(form)[0]?.config).toEqual(config)
+    })
+
     it('should convert external_data_tool to prompt variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -315,10 +276,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test handling of dataset_query_variable
-     * When a variable matches the dataset_query_variable, is_context_var should be true
-     */
     it('should mark variable as context var when matching dataset_query_variable', () => {
       const userInputs: UserInputFormItem[] = [
         {
@@ -337,57 +294,9 @@ describe('Model Config Utilities', () => {
 
       expect(result[0]!.is_context_var).toBe(true)
     })
-
-    /**
-     * Test conversion of multiple mixed input types
-     * Should handle an array with different input types correctly
-     */
-    it('should convert multiple mixed input types', () => {
-      const userInputs: UserInputFormItem[] = [
-        {
-          'text-input': {
-            label: 'Name',
-            variable: 'name',
-            required: true,
-            max_length: 50,
-            default: '',
-            hide: false,
-          },
-        },
-        {
-          number: {
-            label: 'Age',
-            variable: 'age',
-            required: false,
-            default: '',
-            hide: false,
-          },
-        },
-        {
-          select: {
-            label: 'Gender',
-            variable: 'gender',
-            required: true,
-            options: ['Male', 'Female', 'Other'],
-            default: '',
-            hide: false,
-          },
-        },
-      ]
-
-      const result = userInputsFormToPromptVariables(userInputs)
-
-      expect(result).toHaveLength(3)
-      expect(result[0]!.type).toBe('string')
-      expect(result[1]!.type).toBe('number')
-      expect(result[2]!.type).toBe('select')
-    })
   })
 
   describe('promptVariablesToUserInputsForm', () => {
-    /**
-     * Test conversion of string prompt variable back to text-input
-     */
     it('should convert string prompt variable to text-input', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -415,9 +324,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of paragraph prompt variable
-     */
     it('should convert paragraph prompt variable to paragraph input', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -444,9 +350,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of number prompt variable
-     */
     it('should convert number prompt variable to number input', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -471,9 +374,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of checkbox prompt variable
-     */
     it('should convert checkbox prompt variable to checkbox input', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -498,9 +398,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test conversion of select prompt variable
-     */
     it('should convert select prompt variable to select input', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -527,10 +424,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test filtering of invalid prompt variables
-     * Variables without key or name should be filtered out
-     */
     it('should filter out variables with empty key or name', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -569,9 +462,6 @@ describe('Model Config Utilities', () => {
       expect(getTextInput(result[0]).variable).toBe('valid_key')
     })
 
-    /**
-     * Test conversion of external data tool prompt variable
-     */
     it('should convert external data tool prompt variable', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -603,9 +493,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test that required defaults to true when not explicitly set to false
-     */
     it('should default required to true when not false', () => {
       const promptVariables: PromptVariable[] = [
         {
@@ -632,26 +519,12 @@ describe('Model Config Utilities', () => {
   })
 
   describe('formatBooleanInputs', () => {
-    /**
-     * Test that null or undefined inputs are handled gracefully
-     */
     it('should return inputs unchanged when useInputs is null', () => {
       const inputs = { key1: 'value1', key2: 'value2' }
       const result = formatBooleanInputs(null, inputs)
       expect(result).toEqual(inputs)
     })
 
-    it('should return inputs unchanged when useInputs is undefined', () => {
-      const inputs = { key1: 'value1', key2: 'value2' }
-      const result = formatBooleanInputs(undefined, inputs)
-      expect(result).toEqual(inputs)
-    })
-
-    /**
-     * Test conversion of boolean input values to actual boolean type
-     * This is important for proper type handling in the backend
-     * Note: checkbox inputs are converted to type 'checkbox' by userInputsFormToPromptVariables
-     */
     it('should convert boolean inputs to boolean type', () => {
       const useInputs: PromptVariable[] = [
         {
@@ -676,7 +549,9 @@ describe('Model Config Utilities', () => {
         other_field: 'value',
       }
 
+      const original = { ...inputs }
       const result = formatBooleanInputs(useInputs, inputs)
+      expect(inputs).toEqual(original)
 
       expect(result).toEqual({
         accept_terms: true,
@@ -685,41 +560,6 @@ describe('Model Config Utilities', () => {
       })
     })
 
-    /**
-     * Test that non-boolean inputs are not affected
-     */
-    it('should not modify non-boolean inputs', () => {
-      const useInputs: PromptVariable[] = [
-        {
-          key: 'name',
-          name: 'Name',
-          required: true,
-          type: 'string',
-          options: [],
-        },
-        {
-          key: 'age',
-          name: 'Age',
-          required: true,
-          type: 'number',
-          options: [],
-        },
-      ]
-
-      const inputs = {
-        name: 'John Doe',
-        age: 30,
-      }
-
-      const result = formatBooleanInputs(useInputs, inputs)
-
-      expect(result).toEqual(inputs)
-    })
-
-    /**
-     * Test handling of truthy and falsy values for boolean conversion
-     * Note: checkbox inputs are converted to type 'checkbox' by userInputsFormToPromptVariables
-     */
     it('should handle various truthy and falsy values', () => {
       const useInputs: PromptVariable[] = [
         {
@@ -766,67 +606,73 @@ describe('Model Config Utilities', () => {
       expect(result?.bool3).toBe(true)
       expect(result?.bool4).toBe(false)
     })
-
-    /**
-     * Test that the function creates a new object and doesn't mutate the original
-     * Note: checkbox inputs are converted to type 'checkbox' by userInputsFormToPromptVariables
-     */
-    it('should not mutate original inputs object', () => {
-      const useInputs: PromptVariable[] = [
-        {
-          key: 'flag',
-          name: 'Flag',
-          required: true,
-          type: 'checkbox',
-          options: [],
-        },
-      ]
-
-      const inputs = { flag: 'true', other: 'value' }
-      const originalInputs = { ...inputs }
-
-      formatBooleanInputs(useInputs, inputs)
-
-      expect(inputs).toEqual(originalInputs)
-    })
   })
 
-  describe('Round-trip conversion', () => {
-    /**
-     * Test that converting from UserInputForm to PromptVariable and back
-     * preserves the essential data (though some fields may have defaults applied)
-     */
-    it('should preserve data through round-trip conversion', () => {
-      const originalUserInputs: UserInputFormItem[] = [
-        {
-          'text-input': {
-            label: 'Name',
-            variable: 'name',
-            required: true,
-            max_length: 50,
-            default: '',
-            hide: false,
-          },
+  describe('publishing loaded form fields', () => {
+    it.each([
+      {
+        'text-input': {
+          label: 'Name',
+          variable: 'name',
+          required: true,
+          max_length: 50,
+          default: 'Alice',
+          hide: true,
         },
-        {
-          select: {
-            label: 'Type',
-            variable: 'type',
-            required: false,
-            options: ['A', 'B', 'C'],
-            default: 'A',
-            hide: false,
-          },
+      },
+      {
+        paragraph: { label: 'Notes', variable: 'notes', required: false, default: 'Initial notes' },
+      },
+      { number: { label: 'Count', variable: 'count', required: false, default: 0 } },
+      { checkbox: { label: 'Enabled', variable: 'enabled', required: true, default: false } },
+      {
+        select: {
+          label: 'Choice',
+          variable: 'choice',
+          required: false,
+          options: ['A', 'B'],
+          default: 'B',
         },
-      ]
-
-      const promptVars = userInputsFormToPromptVariables(originalUserInputs)
-      const backToUserInputs = promptVariablesToUserInputsForm(promptVars)
-
-      expect(backToUserInputs).toHaveLength(2)
-      expect(getTextInput(backToUserInputs[0]).variable).toBe('name')
-      expect(getSelectInput(backToUserInputs[1]).variable).toBe('type')
-      expect(getSelectInput(backToUserInputs[1]).options).toEqual(['A', 'B', 'C'])
-    })
+      },
+      {
+        file: {
+          default: '',
+          label: 'Attachment',
+          variable: 'attachment',
+          required: true,
+          allowed_file_types: [SupportUploadFileTypes.image],
+          allowed_file_extensions: ['.png'],
+          allowed_file_upload_methods: ['local_file'],
+        },
+      },
+      {
+        'file-list': {
+          default: '',
+          label: 'Documents',
+          variable: 'documents',
+          required: false,
+          max_length: 5,
+          allowed_file_types: [SupportUploadFileTypes.document],
+          allowed_file_upload_methods: ['local_file', 'remote_url'],
+        },
+      },
+      {
+        json_object: {
+          label: 'JSON',
+          variable: 'json',
+          required: false,
+          default: '{"name":"Alice"}',
+          json_schema: { type: 'object', properties: { name: { type: 'string' } } },
+        },
+      },
+    ] satisfies UserInputFormItem[])(
+      'preserves the field type, defaults, and restrictions for %j',
+      (input) => {
+        const variables = userInputsFormToPromptVariables([input])
+        const restored = promptVariablesToUserInputsForm(variables)
+        expect(restored).toMatchObject([input])
+        expect(userInputsFormToPromptVariables(restored)).toEqual(variables)
+      },
+    )
   })
 })

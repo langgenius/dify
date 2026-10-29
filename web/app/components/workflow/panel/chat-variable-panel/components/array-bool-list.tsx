@@ -17,12 +17,12 @@ type Props = Readonly<{
 }>
 
 const ArrayValueList: FC<Props> = ({ className, list, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const handleChange = useCallback(
     (index: number) => {
       return (value: boolean) => {
-        const newList = produce(list, (draft: any[]) => {
+        const newList = produce(list, (draft) => {
           draft[index] = value
         })
         onChange(newList)
@@ -44,7 +44,7 @@ const ArrayValueList: FC<Props> = ({ className, list, onChange }) => {
   )
 
   const handleItemAdd = useCallback(() => {
-    const newList = produce(list, (draft: any[]) => {
+    const newList = produce(list, (draft) => {
       draft.push(false)
     })
     onChange(newList)

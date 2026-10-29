@@ -8,7 +8,7 @@ type EmptyProps = {
 }
 
 const Empty = ({ message, stepByStepTourTarget }: EmptyProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <FilterEmptyState

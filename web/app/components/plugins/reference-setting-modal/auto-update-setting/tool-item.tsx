@@ -6,7 +6,7 @@ import * as React from 'react'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 
 type Props = Readonly<{
   payload: PluginDetail

@@ -9,8 +9,7 @@ from typing import cast, override
 import httpx
 import pytest
 
-from agenton.compositor import CompositorSessionSnapshot
-from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.client import _client as client_module
 from dify_agent.client import (
@@ -48,8 +47,8 @@ from dify_agent.protocol import (
 def _create_run_payload() -> dict[str, object]:
     return {
         "composition": {
-            "schema_version": 1,
-            "layers": [{"name": "prompt", "type": PLAIN_PROMPT_LAYER_TYPE_ID, "config": {"user": "hello"}}],
+            "schema_version": 2,
+            "layers": [{"name": "prompt", "config": {"user": "hello"}}],
         }
     }
 
@@ -67,7 +66,7 @@ def _run_succeeded_event(*, event_id: str = "2-0", run_id: str = "run-1") -> Run
     return RunSucceededEvent(
         id=event_id,
         run_id=run_id,
-        data=RunSucceededEventData(output="done", session_snapshot=CompositorSessionSnapshot(layers=[])),
+        data=RunSucceededEventData(output="done", session_snapshot=SessionSnapshot(layers={})),
     )
 
 
@@ -98,9 +97,9 @@ def _binding_file_download_request(path: str = "report.txt") -> BindingFileDownl
     )
 
 
-def _assert_binding_download_timeout(request: httpx.Request) -> None:
+def _assert_binding_download_timeout(request: httpx.Request, expected: float = 240.0) -> None:
     timeout = cast(dict[str, float], request.extensions["timeout"])
-    assert timeout == {"connect": 90.0, "read": 90.0, "write": 90.0, "pool": 90.0}
+    assert timeout == {"connect": expected, "read": expected, "write": expected, "pool": expected}
 
 
 def _function_tool_result_payload(key: str) -> dict[str, object]:
@@ -247,7 +246,7 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
 
 
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
-    snapshot = CompositorSessionSnapshot(layers=[])
+    snapshot = SessionSnapshot(layers={})
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
@@ -398,13 +397,17 @@ def test_async_binding_file_methods_post_dtos_and_parse_responses() -> None:
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
         if request.url.path == "/execution-bindings/files/download":
-            _assert_binding_download_timeout(request)
+            _assert_binding_download_timeout(request, expected=123.5)
             return httpx.Response(200, json={"reference": "dify-file-ref:file-1"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-        client = Client(base_url="http://testserver", async_http_client=http_client)
+        client = Client(
+            base_url="http://testserver",
+            binding_file_download_timeout=123.5,
+            async_http_client=http_client,
+        )
 
         listing = await client.list_binding_files("binding-ref", ".")
         preview = await client.read_binding_file("binding-ref", "note.txt")

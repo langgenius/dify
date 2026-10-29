@@ -1,12 +1,13 @@
 'use client'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import Divider from '@/app/components/base/divider'
+import dynamic from 'next/dynamic'
+import { useLocale } from '#i18n'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { setLocaleOnClient } from '@/i18n-config'
-import { languages } from '@/i18n-config/language'
-import dynamic from '@/next/dynamic'
+import { setLocaleOnClient } from '@/i18n/client'
+import { languages } from '@/i18n/language'
+import { useRouter } from '@/next/navigation'
 import LocaleMenu from './_locale-menu'
 
 const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {
@@ -16,15 +17,16 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 
 const Header = () => {
   const locale = useLocale()
+  const router = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
-    <div className="flex w-full items-center justify-between p-6">
+    <header className="flex w-full items-center justify-between p-6">
       {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo ? (
         <img
           src={systemFeatures.branding.login_page_logo}
           className="block h-7 w-auto object-contain"
-          alt="logo"
+          alt={systemFeatures.branding.application_title || ''}
         />
       ) : (
         <DifyLogo alt="Dify" size="large" />
@@ -33,14 +35,15 @@ const Header = () => {
         <LocaleMenu
           value={locale}
           items={languages.filter((item) => item.supported)}
-          onChange={(value) => {
-            setLocaleOnClient(value, false)
+          onChange={async (value) => {
+            await setLocaleOnClient(value)
+            router.refresh()
           }}
         />
-        <Divider type="vertical" className="mx-0 ml-2 h-4" />
+        <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />
         <ThemeSelector />
       </div>
-    </div>
+    </header>
   )
 }
 

@@ -1,11 +1,10 @@
-import type { FileUploadConfigResponse } from '@/models/common'
-import type { Model, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
+import type { AppModelSelectionResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
+import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 type EnabledOrDisabled = {
   enabled?: boolean
 }
-
-type MoreLikeThis = EnabledOrDisabled
 
 export type OpeningStatement = EnabledOrDisabled & {
   opening_statement?: string
@@ -13,7 +12,7 @@ export type OpeningStatement = EnabledOrDisabled & {
 }
 
 export type SuggestedQuestionsAfterAnswer = EnabledOrDisabled & {
-  model?: Model
+  model?: AppModelSelectionResponse
   prompt?: string
 }
 
@@ -23,19 +22,17 @@ type TextToSpeech = EnabledOrDisabled & {
   autoPlay?: TtsAutoPlay
 }
 
-type SpeechToText = EnabledOrDisabled
-
-type RetrieverResource = EnabledOrDisabled
-
 type SensitiveWordAvoidance = EnabledOrDisabled & {
   type?: string
   config?: any
 }
 
-export enum PreviewMode {
-  NewPage = 'new_page',
-  CurrentPage = 'current_page',
-}
+export const PreviewMode = {
+  NewPage: 'new_page',
+  CurrentPage: 'current_page',
+} as const
+
+export type PreviewMode = (typeof PreviewMode)[keyof typeof PreviewMode]
 
 export type FileUpload = {
   image?: EnabledOrDisabled & {
@@ -63,7 +60,7 @@ export type FileUpload = {
   allowed_file_extensions?: string[]
   allowed_file_upload_methods?: TransferMethod[]
   number_limits?: number
-  fileUploadConfig?: FileUploadConfigResponse
+  fileUploadConfig?: UploadConfig
   preview_config?: {
     mode?: PreviewMode
     file_type_list?: string[]
@@ -80,25 +77,27 @@ type AnnotationReplyConfig = {
   }
 }
 
-export enum FeatureEnum {
-  moreLikeThis = 'moreLikeThis',
-  opening = 'opening',
-  suggested = 'suggested',
-  text2speech = 'text2speech',
-  speech2text = 'speech2text',
-  citation = 'citation',
-  moderation = 'moderation',
-  file = 'file',
-  annotationReply = 'annotationReply',
-}
+export const FeatureEnum = {
+  moreLikeThis: 'moreLikeThis',
+  opening: 'opening',
+  suggested: 'suggested',
+  text2speech: 'text2speech',
+  speech2text: 'speech2text',
+  citation: 'citation',
+  moderation: 'moderation',
+  file: 'file',
+  annotationReply: 'annotationReply',
+} as const
+
+export type FeatureEnum = (typeof FeatureEnum)[keyof typeof FeatureEnum]
 
 export type Features = {
-  [FeatureEnum.moreLikeThis]?: MoreLikeThis
+  [FeatureEnum.moreLikeThis]?: EnabledOrDisabled
   [FeatureEnum.opening]?: OpeningStatement
   [FeatureEnum.suggested]?: SuggestedQuestionsAfterAnswer
   [FeatureEnum.text2speech]?: TextToSpeech
-  [FeatureEnum.speech2text]?: SpeechToText
-  [FeatureEnum.citation]?: RetrieverResource
+  [FeatureEnum.speech2text]?: EnabledOrDisabled
+  [FeatureEnum.citation]?: EnabledOrDisabled
   [FeatureEnum.moderation]?: SensitiveWordAvoidance
   [FeatureEnum.file]?: FileUpload
   [FeatureEnum.annotationReply]?: AnnotationReplyConfig

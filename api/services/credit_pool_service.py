@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.credit_usage import normalize_credit_usage_app_type, normalize_credit_usage_created_by
 from core.errors.error import QuotaExceededError
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
@@ -25,6 +26,8 @@ from models.enums import ProviderQuotaType
 logger = logging.getLogger(__name__)
 
 FEATURE_KEY_CREDIT_POOL = "credit_pool"
+CREDIT_USAGE_CREATED_BY_META_KEY = "created_by"
+CREDIT_USAGE_APP_TYPE_META_KEY = "app_type"
 CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS = 10
 CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS = 5
 
@@ -124,6 +127,23 @@ class CreditPoolService:
         return pool_type.value if isinstance(pool_type, ProviderQuotaType) else str(pool_type)
 
     @staticmethod
+    def _build_billing_metadata(
+        source: str,
+        metadata: Mapping[str, object] | None,
+    ) -> dict[str, object]:
+        billing_metadata: dict[str, object] = {
+            "source": source,
+            **dict(metadata or {}),
+        }
+        billing_metadata[CREDIT_USAGE_CREATED_BY_META_KEY] = normalize_credit_usage_created_by(
+            billing_metadata.get(CREDIT_USAGE_CREATED_BY_META_KEY)
+        ).value
+        billing_metadata[CREDIT_USAGE_APP_TYPE_META_KEY] = normalize_credit_usage_app_type(
+            billing_metadata.get(CREDIT_USAGE_APP_TYPE_META_KEY)
+        ).value
+        return billing_metadata
+
+    @staticmethod
     def _use_billing_quota() -> bool:
         return bool(dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
 
@@ -171,19 +191,6 @@ class CreditPoolService:
             .limit(1)
             .with_for_update()
         )
-
-    @classmethod
-    def create_default_pool(cls, tenant_id: str, session: Session) -> TenantCreditPool:
-        """create default credit pool for new tenant"""
-        credit_pool = TenantCreditPool(
-            tenant_id=tenant_id,
-            quota_limit=dify_config.HOSTED_POOL_CREDITS,
-            quota_used=0,
-            pool_type=ProviderQuotaType.TRIAL,
-        )
-        session.add(credit_pool)
-        session.commit()
-        return credit_pool
 
     @classmethod
     def get_pool(
@@ -254,7 +261,7 @@ class CreditPoolService:
             raise ValueError("request_id is required")
 
         normalized_pool_type = cls._normalize_pool_type(pool_type)
-        reservation_meta = {"source": "credit_pool.reservation", **(meta or {})}
+        reservation_meta = cls._build_billing_metadata("credit_pool.reservation", meta)
         if cls._use_billing_quota():
             from services.billing_service import BillingService
 
@@ -299,10 +306,10 @@ class CreditPoolService:
         except QuotaExceededError:
             session.rollback()
             raise
-        except Exception:
+        except Exception as caught_error:
             session.rollback()
             logger.exception("Failed to reserve credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to reserve credits")
+            raise QuotaExceededError("Failed to reserve credits") from caught_error
 
         return CreditPoolReservation(
             tenant_id=tenant_id,
@@ -348,7 +355,7 @@ class CreditPoolService:
         pool_type: str | ProviderQuotaType = "trial",
         *,
         request_id: str | None = None,
-        metadata: Mapping[str, str] | None = None,
+        metadata: Mapping[str, object] | None = None,
         session: Session | None = None,
     ) -> int:
         """Deduct exactly the requested credits or raise without mutating the pool."""
@@ -360,7 +367,7 @@ class CreditPoolService:
             from services.billing_service import BillingService
 
             resolved_request_id = request_id or str(uuid4())
-            billing_metadata = {"source": "credit_pool.check_and_deduct", **dict(metadata or {})}
+            billing_metadata = cls._build_billing_metadata("credit_pool.check_and_deduct", metadata)
             result = BillingService.quota_reserve(
                 tenant_id=tenant_id,
                 feature_key=FEATURE_KEY_CREDIT_POOL,
@@ -421,9 +428,9 @@ class CreditPoolService:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to deduct credits")
+            raise QuotaExceededError("Failed to deduct credits") from caught_error
 
     @classmethod
     def deduct_credits_capped(
@@ -432,6 +439,8 @@ class CreditPoolService:
         credits_required: int,
         pool_type: str | ProviderQuotaType = "trial",
         *,
+        request_id: str | None = None,
+        metadata: Mapping[str, object] | None = None,
         session: Session | None = None,
     ) -> int:
         """Deduct up to the available balance and return the actual deducted credits."""
@@ -442,13 +451,14 @@ class CreditPoolService:
         if cls._use_billing_quota():
             from services.billing_service import BillingService
 
+            billing_metadata = cls._build_billing_metadata("credit_pool.deduct_capped", metadata)
             result = BillingService.quota_consume_capped(
                 tenant_id=tenant_id,
                 feature_key=FEATURE_KEY_CREDIT_POOL,
                 bucket=normalized_pool_type,
-                request_id=str(uuid4()),
+                request_id=request_id or str(uuid4()),
                 amount=credits_required,
-                meta={"source": "credit_pool.deduct_capped"},
+                meta=billing_metadata,
             )
             return result["deducted"]
 
@@ -472,6 +482,6 @@ class CreditPoolService:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("Failed to deduct capped credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to deduct credits")
+            raise QuotaExceededError("Failed to deduct credits") from caught_error

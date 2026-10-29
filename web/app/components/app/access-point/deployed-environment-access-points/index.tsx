@@ -1,8 +1,9 @@
 'use client'
 
-import type { AccessPoint } from '@/app/components/app/deploy/access-point'
+import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { useTranslation } from 'react-i18next'
-import { AccessPointCard, AccessPointEmptyContent } from '../shared/access-point-card'
+import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { EnvironmentServiceApiCard } from './environment-service-api-card'
 import { EnvironmentWebAppCard } from './environment-web-app-card'
 
@@ -31,24 +32,23 @@ const UNSUPPORTED_ACCESS_POINTS = ['mcp', 'trigger'] as const
 type DeployedEnvironmentAccessPointsProps = {
   appId: string
   environmentId: string
-  canEdit: boolean
-  canManage: boolean
+  canManageAccessPoint: boolean
   highlightedAccessPoint?: AccessPoint | null
 }
 
 export function DeployedEnvironmentAccessPoints({
   appId,
   environmentId,
-  canEdit,
-  canManage,
+  canManageAccessPoint,
   highlightedAccessPoint,
 }: DeployedEnvironmentAccessPointsProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['deployments', 'tools', 'navigation'])
+  const unsupportedStatusLabel = useAccessPointStatusLabel('unsupported')
 
   const title = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {
     const key = ACCESS_POINT_CONFIG[accessPoint].title
     if (key === 'mcp') return t(($) => $['mcp.server.title'], { ns: 'tools' })
-    return t(($) => $['settings.trigger'], { ns: 'common' })
+    return t(($) => $['settings.trigger'], { ns: 'navigation' })
   }
 
   const description = (accessPoint: (typeof UNSUPPORTED_ACCESS_POINTS)[number]) => {
@@ -67,14 +67,13 @@ export function DeployedEnvironmentAccessPoints({
       <EnvironmentWebAppCard
         appId={appId}
         environmentId={environmentId}
-        canEdit={canEdit}
-        canManage={canManage}
+        canManageAccessPoint={canManageAccessPoint}
         highlighted={highlightedAccessPoint === 'webApp'}
       />
       <EnvironmentServiceApiCard
         appId={appId}
         environmentId={environmentId}
-        canManage={canManage}
+        canManageAccessPoint={canManageAccessPoint}
         highlighted={highlightedAccessPoint === 'serviceApi'}
       />
       {UNSUPPORTED_ACCESS_POINTS.map((accessPoint) => {
@@ -85,6 +84,7 @@ export function DeployedEnvironmentAccessPoints({
             description={description(accessPoint)}
             icon={ACCESS_POINT_CONFIG[accessPoint].icon}
             status="unsupported"
+            statusLabel={unsupportedStatusLabel}
             highlighted={highlightedAccessPoint === accessPoint}
           >
             <AccessPointEmptyContent>

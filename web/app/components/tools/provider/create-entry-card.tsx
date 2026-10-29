@@ -29,9 +29,8 @@ const CreateEntryCard = ({
     >
       <button
         type="button"
-        aria-label={title}
         title={title}
-        className="group flex h-21 w-full cursor-pointer items-center gap-3 p-4 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+        className="group flex h-21 w-full cursor-pointer items-center gap-3 p-4 text-start outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
         onClick={onCreate}
       >
         <div className="flex size-10 shrink-0 items-center justify-center">
@@ -52,7 +51,6 @@ const CreateEntryCard = ({
         href={linkUrl}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={linkText}
         title={linkText}
         className="flex h-8 items-center gap-0.5 border-t border-divider-subtle px-3 py-2 text-components-button-secondary-text outline-hidden hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
       >
@@ -61,7 +59,7 @@ const CreateEntryCard = ({
             {linkText}
           </div>
         </div>
-        <RiArrowRightUpLine className="size-4 shrink-0" />
+        <RiArrowRightUpLine className="size-4 shrink-0 rtl:-scale-x-100" />
       </a>
     </div>
   )

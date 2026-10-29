@@ -8,7 +8,7 @@ type PageUnavailableProps = {
 }
 
 const PageUnavailable = ({ className }: PageUnavailableProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className={cn('flex h-screen w-screen items-center justify-center', className)}>

@@ -1,335 +1,245 @@
-import type { PropsWithChildren } from 'react'
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { fireEvent, screen } from '@testing-library/react'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
+import type { Node } from '@/app/components/workflow/types'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { ITERATION_PADDING, LOOP_PADDING } from '@/app/components/workflow/constants'
+import codeDefault from '@/app/components/workflow/nodes/code/default'
+import iterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import loopDefault from '@/app/components/workflow/nodes/loop/default'
+import toolDefault from '@/app/components/workflow/nodes/tool/default'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import BaseNode from '../node'
 
-const mockHasNodeInspectVars = vi.fn()
-const mockUseNodePluginInstallation = vi.fn()
-const mockHandleNodeIterationChildSizeChange = vi.fn()
-const mockHandleNodeLoopChildSizeChange = vi.fn()
-const mockUseNodeResizeObserver = vi.fn()
-const mockUseCollaboration = vi.fn()
+const view = (node: Node) => (
+  <BaseNode id={node.id} data={node.data}>
+    <div>Node content</div>
+  </BaseNode>
+)
+function renderNode(node: Node, parents: Node[] = []) {
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { enable_collaboration_mode: false, enable_marketplace: false },
+    workspacePermissionKeys: ['plugin.install'],
+  })
+  seedAppDslVersion(queryClient)
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
+  const result = renderWorkflowFlowComponent(
+    <>
+      {view(node)}
+      <ContainerSize />
+    </>,
+    {
+      queryClient,
+      nodes: [...parents, node],
+    },
+  )
+  return { ...result, queryClient }
+}
+function ContainerSize() {
+  const parent = useNodes<Node['data']>().find((node) => node.id === 'parent')
+  return (
+    <output aria-label="Container size">
+      {parent ? `${parent.data.width} × ${parent.data.height}` : ''}
+    </output>
+  )
+}
 
-vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-tool-icon')>()
+afterEach(() => vi.unstubAllGlobals())
 
-  return {
-    ...actual,
-    useToolIcon: () => undefined,
-  }
+it('removes the missing-plugin lock when the catalog gains the tool and accepts a run request', async () => {
+  const user = userEvent.setup()
+  const node = createNode({
+    id: 'tool',
+    data: {
+      ...toolDefault.defaultValue,
+      type: BlockEnum.Tool,
+      title: 'Search documents',
+      desc: 'Search workspace knowledge',
+      selected: true,
+      provider_type: 'builtin',
+      provider_id: 'search',
+      provider_name: 'search',
+      plugin_id: 'plugin-search',
+      plugin_unique_identifier: 'plugin-search@1.0.0',
+      tool_name: 'search',
+      tool_label: 'Search',
+    },
+  })
+  const { queryClient, store } = renderNode(node)
+  expect(screen.getByRole('button', { name: 'plugin.installPlugin' })).toBeDisabled()
+  act(() =>
+    seedToolProviders(queryClient, {
+      builtInTools: [
+        createToolProviderFixture({
+          id: 'search',
+          name: 'search',
+          plugin_id: 'plugin-search',
+          plugin_unique_identifier: 'plugin-search@1.0.0',
+        }),
+      ],
+    }),
+  )
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'plugin.installPlugin' })).not.toBeInTheDocument(),
+  )
+  expect(screen.getByText('Search workspace knowledge')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'tool', action: 'run' })
 })
 
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  }
-})
-
-vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
-  useCollaboration: (...args: unknown[]) => mockUseCollaboration(...args),
-}))
-
-vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
-  default: () => ({
-    hasNodeInspectVars: mockHasNodeInspectVars,
-  }),
-}))
-
-vi.mock('../../../hooks/use-node-plugin-installation', () => ({
-  useNodePluginInstallation: (...args: unknown[]) => mockUseNodePluginInstallation(...args),
-}))
-
-vi.mock('@/app/components/workflow/nodes/iteration/use-interactions', () => ({
-  useNodeIterationInteractions: () => ({
-    handleNodeIterationChildSizeChange: mockHandleNodeIterationChildSizeChange,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/loop/use-interactions', () => ({
-  useNodeLoopInteractions: () => ({
-    handleNodeLoopChildSizeChange: mockHandleNodeLoopChildSizeChange,
-  }),
-}))
-
-vi.mock('../use-node-resize-observer', () => ({
-  default: (options: { enabled: boolean; onResize: () => void }) => {
-    mockUseNodeResizeObserver(options)
-    if (options.enabled) options.onResize()
-  },
-}))
-
-vi.mock('../components/add-variable-popup-with-position', () => ({
-  default: () => <div data-testid="add-var-popup" />,
-}))
-vi.mock('../components/entry-node-container', () => ({
-  __esModule: true,
-  StartNodeTypeEnum: { Start: 'start', Trigger: 'trigger' },
-  default: ({ children }: PropsWithChildren) => (
-    <div data-testid="entry-node-container">{children}</div>
-  ),
-}))
-vi.mock('../components/error-handle/error-handle-on-node', () => ({
-  default: () => <div data-testid="error-handle-node" />,
-}))
-vi.mock('../components/node-control', () => ({
-  default: () => <div data-testid="node-control" />,
-}))
-vi.mock('../components/node-handle', () => ({
-  NodeSourceHandle: () => <div data-testid="node-source-handle" />,
-  NodeTargetHandle: () => <div data-testid="node-target-handle" />,
-}))
-vi.mock('../components/node-resizer', () => ({
-  default: () => <div data-testid="node-resizer" />,
-}))
-vi.mock('../components/retry/retry-on-node', () => ({
-  default: () => <div data-testid="retry-node" />,
-}))
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: () => <div data-testid="block-icon" />,
-}))
-vi.mock('@/app/components/workflow/nodes/tool/components/copy-id', () => ({
-  default: ({ content }: { content: string }) => <div>{content}</div>,
-}))
-vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
-  selectWorkflowNode: vi.fn(),
-}))
-
-const createData = (overrides: Record<string, unknown> = {}) => ({
-  type: BlockEnum.Tool,
-  title: 'Node title',
-  desc: 'Node description',
-  selected: false,
-  width: 280,
-  height: 180,
-  provider_type: 'builtin',
-  provider_id: 'tool-1',
-  _runningStatus: undefined,
-  _singleRunningStatus: undefined,
-  ...overrides,
-})
-
-const toNodeData = (data: ReturnType<typeof createData>) => data as CommonNodeType
-
-describe('BaseNode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockHasNodeInspectVars.mockReturnValue(false)
-    mockUseNodeResizeObserver.mockReset()
-    mockUseCollaboration.mockReturnValue({ nodePanelPresence: {} })
-    mockUseNodePluginInstallation.mockReturnValue({
-      shouldDim: false,
-      isChecking: false,
-      isMissing: false,
-      canInstall: false,
-      uniqueIdentifier: undefined,
-    })
-  })
-
-  it('should render content, handles and description for a regular node', () => {
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData())}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-
-    expect(screen.getByText('Node title')).toBeInTheDocument()
-    expect(screen.getByText('Node description')).toBeInTheDocument()
-    expect(screen.getByTestId('node-control')).toBeInTheDocument()
-    expect(screen.getByTestId('node-source-handle')).toBeInTheDocument()
-    expect(screen.getByTestId('node-target-handle')).toBeInTheDocument()
-  })
-
-  it('should expose the node title area as a selectable button', async () => {
-    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
-
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData())}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-
-    const node = screen.getByRole('button', { name: 'Node title' })
-
-    fireEvent.click(node)
-
-    expect(selectWorkflowNode).toHaveBeenCalledWith('node-1')
-  })
-
-  it('should not select the node from the title button while in comment mode', async () => {
-    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
-
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData())}>
-        <div>Body</div>
-      </BaseNode>,
-      { initialStoreState: { controlMode: ControlMode.Comment } },
-    )
-
-    const node = screen.getByRole('button', { name: 'Node title' })
-
-    fireEvent.click(node)
-
-    expect(selectWorkflowNode).not.toHaveBeenCalled()
-  })
-
-  it('should keep header metadata outside the selectable button', () => {
-    renderWorkflowComponent(
-      <BaseNode
-        id="node-1"
-        data={toNodeData(
-          createData({
-            type: BlockEnum.Iteration,
-            is_parallel: true,
-          }),
-        )}
-      >
-        <div>Iteration body</div>
-      </BaseNode>,
-    )
-
-    const titleButton = screen.getByRole('button', { name: 'Node title' })
-    const parallelButton = screen.getByRole('button', {
-      name: /workflow\.nodes\.iteration\.parallelModeUpper/,
-    })
-
-    expect(titleButton).not.toContainElement(parallelButton)
-    expect(titleButton.querySelector('button')).toBeNull()
-  })
-
-  it('should render entry nodes inside the entry container', () => {
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData({ type: BlockEnum.Start }))}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-
-    expect(screen.getByTestId('entry-node-container')).toBeInTheDocument()
-  })
-
-  it('should block interaction when plugin installation is required', () => {
-    mockUseNodePluginInstallation.mockReturnValue({
-      shouldDim: false,
-      isChecking: false,
-      isMissing: true,
-      canInstall: true,
-      uniqueIdentifier: 'plugin-1',
-    })
-
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData())}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-
-    const overlay = screen.getByRole('button', { name: 'plugin.installPlugin' })
-    expect(overlay).toBeInTheDocument()
-    expect(overlay).toBeDisabled()
-  })
-
-  it('should render running status indicators for loop nodes', () => {
-    renderWorkflowComponent(
-      <BaseNode
-        id="node-1"
-        data={toNodeData(
-          createData({
-            type: BlockEnum.Loop,
-            _loopIndex: 3,
-            _runningStatus: NodeRunningStatus.Running,
-            width: 320,
-            height: 220,
-          }),
-        )}
-      >
-        <div>Loop body</div>
-      </BaseNode>,
-    )
-
-    expect(screen.getByText(/workflow\.nodes\.loop\.currentLoopCount/)).toBeInTheDocument()
-    expect(screen.getByTestId('node-resizer')).toBeInTheDocument()
-  })
-
-  it('should render an iteration node resizer and dimmed overlay', () => {
-    mockUseNodePluginInstallation.mockReturnValue({
-      shouldDim: true,
-      isChecking: false,
-      isMissing: false,
-      canInstall: false,
-      uniqueIdentifier: undefined,
-    })
-
-    renderWorkflowComponent(
-      <BaseNode
-        id="node-1"
-        data={toNodeData(
-          createData({
-            type: BlockEnum.Iteration,
-            selected: true,
-            isInIteration: true,
-          }),
-        )}
-      >
-        <div>Iteration body</div>
-      </BaseNode>,
-    )
-
-    expect(screen.getByTestId('node-resizer')).toBeInTheDocument()
-    expect(screen.getByTestId('workflow-node-install-overlay')).toBeInTheDocument()
-    expect(mockHandleNodeIterationChildSizeChange).toHaveBeenCalledWith('node-1')
-  })
-
-  it('should trigger loop resize updates when the selected node is inside a loop', () => {
-    renderWorkflowComponent(
-      <BaseNode
-        id="node-2"
-        data={toNodeData(
-          createData({
-            type: BlockEnum.Loop,
-            selected: true,
-            isInLoop: true,
-          }),
-        )}
-      >
-        <div>Loop body</div>
-      </BaseNode>,
-    )
-
-    expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
-    expect(mockUseNodeResizeObserver).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: true }),
-    )
-  })
-
-  it('should keep viewer avatars outside the truncated title area', () => {
-    const longTitle =
-      'This is a very long node title that should truncate before it clips the viewer avatars'
-    mockUseCollaboration.mockReturnValue({
-      nodePanelPresence: {
-        'node-1': {
-          'client-1': {
-            userId: 'viewer-1',
-            username: 'Zed',
-            avatar: null,
-            clientId: 'client-1',
-            timestamp: Date.now(),
-          },
-        },
+it('caps parallel iteration progress and explains parallel execution from the node header', async () => {
+  const user = userEvent.setup()
+  renderNode(
+    createNode({
+      id: 'iteration',
+      data: {
+        ...iterationDefault.defaultValue,
+        type: BlockEnum.Iteration,
+        is_parallel: true,
+        _iterationLength: 3,
+        _iterationIndex: 5,
+        _runningStatus: NodeRunningStatus.Running,
       },
-    })
-
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData({ title: longTitle }))}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-
-    const titleContainer = screen.getByTitle(longTitle)
-    expect(titleContainer).toHaveClass('min-w-0', 'grow', 'truncate')
-    expect(titleContainer?.nextElementSibling).toHaveClass('shrink-0')
-    expect(screen.getByText('Z')).toBeInTheDocument()
-  })
+    }),
+  )
+  expect(screen.getByText('3/3')).toBeInTheDocument()
+  expect(screen.getByText('workflow.nodes.iteration.parallelModeUpper')).toBeInTheDocument()
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.nodes.iteration.parallelModeEnableTitle' }),
+  )
+  expect(await screen.findByRole('dialog')).toHaveTextContent(
+    'workflow.nodes.iteration.parallelModeEnableDesc',
+  )
 })
+
+it('changes the loop count from current progress to total iterations on completion', () => {
+  const node = createNode({
+    id: 'loop',
+    data: {
+      ...loopDefault.defaultValue,
+      type: BlockEnum.Loop,
+      title: 'Retry loop',
+      _loopIndex: 3,
+      _runningStatus: NodeRunningStatus.Running,
+    },
+  })
+  const { rerender } = renderNode(node)
+  expect(
+    screen.getByText('workflowLogic.nodes.loop.currentLoopCount:{"count":3}'),
+  ).toBeInTheDocument()
+  rerender(view({ ...node, data: { ...node.data, _runningStatus: NodeRunningStatus.Succeeded } }))
+  expect(
+    screen.getByText('workflowLogic.nodes.loop.totalLoopCount:{"count":3}'),
+  ).toBeInTheDocument()
+  expect(screen.queryByText(/workflowLogic.nodes.loop.currentLoopCount/)).not.toBeInTheDocument()
+})
+
+function observeNodeResizes() {
+  const observers = new Set<ResizeObserverStub>()
+  class ResizeObserverStub implements ResizeObserver {
+    readonly targets = new Set<Element>()
+    readonly callback: ResizeObserverCallback
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback
+      observers.add(this)
+    }
+    observe(target: Element) {
+      this.targets.add(target)
+    }
+    unobserve(target: Element) {
+      this.targets.delete(target)
+    }
+    disconnect() {
+      this.targets.clear()
+      observers.delete(this)
+    }
+  }
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+  return (content: HTMLElement) => {
+    // Deliver a browser-boundary notification to the observed node containing this public slot.
+    for (const observer of [...observers]) {
+      for (const target of observer.targets) {
+        if (!target.contains(content)) continue
+        observer.callback(
+          [
+            {
+              target,
+              contentRect: target.getBoundingClientRect(),
+              borderBoxSize: [],
+              contentBoxSize: [],
+              devicePixelContentBoxSize: [],
+            },
+          ],
+          observer,
+        )
+      }
+    }
+  }
+}
+
+it.each([
+  {
+    type: BlockEnum.Iteration,
+    selected: false,
+    parentDefaults: iterationDefault.defaultValue,
+    padding: ITERATION_PADDING,
+    childFlags: { isInIteration: true },
+  },
+  {
+    type: BlockEnum.Iteration,
+    selected: true,
+    parentDefaults: iterationDefault.defaultValue,
+    padding: ITERATION_PADDING,
+    childFlags: { isInIteration: true },
+  },
+  {
+    type: BlockEnum.Loop,
+    selected: true,
+    parentDefaults: loopDefault.defaultValue,
+    padding: LOOP_PADDING,
+    childFlags: { isInLoop: true },
+  },
+])(
+  'resizes a $type container only for a selected child ($selected)',
+  ({ type, selected, parentDefaults, padding, childFlags }) => {
+    const resize = observeNodeResizes()
+    renderNode(
+      createNode({
+        id: 'child',
+        parentId: 'parent',
+        position: { x: 100, y: 90 },
+        width: 60,
+        height: 40,
+        data: { ...codeDefault.defaultValue, ...childFlags, selected },
+      }),
+      [
+        createNode({
+          id: 'parent',
+          width: 120,
+          height: 80,
+          data: { ...parentDefaults, type, width: 120, height: 80 },
+        }),
+      ],
+    )
+    expect(screen.getByRole('status', { name: 'Container size' })).toHaveTextContent('120 × 80')
+    act(() => resize(screen.getByText('Node content')))
+    expect(screen.getByRole('status', { name: 'Container size' })).toHaveTextContent(
+      selected ? `${160 + padding.right} × ${130 + padding.bottom}` : '120 × 80',
+    )
+  },
+)

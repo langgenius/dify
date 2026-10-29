@@ -185,7 +185,7 @@ class TriggerSubscriptionBuilderService:
                 try:
                     provider_controller.validate_credentials(user_id, credentials_to_validate)
                 except ToolProviderCredentialValidationError as e:
-                    raise ValueError(f"Invalid credentials: {e}")
+                    raise ValueError(f"Invalid credentials: {e}") from e
                 return {"verified": True}
 
             return {"verified": True}
@@ -267,7 +267,11 @@ class TriggerSubscriptionBuilderService:
                     credentials=subscription_builder.credentials,
                     credential_type=credential_type,
                     credential_expires_at=subscription_builder.credential_expires_at or -1,
-                    expires_at=subscription_builder.expires_at,
+                    expires_at=(
+                        subscription.expires_at
+                        if subscription.expires_at is not None
+                        else (subscription_builder.expires_at or -1)
+                    ),
                 )
 
             # Delete the builder after successful subscription creation

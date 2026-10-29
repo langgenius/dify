@@ -1,156 +1,89 @@
-import type { ReactElement } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
+import type { RecipientData } from '../../../../types'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
-import { withSelectorKey } from '@/test/i18n-mock'
+import { render } from '@/test/console/render'
 import Recipient from '../index'
-
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
-const mockUseMembers = vi.hoisted(() => vi.fn())
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { email: 'owner@example.com' },
-  currentWorkspace: { name: "Dify's Lab" },
-}))
-
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
-  })
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState)
+  return createWorkspaceStateModuleMock(() => ({ currentWorkspace: { name: "Dify's Lab" } }))
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': () =>
+        Promise.resolve({
+          accounts: [
+            {
+              id: 'member-1',
+              email: 'member-1@example.com',
+              name: 'Member One',
+              avatar_url: null,
+              role: 'normal',
+              status: 'active',
+            },
+            {
+              id: 'member-2',
+              email: 'member-2@example.com',
+              name: 'Member Two',
+              avatar_url: null,
+              role: 'normal',
+              status: 'active',
+            },
+          ],
+        }),
+    }),
+  }
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => mockUseMembers(),
-}))
-
-vi.mock('../member-selector', () => ({
-  __esModule: true,
-  default: ({ onSelect }: { onSelect: (id: string) => void }) => (
-    <button type="button" onClick={() => onSelect('member-2')}>
-      add-member
-    </button>
-  ),
-}))
-
-vi.mock('../email-input', () => ({
-  __esModule: true,
-  default: (props: {
-    onAdd: (email: string) => void
-    onSelect: (id: string) => void
-    onDelete: (recipient: { type: 'member' | 'external'; user_id?: string; email?: string }) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => props.onAdd('new@example.com')}>
-        add-email
-      </button>
-      <button type="button" onClick={() => props.onSelect('member-3')}>
-        add-email-member
-      </button>
-      <button type="button" onClick={() => props.onDelete({ type: 'member', user_id: 'member-1' })}>
-        delete-member
-      </button>
-      <button
-        type="button"
-        onClick={() => props.onDelete({ type: 'external', email: 'external@example.com' })}
-      >
-        delete-external
-      </button>
-    </div>
-  ),
-}))
-
-describe('Recipient', () => {
-  const onChange = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey(
-        (key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key,
-      ),
-    })
-    mockConsoleStateReader.mockReturnValue(mockConsoleState)
-    mockUseMembers.mockReturnValue({
-      data: {
-        accounts: [
-          { id: 'member-1', email: 'member-1@example.com', name: 'Member One' },
-          { id: 'member-2', email: 'member-2@example.com', name: 'Member Two' },
-          { id: 'member-3', email: 'member-3@example.com', name: 'Member Three' },
-        ],
-      },
-    })
-  })
-
-  it('should render workspace details and update recipients through member/email actions', () => {
-    render(
-      <Recipient
-        data={{
-          whole_workspace: false,
-          items: [
-            { type: 'member', user_id: 'member-1' },
-            { type: 'external', email: 'external@example.com' },
-          ],
-        }}
-        onChange={onChange}
-      />,
+it('retains member and external recipients through additions, deletions and workspace delivery changes', async () => {
+  function RecipientForm() {
+    const [data, setData] = useState<RecipientData>({ whole_workspace: false, items: [] })
+    return (
+      <>
+        <Recipient data={data} onChange={setData} />
+        <output aria-label="Recipients">{JSON.stringify(data)}</output>
+      </>
     )
-
-    expect(screen.getByText('D')).toBeInTheDocument()
-    expect(screen.getByText('Dify’s Lab')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('add-member'))
-    fireEvent.click(screen.getByText('add-email'))
-    fireEvent.click(screen.getByText('add-email-member'))
-    fireEvent.click(screen.getByText('delete-member'))
-    fireEvent.click(screen.getByText('delete-external'))
-    fireEvent.click(screen.getByRole('switch'))
-
-    expect(onChange).toHaveBeenNthCalledWith(1, {
+  }
+  const user = userEvent.setup()
+  render(<RecipientForm />, {
+    wrapper: createAccountProfileQueryWrapper({ email: 'owner@example.com' }),
+  })
+  await user.click(screen.getByRole('button', { name: /memberSelector.trigger/ }))
+  await user.click(await screen.findByRole('button', { name: /Member One/ }))
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: /Member One/ })).not.toBeInTheDocument(),
+  )
+  expect(screen.getByText('member-1@example.com')).toBeVisible()
+  const input = screen.getByRole('textbox')
+  await user.type(input, 'external@example.com{Enter}')
+  expect(screen.getByText('external@example.com')).toBeVisible()
+  await user.type(input, 'member-2@example.com{Enter}')
+  expect(screen.getByRole('status', { name: 'Recipients' })).toHaveTextContent(
+    JSON.stringify({
       whole_workspace: false,
       items: [
         { type: 'member', user_id: 'member-1' },
         { type: 'external', email: 'external@example.com' },
         { type: 'member', user_id: 'member-2' },
       ],
-    })
-    expect(onChange).toHaveBeenNthCalledWith(2, {
-      whole_workspace: false,
-      items: [
-        { type: 'member', user_id: 'member-1' },
-        { type: 'external', email: 'external@example.com' },
-        { type: 'external', email: 'new@example.com' },
-      ],
-    })
-    expect(onChange).toHaveBeenNthCalledWith(3, {
-      whole_workspace: false,
-      items: [
-        { type: 'member', user_id: 'member-1' },
-        { type: 'external', email: 'external@example.com' },
-        { type: 'member', user_id: 'member-3' },
-      ],
-    })
-    expect(onChange).toHaveBeenNthCalledWith(4, {
-      whole_workspace: false,
-      items: [{ type: 'external', email: 'external@example.com' }],
-    })
-    expect(onChange).toHaveBeenNthCalledWith(5, {
-      whole_workspace: false,
-      items: [{ type: 'member', user_id: 'member-1' }],
-    })
-    expect(onChange).toHaveBeenNthCalledWith(6, {
+    }),
+  )
+  await user.keyboard('{Backspace}{Backspace}')
+  expect(screen.queryByText('external@example.com')).not.toBeInTheDocument()
+  expect(screen.queryByText('member-2@example.com')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('switch', { name: /allMembers/ }))
+  expect(screen.getByRole('switch')).toBeChecked()
+  expect(screen.getByRole('status', { name: 'Recipients' })).toHaveTextContent(
+    JSON.stringify({
       whole_workspace: true,
-      items: [
-        { type: 'member', user_id: 'member-1' },
-        { type: 'external', email: 'external@example.com' },
-      ],
-    })
-  })
+      items: [{ type: 'member', user_id: 'member-1' }],
+    }),
+  )
 })

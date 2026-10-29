@@ -1,15 +1,13 @@
 'use client'
 
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
-type CommunityEditionTipProps = {
+type CommunityEditionTipProps = Pick<PopoverContentProps, 'className' | 'side' | 'align'> & {
   tip: string
-  placement?: Placement
-  popupClassName?: string
 }
 
 /**
@@ -17,11 +15,7 @@ type CommunityEditionTipProps = {
  * Renders nothing on enterprise or cloud deployments, so callers do not repeat
  * the edition check.
  */
-export function CommunityEditionTip({
-  tip,
-  placement = 'bottom',
-  popupClassName,
-}: CommunityEditionTipProps) {
+export function CommunityEditionTip({ tip, side, align, className }: CommunityEditionTipProps) {
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -39,7 +33,7 @@ export function CommunityEditionTip({
         render={
           <button
             type="button"
-            className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm"
           >
             <span
               aria-hidden
@@ -49,8 +43,9 @@ export function CommunityEditionTip({
         }
       />
       <PopoverContent
-        placement={placement}
-        popupClassName={cn('px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
+        side={side}
+        align={align}
+        className={cn('px-3 py-2 system-xs-regular text-text-tertiary', className)}
       >
         {tip}
       </PopoverContent>

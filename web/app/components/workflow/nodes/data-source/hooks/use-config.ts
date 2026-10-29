@@ -1,18 +1,24 @@
-import type { DataSourceNodeType, ToolVarInputs } from '../types'
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
+import type { ResourceVarInputs } from '../../_base/types'
+import type { DataSourceNodeType } from '../types'
 import { useCallback, useEffect, useMemo } from 'react'
-import { useStoreApi } from 'reactflow'
+import { useReactFlow } from 'reactflow'
+import { matchDataSource } from '@/app/components/workflow/utils/plugin-install-check'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 
-export const useConfig = (id: string, dataSourceList?: any[]) => {
-  const store = useStoreApi()
+export const useConfig = (
+  id: string,
+  data: DataSourceNodeType,
+  dataSourceList?: RagPipelineDatasourceProviderResponse[],
+) => {
+  const { getNodes } = useReactFlow<DataSourceNodeType>()
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
 
   const getNodeData = useCallback(() => {
-    const { getNodes } = store.getState()
     const nodes = getNodes()
 
     return nodes.find((node) => node.id === id)
-  }, [store, id])
+  }, [getNodes, id])
 
   const handleNodeDataUpdate = useCallback(
     (data: Partial<DataSourceNodeType>) => {
@@ -51,7 +57,7 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
   )
 
   const handleParametersChange = useCallback(
-    (datasource_parameters: ToolVarInputs) => {
+    (datasource_parameters: ResourceVarInputs) => {
       const nodeData = getNodeData()
       handleNodeDataUpdate({
         ...nodeData?.data,
@@ -62,59 +68,42 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
   )
 
   const outputSchema = useMemo(() => {
-    const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList) return []
+    if (!dataSourceList) return []
 
-    const currentDataSource = dataSourceList.find(
-      (ds: any) => ds.plugin_id === nodeData.data.plugin_id,
+    const provider = matchDataSource(dataSourceList, data)
+    const datasource = provider?.declaration.datasources?.find(
+      (item) => item.identity.name === data.datasource_name,
     )
-    const currentDataSourceItem = currentDataSource?.tools?.find(
-      (tool: any) => tool.name === nodeData.data.datasource_name,
-    )
-    const output_schema = currentDataSourceItem?.output_schema
+    const properties = datasource?.output_schema?.properties
+    if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return []
 
-    const res: any[] = []
-    if (!output_schema || !output_schema.properties) return res
-
-    Object.keys(output_schema.properties).forEach((outputKey) => {
-      const output = output_schema.properties[outputKey]
-      const type = output.type
-      if (type === 'object') {
-        res.push({
-          name: outputKey,
-          value: output,
-        })
-      } else {
-        res.push({
-          name: outputKey,
-          type:
-            output.type === 'array'
-              ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-              : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
-          description: output.description,
-        })
+    return Object.entries(properties).map(([name, value]: [string, unknown]) => {
+      const schema = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+      const type =
+        'type' in schema && typeof schema.type === 'string' && schema.type ? schema.type : 'unknown'
+      const items = 'items' in schema ? schema.items : undefined
+      const itemType =
+        items &&
+        typeof items === 'object' &&
+        'type' in items &&
+        typeof items.type === 'string' &&
+        items.type
+          ? items.type
+          : 'unknown'
+      return {
+        name,
+        value,
+        type: type === 'array' ? `array[${itemType}]` : type,
+        description:
+          'description' in schema && typeof schema.description === 'string'
+            ? schema.description
+            : '',
+        isObject: type === 'object',
       }
     })
-    return res
-  }, [getNodeData, dataSourceList])
+  }, [data, dataSourceList])
 
-  const hasObjectOutput = useMemo(() => {
-    const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList) return false
-
-    const currentDataSource = dataSourceList.find(
-      (ds: any) => ds.plugin_id === nodeData.data.plugin_id,
-    )
-    const currentDataSourceItem = currentDataSource?.tools?.find(
-      (tool: any) => tool.name === nodeData.data.datasource_name,
-    )
-    const output_schema = currentDataSourceItem?.output_schema
-
-    if (!output_schema || !output_schema.properties) return false
-
-    const properties = output_schema.properties
-    return Object.keys(properties).some((key) => properties[key].type === 'object')
-  }, [getNodeData, dataSourceList])
+  const hasObjectOutput = outputSchema.some((output) => output.isObject)
 
   return {
     handleFileExtensionsChange,

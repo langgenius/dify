@@ -1,6 +1,7 @@
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   clampNodePanelWidth,
@@ -21,8 +22,8 @@ describe('workflow-panel helpers', () => {
     payload: Partial<CustomRunFormProps['payload']>,
   ): CustomRunFormProps => ({
     nodeId: 'node-1',
-    flowId: 'flow-1',
-    flowType: 'app' as CustomRunFormProps['flowType'],
+    resource: { kind: 'app', appId: 'flow-1', mode: 'workflow' },
+
     payload: payload as CustomRunFormProps['payload'],
     setRunResult: vi.fn(),
     setIsRunAfterSingleRun: vi.fn(),
@@ -52,7 +53,7 @@ describe('workflow-panel helpers', () => {
 
   describe('tool and provider lookup', () => {
     it('should prefer fresh built-in tool data when it is available', () => {
-      const storeTools = [{ id: 'legacy/tool', allow_delete: false }]
+      const storeTools = [{ id: 'provider/tool', allow_delete: false }]
       const queryTools = [{ id: 'provider/tool', allow_delete: true }]
 
       expect(
@@ -76,7 +77,7 @@ describe('workflow-panel helpers', () => {
         provider_type: 'online_document',
       })
       const triggerPlugins = [{ plugin_id: 'trigger-1', id: '1' }]
-      const dataSources = [{ plugin_id: 'source-1' }]
+      const dataSources = [createDatasourceProvider({ plugin_id: 'source-1' })]
 
       expect(getCurrentTriggerPlugin(triggerData, asTriggerList(triggerPlugins))).toEqual(
         triggerPlugins[0],

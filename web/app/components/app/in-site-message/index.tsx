@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -90,21 +90,7 @@ function InSiteMessage({
     })
     onAction?.(item)
 
-    if (item.action === 'close') {
-      setVisible(false)
-      return
-    }
-
-    const linkData = normalizeLinkData(item.data)
-    if (!linkData) return
-
-    const target = linkData.target ?? '_blank'
-    if (target === '_self') {
-      window.location.assign(linkData.href)
-      return
-    }
-
-    window.open(linkData.href, target, linkData.rel || 'noopener,noreferrer')
+    if (item.action === 'close') setVisible(false)
   }
 
   if (!visible) return null
@@ -129,17 +115,42 @@ function InSiteMessage({
       </div>
 
       <div className="flex items-center justify-end gap-2 p-4">
-        {actions.map((item) => (
-          <Button
-            key={`${item.type}-${item.action}-${item.text}`}
-            variant={resolveButtonVariant(item.type)}
-            size="medium"
-            className={cn(item.type === 'default' && 'text-text-secondary')}
-            onClick={() => handleAction(item)}
-          >
-            {item.text}
-          </Button>
-        ))}
+        {actions.map((item) => {
+          const variant = resolveButtonVariant(item.type)
+          const className = cn(
+            buttonVariants({ variant, size: 'medium' }),
+            item.type === 'default' && 'text-text-secondary',
+          )
+          const linkData = item.action === 'link' ? normalizeLinkData(item.data) : null
+
+          if (linkData) {
+            const target = linkData.target ?? '_blank'
+            return (
+              <a
+                key={`${item.type}-${item.action}-${item.text}`}
+                href={linkData.href}
+                target={target}
+                rel={linkData.rel || (target === '_blank' ? 'noopener noreferrer' : undefined)}
+                className={className}
+                onClick={() => handleAction(item)}
+              >
+                {item.text}
+              </a>
+            )
+          }
+
+          return (
+            <Button
+              key={`${item.type}-${item.action}-${item.text}`}
+              variant={variant}
+              size="medium"
+              className={cn(item.type === 'default' && 'text-text-secondary')}
+              onClick={() => handleAction(item)}
+            >
+              {item.text}
+            </Button>
+          )
+        })}
       </div>
     </div>
   )

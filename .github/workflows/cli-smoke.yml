@@ -51,7 +51,7 @@ jobs:
 
       - name: Run smoke against live dify
         working-directory: ./cli
-        run: pnpm exec tsx scripts/run-smoke.ts --base-url http://localhost:5001
+        run: DIFY_SERVER=http://localhost:5001 bun scripts/run-smoke.ts
 
       - name: Dump dify logs on failure
         if: failure()

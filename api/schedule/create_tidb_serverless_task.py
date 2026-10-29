@@ -19,18 +19,17 @@ def create_tidb_serverless_task():
         return
     tidb_serverless_number = dify_config.TIDB_SERVERLESS_NUMBER
     start_at = time.perf_counter()
-    with session_factory.create_session() as session:
-        while True:
-            try:
-                # check the number of idle tidb serverless
-                idle_tidb_serverless_number = (
-                    session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
-                )
-                if idle_tidb_serverless_number >= tidb_serverless_number:
-                    break
-                # create tidb serverless
-                iterations_per_thread = 20
-                create_clusters(iterations_per_thread, session)
+    while True:
+        try:
+            # check the number of idle tidb serverless
+            idle_tidb_serverless_number = (
+                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active.is_(False))) or 0
+            )
+            if idle_tidb_serverless_number >= tidb_serverless_number:
+                break
+            # create tidb serverless
+            iterations_per_thread = 20
+            create_clusters(iterations_per_thread)
 
             except Exception as e:
                 click.echo(click.style(f"Error: {e}", fg="red"))

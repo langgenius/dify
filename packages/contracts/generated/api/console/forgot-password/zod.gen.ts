@@ -14,10 +14,49 @@ export const zForgotPasswordSendPayload = z.object({
  * ForgotPasswordEmailResponse
  */
 export const zForgotPasswordEmailResponse = z.object({
-  code: z.string().nullish(),
   data: z.string().nullish(),
   result: z.string(),
 })
+
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * PasswordResetRateLimitExceededError
+ *
+ * Too many password reset emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zPasswordResetRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('password_reset_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * ForgotPasswordResetPayload
@@ -36,6 +75,42 @@ export const zForgotPasswordResetResponse = z.object({
 })
 
 /**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PasswordMismatchError
+ *
+ * The passwords do not match.
+ */
+export const zPasswordMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('password_mismatch'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ForgotPasswordCheckPayload
  */
 export const zForgotPasswordCheckPayload = z.object({
@@ -52,6 +127,42 @@ export const zForgotPasswordCheckResponse = z.object({
   is_valid: z.boolean(),
   token: z.string(),
 })
+
+/**
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
+ */
+export const zEmailCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * EmailPasswordResetLimitError
+ *
+ * Too many failed password reset attempts. Please try again in 24 hours.
+ */
+export const zEmailPasswordResetLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_password_reset_limit'),
+    status: z.literal(429),
+  }),
+)
 
 export const zPostForgotPasswordBody = zForgotPasswordSendPayload
 

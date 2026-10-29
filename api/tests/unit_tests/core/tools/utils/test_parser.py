@@ -1,7 +1,8 @@
 from json.decoder import JSONDecodeError
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+import httpx
 import pytest
 from flask import Flask
 from yaml import YAMLError
@@ -326,16 +327,20 @@ def test_parse_openai_plugin_json_branches(app):
 
 def test_parse_openai_plugin_json_http_branches(app):
     with app.test_request_context():
-        response = type("Resp", (), {"status_code": 500, "text": "", "close": Mock()})()
+        response = httpx.Response(500, stream=httpx.ByteStream(b""))
+        assert not response.is_closed
         with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=response):
             with pytest.raises(ToolProviderNotFoundError, match="cannot get openapi yaml"):
                 ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                     '{"api": {"url": "https://x", "type": "openapi"}}'
                 )
-        response.close.assert_called_once()
+        assert response.is_closed
 
-        success_response = type("Resp", (), {"status_code": 200, "text": "openapi: 3.0.0", "close": Mock()})()
-        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response):
+        success_response = httpx.Response(200, text="openapi: 3.0.0")
+        with (
+            patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response),
+            patch.object(success_response, "close", wraps=success_response.close) as close,
+        ):
             with patch(
                 "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle",
                 return_value=["bundle"],
@@ -345,7 +350,8 @@ def test_parse_openai_plugin_json_http_branches(app):
                 )
         assert bundles == ["bundle"]
         mock_parse.assert_called_once()
-        success_response.close.assert_called_once()
+        close.assert_called_once_with()
+        assert success_response.is_closed
 
 
 def test_auto_parse_json_yaml_failure():
@@ -418,3 +424,45 @@ def test_auto_parse_openapi_swagger_then_plugin():
 
     assert bundles == ["plugin-bundle"]
     assert schema_type == ApiProviderSchemaType.OPENAI_PLUGIN
+
+
+def _minimal_openapi(servers: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "openapi": "3.0.0",
+        "info": {"title": "Simple API", "version": "1.0.0"},
+        "servers": servers,
+        "paths": {
+            "/": {
+                "get": {
+                    "summary": "Root endpoint",
+                    "responses": {"200": {"description": "Successful response"}},
+                }
+            }
+        },
+    }
+
+
+def test_parse_openapi_to_tool_bundle_request_env_without_env_key(app: Flask):
+    # A standard OpenAPI schema has no "env" key on its servers. When the
+    # X-Request-Env header is present, parsing must fall back to the first
+    # server URL instead of raising KeyError.
+    openapi = _minimal_openapi([{"url": "http://localhost:3000"}])
+    with app.test_request_context(headers={"X-Request-Env": "prod"}):
+        tool_bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(tool_bundles) == 1
+    assert tool_bundles[0].server_url == "http://localhost:3000/"
+
+
+def test_parse_openapi_to_tool_bundle_request_env_matches_env_key(app: Flask):
+    openapi = _minimal_openapi(
+        [
+            {"url": "http://localhost:3000", "env": "dev"},
+            {"url": "http://prod.example.com", "env": "prod"},
+        ]
+    )
+    with app.test_request_context(headers={"X-Request-Env": "prod"}):
+        tool_bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(tool_bundles) == 1
+    assert tool_bundles[0].server_url == "http://prod.example.com/"

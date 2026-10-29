@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -14,8 +14,10 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -25,7 +27,6 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
 type Props = Readonly<{
@@ -49,7 +50,7 @@ function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>
           isChecked
             ? 'border-2 border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm'
             : 'border border-components-card-border',
-          'flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl bg-components-panel-on-panel-item-bg px-3 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
+          'flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl bg-components-panel-on-panel-item-bg px-3 text-start outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
         )}
       >
         <Radio<Value> value={value} />
@@ -60,7 +61,10 @@ function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>
 }
 
 export default function ConfigCredential({ positionCenter, credential, onChange, onHide }: Props) {
-  const { t } = useTranslation()
+  const queryLabelId = useId()
+  const headerLabelId = useId()
+
+  const { t } = useTranslation(['common', 'tools'])
   const apiKeyHeaderInputId = useId()
   const apiKeyHeaderValueInputId = useId()
   const apiKeyQueryInputId = useId()
@@ -112,19 +116,25 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
               <div className="shrink-0 border-b border-divider-regular py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
                   </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="size-6 rounded-md"
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="md"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
               </div>
               <ScrollArea className="min-h-0 flex-1 overflow-hidden">
                 <ScrollAreaViewport className="overscroll-contain">
-                  <ScrollAreaContent className="space-y-4 pt-2 pr-8 pl-6">
+                  <ScrollAreaContent className="space-y-4 ps-6 pe-8 pt-2">
                     <Field name="auth_type" className="contents">
                       <Fieldset
                         render={
@@ -210,17 +220,14 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                         </Field>
                         <div>
                           <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                            <label htmlFor={apiKeyHeaderInputId}>
+                            <label id={headerLabelId} htmlFor={apiKeyHeaderInputId}>
                               {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
                             </label>
-                            <Infotip
-                              aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
-                                ns: 'tools',
-                              })}
-                              className="ml-0.5 size-4"
-                              popupClassName="w-[261px] text-text-tertiary"
-                            >
-                              {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
+                            <Infotip>
+                              <InfotipTrigger aria-labelledby={headerLabelId} className="ms-0.5" />
+                              <InfotipContent aria-labelledby={headerLabelId} className="w-65.25">
+                                {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
+                              </InfotipContent>
                             </Infotip>
                           </div>
                           <Input
@@ -270,19 +277,16 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                       <>
                         <div>
                           <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                            <label htmlFor={apiKeyQueryInputId}>
+                            <label id={queryLabelId} htmlFor={apiKeyQueryInputId}>
                               {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
                             </label>
-                            <Infotip
-                              aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                ns: 'tools',
-                              })}
-                              className="ml-0.5 size-4"
-                              popupClassName="w-[261px] text-text-tertiary"
-                            >
-                              {t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                ns: 'tools',
-                              })}
+                            <Infotip>
+                              <InfotipTrigger aria-labelledby={queryLabelId} className="ms-0.5" />
+                              <InfotipContent aria-labelledby={queryLabelId} className="w-65.25">
+                                {t(($) => $['createTool.authMethod.queryParamTooltip'], {
+                                  ns: 'tools',
+                                })}
+                              </InfotipContent>
                             </Infotip>
                           </div>
                           <Input

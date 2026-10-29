@@ -7,8 +7,9 @@ from dify_agent.client import Client
 
 from clients.agent_backend.factory import create_agent_backend_client, create_agent_backend_run_client
 from configs import dify_config
-from services import agent_app_sandbox_service
 from services.agent import home_snapshot_service, workspace_service
+from services.app import agent_sandbox_file_gateway
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize(
@@ -31,6 +32,8 @@ def test_create_agent_backend_client_forwards_authentication(
     client_cls.assert_called_once_with(
         base_url="http://agent-backend",
         stream_timeout=30,
+        timeout=30.0,
+        binding_file_download_timeout=240,
         headers=headers,
     )
 
@@ -51,23 +54,50 @@ def test_create_agent_backend_run_client_forwards_stream_read_timeout(create_cli
 
 
 @pytest.mark.parametrize(
-    ("factory", "module"),
+    ("factory", "module", "extra_kwargs"),
     [
-        (home_snapshot_service.AgentHomeSnapshotService._client, home_snapshot_service),
-        (workspace_service.AgentWorkspaceService._client, workspace_service),
-        (agent_app_sandbox_service._default_client_factory, agent_app_sandbox_service),
+        (
+            home_snapshot_service.AgentHomeSnapshotService._client,
+            home_snapshot_service,
+            {"timeout": dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS},
+        ),
+        (
+            workspace_service.AgentWorkspaceService._client,
+            workspace_service,
+            {"timeout": dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS},
+        ),
+        (
+            agent_sandbox_file_gateway.create_sandbox_client,
+            agent_sandbox_file_gateway,
+            {"binding_file_download_timeout": 123.5},
+        ),
     ],
 )
 def test_default_agent_backend_clients_forward_authentication(
     monkeypatch: pytest.MonkeyPatch,
     factory: Callable[[], Client],
     module: ModuleType,
+    extra_kwargs: dict[str, float],
 ) -> None:
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent-backend")
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_API_TOKEN", "secret-token")
-    create_client = MagicMock()
-    monkeypatch.setattr(module, "create_agent_backend_client", create_client)
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_BACKEND_BASE_URL="http://agent-backend",
+        AGENT_BACKEND_API_TOKEN="secret-token",
+        AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS=123.5,
+    )
+    client_calls: list[dict[str, object]] = []
+
+    def record_client_call(**kwargs: object) -> None:
+        client_calls.append(kwargs)
+
+    monkeypatch.setattr(module, "create_agent_backend_client", record_client_call)
 
     factory()
 
-    create_client.assert_called_once_with(base_url="http://agent-backend", api_token="secret-token")
+    assert client_calls == [
+        {
+            "base_url": "http://agent-backend",
+            "api_token": "secret-token",
+            **extra_kwargs,
+        }
+    ]

@@ -252,6 +252,14 @@ def test_node_job_resolver_accepts_legacy_reversed_output_token(node_job: Workfl
     assert "final_output.qna_report" in expanded
 
 
+def test_node_job_resolver_exposes_system_text_output():
+    node_job = WorkflowNodeJobConfig()
+
+    expanded = expand_prompt_mentions("[§output:text§]", build_node_job_mention_resolver(node_job))
+
+    assert expanded == "text (string)"
+
+
 def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "n-2", "output": "text"}]}

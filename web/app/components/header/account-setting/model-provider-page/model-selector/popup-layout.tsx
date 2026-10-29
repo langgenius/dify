@@ -19,16 +19,17 @@ export function ModelSelectorSearchHeader({
   inputValue,
   onInputValueChange,
 }: ModelSelectorSearchHeaderProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
-    <SearchInput
-      aria-label={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
-      className="mx-2 mt-2 mb-1 shrink-0"
-      placeholder={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
-      value={inputValue}
-      onValueChange={onInputValueChange}
-    />
+    <div className="shrink-0 bg-components-panel-bg px-2 pt-2 pb-1">
+      <SearchInput
+        aria-label={t(($) => $['form.searchModel'], { ns: 'modelProvider' }) || ''}
+        placeholder={t(($) => $['form.searchModel'], { ns: 'modelProvider' }) || ''}
+        value={inputValue}
+        onValueChange={onInputValueChange}
+      />
+    </div>
   )
 }
 
@@ -39,7 +40,7 @@ type ModelSelectorScrollBodyProps = {
 
 export function ModelSelectorScrollBody({ children, label }: ModelSelectorScrollBodyProps) {
   return (
-    <ScrollArea className="relative min-h-0 overflow-hidden">
+    <ScrollArea className="min-h-0 overflow-hidden">
       <ScrollAreaViewport
         aria-label={label}
         style={{ overflowX: 'hidden' }}
@@ -48,7 +49,7 @@ export function ModelSelectorScrollBody({ children, label }: ModelSelectorScroll
       >
         <ScrollAreaContent style={{ minWidth: 0 }}>{children}</ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="z-2">
+      <ScrollAreaScrollbar>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollArea>
@@ -56,11 +57,11 @@ export function ModelSelectorScrollBody({ children, label }: ModelSelectorScroll
 }
 
 export function CompatibleModelsNotice() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="px-4 py-2 system-xs-regular text-text-tertiary">
-      {t(($) => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'common' })}
+      {t(($) => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'modelProvider' })}
     </div>
   )
 }
@@ -74,19 +75,19 @@ export function ShowIncompatibleModelsButton({
   showIncompatibleModels,
   onClick,
 }: ShowIncompatibleModelsButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <Button
       variant="ghost"
       size="medium"
-      className="h-10 w-full justify-start rounded-none px-4 text-left system-xs-regular text-text-tertiary"
+      className="h-10 w-full justify-start rounded-none px-4 text-start system-xs-regular text-text-tertiary"
       onClick={onClick}
     >
       <span className="min-w-0 truncate">
         {showIncompatibleModels
-          ? t(($) => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'common' })
-          : t(($) => $['modelProvider.selector.showIncompatibleModels'], { ns: 'common' })}
+          ? t(($) => $['modelProvider.selector.hideIncompatibleModels'], { ns: 'modelProvider' })
+          : t(($) => $['modelProvider.selector.showIncompatibleModels'], { ns: 'modelProvider' })}
       </span>
     </Button>
   )
@@ -97,7 +98,7 @@ type ModelProviderSettingsFooterProps = {
 }
 
 export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSettingsFooterProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
 
   return (
     <div className="shrink-0 border-t border-divider-subtle p-1">
@@ -109,7 +110,7 @@ export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSet
       >
         <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0" />
         <span className="system-xs-medium">
-          {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}
+          {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'modelProvider' })}
         </span>
       </Button>
     </div>

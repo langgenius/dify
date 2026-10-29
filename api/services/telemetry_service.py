@@ -135,10 +135,7 @@ class CommunityTelemetryService:
         if setup.instance_id is None:
             return False
 
-        if setup.last_heartbeat_at is not None and setup.last_heartbeat_at.date() >= now.date():
-            return False
-
-        return True
+        return not (setup.last_heartbeat_at is not None and setup.last_heartbeat_at.date() >= now.date())
 
     @staticmethod
     def _format_datetime(value: datetime) -> str:

@@ -21,7 +21,7 @@ export function IntegrationSectionLayout({
   label,
 }: IntegrationSectionLayoutProps) {
   return (
-    <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+    <ScrollArea className="min-h-0 flex-1 overflow-hidden max-md:min-h-48">
       <ScrollAreaViewport
         aria-label={label}
         className="overscroll-contain"

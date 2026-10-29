@@ -47,6 +47,12 @@ from models.workflow import (
 from services import clear_free_plan_tenant_expired_logs as service_module
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 
+
+@pytest.fixture(autouse=True)
+def _community_edition(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
+
 REAL_DATETIME = datetime.datetime
 SQLITE_MODELS = (
     Tenant,
@@ -171,7 +177,7 @@ def _create_workflow_node_execution(
     node_id: str = "node-1",
 ) -> WorkflowNodeExecutionModel:
     """Create a real mapped node execution returned by the repository boundary."""
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         id=execution_id,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -192,16 +198,17 @@ def _create_workflow_node_execution(
         error=None,
         elapsed_time=0.1,
         execution_metadata="{}",
-        created_at=REAL_DATETIME(2026, 1, 1),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
         finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
     )
+    execution.created_at = REAL_DATETIME(2026, 1, 1)
+    return execution
 
 
 def _create_workflow_run(run_id: str) -> WorkflowRun:
     """Create a real mapped workflow run returned by the repository boundary."""
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id=run_id,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -219,10 +226,11 @@ def _create_workflow_run(run_id: str) -> WorkflowRun:
         total_steps=1,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=REAL_DATETIME(2026, 1, 1),
         finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
         exceptions_count=0,
     )
+    workflow_run.created_at = REAL_DATETIME(2026, 1, 1)
+    return workflow_run
 
 
 def _create_related_records(message_id: str) -> list[object]:
@@ -527,14 +535,15 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(
     caplog: pytest.LogCaptureFixture,
     sqlite_session: Session,
     sqlite_engine: Engine,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     sqlite_session.add_all(
         [_create_tenant("tenant-sandbox"), _create_tenant("tenant-paid"), _create_tenant("tenant-fail")]
     )
     sqlite_session.commit()
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", MagicMock())
-    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
     def fake_get_info(tenant_id: str) -> dict[str, dict[str, str]]:
         if tenant_id == "tenant-sandbox":
@@ -587,7 +596,6 @@ def test_process_without_tenant_ids_batches_and_scales_interval(
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     process_tenant = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant)
     statements: list[str] = []
@@ -627,7 +635,6 @@ def test_process_with_tenant_ids_emits_progress_every_100(
     sqlite_session.add_all([_create_tenant(tenant_id) for tenant_id in tenant_ids])
     sqlite_session.commit()
     _configure_process_boundaries(monkeypatch, sqlite_engine)
-    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     echo = MagicMock()
     monkeypatch.setattr(service_module.click, "echo", echo)
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", MagicMock())
@@ -661,7 +668,6 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(
     monkeypatch.setattr(service_module.datetime, "datetime", FixedDateTime)
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     process_tenant = MagicMock()
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant)
     statements: list[str] = []

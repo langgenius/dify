@@ -1,31 +1,33 @@
 'use client'
 
-import type { AccessPointAppInfo } from '../shared/utils'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CustomizeModal from '@/app/components/app/overview/customize'
-import SettingsModal from '@/app/components/app/overview/settings'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { CustomizeDialog } from '@/app/components/app/overview/customize'
+import { SettingsDialog } from '@/app/components/app/overview/settings'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
-import { consoleQuery } from '@/service/client'
-import { AccessPointCard } from '../shared/access-point-card'
-import { AccessPointUrl } from '../shared/access-point-url'
+import { consoleQuery } from '@/service/console'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
-import { WebAppAccessControlEntry } from '../shared/web-app-access-control'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
+import {
+  WebAppAccessControlEntry,
+  WebAppAccessControlEntrySkeleton,
+} from '../shared/web-app-access-control'
 import { EnvironmentAccessControl } from './environment-access-control'
 import { getEnvironmentWebAppUrl } from './environment-web-app-utils'
 
@@ -39,25 +41,30 @@ const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
 type EnvironmentWebAppCardProps = {
   appId: string
   environmentId: string
-  canEdit: boolean
-  canManage: boolean
+  canManageAccessPoint: boolean
   highlighted?: boolean
 }
 
 export function EnvironmentWebAppCard({
   appId,
   environmentId,
-  canEdit,
-  canManage,
+  canManageAccessPoint,
   highlighted,
 }: EnvironmentWebAppCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation([
+    'agentV2',
+    'app',
+    'appOverview',
+    'common',
+    'deployments',
+    'navigation',
+  ])
   const queryClient = useQueryClient()
-  const appInfo = useAppStore((state) => state.appDetail) as AccessPointAppInfo | null
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const actions = useAccessPointActions(appId, canEdit)
-  const [showSettings, setShowSettings] = useState(false)
-  const [showCustomize, setShowCustomize] = useState(false)
+  const actions = useAccessPointActions(appId, canManageAccessPoint)
   const [showAccess, setShowAccess] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const params = {
@@ -85,7 +92,7 @@ export function EnvironmentWebAppCard({
     ...subjectsQueryOptions,
     enabled:
       siteQuery.isSuccess &&
-      canManage &&
+      canManageAccessPoint &&
       (showAccess || accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS),
   })
   const accessConfigured =
@@ -94,9 +101,8 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
-      onSuccess: (updatedSite) => {
-        queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      scope: {
+        id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
@@ -117,8 +123,12 @@ export function EnvironmentWebAppCard({
       },
     ),
   )
-  const webAppUrl = getEnvironmentWebAppUrl(site)
-  const running = Boolean(siteQuery.isSuccess && site?.enabled)
+  const webAppUrl = getEnvironmentWebAppUrl(site, appInfo?.mode)
+  const pendingEnabled = siteMutation.variables?.body.enabled
+  const optimisticEnabled =
+    siteMutation.isPending && pendingEnabled !== undefined ? pendingEnabled : Boolean(site?.enabled)
+  const running = siteQuery.isSuccess && optimisticEnabled
+  const actionsAvailable = running && !siteMutation.isPending
   const status = siteQuery.isPending
     ? 'loading'
     : siteQuery.isError
@@ -126,6 +136,7 @@ export function EnvironmentWebAppCard({
       : running
         ? 'inService'
         : 'disabled'
+  const statusLabel = useAccessPointStatusLabel(status)
   const accessLabel =
     accessMode === AccessMode.ORGANIZATION
       ? t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })
@@ -135,7 +146,7 @@ export function EnvironmentWebAppCard({
           ? t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })
           : t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })
   const handleEnabledChange = (enabled: boolean) => {
-    if (!canManage) return
+    if (!canManageAccessPoint) return
 
     siteMutation.mutate({
       params,
@@ -144,7 +155,7 @@ export function EnvironmentWebAppCard({
   }
 
   const handleRegenerate = () => {
-    if (!canManage) return
+    if (!canManageAccessPoint) return
 
     resetAccessTokenMutation.mutate({ params })
   }
@@ -156,47 +167,33 @@ export function EnvironmentWebAppCard({
         description={t(($) => $['studio.accessPoint.webAppDescription'], {
           ns: 'deployments',
         })}
-        icon={
-          appInfo ? (
-            <AppIcon
-              size="large"
-              iconType={appInfo.icon_type}
-              icon={appInfo.icon}
-              background={appInfo.icon_background}
-              imageUrl={appInfo.icon_url}
-            />
-          ) : (
-            'i-ri-robot-2-line'
-          )
-        }
+        icon={appInfo ? <AppIcon size="large" icon={appInfo} /> : 'i-ri-robot-2-line'}
         status={status}
+        statusLabel={statusLabel}
         highlighted={highlighted}
-        switchDisabled={!canManage}
+        switchDisabled={!canManageAccessPoint}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
         onEnabledChange={siteQuery.isSuccess ? handleEnabledChange : undefined}
-        busy={siteMutation.isPending}
         actions={
           <>
-            <Button
-              className="flex items-center gap-1 px-3"
-              variant="secondary"
-              disabled={!running || !apiQuery.isSuccess}
-              onClick={() => setShowCustomize(true)}
-            >
-              <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
-              {t(($) => $['overview.appInfo.customize.entry'], {
-                ns: 'appOverview',
-              })}
-            </Button>
-            <Button
-              className="flex items-center gap-1 px-3"
-              variant="secondary"
-              disabled={!appInfo || !siteQuery.isSuccess || !canEdit}
-              onClick={() => setShowSettings(true)}
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {t(($) => $['settings.settings'], { ns: 'common' })}
-            </Button>
+            <CustomizeDialog
+              appId={appId}
+              api_base_url={apiQuery.data?.base_url ?? ''}
+              mode={appInfo?.mode}
+              disabled={!actionsAvailable || !apiQuery.isSuccess || !canManageAccessPoint}
+            />
+            <SettingsDialog
+              key={appId}
+              isChat={false}
+              canDeploy
+              appInfo={
+                appInfo?.site
+                  ? { id: appInfo.id, mode: appInfo.mode, site: appInfo.site }
+                  : undefined
+              }
+              disabled={!siteQuery.isSuccess || !canManageAccessPoint}
+              onSave={actions.saveSiteConfig}
+            />
           </>
         }
       >
@@ -213,66 +210,51 @@ export function EnvironmentWebAppCard({
           showQrCode
           showRegenerate
           openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
-          openUrl={webAppUrl}
+          openUrl={site?.enabled && !siteMutation.isPending ? webAppUrl : undefined}
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
-          regenerateDisabled={!canManage}
+          regenerateDisabled={!canManageAccessPoint}
           regenerating={resetAccessTokenMutation.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />
-        {systemFeatures.webapp_auth.enabled && (
-          <WebAppAccessControlEntry
-            accessConfigured={accessConfigured}
-            accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
-            accessLabel={accessLabel}
-            available={siteQuery.isSuccess}
-            disabled={!canManage}
-            onClick={() => setShowAccess(true)}
-          />
-        )}
+        {systemFeatures.webapp_auth.enabled &&
+          (siteQuery.isSuccess ? (
+            <WebAppAccessControlEntry
+              accessConfigured={accessConfigured}
+              accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
+              accessLabel={accessLabel}
+              disabled={!canManageAccessPoint}
+              onClick={() => setShowAccess(true)}
+            />
+          ) : (
+            <WebAppAccessControlEntrySkeleton loading={siteQuery.isPending} />
+          ))}
       </AccessPointCard>
 
-      {appInfo && (
-        <SettingsModal
-          isChat={false}
-          canDeploy={canManage}
-          appInfo={appInfo}
-          isShow={showSettings}
-          onClose={() => setShowSettings(false)}
-          onSave={actions.saveSiteConfig}
-        />
-      )}
-      <CustomizeModal
-        isShow={showCustomize}
-        onClose={() => setShowCustomize(false)}
-        appId={appId}
-        api_base_url={apiQuery.data?.base_url ?? ''}
-        mode={appInfo?.mode}
-      />
       {showAccess && (
         <EnvironmentAccessControl
           appId={appId}
           environmentId={environmentId}
           accessMode={accessMode}
-          canManage={canManage}
+          canManage={canManageAccessPoint}
           onClose={() => setShowAccess(false)}
           onConfirm={() => setShowAccess(false)}
         />
       )}
       <AlertDialog open={showRegenerate} onOpenChange={setShowRegenerate}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['overview.appInfo.regenerateNotice'], {
                 ns: 'appOverview',
               })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -282,7 +264,7 @@ export function EnvironmentWebAppCard({
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

@@ -8,6 +8,7 @@ decryption of tokens encrypted before the rotation.
 
 import datetime
 import json
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -15,7 +16,6 @@ import pytest
 from azure.core.exceptions import HttpResponseError
 from azure.keyvault.keys import KeyRotationPolicy
 
-from configs import dify_config
 from libs.key_providers.azure_keyvault_key_provider import AzureKeyVaultKeyProvider
 
 
@@ -120,15 +120,17 @@ def fake_key_client(monkeypatch: pytest.MonkeyPatch) -> FakeKeyClient:
 
 
 @pytest.fixture(autouse=True)
-def azure_keyvault_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "AZURE_KEYVAULT_VAULT_URL", "https://fake-vault.vault.azure.net")
-    monkeypatch.setattr(dify_config, "AZURE_KEYVAULT_KEY_SIZE", 2048)
-    monkeypatch.setattr(dify_config, "AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS", None)
+def azure_keyvault_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        AZURE_KEYVAULT_VAULT_URL="https://fake-vault.vault.azure.net",
+        AZURE_KEYVAULT_KEY_SIZE=2048,
+        AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS=None,
+    )
 
 
 @pytest.mark.usefixtures("fake_key_client")
-def test_missing_vault_url_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "AZURE_KEYVAULT_VAULT_URL", None)
+def test_missing_vault_url_raises(config_overrides: Callable[..., None]) -> None:
+    config_overrides(AZURE_KEYVAULT_VAULT_URL=None)
     with pytest.raises(ValueError, match="AZURE_KEYVAULT_VAULT_URL"):
         AzureKeyVaultKeyProvider()
 
@@ -182,9 +184,9 @@ def test_generate_key_pair_without_rotation_interval_does_not_set_policy(fake_ke
 
 
 def test_generate_key_pair_with_rotation_interval_sets_time_after_create_only(
-    monkeypatch: pytest.MonkeyPatch, fake_key_client: FakeKeyClient
+    config_overrides: Callable[..., None], fake_key_client: FakeKeyClient
 ) -> None:
-    monkeypatch.setattr(dify_config, "AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS", 30)
+    config_overrides(AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS=30)
 
     provider = AzureKeyVaultKeyProvider()
     provider.generate_key_pair("tenant-1")
@@ -238,7 +240,13 @@ def test_decrypt_rejects_truncated_envelope_raises_value_error(truncate_at: int)
     encrypted = provider.encrypt("tenant-1", "secret")
     truncated = encrypted[:truncate_at]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:Malformed Azure Key Vault envelope: truncated metadata|Malformed "
+            "Azure Key Vault envelope: truncated metadata length)"
+        ),
+    ):
         provider.decrypt_with_decoding(truncated, "tenant-1")
 
 

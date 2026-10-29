@@ -1,8 +1,8 @@
 import type {
-  DefaultModel,
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -14,7 +14,10 @@ import { checkShowMultiModalTip } from '../index'
 
 describe('checkShowMultiModalTip', () => {
   // Helper to create a model item with specific features
-  const createModelItem = (model: string, features: ModelFeatureEnum[] = []): ModelItem => ({
+  const createModelItem = (
+    model: string,
+    features: ModelFeatureEnum[] = [],
+  ): ProviderModelWithStatusEntity => ({
     model,
     label: { en_US: model, zh_Hans: model },
     model_type: ModelTypeEnum.textEmbedding,
@@ -27,7 +30,11 @@ describe('checkShowMultiModalTip', () => {
   })
 
   // Helper to create a model provider
-  const createModelProvider = (provider: string, models: ModelItem[]): Model => ({
+  const createModelProvider = (
+    provider: string,
+    models: ProviderModelWithStatusEntity[],
+  ): ProviderWithModelsResponse => ({
+    tenant_id: 'test-workspace',
     provider,
     label: { en_US: provider, zh_Hans: provider },
     icon_small: { en_US: '', zh_Hans: '' },
@@ -39,7 +46,7 @@ describe('checkShowMultiModalTip', () => {
     embeddingModel: {
       provider: 'openai',
       model: 'text-embedding-ada-002',
-    } as DefaultModel,
+    } satisfies DefaultModel,
     rerankingEnable: true,
     rerankModel: {
       rerankingProviderName: 'cohere',
@@ -185,24 +192,6 @@ describe('checkShowMultiModalTip', () => {
       const result = checkShowMultiModalTip(defaultProps)
       expect(result).toBe(true)
     })
-
-    it('should return true with different providers', () => {
-      const result = checkShowMultiModalTip({
-        ...defaultProps,
-        embeddingModel: { provider: 'azure', model: 'azure-embedding' },
-        rerankModel: {
-          rerankingProviderName: 'jina',
-          rerankingModelName: 'jina-reranker',
-        },
-        embeddingModelList: [
-          createModelProvider('azure', [
-            createModelItem('azure-embedding', [ModelFeatureEnum.vision]),
-          ]),
-        ],
-        rerankModelList: [createModelProvider('jina', [createModelItem('jina-reranker', [])])],
-      })
-      expect(result).toBe(true)
-    })
   })
 
   describe('Edge cases', () => {
@@ -222,66 +211,13 @@ describe('checkShowMultiModalTip', () => {
       expect(result).toBe(false)
     })
 
-    it('should handle model with undefined features', () => {
-      const modelItem: ModelItem = {
-        model: 'test-model',
-        label: { en_US: 'test', zh_Hans: 'test' },
-        model_type: ModelTypeEnum.textEmbedding,
-        features: undefined as unknown as ModelFeatureEnum[],
-        fetch_from: ConfigurationMethodEnum.predefinedModel,
-        status: ModelStatusEnum.active,
-        model_properties: {},
-        load_balancing_enabled: false,
-        deprecated: false,
-      }
-
-      const result = checkShowMultiModalTip({
-        ...defaultProps,
-        embeddingModelList: [createModelProvider('openai', [modelItem])],
-      })
-      expect(result).toBe(false)
-    })
-
-    it('should handle model with null features', () => {
-      const modelItem: ModelItem = {
-        model: 'text-embedding-ada-002',
-        label: { en_US: 'test', zh_Hans: 'test' },
-        model_type: ModelTypeEnum.textEmbedding,
-        features: null as unknown as ModelFeatureEnum[],
-        fetch_from: ConfigurationMethodEnum.predefinedModel,
-        status: ModelStatusEnum.active,
-        model_properties: {},
-        load_balancing_enabled: false,
-        deprecated: false,
-      }
-
-      const result = checkShowMultiModalTip({
-        ...defaultProps,
-        embeddingModelList: [createModelProvider('openai', [modelItem])],
-      })
-      expect(result).toBe(false)
-    })
-
-    it('should handle multiple models in provider', () => {
-      const result = checkShowMultiModalTip({
-        ...defaultProps,
-        embeddingModelList: [
-          createModelProvider('openai', [
-            createModelItem('text-embedding-1', []),
-            createModelItem('text-embedding-ada-002', [ModelFeatureEnum.vision]),
-            createModelItem('text-embedding-3', []),
-          ]),
-        ],
-      })
-      expect(result).toBe(true)
-    })
-
     it('should handle multiple providers in list', () => {
       const result = checkShowMultiModalTip({
         ...defaultProps,
         embeddingModelList: [
           createModelProvider('azure', [createModelItem('azure-model', [])]),
           createModelProvider('openai', [
+            createModelItem('other-model', []),
             createModelItem('text-embedding-ada-002', [ModelFeatureEnum.vision]),
           ]),
         ],

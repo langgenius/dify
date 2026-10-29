@@ -5,7 +5,6 @@ import {
   SkeletonRectangle,
   SkeletonRow,
 } from '@/app/components/base/skeleton'
-import { Group } from '../../../base/icons/src/vender/other'
 import Title from './title'
 
 type Props = Readonly<{
@@ -23,7 +22,10 @@ const Placeholder = ({ wrapClassName, loadingFileName }: Props) => {
       <SkeletonRow>
         <div className="flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default p-1 backdrop-blur-xs">
           <div className="flex size-5 items-center justify-center">
-            <Group className="text-text-tertiary" />
+            <span
+              aria-hidden
+              className="i-custom-vender-other-group h-4 w-3.5 text-text-tertiary"
+            />
           </div>
         </div>
         <div className="grow">

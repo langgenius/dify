@@ -1,40 +1,54 @@
-import { renderHook } from '@testing-library/react'
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
-  createCredentialState,
   createModel,
   createModelItem,
-  createProviderMeta,
 } from '@/app/components/workflow/__tests__/model-provider-fixtures'
+import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddingModelStatus } from '../use-embedding-model-status'
 
-const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
-const mockUseProviderContext = vi.hoisted(() => vi.fn())
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [{ credential_id: 'key-1', credential_name: 'API key' }],
+    current_credential_id: 'key-1',
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
-  () => ({
-    useCredentialPanelState: mockUseCredentialPanelState,
-  }),
-)
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: mockUseProviderContext,
-}))
+const renderHook: typeof renderHookWithConsoleQuery = (callback, options) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [{ ...providerSummaryFixture, supported_model_types: [ModelTypeEnum.textEmbedding] }],
+    plugins: {},
+  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+    createModelCreditsFixture(),
+  )
+  for (const model_type of ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts'] as const) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+      { data: [] },
+    )
+  }
+  return renderHookWithConsoleQuery(callback, { ...options, queryClient })
+}
 
 describe('useEmbeddingModelStatus', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseProviderContext.mockReturnValue({
-      modelProviders: [
-        createProviderMeta({
-          supported_model_types: [ModelTypeEnum.textEmbedding],
-        }),
-      ],
-    })
-    mockUseCredentialPanelState.mockReturnValue(createCredentialState())
-  })
-
   // The hook should resolve provider and model metadata before deriving the final status.
   describe('Resolution', () => {
     it('should return the matched provider, current model, and active status', () => {

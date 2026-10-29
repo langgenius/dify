@@ -6,18 +6,18 @@ from collections.abc import Callable, Generator, Iterable, Mapping
 from typing import Any
 
 from core.app.entities.task_entities import StreamEvent
-from libs.broadcast_channel.channel import Topic
+from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 
 
 def stream_topic_events(
     *,
-    topic: Topic,
+    subscription: Subscription,
     idle_timeout: float,
     ping_interval: float | None = None,
     on_subscribe: Callable[[], None] | None = None,
     terminal_events: Iterable[str | StreamEvent] | None = None,
-) -> Generator[Mapping[str, Any] | str, None, None]:
+) -> Generator[Mapping[str, Any] | str]:
     # send a PING event immediately to prevent the connection staying in pending state for a long time.
     #
     # This simplify the debugging process as the DevTools in Chrome does not
@@ -27,7 +27,7 @@ def stream_topic_events(
     terminal_values = _normalize_terminal_events(terminal_events)
     last_msg_time = time.time()
     last_ping_time = last_msg_time
-    with topic.subscribe() as sub:
+    with subscription as sub:
         # on_subscribe fires only after the Redis subscription is active.
         # This is used to gate task start and reduce pub/sub race for the first event.
         if on_subscribe is not None:

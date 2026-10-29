@@ -4,11 +4,11 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import NewAudioButton from '@/app/components/base/new-audio-button'
+import { toast } from '@/app/notifications'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
 import { getCopyContent, MAX_GENERATION_DEPTH } from './utils'
 
@@ -23,7 +23,6 @@ type GenerationActionGroupsProps = {
   currentTab: string
   depth: number
   feedback?: FeedbackType
-  hideLogAction?: boolean
   isError: boolean
   isInWebApp: boolean
   isResponding?: boolean
@@ -33,7 +32,7 @@ type GenerationActionGroupsProps = {
   moreLikeThis?: boolean
   onFeedback?: (feedback: FeedbackType) => void
   onMoreLikeThis: () => void
-  onOpenLogModal: () => void
+  onOpenLog?: () => void
   onRetry: () => void
   onSave?: (messageId: string) => void
   supportFeedback?: boolean
@@ -47,7 +46,6 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   currentTab,
   depth,
   feedback,
-  hideLogAction,
   isError,
   isInWebApp,
   isResponding,
@@ -57,20 +55,20 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   moreLikeThis,
   onFeedback,
   onMoreLikeThis,
-  onOpenLogModal,
+  onOpenLog,
   onRetry,
   onSave,
   supportFeedback,
   voice,
   workflowProcessData,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const isTryApp = appSourceType === AppSourceTypeEnum.tryApp
   const showCopyAction = (currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow
 
   return (
     <>
-      {!hideLogAction &&
+      {onOpenLog &&
         !isInWebApp &&
         appSourceType !== AppSourceTypeEnum.installedApp &&
         !isResponding && (
@@ -79,7 +77,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               aria-label={t(($) => $['operation.log'], { ns: 'common' })}
               disabled={isError || !messageId}
               title={t(($) => $['operation.log'], { ns: 'common' })}
-              onClick={onOpenLogModal}
+              onClick={onOpenLog}
             >
               <span aria-hidden="true" className="i-ri-file-list-3-line size-4" />
             </IconButton>

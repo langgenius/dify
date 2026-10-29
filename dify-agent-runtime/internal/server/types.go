@@ -1,11 +1,14 @@
 package server
 
+import "github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
+
 // RunJobRequest is the HTTP request body for POST /v1/jobs/run.
 type RunJobRequest struct {
 	Script           string            `json:"script"`
 	Cwd              *string           `json:"cwd,omitempty"`
 	Env              map[string]string `json:"env,omitempty"`
 	Terminal         *TerminalSize     `json:"terminal,omitempty"`
+	Mode             jobmode.Mode      `json:"mode,omitempty"`
 	Timeout          float64           `json:"timeout,omitempty"`
 	OutputLimit      int               `json:"output_limit,omitempty"`
 	IdleFlushSeconds float64           `json:"idle_flush_seconds,omitempty"`
@@ -97,4 +100,10 @@ type ErrorDetail struct {
 // ErrorResponse is the error envelope.
 type ErrorResponse struct {
 	Error ErrorDetail `json:"error"`
+}
+
+// RestoreResponse reports a completed Home restore.
+type RestoreResponse struct {
+	Entries      int   `json:"entries"`
+	BytesWritten int64 `json:"bytes_written"`
 }

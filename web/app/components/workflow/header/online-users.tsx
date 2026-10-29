@@ -2,19 +2,22 @@
 
 import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
+import { getAvatarInitial } from '@/utils/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
-import { useStore } from '../store'
+import { useHooksStore } from '../hooks-store'
 
 const useAvatarUrls = (users: OnlineUser[]) => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
@@ -47,13 +50,14 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation()
-  const appId = useStore((s) => s.appId)
+  const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
+  const appId = useAtomValue(editorAppIdAtom)
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
     onlineUsers,
     cursors,
     isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId as string)
+  } = useCollaboration(appId, canEdit)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -62,8 +66,8 @@ const OnlineUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflow' })
-  const currentUserSuffix = t(($) => $['members.you'], { ns: 'common' })
+  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
+  const currentUserSuffix = t(($) => $['members.you'], { ns: 'workspaceMembers' })
 
   const renderDisplayName = (user: OnlineUser, baseClassName: string, suffixClassName: string) => {
     const baseName = user.username || fallbackUsername
@@ -119,38 +123,50 @@ const OnlineUsers = () => {
             const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
             const avatarUrl = getAvatarUrl(user)
             const displayName = user.username || fallbackUsername
+            const avatar = (
+              <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
+                <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
+                  {getAvatarInitial(displayName)}
+                </AvatarFallback>
+                <AvatarImage src={avatarUrl || undefined} alt="" />
+              </Avatar>
+            )
+            const triggerClassName = cn(
+              'relative flex size-6 items-center justify-center',
+              index > 0 && '-ml-1.5',
+              !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
+            )
+            const triggerStyle = { zIndex: visibleUsers.length - index }
             return (
-              <Tooltip key={`${user.sid}-${index}`}>
-                <TooltipTrigger>
-                  <div
-                    className={cn(
-                      'relative flex size-6 items-center justify-center',
-                      index > 0 && '-ml-1.5',
-                      !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
-                    )}
-                    style={{ zIndex: visibleUsers.length - index }}
-                    onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
-                  >
-                    <AvatarRoot size="sm" className="ring-1 ring-components-panel-bg">
-                      {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                      <AvatarFallback
-                        size="sm"
-                        style={userColor ? { backgroundColor: userColor } : undefined}
+              <Tooltip key={user.sid}>
+                <TooltipTrigger
+                  render={
+                    isCurrentUser ? (
+                      <div
+                        role="img"
+                        aria-label={displayName}
+                        className={triggerClassName}
+                        style={triggerStyle}
                       >
-                        {displayName?.[0]?.toLocaleUpperCase()}
-                      </AvatarFallback>
-                    </AvatarRoot>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent
-                  placement="bottom"
-                  sideOffset={4}
-                  className="flex h-7 max-w-55 min-w-0 items-center justify-center rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
-                >
-                  {renderDisplayName(
-                    user,
-                    'max-w-full system-xs-medium text-text-secondary',
-                    'text-text-quaternary',
+                        {avatar}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={displayName}
+                        className={triggerClassName}
+                        style={triggerStyle}
+                        onClick={() => jumpToUserCursor(user.user_id)}
+                      >
+                        {avatar}
+                      </button>
+                    )
+                  }
+                />
+                <TooltipContent side="bottom" sideOffset={4} className="max-w-55">
+                  {displayName}
+                  {isCurrentUser && (
+                    <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -174,10 +190,9 @@ const OnlineUsers = () => {
                 }
               />
               <PopoverContent
-                placement="bottom-start"
-                sideOffset={8}
+                align="start"
                 alignOffset={-48}
-                popupClassName={cn(
+                className={cn(
                   'mt-1.5 flex max-h-50 w-60 flex-col overflow-y-auto',
                   'rounded-xl border-[0.5px] border-components-panel-border',
                   'bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]',
@@ -189,37 +204,36 @@ const OnlineUsers = () => {
                   const avatarUrl = getAvatarUrl(user)
                   const displayName = user.username || fallbackUsername
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={user.sid}
+                      disabled={isCurrentUser}
                       className={cn(
-                        'flex items-center gap-2 rounded-lg px-3 py-1.5',
+                        'flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left',
                         !isCurrentUser &&
                           'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
                       )}
                       onClick={() => {
-                        if (!isCurrentUser) {
-                          jumpToUserCursor(user.user_id)
-                          setDropdownOpen(false)
-                        }
+                        jumpToUserCursor(user.user_id)
+                        setDropdownOpen(false)
                       }}
                     >
                       <div className="relative">
-                        <AvatarRoot size="sm">
-                          {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                        <Avatar size="sm" aria-hidden="true">
                           <AvatarFallback
-                            size="sm"
                             style={userColor ? { backgroundColor: userColor } : undefined}
                           >
-                            {displayName?.[0]?.toLocaleUpperCase()}
+                            {getAvatarInitial(displayName)}
                           </AvatarFallback>
-                        </AvatarRoot>
+                          <AvatarImage src={avatarUrl || undefined} alt="" />
+                        </Avatar>
                       </div>
                       {renderDisplayName(
                         user,
                         'system-xs-medium text-text-secondary',
                         'text-text-tertiary',
                       )}
-                    </div>
+                    </button>
                   )
                 })}
               </PopoverContent>

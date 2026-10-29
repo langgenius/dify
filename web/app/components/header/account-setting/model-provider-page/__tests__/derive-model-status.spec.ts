@@ -1,6 +1,5 @@
-import type { Model, ModelItem, ModelProvider } from '../declarations'
 import type { CredentialPanelState } from '../provider-added-card/use-credential-panel-state'
-import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../declarations'
+import { ModelStatusEnum } from '../declarations'
 import { deriveModelStatus } from '../derive-model-status'
 
 const createCredentialState = (
@@ -17,27 +16,11 @@ const createCredentialState = (
   ...overrides,
 })
 
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
-  model: 'text-embedding-3-large',
-  label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },
-  model_type: ModelTypeEnum.textEmbedding,
-  fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status: ModelStatusEnum.active,
-  model_properties: {},
-  load_balancing_enabled: false,
-  ...overrides,
-})
-
-const createModelProvider = (): ModelProvider => ({ provider: 'openai' }) as ModelProvider
-
-const createModel = (overrides: Partial<Model> = {}): Model => ({
-  provider: 'openai',
-  icon_small: { en_US: '', zh_Hans: '' },
-  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-  models: [createModelItem()],
+const createModelItem = (overrides: { status?: string } = {}) => ({
   status: ModelStatusEnum.active,
   ...overrides,
 })
+const createModelProvider = () => ({ provider: 'openai' })
 
 describe('deriveModelStatus', () => {
   it('should return empty when model id or provider name is missing', () => {
@@ -78,7 +61,7 @@ describe('deriveModelStatus', () => {
       deriveModelStatus(
         'text-embedding-3-large',
         'openai',
-        createModel(),
+        createModelProvider(),
         undefined,
         createCredentialState(),
       ),

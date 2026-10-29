@@ -1,16 +1,13 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { render } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
 }))
-const mockConsent = vi.hoisted(() => ({
-  value: 'granted' as 'unknown' | 'denied' | 'granted',
-}))
-
 let AmplitudeProvider: typeof import('../AmplitudeProvider').AmplitudeProvider
+let setAnalyticsConsent: typeof import('@/app/components/base/analytics-consent/consent-store').setAnalyticsConsent
 
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
@@ -22,14 +19,16 @@ vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
   add: vi.fn(),
   setOptOut: vi.fn(),
+  track: vi.fn(),
+  flush: vi.fn(),
+  setUserId: vi.fn(),
+  Identify: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
 }))
 
 vi.mock('@amplitude/plugin-session-replay-browser', () => ({
   sessionReplayPlugin: vi.fn(() => ({ name: 'session-replay' })),
-}))
-
-vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
-  useAnalyticsConsent: () => mockConsent.value,
 }))
 
 describe('AmplitudeProvider', () => {
@@ -37,13 +36,16 @@ describe('AmplitudeProvider', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
-    mockConsent.value = 'granted'
+    ;({ setAnalyticsConsent } =
+      await import('@/app/components/base/analytics-consent/consent-store'))
+    setAnalyticsConsent('granted')
     ;({ AmplitudeProvider } = await import('../AmplitudeProvider'))
   })
 
   describe('Component', () => {
-    it('initializes amplitude when enabled', () => {
+    it('initializes amplitude when enabled', async () => {
       render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
       expect(amplitude.init).toHaveBeenCalledWith('test-api-key', expect.any(Object))
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
@@ -51,13 +53,13 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.setOptOut).toHaveBeenCalledWith(false)
     })
 
-    it('does not re-initialize amplitude on remount', () => {
+    it('does not re-initialize amplitude on remount', async () => {
       const { unmount } = render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
 
       unmount()
       render(<AmplitudeProvider sessionReplaySampleRate={0.8} />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
-      expect(amplitude.init).toHaveBeenCalledTimes(1)
       expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
@@ -73,7 +75,7 @@ describe('AmplitudeProvider', () => {
     it.each(['unknown', 'denied'] as const)(
       'does not initialize amplitude while consent is %s',
       (consent) => {
-        mockConsent.value = consent
+        setAnalyticsConsent(consent)
 
         render(<AmplitudeProvider />)
 
@@ -83,16 +85,15 @@ describe('AmplitudeProvider', () => {
       },
     )
 
-    it('opts out on revoke and resumes without reinitializing', () => {
-      const { rerender } = render(<AmplitudeProvider />)
+    it('opts out on revoke and resumes without reinitializing', async () => {
+      render(<AmplitudeProvider />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
-      mockConsent.value = 'denied'
-      rerender(<AmplitudeProvider />)
+      act(() => setAnalyticsConsent('denied'))
 
       expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
 
-      mockConsent.value = 'granted'
-      rerender(<AmplitudeProvider />)
+      act(() => setAnalyticsConsent('granted'))
 
       expect(amplitude.setOptOut).toHaveBeenLastCalledWith(false)
       expect(amplitude.init).toHaveBeenCalledTimes(1)
@@ -100,16 +101,36 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
 
-    it('opts out when the runtime leaves the first-party route boundary', () => {
-      const { rerender } = render(<AmplitudeProvider active />)
+    it('opts out when the analytics layout runtime unmounts', async () => {
+      const { unmount } = render(<AmplitudeProvider />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
 
-      rerender(<AmplitudeProvider active={false} />)
+      unmount()
 
       expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
     })
 
+    it.each(['revoke', 'unmount'] as const)(
+      'does not start tracking when %s happens during SDK loading',
+      async (action) => {
+        const { unmount } = render(<AmplitudeProvider />)
+        if (action === 'revoke') {
+          act(() => setAnalyticsConsent('denied'))
+        } else {
+          unmount()
+        }
+
+        await act(async () => {
+          await vi.dynamicImportSettled()
+        })
+        expect(amplitude.init).not.toHaveBeenCalled()
+        expect(sessionReplayPlugin).not.toHaveBeenCalled()
+      },
+    )
+
     it('pageNameEnrichmentPlugin logic works as expected', async () => {
       render(<AmplitudeProvider />)
+      await waitFor(() => expect(amplitude.init).toHaveBeenCalledTimes(1))
       const plugin = vi.mocked(amplitude.add).mock.calls[0]?.[0] as
         | amplitude.Types.EnrichmentPlugin
         | undefined
@@ -127,40 +148,40 @@ describe('AmplitudeProvider', () => {
 
       await setup({} as Parameters<SetupFn>[0], {} as Parameters<SetupFn>[1])
 
-      const originalWindowLocation = window.location
+      const originalUrl = window.location.href
       try {
-        Object.defineProperty(window, 'location', {
-          value: { pathname: '/datasets' },
-          writable: true,
-        })
+        window.history.replaceState(null, '', '/datasets')
         const event: amplitude.Types.Event = {
           event_type: '[Amplitude] Page Viewed',
           event_properties: {},
         }
         const result = await execute(event)
         expect(getPageTitle(result)).toBe('Knowledge')
-        window.location.pathname = '/'
+        window.history.replaceState(null, '', '/')
         await execute(event)
         expect(getPageTitle(event)).toBe('Home')
-        window.location.pathname = '/apps'
+        window.history.replaceState(null, '', '/apps')
         await execute(event)
         expect(getPageTitle(event)).toBe('Studio')
-        window.location.pathname = '/explore'
+        window.history.replaceState(null, '', '/agents')
+        await execute(event)
+        expect(getPageTitle(event)).toBe('Agents')
+        window.history.replaceState(null, '', '/explore')
         await execute(event)
         expect(getPageTitle(event)).toBe('Explore')
-        window.location.pathname = '/tools'
+        window.history.replaceState(null, '', '/tools')
         await execute(event)
         expect(getPageTitle(event)).toBe('Tools')
-        window.location.pathname = '/account'
+        window.history.replaceState(null, '', '/account')
         await execute(event)
         expect(getPageTitle(event)).toBe('Account')
-        window.location.pathname = '/signin'
+        window.history.replaceState(null, '', '/signin')
         await execute(event)
         expect(getPageTitle(event)).toBe('Sign In')
-        window.location.pathname = '/signup'
+        window.history.replaceState(null, '', '/signup')
         await execute(event)
         expect(getPageTitle(event)).toBe('Sign Up')
-        window.location.pathname = '/unknown'
+        window.history.replaceState(null, '', '/unknown')
         await execute(event)
         expect(getPageTitle(event)).toBe('Unknown')
         const otherEvent = {
@@ -175,10 +196,7 @@ describe('AmplitudeProvider', () => {
         const noPropsResult = await execute(noPropsEvent)
         expect(noPropsResult?.event_properties).toBeUndefined()
       } finally {
-        Object.defineProperty(window, 'location', {
-          value: originalWindowLocation,
-          writable: true,
-        })
+        window.history.replaceState(null, '', originalUrl)
       }
     })
   })

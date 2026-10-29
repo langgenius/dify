@@ -31,7 +31,7 @@ function VoiceInput({
   onStartError,
   target,
 }: VoiceInputProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const recorderRef = useRef<VoiceRecorder | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasContextRef = useRef<CanvasRenderingContext2D | null>(null)

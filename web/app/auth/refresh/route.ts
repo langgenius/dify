@@ -1,5 +1,5 @@
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
-import { resolveServerConsoleApiUrl } from '@/service/server'
+import { resolveServerConsoleApiUrl } from '@/service/console/server'
 import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 

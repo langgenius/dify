@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * DismissNotificationPayload
  */
 export const zDismissNotificationPayload = z.object({
@@ -35,6 +51,10 @@ export const zNotificationItemResponse = z.object({
 export const zNotificationResponse = z.object({
   notifications: z.array(zNotificationItemResponse),
   should_show: z.boolean(),
+})
+
+export const zGetNotificationQuery = z.object({
+  language: z.string().optional().default('en-US'),
 })
 
 /**

@@ -10,16 +10,62 @@ export const zBillingInvoiceResponse = z.object({
 })
 
 /**
- * PartnerTenantsPayload
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
  */
-export const zPartnerTenantsPayload = z.object({
-  click_id: z.string(),
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
 })
 
 /**
- * BillingResponse
+ * BillingOperationFailedErrorResponse
  */
-export const zBillingResponse = z.record(z.string(), z.unknown())
+export const zBillingOperationFailedErrorResponse = z.object({
+  code: z.literal('billing_operation_failed'),
+  message: z.string(),
+  status: z.literal(502),
+})
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableErrorResponse
+ */
+export const zBillingUnavailableErrorResponse = z.object({
+  code: z.literal('billing_unavailable'),
+  message: z.string(),
+  status: z.literal(503),
+})
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * BillingSubscriptionResponse
@@ -29,20 +75,18 @@ export const zBillingSubscriptionResponse = z.object({
 })
 
 /**
- * Success
+ * BillingUnprocessableEntityErrorResponse
  */
-export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
-
-export const zPutBillingPartnersByPartnerKeyTenantsBody = zPartnerTenantsPayload
-
-export const zPutBillingPartnersByPartnerKeyTenantsPath = z.object({
-  partner_key: z.string(),
+export const zBillingUnprocessableEntityErrorResponse = z.object({
+  code: z.literal('unprocessable_entity'),
+  message: z.string(),
+  status: z.literal(422),
 })
 
 /**
- * Tenants synced to partner successfully
+ * Success
  */
-export const zPutBillingPartnersByPartnerKeyTenantsResponse = zBillingResponse
+export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
 
 export const zGetBillingSubscriptionQuery = z.object({
   interval: z.enum(['month', 'year']),

@@ -3,10 +3,21 @@ from __future__ import annotations
 import re
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 
-from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
+from core.rag.entities.metadata_entities import (
+    ConditionValue,
+    SupportedComparisonOperator,
+)
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod, FileType
@@ -526,7 +537,8 @@ class AgentSoulModelSettings(AgentFlexibleConfig):
     frequency_penalty: float | None = None
     max_tokens: int | None = None
     stop: list[str] | None = None
-    response_format: AgentModelResponseFormatConfig | None = None
+    # Plugin parameter rules use string enums; existing saved configs may use native objects.
+    response_format: str | AgentModelResponseFormatConfig | None = None
 
 
 class AgentFeatureToggleConfig(AgentFlexibleConfig):
@@ -536,7 +548,7 @@ class AgentFeatureToggleConfig(AgentFlexibleConfig):
 class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
     language: str | None = None
     voice: str | None = None
-    autoPlay: str | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None
 
 
 class AgentSuggestedQuestionsAfterAnswerModelConfig(AgentFlexibleConfig):
@@ -695,7 +707,9 @@ class AgentSoulDifyToolConfig(BaseModel):
         if not self.provider_id and not (self.plugin_id and self.provider):
             raise ValueError("Dify tool requires provider_id or plugin_id + provider")
         if self.credential_type != "unauthorized" and (self.credential_ref is None or not self.credential_ref.id):
-            raise ValueError("credential_ref.id is required for credentialed Dify tools")
+            # credential resolved by provider_id, see ``ToolManager``
+            if self.provider_type not in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
+                raise ValueError("credential_ref.id is required for credentialed Dify tools")
         # ``name`` is reserved for a future user-rename UX. Until that lands
         # the model-visible name is forced to match ``tool_name``; reject
         # explicit values so a frontend bug surfaces immediately instead of
@@ -710,28 +724,74 @@ class AgentSoulToolsConfig(BaseModel):
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
 
 
-class AgentSoulKnowledgeConfig(BaseModel):
-    """Top-level Agent v2 knowledge config.
+class AgentKnowledgeSpaceConfig(BaseModel):
+    """One read-only Agent Knowledge Base binding, addressed by stable ID or CLI alias.
 
-    Agent v2 models knowledge as explicit sets instead of one flat
-    ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
-    list means no knowledge layer should be emitted at runtime, while set-name
-    uniqueness stays case-insensitive because runtime selection addresses sets
-    by name.
+    The control-space ID is Dify-owned, never the execution-plane space ID.
+    ``is_missing`` preserves unresolved DSL references for editing; it never
+    authorizes execution. Names/descriptions are author guidance, not authority.
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    id: str = Field(min_length=1, max_length=255)
+    control_space_id: str = Field(min_length=36, max_length=36)
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2_000)
+    is_missing: bool = False
+
+    @field_validator("control_space_id")
+    @classmethod
+    def validate_control_space_id(cls, value: str) -> str:
+        return str(UUID(value))
+
+    @field_validator("id", "name")
+    @classmethod
+    def validate_identity(cls, value: str) -> str:
+        value = value.strip()
+        if not value or any(ord(char) < 32 or ord(char) == 127 for char in value):
+            raise ValueError("knowledge binding ID and alias must be non-blank and contain no control characters")
+        return value
+
+
+class AgentSoulKnowledgeConfig(BaseModel):
+    """Agent Knowledge Base and Classic Knowledge Base bindings for an Agent.
+
+    ``spaces`` use the KnowledgeFS layer and ``sets`` use the Classic Knowledge
+    Base layer. Both may be configured together; empty knowledge adds no runtime
+    capability.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    spaces: list[AgentKnowledgeSpaceConfig] = Field(default_factory=list, max_length=10)
     sets: list[AgentKnowledgeSetConfig] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_unique_sets(self) -> Self:
+    def validate_unique_bindings(self) -> Self:
+        for attribute, values in (
+            ("id", [space.id.casefold() for space in self.spaces]),
+            ("control_space_id", [space.control_space_id.casefold() for space in self.spaces]),
+            ("name", [space.name.casefold() for space in self.spaces]),
+        ):
+            if len(values) != len(set(values)):
+                raise ValueError(f"Agent Knowledge Base {attribute} values must be unique")
+        # An alias must not shadow a different binding's stable ID.
+        ids = {space.id.casefold(): space for space in self.spaces}
+        for space in self.spaces:
+            if (other := ids.get(space.name.casefold())) is not None and other.id != space.id:
+                raise ValueError("knowledge alias must not shadow another binding ID")
         set_ids = [item.id.strip() for item in self.sets]
         if len(set_ids) != len(set(set_ids)):
             raise ValueError("knowledge set ids must be unique")
         set_names = [item.name.strip().lower() for item in self.sets]
         if len(set_names) != len(set(set_names)):
             raise ValueError("knowledge set names must be unique")
+        if self.spaces and self.sets:
+            if {space.id.casefold() for space in self.spaces} & {item.id.strip().casefold() for item in self.sets}:
+                raise ValueError("knowledge binding ids must be unique across Agent and Classic Knowledge Bases")
+            if {space.name.casefold() for space in self.spaces} & set(set_names):
+                raise ValueError("knowledge binding names must be unique across Agent and Classic Knowledge Bases")
         return self
 
 
@@ -1050,45 +1110,69 @@ class DeclaredOutputConfig(BaseModel):
         )
 
 
-# PRD §OUTPUT 配置框 0522 共识: "Output 如果没有配置，则 text, files, json"
-# The runtime injects these when ``declared_outputs`` is empty (stage 4 §4.1, D-3).
-# Not persisted; mutating this constant changes UI defaults globally.
-DEFAULT_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
+# ``text`` is a system-owned workflow output. It is derived for consumers and
+# never persisted in ``WorkflowNodeJobConfig.declared_outputs``.
+SYSTEM_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
     DeclaredOutputConfig(
         name="text",
         type=DeclaredOutputType.STRING,
         required=False,
         description="Free-form text answer.",
     ),
-    DeclaredOutputConfig(
-        name="files",
-        type=DeclaredOutputType.ARRAY,
-        required=False,
-        description="Files produced by the agent.",
-        array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
-    ),
-    DeclaredOutputConfig(
-        name="json",
-        type=DeclaredOutputType.OBJECT,
-        required=False,
-        description="Free-form JSON object.",
-    ),
 )
+# ``switch`` is derived when routing is enabled; ``_session`` remains reserved.
+RESERVED_DECLARED_OUTPUT_NAMES: Final[frozenset[str]] = frozenset({"text", "switch", "_session"})
+
+
+class WorkflowOutputRoute(BaseModel):
+    """Stable workflow exit identity and its model-visible selection condition."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1)
+    name: str = ""
+    label: str | None = None
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, value: str) -> str:
+        if not value.strip() or value in {"source", "target", "fail-branch"}:
+            raise ValueError("output route id must be nonblank and must not use a system handle")
+        return value
+
+
+class WorkflowOutputRoutes(BaseModel):
+    """Enabled routes require at least two exits; drafts may omit conditions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    routes: list[WorkflowOutputRoute] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_routes(self) -> Self:
+        if self.enabled and len(self.routes) < 2:
+            raise ValueError("Enabled output routes require at least two routes.")
+        if len({route.id for route in self.routes}) != len(self.routes):
+            raise ValueError("output route ids must be unique")
+        return self
+
+    def validate_for_execution(self) -> None:
+        if self.enabled and any(not route.name.strip() for route in self.routes):
+            raise ValueError("Each enabled output route requires a selection condition.")
 
 
 def effective_declared_outputs(
     declared_outputs: list[DeclaredOutputConfig] | tuple[DeclaredOutputConfig, ...],
+    output_routes: WorkflowOutputRoutes | None = None,
 ) -> tuple[DeclaredOutputConfig, ...]:
-    """Return the outputs the runtime actually presents.
-
-    Returns ``declared_outputs`` unchanged when non-empty, otherwise the PRD
-    defaults from ``DEFAULT_DECLARED_OUTPUTS``. Shared helper so Composer load
-    responses, runtime request builder, and the Node Output Inspector all use
-    the same fallback (stage 4 §4.1, decision D-3).
-    """
-    if declared_outputs:
-        return tuple(declared_outputs)
-    return DEFAULT_DECLARED_OUTPUTS
+    """Project system outputs for this job before its custom declarations."""
+    switch = (
+        (DeclaredOutputConfig(name="switch", type=DeclaredOutputType.STRING, description="Selected output route ID."),)
+        if output_routes is not None and output_routes.enabled
+        else ()
+    )
+    return SYSTEM_DECLARED_OUTPUTS + switch + tuple(declared_outputs)
 
 
 class WorkflowNodeJobConfig(BaseModel):
@@ -1099,5 +1183,16 @@ class WorkflowNodeJobConfig(BaseModel):
     workflow_prompt: str = ""
     previous_node_output_refs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
+    output_routes: WorkflowOutputRoutes = Field(default_factory=WorkflowOutputRoutes)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
     metadata: WorkflowNodeJobMetadata = Field(default_factory=WorkflowNodeJobMetadata)
+
+    @field_validator("declared_outputs")
+    @classmethod
+    def _reject_reserved_declared_output_names(
+        cls, declared_outputs: list[DeclaredOutputConfig]
+    ) -> list[DeclaredOutputConfig]:
+        for output in declared_outputs:
+            if output.name in RESERVED_DECLARED_OUTPUT_NAMES:
+                raise ValueError(f"declared output name {output.name!r} is reserved")
+        return declared_outputs

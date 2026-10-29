@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, MessageStatus
@@ -24,17 +26,17 @@ def _make_conversation(*, conversation_id: str = "conv1") -> Conversation:
         app_id="app",
         mode=AppMode.AGENT_CHAT,
         name="Agent Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.API,
     )
 
 
 def _make_message(*, message_id: str = "msg-id", conversation_id: str = "conv1") -> Message:
-    return Message(
+    message = Message(
         id=message_id,
         app_id="app",
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         answer="",
@@ -43,8 +45,9 @@ def _make_message(*, message_id: str = "msg-id", conversation_id: str = "conv1")
         answer_unit_price=Decimal(0),
         currency="USD",
         from_source=ConversationFromSource.API,
-        created_at=naive_utc_now(),
     )
+    message.created_at = naive_utc_now()
+    return message
 
 
 class DummyRunner(CotAgentRunner):
@@ -404,7 +407,11 @@ class TestRun:
 
         results = list(runner.run(session, message, "query", {}))
         assert events == ["commit", "close", "first-chunk"]
-        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
+        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {
+            "app_id": "app",
+            "app_type": CreditUsageAppType.AGENT,
+            "created_by": CreditUsageCreatedBy.APP.value,
+        }
         assert results[-1].delta.message.content == ""
 
     def test_run_usage_missing_key_branch(self, runner: DummyRunner, mocker: MockerFixture):

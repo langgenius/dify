@@ -5,9 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
@@ -16,11 +13,8 @@ type LabelFilterProps = {
   onChange: (v: string[]) => void
 }
 const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
+  const { t } = useTranslation(['common'])
   const { tags: labelList } = useTags()
-
   const [keywords, setKeywords] = useState('')
 
   const filteredLabelList = useMemo(() => {
@@ -37,12 +31,12 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           className={cn(
-            'flex h-8 cursor-pointer items-center gap-0 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-3 text-left select-none hover:bg-components-input-bg-hover',
-            !!value.length && 'pr-7',
+            'flex h-8 cursor-pointer items-center gap-0 rounded-lg bg-components-input-bg-normal py-1 ps-3 pe-2 text-start select-none hover:bg-components-input-bg-hover',
+            !!value.length && 'pe-7',
           )}
         >
           <div className="flex min-w-0 items-center p-1">
@@ -60,19 +54,19 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
           <button
             type="button"
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
+            className="group/clear absolute inset-e-2 top-1/2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={() => onChange([])}
           >
-            <XCircle
-              className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
+            <span
               aria-hidden="true"
+              className="i-custom-vender-solid-general-x-circle size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
             />
           </button>
         )}
         <PopoverContent
-          placement="bottom-start"
+          align="start"
           sideOffset={4}
-          popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <div className="relative">
             <div className="p-2">
@@ -83,18 +77,24 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
                 <button
                   key={label.name}
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-1.5 pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
+                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-1.5 ps-3 pe-2 text-start select-none hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                   {value.includes(label.name) && (
-                    <Check className="size-4 shrink-0 text-text-accent" aria-hidden="true" />
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-general-check size-4 shrink-0 text-text-accent"
+                    />
                   )}
                 </button>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="size-6 text-text-quaternary" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-financeAndECommerce-tag-03 size-6 text-text-quaternary"
+                  />
                   <div className="text-xs leading-3.5 text-text-tertiary">
                     {t(($) => $['tag.noTag'], { ns: 'common' })}
                   </div>

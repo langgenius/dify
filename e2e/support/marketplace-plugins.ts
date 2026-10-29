@@ -1,10 +1,10 @@
 import type { PluginInstallTask } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ConsoleClient } from './api/console-client'
-import type { SeedContext, SeedResult } from './seed'
+import type { ConsoleClient } from './api/console-client.ts'
+import type { SeedContext, SeedResult } from './seed.ts'
 import { Buffer } from 'node:buffer'
 import { ORPCError } from '@orpc/client'
-import { sleep } from './process'
-import { blocked, created, skipped, verified } from './seed'
+import { sleep } from './process.ts'
+import { blocked, created, skipped, verified } from './seed.ts'
 
 type MarketplacePluginBootstrapConfig = {
   defaultPluginIds: string[]

@@ -20,8 +20,8 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentSoulConfig,
-    DeclaredOutputConfig,
     WorkflowNodeJobConfig,
+    WorkflowOutputRoutes,
     WorkflowPreviousNodeOutputRef,
 )
 from models.workflow import Workflow
@@ -57,10 +57,16 @@ class WorkflowAgentPublishService:
     _AGENT_BINDING_KEY = "agent_binding"
     _AGENT_TASK_KEY = "agent_task"
     _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
+    _AGENT_OUTPUT_ROUTES_KEY = "agent_output_routes"
 
     @classmethod
-    def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
-        """Return draft graph with persisted Agent binding fields projected into node data.
+    def project_draft_bindings_to_graph(
+        cls, *, session: Session, draft_workflow: Workflow, binding_version: str = Workflow.VERSION_DRAFT
+    ) -> dict[str, Any]:
+        """Return the workflow graph with persisted Agent binding fields projected into node data.
+
+        Reads the binding rows of ``binding_version``. The default is the draft;
+        a DSL export passes the exported workflow's own version.
 
         Workflow draft graph is the front-end's editing source of truth, while
         runtime/publish reads WorkflowAgentNodeBinding. This
@@ -77,7 +83,7 @@ class WorkflowAgentPublishService:
                 WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
                 WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
                 WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
-                WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
+                WorkflowAgentNodeBinding.workflow_version == binding_version,
                 WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes.keys())),
             )
         ).all()
@@ -100,6 +106,7 @@ class WorkflowAgentPublishService:
             node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
             if node_job.workflow_prompt is not None:
                 node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
+            node_data[cls._AGENT_OUTPUT_ROUTES_KEY] = node_job.output_routes.model_dump(mode="json")
             node_data[cls._AGENT_DECLARED_OUTPUTS_KEY] = [
                 output.model_dump(mode="json") for output in node_job.declared_outputs
             ]
@@ -185,21 +192,42 @@ class WorkflowAgentPublishService:
             node_job=node_job,
         )
         ComposerConfigValidator.validate_publish_payload(payload)
-        cls._require_config_asset_refs_resolved_for_publish(binding=binding, agent_soul=agent_soul)
+        cls._require_config_asset_refs_resolved_for_publish(
+            session=session,
+            binding=binding,
+            snapshot_id=snapshot_id,
+            agent_soul=agent_soul,
+        )
 
     @classmethod
     def _require_config_asset_refs_resolved_for_publish(
         cls,
         *,
+        session: Session,
         binding: WorkflowAgentNodeBinding,
+        snapshot_id: str,
         agent_soul: AgentSoulConfig,
     ) -> None:
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
+        from services.skill_management_service import SkillManagementService
 
+        mentions = parse_prompt_mentions(agent_soul.prompt.system_prompt)
         configured_skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
+        has_unresolved_skill_ref = any(
+            mention.kind == MentionKind.SKILL and mention.ref_id not in configured_skill_names for mention in mentions
+        )
+        if has_unresolved_skill_ref and binding.agent_id is not None:
+            configured_skill_names.update(
+                str(item["name"])
+                for item in SkillManagementService(session=session).list_runtime_agent_skills(
+                    tenant_id=binding.tenant_id,
+                    agent_id=binding.agent_id,
+                    config_snapshot_id=snapshot_id,
+                )
+            )
         configured_file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
         missing_refs: list[str] = []
-        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
+        for mention in mentions:
             if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
                 continue
             ref_name = mention.ref_id
@@ -367,6 +395,7 @@ class WorkflowAgentPublishService:
                 workflow_id=draft_workflow.id,
                 workflow_version=cls._DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
+                binding_type=resolved_binding_type,
                 node_job_config=node_job_config,
                 created_by=account_id,
             )
@@ -554,12 +583,16 @@ class WorkflowAgentPublishService:
             if not isinstance(declared_outputs_payload, list):
                 raise ValueError("Workflow Agent node agent_declared_outputs must be a list.")
             try:
-                node_job.declared_outputs = [
-                    DeclaredOutputConfig.model_validate(output) for output in declared_outputs_payload
-                ]
+                node_job = WorkflowNodeJobConfig.model_validate(
+                    {
+                        **node_job.model_dump(mode="python"),
+                        "declared_outputs": declared_outputs_payload,
+                    }
+                )
             except ValidationError as exc:
                 raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
+        node_job.output_routes = WorkflowOutputRoutes.model_validate(node_data.get(cls._AGENT_OUTPUT_ROUTES_KEY, {}))
         return node_job
 
     @classmethod
@@ -579,7 +612,7 @@ class WorkflowAgentPublishService:
 
         Only copied inline bindings add owners for workflow-only Agents.
         Publishing does not release existing draft or historical inline owners,
-        produces no retirement candidates, and returns ``None``.
+        produces no retirement candidates.
         """
         node_ids = {
             node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)

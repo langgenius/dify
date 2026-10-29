@@ -1,7 +1,7 @@
 import type { VarInInspectType } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { useVarIcon } from '../hooks'
+import { getVarIconClass } from '../hooks'
 
 export type VariableIconProps = {
   className?: string
@@ -9,9 +9,9 @@ export type VariableIconProps = {
   variableCategory?: VarInInspectType | string
 }
 const VariableIcon = ({ className, variables = [], variableCategory }: VariableIconProps) => {
-  const VarIcon = useVarIcon(variables, variableCategory)
+  const iconClassName = getVarIconClass(variables, variableCategory)
 
-  return VarIcon && <VarIcon className={cn('size-3.5 shrink-0', className)} />
+  return <span aria-hidden className={cn(iconClassName, 'size-3.5 shrink-0', className)} />
 }
 
 export default memo(VariableIcon)

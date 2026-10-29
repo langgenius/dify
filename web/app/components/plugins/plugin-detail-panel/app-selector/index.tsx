@@ -1,18 +1,16 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { Placement } from '@langgenius/dify-ui/popover'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { keepPreviousData, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import type { PopoverActions } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import { consoleQuery } from '@/service/client'
-
-const PAGE_SIZE = 20
+import { consoleQuery } from '@/service/console'
+import { appListOptions } from './app-list-query'
 
 export type AppSelectorValue = {
   app_id: string
@@ -22,51 +20,15 @@ export type AppSelectorValue = {
 
 type AppSelectorProps = {
   value?: AppSelectorValue
-  scope?: string
   disabled?: boolean
-  placement?: Placement
-  offset?: number
   onSelect: (app: AppSelectorValue) => void
 }
 
-export function AppSelector({
-  value,
-  disabled,
-  placement = 'bottom',
-  offset = 4,
-  onSelect,
-}: AppSelectorProps) {
-  const { t } = useTranslation()
-  const [isShow, setIsShow] = useState(false)
-  const [isShowChooseApp, setIsShowChooseApp] = useState(false)
-  const [searchText, setSearchText] = useState('')
-
-  const appListQuery = useMemo(
-    () => ({
-      page: 1,
-      limit: PAGE_SIZE,
-      name: searchText,
-    }),
-    [searchText],
-  )
-
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery({
-    ...consoleQuery.apps.get.infiniteOptions({
-      input: (pageParam) => ({
-        query: {
-          ...appListQuery,
-          page: Number(pageParam),
-        },
-      }),
-      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
-    }),
-  })
-
-  const displayedApps = useMemo(() => {
-    return data?.pages.flatMap(({ data: apps }) => apps) ?? []
-  }, [data?.pages])
+export function AppSelector({ value, disabled, onSelect }: AppSelectorProps) {
+  const { t } = useTranslation(['app'])
+  const pickerActionsRef = useRef<PopoverActions>(null)
+  const [selectedApp, setSelectedApp] = useState<AppPartial>()
+  const { data } = useInfiniteQuery(appListOptions())
 
   const { data: selectedAppDetail } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
@@ -77,13 +39,17 @@ export function AppSelector({
   const currentAppInfo = useMemo(() => {
     if (!value?.app_id) return undefined
 
-    return selectedAppDetail || displayedApps.find((app) => app.id === value.app_id)
-  }, [displayedApps, selectedAppDetail, value?.app_id])
-
-  const hasMore = hasNextPage ?? true
+    return (
+      selectedAppDetail ||
+      (selectedApp?.id === value.app_id ? selectedApp : undefined) ||
+      data?.pages.flatMap((page) => page.data).find((app) => app.id === value.app_id)
+    )
+  }, [data?.pages, selectedApp, selectedAppDetail, value?.app_id])
 
   const handleSelectApp = useCallback(
     (app: AppPartial) => {
+      setSelectedApp(app)
+      pickerActionsRef.current?.close()
       const shouldClearValue = app.id !== value?.app_id
 
       onSelect({
@@ -110,72 +76,47 @@ export function AppSelector({
     [onSelect, value?.app_id, value?.files],
   )
 
-  const formattedValue = useMemo(
+  const formattedInputs = useMemo(
     () => ({
-      app_id: value?.app_id || '',
-      inputs: {
-        ...value?.inputs,
-        ...(value?.files?.length ? { '#image#': value.files[0] } : {}),
-      },
+      ...value?.inputs,
+      ...(value?.files?.length ? { '#image#': value.files[0] } : {}),
     }),
-    [value],
+    [value?.inputs, value?.files],
   )
 
   return (
-    <Popover open={isShow} onOpenChange={setIsShow}>
-      <PopoverTrigger
-        aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
-        disabled={disabled}
-        render={(props, state) => (
-          <button
-            {...props}
-            type="button"
-            className={cn(
-              'block w-full rounded-lg border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              props.className,
-            )}
-          >
-            <AppTrigger open={state.open} appDetail={currentAppInfo} />
-          </button>
-        )}
-      />
+    <Popover>
+      <PopoverTrigger disabled={disabled} render={<AppTrigger appDetail={currentAppInfo} />} />
       <PopoverContent
-        placement={placement}
-        sideOffset={offset}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        sideOffset={4}
+        className="relative min-h-20 w-97.25 max-w-(--available-width) bg-components-panel-bg-blur backdrop-blur-xs"
       >
-        <div className="relative min-h-20 w-97.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
-          <div className="flex flex-col gap-1 px-4 py-3">
-            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
-              {t(($) => $['appSelector.label'], { ns: 'app' })}
-            </div>
-            <AppPicker
-              placement="bottom"
-              offset={offset}
-              trigger={<AppTrigger open={isShowChooseApp} appDetail={currentAppInfo} />}
-              isShow={isShowChooseApp}
-              onShowChange={setIsShowChooseApp}
-              disabled={false}
-              onSelect={handleSelectApp}
-              apps={displayedApps}
-              isLoading={isLoading || isFetchingNextPage}
-              hasMore={hasMore}
-              onLoadMore={() => {
-                void fetchNextPage()
-              }}
-              searchText={searchText}
-              onSearchChange={setSearchText}
-            />
-          </div>
-          {currentAppInfo && (
-            <AppInputsPanel
-              key={currentAppInfo.id}
-              value={formattedValue}
-              appDetail={currentAppInfo}
-              onFormChange={handleFormChange}
-            />
-          )}
+        <div className="flex flex-col gap-1 px-4 py-3">
+          <PopoverTitle className="flex h-6 items-center system-sm-semibold text-text-secondary">
+            {t(($) => $['appSelector.label'], { ns: 'app' })}
+          </PopoverTitle>
+          <Popover actionsRef={pickerActionsRef}>
+            <PopoverTrigger render={<AppTrigger appDetail={currentAppInfo} />} />
+            <PopoverContent
+              align="center"
+              sideOffset={4}
+              className="relative flex max-h-[min(25rem,var(--available-height))] min-h-20 w-89 max-w-(--available-width) flex-col bg-components-panel-bg-blur backdrop-blur-xs"
+            >
+              <PopoverTitle className="sr-only">
+                {t(($) => $['appSelector.label'], { ns: 'app' })}
+              </PopoverTitle>
+              <AppPicker value={currentAppInfo ?? null} onSelect={handleSelectApp} />
+            </PopoverContent>
+          </Popover>
         </div>
+        {currentAppInfo && (
+          <AppInputsPanel
+            key={currentAppInfo.id}
+            inputs={formattedInputs}
+            appDetail={currentAppInfo}
+            onFormChange={handleFormChange}
+          />
+        )}
       </PopoverContent>
     </Popover>
   )

@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
-import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { hasEmailDelimiter, mergeEmailRecipients } from './email-recipients'
@@ -30,7 +30,7 @@ export function EmailRecipientsField({
   onChange,
   disabled = false,
 }: EmailRecipientsFieldProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const internalInputRef = useRef<HTMLInputElement>(null)
   const chipButtonRef = useRef<Array<HTMLButtonElement | null>>([])
   const selectDraftOnRenderRef = useRef(false)
@@ -42,17 +42,18 @@ export function EmailRecipientsField({
   )
   const fieldError =
     hasInvalidRecipient || hasInvalidDraft
-      ? t(($) => $['members.emailInvalid'], { ns: 'common' })
+      ? t(($) => $['members.emailInvalid'], { ns: 'workspaceMembers' })
       : null
 
   const validateRecipients = (value: unknown) => {
     const nextDraft = typeof value === 'string' ? value : draft
     const nextRecipients = mergeEmailRecipients(recipients, nextDraft)
 
-    if (nextRecipients.length === 0) return t(($) => $['members.emailRequired'], { ns: 'common' })
+    if (nextRecipients.length === 0)
+      return t(($) => $['members.emailRequired'], { ns: 'workspaceMembers' })
 
     if (nextRecipients.some(({ isValid }) => !isValid))
-      return t(($) => $['members.emailInvalid'], { ns: 'common' })
+      return t(($) => $['members.emailInvalid'], { ns: 'workspaceMembers' })
 
     return null
   }
@@ -158,29 +159,25 @@ export function EmailRecipientsField({
   return (
     <Field name="emails" invalid={Boolean(fieldError)} validate={validateRecipients}>
       <div className="flex items-center justify-between gap-3">
-        <FieldLabel>{t(($) => $['members.emailRecipients'], { ns: 'common' })}</FieldLabel>
+        <FieldLabel>
+          {t(($) => $['members.emailRecipients'], { ns: 'workspaceMembers' })}
+        </FieldLabel>
         {recipients.length > 0 && (
           <span aria-live="polite" className="py-1 body-xs-regular text-text-tertiary tabular-nums">
             {t(($) => $['members.recipientCount'], {
-              ns: 'common',
+              ns: 'workspaceMembers',
               count: recipients.length,
             })}
           </span>
         )}
       </div>
-      <div
-        className={cn(
-          'flex max-h-24 min-h-10 flex-wrap content-start items-center gap-1 overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1.5 transition-[background-color,border-color,box-shadow]',
-          'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-          'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
-          'group-data-invalid/field:border-components-input-border-destructive group-data-invalid/field:bg-components-input-bg-destructive',
-          disabled &&
-            'cursor-not-allowed bg-components-input-bg-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
-        )}
+      <InputGroup
+        // oxlint-disable-next-line shadcn/no-restyle -- Recipient chips keep the shared field indicator while showing their own navigation highlight.
+        className="max-h-24 flex-wrap content-start gap-1 overflow-y-auto px-2 py-0.75 focus-within:ring-2 focus-within:ring-state-accent-solid"
       >
         {recipients.length > 0 && (
           <ul
-            aria-label={t(($) => $['members.emailRecipients'], { ns: 'common' })}
+            aria-label={t(($) => $['members.emailRecipients'], { ns: 'workspaceMembers' })}
             className="contents"
           >
             {recipients.map(({ value, isValid }, index) => {
@@ -191,7 +188,7 @@ export function EmailRecipientsField({
                   key={value}
                   className={cn(
                     'flex h-6 max-w-full items-center gap-1 rounded-md bg-components-badge-bg-gray-soft px-2 system-xs-medium text-text-secondary outline-hidden',
-                    'focus-within:inset-ring-1 focus-within:inset-ring-components-input-border-active',
+                    'focus-within:ring-1 focus-within:ring-state-accent-solid',
                     !isValid && 'bg-components-badge-bg-red-soft text-text-destructive',
                   )}
                 >
@@ -236,7 +233,7 @@ export function EmailRecipientsField({
                   </button>
                   {!isValid && (
                     <span id={errorId} className="sr-only">
-                      {t(($) => $['members.emailInvalid'], { ns: 'common' })}
+                      {t(($) => $['members.emailInvalid'], { ns: 'workspaceMembers' })}
                     </span>
                   )}
                 </li>
@@ -244,7 +241,7 @@ export function EmailRecipientsField({
             })}
           </ul>
         )}
-        <Input
+        <InputGroupInput
           ref={internalInputRef}
           type="text"
           disabled={disabled}
@@ -253,14 +250,11 @@ export function EmailRecipientsField({
           inputMode="email"
           placeholder={
             recipients.length === 0
-              ? t(($) => $['members.emailPlaceholder'], { ns: 'common' }) || ''
+              ? t(($) => $['members.emailPlaceholder'], { ns: 'workspaceMembers' }) || ''
               : ''
           }
           value={draft}
-          className={cn(
-            'h-6 w-0 flex-1 rounded-none border-0 bg-transparent p-0 shadow-none hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none disabled:bg-transparent disabled:hover:bg-transparent data-invalid:border-transparent data-invalid:bg-transparent',
-            recipients.length > 0 ? 'min-w-12' : 'min-w-40',
-          )}
+          className={cn('h-6 p-0', recipients.length > 0 ? 'min-w-12' : 'min-w-40')}
           onChange={(event) => {
             updateDraft(event.target.value)
             setDraftTouched(false)
@@ -305,14 +299,14 @@ export function EmailRecipientsField({
             setDraftTouched(false)
           }}
         />
-      </div>
+      </InputGroup>
       {fieldError ? (
         <FieldError match>{fieldError}</FieldError>
       ) : (
         <>
           <FieldError />
           <FieldDescription className="group-data-invalid/field:hidden">
-            {t(($) => $['members.emailRecipientsTip'], { ns: 'common' })}
+            {t(($) => $['members.emailRecipientsTip'], { ns: 'workspaceMembers' })}
           </FieldDescription>
         </>
       )}

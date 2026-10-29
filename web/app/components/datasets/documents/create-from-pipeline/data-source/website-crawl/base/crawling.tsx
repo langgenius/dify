@@ -41,7 +41,7 @@ const Item = React.memo(({ firstLineWidth, secondLineWidth }: ItemProps) => {
 })
 
 const Crawling = ({ className = '', crawledNum, totalNum }: CrawlingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const itemsConfig = [
     {

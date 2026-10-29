@@ -1,7 +1,6 @@
 import * as React from 'react'
 import Zendesk from '@/app/components/base/zendesk'
-import MaintenanceNotice from '@/app/components/header/maintenance-notice'
-import MainNavLayout from '@/app/components/main-nav/layout'
+import MainNavLayout from '@/app/components/main-nav/server'
 import { CommonLayoutGlobalMounts } from './global-mounts'
 import { ConsoleContextProviders, ConsoleRuntimeProviders } from './providers'
 
@@ -15,8 +14,7 @@ export default async function Layout({
   return (
     <React.Fragment>
       <ConsoleRuntimeProviders>
-        <div className="flex h-full flex-col overflow-hidden">
-          <MaintenanceNotice />
+        <div className="flex h-dvh flex-col overflow-hidden">
           <ConsoleContextProviders>
             <MainNavLayout detailSidebar={detailSidebar}>{children}</MainNavLayout>
             <CommonLayoutGlobalMounts />

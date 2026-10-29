@@ -1,0 +1,192 @@
+"""
+Integration tests for Account and Tenant model methods that interact with the database.
+
+Migrated from unit_tests/models/test_account_models.py, replacing
+@patch("models.account.db") mock patches with real PostgreSQL operations.
+Also absorbs unit_tests/models/test_account.py role helper coverage.
+
+Covers:
+- Account.set_current_tenant_with_session (sets _current_tenant and role from TenantAccountJoin)
+- Account.set_tenant_id_with_session (resolves tenant + role from real join row)
+- Tenant.get_accounts (returns accounts linked via TenantAccountJoin)
+"""
+
+from collections.abc import Generator
+from typing import cast
+from uuid import uuid4
+
+import pytest
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
+
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+
+TrackedRow = Account | Tenant | TenantAccountJoin
+
+
+def _cleanup_tracked_rows(db_session: Session, tracked: list[TrackedRow]) -> None:
+    """Delete rows tracked during the test so committed state does not leak into the DB.
+
+    Rolls back any pending (uncommitted) session state first, then issues DELETE
+    statements by primary key for each tracked entity (in reverse creation order)
+    and commits. This cleans up rows created via either flush() or commit().
+    """
+    db_session.rollback()
+    for entity in reversed(tracked):
+        db_session.execute(delete(type(entity)).where(type(entity).id == entity.id))
+    db_session.commit()
+
+
+def _build_tenant() -> Tenant:
+    return Tenant(name=f"Tenant {uuid4()}")
+
+
+def _build_account(email_prefix: str = "account") -> Account:
+    return Account(
+        name=f"Account {uuid4()}",
+        email=f"{email_prefix}_{uuid4()}@example.com",
+        password="hashed-password",
+        password_salt="salt",
+        interface_language="en-US",
+        timezone="UTC",
+    )
+
+
+class _DBTrackingTestBase:
+    """Base class providing a tracker list and shared row factories for account/tenant tests."""
+
+    _tracked: list[TrackedRow]
+
+    @pytest.fixture(autouse=True)
+    def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None]:
+        self._tracked = []
+        yield
+        _cleanup_tracked_rows(db_session_with_containers, self._tracked)
+
+    def _create_tenant(self, db_session: Session) -> Tenant:
+        tenant = _build_tenant()
+        db_session.add(tenant)
+        db_session.flush()
+        self._tracked.append(tenant)
+        return tenant
+
+    def _create_account(self, db_session: Session, email_prefix: str = "account") -> Account:
+        account = _build_account(email_prefix)
+        db_session.add(account)
+        db_session.flush()
+        self._tracked.append(account)
+        return account
+
+    def _create_join(
+        self, db_session: Session, tenant_id: str, account_id: str, role: TenantAccountRole, current: bool = True
+    ) -> TenantAccountJoin:
+        join = TenantAccountJoin(tenant_id=tenant_id, account_id=account_id, role=role, current=current)
+        db_session.add(join)
+        db_session.flush()
+        self._tracked.append(join)
+        return join
+
+
+class TestTenantAccountRole:
+    """Tests for TenantAccountRole helper methods."""
+
+    def test_account_is_privileged_role(self) -> None:
+        assert TenantAccountRole.ADMIN == "admin"
+        assert TenantAccountRole.OWNER == "owner"
+        assert TenantAccountRole.EDITOR == "editor"
+        assert TenantAccountRole.NORMAL == "normal"
+
+        assert TenantAccountRole.is_privileged_role(TenantAccountRole.ADMIN)
+        assert TenantAccountRole.is_privileged_role(TenantAccountRole.OWNER)
+        assert not TenantAccountRole.is_privileged_role(TenantAccountRole.NORMAL)
+        assert not TenantAccountRole.is_privileged_role(TenantAccountRole.EDITOR)
+        assert not TenantAccountRole.is_privileged_role(cast(TenantAccountRole, ""))
+
+
+class TestAccountSetCurrentTenant(_DBTrackingTestBase):
+    """Integration tests for Account.current_tenant and set_current_tenant_with_session."""
+
+    def test_current_tenant_property_returns_cached_tenant(self, db_session_with_containers: Session) -> None:
+        """current_tenant getter returns the in-memory _current_tenant without DB access."""
+        account = self._create_account(db_session_with_containers)
+        tenant = self._create_tenant(db_session_with_containers)
+        account._current_tenant = tenant
+
+        assert account.current_tenant is tenant
+
+    def test_set_current_tenant_with_session_sets_tenant_and_role_when_join_exists(
+        self, db_session_with_containers: Session
+    ) -> None:
+        """set_current_tenant_with_session loads the join row and assigns role when relationship exists."""
+        tenant = self._create_tenant(db_session_with_containers)
+        account = self._create_account(db_session_with_containers)
+        self._create_join(db_session_with_containers, tenant.id, account.id, TenantAccountRole.OWNER)
+        db_session_with_containers.commit()
+
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
+
+        assert account._current_tenant is not None
+        assert account._current_tenant.id == tenant.id
+        assert account.role == TenantAccountRole.OWNER
+
+    def test_set_current_tenant_with_session_sets_none_when_no_join_exists(
+        self, db_session_with_containers: Session
+    ) -> None:
+        """set_current_tenant_with_session results in _current_tenant=None when no join row exists."""
+        tenant = self._create_tenant(db_session_with_containers)
+        account = self._create_account(db_session_with_containers)
+        db_session_with_containers.commit()
+
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
+
+        assert account._current_tenant is None
+
+
+class TestAccountSetTenantId(_DBTrackingTestBase):
+    """Integration tests for Account.set_tenant_id_with_session method."""
+
+    def test_set_tenant_id_with_session_sets_tenant_and_role_when_relationship_exists(
+        self, db_session_with_containers: Session
+    ) -> None:
+        """set_tenant_id_with_session loads the tenant and assigns role when a join row exists."""
+        tenant = self._create_tenant(db_session_with_containers)
+        account = self._create_account(db_session_with_containers)
+        self._create_join(db_session_with_containers, tenant.id, account.id, TenantAccountRole.ADMIN)
+        db_session_with_containers.commit()
+
+        account.set_tenant_id_with_session(tenant.id, session=db_session_with_containers)
+
+        assert account._current_tenant is not None
+        assert account._current_tenant.id == tenant.id
+        assert account.role == TenantAccountRole.ADMIN
+
+    def test_set_tenant_id_with_session_does_not_set_tenant_when_no_relationship_exists(
+        self, db_session_with_containers: Session
+    ) -> None:
+        """set_tenant_id_with_session does nothing when no join row matches the tenant."""
+        tenant = self._create_tenant(db_session_with_containers)
+        account = self._create_account(db_session_with_containers)
+        db_session_with_containers.commit()
+
+        account.set_tenant_id_with_session(tenant.id, session=db_session_with_containers)
+
+        assert account._current_tenant is None
+
+
+class TestTenantGetAccounts(_DBTrackingTestBase):
+    """Integration tests for Tenant.get_accounts method."""
+
+    def test_get_accounts_returns_linked_accounts(self, db_session_with_containers: Session) -> None:
+        """get_accounts returns all accounts linked to the tenant via TenantAccountJoin."""
+        tenant = self._create_tenant(db_session_with_containers)
+        account1 = self._create_account(db_session_with_containers, email_prefix="tenant_member")
+        account2 = self._create_account(db_session_with_containers, email_prefix="tenant_member")
+        self._create_join(db_session_with_containers, tenant.id, account1.id, TenantAccountRole.OWNER, current=False)
+        self._create_join(db_session_with_containers, tenant.id, account2.id, TenantAccountRole.NORMAL, current=False)
+
+        accounts = tenant.get_accounts(session=db_session_with_containers)
+
+        assert len(accounts) == 2
+        account_ids = {a.id for a in accounts}
+        assert account1.id in account_ids
+        assert account2.id in account_ids

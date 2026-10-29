@@ -1,9 +1,13 @@
 package server
 
 import (
+	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
 
 func TestJobStatusIsTerminal(t *testing.T) {
@@ -40,6 +44,7 @@ func TestOpenDBAndInitSchema(t *testing.T) {
 		JobID:        "test-job-1",
 		ScriptPath:   "jobs/test-job-1/script",
 		OutputPath:   "jobs/test-job-1/output.log",
+		Mode:         jobmode.PTY,
 		Cwd:          "/tmp",
 		TerminalCols: 80,
 		TerminalRows: 24,
@@ -66,6 +71,104 @@ func TestOpenDBAndInitSchema(t *testing.T) {
 	if ok {
 		t.Error("expected duplicate insert to return ok=false")
 	}
+	if got := schemaVersion(t, db); got != latestSchemaVersion {
+		t.Errorf("schema version = %d, want %d", got, latestSchemaVersion)
+	}
+}
+
+func TestInitSchemaMigratesV0JobsToPTY(t *testing.T) {
+	db := openTestDB(t, t.TempDir())
+	defer func() { _ = db.Close() }()
+
+	if err := db.createSchemaV0(); err != nil {
+		t.Fatalf("createSchemaV0: %v", err)
+	}
+	_, err := db.db.Exec(`
+		INSERT INTO jobs (
+			job_id, script_path, output_path, cwd, terminal_cols, terminal_rows,
+			status, session_name, pane_target, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"legacy-job", "jobs/legacy-job/script", "jobs/legacy-job/output.log", "/tmp",
+		80, 24, "created", "shellctl-legacy-job", "shellctl-legacy-job:0.0",
+		"2025-01-01T00:00:00Z", "2025-01-01T00:00:00Z",
+	)
+	if err != nil {
+		t.Fatalf("insert legacy job: %v", err)
+	}
+
+	if err := db.InitSchema(); err != nil {
+		t.Fatalf("InitSchema: %v", err)
+	}
+	row, err := db.GetJob("legacy-job")
+	if err != nil {
+		t.Fatalf("GetJob: %v", err)
+	}
+	if row.Mode != jobmode.PTY {
+		t.Errorf("legacy job mode = %q, want %q", row.Mode, jobmode.PTY)
+	}
+	if got := schemaVersion(t, db); got != latestSchemaVersion {
+		t.Errorf("schema version = %d, want %d", got, latestSchemaVersion)
+	}
+}
+
+func TestInitSchemaAtLatestVersionIsIdempotent(t *testing.T) {
+	db := setupTestDB(t, t.TempDir())
+	defer func() { _ = db.Close() }()
+
+	if err := db.InitSchema(); err != nil {
+		t.Fatalf("second InitSchema: %v", err)
+	}
+	if got := schemaVersion(t, db); got != latestSchemaVersion {
+		t.Errorf("schema version = %d, want %d", got, latestSchemaVersion)
+	}
+}
+
+func TestInitSchemaRejectsNewerDatabaseWithoutDDL(t *testing.T) {
+	db := openTestDB(t, t.TempDir())
+	defer func() { _ = db.Close() }()
+	if _, err := db.db.Exec("PRAGMA user_version = 2"); err != nil {
+		t.Fatalf("set future schema version: %v", err)
+	}
+
+	if err := db.InitSchema(); err == nil {
+		t.Fatal("InitSchema unexpectedly accepted a newer schema")
+	}
+	var tableCount int
+	if err := db.db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs'`).Scan(&tableCount); err != nil {
+		t.Fatalf("query jobs table: %v", err)
+	}
+	if tableCount != 0 {
+		t.Errorf("jobs table count = %d, want 0", tableCount)
+	}
+}
+
+func TestApplySchemaMigrationFailureRollsBackDDLAndVersion(t *testing.T) {
+	db := openTestDB(t, t.TempDir())
+	defer func() { _ = db.Close() }()
+	if err := db.createSchemaV0(); err != nil {
+		t.Fatalf("createSchemaV0: %v", err)
+	}
+
+	sentinel := errors.New("sentinel migration failure")
+	err := db.applySchemaMigration(1, func(tx *sql.Tx) error {
+		if _, err := tx.Exec(`ALTER TABLE jobs ADD COLUMN rollback_probe TEXT`); err != nil {
+			return err
+		}
+		return sentinel
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("migration error = %v, want sentinel failure", err)
+	}
+	var probeColumns int
+	if err := db.db.QueryRow(`SELECT count(*) FROM pragma_table_info('jobs') WHERE name = 'rollback_probe'`).Scan(&probeColumns); err != nil {
+		t.Fatalf("query rollback probe column: %v", err)
+	}
+	if probeColumns != 0 {
+		t.Errorf("rollback_probe column count = %d, want 0", probeColumns)
+	}
+	if got := schemaVersion(t, db); got != 0 {
+		t.Errorf("schema version = %d, want 0", got)
+	}
 }
 
 func TestGetJob(t *testing.T) {
@@ -87,6 +190,9 @@ func TestGetJob(t *testing.T) {
 	}
 	if row.TerminalCols != 80 {
 		t.Errorf("expected cols=80, got %d", row.TerminalCols)
+	}
+	if row.Mode != jobmode.PTY {
+		t.Errorf("expected mode=pty, got %s", row.Mode)
 	}
 }
 
@@ -243,6 +349,7 @@ func TestRecordRunnerExitIdempotent(t *testing.T) {
 	exitCode := 10
 	row := &JobRow{
 		JobID: "job-exit-2", ScriptPath: "x", OutputPath: "y", Cwd: "/tmp",
+		Mode:         jobmode.PTY,
 		TerminalCols: 80, TerminalRows: 24, Status: StatusExited,
 		SessionName: "s", PaneTarget: "p", ExitCode: &exitCode,
 		CreatedAt: "2025-01-01T00:00:00Z", UpdatedAt: "2025-01-01T00:00:00Z",
@@ -268,15 +375,30 @@ func TestRecordRunnerExitIdempotent(t *testing.T) {
 
 func setupTestDB(t *testing.T, dir string) *DB {
 	t.Helper()
+	db := openTestDB(t, dir)
+	if err := db.InitSchema(); err != nil {
+		t.Fatalf("InitSchema: %v", err)
+	}
+	return db
+}
+
+func openTestDB(t *testing.T, dir string) *DB {
+	t.Helper()
 	dbPath := filepath.Join(dir, "shellctl.db")
 	db, err := OpenDB(dbPath, 5000)
 	if err != nil {
 		t.Fatalf("OpenDB: %v", err)
 	}
-	if err := db.InitSchema(); err != nil {
-		t.Fatalf("InitSchema: %v", err)
-	}
 	return db
+}
+
+func schemaVersion(t *testing.T, db *DB) int {
+	t.Helper()
+	var version int
+	if err := db.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		t.Fatalf("read schema version: %v", err)
+	}
+	return version
 }
 
 func insertTestJob(t *testing.T, db *DB, jobID string, status JobStatusName) {
@@ -285,6 +407,7 @@ func insertTestJob(t *testing.T, db *DB, jobID string, status JobStatusName) {
 		JobID:        jobID,
 		ScriptPath:   "jobs/" + jobID + "/script",
 		OutputPath:   "jobs/" + jobID + "/output.log",
+		Mode:         jobmode.PTY,
 		Cwd:          "/tmp",
 		TerminalCols: 80,
 		TerminalRows: 24,

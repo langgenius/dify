@@ -1,8 +1,7 @@
 import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ActionItem, KnowledgeSearchResult } from './types'
+import type { ActionItem, KnowledgeSearchResult, SearchQueryOptions } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { consoleQuery } from '@/service/client'
-import { Folder } from '../../base/icons/src/vender/solid/files'
+import { consoleQuery } from '@/service/console'
 
 const EXTERNAL_PROVIDER = 'external' as const
 const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
@@ -25,7 +24,10 @@ function getKnowledgeResults(datasets: DatasetListItemResponse[]): KnowledgeSear
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
         >
-          <Folder className="h-5 w-5 text-indigo-600" />
+          <span
+            aria-hidden
+            className="i-custom-vender-solid-files-folder h-5 w-5 text-indigo-600"
+          />
         </div>
       ),
       data: dataset,
@@ -41,7 +43,7 @@ export const knowledgeAction: ActionItem = {
   source: 'remote',
 }
 
-export function knowledgeSearchQueryOptions(searchTerm: string) {
+export function knowledgeSearchQueryOptions(searchTerm: string, options: SearchQueryOptions = {}) {
   return consoleQuery.datasets.get.queryOptions({
     input: {
       query: {
@@ -51,6 +53,7 @@ export function knowledgeSearchQueryOptions(searchTerm: string) {
       },
     },
     retry: false,
+    ...options,
     select: (response) => getKnowledgeResults(response.data),
   })
 }

@@ -1,12 +1,6 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -18,7 +12,6 @@ type Props = Readonly<{
   isShowDelete: boolean
   togglePin: () => void
   onDelete: () => void
-  placement?: Placement
 }>
 
 const deferAction = (action: () => void) => {
@@ -33,43 +26,42 @@ const Operation: FC<Props> = ({
   onRenameConversation,
   isShowDelete,
   onDelete,
-  placement = 'bottom-start',
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore'])
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover">
+    <Menu>
+      <MenuTrigger className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1.5 pl-2 text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
         <span className="system-md-semibold">{title}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement={placement} sideOffset={4} popupClassName="min-w-[120px]">
-        <DropdownMenuItem className="system-md-regular" onClick={togglePin}>
+      </MenuTrigger>
+      <MenuContent align="start" className="min-w-30">
+        <MenuItem className="system-md-regular" onClick={togglePin}>
           <span className="grow">
             {isPinned
               ? t(($) => $['sidebar.action.unpin'], { ns: 'explore' })
               : t(($) => $['sidebar.action.pin'], { ns: 'explore' })}
           </span>
-        </DropdownMenuItem>
+        </MenuItem>
         {isShowRenameConversation && (
-          <DropdownMenuItem
+          <MenuItem
             className="system-md-regular"
             onClick={() => onRenameConversation && deferAction(onRenameConversation)}
           >
             <span className="grow">{t(($) => $['sidebar.action.rename'], { ns: 'explore' })}</span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {isShowDelete && (
-          <DropdownMenuItem
+          <MenuItem
             variant="destructive"
             className="system-md-regular"
             onClick={() => deferAction(onDelete)}
           >
             <span className="grow">{t(($) => $['sidebar.action.delete'], { ns: 'explore' })}</span>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 export default React.memo(Operation)

@@ -19,7 +19,7 @@ const ContentWrapper = ({
   className,
   expanded = false,
 }: ContentWrapperProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const [isExpanded, setIsExpanded] = useState(expanded)
 
   const handleToggleExpand = useCallback(() => {

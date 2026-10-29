@@ -1,12 +1,12 @@
 'use client'
 
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import SnippetHeader from './snippet-header'
 import SnippetWorkflowPanel from './workflow-panel'
 
 type SnippetChildrenProps = {
   snippetId: string
-  fields: SnippetInputField[]
+  fields: InputVar[]
   canSave: boolean
   canEdit: boolean
   isPublishing: boolean

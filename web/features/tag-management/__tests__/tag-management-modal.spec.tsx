@@ -1,325 +1,128 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import * as ReactI18next from 'react-i18next'
-import { render } from '@/test/console/render'
 import { TagManagementModal } from '../components/tag-management-modal'
+import { renderWithTags } from './render'
 
-const { mockNotify, mockToast } = vi.hoisted(() => {
-  const mockNotify = vi.fn()
-  const mockToast = Object.assign(mockNotify, {
-    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
-    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
-    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
-    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockNotify, mockToast }
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: mockToast,
+const { request, notify, permissions } = vi.hoisted(() => ({
+  request: vi.fn(),
+  notify: { success: vi.fn(), error: vi.fn() },
+  permissions: { value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] },
 }))
 
-const { mockUseQueryData, createTag } = vi.hoisted(() => ({
-  mockUseQueryData: { current: [] as Tag[] },
-  createTag: vi.fn(),
-}))
-
-const mockWorkspacePermissionKeys = vi.hoisted(() => ({
-  value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] as string[],
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: mockUseQueryData.current }),
-  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
-      Promise.resolve(mutationOptions.mutationFn(input))
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-    },
-  }),
-}))
-
+vi.mock('@/service/base', () => ({ request: (...args: unknown[]) => request(...args) }))
+vi.mock('@/app/notifications', () => ({ toast: notify }))
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
+  return createPermissionStateModuleMock(() => ({ workspacePermissionKeys: permissions.value }))
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    tags: {
-      get: {
-        queryOptions: () => ({}),
-      },
-      post: {
-        mutationOptions: () => ({
-          mutationFn: ({
-            body,
-          }: {
-            body: { name: string; type: 'app' | 'knowledge' | 'snippet' }
-          }) => createTag(body.name, body.type),
-        }),
-      },
-      byTagId: {
-        patch: {
-          mutationOptions: () => ({
-            mutationFn: () => Promise.resolve(undefined),
-          }),
-        },
-        delete: {
-          mutationOptions: () => ({
-            mutationFn: () => Promise.resolve(undefined),
-          }),
-        },
-      },
-    },
-  },
-}))
-
-const mockTags: Tag[] = [
+const tags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
   { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
-  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: '' },
 ]
-
-const defaultProps = {
-  type: 'app' as const,
-  show: true,
-  onClose: vi.fn(),
+const renderModal = (overrides: Partial<React.ComponentProps<typeof TagManagementModal>> = {}) => {
+  const props = { type: 'app' as const, show: true, onClose: vi.fn(), ...overrides }
+  return { ...renderWithTags(<TagManagementModal {...props} />, tags), props }
 }
+const inputName = 'common.tag.addNew'
 
-// i18n mock renders "ns.key" format (dot-separated)
-const i18n = {
-  manageTags: 'common.tag.manageTags',
-  addNew: 'common.tag.addNew',
-  created: 'common.tag.created',
-  failed: 'common.tag.failed',
-}
+beforeEach(() => {
+  vi.clearAllMocks()
+  request
+    .mockReset()
+    .mockResolvedValue(
+      Response.json({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: '' }),
+    )
+  permissions.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify']
+})
 
-describe('TagManagementModal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseQueryData.current = mockTags
-    mockWorkspacePermissionKeys.value = [
-      'app.tag.manage',
-      'dataset.tag.manage',
-      'snippets.create_and_modify',
-    ]
-    vi.mocked(createTag).mockResolvedValue({
-      id: 'new-tag',
-      name: 'NewTag',
-      type: 'app',
-      binding_count: '',
-    })
-  })
+it('names the dialog and shows existing tags', () => {
+  renderModal()
+  expect(screen.getByRole('dialog', { name: 'common.tag.manageTags' })).toBeInTheDocument()
+  expect(screen.getByText('Frontend')).toBeInTheDocument()
+  expect(screen.getByText('Backend')).toBeInTheDocument()
+})
 
-  describe('Rendering', () => {
-    it('should render the modal title when show is true', () => {
-      render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
-    })
+it.each(['app', 'knowledge', 'snippet'] as const)(
+  'creates a %s tag and clears the successful draft',
+  async (type) => {
+    const user = userEvent.setup()
+    renderModal({ type })
+    const input = screen.getByRole('textbox', { name: inputName })
+    await user.type(input, 'NewTag{Enter}')
 
-    it('should render the close button', () => {
-      render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
-    })
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
+    const submitted = request.mock.calls[0]?.[2]?.request as Request
+    expect(submitted.method).toBe('POST')
+    expect(new URL(submitted.url).pathname).toMatch(/\/tags$/)
+    expect(await submitted.json()).toEqual({ name: 'NewTag', type })
+    await waitFor(() => expect(input).toHaveValue(''))
+    expect(notify.success).toHaveBeenCalledWith('common.tag.created')
+  },
+)
 
-    it('should render the new tag input with placeholder', () => {
-      render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByRole('textbox', { name: i18n.addNew })).toBeInTheDocument()
-    })
+it('submits on blur and prevents duplicate submission or draft edits while pending', async () => {
+  const user = userEvent.setup()
+  let resolveRequest: (value: Response) => void = () => {}
+  request.mockReturnValueOnce(
+    new Promise<Response>((resolve) => {
+      resolveRequest = resolve
+    }),
+  )
+  renderModal()
+  const input = screen.getByRole('textbox', { name: inputName })
+  await user.type(input, 'Pending')
+  await user.tab()
+  await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
+  expect(input).toHaveAttribute('readonly')
+  await user.type(input, 'changed{Enter}')
+  await user.tab()
+  expect(request).toHaveBeenCalledTimes(1)
+  expect(input).toHaveValue('Pending')
 
-    it('should fallback to empty placeholder when translation returns empty', () => {
-      const mockedTranslation = {
-        t: vi.fn().mockReturnValue(''),
-        i18n: {} as ReturnType<typeof ReactI18next.useTranslation>['i18n'],
-        ready: true,
-      } as unknown as ReturnType<typeof ReactI18next.useTranslation>
+  await act(async () =>
+    resolveRequest(Response.json({ id: 'new', name: 'Pending', type: 'app', binding_count: '' })),
+  )
+  await waitFor(() => expect(input).toHaveValue(''))
+  expect(input).not.toHaveAttribute('readonly')
+})
 
-      vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
+it('keeps a failed draft available for correction and retry', async () => {
+  const user = userEvent.setup()
+  request.mockRejectedValueOnce(new Error('Creation failed'))
+  renderModal()
+  const input = screen.getByRole('textbox', { name: inputName })
+  await user.type(input, 'FailTag{Enter}')
+  await waitFor(() => expect(notify.error).toHaveBeenCalledWith('common.tag.failed'))
+  expect(input).toHaveValue('FailTag')
+  expect(input).not.toHaveAttribute('readonly')
+  await user.keyboard('{Enter}')
+  await waitFor(() => expect(input).toHaveValue(''))
+  expect(request).toHaveBeenCalledTimes(2)
+})
 
-      render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
-    })
+it('does not submit an empty name', async () => {
+  const user = userEvent.setup()
+  renderModal()
+  await user.click(screen.getByRole('textbox', { name: inputName }))
+  await user.keyboard('{Enter}')
+  await user.tab()
+  expect(request).not.toHaveBeenCalled()
+})
 
-    it('should render existing tags from query data', () => {
-      render(<TagManagementModal {...defaultProps} />)
-      // TagItemEditor renders each tag's name
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-    })
+it.each(['button', 'Escape'])('closes with %s', async (method) => {
+  const user = userEvent.setup()
+  const { props } = renderModal()
+  if (method === 'button')
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  else await user.keyboard('{Escape}')
+  expect(props.onClose).toHaveBeenCalledTimes(1)
+})
 
-    it('should not render content when show is false', () => {
-      render(<TagManagementModal {...defaultProps} show={false} />)
-      // The Modal component hides content when isShow is false
-      expect(screen.queryByText(i18n.manageTags)).not.toBeInTheDocument()
-    })
-
-    it('should not render content without tag management permission', () => {
-      mockWorkspacePermissionKeys.value = []
-
-      render(<TagManagementModal {...defaultProps} />)
-
-      expect(screen.queryByText(i18n.manageTags)).not.toBeInTheDocument()
-      expect(screen.queryByRole('textbox', { name: i18n.addNew })).not.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should close modal when close button is clicked', async () => {
-      const user = userEvent.setup()
-      const onClose = vi.fn()
-      render(<TagManagementModal {...defaultProps} onClose={onClose} />)
-
-      await user.click(screen.getByRole('button', { name: 'Close' }))
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should update input value when typing', async () => {
-      const user = userEvent.setup()
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      await user.type(input, 'NewTag')
-
-      expect(input).toHaveValue('NewTag')
-    })
-
-    it('should create a new tag on Enter key press', async () => {
-      const user = userEvent.setup()
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      await user.type(input, 'NewTag')
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        expect(createTag).toHaveBeenCalledWith('NewTag', 'app')
-      })
-    })
-
-    it('should show success notification after creating a tag', async () => {
-      const user = userEvent.setup()
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      await user.type(input, 'NewTag')
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: i18n.created,
-        })
-      })
-    })
-
-    it('should clear input after successful tag creation', async () => {
-      const user = userEvent.setup()
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      await user.type(input, 'NewTag')
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        expect(input).toHaveValue('')
-      })
-    })
-
-    it('should create a tag on input blur-sm', async () => {
-      const user = userEvent.setup()
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      await user.type(input, 'NewTag')
-      // Click outside to trigger blur
-      await user.click(document.body)
-
-      await waitFor(() => {
-        expect(createTag).toHaveBeenCalledWith('NewTag', 'app')
-      })
-    })
-  })
-
-  describe('Error Handling', () => {
-    it('should not create tag when name is empty', async () => {
-      const user = userEvent.setup()
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      // Focus and press Enter without typing
-      await user.click(input)
-      await user.keyboard('{Enter}')
-
-      expect(createTag).not.toHaveBeenCalled()
-    })
-
-    it('should show error notification when tag creation fails', async () => {
-      const user = userEvent.setup()
-      vi.mocked(createTag).mockRejectedValue(new Error('Creation failed'))
-
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      await user.type(input, 'FailTag')
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: i18n.failed,
-        })
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty tag list', () => {
-      mockUseQueryData.current = []
-
-      render(<TagManagementModal {...defaultProps} />)
-
-      // Should still render the input
-      expect(screen.getByRole('textbox', { name: i18n.addNew })).toBeInTheDocument()
-    })
-
-    it('should handle tag creation with knowledge type', async () => {
-      const user = userEvent.setup()
-      vi.mocked(createTag).mockResolvedValue({
-        id: 'new-k',
-        name: 'KnowledgeTag',
-        type: 'knowledge',
-        binding_count: '',
-      })
-
-      render(<TagManagementModal {...defaultProps} type="knowledge" />)
-
-      const input = screen.getByRole('textbox', { name: i18n.addNew })
-      await user.type(input, 'KnowledgeTag')
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        expect(createTag).toHaveBeenCalledWith('KnowledgeTag', 'knowledge')
-      })
-    })
-
-    it('should close modal via the Modal onClose callback', async () => {
-      const user = userEvent.setup()
-      const onClose = vi.fn()
-      render(<TagManagementModal {...defaultProps} onClose={onClose} />)
-      await user.keyboard('{Escape}')
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalled()
-      })
-    })
-  })
+it('hides management controls without permission', () => {
+  permissions.value = []
+  renderModal()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(request).not.toHaveBeenCalled()
 })

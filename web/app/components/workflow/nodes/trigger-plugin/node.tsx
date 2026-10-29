@@ -9,7 +9,7 @@ import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/compo
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import useConfig from './use-config'
 
-const formatConfigValue = (rawValue: any): string => {
+const formatConfigValue = (rawValue: unknown): string => {
   if (rawValue === null || rawValue === undefined) return ''
 
   if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean')
@@ -18,7 +18,7 @@ const formatConfigValue = (rawValue: any): string => {
   if (Array.isArray(rawValue)) return rawValue.join('.')
 
   if (typeof rawValue === 'object') {
-    const { value } = rawValue as { value?: any }
+    const { value } = rawValue as { value?: unknown }
     if (value === null || value === undefined) return ''
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
       return String(value)
@@ -41,7 +41,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({ id, data }) => {
     useNodePluginInstallation(data)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
 
   const isValidSubscription = useMemo(() => {
     return subscription_id && subscriptions?.some((sub) => sub.id === subscription_id)

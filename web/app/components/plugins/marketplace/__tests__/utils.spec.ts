@@ -3,25 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 
-// Mock config
-vi.mock('@/config', () => ({
-  API_PREFIX: '/api',
-  APP_VERSION: '1.0.0',
-  IS_MARKETPLACE: false,
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
   MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
 }))
-
-// Mock var utils
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.dify.ai${path}`,
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return { ...actual, env: { ...actual.env, NEXT_PUBLIC_WEB_PREFIX: '' } }
+})
 
 // Mock marketplace client
 const mockCollectionPlugins = vi.fn()
 const mockCollections = vi.fn()
 const mockSearchAdvanced = vi.fn()
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/marketplace', () => ({
   marketplaceClient: {
     collections: (...args: unknown[]) => mockCollections(...args),
     collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
@@ -55,152 +52,116 @@ const createMockPlugin = (overrides?: Partial<Plugin>): Plugin => ({
   ...overrides,
 })
 
-describe('getPluginIconInMarketplace', () => {
-  it('should return correct icon URL for regular plugin', async () => {
-    const { getPluginIconInMarketplace } = await import('../utils')
-    const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
-    const iconUrl = getPluginIconInMarketplace(plugin)
-    expect(iconUrl).toBe('https://marketplace.dify.ai/api/v1/plugins/test-org/test-plugin/icon')
-  })
-
-  it('should return correct icon URL for bundle', async () => {
-    const { getPluginIconInMarketplace } = await import('../utils')
-    const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
-    const iconUrl = getPluginIconInMarketplace(bundle)
-    expect(iconUrl).toBe('https://marketplace.dify.ai/api/v1/bundles/test-org/test-bundle/icon')
+describe('plugin and bundle links', () => {
+  it.each([
+    { type: 'plugin' as const, collection: 'plugins', detail: 'plugin' },
+    { type: 'bundle' as const, collection: 'bundles', detail: 'bundles' },
+  ])('builds $type links and formats card data', async ({ type, collection, detail }) => {
+    const {
+      getPluginIconInMarketplace,
+      getFormattedPlugin,
+      getPluginLinkInMarketplace,
+      getPluginDetailLinkInMarketplace,
+    } = await import('../utils')
+    const plugin = { ...createMockPlugin({ type }), labels: { en_US: 'Bundle label' } }
+    const icon = `https://marketplace.dify.ai/api/v1/${collection}/test-org/test-plugin/icon`
+    expect(getPluginIconInMarketplace(plugin)).toBe(icon)
+    expect(getPluginLinkInMarketplace(plugin)).toBe(
+      `https://marketplace.dify.ai/${collection}/test-org/test-plugin`,
+    )
+    expect(getPluginDetailLinkInMarketplace(plugin)).toBe(`/${detail}/test-org/test-plugin`)
+    expect(getFormattedPlugin(plugin)).toEqual({
+      ...plugin,
+      icon,
+      ...(type === 'bundle' ? { brief: plugin.description, label: plugin.labels } : {}),
+    })
   })
 })
 
-describe('getFormattedPlugin', () => {
-  it('should format plugin with icon URL', async () => {
-    const { getFormattedPlugin } = await import('../utils')
-    const rawPlugin = {
-      type: 'plugin',
-      org: 'test-org',
-      name: 'test-plugin',
-      tags: [{ name: 'search' }],
-    } as unknown as Plugin
+describe('getTemplateDetailLinkInMarketplace', () => {
+  it('keeps the same local link after a title change and prefers the unique handle', async () => {
+    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
+    const template = {
+      id: '5d107b52-8d4d-447b-9bad-1c5c16b01721',
+      template_name: 'Legal Research Agent',
+      publisher_handle: 'Dify Display Name',
+      publisher_unique_handle: 'dify-unique',
+    }
 
-    const formatted = getFormattedPlugin(rawPlugin)
-    expect(formatted.icon).toBe(
-      'https://marketplace.dify.ai/api/v1/plugins/test-org/test-plugin/icon',
+    const link = getTemplateDetailLinkInMarketplace(template)
+    expect(link).toBe('/template/dify-unique/5d107b52-8d4d-447b-9bad-1c5c16b01721')
+    const renamedTemplate = { ...template, template_name: 'Renamed research agent' }
+    expect(getTemplateDetailLinkInMarketplace(renamedTemplate)).toBe(link)
+  })
+
+  it('encodes both path segments and falls back to the publisher handle', async () => {
+    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
+
+    expect(
+      getTemplateDetailLinkInMarketplace({
+        id: 'template/one',
+        publisher_handle: 'Research / 团队',
+        publisher_unique_handle: '',
+      }),
+    ).toBe('/template/Research%20%2F%20%E5%9B%A2%E9%98%9F/template%2Fone')
+  })
+
+  it('uses the template fallback when publisher handles are absent', async () => {
+    const { getTemplateDetailLinkInMarketplace } = await import('../utils')
+
+    expect(getTemplateDetailLinkInMarketplace({ id: 'template-2' })).toBe(
+      '/template/template/template-2',
     )
   })
+})
 
-  it('should format bundle with additional properties', async () => {
-    const { getFormattedPlugin } = await import('../utils')
-    const rawBundle = {
-      type: 'bundle',
-      org: 'test-org',
-      name: 'test-bundle',
-      description: 'Bundle description',
-      labels: { 'en-US': 'Test Bundle' },
-    } as unknown as Plugin
+describe('getTemplateLinkInMarketplace', () => {
+  it('preserves embedded context while dropping legacy identity parameters', async () => {
+    const { getTemplateLinkInMarketplace } = await import('../utils')
 
-    const formatted = getFormattedPlugin(rawBundle)
-    expect(formatted.icon).toBe(
-      'https://marketplace.dify.ai/api/v1/bundles/test-org/test-bundle/icon',
+    const link = new URL(
+      getTemplateLinkInMarketplace(
+        { id: 'template-1', publisher_handle: 'Display Name', publisher_unique_handle: 'dify' },
+        {
+          tid: 'legacy-short-id',
+          templateId: 'legacy-id',
+          creationType: 'templates',
+          language: 'zh-Hans',
+          theme: 'dark',
+          source: 'https://cloud.dify.ai',
+          view: 'modal',
+        },
+      ),
     )
-    expect(formatted.brief).toBe('Bundle description')
-    expect(formatted.label).toEqual({ 'en-US': 'Test Bundle' })
+
+    expect(link.origin + link.pathname).toBe('https://marketplace.dify.ai/template/dify/template-1')
+    expect(Object.fromEntries(link.searchParams)).toEqual({
+      language: 'zh-Hans',
+      theme: 'dark',
+      source: 'https://cloud.dify.ai',
+      view: 'modal',
+    })
   })
 })
 
-describe('getPluginLinkInMarketplace', () => {
-  it('should return correct link for regular plugin', async () => {
-    const { getPluginLinkInMarketplace } = await import('../utils')
-    const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
-    const link = getPluginLinkInMarketplace(plugin)
-    expect(link).toBe('https://marketplace.dify.ai/plugins/test-org/test-plugin')
-  })
-
-  it('should return correct link for bundle', async () => {
-    const { getPluginLinkInMarketplace } = await import('../utils')
-    const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
-    const link = getPluginLinkInMarketplace(bundle)
-    expect(link).toBe('https://marketplace.dify.ai/bundles/test-org/test-bundle')
-  })
-})
-
-describe('getPluginDetailLinkInMarketplace', () => {
-  it('should return the local detail link for a regular plugin', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
-
-    expect(getPluginDetailLinkInMarketplace(plugin)).toBe('/plugin/test-org/test-plugin')
-  })
-
-  it('should return the local detail link for a bundle', async () => {
-    const { getPluginDetailLinkInMarketplace } = await import('../utils')
-    const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
-
-    expect(getPluginDetailLinkInMarketplace(bundle)).toBe('/bundles/test-org/test-bundle')
-  })
-})
-
-describe('getMarketplaceListCondition', () => {
-  it('should return category condition for tool', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.tool)).toBe('category=tool')
-  })
-
-  it('should return category condition for model', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.model)).toBe('category=model')
-  })
-
-  it('should return category condition for agent', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.agent)).toBe('category=agent-strategy')
-  })
-
-  it('should return category condition for datasource', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.datasource)).toBe('category=datasource')
-  })
-
-  it('should return category condition for trigger', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.trigger)).toBe('category=trigger')
-  })
-
-  it('should return endpoint category for extension', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition(PluginCategoryEnum.extension)).toBe('category=endpoint')
-  })
-
-  it('should return type condition for bundle', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition('bundle')).toBe('type=bundle')
-  })
-
-  it('should return empty string for all', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition('all')).toBe('')
-  })
-
-  it('should return empty string for unknown type', async () => {
-    const { getMarketplaceListCondition } = await import('../utils')
-    expect(getMarketplaceListCondition('unknown')).toBe('')
-  })
-})
-
-describe('getMarketplaceListFilterType', () => {
-  it('should return undefined for all', async () => {
-    const { getMarketplaceListFilterType } = await import('../utils')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.all)).toBeUndefined()
-  })
-
-  it('should return bundle for bundle', async () => {
-    const { getMarketplaceListFilterType } = await import('../utils')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.bundle)).toBe('bundle')
-  })
-
-  it('should return plugin for other categories', async () => {
-    const { getMarketplaceListFilterType } = await import('../utils')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.tool)).toBe('plugin')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.model)).toBe('plugin')
-    expect(getMarketplaceListFilterType(PLUGIN_TYPE_SEARCH_MAP.agent)).toBe('plugin')
+describe('catalog filters', () => {
+  it.each([
+    [PLUGIN_TYPE_SEARCH_MAP.tool, 'category=tool', 'plugin'],
+    [PLUGIN_TYPE_SEARCH_MAP.model, 'category=model', 'plugin'],
+    [PLUGIN_TYPE_SEARCH_MAP.agent, 'category=agent-strategy', 'plugin'],
+    [PLUGIN_TYPE_SEARCH_MAP.datasource, 'category=datasource', 'plugin'],
+    [PLUGIN_TYPE_SEARCH_MAP.trigger, 'category=trigger', 'plugin'],
+    [PLUGIN_TYPE_SEARCH_MAP.extension, 'category=endpoint', 'plugin'],
+    [PLUGIN_TYPE_SEARCH_MAP.bundle, 'type=bundle', 'bundle'],
+    [PLUGIN_TYPE_SEARCH_MAP.all, '', undefined],
+  ] as const)('maps %s into collection request filters', async (category, condition, type) => {
+    const { getMarketplaceListCondition, getMarketplaceListFilterType, getCollectionsParams } =
+      await import('../utils')
+    expect(getMarketplaceListCondition(category)).toBe(condition)
+    expect(getMarketplaceListFilterType(category)).toBe(type)
+    expect(getCollectionsParams(category)).toEqual(
+      category === 'all' ? {} : { category, condition, type },
+    )
   })
 })
 
@@ -209,36 +170,40 @@ describe('getMarketplacePluginsByCollectionId', () => {
     vi.clearAllMocks()
   })
 
-  it('should fetch plugins by collection id successfully', async () => {
-    const mockPlugins = [
-      { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
-      { type: 'plugin', org: 'test', name: 'plugin2', tags: [] },
-    ]
-    mockCollectionPlugins.mockResolvedValueOnce({
-      data: { plugins: mockPlugins },
-    })
-
+  it('forwards collection filters and cancellation and returns formatted cards', async () => {
+    const plugin = createMockPlugin()
+    mockCollectionPlugins.mockResolvedValueOnce({ data: { plugins: [plugin] } })
+    const controller = new AbortController()
+    const filters = { category: 'tool', exclude: ['excluded-plugin'], type: 'plugin' as const }
     const { getMarketplacePluginsByCollectionId } = await import('../utils')
-    const result = await getMarketplacePluginsByCollectionId('test-collection', {
-      category: 'tool',
-      exclude: ['excluded-plugin'],
-      type: 'plugin',
+    const result = await getMarketplacePluginsByCollectionId('test-collection', filters, {
+      signal: controller.signal,
     })
-
-    expect(mockCollectionPlugins).toHaveBeenCalled()
-    expect(result).toHaveLength(2)
+    expect(mockCollectionPlugins).toHaveBeenCalledExactlyOnceWith(
+      { params: { collectionId: 'test-collection' }, body: filters },
+      { signal: controller.signal },
+    )
+    expect(result).toEqual([
+      {
+        ...plugin,
+        icon: 'https://marketplace.dify.ai/api/v1/plugins/test-org/test-plugin/icon',
+        introduction: '',
+        endpoint: { settings: [] },
+      },
+    ])
   })
 
-  it('should handle fetch error and return empty array', async () => {
+  it('should propagate fetch errors', async () => {
     mockCollectionPlugins.mockRejectedValueOnce(new Error('Network error'))
 
     const { getMarketplacePluginsByCollectionId } = await import('../utils')
-    const result = await getMarketplacePluginsByCollectionId('test-collection')
 
-    expect(result).toEqual([])
+    await expect(getMarketplacePluginsByCollectionId('test-collection')).rejects.toThrow(
+      'Network error',
+    )
   })
 
-  it('should send an empty body when query is omitted', async () => {
+  it('should omit a preview limit when query is omitted', async () => {
     mockCollectionPlugins.mockResolvedValueOnce({
       data: { plugins: [] },
     })
@@ -257,21 +222,6 @@ describe('getMarketplacePluginsByCollectionId', () => {
         signal: undefined,
       }),
     )
-  })
-
-  it('should pass abort signal when provided', async () => {
-    const mockPlugins = [{ type: 'plugin', org: 'test', name: 'plugin1' }]
-    mockCollectionPlugins.mockResolvedValueOnce({
-      data: { plugins: mockPlugins },
-    })
-
-    const controller = new AbortController()
-    const { getMarketplacePluginsByCollectionId } = await import('../utils')
-    await getMarketplacePluginsByCollectionId('test-collection', {}, { signal: controller.signal })
-
-    expect(mockCollectionPlugins).toHaveBeenCalled()
-    const call = mockCollectionPlugins.mock.calls[0]
-    expect(call![1]).toMatchObject({ signal: controller.signal })
   })
 })
 
@@ -295,51 +245,142 @@ describe('getMarketplaceCollectionsAndPlugins', () => {
       type: 'plugin',
     })
 
-    expect(result.marketplaceCollections).toBeDefined()
-    expect(result.marketplaceCollectionPluginsMap).toBeDefined()
+    expect(result.marketplaceCollections).toEqual(mockCollectionData)
+    expect(result.marketplaceCollectionPluginsMap).toEqual({
+      collection1: [
+        expect.objectContaining({
+          org: 'test',
+          name: 'plugin1',
+          icon: 'https://marketplace.dify.ai/api/v1/plugins/test/plugin1/icon',
+        }),
+      ],
+    })
+    expect(mockCollections).toHaveBeenCalledWith(
+      { query: { condition: 'category=tool', type: 'plugin', page: 1, page_size: 100 } },
+      { signal: undefined },
+    )
+    expect(mockCollectionPlugins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { collectionId: 'collection1' },
+        body: {
+          condition: 'category=tool',
+          type: 'plugin',
+        },
+      }),
+      expect.any(Object),
+    )
   })
 
-  it('should handle fetch error and return empty data', async () => {
+  it('posts without a preview limit when the catalog has no extra filters', async () => {
+    mockCollections.mockResolvedValueOnce({
+      data: {
+        collections: [
+          {
+            name: 'featured',
+            label: {},
+            description: {},
+            rule: '',
+            created_at: '',
+            updated_at: '',
+          },
+        ],
+      },
+    })
+    mockCollectionPlugins.mockResolvedValue({ data: { plugins: [] } })
+
+    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
+    await getMarketplaceCollectionsAndPlugins()
+
+    expect(mockCollectionPlugins).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: { collectionId: 'featured' },
+        body: {},
+      }),
+      expect.any(Object),
+    )
+  })
+
+  it('should propagate a failing collections request', async () => {
     mockCollections.mockRejectedValueOnce(new Error('Network error'))
+
+    const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
+
+    // Resolving an empty catalog here made a backend outage indistinguishable
+    // from "no collections", cached as a success for the whole staleTime.
+    await expect(getMarketplaceCollectionsAndPlugins()).rejects.toThrow('Network error')
+  })
+
+  it('should keep the catalog when a single collection fails', async () => {
+    mockCollections.mockResolvedValueOnce({
+      data: {
+        collections: [
+          { name: 'ok', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+          { name: 'broken', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+        ],
+      },
+    })
+    mockCollectionPlugins
+      .mockResolvedValueOnce({ data: { plugins: [{ type: 'plugin', org: 'a', name: 'b' }] } })
+      .mockRejectedValueOnce(new Error('collection down'))
 
     const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
     const result = await getMarketplaceCollectionsAndPlugins()
 
-    expect(result.marketplaceCollections).toEqual([])
-    expect(result.marketplaceCollectionPluginsMap).toEqual({})
+    expect(result.marketplaceCollections).toHaveLength(2)
+    expect(result.marketplaceCollectionPluginsMap.ok).toHaveLength(1)
+    expect(result.marketplaceCollectionPluginsMap.broken).toEqual([])
   })
 
-  it('should append condition and type to URL when provided', async () => {
-    mockCollections.mockResolvedValueOnce({ data: { collections: [] } })
+  it('propagates cancellation instead of resolving empty carousels', async () => {
+    const controller = new AbortController()
+    mockCollections.mockResolvedValueOnce({
+      data: {
+        collections: [
+          { name: 'ok', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+          { name: 'slow', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+        ],
+      },
+    })
+    mockCollectionPlugins
+      .mockResolvedValueOnce({ data: { plugins: [{ type: 'plugin', org: 'a', name: 'b' }] } })
+      .mockImplementationOnce(async () => {
+        controller.abort()
+        const error = new Error('Aborted')
+        error.name = 'AbortError'
+        throw error
+      })
 
     const { getMarketplaceCollectionsAndPlugins } = await import('../utils')
-    await getMarketplaceCollectionsAndPlugins({
-      condition: 'category=tool',
-      type: 'bundle',
-    })
 
-    expect(mockCollections).toHaveBeenCalled()
-    const call = mockCollections.mock.calls[0]
-    expect(call![0]).toMatchObject({
-      query: expect.objectContaining({ condition: 'category=tool', type: 'bundle' }),
-    })
+    await expect(
+      getMarketplaceCollectionsAndPlugins({}, { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
   })
 })
 
-describe('getCollectionsParams', () => {
-  it('should return empty object for all category', async () => {
-    const { getCollectionsParams } = await import('../utils')
-    expect(getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.all)).toEqual({})
-  })
+describe('toListPlugin', () => {
+  it('keeps card fields and drops list-unused payload', async () => {
+    const { toListPlugin } = await import('../utils')
+    const plugin = {
+      ...createMockPlugin({
+        introduction: 'A very long readme that must not enter the catalog RSC payload',
+      }),
+      resource: { memory: 256 },
+      plugins: { tools: ['x'] },
+      tool: { identity: { name: 'search' } },
+      model: { provider: 'openai' },
+      agent_strategy: { features: ['a'] },
+      data_sources: { items: [] },
+      triggers: { events: [] },
+      privacy_policy: 'https://example.com/privacy',
+      privacy_options: 'all',
+      readme_meta: { available_languages: ['en_US'] },
+      endpoint: { settings: [{ name: 'api_key' }] },
+    } as unknown as Plugin
 
-  it('should return category, condition, and type for tool category', async () => {
-    const { getCollectionsParams } = await import('../utils')
-    const result = getCollectionsParams(PLUGIN_TYPE_SEARCH_MAP.tool)
-    expect(result).toEqual({
-      category: PluginCategoryEnum.tool,
-      condition: 'category=tool',
-      type: 'plugin',
-    })
+    const listed = toListPlugin(plugin)
+
+    expect(listed).toEqual({ ...createMockPlugin(), introduction: '', endpoint: { settings: [] } })
   })
 })
 
@@ -361,32 +402,33 @@ describe('getMarketplacePlugins', () => {
     expect(mockSearchAdvanced).not.toHaveBeenCalled()
   })
 
-  it('should fetch plugins with valid query params', async () => {
-    mockSearchAdvanced.mockResolvedValueOnce({
-      data: {
-        plugins: [{ type: 'plugin', org: 'test', name: 'p1', tags: [] }],
-        total: 1,
-      },
-    })
-
+  it('forwards filters, pagination and cancellation to plugin search', async () => {
+    const plugin = createMockPlugin()
+    mockSearchAdvanced.mockResolvedValueOnce({ data: { plugins: [plugin], total: 45 } })
+    const controller = new AbortController()
+    const body = {
+      query: 'test',
+      sort_by: 'install_count' as const,
+      sort_order: 'DESC' as const,
+      category: 'tool',
+      tags: ['search'],
+      page_size: 20,
+      page: 2,
+    }
     const { getMarketplacePlugins } = await import('../utils')
-    const result = await getMarketplacePlugins(
-      {
-        query: 'test',
-        sort_by: 'install_count',
-        sort_order: 'DESC',
-        category: 'tool',
-        tags: ['search'],
-        type: 'plugin',
-        page_size: 20,
-      },
-      1,
+    const result = await getMarketplacePlugins({ ...body, type: 'plugin' }, 2, controller.signal)
+    expect(mockSearchAdvanced).toHaveBeenCalledExactlyOnceWith(
+      { params: { kind: 'plugins' }, body },
+      { signal: controller.signal },
     )
-
-    expect(result.plugins).toHaveLength(1)
-    expect(result.total).toBe(1)
-    expect(result.page).toBe(1)
-    expect(result.page_size).toBe(20)
+    expect(result).toEqual({
+      plugins: [
+        { ...plugin, icon: 'https://marketplace.dify.ai/api/v1/plugins/test-org/test-plugin/icon' },
+      ],
+      total: 45,
+      page: 2,
+      page_size: 20,
+    })
   })
 
   it('should use bundles endpoint when type is bundle', async () => {
@@ -419,7 +461,7 @@ describe('getMarketplacePlugins', () => {
     })
 
     const { getMarketplacePlugins } = await import('../utils')
-    await getMarketplacePlugins(
+    const result = await getMarketplacePlugins(
       {
         query: 'test',
         category: 'all',
@@ -428,50 +470,19 @@ describe('getMarketplacePlugins', () => {
     )
 
     const call = mockSearchAdvanced.mock.calls[0]
-    expect(call![0].body.category).toBe('')
+    expect(call![0].body).toMatchObject({ category: '', page: 1, page_size: 40 })
+    expect(result).toEqual({ plugins: [], total: 0, page: 1, page_size: 40 })
   })
 
-  it('should handle API error and return empty result', async () => {
+  it('should propagate API errors instead of synthesizing an empty page', async () => {
     mockSearchAdvanced.mockRejectedValueOnce(new Error('API error'))
 
     const { getMarketplacePlugins } = await import('../utils')
-    const result = await getMarketplacePlugins(
-      {
-        query: 'fail',
-      },
-      2,
-    )
 
-    expect(result).toEqual({
-      plugins: [],
-      total: 0,
-      page: 2,
-      page_size: 40,
-    })
-  })
-
-  it('should pass abort signal when provided', async () => {
-    mockSearchAdvanced.mockResolvedValueOnce({
-      data: { plugins: [], total: 0 },
-    })
-
-    const controller = new AbortController()
-    const { getMarketplacePlugins } = await import('../utils')
-    await getMarketplacePlugins({ query: 'test' }, 1, controller.signal)
-
-    const call = mockSearchAdvanced.mock.calls[0]
-    expect(call![1]).toMatchObject({ signal: controller.signal })
-  })
-
-  it('should default page_size to 40 when not provided', async () => {
-    mockSearchAdvanced.mockResolvedValueOnce({
-      data: { plugins: [], total: 0 },
-    })
-
-    const { getMarketplacePlugins } = await import('../utils')
-    const result = await getMarketplacePlugins({ query: 'test' }, 1)
-
-    expect(result.page_size).toBe(40)
+    // A synthesized `{ plugins: [], total: 0 }` resolved as a *success*: no
+    // isError, no retry, a cached empty result, and getNextPageParam saw
+    // total 0 and killed pagination for that key permanently.
+    await expect(getMarketplacePlugins({ query: 'fail' }, 2)).rejects.toThrow('API error')
   })
 
   it('should handle response with bundles fallback to plugins fallback to empty', async () => {
@@ -487,10 +498,7 @@ describe('getMarketplacePlugins', () => {
   })
 })
 
-// ================================
-// Edge cases for ||/optional chaining branches
-// ================================
-describe('Utils branch edge cases', () => {
+describe('missing collection data', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

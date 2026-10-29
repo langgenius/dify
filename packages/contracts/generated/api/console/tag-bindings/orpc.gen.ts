@@ -7,7 +7,7 @@ import {
   zPostTagBindingsRemoveBody,
   zPostTagBindingsRemoveResponse,
   zPostTagBindingsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Remove one or more tag bindings from a target.

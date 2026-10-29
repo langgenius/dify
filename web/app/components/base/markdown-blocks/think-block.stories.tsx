@@ -17,7 +17,6 @@ const ThinkBlockDemo = ({ responding = false }: { responding?: boolean }) => {
       config={undefined}
       isResponding={isResponding}
       chatList={[]}
-      showPromptLog={false}
       questionIcon={undefined}
       answerIcon={undefined}
       onSend={undefined}

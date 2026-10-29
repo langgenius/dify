@@ -9,7 +9,8 @@ class DifyClient {
 
     public function __construct($api_key, $base_url = null) {
         $this->api_key = $api_key;
-        $this->base_url = $base_url ?? 'https://api.dify.ai/v1/';
+        // Endpoints are relative to the API directory, including for custom base URLs.
+        $this->base_url = rtrim($base_url ?? 'https://api.dify.ai/v1/', '/') . '/';
         $this->client = new Client([
             'base_uri' => $this->base_url,
             'headers' => [
@@ -164,7 +165,7 @@ class ChatClient extends DifyClient {
             'user' => $user,
             'auto_generate' => $auto_generate
         ];
-        return $this->send_request('PATCH', "conversations/{$conversation_id}", $data);
+        return $this->send_request('POST', "conversations/{$conversation_id}/name", $data);
     }
 
     public function delete_conversation($conversation_id, $user) {

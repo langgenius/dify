@@ -1,7 +1,10 @@
 import base64
 import binascii
 import hashlib
+import hmac
 import re
+
+from configs import dify_config
 
 password_pattern = r"^(?=.*[a-zA-Z])(?=.*\d).{8,}$"
 
@@ -18,6 +21,9 @@ def valid_password(password):
 
 def hash_password(password_str: str, salt_byte: bytes):
     dk = hashlib.pbkdf2_hmac("sha256", password_str.encode("utf-8"), salt_byte, 10000)
+    # The pepper wraps the legacy PBKDF2 digest, so changing PASSWORD_PEPPER invalidates every stored hash.
+    if pepper := dify_config.PASSWORD_PEPPER:
+        dk = hmac.new(pepper.encode("utf-8"), dk, hashlib.sha256).digest()
     return binascii.hexlify(dk)
 
 

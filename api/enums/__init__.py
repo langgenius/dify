@@ -1,6 +1,18 @@
 from enum import StrEnum, auto
 
 
+class WorkflowKind(StrEnum):
+    STANDARD = "standard"
+    SNIPPET = "snippet"
+
+    @classmethod
+    def value_of(cls, value: str) -> "WorkflowKind":
+        for kind in cls:
+            if kind.value == value:
+                return kind
+        raise ValueError(f"invalid workflow kind value {value}")
+
+
 class CloudPlan(StrEnum):
     """
     Enum representing user plan types in the cloud platform.
@@ -13,6 +25,10 @@ class CloudPlan(StrEnum):
     SANDBOX = auto()
     PROFESSIONAL = auto()
     TEAM = auto()
+
+    @property
+    def is_paid(self) -> bool:
+        return self in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
 
 
 class DeploymentEdition(StrEnum):

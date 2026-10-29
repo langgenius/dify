@@ -1,7 +1,7 @@
 import json
 from datetime import date
 from enum import StrEnum, auto
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -80,9 +80,9 @@ class PluginParameter(BaseModel):
     auto_generate: PluginParameterAutoGenerate | None = None
     template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Union[float, int, str, bool, list, dict] | None = None
-    min: Union[float, int] | None = None
-    max: Union[float, int] | None = None
+    default: float | int | str | bool | list | dict | None = None
+    min: float | int | None = None
+    max: float | int | None = None
     precision: int | None = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 
@@ -258,7 +258,7 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     if not is_empty_tools_selection and not parameter_value and parameter_value != 0:
         # get default value
         parameter_value = rule.default
-        if not parameter_value and rule.required:
+        if not parameter_value and parameter_value != 0 and rule.required:
             raise ValueError(f"tool parameter {rule.name} not found in tool config")
 
     if type == PluginParameterType.SELECT:

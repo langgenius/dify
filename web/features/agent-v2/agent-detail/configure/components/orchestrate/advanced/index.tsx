@@ -7,7 +7,7 @@ import { AgentContentModerationSettings } from './content-moderation'
 import { AgentEnvEditor } from './env'
 
 export function AgentAdvancedSettings() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const advancedSettingsPanelId = 'agent-configure-advanced-settings-panel'
 
   return (
@@ -19,8 +19,7 @@ export function AgentAdvancedSettings() {
       defaultOpen={false}
       buildDraftChangeSection="advancedSettings"
       rootClassName="gap-2 pt-1 pb-3"
-      headerClassName="mb-0 pt-2"
-      titleRowClassName="min-h-6"
+      headerClassName="pt-2"
       panelContentClassName="flex flex-col rounded-lg bg-background-section"
     >
       <AgentEnvEditor />

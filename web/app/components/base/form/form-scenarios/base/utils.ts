@@ -1,12 +1,18 @@
-import type { ZodNumber, ZodSchema, ZodString } from 'zod'
+import type { ZodNumber, ZodString, ZodType } from 'zod'
 import type { BaseConfiguration } from './types'
 import * as z from 'zod'
 import { BaseFieldType } from './types'
 
 export const generateZodSchema = (fields: BaseConfiguration[]) => {
-  const shape: Record<string, ZodSchema> = {}
+  const shape: Record<string, ZodType> = {}
 
   fields.forEach((field) => {
+    const textFieldTypes: readonly BaseFieldType[] = [
+      BaseFieldType.textInput,
+      BaseFieldType.paragraph,
+    ]
+    const numberFieldTypes: readonly BaseFieldType[] = [BaseFieldType.numberInput]
+
     let zodType
 
     switch (field.type) {
@@ -29,7 +35,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
     }
 
     if (field.maxLength) {
-      if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
+      if (textFieldTypes.includes(field.type))
         zodType = (zodType as ZodString).max(
           field.maxLength,
           `${field.label} exceeds max length of ${field.maxLength}`,
@@ -37,7 +43,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
     }
 
     if (field.min) {
-      if ([BaseFieldType.numberInput].includes(field.type))
+      if (numberFieldTypes.includes(field.type))
         zodType = (zodType as ZodNumber).min(
           field.min,
           `${field.label} must be at least ${field.min}`,
@@ -45,7 +51,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
     }
 
     if (field.max) {
-      if ([BaseFieldType.numberInput].includes(field.type))
+      if (numberFieldTypes.includes(field.type))
         zodType = (zodType as ZodNumber).max(
           field.max,
           `${field.label} exceeds max value of ${field.max}`,
@@ -53,7 +59,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
     }
 
     if (field.required) {
-      if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
+      if (textFieldTypes.includes(field.type))
         zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
     } else {
       zodType = zodType.optional().nullable()

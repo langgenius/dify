@@ -1,36 +1,25 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import type {
   SnippetDraftSyncPayload,
   SnippetDraftSyncResponse,
   SnippetWorkflow,
 } from '@/types/snippet'
+import { safe } from '@orpc/client'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
-import { consoleClient } from '@/service/client'
+import { consoleClient } from '@/service/console'
 // oxlint-disable-next-line no-restricted-imports
 import { postWithKeepalive } from '@/service/fetch'
 import { useSnippetDraftStore } from '../draft-store'
 import { useSnippetRefreshDraft } from './use-snippet-refresh-draft'
 
-const isSyncConflictError = (
-  error: unknown,
-): error is { bodyUsed: boolean; json: () => Promise<{ code?: string }> } => {
-  return (
-    !!error &&
-    typeof error === 'object' &&
-    'bodyUsed' in error &&
-    'json' in error &&
-    typeof error.json === 'function'
-  )
-}
-
 type SyncInputFieldsDraftCallback = SyncDraftCallback & {
-  onRefresh?: (inputFields: SnippetInputField[]) => void
+  onRefresh?: (inputFields: InputVar[]) => void
 }
 
 const snippetDraftSyncQueues = new Map<string, Promise<unknown>>()
@@ -58,14 +47,14 @@ export const useNodesSyncDraft = (snippetId: string) => {
   const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(true)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
 
-  const getInputFieldsSyncPayload = useCallback((inputFields?: SnippetInputField[]) => {
+  const getInputFieldsSyncPayload = useCallback((inputFields?: InputVar[]) => {
     return {
       input_fields: inputFields ?? useSnippetDraftStore.getState().inputFields,
     }
   }, [])
 
   const getDraftSyncPayload = useCallback(
-    (inputFields?: SnippetInputField[]) => {
+    (inputFields?: InputVar[]) => {
       const { getNodes, edges, transform } = store.getState()
       const nodes = getNodes().filter((node) => !node.data?._isTempNode)
       const [x, y, zoom] = transform
@@ -115,28 +104,27 @@ export const useNodesSyncDraft = (snippetId: string) => {
       const { setDraftUpdatedAt, setSyncWorkflowDraftHash, syncWorkflowDraftHash } =
         workflowStore.getState()
 
-      try {
-        const response = await consoleClient.snippets.bySnippetId.workflows.draft.post({
+      const [error, response, isDefined] = await safe(
+        consoleClient.snippets.bySnippetId.workflows.draft.post({
           params: { snippet_id: snippetId },
           body: {
             ...payload,
             hash: syncWorkflowDraftHash || undefined,
           },
-        })
+        }),
+      )
+      try {
+        if (error) {
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft(onRefresh)
+          callback?.onError?.()
+          return undefined
+        }
 
         setSyncWorkflowDraftHash(response.hash)
         setDraftUpdatedAt(response.updated_at)
         callback?.onSuccess?.()
         return response
-      } catch (error: unknown) {
-        if (isSyncConflictError(error) && !error.bodyUsed) {
-          error.json().then((err) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft(onRefresh)
-          })
-        }
-        callback?.onError?.()
-        return undefined
       } finally {
         callback?.onSettled?.()
       }
@@ -183,7 +171,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
       const response = await enqueueSnippetDraftSync(snippetId, () =>
         syncDraft(draftPayload, false, callback, (draftWorkflow) => {
           const refreshedInputFields = Array.isArray(draftWorkflow.input_fields)
-            ? (draftWorkflow.input_fields as SnippetInputField[])
+            ? (draftWorkflow.input_fields as InputVar[])
             : []
           callback?.onRefresh?.(refreshedInputFields)
         }),
@@ -204,7 +192,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
   )
 
   const syncInputFieldsDraft = useCallback(
-    (inputFields: SnippetInputField[], callback?: SyncInputFieldsDraftCallback) => {
+    (inputFields: InputVar[], callback?: SyncInputFieldsDraftCallback) => {
       const draftPayload = getDraftSyncPayload(inputFields)
       return syncInputFieldsDraftWithPayload(draftPayload, callback)
     },

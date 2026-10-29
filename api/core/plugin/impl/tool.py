@@ -94,7 +94,7 @@ class PluginToolManager(BasePluginClient):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Invoke the tool with the given tenant, user, plugin, provider, name, credentials and parameters.
         """

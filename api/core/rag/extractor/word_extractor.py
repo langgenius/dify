@@ -131,8 +131,8 @@ class WordExtractor(BaseExtractor):
                         continue
                     try:
                         response = remote_fetcher.make_request("GET", url)
-                    except Exception as e:
-                        logger.warning("Failed to download image from URL: %s: %s", url, str(e))
+                    except Exception:
+                        logger.warning("Failed to download image from URL: %s", url, exc_info=True)
                         continue
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
@@ -201,8 +201,7 @@ class WordExtractor(BaseExtractor):
 
         header_row = table.rows[0]
         headers = self._parse_row(header_row, image_map, total_cols)
-        markdown.append("| " + " | ".join(headers) + " |")
-        markdown.append("| " + " | ".join(["---"] * total_cols) + " |")
+        markdown.extend(("| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * total_cols) + " |"))
 
         for row in table.rows[1:]:
             row_cells = self._parse_row(row, image_map, total_cols)

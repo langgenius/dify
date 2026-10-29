@@ -1,5 +1,6 @@
 import { Dialog, DialogPopup, DialogPortal, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { DatasetDetailTop } from '../dataset-detail-top'
 
@@ -17,22 +18,25 @@ function TestGotoAnythingDialog() {
 
 describe('DatasetDetailTop', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     gotoAnythingDialogHandle.close()
   })
 
   it('links the combined home control to home and labels the breadcrumb as datasets', () => {
     render(<DatasetDetailTop />)
 
-    expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: 'common.menus.datasets' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'navigation.mainNav.home' })).toHaveAttribute(
+      'href',
+      '/',
+    )
+    expect(screen.getByRole('link', { name: 'navigation.menus.datasets' })).toHaveAttribute(
       'href',
       '/datasets',
     )
     expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 
-  it('keeps the quick search action', () => {
+  it('opens quick search from the dataset sidebar', async () => {
+    const user = userEvent.setup()
     render(
       <>
         <DatasetDetailTop />
@@ -41,16 +45,17 @@ describe('DatasetDetailTop', () => {
     )
     expect(screen.queryByRole('dialog', { name: 'Goto Anything' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
+    await user.click(screen.getByRole('button', { name: 'app.gotoAnything.searchTitle' }))
 
-    expect(screen.getByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Goto Anything' })).toBeInTheDocument()
   })
 
-  it('renders the sidebar toggle action in the top right', () => {
+  it('offers expansion when the sidebar is collapsed', async () => {
+    const user = userEvent.setup()
     const onToggle = vi.fn()
 
     render(<DatasetDetailTop expand={false} onToggle={onToggle} />)
-    fireEvent.click(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }))
+    await user.click(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }))
 
     expect(onToggle).toHaveBeenCalledTimes(1)
   })

@@ -1,10 +1,10 @@
-import type { Member } from '@/models/common'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import MemberList from '../member-list'
 
-const createMember = (overrides: Partial<Member>): Member => ({
+const createMember = (overrides: Partial<AccountWithRoleResponse>): AccountWithRoleResponse => ({
   id: 'member-1',
   email: 'owner@example.com',
   name: 'Owner',
@@ -13,13 +13,13 @@ const createMember = (overrides: Partial<Member>): Member => ({
   status: 'active',
   role: 'normal',
   roles: [],
-  created_at: '2026-01-01T00:00:00Z',
-  last_active_at: '2026-01-02T00:00:00Z',
-  last_login_at: '2026-01-03T00:00:00Z',
+  created_at: 1767225600,
+  last_active_at: 1767312000,
+  last_login_at: 1767398400,
   ...overrides,
 })
 
-const members: Member[] = [
+const members: AccountWithRoleResponse[] = [
   createMember({}),
   createMember({
     id: 'member-2',
@@ -33,7 +33,6 @@ const members: Member[] = [
 describe('human-input/delivery-method/recipient/member-list', () => {
   it('should filter members, show selected state, and only add unselected members', async () => {
     const user = userEvent.setup()
-    const handleSearchChange = vi.fn()
     const handleSelect = vi.fn()
     const TestMemberList = () => {
       const [searchValue, setSearchValue] = useState('pending')
@@ -42,10 +41,7 @@ describe('human-input/delivery-method/recipient/member-list', () => {
         <MemberList
           value={[{ type: 'member', user_id: 'member-1' }]}
           searchValue={searchValue}
-          onSearchChange={(nextValue) => {
-            setSearchValue(nextValue)
-            handleSearchChange(nextValue)
-          }}
+          onSearchChange={setSearchValue}
           list={members}
           onSelect={handleSelect}
           email="owner@example.com"
@@ -58,12 +54,17 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     const searchBox = screen.getByRole('searchbox', { name: 'common.operation.search' })
     await user.clear(searchBox)
     await user.type(searchBox, 'owner')
-    expect(handleSearchChange).toHaveBeenCalledWith('owner')
+    expect(screen.queryByText('Pending User')).not.toBeInTheDocument()
+    const owner = screen.getByRole('button', { name: /Owner/ })
+    expect(owner).toBeDisabled()
+    expect(screen.getByText('workspaceMembers.members.you')).toBeInTheDocument()
+    await user.click(owner)
+    expect(handleSelect).not.toHaveBeenCalled()
 
     expect(screen.getByText('Owner')).toBeInTheDocument()
     expect(
       screen.queryByText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
       ),
     ).not.toBeInTheDocument()
 
@@ -71,47 +72,24 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     await user.type(searchBox, 'pending')
 
     expect(screen.getByText('Pending User')).toBeInTheDocument()
-    expect(screen.getByText('common.members.pending')).toBeInTheDocument()
-    await user.click(screen.getByText('Pending User'))
+    expect(screen.getByText('workspaceMembers.members.pending')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Pending User/ }))
     expect(handleSelect).toHaveBeenCalledWith('member-2')
   })
 
-  it('should show selected members as added, mark the current user, and return null when hideSearch has no matches', () => {
-    const handleSelect = vi.fn()
-    const { container, rerender } = render(
-      <MemberList
-        value={[{ type: 'member', user_id: 'member-1' }]}
-        searchValue=""
-        onSearchChange={vi.fn()}
-        list={members}
-        onSelect={handleSelect}
-        email="owner@example.com"
-        hideSearch
-      />,
-    )
-
-    expect(screen.getByText('common.members.you')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',
-      ),
-    ).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Owner'))
-    expect(handleSelect).not.toHaveBeenCalled()
-
-    rerender(
+  it('hides the compact list when the search has no matching members', () => {
+    render(
       <MemberList
         value={[]}
         searchValue="missing"
         onSearchChange={vi.fn()}
         list={members}
-        onSelect={handleSelect}
+        onSelect={vi.fn()}
         email="owner@example.com"
         hideSearch
       />,
     )
-
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
   })
 })

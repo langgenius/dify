@@ -1,85 +1,71 @@
 // @vitest-environment node
 
 import { QueryClient } from '@tanstack/react-query'
-
-let queryClient: QueryClient
+import { consoleQuery } from '@/service/console'
 
 const mocks = vi.hoisted(() => ({
   connection: vi.fn(async () => undefined),
+  getQueryClient: vi.fn(),
   getSystemFeatures: vi.fn(),
 }))
 
 vi.mock('server-only', () => ({}))
 
 vi.mock('@/app/get-query-client', () => ({
-  getQueryClient: () => queryClient,
+  getQueryClient: mocks.getQueryClient,
 }))
 
 vi.mock('@/next/server', () => ({
   connection: mocks.connection,
 }))
 
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: () => ({
-          queryKey: ['console', 'system-features'],
-          queryFn: mocks.getSystemFeatures,
-          retry: false,
-        }),
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'systemFeatures.get': () => mocks.getSystemFeatures(),
+    }),
+  }
+})
 
 describe('System Features server requests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    vi.resetModules()
+    mocks.getQueryClient.mockReturnValue(
+      new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+    )
     mocks.connection.mockResolvedValue(undefined)
     mocks.getSystemFeatures.mockResolvedValue({ deployment_edition: 'CLOUD' })
   })
 
-  it.each(['prefetch', 'ensure'] as const)(
-    'waits for the request boundary before the %s query starts',
-    async (operation) => {
-      let establishConnection!: () => void
-      mocks.connection.mockImplementation(
-        () =>
-          new Promise<undefined>((resolve) => {
-            establishConnection = () => resolve(undefined)
-          }),
-      )
-      const { ensureSystemFeatures, prefetchSystemFeatures } = await import('../server')
+  it('reuses a successful optional lookup from the request query client', async () => {
+    const { dehydrateSystemFeatures, getOptionalSystemFeatures } = await import('../server')
 
-      const result = operation === 'prefetch' ? prefetchSystemFeatures() : ensureSystemFeatures()
-      await Promise.resolve()
+    await expect(getOptionalSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
+    await expect(getOptionalSystemFeatures()).resolves.toEqual({ deployment_edition: 'CLOUD' })
 
-      expect(mocks.getSystemFeatures).not.toHaveBeenCalled()
-
-      establishConnection()
-      await expect(result).resolves.toEqual({ deployment_edition: 'CLOUD' })
-      expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
-      expect(queryClient.getQueryData(['console', 'system-features'])).toEqual({
-        deployment_edition: 'CLOUD',
-      })
-    },
-  )
-
-  it('keeps prefetch failures soft', async () => {
-    mocks.getSystemFeatures.mockRejectedValue(new Error('System Features unavailable'))
-    const { prefetchSystemFeatures } = await import('../server')
-
-    await expect(prefetchSystemFeatures()).resolves.toBeUndefined()
-    expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
+    expect(dehydrateSystemFeatures().queries).toEqual([
+      expect.objectContaining({
+        queryKey: consoleQuery.systemFeatures.get.queryKey(),
+        state: expect.objectContaining({
+          data: { deployment_edition: 'CLOUD' },
+          status: 'success',
+        }),
+      }),
+    ])
   })
 
-  it('preserves ensure failures for hard route gates', async () => {
-    const error = new Error('System Features unavailable')
-    mocks.getSystemFeatures.mockRejectedValue(error)
-    const { ensureSystemFeatures } = await import('../server')
+  it('keeps optional failures soft for the rest of the request', async () => {
+    mocks.getSystemFeatures.mockRejectedValueOnce(new Error('System Features unavailable'))
+    const { getOptionalSystemFeatures } = await import('../server')
 
-    await expect(ensureSystemFeatures()).rejects.toBe(error)
+    await expect(getOptionalSystemFeatures()).resolves.toBeUndefined()
+    await expect(getOptionalSystemFeatures()).resolves.toBeUndefined()
+
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
   })
 })

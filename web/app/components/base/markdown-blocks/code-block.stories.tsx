@@ -44,6 +44,30 @@ type Story = StoryObj<typeof meta>
 
 export const Playground: Story = {}
 
+export const ECharts: Story = {
+  render: () => (
+    <div className="w-xl">
+      <CodeBlock className="language-echarts">
+        {JSON.stringify({
+          xAxis: { type: 'category', data: ['A', 'B', 'C'] },
+          yAxis: { type: 'value' },
+          series: [{ type: 'bar', data: [12, 20, 15] }],
+        })}
+      </CodeBlock>
+    </div>
+  ),
+}
+
+export const Music: Story = {
+  render: () => (
+    <div className="w-xl">
+      <CodeBlock className="language-abc">
+        {'X:1\nT:Scale\nM:4/4\nL:1/4\nK:C\nC D E F|G A B c|'}
+      </CodeBlock>
+    </div>
+  ),
+}
+
 export const Mermaid: Story = {
   args: {
     language: 'mermaid',
@@ -56,6 +80,18 @@ export const Mermaid: Story = {
   Decision -->|Tool| ToolCall[Call web search]
   Decision -->|Respond| Answer[Compose draft]
 `}
+      </CodeBlock>
+    </div>
+  ),
+}
+
+export const SVG: Story = {
+  render: () => (
+    <div className="w-xl">
+      <CodeBlock className="language-svg">
+        {
+          '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120"><circle cx="100" cy="60" r="50" fill="cornflowerblue" /></svg>'
+        }
       </CodeBlock>
     </div>
   ),

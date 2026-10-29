@@ -1,11 +1,11 @@
-"""Agent Soul-backed config assets for skills, files, env, and note text.
+"""Agent Soul-backed config assets for skills, files, env, note, and prompt text.
 
 This service is the single API-side control plane for Agent config assets. It
 resolves the requested config version (published snapshot, shared draft, or
 per-user build draft), reads only from ``AgentSoulConfig.config_skills``,
-``config_files``, ``env.variables``, and ``config_note``, and mutates only the
-target Soul JSON. Source file refs are tenant-scoped rather than user-scoped:
-config writes can be owned by a build-draft Account while the uploaded
+``config_files``, ``env.variables``, ``config_note``, and ``prompt.system_prompt``,
+and mutates only the target Soul JSON. Source file refs are tenant-scoped rather
+than user-scoped: config writes can be owned by a build-draft Account while the uploaded
 ``ToolFile`` came from an end-user execution context. It intentionally does not
 manage object-storage lifecycle: removing or replacing a config asset drops the
 Soul reference only.
@@ -50,6 +50,7 @@ from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
+from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
 class AgentConfigVersionKind(StrEnum):
@@ -109,6 +110,7 @@ class ConfigPushPayload(BaseModel):
 
 @dataclass(slots=True)
 class AgentConfigTarget:
+    tenant_id: str
     agent_id: str
     version_id: str
     kind: AgentConfigVersionKind
@@ -135,16 +137,9 @@ class ConfigDownloadRequest:
 
 
 class AgentConfigService:
-    """Read and update Agent Soul-backed config assets for one version target.
-
-    The service owns the lifecycle of its database sessions. Callers may inject
-    a session creator for an alternate engine; production defaults to the
-    application-wide session factory.
-    """
+    """Read and update Agent Soul-backed config assets for one version target."""
 
     PREVIEW_MAX_BYTES = 64 * 1024
-
-    _session_factory: Callable[[], Session]
 
     def __init__(
         self,
@@ -153,8 +148,6 @@ class AgentConfigService:
         skill_normalize_service: ConfigSkillNormalizeService | None = None,
         session_factory: Callable[[], Session] | None = None,
     ) -> None:
-        """Initialize external collaborators and the service-owned session creator."""
-
         self._tool_files = tool_file_manager or ToolFileManager()
         self._skill_normalizer = skill_normalize_service or ConfigSkillNormalizeService()
         self._session_factory = session_factory or default_session_factory.create_session
@@ -178,6 +171,7 @@ class AgentConfigService:
                 user_id=user_id,
             )
             return AgentConfigTarget(
+                tenant_id=tenant_id,
                 agent_id=target.agent_id,
                 version_id=target.version_id,
                 kind=target.kind,
@@ -223,7 +217,7 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": self._config_version_payload(target),
-            "items": [self._serialize_skill_item(skill) for skill in target.agent_soul.config_skills],
+            "items": self._skill_items_for_target(target, include_runtime_workspace_skills=False),
         }
 
     def list_files(
@@ -259,8 +253,6 @@ class AgentConfigService:
         name: str,
         user_id: str | None = None,
     ) -> ConfigDownloadRequest:
-        """Authorize one Config reference and return origin-free download metadata."""
-
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -269,12 +261,40 @@ class AgentConfigService:
             user_id=user_id,
         )
         if kind == "skill":
-            skill = self._require_skill(target.agent_soul, name=name)
+            try:
+                skill = self._require_skill(target.agent_soul, name=name)
+                return self._resolve_download_request(
+                    tenant_id=tenant_id,
+                    file_kind=skill.file_kind,
+                    file_id=self._available_skill_file_id(skill),
+                    filename=f"{skill.name}.zip",
+                    default_mime_type="application/zip",
+                    missing_code="config_skill_not_found",
+                    missing_message="config skill payload is missing",
+                )
+            except AgentConfigServiceError as exc:
+                if exc.code != "config_skill_not_found":
+                    raise
+
+            runtime_skill = next(
+                (
+                    item
+                    for item in SkillManagementService().list_runtime_agent_skills(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
+                    )
+                    if item["name"] == name
+                ),
+                None,
+            )
+            if runtime_skill is None:
+                raise AgentConfigServiceError("config_skill_not_found", "config skill not found", status_code=404)
             return self._resolve_download_request(
                 tenant_id=tenant_id,
-                file_kind=skill.file_kind,
-                file_id=self._available_skill_file_id(skill),
-                filename=f"{skill.name}.zip",
+                file_kind="tool_file",
+                file_id=str(runtime_skill["file_id"]),
+                filename=f"{runtime_skill['name']}.zip",
                 default_mime_type="application/zip",
                 missing_code="config_skill_not_found",
                 missing_message="config skill payload is missing",
@@ -329,9 +349,46 @@ class AgentConfigService:
             config_version_kind=config_version_kind,
             user_id=user_id,
         )
-        skill = self._require_skill(target.agent_soul, name=name)
-        file_id = self._available_skill_file_id(skill)
-        archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
+        try:
+            skill = self._require_skill(target.agent_soul, name=name)
+            file_id = self._available_skill_file_id(skill)
+            archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
+            skill_item = self._serialize_skill_item(skill)
+        except AgentConfigServiceError as exc:
+            if exc.code != "config_skill_not_found":
+                raise
+            try:
+                workspace_archive = SkillManagementService().pull_runtime_agent_skill(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    name=name,
+                    include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
+                )
+            except SkillManagementServiceError as skill_exc:
+                raise AgentConfigServiceError(
+                    "config_skill_not_found",
+                    "config skill not found",
+                    status_code=404,
+                ) from skill_exc
+            archive_bytes = workspace_archive.payload
+            skill_item = next(
+                (
+                    item
+                    for item in SkillManagementService().list_runtime_agent_skills(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                    )
+                    if item["name"] == name
+                ),
+                {
+                    "id": name,
+                    "name": name,
+                    "description": "",
+                    "size": None,
+                    "hash": None,
+                    "mime_type": "application/zip",
+                },
+            )
         try:
             archive_items, skill_md = self._inspect_skill_archive(archive_bytes)
         except (OSError, ValueError, zipfile.BadZipFile) as exc:
@@ -341,7 +398,7 @@ class AgentConfigService:
                 status_code=500,
             ) from exc
         return {
-            **self._serialize_skill_item(skill),
+            **skill_item,
             "source": "config_skill_zip",
             "files": archive_items,
             "skill_md": skill_md,
@@ -436,6 +493,34 @@ class AgentConfigService:
         )
         return member_path
 
+    def pull_file(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        user_id: str | None = None,
+    ) -> ConfigDownload:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        file_ref = self._require_file(target.agent_soul, name=name)
+        file_id = self._available_file_id(file_ref)
+        payload, filename, mime_type = self._load_file_ref_bytes(
+            tenant_id=tenant_id,
+            file_kind=file_ref.file_kind,
+            file_id=file_id,
+        )
+        return ConfigDownload(
+            filename=filename or file_ref.name, mime_type=mime_type or "application/octet-stream", payload=payload
+        )
+
     def download_file_url(
         self,
         *,
@@ -524,7 +609,7 @@ class AgentConfigService:
             )
             self._require_writable(target, surface=surface)
             try:
-                skill_ref, _package = self._skill_normalizer.normalize(
+                skill_ref = self._skill_normalizer.normalize(
                     content=content,
                     filename=filename,
                     requested_name=None,
@@ -791,6 +876,56 @@ class AgentConfigService:
             session.commit()
             return {"note": agent_soul.config_note}
 
+    def get_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        user_id: str | None = None,
+    ) -> dict[str, str]:
+        """Read the saved system prompt verbatim, including unexpanded mentions."""
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        return {"prompt": target.agent_soul.prompt.system_prompt}
+
+    def update_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        user_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        prompt: str,
+    ) -> dict[str, str]:
+        """Replace only the caller's build-draft prompt; an empty string clears it.
+
+        Already-built run requests retain their prompt. Subsequent requests
+        built from this draft use the saved text and resolve its mentions.
+        """
+        with self._session_factory() as session:
+            target = self._resolve_target_in_session(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_version_id=config_version_id,
+                config_version_kind=config_version_kind,
+                user_id=user_id,
+            )
+            self._require_writable(target, surface=AgentConfigMutationSurface.AGENT_STUB)
+            agent_soul = target.agent_soul.model_copy(deep=True)
+            agent_soul.prompt.system_prompt = prompt
+            target.version.config_snapshot = agent_soul
+            session.commit()
+            return {"prompt": agent_soul.prompt.system_prompt}
+
     def _resolve_target_in_session(
         self,
         session: Session,
@@ -858,6 +993,7 @@ class AgentConfigService:
                 status_code=404,
             )
         return AgentConfigTarget(
+            tenant_id=tenant_id,
             agent_id=agent_id,
             version_id=version.id,
             kind=config_version_kind,
@@ -978,7 +1114,7 @@ class AgentConfigService:
             )
             archive_bytes = storage.load_once(tool_file.file_key)
             try:
-                skill_ref, _package = self._skill_normalizer.normalize(
+                skill_ref = self._skill_normalizer.normalize(
                     content=archive_bytes,
                     filename=tool_file.name,
                     requested_name=name,
@@ -1153,7 +1289,7 @@ class AgentConfigService:
             "agent_id": target.agent_id,
             "config_version": AgentConfigService._config_version_payload(target),
             "skills": {
-                "items": [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
+                "items": AgentConfigService._skill_items_for_target(target, include_runtime_workspace_skills=True)
             },
             "files": {
                 "items": [
@@ -1163,6 +1299,26 @@ class AgentConfigService:
             "env_keys": AgentConfigService._env_keys(target.agent_soul),
             "note": target.agent_soul.config_note,
         }
+
+    @staticmethod
+    def _skill_items_for_target(
+        target: AgentConfigTarget, *, include_runtime_workspace_skills: bool
+    ) -> list[dict[str, object]]:
+        items = [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
+        if not include_runtime_workspace_skills:
+            return items
+
+        seen_names = {str(item["name"]) for item in items}
+        for item in SkillManagementService().list_runtime_agent_skills(
+            tenant_id=target.tenant_id,
+            agent_id=target.agent_id,
+            include_draft=target.kind != AgentConfigVersionKind.SNAPSHOT,
+        ):
+            if item["name"] in seen_names:
+                continue
+            seen_names.add(str(item["name"]))
+            items.append(item)
+        return items
 
     @staticmethod
     def _config_version_payload(target: AgentConfigTarget) -> dict[str, object]:
@@ -1432,12 +1588,7 @@ class AgentConfigService:
             query.append(("as_attachment", "true"))
             uri = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
 
-        return ConfigDownloadRequest(
-            filename=filename,
-            mime_type=mime_type,
-            size=size,
-            download_uri=uri,
-        )
+        return ConfigDownloadRequest(filename=filename, mime_type=mime_type, size=size, download_uri=uri)
 
 
 __all__ = [

@@ -9,6 +9,7 @@ from typing import cast
 import httpx2 as httpx
 import pytest
 from shellctl.client import ShellctlClientError
+from shellctl.shared import JobMode
 
 from dify_agent.adapters.shell.protocols import ShellProviderError
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands
@@ -39,12 +40,20 @@ class _Status:
 class _Client:
     run_result: object = field(default_factory=_Job)
     delete_error: Exception | None = None
-    run_calls: list[tuple[str, str | None, dict[str, str] | None, float]] = field(default_factory=list)
+    run_calls: list[tuple[str, str | None, dict[str, str] | None, float, JobMode]] = field(default_factory=list)
     wait_calls: list[tuple[str, int, float]] = field(default_factory=list)
     delete_calls: list[tuple[str, bool, float | None]] = field(default_factory=list)
 
-    async def run(self, script: str, *, cwd=None, env=None, timeout=30.0):
-        self.run_calls.append((script, cwd, env, timeout))
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd=None,
+        env=None,
+        timeout=30.0,
+        mode: JobMode = JobMode.PTY,
+    ):
+        self.run_calls.append((script, cwd, env, timeout, mode))
         if isinstance(self.run_result, Exception):
             raise self.run_result
         return self.run_result
@@ -85,7 +94,20 @@ def test_commands_apply_runtime_layout_and_home_environment() -> None:
         assert result.output == "ok"
 
     asyncio.run(scenario())
-    assert client.run_calls == [("pwd", "/workspace/reports", {"TOKEN": "value", "HOME": "/home/binding"}, 2.5)]
+    assert client.run_calls == [
+        ("pwd", "/workspace/reports", {"TOKEN": "value", "HOME": "/home/binding"}, 2.5, JobMode.PTY)
+    ]
+
+
+def test_commands_forward_stdio_mode() -> None:
+    client = _Client()
+
+    async def scenario() -> None:
+        commands = ShellctlCommands(_client(client))
+        await commands.run("printf result", timeout=2.5, mode="stdio")
+
+    asyncio.run(scenario())
+    assert client.run_calls == [("printf result", None, None, 2.5, JobMode.STDIO)]
 
 
 def test_commands_reject_cwd_outside_runtime_layout() -> None:

@@ -1,8 +1,9 @@
 import { render } from 'vitest-browser-react'
+import { IconButton } from '../../icon-button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -16,7 +17,7 @@ const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElem
 
 describe('Drawer wrapper', () => {
   describe('User Interactions', () => {
-    it('should open a portalled drawer and close it with the default close button', async () => {
+    it('should open a portalled drawer and close it with a composed close button', async () => {
       const screen = await render(
         <Drawer>
           <DrawerTrigger>Open settings</DrawerTrigger>
@@ -28,7 +29,13 @@ describe('Drawer wrapper', () => {
                 <DrawerDescription>Configure the current workspace.</DrawerDescription>
                 <DrawerContent>
                   <p>Workspace controls</p>
-                  <DrawerCloseButton />
+                  <DrawerClose
+                    render={
+                      <IconButton aria-label="Close drawer" size="lg">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
                 </DrawerContent>
               </DrawerPopup>
             </DrawerViewport>
@@ -47,8 +54,10 @@ describe('Drawer wrapper', () => {
       const dialog = asHTMLElement(document.body.querySelector('[role="dialog"]')!)
       expect(document.body).toContainElement(dialog)
       expect(screen.container).not.toContainElement(dialog)
-      await expect.element(dialog).toHaveTextContent('Workspace controls')
-      await expect.element(screen.getByText('Configure the current workspace.')).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Settings' }))
+        .toHaveAccessibleDescription('Configure the current workspace.')
+      await expect.element(screen.getByText('Workspace controls')).toBeInTheDocument()
       await expect.element(screen.getByTestId('drawer-backdrop')).toBeInTheDocument()
 
       await screen.getByRole('button', { name: 'Close drawer' }).click()

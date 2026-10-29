@@ -1,11 +1,12 @@
 'use client'
 
 import type { FC } from 'react'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { deviceApproveAccount, deviceDenyAccount } from '@/service/device-flow'
+import { getAvatarInitial } from '@/utils/avatar'
 import { approveErrorCopy } from '../utils/error-copy'
 
 type Props = {
@@ -35,7 +36,7 @@ const AuthorizeAccount: FC<Props> = ({
   onDenied,
   onError,
 }) => {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow', 'common'])
   const [busy, setBusy] = useState(false)
 
   const approve = async () => {
@@ -73,11 +74,10 @@ const AuthorizeAccount: FC<Props> = ({
         </p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
-        <Avatar
-          size="md"
-          avatar={accountAvatarUrl ?? null}
-          name={accountName || accountEmail || ''}
-        />
+        <Avatar size="md" aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(accountName || accountEmail || '')}</AvatarFallback>
+          <AvatarImage src={accountAvatarUrl || undefined} alt="" />
+        </Avatar>
         <div>
           {accountName && <p className="text-sm font-semibold text-text-primary">{accountName}</p>}
           {accountEmail && <p className="text-xs text-text-secondary">{accountEmail}</p>}

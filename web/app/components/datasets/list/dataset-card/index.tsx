@@ -1,35 +1,35 @@
 'use client'
 
-import type { KeyboardEvent, MouseEvent } from 'react'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 import {
   getDatasetACLCapabilities,
   hasOnlyDatasetPreviewPermission,
   hasPermission,
 } from '@/utils/permission'
+import RenameDatasetModal from '../../rename-modal'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
-import DatasetCardModals from './components/dataset-card-modals'
 import Description from './components/description'
-import OperationsDropdown from './components/operations-dropdown'
-import { useDatasetCardState as useDatasetCardController } from './hooks/use-dataset-card-state'
+import OperationsMenu from './components/operations-menu'
+import { useDatasetCardActions } from './hooks/use-dataset-card-actions'
 
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
   onSuccess?: () => void
+  onDelete: (item: HTMLLIElement | null) => void
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
   stepByStepTourActionMenuOpen?: boolean
@@ -39,31 +39,23 @@ type DatasetCardProps = {
 const DatasetCard = ({
   dataset,
   onSuccess,
+  onDelete,
   onOpenTagManagement = () => {},
   stepByStepTourActionMenuHighlightPart,
   stepByStepTourActionMenuOpen,
   stepByStepTourCardTarget,
 }: DatasetCardProps) => {
-  const { t } = useTranslation()
-  const { push } = useRouter()
+  const itemRef = useRef<HTMLLIElement>(null)
+  const { t } = useTranslation(['app'])
+  const nameId = useId()
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const datasetCard = useDatasetCardController({ dataset, onSuccess })
-  const {
-    modalState,
-    openRenameModal,
-    closeRenameModal,
-    closeConfirmDelete,
-    openAccessConfig,
-    closeAccessConfig,
-    handleExportPipeline,
-    detectIsUsedByApp,
-    onConfirmDelete,
-  } = datasetCard
+  const [renameOpen, setRenameOpen] = useState(false)
+  const { openAccessConfig, handleExportPipeline } = useDatasetCardActions({ dataset })
 
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
   const isPipelineUnpublished = useMemo(() => {
@@ -74,7 +66,7 @@ const DatasetCard = ({
     () =>
       getDatasetACLCapabilities(dataset.permission_keys, {
         currentUserId,
-        resourceMaintainer: dataset.maintainer,
+        resourceMaintainer: dataset.maintainer ?? undefined,
         workspacePermissionKeys,
       }),
     [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys],
@@ -86,86 +78,85 @@ const DatasetCard = ({
     toast.warning(t(($) => $.noAccessResourcePermission, { ns: 'app' }))
   }
 
-  const handleCardClick = (e: MouseEvent) => {
-    e.preventDefault()
-    if (isPreviewOnly) {
-      showPreviewOnlyAccessWarning()
-      return
-    }
+  const href = isExternalProvider
+    ? datasetACLCapabilities.canRetrievalRecall
+      ? `/datasets/${dataset.id}/hitTesting`
+      : `/datasets/${dataset.id}/settings`
+    : isPipelineUnpublished
+      ? `/datasets/${dataset.id}/pipeline`
+      : `/datasets/${dataset.id}/documents`
 
-    if (isExternalProvider) {
-      push(
-        datasetACLCapabilities.canRetrievalRecall
-          ? `/datasets/${dataset.id}/hitTesting`
-          : `/datasets/${dataset.id}/settings`,
-      )
-    } else if (isPipelineUnpublished) {
-      push(`/datasets/${dataset.id}/pipeline`)
-    } else {
-      push(`/datasets/${dataset.id}/documents`)
-    }
-  }
-
-  const handlePreviewOnlyCardKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    if (!isPreviewOnly || (e.key !== 'Enter' && e.key !== ' ')) return
-
-    e.preventDefault()
-    showPreviewOnlyAccessWarning()
-  }
-
-  const cardClassName = cn(
-    'group relative col-span-1 flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out',
-    isPreviewOnly
-      ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
-      : 'cursor-pointer hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5',
+  const content = (
+    <>
+      <DatasetCardHeader dataset={dataset} nameId={nameId} />
+      <Description dataset={dataset} />
+    </>
   )
+  // The entry's hit area stretches over the card. Tags, footer details, and operations are
+  // positioned later in the card, so they stay independent controls above that area.
+  const entryClassName =
+    "block rounded-t-xl text-start outline-hidden before:absolute before:inset-0 before:rounded-xl before:content-['']"
 
   return (
-    <>
-      <div
-        role={isPreviewOnly ? 'button' : undefined}
-        tabIndex={isPreviewOnly ? 0 : undefined}
-        aria-label={isPreviewOnly ? dataset.name : undefined}
-        className={cardClassName}
-        data-disable-nprogress={true}
-        data-step-by-step-tour-target={stepByStepTourCardTarget}
-        onClick={handleCardClick}
-        onKeyDown={handlePreviewOnlyCardKeyDown}
-      >
-        <CornerLabels dataset={dataset} />
-        <DatasetCardHeader dataset={dataset} />
-        <Description dataset={dataset} />
-        <DatasetCardTags
-          datasetId={dataset.id}
-          embeddingAvailable={dataset.embedding_available}
-          tags={dataset.tags}
-          onOpenTagManagement={onOpenTagManagement}
-          onTagsChange={onSuccess}
-          canBindOrUnbindTags={canBindOrUnbindTags}
+    <li
+      ref={itemRef}
+      className={cn(
+        "group relative isolate col-span-1 flex min-h-41.5 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>[data-dataset-card-entry]:focus-visible]:after:inset-ring-2 has-[>[data-dataset-card-entry]:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
+        isPreviewOnly
+          ? 'opacity-60'
+          : 'hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5 hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt',
+      )}
+      data-disable-nprogress={true}
+      data-step-by-step-tour-target={stepByStepTourCardTarget}
+    >
+      <CornerLabels dataset={dataset} />
+      {isPreviewOnly ? (
+        <button
+          type="button"
+          data-dataset-card-entry=""
+          aria-labelledby={nameId}
+          className={cn(entryClassName, 'w-full cursor-not-allowed')}
+          onClick={showPreviewOnlyAccessWarning}
+        >
+          {content}
+        </button>
+      ) : (
+        <Link
+          href={href}
+          data-dataset-card-entry=""
+          aria-labelledby={nameId}
+          className={entryClassName}
+        >
+          {content}
+        </Link>
+      )}
+      <DatasetCardTags
+        datasetId={dataset.id}
+        embeddingAvailable={!!dataset.embedding_available}
+        tags={dataset.tags}
+        onOpenTagManagement={onOpenTagManagement}
+        onTagsChange={onSuccess}
+        canBindOrUnbindTags={canBindOrUnbindTags}
+      />
+      <DatasetCardFooter dataset={dataset} />
+      {!isPreviewOnly && (
+        <OperationsMenu
+          dataset={dataset}
+          openRenameModal={() => setRenameOpen(true)}
+          handleExportPipeline={handleExportPipeline}
+          onDelete={() => onDelete(itemRef.current)}
+          openAccessConfig={openAccessConfig}
+          stepByStepTourHighlightPart={stepByStepTourActionMenuHighlightPart}
+          stepByStepTourOpen={stepByStepTourActionMenuOpen}
         />
-        <DatasetCardFooter dataset={dataset} />
-        {!isPreviewOnly && (
-          <OperationsDropdown
-            dataset={dataset}
-            openRenameModal={openRenameModal}
-            handleExportPipeline={handleExportPipeline}
-            detectIsUsedByApp={detectIsUsedByApp}
-            openAccessConfig={openAccessConfig}
-            stepByStepTourHighlightPart={stepByStepTourActionMenuHighlightPart}
-            stepByStepTourOpen={stepByStepTourActionMenuOpen}
-          />
-        )}
-      </div>
-      <DatasetCardModals
+      )}
+      <RenameDatasetModal
         dataset={dataset}
-        modalState={modalState}
-        onCloseRename={closeRenameModal}
-        onCloseConfirm={closeConfirmDelete}
-        onCloseAccessConfig={closeAccessConfig}
-        onConfirmDelete={onConfirmDelete}
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
         onSuccess={onSuccess}
       />
-    </>
+    </li>
   )
 }
 

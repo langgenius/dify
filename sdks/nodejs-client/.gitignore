@@ -38,3 +38,4 @@ yarn.lock
 # Misc
 *.pem
 *.tgz
+.vitest/

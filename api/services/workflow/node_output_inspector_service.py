@@ -26,8 +26,8 @@ Design constraints baked into this version:
    Cross-tenant / cross-app rows still 404 via the standard tenant/app scope.
 3. **Declared outputs by node kind**:
    * Agent v2 nodes resolve their declared list via
-     :class:`WorkflowAgentBindingResolver` (the binding owns the canonical
-     ``DeclaredOutputConfig`` list and falls back to PRD defaults when empty).
+     :class:`WorkflowAgentBindingResolver` (the binding owns custom declarations;
+     the system ``text`` output is derived for display).
    * Other node kinds don't have a declared-output schema yet; we surface the
      keys present in the execution payload as a best-effort list typed
      ``unknown`` so the panel can still render them.
@@ -60,15 +60,12 @@ from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingResolver,
 )
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
-from core.workflow.nodes.agent_v2.runtime_request_builder import (
-    WorkflowAgentRuntimeRequestBuilder,
-)
 from factories.file_factory.builders import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import helpers as file_helpers
 from models import App
-from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
-from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType, effective_declared_outputs
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -538,7 +535,7 @@ class NodeOutputInspectorService:
     def _load_run_and_executions(
         self, *, app_model: App, workflow_run_id: str, session: Session
     ) -> tuple[WorkflowRun, Sequence[WorkflowNodeExecutionModel]]:
-        """Fetch the ``WorkflowRun`` row + every execution that belongs to it.
+        """Fetch the run and its visible nodes, excluding internal Workflow Tool executions.
 
         Enforces:
           * row exists,
@@ -563,6 +560,7 @@ class NodeOutputInspectorService:
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
                 WorkflowNodeExecutionModel.app_id == app_model.id,
+                WorkflowNodeExecutionModel.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
             )
         ).all()
 
@@ -783,7 +781,7 @@ class NodeOutputInspectorService:
                 "NodeOutputInspector: malformed node_job_config for binding %s", bundle.binding.id, exc_info=True
             )
             return None
-        return list(WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs)))
+        return list(effective_declared_outputs(node_job.declared_outputs, node_job.output_routes))
 
     @staticmethod
     def _infer_outputs_from_payload(*, execution: WorkflowNodeExecutionModel | None) -> list[_ResolvedDeclaration]:
@@ -801,6 +799,4 @@ def _is_passing(result: Mapping[str, Any]) -> bool:
     """A check-result row is "passing" when its ``status`` is the ready/passed
     sentinel emitted by the type-checker / output-check executor."""
     status = result.get("status")
-    if status in {"ready", "passed", "not_produced"}:
-        return True
-    return False
+    return status in {"ready", "passed", "not_produced"}

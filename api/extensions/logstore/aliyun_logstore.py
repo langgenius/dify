@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import socket
@@ -247,10 +248,9 @@ class AliyunLogStore:
         finally:
             # Ensure socket is properly closed
             if sock:
-                try:
+                # Ignore errors during cleanup
+                with contextlib.suppress(Exception):
                     sock.close()
-                except Exception:  # noqa: S110
-                    pass  # Ignore errors during cleanup
 
     @property
     def supports_pg_protocol(self) -> bool:
@@ -280,9 +280,9 @@ class AliyunLogStore:
             else:
                 logger.info("Using SDK mode for project %s", self.project_name)
                 return False
-        except Exception as e:
+        except Exception:
             logger.info("Using SDK mode for project %s", self.project_name)
-            logger.debug("PG connection details: %s", str(e))
+            logger.debug("PG connection details", exc_info=True)
             self._use_pg_protocol = False
             return False
 

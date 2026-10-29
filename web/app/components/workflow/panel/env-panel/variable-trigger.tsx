@@ -16,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen)
@@ -38,10 +38,10 @@ const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
         }
       />
       <PopoverContent
-        placement="left-start"
-        sideOffset={8}
+        side="left"
+        align="start"
         alignOffset={-104}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <VariableModal
           env={env}

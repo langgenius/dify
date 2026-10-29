@@ -1,17 +1,16 @@
 import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import type { IterationNodeType } from './types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { useQuery } from '@tanstack/react-query'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { consoleQuery } from '@/service/console'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { VarType } from '../../types'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
@@ -25,19 +24,21 @@ type SelectOption = {
 const useConfig = (id: string, payload: IterationNodeType) => {
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [
+    const arrayVariableTypes: readonly VarType[] = [
       VarType.array,
       VarType.arrayString,
       VarType.arrayBoolean,
       VarType.arrayNumber,
       VarType.arrayObject,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return arrayVariableTypes.includes(varPayload.type)
   }, [])
 
   const handleInputChange = useCallback(
@@ -54,10 +55,22 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   // output
   const { getIterationNodeChildren } = useWorkflow()
   const iterationChildrenNodes = getIterationNodeChildren(id)
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const dataSourceList = useStore((s) => s.dataSourceList)
   const allPluginInfoList = {
     buildInTools: buildInTools || [],
@@ -68,7 +81,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   }
   const childrenNodeVars = toNodeOutputVars(
     iterationChildrenNodes,
-    isChatMode,
+    isChatflow,
     undefined,
     [],
     [],

@@ -1,67 +1,37 @@
-# Execution context layer
+# Execution context module
 
-The execution-context layer carries shared Dify run identifiers plus the tenant
-and optional user context needed for plugin-daemon calls. Server settings still
-provide the plugin daemon URL and API key.
+`dify_agent.layers.execution_context.layer` declares Config, empty State and
+Capability. Config carries tenant/user/app/invoke identity and correlation IDs.
+Other modules refer to its registered name in their Config. Server-only daemon
+settings and clients are borrowed from Deps.services. Knowledge retrieval
+requires its complete caller identity before any external request.
 
-Use it together with a [plugin LLM layer](../plugin-llm-layer/index.md) and,
-when the caller wants Dify tools exposed to the model, a
-[plugin tool layer](../plugin-tool-layer/index.md). Both business layers depend
-on this layer to reach the plugin daemon.
+The optional `tracing` field is an API-issued `ApplicationTracingContext`:
 
-## Config fields
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `tenant_id` | `str` | Dify tenant/workspace id used when calling the plugin daemon. |
-| `user_id` | `str \| None` | Optional end-user id passed through to the plugin daemon. |
-| `invoke_from` | `Literal[...]` | Dify caller category recorded for observability and correlation. |
-| `app_id` / `workflow_id` / `workflow_run_id` / `node_id` / `node_execution_id` / `conversation_id` / `agent_id` / `agent_config_version_id` / `trace_id` | `str \| None` | Optional Dify-owned execution identifiers forwarded with the run. |
-
-The execution-context layer type id is `dify.execution_context`.
-
-## Basic usage
-
-```python {test="skip" lint="skip"}
-from dify_agent.layers.execution_context import (
-    DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-    DifyExecutionContextLayerConfig,
-)
-from dify_agent.protocol import RunLayerSpec
-
-
-execution_context_layer = RunLayerSpec(
-    name="execution_context",
-    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-    config=DifyExecutionContextLayerConfig(
-        tenant_id="replace-with-tenant-id",
-        user_id="replace-with-user-id",
-        invoke_from="workflow_run",
-    ),
-)
+```json
+{
+  "version": 1,
+  "run_id": "429cab49-8663-42b4-a701-ac1038ee4fa7",
+  "invocation_id": "95bdeed9-4652-4708-8322-b866f159ad62",
+  "trace_id": "81b617d638eb419ba2b209c14984d908",
+  "parent_span_id": "716db0b6c736b395",
+  "session_id": "conversation-id",
+  "capture_content": false,
+  "sampled": true
+}
 ```
 
-If you do not need a user id, omit `user_id` or pass `None`. Most optional
-execution identifiers may also be omitted when they are not available.
+`run_id` identifies the API's persisted application trace. `invocation_id`
+identifies this particular Agent execution; multiple nodes or attempts can
+belong to one application trace. Both are UUIDs. The trace and parent span IDs
+are nonzero, lowercase OpenTelemetry hex IDs (32 and 16 characters). The parent
+is the API-owned message or Agent-node invocation, and is restored as the actual
+OpenTelemetry parent rather than attached only as metadata. Tenant/app identity
+continues to come from the containing execution context.
 
-## Server-side settings
-
-The execution-context layer config does not include daemon transport settings.
-Configure these on the Dify Agent server instead:
-
-```env
-DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
-DIFY_AGENT_PLUGIN_DAEMON_API_KEY=replace-with-plugin-daemon-server-key
-```
-
-This keeps server credentials out of client-submitted layer config and out of
-session snapshots.
-
-## Notes
-
-- The execution-context layer does not open, cache, close, or snapshot HTTP clients.
-- Concrete `plugin_id` values belong to the business layer that invokes the
-  daemon: the plugin LLM layer for model calls and each plugin tool config for
-  tool calls.
-- The conventional layer name is `execution_context`. If you use another name,
-  point the LLM and tool layer dependencies at that name.
+Application collection requires `DIFY_AGENT_APPLICATION_TRACING_ENABLED=true`
+on the Agent server. The API owns sampling and content policy per invocation;
+no third-party destination or credential is accepted in a run request. When an
+application context is selected it replaces deployment trajectory instrumentation
+for that invocation, including when `sampled` is false. Without an application
+context, the existing deployment trajectory behavior is unchanged.

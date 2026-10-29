@@ -1,44 +1,25 @@
-import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { NotionInfo, PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
-import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
-import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
-import type { SegmentImportStatus } from '@/types/dataset'
+import type { AppIconType, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import {
-  ExternalKnowledgeBase,
-  General,
-  ParentChild,
-  Qa,
-} from '@/app/components/base/icons/src/public/knowledge/dataset-card'
-import { PermissionLevel } from './permission'
 
-export enum DataSourceType {
-  FILE = 'upload_file',
-  NOTION = 'notion_import',
-  WEB = 'website_crawl',
-}
+export const DataSourceType = {
+  FILE: 'upload_file',
+  NOTION: 'notion_import',
+  WEB: 'website_crawl',
+} as const
 
-// Re-export PermissionLevel as DatasetPermission for backward compatibility
-export const DatasetPermission = PermissionLevel
+export type DataSourceType = (typeof DataSourceType)[keyof typeof DataSourceType]
 
-export type DatasetPermission = PermissionLevel
-
-export enum ChunkingMode {
-  text = 'text_model', // General text
-  qa = 'qa_model', // General QA
-  parentChild = 'hierarchical_model', // Parent-Child
+export const ChunkingMode = {
+  text: 'text_model', // General text
+  qa: 'qa_model', // General QA
+  parentChild: 'hierarchical_model', // Parent-Child
   // graph = 'graph', // todo: Graph RAG
-}
+} as const
 
-export type MetadataInDoc = {
-  value: string
-  id: string
-  type: MetadataFilteringVariableType
-  name: string
-}
+export type ChunkingMode = (typeof ChunkingMode)[keyof typeof ChunkingMode]
 
 export type IconInfo = {
   icon: string
@@ -52,99 +33,6 @@ export type SummaryIndexSetting = {
   model_name?: string
   model_provider_name?: string
   summary_prompt?: string
-}
-
-export type DataSet = {
-  id: string
-  name: string
-  indexing_status: DocumentIndexingStatus
-  icon_info: IconInfo
-  description: string
-  permission: DatasetPermission
-  data_source_type: DataSourceType
-  indexing_technique: IndexingType
-  author_name?: string
-  created_by: string
-  maintainer?: string
-  updated_by: string
-  updated_at: number
-  app_count: number
-  doc_form: ChunkingMode
-  document_count: number
-  total_document_count: number
-  total_available_documents?: number
-  word_count: number
-  provider: string
-  embedding_model: string
-  embedding_model_provider: string
-  embedding_available: boolean
-  retrieval_model_dict: RetrievalConfig
-  retrieval_model: RetrievalConfig
-  tags: Tag[]
-  partial_member_list?: string[]
-  external_knowledge_info: {
-    external_knowledge_id: string
-    external_knowledge_api_id: string
-    external_knowledge_api_name: string
-    external_knowledge_api_endpoint: string
-  }
-  external_retrieval_model: {
-    top_k: number
-    score_threshold: number
-    score_threshold_enabled: boolean
-  }
-  built_in_field_enabled: boolean
-  doc_metadata?: MetadataInDoc[]
-  keyword_number?: number
-  pipeline_id?: string
-  is_published?: boolean // Indicates if the pipeline is published
-  runtime_mode: 'rag_pipeline' | 'general'
-  enable_api: boolean // Indicates if the service API is enabled
-  is_multimodal: boolean // Indicates if the dataset supports multimodal
-  summary_index_setting?: SummaryIndexSetting
-  /** ACL permission keys */
-  permission_keys?: string[]
-}
-
-export type ExternalAPIItem = {
-  id: string
-  tenant_id: string
-  name: string
-  description: string
-  settings: {
-    endpoint: string
-    api_key: string
-  }
-  dataset_bindings: { id: string; name: string }[]
-  created_by: string
-  created_at: string
-}
-
-export type ExternalKnowledgeItem = {
-  id: string
-  name: string
-  description: string | null
-  provider: 'external'
-  permission: DatasetPermission
-  data_source_type: null
-  indexing_technique: null
-  app_count: number
-  document_count: number
-  word_count: number
-  created_by: string
-  created_at: string
-  updated_by: string
-  updated_at: string
-  tags: Tag[]
-}
-
-export type ExternalAPIDeleteResponse = {
-  result: 'success' | 'error'
-}
-
-export type ExternalAPIUsage = {
-  is_using: boolean
-  count: number
 }
 
 export type CustomFile = File & {
@@ -183,11 +71,13 @@ export type CrawlResult = {
   time_consuming: number | string
 }
 
-export enum CrawlStep {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
-}
+export const CrawlStep = {
+  init: 'init',
+  running: 'running',
+  finished: 'finished',
+} as const
+
+export type CrawlStep = (typeof CrawlStep)[keyof typeof CrawlStep]
 
 export type FileItem = {
   fileID: string
@@ -196,7 +86,6 @@ export type FileItem = {
 }
 
 export type FetchDatasetsParams = {
-  url: string
   params: {
     page: number
     ids?: string[]
@@ -207,89 +96,25 @@ export type FetchDatasetsParams = {
   }
 }
 
-export type DatasetListRequest = {
-  initialPage: number
-  tag_ids?: string[]
-  limit: number
-  include_all?: boolean
-  keyword?: string
-}
-
-export type DataSetListResponse = {
-  data: DataSet[]
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
 export type QA = {
   question: string
   answer: string
 }
 
-type IndexingEstimateResponse = {
-  tokens: number
-  total_price: number
-  currency: string
-  total_segments: number
-  preview: Array<{ content: string; child_chunks: string[]; summary?: string }>
-  qa_preview?: QA[]
-}
+export const ProcessMode = {
+  general: 'custom',
+  parentChild: 'hierarchical',
+} as const
 
-export type FileIndexingEstimateResponse = {
-  total_nodes: number
-} & IndexingEstimateResponse
-
-export type IndexingStatusResponse = {
-  id: string
-  indexing_status: DocumentIndexingStatus
-  processing_started_at: number
-  parsing_completed_at: number
-  cleaning_completed_at: number
-  splitting_completed_at: number
-  completed_at: any
-  paused_at: any
-  error: any
-  error_code?: 'vector_space_estimate_exceeded' | null
-  estimated_vector_space_mb?: number | null
-  vector_space_limit_mb?: number | null
-  stopped_at: any
-  completed_segments: number
-  total_segments: number
-}
-export type IndexingStatusBatchResponse = {
-  data: IndexingStatusResponse[]
-}
-
-export enum ProcessMode {
-  general = 'custom',
-  parentChild = 'hierarchical',
-}
+export type ProcessMode = (typeof ProcessMode)[keyof typeof ProcessMode]
 
 export type ParentMode = 'full-doc' | 'paragraph'
-
-export type ProcessRuleResponse = {
-  mode: ProcessMode
-  rules: Rules
-  limits: Limits
-  summary_index_setting?: SummaryIndexSetting
-}
 
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
-  parent_mode: ParentMode
-  subchunk_segmentation: Segmentation
-}
-
-type Limits = {
-  indexing_max_segmentation_tokens_length: number
-}
-
-export type PreProcessingRule = {
-  id: string
-  enabled: boolean
+  parent_mode?: ParentMode
+  subchunk_segmentation?: Segmentation
 }
 
 type Segmentation = {
@@ -297,16 +122,6 @@ type Segmentation = {
   max_tokens: number
   chunk_overlap?: number
 }
-
-export type DocumentIndexingStatus =
-  | 'waiting'
-  | 'parsing'
-  | 'cleaning'
-  | 'splitting'
-  | 'indexing'
-  | 'paused'
-  | 'error'
-  | 'completed'
 
 export const DisplayStatusList = [
   'queuing',
@@ -320,6 +135,9 @@ export const DisplayStatusList = [
 ] as const
 
 export type DocumentDisplayStatus = (typeof DisplayStatusList)[number]
+
+export const isDocumentDisplayStatus = (value: unknown): value is DocumentDisplayStatus =>
+  DisplayStatusList.some((status) => status === value)
 
 export type LegacyDataSourceInfo = {
   upload_file: {
@@ -373,69 +191,8 @@ export type OnlineDocumentInfo = {
   }
 }
 
-export type OnlineDriveInfo = {
-  bucket: string
-  credential_id: string
-  id: string
-  name: string
-  type: 'file' | 'folder'
-}
-
 export type UploadFileIdInfo = {
   upload_file_id: string
-}
-
-export type DataSourceInfo =
-  | LegacyDataSourceInfo
-  | LocalFileInfo
-  | OnlineDocumentInfo
-  | WebsiteCrawlInfo
-  | UploadFileIdInfo
-
-type InitialDocumentDetail = {
-  id: string
-  batch: string
-  position: number
-  dataset_id: string
-  data_source_type: DataSourceType | DatasourceType
-  data_source_info: DataSourceInfo
-  dataset_process_rule_id: string
-  name: string
-  created_from: 'rag-pipeline' | 'api' | 'web'
-  created_by: string
-  created_at: number
-  indexing_status: DocumentIndexingStatus
-  display_status: DocumentDisplayStatus
-  completed_segments?: number
-  total_segments?: number
-  doc_form: ChunkingMode
-  doc_language: string
-  summary_index_status?: string
-}
-
-export type SimpleDocumentDetail = InitialDocumentDetail & {
-  enabled: boolean
-  word_count: number
-  error?: string | null
-  archived: boolean
-  updated_at: number
-  hit_count: number
-  dataset_process_rule_id?: string
-  data_source_detail_dict?: {
-    upload_file: {
-      name: string
-      extension: string
-    }
-  }
-  doc_metadata?: MetadataItemWithValue[]
-}
-
-export type DocumentListResponse = {
-  data: SimpleDocumentDetail[]
-  has_more: boolean
-  total: number
-  page: number
-  limit: number
 }
 
 type DocumentReq = {
@@ -447,17 +204,13 @@ type DocumentReq = {
   summary_index_setting?: SummaryIndexSetting
 }
 
-export type CreateDocumentReq = DocumentReq & {
+export type CreateDocumentReq = Omit<DocumentReq, 'indexing_technique'> & {
+  indexing_technique: IndexingType
   data_source: DataSource
   retrieval_model: RetrievalConfig
   embedding_model: string
   embedding_model_provider: string
 }
-
-export type IndexingEstimateParams = DocumentReq &
-  Partial<DataSource> & {
-    dataset_id: string
-  }
 
 type DataSource = {
   type: DataSourceType
@@ -475,60 +228,10 @@ type DataSource = {
   }
 }
 
-export type NotionInfo = {
-  workspace_id: string
-  pages: DataSourceNotionPage[]
-  credential_id: string
-}
-
 export type ProcessRule = {
   mode: ProcessMode
   rules: Rules
   summary_index_setting?: SummaryIndexSetting
-}
-
-export type createDocumentResponse = {
-  dataset?: DataSet
-  batch: string
-  documents: InitialDocumentDetail[]
-}
-
-export type FullDocumentDetail = SimpleDocumentDetail & {
-  batch: string
-  created_api_request_id: string
-  processing_started_at: number
-  parsing_completed_at: number
-  cleaning_completed_at: number
-  splitting_completed_at: number
-  tokens: number
-  indexing_latency: number
-  completed_at: number
-  paused_by: string
-  paused_at: number
-  stopped_at: number
-  indexing_status: string
-  disabled_at: number
-  disabled_by: string
-  archived_reason: 'rule_modified' | 're_upload'
-  archived_by: string
-  archived_at: number
-  doc_type?: DocType | null | 'others'
-  doc_metadata?: DocMetadata | null
-  segment_count: number
-  dataset_process_rule: ProcessRule
-  document_process_rule: ProcessRule
-  [key: string]: any
-}
-
-type DocMetadata = {
-  title: string
-  language: string
-  author: string
-  publisher: string
-  publicationDate: string
-  ISBN: string
-  category: string
-  [key: string]: string
 }
 
 type CustomizableDocType =
@@ -542,10 +245,6 @@ type CustomizableDocType =
 type FixedDocType = 'synced_from_github' | 'synced_from_notion' | 'wikipedia_entry'
 export type DocType = CustomizableDocType | FixedDocType
 
-export type DocumentDetailResponse = FullDocumentDetail
-
-type SegmentStatus = 'waiting' | 'completed' | 'error' | 'indexing'
-
 export type Attachment = {
   id: string
   name: string
@@ -555,150 +254,6 @@ export type Attachment = {
   source_url: string
 }
 
-export type SegmentDetailModel = {
-  id: string
-  position: number
-  document_id: string
-  content: string
-  sign_content: string
-  word_count: number
-  tokens: number
-  keywords: string[]
-  index_node_id: string
-  index_node_hash: string
-  hit_count: number
-  enabled: boolean
-  disabled_at: number
-  disabled_by: string
-  status: SegmentStatus
-  created_by: string
-  created_at: number
-  indexing_at: number
-  completed_at: number
-  error: string | null
-  stopped_at: number
-  answer?: string
-  summary?: string
-  child_chunks?: ChildChunkDetail[]
-  updated_at: number
-  attachments: Attachment[]
-}
-
-export type SegmentsResponse = {
-  data: SegmentDetailModel[]
-  has_more: boolean
-  limit: number
-  total: number
-  total_pages: number
-  page: number
-}
-
-export type Query = {
-  content: string
-  content_type: 'text_query' | 'image_query'
-  file_info: Attachment | null
-}
-
-export type HitTestingRecord = {
-  id: string
-  source: 'app' | 'hit_testing' | 'plugin'
-  source_app_id: string
-  created_by_role: 'account' | 'end_user'
-  created_by: string
-  created_at: number
-  queries: Query[]
-}
-
-export type HitTestingChildChunk = {
-  id: string
-  content: string
-  position: number
-  score: number
-}
-export type HitTesting = {
-  segment: Segment
-  content: Segment
-  score: number
-  tsne_position: TsnePosition
-  child_chunks: HitTestingChildChunk[] | null
-  files: Attachment[]
-  summary?: string
-}
-
-export type ExternalKnowledgeBaseHitTesting = {
-  content: string
-  title: string
-  score: number
-  metadata: {
-    'x-amz-bedrock-kb-source-uri': string
-    'x-amz-bedrock-kb-data-source-id': string
-  }
-}
-
-type Segment = {
-  id: string
-  document: Document
-  content: string
-  sign_content: string
-  position: number
-  word_count: number
-  tokens: number
-  keywords: string[]
-  hit_count: number
-  index_node_hash: string
-  answer: string
-}
-
-type Document = {
-  id: string
-  data_source_type: string
-  name: string
-  doc_type: DocType
-}
-
-export type HitTestingRecordsResponse = {
-  data: HitTestingRecord[]
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
-
-type TsnePosition = {
-  x: number
-  y: number
-}
-
-export type HitTestingResponse = {
-  query: {
-    content: string
-    tsne_position: TsnePosition
-  }
-  records: Array<HitTesting>
-}
-
-export type ExternalKnowledgeBaseHitTestingResponse = {
-  query: {
-    content: string
-  }
-  records: Array<ExternalKnowledgeBaseHitTesting>
-}
-
-export type RelatedApp = {
-  id: string
-  name: string
-  mode: AppModeEnum
-  icon_type: AppIconType | null
-  icon: string
-  icon_background: string
-  icon_url: string
-}
-
-export type RelatedAppResponse = {
-  data: Array<RelatedApp>
-  total: number
-}
-
 export type SegmentUpdater = {
   content: string
   answer?: string
@@ -706,11 +261,6 @@ export type SegmentUpdater = {
   keywords?: string[]
   regenerate_child_chunks?: boolean
   attachment_ids?: string[]
-}
-
-export type ErrorDocsResponse = {
-  data: IndexingStatusResponse[]
-  total: number
 }
 
 export type SelectedDatasetsMode = {
@@ -725,16 +275,20 @@ export type SelectedDatasetsMode = {
   inconsistentEmbeddingModel: boolean
 }
 
-export enum WeightedScoreEnum {
-  SemanticFirst = 'semantic_first',
-  KeywordFirst = 'keyword_first',
-  Customized = 'customized',
-}
+export const WeightedScoreEnum = {
+  SemanticFirst: 'semantic_first',
+  KeywordFirst: 'keyword_first',
+  Customized: 'customized',
+} as const
 
-export enum RerankingModeEnum {
-  RerankingModel = 'reranking_model',
-  WeightedScore = 'weighted_score',
-}
+export type WeightedScoreEnum = (typeof WeightedScoreEnum)[keyof typeof WeightedScoreEnum]
+
+export const RerankingModeEnum = {
+  RerankingModel: 'reranking_model',
+  WeightedScore: 'weighted_score',
+} as const
+
+export type RerankingModeEnum = (typeof RerankingModeEnum)[keyof typeof RerankingModeEnum]
 
 export const DEFAULT_WEIGHTED_SCORE = {
   allHighQualityVectorSearch: {
@@ -751,57 +305,24 @@ export const DEFAULT_WEIGHTED_SCORE = {
   },
 }
 
-type ChildChunkType = 'automatic' | 'customized'
-
-export type ChildChunkDetail = {
-  id: string
-  position: number
-  segment_id: string
-  content: string
-  word_count: number
-  created_at: number
-  updated_at: number
-  type: ChildChunkType
-}
-
-export type ChildSegmentsResponse = {
-  data: ChildChunkDetail[]
-  total: number
-  total_pages: number
-  page: number
-  limit: number
-}
-
 // Used in api url
-export enum DocumentActionType {
-  enable = 'enable',
-  disable = 'disable',
-  archive = 'archive',
-  unArchive = 'un_archive',
-  delete = 'delete',
-  summary = 'summary',
-}
+export const DocumentActionType = {
+  enable: 'enable',
+  disable: 'disable',
+  archive: 'archive',
+  unArchive: 'un_archive',
+  delete: 'delete',
+  summary: 'summary',
+} as const
 
-export type UpdateDocumentBatchParams = {
-  datasetId: string
-  documentId?: string
-  documentIds?: string[] | string
-}
+export type DocumentActionType = (typeof DocumentActionType)[keyof typeof DocumentActionType]
 
-export type BatchImportResponse = {
-  job_id: string
-  job_status: SegmentImportStatus
-}
-
-export const DOC_FORM_ICON_WITH_BG: Record<
-  ChunkingMode | 'external',
-  React.ComponentType<{ className: string }>
-> = {
-  [ChunkingMode.text]: General,
-  [ChunkingMode.qa]: Qa,
-  [ChunkingMode.parentChild]: ParentChild,
+export const DOC_FORM_ICON_CLASS_WITH_BG: Record<ChunkingMode | 'external', string> = {
+  [ChunkingMode.text]: 'i-custom-public-knowledge-dataset-card-general',
+  [ChunkingMode.qa]: 'i-custom-public-knowledge-dataset-card-qa',
+  [ChunkingMode.parentChild]: 'i-custom-public-knowledge-dataset-card-parent-child',
   // [ChunkingMode.graph]: Graph, // todo: Graph RAG
-  external: ExternalKnowledgeBase,
+  external: 'i-custom-public-knowledge-dataset-card-external-knowledge-base',
 }
 
 type ChunkingModeText = I18nKeysByPrefix<'dataset', 'chunkingMode.'>
@@ -811,29 +332,6 @@ export const DOC_FORM_TEXT: Record<ChunkingMode, ChunkingModeText> = {
   [ChunkingMode.qa]: 'qa',
   [ChunkingMode.parentChild]: 'parentChild',
   // [ChunkingMode.graph]: 'graph', // todo: Graph RAG
-}
-
-export type CreateDatasetReq = {
-  yaml_content?: string
-}
-
-export type CreateDatasetResponse = {
-  id: string
-  name: string
-  description: string
-  permission: DatasetPermission
-  indexing_technique: IndexingType
-  created_by: string
-  created_at: number
-  updated_by: string
-  updated_at: number
-  pipeline_id: string
-  dataset_id: string
-}
-
-export type IndexingStatusBatchRequest = {
-  datasetId: string
-  batchId: string
 }
 
 export type HitTestingRequest = {

@@ -1,16 +1,16 @@
-import type { DataSourceCredential } from './types'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { memo, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Operator from './operator'
 
 type ItemProps = {
-  credentialItem: DataSourceCredential
+  credentialItem: DatasourceCredentialResponse
   onAction: (
     action: string,
-    credentialItem: DataSourceCredential,
+    credentialItem: DatasourceCredentialResponse,
     renamePayload?: { credential_id: string; name: string },
   ) => void
   canUseCredential?: boolean
@@ -22,15 +22,33 @@ const Item = ({
   canUseCredential = false,
   canManageCredential = false,
 }: ItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credentialItem.name)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const operatorTriggerRef = useRef<HTMLButtonElement>(null)
+  const restoreFocusOnExitRef = useRef(false)
+
+  useEffect(() => {
+    if (renaming) {
+      renameInputRef.current?.focus()
+    } else if (restoreFocusOnExitRef.current) {
+      operatorTriggerRef.current?.focus()
+      restoreFocusOnExitRef.current = false
+    }
+  }, [renaming])
+
+  const exitRename = () => {
+    restoreFocusOnExitRef.current = true
+    setRenaming(false)
+  }
 
   return (
-    <div className="flex h-10 items-center gap-3 overflow-hidden rounded-lg bg-components-panel-on-panel-item-bg py-1 pr-1 pl-3 shadow-xs">
+    <div className="flex h-10 items-center gap-3 overflow-hidden rounded-lg bg-components-panel-on-panel-item-bg py-1 ps-3 pe-1 shadow-xs">
       {renaming && (
         <div className="flex w-full items-center space-x-1">
           <Input
+            ref={renameInputRef}
             aria-label={`${t(($) => $['operation.rename'], { ns: 'common' })} ${credentialItem.name}`}
             className="h-6 min-w-0 grow"
             value={renameValue}
@@ -47,7 +65,7 @@ const Item = ({
                 credential_id: credentialItem.id,
                 name: renameValue,
               })
-              setRenaming(false)
+              exitRename()
             }}
           >
             {t(($) => $['operation.save'], { ns: 'common' })}
@@ -56,7 +74,7 @@ const Item = ({
             size="small"
             onClick={(e) => {
               e.stopPropagation()
-              setRenaming(false)
+              exitRename()
             }}
           >
             {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -77,19 +95,23 @@ const Item = ({
       )}
       {!renaming && (
         <>
-          <div className="ml-auto flex shrink-0 items-center">
-            <div className="mr-1 flex h-3 w-3 items-center justify-center">
+          <div className="ms-auto flex shrink-0 items-center">
+            <div className="me-1 flex h-3 w-3 items-center justify-center">
               <StatusDot status="success" />
             </div>
             <div className="system-xs-semibold-uppercase text-util-colors-green-green-600">
               {t(($) => $['dataSource.notion.connected'], { ns: 'common' })}
             </div>
           </div>
-          <div className="mr-1 ml-2 h-3 w-px bg-divider-regular"></div>
+          <div className="ms-2 me-1 h-3 w-px bg-divider-regular"></div>
           <Operator
+            triggerRef={operatorTriggerRef}
             credentialItem={credentialItem}
             onAction={onAction}
-            onRename={() => setRenaming(true)}
+            onRename={() => {
+              setRenameValue(credentialItem.name)
+              setRenaming(true)
+            }}
             canUseCredential={canUseCredential}
             canManageCredential={canManageCredential}
           />

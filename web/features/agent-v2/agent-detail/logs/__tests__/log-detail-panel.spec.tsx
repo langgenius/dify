@@ -4,9 +4,11 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { OnFeedback } from '@/app/components/base/chat/types'
+import { Drawer } from '@langgenius/dify-ui/drawer'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
@@ -39,7 +41,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mocks.toastError,
     success: mocks.toastSuccess,
@@ -52,35 +54,17 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        feedbacks: {
-          post: {
-            mutationOptions: () => ({ mutationFn: mocks.feedbackMutationFn }),
-          },
-        },
-        logs: {
-          get: {
-            key: () => ['agent-logs'],
-          },
-          byConversationId: {
-            messages: {
-              get: {
-                key: () => ['agent-log-messages'],
-                queryOptions: ({ input }: { input: unknown }) => ({
-                  queryFn: () => mocks.messagesQueryFn(input),
-                  queryKey: ['agent-log-messages', input],
-                }),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
+      'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
+    }),
+  }
+})
 
 const webappLog: AgentLogConversationItemResponse = {
   conversation_id: 'conversation-1',
@@ -145,11 +129,13 @@ function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMe
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
   render(
     <QueryClientTestProvider queryClient={queryClient}>
-      <AgentLogDetailPanel agentId="agent-1" log={log} onClose={vi.fn()} />
+      <Drawer open>
+        <AgentLogDetailPanel agentId="agent-1" log={log} onClose={vi.fn()} />
+      </Drawer>
     </QueryClientTestProvider>,
   )
 
@@ -158,7 +144,7 @@ function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMe
 
 describe('AgentLogDetailPanel', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
   })
 
@@ -184,7 +170,7 @@ describe('AgentLogDetailPanel', () => {
     await user.click(screen.getByRole('button', { name: 'submit-feedback' }))
 
     await waitFor(() => {
-      expect(mocks.feedbackMutationFn.mock.calls[0]?.[0]).toEqual({
+      expect(mocks.feedbackMutationFn).toHaveBeenCalledExactlyOnceWith({
         body: {
           content: undefined,
           message_id: 'message-1',
@@ -193,9 +179,12 @@ describe('AgentLogDetailPanel', () => {
         params: { agent_id: 'agent-1' },
       })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-logs'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-log-messages'] })
-    expect(mocks.toastSuccess).toHaveBeenCalled()
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.logs.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
+    })
   })
 
   it('reports operator feedback failures without refreshing log queries', async () => {
@@ -205,7 +194,9 @@ describe('AgentLogDetailPanel', () => {
 
     await user.click(await screen.findByRole('button', { name: 'submit-feedback' }))
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
+    )
     expect(invalidateQueries).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })

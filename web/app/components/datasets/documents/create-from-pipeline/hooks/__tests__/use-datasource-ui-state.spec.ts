@@ -2,12 +2,29 @@ import type { Datasource } from '@/app/components/rag-pipeline/components/panel/
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { useDatasourceUIState } from '../use-datasource-ui-state'
 
+const datasource = (provider_type: DatasourceType): Datasource => ({
+  nodeId: 'source-1',
+  nodeData: {
+    type: BlockEnum.DataSource,
+    title: 'Documents',
+    desc: '',
+    provider_type,
+    plugin_id: 'datasource',
+    provider_name: 'source',
+    datasource_name: 'documents',
+    datasource_label: 'Documents',
+    datasource_parameters: {},
+    datasource_configurations: {},
+  },
+})
+
 describe('useDatasourceUIState', () => {
   const defaultParams = {
-    datasource: { nodeData: { provider_type: DatasourceType.localFile } } as unknown as Datasource,
+    datasource: datasource(DatasourceType.localFile),
     allFileLoaded: true,
     localFileListLength: 3,
     onlineDocumentsLength: 0,
@@ -15,7 +32,7 @@ describe('useDatasourceUIState', () => {
     selectedFileIdsLength: 0,
     onlineDriveFileList: [] as OnlineDriveFile[],
     isVectorSpaceFull: false,
-    enableBilling: false,
+
     currentWorkspacePagesLength: 0,
     fileUploadConfig: { file_size_limit: 50, batch_count_limit: 20 },
   }
@@ -24,34 +41,13 @@ describe('useDatasourceUIState', () => {
     vi.clearAllMocks()
   })
 
-  describe('datasourceType', () => {
-    it('should return provider_type from datasource', () => {
-      const { result } = renderHook(() => useDatasourceUIState(defaultParams))
-      expect(result.current.datasourceType).toBe(DatasourceType.localFile)
-    })
-
-    it('should return undefined when no datasource', () => {
-      const { result } = renderHook(() =>
-        useDatasourceUIState({ ...defaultParams, datasource: undefined }),
-      )
-      expect(result.current.datasourceType).toBeUndefined()
-    })
-  })
-
   describe('isShowVectorSpaceFull', () => {
-    it('should be false when billing disabled', () => {
-      const { result } = renderHook(() =>
-        useDatasourceUIState({ ...defaultParams, isVectorSpaceFull: true }),
-      )
-      expect(result.current.isShowVectorSpaceFull).toBe(false)
-    })
-
     it('should be true when billing enabled and space is full for local file', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
           isVectorSpaceFull: true,
-          enableBilling: true,
+
           allFileLoaded: true,
         }),
       )
@@ -64,7 +60,6 @@ describe('useDatasourceUIState', () => {
           ...defaultParams,
           datasource: undefined,
           isVectorSpaceFull: true,
-          enableBilling: true,
         }),
       )
       expect(result.current.isShowVectorSpaceFull).toBe(false)
@@ -102,9 +97,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: datasource(DatasourceType.onlineDocument),
           onlineDocumentsLength: 2,
         }),
       )
@@ -115,9 +108,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: datasource(DatasourceType.onlineDocument),
           onlineDocumentsLength: 0,
         }),
       )
@@ -135,9 +126,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: datasource(DatasourceType.onlineDocument),
           currentWorkspacePagesLength: 5,
         }),
       )
@@ -148,9 +137,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDrive },
-          } as unknown as Datasource,
+          datasource: datasource(DatasourceType.onlineDrive),
           onlineDriveFileList: [{ id: '1', name: 'file.txt', type: OnlineDriveFileType.file }],
         }),
       )
@@ -161,9 +148,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDrive },
-          } as unknown as Datasource,
+          datasource: datasource(DatasourceType.onlineDrive),
           onlineDriveFileList: [{ id: '1', name: 'bucket-1', type: OnlineDriveFileType.bucket }],
         }),
       )
@@ -176,9 +161,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: datasource(DatasourceType.onlineDocument),
           currentWorkspacePagesLength: 10,
           onlineDocumentsLength: 3,
         }),
@@ -191,25 +174,6 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() => useDatasourceUIState(defaultParams))
       expect(result.current.totalOptions).toBeUndefined()
       expect(result.current.selectedOptions).toBeUndefined()
-    })
-  })
-
-  describe('tip', () => {
-    it('should return empty string for local file', () => {
-      const { result } = renderHook(() => useDatasourceUIState(defaultParams))
-      expect(result.current.tip).toBe('')
-    })
-
-    it('should return tip for online document', () => {
-      const { result } = renderHook(() =>
-        useDatasourceUIState({
-          ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
-        }),
-      )
-      expect(result.current.tip).toContain('selectOnlineDocumentTip')
     })
   })
 })

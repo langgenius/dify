@@ -13,33 +13,7 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
-import { createParser, useQueryState, useQueryStates } from 'nuqs'
-
-/**
- * Modal State Query Parameters
- * Manages modal visibility and configuration via URL
- */
-export const PRICING_MODAL_QUERY_PARAM = 'pricing'
-export const PRICING_MODAL_QUERY_VALUE = 'open'
-const parseAsPricingModal = createParser<boolean>({
-  parse: (value) => (value === PRICING_MODAL_QUERY_VALUE ? true : null),
-  serialize: (value) => (value ? PRICING_MODAL_QUERY_VALUE : ''),
-})
-  .withDefault(false)
-  .withOptions({ history: 'push' })
-
-/**
- * Hook to manage pricing modal state via URL
- * @returns [isOpen, setIsOpen] - Tuple like useState
- *
- * @example
- * const [isOpen, setIsOpen] = usePricingModal()
- * setIsOpen(true) // Sets ?pricing=open
- * setIsOpen(false) // Removes ?pricing
- */
-export function usePricingModal() {
-  return useQueryState(PRICING_MODAL_QUERY_PARAM, parseAsPricingModal)
-}
+import { createParser, useQueryStates } from 'nuqs'
 
 /**
  * Plugin Installation Query Parameters

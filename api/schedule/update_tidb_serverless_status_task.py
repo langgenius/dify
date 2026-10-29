@@ -17,18 +17,17 @@ def update_tidb_serverless_status_task():
     click.echo(click.style("Update tidb serverless status task.", fg="green"))
     start_at = time.perf_counter()
     try:
-        with session_factory.create_session() as session:
-            # check the number of idle tidb serverless
-            tidb_serverless_list = session.scalars(
-                select(TidbAuthBinding).where(
-                    TidbAuthBinding.active == False,
-                    TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
-                )
-            ).all()
-            if len(tidb_serverless_list) == 0:
-                return
-            # update tidb serverless status
-            update_clusters(tidb_serverless_list)
+        # check the number of idle tidb serverless
+        tidb_serverless_list = db.session.scalars(
+            select(TidbAuthBinding).where(
+                TidbAuthBinding.active.is_(False),
+                TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
+            )
+        ).all()
+        if len(tidb_serverless_list) == 0:
+            return
+        # update tidb serverless status
+        update_clusters(tidb_serverless_list)
 
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))

@@ -1,43 +1,10 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Recipient as RecipientItem } from '../../../../types'
-import type { Member } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import EmailInput from '../email-input'
 
-const mockEmailItem = vi.hoisted(() => vi.fn())
-const mockMemberList = vi.hoisted(() => vi.fn())
-
-vi.mock('../email-item', () => ({
-  __esModule: true,
-  default: (props: {
-    email: string
-    data: { email?: string; name?: string }
-    isError: boolean
-  }) => {
-    mockEmailItem(props)
-    return (
-      <div data-testid="selected-email-item">
-        {props.data.email}|{props.data.name}|{props.isError ? 'error' : 'ok'}
-      </div>
-    )
-  },
-}))
-
-vi.mock('../member-list', () => ({
-  __esModule: true,
-  default: (props: { searchValue: string; onSelect: (value: string) => void }) => {
-    mockMemberList(props)
-    return (
-      <div data-testid="member-list">
-        <div>{props.searchValue}</div>
-        <button type="button" onClick={() => props.onSelect('member-2')}>
-          select-member
-        </button>
-      </div>
-    )
-  },
-}))
-
-const createMember = (overrides: Partial<Member>): Member => ({
+const createMember = (overrides: Partial<AccountWithRoleResponse>): AccountWithRoleResponse => ({
   id: 'member-1',
   email: 'member-1@example.com',
   name: 'Member One',
@@ -46,13 +13,13 @@ const createMember = (overrides: Partial<Member>): Member => ({
   status: 'active',
   role: 'normal',
   roles: [],
-  created_at: '2026-01-01T00:00:00Z',
-  last_active_at: '2026-01-02T00:00:00Z',
-  last_login_at: '2026-01-03T00:00:00Z',
+  created_at: 1767225600,
+  last_active_at: 1767312000,
+  last_login_at: 1767398400,
   ...overrides,
 })
 
-const members: Member[] = [
+const members: AccountWithRoleResponse[] = [
   createMember({}),
   createMember({
     id: 'member-2',
@@ -66,10 +33,11 @@ describe('human-input/delivery-method/recipient/email-input', () => {
     vi.clearAllMocks()
   })
 
-  it('should map selected members, show the placeholder on focus, and select a member from the list', () => {
+  it('selects an unselected member from the real suggestions', async () => {
+    const user = userEvent.setup()
     const handleSelect = vi.fn()
     const handleDelete = vi.fn()
-    const { container } = render(
+    render(
       <EmailInput
         email="owner@example.com"
         value={[{ type: 'member', user_id: 'member-1' } as RecipientItem]}
@@ -80,22 +48,20 @@ describe('human-input/delivery-method/recipient/email-input', () => {
       />,
     )
 
-    expect(screen.getByTestId('selected-email-item')).toHaveTextContent(
-      'member-1@example.com|Member One|ok',
-    )
+    expect(screen.getByText('member-1@example.com')).toBeInTheDocument()
 
     const input = screen.getByRole('textbox')
     expect(input).toHaveAttribute('placeholder', '')
 
-    fireEvent.click(container.querySelector('.max-h-24') as HTMLDivElement)
+    await user.click(input)
     expect(input).toHaveAttribute(
       'placeholder',
-      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder',
+      'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder',
     )
 
-    fireEvent.change(input, { target: { value: 'member' } })
-    expect(screen.getByTestId('member-list')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'select-member' }))
+    await user.type(input, 'member')
+    expect(screen.getByRole('button', { name: /Member One/ })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: /Member Two/ }))
 
     expect(handleSelect).toHaveBeenCalledWith('member-2')
   })
@@ -135,6 +101,59 @@ describe('human-input/delivery-method/recipient/email-input', () => {
     expect(handleSelect).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    { value: '', expectedAdds: 0 },
+    { value: 'bad-email', expectedAdds: 0 },
+    { value: 'existing@example.com', expectedAdds: 0 },
+    { value: 'new@example.com', expectedAdds: 1 },
+  ])(
+    'should allow Tab to leave "$value" and add a valid email only once',
+    async ({ value, expectedAdds }) => {
+      const user = userEvent.setup()
+      const handleAdd = vi.fn()
+      render(
+        <>
+          <EmailInput
+            email="owner@example.com"
+            value={[{ type: 'external', email: 'existing@example.com' }]}
+            list={members}
+            onDelete={vi.fn()}
+            onSelect={vi.fn()}
+            onAdd={handleAdd}
+          />
+          <button type="button">Save</button>
+        </>,
+      )
+      const input = screen.getByRole('textbox')
+      await user.click(input)
+      if (value) await user.type(input, value)
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus()
+      expect(handleAdd).toHaveBeenCalledTimes(expectedAdds)
+      if (expectedAdds) expect(handleAdd).toHaveBeenCalledWith(value)
+    },
+  )
+
+  it('should allow Shift+Tab to return to the previous control', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Previous</button>
+        <EmailInput
+          email="owner@example.com"
+          value={[]}
+          list={members}
+          onDelete={vi.fn()}
+          onSelect={vi.fn()}
+          onAdd={vi.fn()}
+        />
+      </>,
+    )
+    await user.click(screen.getByRole('textbox'))
+    await user.tab({ shift: true })
+    expect(screen.getByRole('button', { name: 'Previous' })).toHaveFocus()
+  })
+
   it('should keep typing focused and stop keyboard events from reaching workflow listeners', () => {
     const handleParentKeyDown = vi.fn()
     const handleWindowKeyDown = vi.fn()
@@ -168,9 +187,9 @@ describe('human-input/delivery-method/recipient/email-input', () => {
     }
   })
 
-  it('should delete the last recipient with backspace, flag missing members as errors, and stop focusing when disabled', () => {
+  it('removes an unavailable member with Backspace and hides input when disabled', () => {
     const handleDelete = vi.fn()
-    const { container, rerender } = render(
+    const { rerender } = render(
       <EmailInput
         email="owner@example.com"
         value={[{ type: 'member', user_id: 'missing-member' } as RecipientItem]}
@@ -180,8 +199,6 @@ describe('human-input/delivery-method/recipient/email-input', () => {
         onAdd={vi.fn()}
       />,
     )
-
-    expect(screen.getByTestId('selected-email-item')).toHaveTextContent('||error')
 
     const input = screen.getByRole('textbox')
     fireEvent.keyDown(input, { key: 'Backspace', code: 'Backspace' })
@@ -199,7 +216,6 @@ describe('human-input/delivery-method/recipient/email-input', () => {
       />,
     )
 
-    fireEvent.click(container.querySelector('.max-h-24') as HTMLDivElement)
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 })

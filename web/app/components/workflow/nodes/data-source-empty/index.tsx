@@ -8,7 +8,7 @@ import { TabType } from '@/app/components/workflow/block-selector/types'
 import { useReplaceDataSourceNode } from './hooks'
 
 const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { handleReplaceNode } = useReplaceDataSourceNode(id)
 
   const triggerElement = (
@@ -44,7 +44,8 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
             trigger={triggerElement}
             standalonePanel={TabType.Sources}
             popupClassName="w-[320px]"
-            placement="bottom-start"
+            side="bottom"
+            align="start"
             sideOffset={4}
           />
         </div>

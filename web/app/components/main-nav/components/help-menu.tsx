@@ -1,19 +1,19 @@
 'use client'
 
 import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
-import type { ReactElement } from 'react'
+import type { ReactElement, Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuCheckboxItem,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -23,21 +23,23 @@ import {
   useLearnDifyHiddenValue,
   useSetLearnDifyHidden,
 } from '@/app/components/explore/learn-dify/storage'
-import Compliance from '@/app/components/header/account-dropdown/compliance'
+import Compliance from '@/app/components/header/account-menu/compliance'
 import {
   ExternalLinkIndicator,
   MenuItemContent,
-} from '@/app/components/header/account-dropdown/menu-item-content'
+} from '@/app/components/header/account-menu/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import { useCreatorCenterUrl } from '@/app/components/plugins/marketplace/creator-center-url'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
   disableStepByStepTourForCurrentWorkspaceAtom,
   enableStepByStepTourForCurrentWorkspaceAtom,
+  stepByStepTourChecklistMinimizedAtom,
   stepByStepTourEnabledForCurrentWorkspaceAtom,
   stepByStepTourSkipRecoveryVisibleAtom,
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
-import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -48,7 +50,7 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import styles from './help-menu.module.css'
 import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
@@ -56,6 +58,7 @@ import SupportMenu from './support-menu'
 type HelpMenuProps = {
   triggerIcon?: ReactElement
   triggerClassName?: string
+  triggerRef?: Ref<HTMLButtonElement>
   triggerSize?: IconButtonProps['size']
 }
 
@@ -87,9 +90,10 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
   />
 )
 
-const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps) => {
-  const { t } = useTranslation()
+const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
+  const { t } = useTranslation(['common', 'navigation'])
   const docLink = useDocLink()
+  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: profileMeta } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -115,7 +119,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
   const setSkipRecoveryVisible = useSetAtom(stepByStepTourSkipRecoveryVisibleAtom)
   const enableStepByStepTour = useSetAtom(enableStepByStepTourForCurrentWorkspaceAtom)
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
-  const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
+  const setStepByStepTourChecklistMinimized = useSetAtom(stepByStepTourChecklistMinimizedAtom)
   const [aboutOpen, setAboutOpen] = useState(false)
   const usesDefaultTrigger = !triggerIcon
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
@@ -131,7 +135,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
       trackStepByStepTourEvent({ action: checked ? 'tour_enabled' : 'tour_disabled' })
 
     if (checked) {
-      setStepByStepTourShellMode('expanded')
+      setStepByStepTourChecklistMinimized(false)
       enableStepByStepTour({
         onSuccess: trackVisibilityToggled,
       })
@@ -150,13 +154,16 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
 
   return (
     <>
-      <DropdownMenu onOpenChange={handleOpenChange}>
-        <DropdownMenuTrigger
+      <Menu onOpenChange={handleOpenChange}>
+        <MenuTrigger
+          ref={triggerRef}
           data-learn-dify-help-target
+          // oxlint-disable-next-line shadcn/no-restyle -- The recovery pulse animates box-shadow, so an outline replaces the ring.
+          className="focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid"
           render={
             <IconButton
               size={triggerSize ?? 'lg'}
-              aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'navigation' })}
               className={cn(
                 usesDefaultTrigger && [
                   'rounded-full border border-components-card-border bg-components-card-bg text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted',
@@ -173,42 +180,44 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
             </IconButton>
           }
         />
-        <DropdownMenuContent
-          placement="top-end"
+        <MenuContent
+          side="top"
+          align="end"
           sideOffset={8}
-          popupClassName="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
+          alignOffset={-24}
+          className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <>
-            <DropdownMenuGroup className="p-1">
-              <DropdownMenuLinkItem
+            <MenuGroup className="py-1">
+              <MenuLinkItem
                 href={docLink('/use-dify/getting-started/introduction')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-0 h-8 gap-1 px-3 py-1"
+                className="h-8 gap-1 px-3 py-1"
               >
                 <MenuItemContent
                   iconClassName="i-ri-book-open-line"
-                  label={t(($) => $['mainNav.help.docs'], { ns: 'common' })}
+                  label={t(($) => $['mainNav.help.docs'], { ns: 'navigation' })}
                   trailing={<ExternalLinkIndicator />}
                 />
-              </DropdownMenuLinkItem>
-              <DropdownMenuLinkItem
+              </MenuLinkItem>
+              <MenuLinkItem
                 href="https://roadmap.dify.ai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-0 h-8 gap-1 px-3 py-1"
+                className="h-8 gap-1 px-3 py-1"
               >
                 <MenuItemContent
                   iconClassName="i-ri-map-2-line"
                   label={t(($) => $['userProfile.roadmap'], { ns: 'common' })}
                   trailing={<ExternalLinkIndicator />}
                 />
-              </DropdownMenuLinkItem>
+              </MenuLinkItem>
               {shouldShowLearnDifySwitch && (
-                <DropdownMenuCheckboxItem
+                <MenuCheckboxItem
                   checked={!learnDifyHidden}
                   closeOnClick={false}
-                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  className="h-8 gap-1 py-1 ps-3 pe-2"
                   onCheckedChange={(checked) => setLearnDifyHidden(!checked)}
                 >
                   <span
@@ -216,16 +225,16 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
                     className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary"
                   />
                   <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
-                    {t(($) => $['mainNav.help.learnDify'], { ns: 'common' })}
+                    {t(($) => $['mainNav.help.learnDify'], { ns: 'navigation' })}
                   </span>
                   <MenuSwitchIndicator checked={!learnDifyHidden} />
-                </DropdownMenuCheckboxItem>
+                </MenuCheckboxItem>
               )}
               {systemFeatures.deployment_edition === 'CLOUD' && shouldShowStepByStepTourSwitch && (
-                <DropdownMenuCheckboxItem
+                <MenuCheckboxItem
                   checked={stepByStepTourEnabled}
                   closeOnClick={!stepByStepTourEnabled}
-                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  className="h-8 gap-1 py-1 ps-3 pe-2"
                   disabled={!canToggleStepByStepTour}
                   onCheckedChange={handleStepByStepTourCheckedChange}
                 >
@@ -234,26 +243,38 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
                     className="i-custom-vender-line-education-book-open-01 size-4 shrink-0 text-text-tertiary"
                   />
                   <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
-                    {t(($) => $['mainNav.help.stepByStepTour'], { ns: 'common' })}
+                    {t(($) => $['mainNav.help.stepByStepTour'], { ns: 'navigation' })}
                   </span>
                   <MenuSwitchIndicator checked={stepByStepTourEnabled} />
-                </DropdownMenuCheckboxItem>
+                </MenuCheckboxItem>
               )}
               {systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceOwner && (
                 <Compliance />
               )}
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="my-0!" />
-            <DropdownMenuGroup className="p-1">
+            </MenuGroup>
+            <MenuSeparator className="my-0!" />
+            <MenuGroup className="py-1">
               <SupportMenu />
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="my-0!" />
-            <DropdownMenuGroup className="p-1">
-              <DropdownMenuLinkItem
+            </MenuGroup>
+            <MenuSeparator className="my-0!" />
+            <MenuGroup className="py-1">
+              <MenuLinkItem
+                href={creatorCenterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-8 gap-1 px-3 py-1.5"
+              >
+                <MenuItemContent
+                  iconClassName="i-ri-user-star-line"
+                  label={t(($) => $['mainNav.help.creatorCenter'], { ns: 'navigation' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+              </MenuLinkItem>
+              <MenuLinkItem
                 href="https://github.com/langgenius/dify"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-0 h-8 gap-1 px-3 py-1.5"
+                className="h-8 gap-1 px-3 py-1.5"
               >
                 <MenuItemContent
                   iconClassName="i-ri-github-line"
@@ -268,12 +289,9 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
                     </div>
                   }
                 />
-              </DropdownMenuLinkItem>
+              </MenuLinkItem>
               {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
-                <DropdownMenuItem
-                  className="mx-0 h-8 gap-1 px-3 py-1.5"
-                  onClick={() => setAboutOpen(true)}
-                >
+                <MenuItem className="h-8 gap-1 px-3 py-1.5" onClick={() => setAboutOpen(true)}>
                   <MenuItemContent
                     iconClassName="i-ri-information-2-line"
                     label={t(($) => $['userProfile.about'], { ns: 'common' })}
@@ -288,12 +306,12 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
                       </div>
                     }
                   />
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-            </DropdownMenuGroup>
+            </MenuGroup>
           </>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <AccountAboutDialog
         open={aboutOpen}
         onOpenChange={setAboutOpen}

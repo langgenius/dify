@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { ControlMode } from '../../types'
@@ -6,7 +6,6 @@ import { WorkflowLocalStorageBridge } from '../local-storage-bridge'
 
 describe('WorkflowLocalStorageBridge', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     localStorage.clear()
   })
 
@@ -42,7 +41,7 @@ describe('WorkflowLocalStorageBridge', () => {
       </WorkflowContext>,
     )
 
-    store.getState().setControlMode(ControlMode.Comment)
+    act(() => store.getState().setControlMode(ControlMode.Comment))
 
     await waitFor(() => {
       expect(localStorage.getItem('workflow-operation-mode')).toBe(ControlMode.Comment)

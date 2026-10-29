@@ -1,7 +1,7 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ModelSelectorModel } from '../model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
@@ -9,6 +9,7 @@ import { modelTypeFormat, sizeFormat } from '../utils'
 
 type ModelNameProps = PropsWithChildren<{
   modelItem?: ModelSelectorModel
+  nameId?: string
   className?: string
   nameClassName?: string
   showModelType?: boolean
@@ -22,6 +23,7 @@ type ModelNameProps = PropsWithChildren<{
 }>
 const ModelName: FC<ModelNameProps> = ({
   modelItem,
+  nameId,
   className,
   nameClassName,
   showModelType,
@@ -47,7 +49,7 @@ const ModelName: FC<ModelNameProps> = ({
         className,
       )}
     >
-      <span className={cn('truncate', nameClassName)} title={label}>
+      <span id={nameId} className={cn('truncate', nameClassName)} title={label}>
         {label}
       </span>
       <span className="flex items-center gap-0.5">

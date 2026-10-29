@@ -34,10 +34,10 @@ function PreviewPanel({
   hideWebsitePreview,
   hidePlanUpgradeModal,
 }: PreviewPanelProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
-    <div className="h-full w-1/2 overflow-y-auto">
+    <div className="w-full min-w-0 xl:h-full xl:w-1/2 xl:overflow-y-auto">
       {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
       {currentNotionPage && (
         <NotionPagePreview

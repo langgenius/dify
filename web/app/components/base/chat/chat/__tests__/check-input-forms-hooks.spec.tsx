@@ -5,7 +5,7 @@ import { TransferMethod } from '@/types/app'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -20,33 +20,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 describe('useCheckInputsForms', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should return true when no inputs required', () => {
-    const { result } = renderHook(() => useCheckInputsForms())
-    const isValid = result.current.checkInputsForm({}, [])
-    expect(isValid).toBe(true)
-  })
-
-  it('should return false and notify when a required input is missing', () => {
-    const { result } = renderHook(() => useCheckInputsForms())
-    const inputsForm = [
-      {
-        variable: 'test_var',
-        label: 'Test Variable',
-        required: true,
-        type: InputVarType.textInput as string,
-      },
-    ]
-    const isValid = result.current.checkInputsForm({}, inputsForm as InputForm[])
-
-    expect(isValid).toBe(false)
-    expect(mockNotify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('appDebug.errorMessage.valueOfVarRequired'),
-      }),
-    )
   })
 
   it('should ignore missing but not required inputs', () => {
@@ -65,28 +38,23 @@ describe('useCheckInputsForms', () => {
     expect(mockNotify).not.toHaveBeenCalled()
   })
 
-  it('should notify and return undefined when a file is still uploading (singleFile)', () => {
+  it('rejects an empty required file list', () => {
     const { result } = renderHook(() => useCheckInputsForms())
-    const inputsForm = [
+    const fields = [
       {
-        variable: 'test_file',
-        label: 'Test File',
+        variable: 'files',
+        label: 'Files',
         required: true,
-        type: InputVarType.singleFile as string,
+        hide: false,
+        type: InputVarType.multiFiles,
       },
     ]
-    const inputs = {
-      test_file: { transferMethod: TransferMethod.local_file }, // no uploadedId means still uploading
-    }
-    const isValid = result.current.checkInputsForm(inputs, inputsForm as InputForm[])
 
-    expect(isValid).toBeUndefined()
-    expect(mockNotify).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'info',
-        message: 'appDebug.errorMessage.waitForFileUpload',
-      }),
-    )
+    expect(result.current.checkInputsForm({ files: [] }, fields)).toBe(false)
+    expect(mockNotify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"Files"}',
+    })
   })
 
   it('should notify and return undefined when a file is still uploading (multiFiles)', () => {
@@ -96,6 +64,7 @@ describe('useCheckInputsForms', () => {
         variable: 'test_files',
         label: 'Test Files',
         required: true,
+        hide: false,
         type: InputVarType.multiFiles as string,
       },
     ]

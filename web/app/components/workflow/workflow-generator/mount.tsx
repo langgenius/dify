@@ -1,6 +1,6 @@
 'use client'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
-import dynamic from '@/next/dynamic'
 import { useWorkflowGeneratorStore } from './store'
 
 // Lazy-load the modal so the bundle of the common layout stays light;

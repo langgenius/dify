@@ -1,11 +1,8 @@
 import type { ReactNode } from 'react'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
-  useActivePluginType,
-  useFilterPluginTags,
   useMarketplaceMoreClick,
   useMarketplaceSearchMode,
   useMarketplaceSort,
@@ -15,223 +12,79 @@ import {
 import { DEFAULT_SORT } from '../constants'
 
 const createWrapper = (searchParams = '') => {
-  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
   const wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
       <NuqsWrapper>{children}</NuqsWrapper>
     </JotaiProvider>
   )
-  return { wrapper }
+  return { wrapper, onUrlUpdate }
 }
 
-describe('Marketplace sort atoms', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should return default sort value from useMarketplaceSort', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceSort(), { wrapper })
-
-    expect(result.current[0]).toEqual(DEFAULT_SORT)
-    expect(typeof result.current[1]).toBe('function')
-  })
-
-  it('should return default sort value from useMarketplaceSortValue', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceSortValue(), { wrapper })
-
-    expect(result.current).toEqual(DEFAULT_SORT)
-  })
-
-  it('should update sort value via useMarketplaceSort setter', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceSort(), { wrapper })
-
-    act(() => {
-      result.current[1]({ sortBy: 'created_at', sortOrder: 'ASC' })
-    })
-
-    expect(result.current[0]).toEqual({ sortBy: 'created_at', sortOrder: 'ASC' })
-  })
+it.each([
+  ['?category=all', false],
+  ['?q=test&category=all', true],
+  ['?tags=search&category=all', true],
+  ['?category=model', true],
+  ['?category=tool', false],
+] as const)('derives search mode from %s', (params, expected) => {
+  const { wrapper } = createWrapper(params)
+  const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
+  expect(result.current).toBe(expected)
 })
 
-describe('useSearchPluginText', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should return empty string as default', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useSearchPluginText(), { wrapper })
-
-    expect(result.current[0]).toBe('')
-    expect(typeof result.current[1]).toBe('function')
-  })
-
-  it('should parse q from search params', () => {
-    const { wrapper } = createWrapper('?q=hello')
-    const { result } = renderHook(() => useSearchPluginText(), { wrapper })
-
-    expect(result.current[0]).toBe('hello')
-  })
-
-  it('should expose a setter function for search text', async () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useSearchPluginText(), { wrapper })
-
-    await act(async () => {
-      result.current[1]('search term')
-    })
-
-    expect(result.current[0]).toBe('search term')
-  })
+it('uses the debounced query override before switching from collections to search', () => {
+  const { wrapper } = createWrapper('?q=typing&category=tool')
+  const { result, rerender } = renderHook(
+    ({ query }) => useMarketplaceSearchMode(undefined, query),
+    {
+      wrapper,
+      initialProps: { query: '' },
+    },
+  )
+  expect(result.current).toBe(false)
+  rerender({ query: 'typing' })
+  expect(result.current).toBe(true)
 })
 
-describe('useActivePluginType', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('applies a collection query and sort while preserving unrelated URL filters', async () => {
+  const { wrapper, onUrlUpdate } = createWrapper('?category=tool&tags=search')
+  const { result } = renderHook(
+    () => ({
+      more: useMarketplaceMoreClick(),
+      sort: useMarketplaceSortValue(),
+      query: useSearchPluginText()[0],
+    }),
+    { wrapper },
+  )
+  await act(async () => {
+    result.current.more({ query: 'collection search', sort_by: 'created_at', sort_order: 'ASC' })
   })
-
-  it('should return "all" as default category', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useActivePluginType(), { wrapper })
-
-    expect(result.current[0]).toBe('all')
-  })
-
-  it('should parse category from search params', () => {
-    const { wrapper } = createWrapper('?category=tool')
-    const { result } = renderHook(() => useActivePluginType(), { wrapper })
-
-    expect(result.current[0]).toBe('tool')
-  })
+  expect(result.current.sort).toEqual({ sortBy: 'created_at', sortOrder: 'ASC' })
+  expect(result.current.query).toBe('collection search')
+  await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+  const params = onUrlUpdate.mock.lastCall![0].searchParams
+  expect(params.get('q')).toBe('collection search')
+  expect(params.get('category')).toBe('tool')
+  expect(params.get('tags')).toBe('search')
 })
 
-describe('useFilterPluginTags', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should return empty array as default', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useFilterPluginTags(), { wrapper })
-
-    expect(result.current[0]).toEqual([])
-  })
-
-  it('should parse tags from search params', () => {
-    const { wrapper } = createWrapper('?tags=search')
-    const { result } = renderHook(() => useFilterPluginTags(), { wrapper })
-
-    expect(result.current[0]).toEqual(['search'])
-  })
-})
-
-describe('useMarketplaceSearchMode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should return false when no search text, no tags, and category has collections (all)', () => {
-    const { wrapper } = createWrapper('?category=all')
-    const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
-
-    expect(result.current).toBe(false)
-  })
-
-  it('should return true when search text is present', () => {
-    const { wrapper } = createWrapper('?q=test&category=all')
-    const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
-
-    expect(result.current).toBe(true)
-  })
-
-  it('should return true when tags are present', () => {
-    const { wrapper } = createWrapper('?tags=search&category=all')
-    const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
-
-    expect(result.current).toBe(true)
-  })
-
-  it('should return true when category does not have collections (e.g. model)', () => {
-    const { wrapper } = createWrapper('?category=model')
-    const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
-
-    expect(result.current).toBe(true)
-  })
-
-  it('should return false when category has collections (tool) and no search/tags', () => {
-    const { wrapper } = createWrapper('?category=tool')
-    const { result } = renderHook(() => useMarketplaceSearchMode(), { wrapper })
-
-    expect(result.current).toBe(false)
-  })
-})
-
-describe('useMarketplaceMoreClick', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should do nothing when called with no params', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(
-      () => ({
-        handleMoreClick: useMarketplaceMoreClick(),
-        sort: useMarketplaceSortValue(),
-        searchText: useSearchPluginText()[0],
-      }),
-      { wrapper },
-    )
-
-    const sortBefore = result.current.sort
-    const searchTextBefore = result.current.searchText
-
-    act(() => {
-      result.current.handleMoreClick(undefined)
-    })
-
-    expect(result.current.sort).toEqual(sortBefore)
-    expect(result.current.searchText).toBe(searchTextBefore)
-  })
-
-  it('should update search state when called with search params', () => {
-    const { wrapper } = createWrapper()
-
-    const { result } = renderHook(
-      () => ({
-        handleMoreClick: useMarketplaceMoreClick(),
-        sort: useMarketplaceSortValue(),
-      }),
-      { wrapper },
-    )
-
-    act(() => {
-      result.current.handleMoreClick({
-        query: 'collection search',
-        sort_by: 'created_at',
-        sort_order: 'ASC',
-      })
-    })
-
-    expect(result.current.sort).toEqual({ sortBy: 'created_at', sortOrder: 'ASC' })
-  })
-
-  it('should use defaults when search params fields are missing', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(
-      () => ({
-        handleMoreClick: useMarketplaceMoreClick(),
-        sort: useMarketplaceSortValue(),
-      }),
-      { wrapper },
-    )
-
-    act(() => {
-      result.current.handleMoreClick({})
-    })
-
-    expect(result.current.sort).toEqual(DEFAULT_SORT)
-  })
+it('clears the previous query and sort but keeps search active for an unfiltered collection', async () => {
+  const { wrapper, onUrlUpdate } = createWrapper('?q=previous&category=tool')
+  const { result } = renderHook(
+    () => ({
+      more: useMarketplaceMoreClick(),
+      sort: useMarketplaceSort(),
+      query: useSearchPluginText()[0],
+      searchMode: useMarketplaceSearchMode(),
+    }),
+    { wrapper },
+  )
+  act(() => result.current.sort[1]({ sortBy: 'created_at', sortOrder: 'ASC' }))
+  await act(async () => result.current.more({}))
+  expect(result.current.sort[0]).toEqual(DEFAULT_SORT)
+  expect(result.current.query).toBe('')
+  expect(result.current.searchMode).toBe(true)
+  await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+  expect(onUrlUpdate.mock.lastCall![0].searchParams.has('q')).toBe(false)
 })

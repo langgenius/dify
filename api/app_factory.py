@@ -105,6 +105,10 @@ def create_flask_app_with_configs() -> DifyApp:
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
     dify_app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    # flask-restx appends url-map suggestions to 404 bodies: they enumerate routes to
+    # anonymous callers, and a policy 404 on an existing route (edition admission)
+    # ends up suggesting the very path that was just requested.
+    dify_app.config["RESTX_ERROR_404_HELP"] = False
 
     # add before request hook
     @dify_app.before_request
@@ -186,6 +190,7 @@ def initialize_extensions(app: DifyApp):
         ext_hosting_provider,
         ext_import_modules,
         ext_key_provider,
+        ext_knowledge_fs_observability,
         ext_logging,
         ext_login,
         ext_logstore,
@@ -237,6 +242,7 @@ def initialize_extensions(app: DifyApp):
         ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
+        ext_knowledge_fs_observability,
         ext_application_services,
         ext_oauth_bearer,
     ]

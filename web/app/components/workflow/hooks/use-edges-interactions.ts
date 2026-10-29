@@ -70,16 +70,20 @@ export const useEdgesInteractions = () => {
     [getNodesReadOnly, store],
   )
 
-  const handleEdgeDeleteByDeleteBranch = useCallback(
-    (nodeId: string, branchId: string) => {
-      if (getNodesReadOnly()) return
+  // The caller owns draft synchronization and history for the complete user action.
+  const removeBranchEdges = useCallback(
+    (nodeId: string, branchIds: string[]) => {
+      if (getNodesReadOnly()) return false
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
       const edgeWillBeDeleted = edges.filter(
-        (edge) => edge.source === nodeId && edge.sourceHandle === branchId,
+        (edge) =>
+          edge.source === nodeId &&
+          edge.sourceHandle != null &&
+          branchIds.includes(edge.sourceHandle),
       )
 
-      if (!edgeWillBeDeleted.length) return
+      if (!edgeWillBeDeleted.length) return false
 
       const newNodes = applyConnectedHandleNodeData(
         nodes,
@@ -98,16 +102,19 @@ export const useEdgesInteractions = () => {
       ) {
         workflowStore.setState({ contextMenuTarget: undefined })
       }
+      return true
+    },
+    [getNodesReadOnly, collaborativeWorkflow, workflowStore],
+  )
+
+  const handleEdgeDeleteByDeleteBranch = useCallback(
+    (nodeId: string, branchId: string) => {
+      if (!removeBranchEdges(nodeId, [branchId])) return
+
       handleSyncWorkflowDraft()
       saveStateToHistory(WorkflowHistoryEvent.EdgeDeleteByDeleteBranch)
     },
-    [
-      getNodesReadOnly,
-      collaborativeWorkflow,
-      workflowStore,
-      handleSyncWorkflowDraft,
-      saveStateToHistory,
-    ],
+    [removeBranchEdges, handleSyncWorkflowDraft, saveStateToHistory],
   )
 
   const handleEdgeDelete = useCallback(() => {
@@ -220,6 +227,7 @@ export const useEdgesInteractions = () => {
   return {
     handleEdgeEnter,
     handleEdgeLeave,
+    removeBranchEdges,
     handleEdgeDeleteByDeleteBranch,
     handleEdgeDelete,
     handleEdgeDeleteById,

@@ -10,16 +10,17 @@ from __future__ import annotations
 import posixpath
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Protocol, TypeVar, cast
+from typing import Protocol, TypeVar, cast, override
 
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
-from shellctl.shared import HealthResponse
+from shellctl.shared import HealthResponse, JobMode
 
 from dify_agent.adapters.shell.protocols import (
     ShellCommandProtocol,
     ShellCommandResult,
     ShellCommandStatus,
+    ShellExecutionMode,
     ShellProviderError,
 )
 
@@ -60,6 +61,7 @@ class ShellctlClientProtocol(Protocol):
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         timeout: float = _DEFAULT_TIMEOUT_SECONDS,
+        mode: JobMode = JobMode.PTY,
     ) -> ShellctlJobResult: ...
 
     async def wait(
@@ -107,6 +109,7 @@ class ShellctlCommands(ShellCommandProtocol):
     home_dir: str | None = None
     workspace_dir: str | None = None
 
+    @override
     async def run(
         self,
         script: str,
@@ -114,6 +117,7 @@ class ShellctlCommands(ShellCommandProtocol):
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         timeout: float,
+        mode: ShellExecutionMode = "pty",
     ) -> ShellCommandResult:
         resolved_cwd = _resolve_lease_cwd(
             cwd,
@@ -122,9 +126,18 @@ class ShellctlCommands(ShellCommandProtocol):
         )
         resolved_env = _lease_env(env, home_dir=self.home_dir)
         return _from_job_result(
-            await _run_client_call(self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout))
+            await _run_client_call(
+                self.client.run(
+                    script,
+                    cwd=resolved_cwd,
+                    env=resolved_env,
+                    timeout=timeout,
+                    mode=JobMode(mode),
+                )
+            )
         )
 
+    @override
     async def wait(
         self,
         job_id: str,
@@ -134,6 +147,7 @@ class ShellctlCommands(ShellCommandProtocol):
     ) -> ShellCommandResult:
         return _from_job_result(await _run_client_call(self.client.wait(job_id, offset=offset, timeout=timeout)))
 
+    @override
     async def read_output(
         self,
         job_id: str,
@@ -144,6 +158,7 @@ class ShellctlCommands(ShellCommandProtocol):
             await _run_client_call(self.client.wait(job_id, offset=offset, timeout=_READ_OUTPUT_TIMEOUT_SECONDS))
         )
 
+    @override
     async def input(
         self,
         job_id: str,
@@ -154,6 +169,7 @@ class ShellctlCommands(ShellCommandProtocol):
     ) -> ShellCommandResult:
         return _from_job_result(await _run_client_call(self.client.input(job_id, text, offset=offset, timeout=timeout)))
 
+    @override
     async def interrupt(
         self,
         job_id: str,
@@ -162,9 +178,11 @@ class ShellctlCommands(ShellCommandProtocol):
     ) -> ShellCommandStatus:
         return _from_job_status(await _run_client_call(self.client.terminate(job_id, grace_seconds=grace_seconds)))
 
+    @override
     async def tail(self, job_id: str) -> ShellCommandResult:
         return _from_job_result(await _run_client_call(self.client.tail(job_id)))
 
+    @override
     async def delete(
         self,
         job_id: str,
