@@ -600,6 +600,14 @@ class TaskStopResponse(BaseModel):
     result: Literal["success"]
 
 
+_OVERWRITTEN_APP_DESCRIPTION: Final = "Existing app ID to overwrite (workflow/advanced-chat apps only)"
+_IMPORT_DRAFT_HASH_DESCRIPTION: Final = (
+    "draft_hash from the export or restore this import is based on. The import fails if the "
+    "draft's graph, features, environment variables or conversation variables changed since. Requires app_id"
+)
+_DRAFT_HASH_NEEDS_APP_ID: Final = "draft_hash is only valid when app_id names the app to overwrite"
+
+
 class AppDslImportPayload(BaseModel):
     """Request body for POST /workspaces/<workspace_id>/apps/imports."""
 
@@ -613,18 +621,14 @@ class AppDslImportPayload(BaseModel):
     icon_type: str | None = Field(None)
     icon: str | None = Field(None)
     icon_background: str | None = Field(None)
-    app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
-    draft_hash: str | None = Field(
-        None,
-        description="draft_hash from the export or restore this import is based on. The import fails if the "
-        "draft's graph, features, environment variables or conversation variables changed since. Requires app_id",
-    )
+    app_id: str | None = Field(None, description=_OVERWRITTEN_APP_DESCRIPTION)
+    draft_hash: str | None = Field(None, description=_IMPORT_DRAFT_HASH_DESCRIPTION)
     _source: str = PrivateAttr()
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
         if self.draft_hash is not None and not self.app_id:
-            raise ValueError("draft_hash is only valid when app_id names the app to overwrite")
+            raise ValueError(_DRAFT_HASH_NEEDS_APP_ID)
         source = self.yaml_url if self.mode == ImportMode.YAML_URL else self.yaml_content
         if not source:
             raise ValueError(f"{self.mode.replace('-', '_')} is required when mode is '{self.mode}'")
@@ -635,6 +639,29 @@ class AppDslImportPayload(BaseModel):
     def source(self) -> str:
         """The URL or the YAML text, whichever the mode names."""
         return self._source
+
+
+class AppPackageImportPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/packages."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    package: UploadPart | UploadParts = Field(
+        description="A .ifpkg file, or an unpacked package folder (one part per file)"
+    )
+    app_id: UUIDStr | None = Field(None, description=_OVERWRITTEN_APP_DESCRIPTION)
+    draft_hash: str | None = Field(None, description=_IMPORT_DRAFT_HASH_DESCRIPTION)
+    name: str | None = Field(None, description="Override the app name from the DSL")
+    description: str | None = Field(None, description="Override the app description from the DSL")
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+
+    @model_validator(mode="after")
+    def _draft_hash_needs_app_id(self) -> Self:
+        if self.draft_hash is not None and not self.app_id:
+            raise ValueError(_DRAFT_HASH_NEEDS_APP_ID)
+        return self
 
 
 class AppDslExportQuery(BaseModel):

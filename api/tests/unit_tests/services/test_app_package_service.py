@@ -103,9 +103,14 @@ def _tool_file(session: Session, storage: _MemoryStorage, key: str, payload: byt
 
 
 def _source(
-    session: Session, storage: _MemoryStorage, *, mode: AppMode = AppMode.WORKFLOW, published: bool = False
+    session: Session,
+    storage: _MemoryStorage,
+    *,
+    mode: AppMode = AppMode.WORKFLOW,
+    published: bool = False,
+    app_id: str = "app-1",
 ) -> App:
-    app = make_app(mode=mode, name="Inline Workflow")
+    app = make_app(app_id=app_id, mode=mode, name="Inline Workflow")
     nodes = [
         {
             "id": f"node-{index}",
@@ -343,22 +348,27 @@ def _bindings_by_node(session: Session, app_id: str | None) -> dict[str, Workflo
     return {row.node_id: row for row in rows}
 
 
+def _package_storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
+    """Route package resource reads and writes to memory, for an export and import on SQLite."""
+    backend = _MemoryStorage()
+    monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(
+        "services.app_package_service.AgentPackageResourceExporter",
+        lambda: AgentPackageResourceExporter(storage_backend=backend),
+    )
+    monkeypatch.setattr(
+        "services.app_package_service.AgentPackageResourceImporter",
+        lambda: AgentPackageResourceImporter(storage_backend=backend),
+    )
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    return backend
+
+
 class TestWorkflowPackageServiceCases:
     @staticmethod
     @pytest.fixture
     def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
-        backend = _MemoryStorage()
-        monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
-        monkeypatch.setattr(
-            "services.app_package_service.AgentPackageResourceExporter",
-            lambda: AgentPackageResourceExporter(storage_backend=backend),
-        )
-        monkeypatch.setattr(
-            "services.app_package_service.AgentPackageResourceImporter",
-            lambda: AgentPackageResourceImporter(storage_backend=backend),
-        )
-        monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
-        return backend
+        return _package_storage(monkeypatch, sqlite_engine)
 
     @staticmethod
     @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
