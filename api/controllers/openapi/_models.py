@@ -646,6 +646,23 @@ class AppDslExportQuery(BaseModel):
     )
 
 
+class AppPackageExportQuery(BaseModel):
+    """Query parameters for GET /apps/<app_id>/package."""
+
+    include_secret: bool = Field(False, description="Include secret values in plaintext in the exported DSL")
+    workflow_id: UUIDStr | None = Field(
+        None, description="Export a specific workflow version instead of the current draft"
+    )
+    preserve_agent_bindings: bool = Field(
+        True,
+        description=(
+            "true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) "
+            "and only inline Agents are packaged. false: every Agent is packaged, as the console does, "
+            "for moving the App to another workspace"
+        ),
+    )
+
+
 class AppDslExportResponse(BaseModel):
     """Export DSL response."""
 

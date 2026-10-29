@@ -19,7 +19,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
+from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi._errors import (
     AppModeMismatch,
@@ -358,23 +358,40 @@ def workspace_write_guards(
 
 
 def _app_guards(
-    head: tuple[Requirement, ...], check: RBACCheck, *, scope: Scope, modes: Collection[AppMode], roles: Roles
+    head: tuple[Requirement, ...],
+    checks: Sequence[RBACCheck],
+    *,
+    scope: Scope,
+    modes: Collection[AppMode],
+    roles: Roles,
 ) -> tuple[Requirement, ...]:
     return (
         *head,
         *((CheckAppMode(*modes),) if modes else ()),
         CheckScope(scope),
-        CheckRBACPermission(check),
+        CheckRBACPermission(*checks),
         *_role_gate(roles),
     )
 
 
 def account_app_guards(
-    permission: RBACPermission, *, scope: Scope, roles: Roles, modes: Collection[AppMode] = ()
+    permission: RBACPermission,
+    *,
+    scope: Scope,
+    roles: Roles,
+    modes: Collection[AppMode] = (),
+    agent_permission: RBACPermission | None = None,
 ) -> tuple[Requirement, ...]:
-    """Guards for an account-only op on one app; `modes` limits it to apps of those modes."""
+    """Guards for an account-only op on one app; `modes` limits it to apps of those modes.
+
+    `agent_permission` adds the check for the Agent behind an Agent App. An app has either a
+    plain-app or an Agent identity, so the two checks go in one `CheckRBACPermission`.
+    """
     head = (CheckSubject(allowed=(AccountSubject,)), CheckAppApiEnabled(), CheckWorkspaceMember())
-    return _app_guards(head, RBACCheck(permission, PlainApp()), scope=scope, modes=modes, roles=roles)
+    checks = [RBACCheck(permission, PlainApp())]
+    if agent_permission is not None:
+        checks.append(RBACCheck(agent_permission, AgentBehindApp()))
+    return _app_guards(head, checks, scope=scope, modes=modes, roles=roles)
 
 
 def account_settings_guards(
@@ -382,4 +399,4 @@ def account_settings_guards(
 ) -> tuple[Requirement, ...]:
     """App-settings guards. No `CheckAppApiEnabled`, so an admin can always switch the Service API back on."""
     head = (CheckSubject(allowed=(AccountSubject,)), CheckWorkspaceMember())
-    return _app_guards(head, check, scope=scope, modes=modes, roles=roles)
+    return _app_guards(head, (check,), scope=scope, modes=modes, roles=roles)
