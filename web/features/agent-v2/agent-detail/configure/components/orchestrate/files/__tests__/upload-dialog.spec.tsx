@@ -1,102 +1,88 @@
-import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { consoleClient } from '@/service/console'
+import { ORPCError } from '@orpc/client'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createTestQueryClient } from '@/test/query-client'
 import { AgentFileUploadDialog } from '../upload-dialog'
 
-type UploadInput = { body: { file: File } }
-type CommitInput = {
-  params: { agent_id?: string; app_id?: string }
-  query: { draft_type?: string; version_id?: string; node_id?: string }
-  body: { upload_file_ids: string[] }
-}
+type UploadInput = Parameters<typeof consoleClient.files.upload.post>[0]
+type BindAgentInput = Parameters<typeof consoleClient.agent.byAgentId.config.files.batch.post>[0]
+type BindWorkflowInput = Parameters<
+  typeof consoleClient.apps.byAppId.agent.config.files.batch.post
+>[0]
+
+const bindResponse = ({ body }: { body: { upload_file_ids: string[] } }) => ({
+  config_version: { id: 'draft-1', kind: 'draft', writable: true },
+  files: body.upload_file_ids.map((id) => ({
+    name: id.replace('upload-', ''),
+    file_id: id,
+    file_kind: 'upload_file',
+    mime_type: 'text/markdown',
+    size: 5,
+  })),
+})
 
 const mocks = vi.hoisted(() => ({
-  uploadConfig: vi.fn<() => Promise<UploadConfig>>(),
-  upload: vi.fn(async ({ body }: UploadInput) => ({ id: `upload-${body.file.name}` })),
-  commitAgent: vi.fn(async ({ body }: CommitInput) => ({
-    files: body.upload_file_ids.map((id) => ({
-      name: id.replace('upload-', ''),
-      file_id: id,
-      mime_type: 'text/markdown',
-      size: 5,
-    })),
-  })),
-  commitWorkflow: vi.fn(async ({ body }: CommitInput) => ({
-    files: body.upload_file_ids.map((id) => ({
-      name: id.replace('upload-', ''),
-      file_id: id,
-      mime_type: 'text/markdown',
-      size: 5,
-    })),
-  })),
+  upload: vi.fn<(input: UploadInput) => Promise<{ id: string }>>(),
+  bindAgent: vi.fn<(input: BindAgentInput) => Promise<ReturnType<typeof bindResponse>>>(),
+  bindWorkflow: vi.fn<(input: BindWorkflowInput) => Promise<ReturnType<typeof bindResponse>>>(),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'files.upload.get': mocks.uploadConfig,
-      'files.upload.post': mocks.upload,
-      'agent.byAgentId.config.files.batch.post': mocks.commitAgent,
-      'apps.byAppId.agent.config.files.batch.post': mocks.commitWorkflow,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': (input: UploadInput) => mocks.upload(input),
+      'agent.byAgentId.config.files.batch.post': (input: BindAgentInput) => mocks.bindAgent(input),
+      'apps.byAppId.agent.config.files.batch.post': (input: BindWorkflowInput) =>
+        mocks.bindWorkflow(input),
     }),
   }
 })
 
 const uploadKey = 'agentV2.agentDetail.configure.files.upload.'
 
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise
-  })
-  return { promise, resolve }
-}
-
 function renderUploadDialog({
   apiContext = { agentId: 'agent-1', draftType: 'draft' },
   documentSizeLimit = 15,
-  cacheUploadConfig = true,
 }: {
   apiContext?: AgentConfigApiContext
   documentSizeLimit?: number
-  cacheUploadConfig?: boolean
 } = {}) {
   const onUploaded = vi.fn()
   const onOpenChange = vi.fn()
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, staleTime: Infinity },
-      mutations: { retry: false },
-    },
-  })
-  if (cacheUploadConfig) {
-    queryClient.setQueryData(
-      consoleQuery.files.upload.get.queryKey(),
-      createFileUploadConfigFixture({ file_size_limit: documentSizeLimit }),
-    )
-  }
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture({ file_size_limit: documentSizeLimit }),
+  )
 
   function Harness() {
     const [open, setOpen] = useState(true)
     return (
-      <AgentFileUploadDialog
-        apiContext={apiContext}
-        open={open}
-        onOpenChange={(nextOpen) => {
-          onOpenChange(nextOpen)
-          setOpen(nextOpen)
-        }}
-        onUploaded={onUploaded}
-      />
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          reopen
+        </button>
+        <AgentFileUploadDialog
+          apiContext={apiContext}
+          open={open}
+          onOpenChange={(nextOpen) => {
+            onOpenChange(nextOpen)
+            setOpen(nextOpen)
+          }}
+          onUploaded={onUploaded}
+        />
+      </>
     )
   }
 
@@ -108,13 +94,17 @@ function renderUploadDialog({
   return { onUploaded, onOpenChange }
 }
 
+function fileName(file: Blob) {
+  return file instanceof File ? file.name : ''
+}
+
 function markdownFile(name: string) {
   return new File(['hello'], name, { type: 'text/markdown' })
 }
 
 function fileRow(name: string) {
   const row = screen.getAllByRole('listitem').find((item) => within(item).queryByText(name))
-  if (!row) throw new Error(`No upload queue item for ${name}`)
+  if (!row) throw new Error(`No pending file row for ${name}`)
   return row
 }
 
@@ -122,156 +112,117 @@ function uploadButton() {
   return screen.getByRole('button', { name: `${uploadKey}action` })
 }
 
-function fileInput() {
-  return screen.getByLabelText(`${uploadKey}browse`, { selector: 'input' }) as HTMLInputElement
+function dropFiles(files: File[]) {
+  fireEvent.drop(screen.getByRole('group', { name: `${uploadKey}title` }), {
+    dataTransfer: { types: ['Files'], files },
+  })
 }
 
-describe('AgentFileUploadDialog batch uploads', () => {
+function uploadedNames() {
+  return mocks.upload.mock.calls.map(([input]) => fileName(input.body.file))
+}
+
+describe('AgentFileUploadDialog', () => {
   beforeEach(() => {
-    mocks.uploadConfig.mockReset()
-    mocks.uploadConfig.mockResolvedValue(createFileUploadConfigFixture())
-    mocks.upload.mockReset()
-    mocks.commitAgent.mockReset()
-    mocks.commitWorkflow.mockReset()
-    mocks.upload.mockImplementation(async ({ body }) => ({ id: `upload-${body.file.name}` }))
-    const commit = async ({ body }: CommitInput) => ({
-      files: body.upload_file_ids.map((id) => ({
-        name: id.replace('upload-', ''),
-        file_id: id,
-        mime_type: 'text/markdown',
-        size: 5,
-      })),
-    })
-    mocks.commitAgent.mockImplementation(commit)
-    mocks.commitWorkflow.mockImplementation(commit)
+    mocks.upload.mockImplementation(async ({ body }) => ({ id: `upload-${fileName(body.file)}` }))
+    mocks.bindAgent.mockImplementation(async (input) => bindResponse(input))
+    mocks.bindWorkflow.mockImplementation(async (input) => bindResponse(input))
   })
 
-  it('waits for configured limits before accepting a selection or drop, then allows files above the default limit', async () => {
+  it('keeps the dialog open while files upload', async () => {
     const user = userEvent.setup()
-    const uploadConfig = deferred<UploadConfig>()
-    mocks.uploadConfig.mockReturnValueOnce(uploadConfig.promise)
-    const { onUploaded } = renderUploadDialog({ cacheUploadConfig: false })
-    const file = new File([new Uint8Array(20 * 1024 * 1024)], 'large.md', {
-      type: 'text/markdown',
-    })
+    const upload = createDeferred<{ id: string }>()
+    mocks.upload.mockReturnValueOnce(upload.promise)
+    const { onOpenChange } = renderUploadDialog()
 
-    expect(fileInput()).toBeDisabled()
-    expect(screen.getByRole('button', { name: `${uploadKey}browse` })).toBeDisabled()
-    expect(screen.getByText('common.loading')).toBeInTheDocument()
-    await user.upload(fileInput(), file)
-    fireEvent.drop(screen.getByRole('group', { name: `${uploadKey}title` }), {
-      dataTransfer: { types: ['Files'], files: [file] },
-    })
-    expect(screen.queryByText('large.md')).not.toBeInTheDocument()
-    expect(uploadButton()).toBeDisabled()
-
-    await act(async () =>
-      uploadConfig.resolve(createFileUploadConfigFixture({ file_size_limit: 50 })),
-    )
-    await waitFor(() => expect(fileInput()).toBeEnabled())
-    await user.upload(fileInput(), file)
-    expect(within(fileRow('large.md')).getByText(`${uploadKey}queued`)).toBeInTheDocument()
+    dropFiles([markdownFile('first.md')])
     await user.click(uploadButton())
+    await waitFor(() => expect(mocks.upload).toHaveBeenCalledOnce())
 
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
-    expect(mocks.upload).toHaveBeenCalledExactlyOnceWith({ body: { file } })
-    expect(mocks.commitAgent).toHaveBeenCalledOnce()
-  })
-
-  it('uploads selected files in parallel and binds them together after all uploads finish, while protecting the running batch', async () => {
-    const user = userEvent.setup()
-    const firstUpload = deferred<{ id: string }>()
-    const secondUpload = deferred<{ id: string }>()
-    const batchCommit = deferred<Awaited<ReturnType<typeof mocks.commitAgent>>>()
-    mocks.upload.mockImplementationOnce(() => firstUpload.promise)
-    mocks.upload.mockImplementationOnce(() => secondUpload.promise)
-    mocks.commitAgent.mockImplementationOnce(() => batchCommit.promise)
-    const { onUploaded, onOpenChange } = renderUploadDialog()
-
-    const first = markdownFile('first.md')
-    const second = markdownFile('second.md')
-    await user.upload(fileInput(), [first, second])
-    expect(screen.getByText('first.md')).toBeInTheDocument()
-    expect(screen.getByText('second.md')).toBeInTheDocument()
-    await user.click(uploadButton())
-
-    await waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(2))
-    expect(mocks.upload).toHaveBeenNthCalledWith(1, { body: { file: first } })
-    expect(mocks.upload).toHaveBeenNthCalledWith(2, { body: { file: second } })
-    expect(mocks.commitAgent).not.toHaveBeenCalled()
-    expect(fileInput()).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: `${uploadKey}browse` })).toBeDisabled()
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    await user.click(uploadButton())
+    expect(screen.getByRole('dialog')).toBeVisible()
     expect(onOpenChange).not.toHaveBeenCalled()
-    expect(mocks.upload).toHaveBeenCalledTimes(2)
 
-    await act(async () => secondUpload.resolve({ id: 'upload-second.md' }))
-    expect(mocks.commitAgent).not.toHaveBeenCalled()
+    await act(async () => upload.resolve({ id: 'upload-first.md' }))
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+  })
+
+  it('uploads every file before binding them in one request and reports the bound files', async () => {
+    const user = userEvent.setup()
+    const firstUpload = createDeferred<{ id: string }>()
+    mocks.upload.mockReturnValueOnce(firstUpload.promise)
+    const { onUploaded, onOpenChange } = renderUploadDialog()
+
+    dropFiles([markdownFile('first.md'), markdownFile('second.md')])
+    await user.click(uploadButton())
+    await waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(2))
+    expect(mocks.bindAgent).not.toHaveBeenCalled()
+
     await act(async () => firstUpload.resolve({ id: 'upload-first.md' }))
-    await waitFor(() => expect(mocks.commitAgent).toHaveBeenCalledOnce())
-    expect(mocks.commitAgent).toHaveBeenCalledWith({
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(mocks.bindAgent).toHaveBeenCalledExactlyOnceWith({
       params: { agent_id: 'agent-1' },
       query: { draft_type: 'draft', version_id: undefined },
       body: { upload_file_ids: ['upload-first.md', 'upload-second.md'] },
     })
-    expect(mocks.upload).toHaveBeenCalledTimes(2)
-    expect(onUploaded).not.toHaveBeenCalled()
-
-    await act(async () =>
-      batchCommit.resolve({
-        files: ['first.md', 'second.md'].map((name) => ({
-          name,
-          file_id: `upload-${name}`,
-          mime_type: 'text/markdown',
-          size: 5,
-        })),
-      }),
-    )
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(2))
-    expect(mocks.upload.mock.calls.map(([input]) => input.body.file.name)).toEqual([
-      'first.md',
-      'second.md',
+    expect(onUploaded).toHaveBeenCalledExactlyOnceWith([
+      expect.objectContaining({ name: 'first.md', fileId: 'upload-first.md' }),
+      expect.objectContaining({ name: 'second.md', fileId: 'upload-second.md' }),
     ])
-    expect(mocks.commitAgent).toHaveBeenCalledOnce()
-    expect(onUploaded.mock.calls.map(([file]) => file.name)).toEqual(['first.md', 'second.md'])
-    expect(mocks.commitWorkflow).not.toHaveBeenCalled()
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
   })
 
-  it('continues after an upload fails and retries only the failed file', async () => {
+  it('binds the files that uploaded, shows why the other failed and retries only that one', async () => {
     const user = userEvent.setup()
-    mocks.upload.mockRejectedValueOnce(new Error('Upload failed'))
-    const { onUploaded } = renderUploadDialog()
-    await user.upload(fileInput(), [markdownFile('retry.md'), markdownFile('ready.md')])
+    mocks.upload.mockRejectedValueOnce(
+      new ORPCError('file_extension_blocked', { status: 400, message: 'File type not allowed' }),
+    )
+    const { onUploaded, onOpenChange } = renderUploadDialog()
+
+    dropFiles([markdownFile('retry.md'), markdownFile('ready.md')])
     await user.click(uploadButton())
 
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
-    expect(onUploaded).toHaveBeenCalledWith(expect.objectContaining({ name: 'ready.md' }))
-    expect(within(fileRow('retry.md')).getByText(`${uploadKey}failed`)).toBeInTheDocument()
-    expect(within(fileRow('ready.md')).getByText(`${uploadKey}success`)).toBeInTheDocument()
-    await user.click(
-      within(fileRow('retry.md')).getByRole('button', { name: 'common.operation.retry' }),
-    )
-
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(2))
-    expect(mocks.upload.mock.calls.map(([input]) => input.body.file.name)).toEqual([
-      'retry.md',
-      'ready.md',
-      'retry.md',
+    expect(
+      await within(fileRow('retry.md')).findByText('File type not allowed'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('ready.md')).not.toBeInTheDocument()
+    expect(onUploaded).toHaveBeenCalledExactlyOnceWith([
+      expect.objectContaining({ name: 'ready.md' }),
     ])
-    expect(mocks.commitAgent.mock.calls.map(([input]) => input.body.upload_file_ids)).toEqual([
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    await user.click(uploadButton())
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(uploadedNames()).toEqual(['retry.md', 'ready.md', 'retry.md'])
+    expect(mocks.bindAgent.mock.calls.map(([input]) => input.body.upload_file_ids)).toEqual([
       ['upload-ready.md'],
       ['upload-retry.md'],
     ])
   })
 
-  it('retries an atomic workflow binding with all existing uploads and preserves the workflow node context', async () => {
+  it('does not bind anything when every upload fails', async () => {
     const user = userEvent.setup()
-    mocks.commitWorkflow.mockRejectedValueOnce(new Error('Binding failed'))
-    const { onUploaded } = renderUploadDialog({
+    mocks.upload.mockRejectedValue(new TypeError('Failed to fetch'))
+    const { onUploaded, onOpenChange } = renderUploadDialog()
+
+    dropFiles([markdownFile('first.md'), markdownFile('second.md')])
+    await user.click(uploadButton())
+
+    expect(await within(fileRow('first.md')).findByText(`${uploadKey}failed`)).toBeInTheDocument()
+    expect(within(fileRow('second.md')).getByText(`${uploadKey}failed`)).toBeInTheDocument()
+    expect(mocks.bindAgent).not.toHaveBeenCalled()
+    expect(onUploaded).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it('marks every file failed when the workflow binding fails and uploads them again on retry', async () => {
+    const user = userEvent.setup()
+    mocks.bindWorkflow.mockRejectedValueOnce(new Error('Binding failed'))
+    const { onUploaded, onOpenChange } = renderUploadDialog({
       apiContext: {
         agentId: 'agent-1',
         draftType: 'debug_build',
@@ -279,82 +230,66 @@ describe('AgentFileUploadDialog batch uploads', () => {
         workflow: { appId: 'workflow-1', nodeId: 'node-1' },
       },
     })
-    await user.upload(fileInput(), [markdownFile('first.md'), markdownFile('second.md')])
-    await user.click(uploadButton())
-    await within(fileRow('first.md')).findByRole('button', { name: 'common.operation.retry' })
-    expect(
-      within(fileRow('second.md')).getByRole('button', { name: 'common.operation.retry' }),
-    ).toBeEnabled()
-    expect(onUploaded).not.toHaveBeenCalled()
+
+    dropFiles([markdownFile('first.md'), markdownFile('second.md')])
     await user.click(uploadButton())
 
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(2))
-    expect(mocks.upload).toHaveBeenCalledTimes(2)
-    expect(mocks.commitAgent).not.toHaveBeenCalled()
-    expect(mocks.commitWorkflow).toHaveBeenCalledTimes(2)
-    expect(mocks.commitWorkflow).toHaveBeenLastCalledWith({
+    expect(await within(fileRow('first.md')).findByText(`${uploadKey}failed`)).toBeInTheDocument()
+    expect(within(fileRow('second.md')).getByText(`${uploadKey}failed`)).toBeInTheDocument()
+    expect(onUploaded).not.toHaveBeenCalled()
+
+    await user.click(uploadButton())
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(uploadedNames()).toHaveLength(4)
+    expect(mocks.bindAgent).not.toHaveBeenCalled()
+    expect(mocks.bindWorkflow).toHaveBeenLastCalledWith({
       params: { app_id: 'workflow-1' },
-      query: { draft_type: 'debug_build', version_id: 'build-1', node_id: 'node-1' },
+      query: { node_id: 'node-1', draft_type: 'debug_build', version_id: 'build-1' },
       body: { upload_file_ids: ['upload-first.md', 'upload-second.md'] },
     })
   })
 
-  it('inserts only the final file returned for duplicate names in a successful batch', async () => {
-    const user = userEvent.setup()
-    mocks.upload
-      .mockResolvedValueOnce({ id: 'earlier-upload' })
-      .mockResolvedValueOnce({ id: 'latest-upload' })
-    mocks.commitAgent.mockResolvedValueOnce({
-      files: [{ name: 'same.md', file_id: 'latest-upload', mime_type: 'text/markdown', size: 5 }],
-    })
-    const { onUploaded, onOpenChange } = renderUploadDialog()
-    await user.upload(fileInput(), [markdownFile('same.md'), markdownFile('same.md')])
-    await user.click(uploadButton())
-
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
-    expect(mocks.commitAgent).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        body: { upload_file_ids: ['earlier-upload', 'latest-upload'] },
-      }),
-    )
-    expect(onUploaded).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        name: 'same.md',
-        fileId: 'latest-upload',
-      }),
-    )
-  })
-
-  it('accepts a drop containing multiple files and keeps an oversized file error separate from valid queued files', async () => {
+  it('blocks uploading while a file exceeds its size limit until that file is removed', async () => {
     const user = userEvent.setup()
     const { onUploaded } = renderUploadDialog({ documentSizeLimit: 1 })
-    const first = markdownFile('first.md')
     const oversized = new File([new Uint8Array(1024 * 1024 + 1)], 'large.md', {
       type: 'text/markdown',
     })
-    const second = markdownFile('second.md')
-    fireEvent.drop(screen.getByRole('group', { name: `${uploadKey}title` }), {
-      dataTransfer: { types: ['Files'], files: [first, oversized, second] },
-    })
+
+    dropFiles([markdownFile('small.md'), oversized])
 
     expect(
       within(fileRow('large.md')).getByText(/common\.fileUploader\.uploadFromComputerLimit/),
     ).toHaveTextContent('1.00 MB')
-    expect(
-      within(fileRow('large.md')).queryByRole('button', { name: 'common.operation.retry' }),
-    ).not.toBeInTheDocument()
-    await user.click(uploadButton())
+    expect(uploadButton()).toBeDisabled()
 
-    await waitFor(() => expect(onUploaded).toHaveBeenCalledTimes(2))
-    expect(mocks.upload.mock.calls.map(([input]) => input.body.file.name)).toEqual([
-      'first.md',
-      'second.md',
-    ])
-    expect(mocks.commitAgent).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        body: { upload_file_ids: ['upload-first.md', 'upload-second.md'] },
+    await user.click(
+      within(fileRow('large.md')).getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.files\.remove/,
       }),
     )
-    expect(screen.getByText('large.md')).toBeInTheDocument()
+    await user.click(uploadButton())
+
+    await waitFor(() => expect(onUploaded).toHaveBeenCalledOnce())
+    expect(uploadedNames()).toEqual(['small.md'])
+  })
+
+  it('starts empty after the dialog is closed and reopened', async () => {
+    const user = userEvent.setup()
+    mocks.upload.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    renderUploadDialog()
+
+    dropFiles([markdownFile('failed.md')])
+    await user.click(uploadButton())
+    await within(fileRow('failed.md')).findByText(`${uploadKey}failed`)
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'reopen' }))
+
+    expect(await screen.findByRole('dialog')).toBeVisible()
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
+    expect(uploadButton()).toBeDisabled()
   })
 })

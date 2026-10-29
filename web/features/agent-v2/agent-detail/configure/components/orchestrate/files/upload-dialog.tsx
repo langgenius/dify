@@ -1,7 +1,7 @@
 'use client'
 
 import type { AgentConfigFileItemResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { DialogChangeEventDetails } from '@langgenius/dify-ui/dialog'
+import type { UseMutationResult } from '@tanstack/react-query'
 import type { ChangeEvent, DragEvent } from 'react'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
@@ -20,15 +20,29 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid } from 'uuid'
 import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { formatFileSize } from '@/utils/format'
+
+type PendingAgentFile = {
+  id: string
+  file: File
+}
+
+type AgentFilesUploadResult = {
+  files: AgentConfigFileItemResponse[]
+  failures: { id: string; message?: string }[]
+}
+
+type AgentFilesUploadMutation = UseMutationResult<AgentFilesUploadResult, Error, PendingAgentFile[]>
 
 function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileNode {
   return {
@@ -43,91 +57,34 @@ function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileN
   }
 }
 
+function getServerMessage(error: unknown) {
+  return error instanceof ORPCError ? error.message : undefined
+}
+
 function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
   return Array.from(event.dataTransfer.types).includes('Files')
 }
 
-type UploadQueueItem = {
-  id: number
-  file: File
-  status: 'queued' | 'uploading' | 'binding' | 'success' | 'failed'
-  uploadFileId?: string
-  error?: string
-  validationError?: string
-}
-
-function AgentFileUploader({
-  files,
+function AgentFileDropzone({
   disabled,
   onAdd,
-  onRemove,
-  onRetry,
 }: {
-  files: UploadQueueItem[]
   disabled: boolean
-  onAdd: (files: { file: File; validationError?: string }[]) => void
-  onRemove: (id: number) => void
-  onRetry: (file: UploadQueueItem) => void
+  onAdd: (files: File[]) => void
 }) {
   const { t } = useTranslation(['agentV2'])
-  const { t: tAppDebug } = useTranslation(['appDebug'])
-  const { t: tCommon } = useTranslation(['common'])
-  const { data: fileUploadConfig, isPending: isLoadingUploadConfig } = useQuery(
-    consoleQuery.files.upload.get.queryOptions(),
-  )
-  const selectionDisabled = disabled || isLoadingUploadConfig
-  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
-    getFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)
 
-  const getSizeLimit = (uploadFile: File) => {
-    const fileType = getSupportFileType(uploadFile.name, uploadFile.type)
-
-    switch (fileType) {
-      case SupportUploadFileTypes.image:
-        return { fileType, sizeLimit: imgSizeLimit }
-      case SupportUploadFileTypes.audio:
-        return { fileType, sizeLimit: audioSizeLimit }
-      case SupportUploadFileTypes.video:
-        return { fileType, sizeLimit: videoSizeLimit }
-      default:
-        return {
-          fileType: SupportUploadFileTypes.document,
-          sizeLimit: docSizeLimit,
-        }
-    }
-  }
-
-  const setUploadFiles = (selectedFiles: File[]) => {
-    if (selectionDisabled) return
-
-    onAdd(
-      selectedFiles.map((file) => {
-        const { fileType, sizeLimit } = getSizeLimit(file)
-        return {
-          file,
-          validationError:
-            file.size > sizeLimit
-              ? tCommon(($) => $['fileUploader.uploadFromComputerLimit'], {
-                  type: fileType,
-                  size: formatFileSize(sizeLimit),
-                })
-              : undefined,
-        }
-      }),
-    )
-  }
-
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
-    setUploadFiles(files)
+    if (files.length > 0) onAdd(files)
   }
 
   const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
-    if (selectionDisabled || !hasDraggedFiles(event)) return
+    if (disabled || !hasDraggedFiles(event)) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -139,7 +96,7 @@ function AgentFileUploader({
     if (!hasDraggedFiles(event)) return
 
     event.preventDefault()
-    event.dataTransfer.dropEffect = selectionDisabled ? 'none' : 'copy'
+    event.dataTransfer.dropEffect = disabled ? 'none' : 'copy'
   }
 
   const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
@@ -159,14 +116,13 @@ function AgentFileUploader({
     dragDepthRef.current = 0
     setDragging(false)
 
-    setUploadFiles(Array.from(event.dataTransfer.files))
+    if (!disabled) onAdd(Array.from(event.dataTransfer.files))
   }
 
   return (
     <div
       role="group"
       aria-label={t(($) => $['agentDetail.configure.files.upload.title'])}
-      aria-busy={isLoadingUploadConfig}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -174,11 +130,9 @@ function AgentFileUploader({
     >
       <input
         ref={fileInputRef}
-        aria-label={t(($) => $['agentDetail.configure.files.upload.browse'])}
         className="hidden"
         type="file"
         multiple
-        disabled={selectionDisabled}
         onChange={handleFileChange}
       />
       <div
@@ -193,8 +147,8 @@ function AgentFileUploader({
             {t(($) => $['agentDetail.configure.files.upload.dropzone'])}
             <button
               type="button"
-              disabled={selectionDisabled}
-              className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={disabled}
+              className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed"
               onClick={() => fileInputRef.current?.click()}
             >
               {t(($) => $['agentDetail.configure.files.upload.browse'])}
@@ -203,88 +157,152 @@ function AgentFileUploader({
         </div>
         {dragging && <div className="absolute top-0 left-0 size-full" />}
       </div>
-      {isLoadingUploadConfig && (
-        <p role="status" className="mt-2 system-xs-regular text-text-tertiary">
-          {tCommon(($) => $.loading)}
-        </p>
-      )}
-      <ul className="mt-2 space-y-2" aria-live="polite" aria-relevant="additions text">
-        {files.map((item) => {
-          const statusLabel = {
-            queued: t(($) => $['agentDetail.configure.files.upload.queued']),
-            uploading: t(($) => $['agentDetail.configure.files.upload.uploading']),
-            binding: t(($) => $['agentDetail.configure.files.upload.binding']),
-            success: t(($) => $['agentDetail.configure.files.upload.success']),
-            failed: t(($) => $['agentDetail.configure.files.upload.failed']),
-          }[item.status]
-          const error = item.validationError ?? item.error
-
-          return (
-            <li
-              key={item.id}
-              className="flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs"
-            >
-              <div className="flex items-center justify-center p-3">
-                <FileTreeIcon type={getFileIconType(item.file.name, item.file.type)} />
-              </div>
-              <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-2 pr-2">
-                <span className="max-w-full min-w-0 text-xs leading-4 font-medium wrap-anywhere text-text-secondary">
-                  {item.file.name}
-                </span>
-                <div className="flex items-center gap-1 text-2xs leading-3 font-medium text-text-tertiary">
-                  <span>{formatFileSize(item.file.size)}</span>
-                  <span aria-hidden className="text-text-quaternary">
-                    ·
-                  </span>
-                  <span
-                    className={cn(
-                      item.status === 'failed' && 'text-text-destructive',
-                      item.status === 'success' && 'text-text-success',
-                    )}
-                  >
-                    {statusLabel}
-                  </span>
-                </div>
-                {error && error !== statusLabel && (
-                  <p className="system-xs-regular wrap-anywhere text-text-destructive">{error}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-1 pr-3">
-                {item.status === 'failed' && !item.validationError && (
-                  <Button
-                    type="button"
-                    size="small"
-                    disabled={disabled}
-                    onClick={() => onRetry(item)}
-                  >
-                    {tCommon(($) => $['operation.retry'])}
-                  </Button>
-                )}
-                {item.status !== 'success' && (
-                  <IconButton
-                    aria-label={t(($) => $['agentDetail.configure.files.remove'], {
-                      name: item.file.name,
-                    })}
-                    disabled={disabled}
-                    onClick={() => onRemove(item.id)}
-                  >
-                    <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-                  </IconButton>
-                )}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-      <p className="mt-2 system-xs-regular text-text-tertiary">
-        {tAppDebug(($) => $['variableConfig.maxNumberTip'], {
-          docLimit: formatFileSize(docSizeLimit),
-          imgLimit: formatFileSize(imgSizeLimit),
-          audioLimit: formatFileSize(audioSizeLimit),
-          videoLimit: formatFileSize(videoSizeLimit),
-        })}
-      </p>
     </div>
+  )
+}
+
+function AgentFileUploadPanel({ uploadFiles }: { uploadFiles: AgentFilesUploadMutation }) {
+  const { t } = useTranslation(['agentV2'])
+  const { t: tAppDebug } = useTranslation(['appDebug'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { data: fileUploadConfig } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
+    getFileSizeLimit(fileUploadConfig)
+  const [pendingFiles, setPendingFiles] = useState<PendingAgentFile[]>([])
+  const isUploading = uploadFiles.isPending
+  const failures = uploadFiles.isError
+    ? uploadFiles.variables.map(({ id }) => ({ id, message: getServerMessage(uploadFiles.error) }))
+    : (uploadFiles.data?.failures ?? [])
+
+  const getSizeLimit = (file: File) => {
+    const fileType = getSupportFileType(file.name, file.type)
+
+    switch (fileType) {
+      case SupportUploadFileTypes.image:
+        return { fileType, sizeLimit: imgSizeLimit }
+      case SupportUploadFileTypes.audio:
+        return { fileType, sizeLimit: audioSizeLimit }
+      case SupportUploadFileTypes.video:
+        return { fileType, sizeLimit: videoSizeLimit }
+      default:
+        return {
+          fileType: SupportUploadFileTypes.document,
+          sizeLimit: docSizeLimit,
+        }
+    }
+  }
+
+  const getSizeError = (file: File) => {
+    const { fileType, sizeLimit } = getSizeLimit(file)
+    if (file.size <= sizeLimit) return
+
+    return tCommon(($) => $['fileUploader.uploadFromComputerLimit'], {
+      type: fileType,
+      size: formatFileSize(sizeLimit),
+    })
+  }
+
+  const handleAdd = (files: File[]) => {
+    setPendingFiles((current) => [...current, ...files.map((file) => ({ id: uuid(), file }))])
+  }
+
+  const handleUpload = () => {
+    uploadFiles.mutate(pendingFiles, {
+      onSuccess: (result) => {
+        if (result.failures.length === 0) return
+        setPendingFiles((current) =>
+          current.filter(({ id }) => result.failures.some((failure) => failure.id === id)),
+        )
+      },
+    })
+  }
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['agentDetail.configure.files.upload.title'])}</DialogTitle>
+        <DialogDescription>
+          {t(($) => $['agentDetail.configure.files.upload.description'])}
+        </DialogDescription>
+        <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+      </DialogHeader>
+      <DialogBody>
+        <AgentFileDropzone disabled={isUploading} onAdd={handleAdd} />
+        {pendingFiles.length > 0 && (
+          <ul className="mt-2 space-y-2">
+            {pendingFiles.map(({ id, file }) => {
+              const failure = failures.find((item) => item.id === id)
+              const error =
+                getSizeError(file) ??
+                (failure &&
+                  (failure.message ?? t(($) => $['agentDetail.configure.files.upload.failed'])))
+
+              return (
+                <li
+                  key={id}
+                  className="flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover"
+                >
+                  <div className="flex items-center justify-center p-3">
+                    <FileTreeIcon type={getFileIconType(file.name, file.type)} />
+                  </div>
+                  <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
+                    <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
+                      {file.name}
+                    </span>
+                    <div className="flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
+                      <span>{t(($) => $['agentDetail.configure.files.upload.fileType'])}</span>
+                      <span className="text-text-quaternary">·</span>
+                      <span>{formatFileSize(file.size)}</span>
+                    </div>
+                    {error && <p className="system-xs-regular text-text-destructive">{error}</p>}
+                  </div>
+                  <div className="flex items-center pr-3">
+                    <IconButton
+                      aria-label={t(($) => $['agentDetail.configure.files.remove'], {
+                        name: file.name,
+                      })}
+                      disabled={isUploading}
+                      onClick={() =>
+                        setPendingFiles((current) => current.filter((item) => item.id !== id))
+                      }
+                    >
+                      <span
+                        aria-hidden
+                        className="i-ri-delete-bin-line size-4 text-text-tertiary"
+                      />
+                    </IconButton>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <p className="mt-2 system-xs-regular text-text-tertiary">
+          {tAppDebug(($) => $['variableConfig.maxNumberTip'], {
+            docLimit: formatFileSize(docSizeLimit),
+            imgLimit: formatFileSize(imgSizeLimit),
+            audioLimit: formatFileSize(audioSizeLimit),
+            videoLimit: formatFileSize(videoSizeLimit),
+          })}
+        </p>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button disabled={isUploading} />}>
+          {tCommon(($) => $['operation.cancel'])}
+        </DialogClose>
+        <Button
+          type="button"
+          variant="primary"
+          disabled={
+            pendingFiles.length === 0 || pendingFiles.some(({ file }) => getSizeError(file))
+          }
+          loading={isUploading}
+          onClick={handleUpload}
+        >
+          {t(($) => $['agentDetail.configure.files.upload.action'])}
+        </Button>
+      </DialogFooter>
+    </>
   )
 }
 
@@ -297,105 +315,30 @@ export function AgentFileUploadDialog({
   apiContext: AgentConfigApiContext
   open: boolean
   onOpenChange: (open: boolean) => void
-  onUploaded: (file: AgentFileNode) => void
+  onUploaded: (files: AgentFileNode[]) => void
 }) {
-  const { t } = useTranslation(['agentV2', 'common'])
-  const { t: tCommon } = useTranslation(['common'])
-  const [files, setFiles] = useState<UploadQueueItem[]>([])
-  const [isUploading, setIsUploading] = useState(false)
-  const isUploadingRef = useRef(false)
-  const nextFileIdRef = useRef(0)
-  const uploadFileMutation = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
-  const commitAgentFileMutation = useMutation(
-    consoleQuery.agent.byAgentId.config.files.batch.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
-  const commitWorkflowAgentFileMutation = useMutation(
-    consoleQuery.apps.byAppId.agent.config.files.batch.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
-  const pendingFiles = files.filter(
-    (item) => !item.validationError && (item.status === 'queued' || item.status === 'failed'),
-  )
-
-  const handleOpenChange = (nextOpen: boolean, details?: DialogChangeEventDetails) => {
-    if (!nextOpen && isUploadingRef.current) {
-      details?.cancel()
-      return
-    }
-    onOpenChange(nextOpen)
-  }
-
-  const handleAddFiles = (selectedFiles: { file: File; validationError?: string }[]) => {
-    if (isUploadingRef.current) return
-
-    const queuedFiles: UploadQueueItem[] = selectedFiles.map(({ file, validationError }) => ({
-      id: nextFileIdRef.current++,
-      file,
-      status: validationError ? 'failed' : 'queued',
-      validationError,
-    }))
-    setFiles((current) => [...current, ...queuedFiles])
-  }
-
-  const handleRemoveFile = (id: number) => {
-    if (isUploadingRef.current) return
-    setFiles((current) => current.filter((item) => item.id !== id))
-  }
-
-  const handleUpload = async (selectedFiles: UploadQueueItem[]) => {
-    if (isUploadingRef.current || selectedFiles.length === 0) return
-
-    isUploadingRef.current = true
-    setIsUploading(true)
-    let updatedFiles = files
-    const updateFile = (id: number, update: Partial<UploadQueueItem>) => {
-      updatedFiles = updatedFiles.map((item) => (item.id === id ? { ...item, ...update } : item))
-      setFiles(updatedFiles)
-    }
-
-    try {
-      const uploadResults = await Promise.allSettled(
-        selectedFiles.map(async (item) => {
-          updateFile(item.id, {
-            status: item.uploadFileId ? 'queued' : 'uploading',
-            error: undefined,
-          })
-          if (item.uploadFileId) return { id: item.id, uploadFileId: item.uploadFileId }
-
-          try {
-            const uploadedFile = await uploadFileMutation.mutateAsync({ body: { file: item.file } })
-            updateFile(item.id, { uploadFileId: uploadedFile.id, status: 'queued' })
-            return { id: item.id, uploadFileId: uploadedFile.id }
-          } catch (error) {
-            updateFile(item.id, {
-              status: 'failed',
-              error:
-                error instanceof Error
-                  ? error.message
-                  : t(($) => $['agentDetail.configure.files.upload.failed']),
-            })
-            throw error
-          }
-        }),
+  const uploadFiles = useMutation({
+    mutationFn: async (pendingFiles: PendingAgentFile[]): Promise<AgentFilesUploadResult> => {
+      const uploads = await Promise.allSettled(
+        pendingFiles.map(({ file }) =>
+          consoleClient.files.upload.post({ body: { file } }, { context: { silent: true } }),
+        ),
       )
-      const uploadedFiles = uploadResults.flatMap((result) =>
-        result.status === 'fulfilled' ? [result.value] : [],
+      const failures = pendingFiles.flatMap(({ id }, index) => {
+        const upload = uploads[index]
+        return upload?.status === 'rejected'
+          ? [{ id, message: getServerMessage(upload.reason) }]
+          : []
+      })
+      const upload_file_ids = uploads.flatMap((upload) =>
+        upload.status === 'fulfilled' ? [upload.value.id] : [],
       )
-      if (uploadedFiles.length === 0) return
+      if (upload_file_ids.length === 0) return { files: [], failures }
 
-      uploadedFiles.forEach(({ id }) => updateFile(id, { status: 'binding' }))
-      try {
-        // Preserve selection order so the backend can deterministically resolve duplicate names.
-        const body = { upload_file_ids: uploadedFiles.map(({ uploadFileId }) => uploadFileId) }
-        const committedFiles = apiContext.workflow
-          ? await commitWorkflowAgentFileMutation.mutateAsync({
+      const body = { upload_file_ids }
+      const { files } = apiContext.workflow
+        ? await consoleClient.apps.byAppId.agent.config.files.batch.post(
+            {
               params: { app_id: apiContext.workflow.appId },
               query: {
                 node_id: apiContext.workflow.nodeId,
@@ -403,88 +346,39 @@ export function AgentFileUploadDialog({
                 version_id: apiContext.versionId,
               },
               body,
-            })
-          : await commitAgentFileMutation.mutateAsync({
+            },
+            { context: { silent: true } },
+          )
+        : await consoleClient.agent.byAgentId.config.files.batch.post(
+            {
               params: { agent_id: apiContext.agentId },
               query: {
                 draft_type: apiContext.draftType,
                 version_id: apiContext.versionId,
               },
               body,
-            })
-        uploadedFiles.forEach(({ id }) => updateFile(id, { status: 'success' }))
-        committedFiles.files.forEach((file) => onUploaded(toAgentFileNode(file)))
-      } catch (error) {
-        uploadedFiles.forEach(({ id }) =>
-          updateFile(id, {
-            status: 'failed',
-            error:
-              error instanceof Error
-                ? error.message
-                : t(($) => $['agentDetail.configure.files.upload.bindingFailed']),
-          }),
-        )
-      }
-    } finally {
-      isUploadingRef.current = false
-      setIsUploading(false)
-    }
-
-    if (updatedFiles.every((item) => item.status === 'success')) handleOpenChange(false)
-  }
+            },
+            { context: { silent: true } },
+          )
+      return { files, failures }
+    },
+    onSuccess: ({ files, failures }) => {
+      if (files.length > 0) onUploaded(files.map(toAgentFileNode))
+      if (failures.length === 0) onOpenChange(false)
+    },
+  })
 
   return (
     <Dialog
       open={open}
-      onOpenChange={handleOpenChange}
-      onOpenChangeComplete={(nextOpen) => {
-        if (!nextOpen) setFiles([])
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && uploadFiles.isPending) details.cancel()
+        else onOpenChange(nextOpen)
       }}
       disablePointerDismissal
     >
-      <DialogContent>
-        <form
-          className="contents"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void handleUpload(pendingFiles)
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>{t(($) => $['agentDetail.configure.files.upload.title'])}</DialogTitle>
-            <DialogDescription>
-              {t(($) => $['agentDetail.configure.files.upload.description'])}
-            </DialogDescription>
-            <DialogHeaderCloseButton
-              disabled={isUploading}
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
-          </DialogHeader>
-          <DialogBody>
-            <AgentFileUploader
-              files={files}
-              disabled={isUploading}
-              onAdd={handleAddFiles}
-              onRemove={handleRemoveFile}
-              onRetry={(item) => {
-                void handleUpload([item])
-              }}
-            />
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose render={<Button type="button" disabled={isUploading} />}>
-              {tCommon(($) => $['operation.cancel'])}
-            </DialogClose>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={!files.some((item) => !item.validationError && item.status !== 'success')}
-              loading={isUploading}
-            >
-              {t(($) => $['agentDetail.configure.files.upload.action'])}
-            </Button>
-          </DialogFooter>
-        </form>
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <AgentFileUploadPanel uploadFiles={uploadFiles} />
       </DialogContent>
     </Dialog>
   )

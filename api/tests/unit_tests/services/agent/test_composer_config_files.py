@@ -325,3 +325,27 @@ def test_locking_the_latest_draft_keeps_pending_agent_profile_edits(
         saved_agent = session.get(Agent, target.agent_id)
         assert saved_agent is not None
         assert saved_agent.name == "Renamed in this transaction"
+
+
+@pytest.mark.parametrize("composer_target", [True], indirect=True, ids=["inline-workflow"])
+def test_inline_composer_shows_file_edits_before_the_next_node_save(
+    sqlite_session_factory: sessionmaker[Session],
+    composer_target: ComposerTarget,
+) -> None:
+    target = composer_target
+    assets = AgentConfigService(session_factory=sqlite_session_factory)
+
+    def loaded_file_ids() -> list[str | None]:
+        with sqlite_session_factory() as session:
+            state = AgentComposerService.load_workflow_composer(
+                session=session, tenant_id=target.tenant_id, app_id=target.app_id, node_id="node-1"
+            )
+        return [item.file_id for item in AgentSoulConfig.model_validate(state["agent_soul"]).config_files]
+
+    assets.push_files_for_console(**asset_target(target), upload_file_ids=list(target.upload_ids))
+    assert loaded_file_ids() == list(target.upload_ids)
+
+    assets.push_for_console(
+        **asset_target(target), payload=ConfigPushPayload(files=[ConfigPushFileItem(name="first.md")])
+    )
+    assert loaded_file_ids() == [target.upload_ids[1]]

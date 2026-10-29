@@ -489,9 +489,11 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     cancelBuildDraftRefresh()
     setIsApplyingInlineBuildDraft(true)
     try {
-      if (!buildDraft.agentSoulConfig) return
+      const { data: latestBuildDraft } = await buildDraft.refetch()
+      const agentSoulConfig = latestBuildDraft?.agent_soul ?? buildDraft.agentSoulConfig
+      if (!agentSoulConfig) return
 
-      const savedComposerState = await saveAgentSoulConfig(buildDraft.agentSoulConfig)
+      const savedComposerState = await saveAgentSoulConfig(agentSoulConfig)
       await discardBuildDraft({
         params: {
           agent_id: agentId,
@@ -502,9 +504,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       queryClient.removeQueries({
         queryKey: buildDraftQueryOptions.queryKey,
       })
-      rebaseComposerDraftFromSoulConfig(
-        savedComposerState?.agent_soul ?? buildDraft.agentSoulConfig,
-      )
+      rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? agentSoulConfig)
       toast.success(t(($) => $['api.actionSuccess']))
     } catch {
       toast.error(t(($) => $['api.actionFailed']))

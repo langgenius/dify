@@ -572,6 +572,26 @@ describe('Inline Agent configure workspace', () => {
     },
   )
 
+  it('applies the latest build draft instead of the cached one', async () => {
+    const user = userEvent.setup()
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft('Latest build instructions'))
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(api.saveComposer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            agent_soul: createBuildDraft('Latest build instructions').agent_soul,
+          }),
+        }),
+      ),
+    )
+  })
+
   it('keeps an existing build draft until the switch-to-preview confirmation is accepted', async () => {
     const user = userEvent.setup()
     api.loadBuildDraft.mockResolvedValue(createBuildDraft())
@@ -603,7 +623,6 @@ describe('Inline Agent configure workspace', () => {
           debug_conversation_message_count: 1,
         }),
       })
-      // Persisted history waits for the real Chat and Markdown renderers as well as the query.
       expect(await screen.findByText('Earlier answer', {}, { timeout: 5000 })).toBeVisible()
       expect(api.history).toHaveBeenCalledWith({
         params: { agent_id: 'agent-1' },

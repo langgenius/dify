@@ -68,9 +68,7 @@ Then(
       agentBuilderTestMaterials.smallFile,
       agentBuilderTestMaterials.emptyFile,
     ]) {
-      const row = dialog.getByRole('listitem').filter({ hasText: fileName })
-      await expect(row.getByText(fileName, { exact: true })).toBeVisible()
-      await expect(row.getByText('Queued', { exact: true })).toBeVisible()
+      await expect(dialog.getByRole('listitem').getByText(fileName, { exact: true })).toBeVisible()
     }
     await expect(dialog.getByRole('button', { name: 'Upload', exact: true })).toBeEnabled()
   },

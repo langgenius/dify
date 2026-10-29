@@ -2454,9 +2454,7 @@ class AgentComposerService:
                 "can_unlock": locked,
                 "reason": "roster_agent_shared_version" if locked else "workflow_only_agent",
             },
-            "agent_soul": cls._workflow_agent_soul_config(version.config_snapshot_dict)
-            if version
-            else AgentSoulConfig().model_dump(mode="json"),
+            "agent_soul": cls._workflow_agent_soul_state(session=session, agent=agent, version=version),
             "node_job": binding.node_job_config_dict,
             "effective_declared_outputs": cls._serialize_effective_outputs(
                 WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
@@ -2535,6 +2533,31 @@ class AgentComposerService:
             "created_by": version.created_by,
             "created_at": to_timestamp(version.created_at),
         }
+
+    @classmethod
+    def _workflow_agent_soul_state(
+        cls, *, session: Session, agent: Agent | None, version: AgentConfigSnapshot | None
+    ) -> dict[str, Any]:
+        """Return the node's Agent Soul with the file list its next node save would persist.
+
+        Inline file uploads and deletes write the workflow-only Agent's normal Draft. While that Draft is
+        based on the bound snapshot, its ``config_files`` are the current list for the node.
+        """
+        if version is None:
+            return AgentSoulConfig().model_dump(mode="json")
+        agent_soul = cls._workflow_agent_soul_config(version.config_snapshot_dict)
+        if agent is None or agent.scope != AgentScope.WORKFLOW_ONLY:
+            return agent_soul
+        normal_draft = cls._get_agent_draft(
+            session=session,
+            tenant_id=agent.tenant_id,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+        )
+        if normal_draft is not None and normal_draft.base_snapshot_id == version.id:
+            agent_soul["config_files"] = normal_draft.config_snapshot_dict.get("config_files", [])
+        return agent_soul
 
     @staticmethod
     def _workflow_agent_soul_config(config_snapshot: dict[str, Any]) -> dict[str, Any]:

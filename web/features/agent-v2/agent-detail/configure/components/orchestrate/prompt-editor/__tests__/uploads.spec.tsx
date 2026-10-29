@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -29,13 +29,13 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
 
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'files.upload.post': mocks.upload,
-      'agent.byAgentId.config.files.batch.post': mocks.commit,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': (input: UploadInput) => mocks.upload(input),
+      'agent.byAgentId.config.files.batch.post': (input: CommitInput) => mocks.commit(input),
     }),
   }
 })
@@ -81,17 +81,25 @@ async function openPromptFileUpload(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole('dialog', { name: uploadTitle })
 }
 
-async function uploadFiles(user: ReturnType<typeof userEvent.setup>, names: string[]) {
-  const input = screen.getByLabelText(/agentDetail\.configure\.files\.upload\.browse/, {
-    selector: 'input',
-  }) as HTMLInputElement
+async function selectFiles(user: ReturnType<typeof userEvent.setup>, names: string[]) {
+  const dialog = screen.getByRole('dialog', { name: uploadTitle })
+  const input = dialog.querySelector<HTMLInputElement>('input[type="file"]')
+  if (!input) throw new Error('Missing file input')
   await user.upload(
     input,
     names.map((name) => new File(['hello'], name, { type: 'text/markdown' })),
   )
+}
+
+async function clickUpload(user: ReturnType<typeof userEvent.setup>) {
   await user.click(
     screen.getByRole('button', { name: /agentDetail\.configure\.files\.upload\.action/ }),
   )
+}
+
+async function uploadFiles(user: ReturnType<typeof userEvent.setup>, names: string[]) {
+  await selectFiles(user, names)
+  await clickUpload(user)
   await waitFor(() =>
     expect(screen.queryByRole('dialog', { name: uploadTitle })).not.toBeInTheDocument(),
   )
@@ -102,12 +110,7 @@ function configSnapshot() {
 }
 
 describe('Prompt file uploads', () => {
-  beforeEach(() => {
-    mocks.upload.mockClear()
-    mocks.commit.mockClear()
-  })
-
-  it('keeps every successfully uploaded file in the config and inserts all references in order', async () => {
+  it('keeps every uploaded file in the config and inserts all references in order', async () => {
     const user = userEvent.setup()
     renderPromptAndFiles()
 
@@ -132,12 +135,34 @@ describe('Prompt file uploads', () => {
     expect(editor.getByText('second.md')).toBeVisible()
   })
 
-  it('ends the Prompt insertion session when the upload dialog closes', async () => {
+  it('inserts a retried file after a partial failure once the dialog closes', async () => {
+    const user = userEvent.setup()
+    mocks.upload.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    renderPromptAndFiles()
+
+    await openPromptFileUpload(user)
+    await selectFiles(user, ['retry.md', 'ready.md'])
+    await clickUpload(user)
+    await screen.findByText(/agentDetail\.configure\.files\.upload\.failed/)
+    await clickUpload(user)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: uploadTitle })).not.toBeInTheDocument(),
+    )
+
+    expect(configSnapshot().prompt.system_prompt).toBe(
+      'Review [§file:ready.md:ready.md§] [§file:retry.md:retry.md§] ',
+    )
+  })
+
+  it('does not insert references after the Prompt session was cancelled', async () => {
     const user = userEvent.setup()
     renderPromptAndFiles()
 
     await openPromptFileUpload(user)
-    await uploadFiles(user, ['referenced.md'])
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: uploadTitle })).not.toBeInTheDocument(),
+    )
     const prompt = configSnapshot().prompt.system_prompt
 
     await user.click(screen.getByRole('button', { name: addFilesName }))
@@ -145,12 +170,8 @@ describe('Prompt file uploads', () => {
     await uploadFiles(user, ['unreferenced.md'])
 
     expect(configSnapshot().config_files).toEqual([
-      expect.objectContaining({ name: 'referenced.md' }),
       expect.objectContaining({ name: 'unreferenced.md' }),
     ])
     expect(configSnapshot().prompt.system_prompt).toBe(prompt)
-    expect(
-      within(screen.getByRole('textbox')).queryByText('unreferenced.md'),
-    ).not.toBeInTheDocument()
   })
 })

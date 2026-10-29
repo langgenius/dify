@@ -68,7 +68,8 @@ vi.mock('@/utils/download', () => ({
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
-  const { withConsoleQueryOverrides } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleQueryOverrides } =
+    await import('@/test/console/service-responses')
   const query = withConsoleQueryOverrides(actual.consoleQuery, {
     'agent.byAgentId.config.files.byName.preview.get': { queryOptions: mocks.previewQueryOptions },
     'agent.byAgentId.config.files.byName.download.get': {
@@ -103,11 +104,6 @@ vi.mock('@/service/console', async (importOriginal) => {
         byAgentId: {
           config: {
             files: {
-              batch: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
-                },
-              },
               byName: {
                 delete: {
                   mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
@@ -128,11 +124,6 @@ vi.mock('@/service/console', async (importOriginal) => {
           agent: {
             config: {
               files: {
-                batch: {
-                  post: {
-                    mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
-                  },
-                },
                 byName: {
                   delete: {
                     mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
@@ -170,12 +161,14 @@ vi.mock('@/service/console', async (importOriginal) => {
       files: {
         upload: {
           get: consoleOperationStub('files.upload.get'),
-          post: {
-            mutationOptions: () => ({ mutationFn: mocks.uploadFileMutationFn }),
-          },
         },
       },
     },
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': mocks.uploadFileMutationFn,
+      'agent.byAgentId.config.files.batch.post': mocks.commitFileMutationFn,
+      'apps.byAppId.agent.config.files.batch.post': mocks.commitFileMutationFn,
+    }),
   }
 })
 
@@ -349,85 +342,25 @@ describe('AgentFiles', () => {
     expect(screen.queryByText('diagram.png')).not.toBeInTheDocument()
   })
 
-  it('keeps both upload stages open until the committed file reaches the draft', async () => {
-    let finishUpload!: () => void
-    let finishCommit!: () => void
-    const upload = new Promise<void>((resolve) => {
-      finishUpload = resolve
-    })
-    const commit = new Promise<void>((resolve) => {
-      finishCommit = resolve
-    })
-    const uploadFile = mocks.uploadFileMutationFn.getMockImplementation()!
-    const commitFile = mocks.commitFileMutationFn.getMockImplementation()!
-    mocks.uploadFileMutationFn.mockImplementationOnce(async (input) => {
-      await upload
-      return uploadFile(input)
-    })
-    mocks.commitFileMutationFn.mockImplementationOnce(async (input) => {
-      await commit
-      return commitFile(input)
-    })
+  it('adds uploaded files to the Files list and the config', async () => {
     const user = userEvent.setup()
     renderAgentFiles({ initialDraft: defaultAgentSoulConfigFormState })
 
     await user.click(
       screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
     )
-
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
       expect(element).not.toBeNull()
       return element as HTMLInputElement
     })
-    const file = new File(['hello'], 'uploaded.md', { type: 'text/markdown' })
-    await user.upload(input, file)
+    await user.upload(input, new File(['hello'], 'uploaded.md', { type: 'text/markdown' }))
     await user.click(
       screen.getByRole('button', { name: /agentDetail\.configure\.files\.upload\.action/i }),
     )
 
-    await waitFor(() => {
-      expect(mocks.uploadFileMutationFn).toHaveBeenCalledExactlyOnceWith(
-        {
-          body: {
-            file,
-          },
-        },
-        expect.anything(),
-      )
-    })
-
-    await user.keyboard('{Escape}')
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'common.operation.close' }),
-    )
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(mocks.commitFileMutationFn).not.toHaveBeenCalled()
-    finishUpload()
-
-    await waitFor(() => {
-      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
-          query: {
-            draft_type: 'draft',
-            version_id: undefined,
-          },
-          body: {
-            upload_file_ids: ['upload-1'],
-          },
-        },
-        expect.anything(),
-      )
-    })
-
-    await user.keyboard('{Escape}')
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    finishCommit()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-
+    expect(screen.getByRole('button', { name: 'uploaded.md' })).toBeInTheDocument()
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_files).toEqual([
       expect.objectContaining({
@@ -439,7 +372,6 @@ describe('AgentFiles', () => {
         size: 5,
       }),
     ])
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should show the configured size limit for every supported file type', async () => {
@@ -489,7 +421,6 @@ describe('AgentFiles', () => {
         `common.fileUploader.uploadFromComputerLimit:{"type":"${fileType}","size":"1.00 MB"}`,
       ),
     ).toBeVisible()
-    expect(mocks.uploadFileMutationFn).not.toHaveBeenCalled()
     expect(
       screen.getByRole('button', {
         name: /agentDetail\.configure\.files\.upload\.action/i,
