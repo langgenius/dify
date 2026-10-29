@@ -2511,7 +2511,7 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
     state = AgentComposerService._serialize_workflow_state(
-        session=session, binding=binding, agent=agent, version=version
+        session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
 
     assert state["soul_lock"]["locked"] is True
@@ -2562,7 +2562,7 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
     state = AgentComposerService._serialize_workflow_state(
-        session=session, binding=binding, agent=agent, version=version
+        session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
 
     effective = state["effective_declared_outputs"]
@@ -2624,6 +2624,7 @@ def test_serialize_workflow_state_includes_inline_debug_conversation_message_sta
         agent=agent,
         version=version,
         account_id="account-1",
+        include_draft_files=True,
     )
 
     assert state["debug_conversation_id"] == "debug-conversation-1"
