@@ -1,3 +1,4 @@
+import inspect
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -51,6 +52,20 @@ def with_credit_usage_created_by(
     normalized_created_by = normalize_credit_usage_created_by(created_by)
 
     def decorator(method: Callable[..., Any]) -> Callable[..., Any]:
+        if inspect.isgeneratorfunction(method):
+
+            @wraps(method)
+            def generator_wrapper(*args: object, **kwargs: object):
+                # For a generator function the call only creates the generator;
+                # the body runs on iteration, so the context must be held there
+                # instead of around the call.
+                with use_credit_usage_metadata({"created_by": normalized_created_by}):
+                    # `yield from` returns the inner generator's return value;
+                    # pass it through as this wrapper's StopIteration value
+                    return (yield from method(*args, **kwargs))
+
+            return generator_wrapper
+
         @wraps(method)
         def wrapper(*args: object, **kwargs: object):
             with use_credit_usage_metadata({"created_by": normalized_created_by}):
