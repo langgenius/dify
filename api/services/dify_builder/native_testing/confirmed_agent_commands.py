@@ -1268,7 +1268,7 @@ class ConfirmedAgentCommands:
             # Revocation forbids ordinary continuation settlement, but the real
             # producer may still report its consumed child cancellation.
             try:
-                if ConfirmedAgentCancellation(self).settle_terminal(ref=ref):
+                if ConfirmedAgentCancellation(self).settle(ref=ref):
                     self._complete_builder(ref=ref)
             except Exception:
                 logger.warning("Confirmed Agent terminal cancellation observation unavailable")
@@ -1511,7 +1511,7 @@ def finish_confirmed_agent_resume(*, payload) -> None:
                 from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
 
                 try:
-                    if ConfirmedAgentCancellation(commands).settle_terminal(ref=dispatch.ref):
+                    if ConfirmedAgentCancellation(commands).settle(ref=dispatch.ref):
                         commands._complete_builder(ref=dispatch.ref)
                 except Exception:
                     logger.warning("Confirmed Agent terminal cancellation observation unavailable")
@@ -1576,7 +1576,7 @@ class ProfiledNativeTestCommands:
                 ref = service._root_ref(actor=actor, request_id=request_id)
                 settled = False
                 try:
-                    settled = ConfirmedAgentCancellation(service).settle_terminal(ref=ref)
+                    settled = ConfirmedAgentCancellation(service).settle(ref=ref)
                 except Exception:
                     logger.warning("Confirmed Agent terminal cancellation observation unavailable")
                 if settled:
@@ -1585,6 +1585,7 @@ class ProfiledNativeTestCommands:
                     from services.dify_builder.native_testing.confirmed_agent_completion import (
                         _request,
                         cancelled_parent_proof,
+                        stop_control_facts,
                     )
 
                     with self.sessions() as session:
@@ -1596,9 +1597,14 @@ class ProfiledNativeTestCommands:
                             if request is not None
                             else None
                         )
-                    if candidate is not None and candidate[1].get("needs_observation"):
+                        stop_candidate = (
+                            stop_control_facts(session, request=request, ref=ref) if request is not None else None
+                        )
+                    if (candidate is not None and candidate[1].get("needs_observation")) or (
+                        stop_candidate is not None and stop_candidate[0].status == "paused"
+                    ):
                         # Every local effect is settled and authority revoked;
-                        # only the original child's terminal read is pending.
+                        # only terminal observation or the ordinary stop is pending.
                         # An unavailable observation must not expire this exact
                         # source to unknown before the next normal worker pass.
                         return 0

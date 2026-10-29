@@ -33,7 +33,7 @@ from models.dify_builder_native_tests import (
     NativeTestScope,
 )
 from models.enums import CreatorUserRole
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowPause, WorkflowRun
 from runtime_contracts.builder.execution import ExecutionEvidenceSummary, canonical_digest
 from runtime_contracts.builder.native.contracts import ID, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
@@ -48,6 +48,7 @@ from services.dify_builder.native_testing.repository import admitted_workflow_re
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
 CANCELLED_CHILD_OBSERVATION = "confirmed_agent_cancelled_child_v1"
+STOP_CONTROL = "confirmed_agent_stop_v1"
 
 
 def _native_run_id(request: DifyBuilderExecutionRequest) -> str | None:
@@ -127,7 +128,7 @@ def _terminal_proof(sql, *, request, ref):
         scope.cancelled
         and state.state == "cancelled"
         and outcome.status == "stopped"
-        and outcome.native_status == "failed"
+        and outcome.native_status in {"failed", "stopped"}
         and outcome.reason_code == "native_cancelled"
     )
     if not (declined or cancelled) and (scope.cancelled or state.state != "completed" or outcome.status != "completed"):
@@ -158,9 +159,184 @@ def _terminal_proof(sql, *, request, ref):
     )
     if native is None or native.status != outcome.native_status:
         return None
-    if cancelled and cancelled_parent_proof(sql, request=request, ref=ref, allow_claimed=False) is None:
-        return None
+    if cancelled:
+        if outcome.native_status == "stopped":
+            if not ordinary_stop_proof(sql, request=request, ref=ref):
+                return None
+        elif cancelled_parent_proof(sql, request=request, ref=ref, allow_claimed=False) is None:
+            return None
     return outcome
+
+
+def stop_control_facts(sql, *, request, ref):
+    """Exact revoked delivery and child lineage before/after ordinary pause stop.
+
+    A claimed delivery is not a physical effect. Its lease remains audit data;
+    only the ordinary Run stop fence can authorize cancelling this delivery.
+    """
+    states = sql.scalars(select(NativeInvocationState).where(NativeInvocationState.request_id == request.id)).all()
+    invocations = sql.scalars(select(NativeTestInvocation).where(NativeTestInvocation.request_id == request.id)).all()
+    scope = sql.get(NativeTestScope, request.id)
+    if len(states) != 1 or len(invocations) != 1 or scope is None:
+        return None
+    state, invocation = states[0], invocations[0]
+    if (
+        not scope.cancelled
+        or scope.tenant_id != request.tenant_id
+        or (state.tenant_id, state.invocation_id, state.parent_invocation_id)
+        != (request.tenant_id, ref.invocation_id, None)
+        or (state.app_id, state.workflow_id) != (request.app_id, request.workflow_id)
+        or (invocation.tenant_id, invocation.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or invocation.active
+        or state.state != "cancelled"
+        or not state.cancellation_key
+        or state.generation != scope.generation
+    ):
+        return None
+    sources = sql.scalars(select(NativeDispatch).where(NativeDispatch.request_id == request.id)).all()
+    current = [source for source in sources if source.generation == state.generation]
+    if len(current) != 1:
+        return None
+    source = current[0]
+    if (
+        source.state not in {"claimed", "cancelled"}
+        or source.claim_expires_at is None
+        or source.checkpoint_id != state.checkpoint_id
+    ):
+        return None
+    if any(
+        (row.tenant_id, row.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or not 0 <= row.generation <= state.generation
+        or (row is not source and row.state != "completed")
+        for row in sources
+    ):
+        return None
+    operations = sql.scalars(select(NativeEffectOperation).where(NativeEffectOperation.request_id == request.id)).all()
+    if any(
+        (row.tenant_id, row.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or row.state not in {"completed", "failed", "not_dispatched"}
+        for row in operations
+    ):
+        return None
+    physical = settled_physical_facts(sql, ref=ref, tenant_id=request.tenant_id, operations=operations)
+    if physical is None:
+        return None
+    native = sql.scalar(
+        select(WorkflowRun)
+        .where(
+            WorkflowRun.id == _native_run_id(request),
+            WorkflowRun.tenant_id == request.tenant_id,
+            WorkflowRun.app_id == request.app_id,
+            WorkflowRun.workflow_id == request.workflow_id,
+            WorkflowRun.created_by == request.actor_id,
+            WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+        )
+        .with_for_update()
+    )
+    if native is None or native.status not in {"paused", "stopped"} or not native.task_id:
+        return None
+    if native.status == "paused" and source.state != "claimed":
+        return None
+    nodes = sql.scalars(
+        select(WorkflowNodeExecutionModel)
+        .where(
+            WorkflowNodeExecutionModel.workflow_run_id == native.id,
+            WorkflowNodeExecutionModel.tenant_id == request.tenant_id,
+            WorkflowNodeExecutionModel.app_id == request.app_id,
+            WorkflowNodeExecutionModel.workflow_id == request.workflow_id,
+            WorkflowNodeExecutionModel.created_by == request.actor_id,
+            WorkflowNodeExecutionModel.created_by_role == CreatorUserRole.ACCOUNT,
+            WorkflowNodeExecutionModel.node_type == "agent",
+        )
+        .with_for_update()
+    ).all()
+    candidates = [node for node in nodes if node.status in {"paused", "failed"}]
+    if len(candidates) != 1 or any(
+        node is not candidates[0] and node.status not in {"succeeded", "skipped"} for node in nodes
+    ):
+        return None
+    node = candidates[0]
+    if native.status == "paused" and node.status != "paused":
+        return None
+    if native.status == "stopped" and (native.stop_requested_at is None or native.finished_at is None):
+        return None
+    try:
+        intents = WorkflowAgentRunRecovery._intents(node)
+    except ValueError:
+        return None
+    workflow_binding = (node.process_data_dict or {}).get("workflow_agent_binding_id")
+    if (
+        not intents
+        or not node.agent_workspace_binding_id
+        or not isinstance(workflow_binding, str)
+        or not workflow_binding
+    ):
+        return None
+    intent = max(intents, key=lambda value: value.attempt)
+    if not intent.child_run_id:
+        return None
+    claims, outcomes = physical
+    binding = {
+        "request_id": request.id,
+        "invocation_id": ref.invocation_id,
+        "native_run_id": native.id,
+        "task_id": native.task_id,
+        "node_execution_id": node.id,
+        "child_run_id": intent.child_run_id,
+        "create_digest": canonical_digest(intent.model_dump(mode="json")),
+        "workspace_binding_id": node.agent_workspace_binding_id,
+        "workflow_binding_id": workflow_binding,
+        "generation": state.generation,
+        "source_id": source.id,
+        "source_checkpoint_id": source.checkpoint_id,
+        "source_idempotency_digest": source.idempotency_digest,
+        "source_claim_expires_at": source.claim_expires_at.isoformat(),
+        "scope_digest": canonical_digest(
+            {"context": ref.context_digest, "object": state.context_object_id, "cancel": state.cancellation_key}
+        ),
+        "effect_digest": canonical_digest(
+            {
+                "operations": sorted((row.id, row.state, row.result_ref) for row in operations),
+                "claims": sorted((row.id, row.operation_id, row.attempt_id) for row in claims),
+                "outcomes": sorted(
+                    (row.id, row.operation_id, row.attempt_id, row.outcome, row.result_ref) for row in outcomes
+                ),
+            }
+        ),
+    }
+    return native, node, source, binding
+
+
+def ordinary_stop_proof(sql, *, request, ref):
+    facts = stop_control_facts(sql, request=request, ref=ref)
+    if facts is None:
+        return False
+    native, _, source, binding = facts
+    records = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
+    return (
+        native.status == "stopped"
+        and source.state == "cancelled"
+        and sql.scalar(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id == native.id)) is None
+        and len(records) == 1
+        and stop_observation_matches(records[0], binding)
+    )
+
+
+def stop_observation_matches(record, binding):
+    return (
+        isinstance(record, dict)
+        and all(record.get(key) == value for key, value in binding.items())
+        and record.get("child_status") in {"succeeded", "failed", "cancelled"}
+        and record.get("source_original_state") == "claimed"
+        and isinstance(record.get("pause_id"), str)
+        and bool(record["pause_id"])
+        and all(
+            isinstance(record.get(key), str) and len(record[key]) == 64
+            for key in ("pause_key_digest", "runtime_digest")
+        )
+        and isinstance(record.get("backend_updated_at"), str)
+        and bool(record["backend_updated_at"])
+    )
 
 
 def settled_physical_facts(sql, *, ref, tenant_id, operations):
