@@ -4334,11 +4334,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
