@@ -216,6 +216,65 @@ describe('useHumanInputV2FormSession', () => {
     expect(result.current.state.challenge).toBeUndefined()
   })
 
+  it.each(['success', 'failure'] as const)(
+    'keeps the completed form after a late access %s in the same session',
+    async (accessOutcome) => {
+      const submitDeferred = deferred<void>()
+      const accessDeferred =
+        deferred<Awaited<ReturnType<HumanInputV2FormTransport['requestAccess']>>>()
+      const requestAccess = vi
+        .fn<HumanInputV2FormTransport['requestAccess']>()
+        .mockResolvedValueOnce({
+          challengeToken: 'original-challenge',
+          resendAfterSeconds: 0,
+          expiresInSeconds: 300,
+        })
+        .mockReturnValueOnce(accessDeferred.promise)
+      const submit = vi
+        .fn<HumanInputV2FormTransport['submit']>()
+        .mockReturnValueOnce(submitDeferred.promise)
+      const transport = withOverrides({ requestAccess, submit })
+      const { result } = renderHook(() =>
+        useHumanInputV2FormSession({ token: 'form-token', transport }),
+      )
+      await waitFor(() => expect(result.current.state.phase).toBe('awaiting-otp'))
+      act(() => result.current.setOtpCode(HUMAN_INPUT_V2_MOCK_OTP))
+
+      act(() => {
+        void result.current.submit({ response: 'approved' }, 'approve')
+      })
+      expect(result.current.state.phase).toBe('submitting')
+      act(() => result.current.resendAccess())
+      expect(requestAccess).toHaveBeenCalledTimes(2)
+
+      await act(async () => submitDeferred.resolve())
+      expect(result.current.state.phase).toBe('success')
+
+      await act(async () => {
+        if (accessOutcome === 'success') {
+          accessDeferred.resolve({
+            challengeToken: 'late-challenge',
+            resendAfterSeconds: 30,
+            expiresInSeconds: 300,
+          })
+        } else {
+          accessDeferred.reject(createHumanInputV2Error('network'))
+        }
+      })
+
+      expect(result.current.state).toMatchObject({ phase: 'success', otpCode: '' })
+      expect(result.current.state.challenge).toBeUndefined()
+      expect(result.current.state.error).toBeUndefined()
+      expect(result.current.canSubmit).toBe(false)
+      expect(submit).toHaveBeenCalledWith('form-token', {
+        inputs: { response: 'approved' },
+        action: 'approve',
+        otp_code: HUMAN_INPUT_V2_MOCK_OTP,
+        challenge_token: 'original-challenge',
+      })
+    },
+  )
+
   it('keeps form and challenge for invalid OTP, then allows correction', async () => {
     const transport = createMockHumanInputV2FormTransport()
     const { result } = renderHook(() =>

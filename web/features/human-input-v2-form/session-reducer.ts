@@ -45,6 +45,9 @@ export const humanInputV2SessionReducer = (
   state: HumanInputV2SessionState,
   action: HumanInputV2SessionAction,
 ): HumanInputV2SessionState => {
+  // In-flight OTP requests can settle after submission completes in this session.
+  if (state.phase === 'success' && action.type !== 'reset') return state
+
   switch (action.type) {
     case 'reset':
       return initialHumanInputV2SessionState
