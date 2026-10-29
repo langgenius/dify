@@ -7,9 +7,10 @@ import type { DocumentContextValue } from '../../context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ProcessMode } from '@/models/datasets'
 import * as datasetsService from '@/service/datasets'
+import { createDeferred } from '@/test/deferred'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import { DocumentContext } from '../../context'
@@ -28,7 +29,10 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/service/datasets')
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  fetchIndexingStatus: vi.fn(),
+}))
 const mockProcessRule = (overrides: Partial<ProcessRuleResponse> = {}): ProcessRuleResponse => ({
   mode: ProcessMode.general,
   rules: {
@@ -55,8 +59,11 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
-const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
-const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
+
+const indexingActions = [
+  { action: 'pause', initialStatus: 'indexing', nextStatus: 'paused' },
+  { action: 'resume', initialStatus: 'paused', nextStatus: 'indexing' },
+] as const
 
 const createConsoleQueryClient = () => {
   const queryClient = new QueryClient({
@@ -111,6 +118,10 @@ describe('EmbeddingDetail', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   describe('Rendering', () => {
     it('should render with provided datasetId and documentId props', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
@@ -142,47 +153,70 @@ describe('EmbeddingDetail', () => {
   })
 
   describe('Pause/Resume Actions', () => {
-    it('should call pause API when pause button is clicked', async () => {
-      const user = userEvent.setup()
-      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({ indexing_status: 'indexing' }))
-      mockPauseDocIndexing.mockResolvedValue({ result: 'success' })
+    it.each(indexingActions)(
+      'shows the updated status without a success toast after $action',
+      async ({ action, initialStatus, nextStatus }) => {
+        const user = userEvent.setup()
+        const response = createDeferred<Response>()
+        const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(response.promise)
+        mockFetchIndexingStatus.mockResolvedValue(
+          mockIndexingStatus({ indexing_status: initialStatus }),
+        )
 
-      render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
+        render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
 
-      await waitFor(() => {
-        expect(screen.getByText(/embedding\.pause/i)).toBeInTheDocument()
-      })
+        const button = await screen.findByRole('button', { name: new RegExp(action, 'i') })
+        await user.click(button)
+        await waitFor(() => expect(button).toBeDisabled())
+        await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+        const [request] = fetch.mock.calls[0]!
+        expect(request).toBeInstanceOf(Request)
+        if (!(request instanceof Request)) throw new TypeError('Expected a Request')
+        expect(request.method).toBe('PATCH')
+        expect(new URL(request.url).pathname).toContain(
+          `/datasets/ds1/documents/doc1/processing/${action}`,
+        )
 
-      await user.click(screen.getByRole('button', { name: /pause/i }))
+        mockFetchIndexingStatus.mockResolvedValue(
+          mockIndexingStatus({ indexing_status: nextStatus }),
+        )
+        response.resolve(Response.json({ result: 'success' }))
 
-      await waitFor(() => {
-        expect(mockPauseDocIndexing).toHaveBeenCalledWith({
-          datasetId: 'ds1',
-          documentId: 'doc1',
-        })
-      })
-    })
+        const status = nextStatus === 'indexing' ? 'processing' : nextStatus
+        expect(
+          await screen.findByText(`datasetDocuments.embedding.${status}`, {}, { timeout: 4000 }),
+        ).toBeInTheDocument()
+        expect(mockToast.success).not.toHaveBeenCalled()
+      },
+    )
 
-    it('should call resume API when resume button is clicked', async () => {
-      const user = userEvent.setup()
-      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({ indexing_status: 'paused' }))
-      mockResumeDocIndexing.mockResolvedValue({ result: 'success' })
+    it.each(indexingActions)(
+      'reports a failed $action once and keeps the previous status',
+      async ({ action, initialStatus }) => {
+        const user = userEvent.setup()
+        const response = createDeferred<Response>()
+        vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(response.promise)
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        mockFetchIndexingStatus.mockResolvedValue(
+          mockIndexingStatus({ indexing_status: initialStatus }),
+        )
 
-      render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
+        render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
 
-      await waitFor(() => {
-        expect(screen.getByText(/embedding\.resume/i)).toBeInTheDocument()
-      })
+        const button = await screen.findByRole('button', { name: new RegExp(action, 'i') })
+        await user.click(button)
+        await waitFor(() => expect(button).toBeDisabled())
+        const message = `Cannot ${action} this document`
+        response.resolve(
+          Response.json({ code: 'invalid_param', message, status: 400 }, { status: 400 }),
+        )
 
-      await user.click(screen.getByRole('button', { name: /resume/i }))
-
-      await waitFor(() => {
-        expect(mockResumeDocIndexing).toHaveBeenCalledWith({
-          datasetId: 'ds1',
-          documentId: 'doc1',
-        })
-      })
-    })
+        await waitFor(() => expect(button).toBeEnabled())
+        const status = initialStatus === 'indexing' ? 'processing' : initialStatus
+        expect(screen.getByText(`datasetDocuments.embedding.${status}`)).toBeInTheDocument()
+        expect(mockToast.error).toHaveBeenCalledExactlyOnceWith(message)
+      },
+    )
   })
 
   it('refreshes document details when indexing reaches completion', async () => {
