@@ -159,12 +159,13 @@ class WorkflowRunAgg:
                 ConversationVariablePersistenceLayer(ConversationVariableUpdater(session_factory.get_session_maker()))
             )
         self._application_layers = (*application_layers, *prepared.application_layers)
-        for layer in self._application_layers:
-            self._entry.graph_engine.add_layer(layer)
         self.index = WorkflowRunIndex(histories)
         self._persistence_layer.set_node_run_indices(self.index.indices)
         self._persistence_layer.set_node_execution_history(histories)
         self._entry.graph_engine.add_layer(self.index)
+        # Caller persistence consumes the index synchronously in its start hook.
+        for layer in self._application_layers:
+            self._entry.graph_engine.add_layer(layer)
         source_histories: dict[tuple[str, str], Sequence[WorkflowNodeExecution]] = {}
         for source in self._entry.workflow_tool_sources.values():
             key = (source.app_id, source.workflow_id)
