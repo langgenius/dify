@@ -571,6 +571,11 @@ export type ConversationVariableInfiniteScrollPaginationResponse = {
   limit: number
 }
 
+export type ConversationVariableNotFoundError = ErrorResponse & {
+  code: 'conversation_variable_not_found'
+  status: 404
+}
+
 export type ConversationVariableResponse = {
   created_at?: number | null
   description?: string | null
@@ -581,13 +586,18 @@ export type ConversationVariableResponse = {
   value_type: string
 }
 
+export type ConversationVariableTypeMismatchError = ErrorResponse & {
+  code: 'conversation_variable_type_mismatch'
+  status: 400
+}
+
 export type ConversationVariableUpdatePayload = {
-  value: unknown
+  value: JsonValue
 }
 
 export type ConversationVariableUpdatePayloadWithUser = {
   user?: string
-  value: unknown
+  value: JsonValue
 }
 
 export type ConversationVariablesQuery = {
@@ -5099,8 +5109,16 @@ export type GetConversationsByConversationIdVariablesData = {
 export type GetConversationsByConversationIdVariablesErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ConversationVariableNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5125,10 +5143,18 @@ export type PutConversationsByConversationIdVariablesByVariableIdData = {
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: ConversationVariableTypeMismatchError | NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ConversationVariableNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 

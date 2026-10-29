@@ -16,6 +16,8 @@ import {
   zConversationCursorNotFoundError,
   zConversationFirstMessageNotFoundError,
   zConversationNotFoundError,
+  zConversationVariableNotFoundError,
+  zConversationVariableTypeMismatchError,
   zDatasetNameDuplicateError,
   zEndUserNotFoundError,
   zFileAccessDeniedError,
@@ -963,7 +965,21 @@ export const put2 = oc
     }),
   )
   .output(zPutConversationsByConversationIdVariablesByVariableIdResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    conversation_variable_not_found: { status: 404, data: zConversationVariableNotFoundError },
+    conversation_variable_type_mismatch: {
+      status: 400,
+      data: zConversationVariableTypeMismatchError,
+    },
+    forbidden: { status: 403, data: zForbiddenError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const byVariableId = {
   put: put2,
@@ -991,7 +1007,17 @@ export const get5 = oc
     }),
   )
   .output(zGetConversationsByConversationIdVariablesResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    conversation_variable_not_found: { status: 404, data: zConversationVariableNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const variables = {
   get: get5,
