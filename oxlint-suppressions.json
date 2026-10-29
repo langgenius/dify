@@ -6864,11 +6864,6 @@
       "count": 1
     }
   },
-  "web/features/new-rag/settings/retrieval-settings.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/features/new-rag/sources/create/connected-source-workflow.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
