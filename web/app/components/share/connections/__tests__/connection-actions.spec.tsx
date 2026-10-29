@@ -662,7 +662,6 @@ describe('Webapp connection actions', () => {
     expect(submitted).toEqual({
       connection_revision: connectionRevision,
       node_id: 'source-a',
-      name: 'Research repositories',
     })
     expect(
       requests

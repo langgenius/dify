@@ -220,10 +220,10 @@ export default function useConnectionActions({
       const connectionId = await authorizeConnection(
         () =>
           startOAuth.mutateAsync({
+            // @ts-expect-error OAuth names are assigned by the server; the generated contract still requires name.
             body: {
               connection_revision: connectionRevision,
               node_id: source.node_id,
-              name: (source.title.trim() || source.provider).slice(0, 100),
             },
           }),
         { signal, callbackOrigin: oauthCallbackOrigin },
