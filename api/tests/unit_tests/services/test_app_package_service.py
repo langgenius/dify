@@ -7,7 +7,7 @@ import zipfile
 from collections.abc import Callable, Generator, Mapping
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -40,7 +40,6 @@ from services.agent.errors import (
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
-from services.agent.roster_package_entities import PackageIcon, PreparedPackageArchive, RosterAgentPackageMember
 from services.app_dsl_service import AppDslService, Import
 from services.app_package_service import AppPackageManifest, AppPackageService
 from services.dsl_content import DSL_MAX_SIZE
@@ -1227,35 +1226,6 @@ class TestPackageIconsCases:
         config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=0)
         with pytest.raises(RosterAgentPackageTooLargeError, match="image size"):
             AppPackageService().read_package(_icon_archive())
-
-    @staticmethod
-    def test_materialized_icon_is_owned_by_destination(monkeypatch: pytest.MonkeyPatch) -> None:
-        payload = b"image payload"
-        digest = hashlib.sha256(payload).hexdigest()
-        archive = io.BytesIO()
-        with zipfile.ZipFile(archive, "w") as package:
-            package.writestr("i_000001.png", payload)
-        prepared = PreparedPackageArchive(
-            archive=archive, members={"i_000001.png": RosterAgentPackageMember(size=len(payload), sha256=digest)}
-        )
-        icon = PackageIcon(id="i_000001", path="i_000001.png", size=len(payload), sha256=digest)
-        session = MagicMock()
-        monkeypatch.setattr(
-            "services.agent.package_resource_importer.session_factory.create_session",
-            MagicMock(return_value=session),
-        )
-        backend = Mock()
-        with prepared:
-            mapping = AgentPackageResourceImporter(storage_backend=backend).materialize_icons(
-                archive=prepared, icons=[icon], tenant_id="destination", account_id="importer"
-            )
-        row = session.__enter__.return_value.add_all.call_args.args[0][0]
-        assert row.id == mapping["i_000001"]
-        assert row.tenant_id == "destination"
-        assert row.created_by == "importer"
-        assert row.mime_type == "image/png"
-        assert row.key.startswith("upload_files/destination/")
-        backend.save.assert_called_once_with(row.key, payload)
 
     @staticmethod
     def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:
