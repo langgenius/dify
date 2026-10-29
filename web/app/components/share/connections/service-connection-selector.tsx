@@ -419,7 +419,6 @@ export default function ServiceConnectionSelector({
           key={editor.mode === 'replace' ? editor.connection.id : 'add'}
           mode={editor.mode}
           connectionName={editor.mode === 'replace' ? editor.connection.name : undefined}
-          readmeUrl={service.readmeUrl}
           open={editorOpen}
           onOpenChange={setEditorOpen}
           onCloseComplete={() => setEditor(null)}

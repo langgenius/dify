@@ -4,6 +4,7 @@ import type {
   EndUserConnectionCreatePayload,
   ProviderConfig,
 } from '@dify/contracts/api/web/types.gen'
+import type { RequiredConnectionService } from './required-services'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DialogBody,
@@ -23,6 +24,7 @@ import { toast } from '@/app/notifications'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { isAbortError } from '@/service/client-error'
 import { selectCredentialFormSchema } from '@/service/console/plugin-auth-select'
+import ConnectionReadme from './connection-readme'
 
 export type ApiKeyValues = {
   name: string
@@ -33,7 +35,7 @@ export type ApiKeyFormProps = {
   mode: 'add' | 'replace'
   schemas: ProviderConfig[]
   connectionName?: string
-  readmeUrl?: string
+  readmeService?: RequiredConnectionService
   onSave: (values: ApiKeyValues) => void | Promise<void>
   onClose: () => void
   onSavingChange?: (saving: boolean) => void
@@ -50,7 +52,7 @@ export function ApiKeyForm({
   mode,
   schemas,
   connectionName = '',
-  readmeUrl,
+  readmeService,
   onSave,
   onClose,
   onSavingChange,
@@ -132,17 +134,7 @@ export function ApiKeyForm({
         />
       </DialogHeader>
       <DialogBody className="space-y-5">
-        {readmeUrl && (
-          <a
-            href={readmeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-sm system-md-regular text-text-tertiary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden="true" className="i-ri-book-open-line size-4 shrink-0" />
-            {t(($) => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' })}
-          </a>
-        )}
+        {readmeService && <ConnectionReadme service={readmeService} />}
         <Field name="name" disabled={disabled || saving}>
           <FieldLabel>{nameLabel}</FieldLabel>
           <Input form={formId} value={name} autoComplete="off" onValueChange={setName} />
