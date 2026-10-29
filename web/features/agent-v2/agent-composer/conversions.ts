@@ -27,6 +27,7 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
+import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'
@@ -71,7 +72,11 @@ const toRetrievalConfig = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRet
     top_k: config?.top_k ?? DATASET_DEFAULT.top_k,
     score_threshold: config?.score_threshold ?? undefined,
     reranking_mode: config?.reranking_mode,
-    reranking_enable: config?.reranking_enable ?? false,
+    // The shared workflow helper stores weighted score with reranking disabled, but the
+    // runtime only post-processes multi-dataset results when reranking is enabled.
+    reranking_enable:
+      config?.reranking_mode === RerankingModeEnum.WeightedScore ||
+      (config?.reranking_enable ?? false),
     reranking_model: config?.reranking_model,
     weights: config?.weights,
   }

@@ -511,9 +511,6 @@
     }
   },
   "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
