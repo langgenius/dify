@@ -18,6 +18,11 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPreview from '../workflow-preview'
 
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_HITL_IM: true,
+}))
+
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 const getChildExecutions = vi.hoisted(() =>
   vi.fn<

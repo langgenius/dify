@@ -14,6 +14,11 @@ import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { InviteModal } from '../index'
 
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_HITL_IM: true,
+}))
+
 const { fetchFeatures, inviteMember, fetchRoles } = vi.hoisted(() => ({
   fetchFeatures: vi.fn(),
   inviteMember: vi.fn(),

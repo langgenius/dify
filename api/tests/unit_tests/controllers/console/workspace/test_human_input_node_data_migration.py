@@ -111,7 +111,7 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
 def test_migrated_current_v1_inputs_preserve_authoring_configuration_and_rendered_form(
     app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    inputs = [
+    inputs: list[dict[str, object]] = [
         {
             "type": "paragraph",
             "output_variable_name": "reason",

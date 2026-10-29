@@ -487,7 +487,22 @@ it.each([BlockEnum.Iteration, BlockEnum.Loop])(
   },
 )
 
-it('duplicates a legacy approval with an unsupported migration field without changing its input', async () => {
+it.each([InputVarType.select, InputVarType.singleFile, InputVarType.multiFiles])(
+  'requires migration before duplicating a legacy approval with a supported %s field',
+  async (type) => {
+    const input = createDefaultFormInputByType(type, 'decision')
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', { data: { inputs: [input] } })
+    const { result } = setup({ nodes: [legacy] })
+
+    await act(async () => result.current.handleNodesDuplicate('legacy'))
+
+    expect(result.current.nodes).toHaveLength(1)
+    expect(result.current.nodes[0]?.data).toMatchObject({ inputs: [input] })
+  },
+)
+
+it('duplicates a legacy approval without changing its input when the release gate is off', async () => {
+  releaseGate.enabled = false
   const input = createDefaultFormInputByType(InputVarType.select, 'decision')
   const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', { data: { inputs: [input] } })
   const { result } = setup({ nodes: [legacy] })
@@ -502,8 +517,9 @@ it('duplicates a legacy approval with an unsupported migration field without cha
 })
 
 it.each(['add', 'replace'] as const)(
-  'allows legacy %s when the current legacy workflow cannot migrate, while blocking v2',
+  'allows legacy %s while blocking v2 when the release gate is off',
   (command) => {
+    releaseGate.enabled = false
     const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', {
       data: { inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')] },
     })

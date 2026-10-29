@@ -207,6 +207,7 @@
   ],
   "console GET /trial-models": ["no-input-schema", "compatible"],
   "console GET /workflow-run-archives": ["no-input-schema", "compatible"],
+  "console GET /workflow/{workflow_run_id}/pause-details": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/human-input/v2/channel-providers": [
     "no-input-schema",
     "parsed-vs-wire-output"

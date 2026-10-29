@@ -81,7 +81,7 @@ export const getHumanInputCreationPolicy = (
   }
 }
 
-export const isHumanInputInsertion = (
+const isHumanInputInsertion = (
   nodeType: BlockEnum,
   data?: Pick<CommonNodeType, 'type'> & { version?: unknown },
 ): boolean => {

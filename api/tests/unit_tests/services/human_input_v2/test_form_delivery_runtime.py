@@ -118,7 +118,7 @@ class EmailOutbox:
 
 def _pause_state(form_id: str, *, node_version: str = "2") -> str:
     from core.app.app_config.entities import WorkflowUIBasedAppConfig
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
     from core.workflow.nodes.human_input.session_binding import default_session_binding
     from graphon.entities.pause_reason import HitlRequired
@@ -140,6 +140,7 @@ def _pause_state(form_id: str, *, node_version: str = "2") -> str:
                 inputs={},
                 files=[],
                 user_id=str(_ACCOUNT),
+                user_from=UserFrom.ACCOUNT,
                 stream=True,
                 invoke_from=InvokeFrom.DEBUGGER,
                 workflow_execution_id=_RUN,
@@ -218,8 +219,11 @@ def test_migrated_webapp_node_creates_waiting_form_with_initiator(
     assert isinstance(created, CreatedForm)
     assert created.form.status == HumanInputFormStatus.WAITING
     assert created.form.resolved_form.legacy_form_content == "Please approve"
-    assert created.message_template.subject == "Human input required"
-    assert created.message_template.body == "Please complete the form to continue the workflow.\n\n{{#url#}}"
+    assert created.message_template.subject == "Action required"
+    assert created.message_template.body == (
+        "A request is waiting for your review. Please review the details and submit your decision to continue. "
+        "Review and respond: {{#url#}}"
+    )
     assert len(created.recipients) == 1
     assert created.recipients[0].subject == ContactRecipientSubject(_CONTACT)
 

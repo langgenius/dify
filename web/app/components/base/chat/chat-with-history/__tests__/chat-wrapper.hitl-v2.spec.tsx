@@ -9,6 +9,11 @@ import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
 import { useChatWithHistoryContext } from '../context'
 
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_HITL_IM: true,
+}))
+
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/base/amplitude/web-app-event', () => ({

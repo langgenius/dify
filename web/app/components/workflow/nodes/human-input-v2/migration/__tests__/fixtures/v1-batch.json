@@ -144,8 +144,8 @@
             }
           ],
           "message_template": {
-            "subject": "Human input required",
-            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}"
+            "subject": "Action required",
+            "body": "A request is waiting for your review. Please review the details and submit your decision to continue. Review and respond: {{#url#}}"
           },
           "debug_mode": {
             "enabled": false,
@@ -227,8 +227,8 @@
             }
           ],
           "message_template": {
-            "subject": "Human input required",
-            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}"
+            "subject": "Action required",
+            "body": "A request is waiting for your review. Please review the details and submit your decision to continue. Review and respond: {{#url#}}"
           },
           "debug_mode": {
             "enabled": false,

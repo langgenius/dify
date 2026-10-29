@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
@@ -21,11 +19,6 @@ from controllers.common.human_input_v2_contracts import (
 )
 from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
-
-
-def _as_mapping(value: object) -> Mapping[str, object]:
-    assert isinstance(value, Mapping)
-    return value
 
 
 def test_request_dto_coerces_enum_values_and_forbids_extra_fields() -> None:
@@ -82,10 +75,11 @@ def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> Non
         }
     )
 
-    assert request_body.nodes[0].node_data.version == "1"
-    assert not hasattr(request_body.nodes[0].node_data, "future_legacy_field")
+    node_data = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data).node_data
+    assert node_data.version == "1"
+    assert node_data.model_extra == {"future_legacy_field": "ignored"}
     assert set(NodeDataMigrationResponse.model_json_schema()["properties"]) == {"data"}
-    assert contracts.LegacyHITLv1NodeData.model_json_schema()["properties"]["version"]["const"] == "1"
+    assert contracts.LegacyHITLv1NodeData.model_json_schema()["properties"]["version"]["default"] == "1"
 
     failure = NodeDataMigrationFailureResponse.model_validate(
         {
@@ -128,7 +122,7 @@ def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> Non
         )
 
 
-def test_node_data_migration_transport_defers_raw_delivery_semantics_to_preflight() -> None:
+def test_node_data_migration_transport_refines_invalid_delivery_methods_into_preflight_issues() -> None:
     request_body = NodeDataMigrationPayload.model_validate(
         {
             "nodes": [
@@ -153,13 +147,6 @@ def test_node_data_migration_transport_defers_raw_delivery_semantics_to_prefligh
             ]
         }
     )
-
-    methods = request_body.nodes[0].node_data.delivery_methods
-    first_method = _as_mapping(methods[0])
-    second_method = _as_mapping(methods[1])
-    second_config = _as_mapping(second_method["config"])
-    assert [first_method["type"], second_method["type"]] == ["sms", "email"]
-    assert second_config["body"] == 7
 
     preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
     assert [(issue.code, issue.value) for issue in preflight.issues] == [
@@ -203,10 +190,10 @@ def test_node_data_migration_transport_normalizes_real_and_compatibility_member_
     assert preflight.issues == ()
     method = preflight.node_data.delivery_methods[0]
     assert method.type == "email"
-    assert [source.user_id for source in method.config.recipients.items] == ["member-real", "member-compat"]
+    assert [source.reference_id for source in method.config.recipients.items] == ["member-real", "member-compat"]
 
 
-def test_node_data_migration_transport_preserves_real_im_configuration_for_preflight_blockers() -> None:
+def test_node_data_migration_transport_reports_configured_unsupported_delivery_methods() -> None:
     request_body = NodeDataMigrationPayload.model_validate(
         {
             "nodes": [
@@ -243,20 +230,6 @@ def test_node_data_migration_transport_preserves_real_im_configuration_for_prefl
         }
     )
 
-    methods = request_body.nodes[0].node_data.delivery_methods
-    first_method = _as_mapping(methods[0])
-    first_config = _as_mapping(first_method["config"])
-    second_method = _as_mapping(methods[1])
-    second_config = _as_mapping(second_method["config"])
-    assert first_config["recipients"] == {
-        "items": [
-            {"type": "channel", "channel_id": "channel-1"},
-            {"type": "user", "user_id": "user-1"},
-        ]
-    }
-    assert first_config["message"] == "Please review"
-    assert second_config["message"] == "Configured"
-
     preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
     assert [(issue.code, issue.value) for issue in preflight.issues] == [
         ("unsupported-delivery-method", "im"),
@@ -277,7 +250,7 @@ def test_node_data_migration_defaults_missing_version_and_requires_non_empty_bat
         {"nodes": [{"node_id": "node-1", "node_data": {"title": "Approval"}}]}
     )
 
-    assert request_body.nodes[0].node_data.version == "1"
+    assert preflight_legacy_human_input_node_data(request_body.nodes[0].node_data).node_data.version == "1"
     with pytest.raises(ValidationError):
         NodeDataMigrationPayload.model_validate({"nodes": []})
 
