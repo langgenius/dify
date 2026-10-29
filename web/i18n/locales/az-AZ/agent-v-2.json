@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Fayl tapılmadı",
   "agentDetail.configure.files.preview.empty": "Önbaxış məzmunu yoxdur.",
   "agentDetail.configure.files.preview.failed": "Önbaxışı yükləmək mümkün olmadı.",
+  "agentDetail.configure.files.preview.truncated": "Bu faylın yalnız başlanğıcı göstərilir.",
   "agentDetail.configure.files.preview.unsupported": "Bu fayl üçün önbaxış dəstəklənmir.",
   "agentDetail.configure.files.remove": "{{name}} faylını çıxar",
   "agentDetail.configure.files.richTip": "Təlimata yerləşdirmək üçün həddindən artıq uzun olan istinad materialları: spesifikasiyalar, şablonlar, göstərişlər. <docLink>Ətraflı öyrən</docLink>\n\nQurma rejimində agent bunları sizin üçün hazırlaya bilər.",

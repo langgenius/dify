@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Bestand niet gevonden",
   "agentDetail.configure.files.preview.empty": "Geen voorbeeldinhoud.",
   "agentDetail.configure.files.preview.failed": "Laden van voorbeeld mislukt.",
+  "agentDetail.configure.files.preview.truncated": "Alleen het begin van dit bestand wordt weergegeven.",
   "agentDetail.configure.files.preview.unsupported": "Dit bestand ondersteunt geen voorbeeldweergave.",
   "agentDetail.configure.files.remove": "{{name}} verwijderen",
   "agentDetail.configure.files.richTip": "Voor referentiemateriaal dat te lang is om in de Prompt te plakken: specificaties, sjablonen, richtlijnen. <docLink>Meer informatie</docLink>\n\nIn de Build-modus kan de agent dit voor u instellen.",

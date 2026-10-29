@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "未找到文件",
   "agentDetail.configure.files.preview.empty": "暂无预览内容。",
   "agentDetail.configure.files.preview.failed": "预览加载失败。",
+  "agentDetail.configure.files.preview.truncated": "仅显示该文件的开头部分。",
   "agentDetail.configure.files.preview.unsupported": "该文件不支持预览。",
   "agentDetail.configure.files.remove": "移除 {{name}}",
   "agentDetail.configure.files.richTip": "上传过长、不适合放入提示词的参考资料：规格、模板、指南。<docLink>了解更多</docLink>\n\n在构建模式中，Agent 可帮你完成这些设置。",

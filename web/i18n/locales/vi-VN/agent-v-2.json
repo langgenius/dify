@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Không tìm thấy tệp",
   "agentDetail.configure.files.preview.empty": "Không có nội dung xem trước.",
   "agentDetail.configure.files.preview.failed": "Tải xem trước thất bại.",
+  "agentDetail.configure.files.preview.truncated": "Chỉ hiển thị phần đầu của tệp này.",
   "agentDetail.configure.files.preview.unsupported": "Tệp này không hỗ trợ xem trước.",
   "agentDetail.configure.files.remove": "Xóa {{name}}",
   "agentDetail.configure.files.richTip": "Dành cho tài liệu tham khảo quá dài để dán vào Prompt: thông số, mẫu, hướng dẫn. <docLink>Tìm hiểu thêm</docLink>\n\nỞ chế độ Build, tác nhân có thể thiết lập những mục này cho bạn.",

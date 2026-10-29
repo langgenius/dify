@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Arquivo não encontrado",
   "agentDetail.configure.files.preview.empty": "Sem conteúdo de pré-visualização.",
   "agentDetail.configure.files.preview.failed": "Falha ao carregar a pré-visualização.",
+  "agentDetail.configure.files.preview.truncated": "Somente o início deste arquivo é exibido.",
   "agentDetail.configure.files.preview.unsupported": "Este arquivo não oferece suporte à pré-visualização.",
   "agentDetail.configure.files.remove": "Remover {{name}}",
   "agentDetail.configure.files.richTip": "Para materiais de referência longos demais para colar no Prompt: especificações, modelos, diretrizes. <docLink>Saiba mais</docLink>\n\nNo modo Build, o agente pode configurar isso para você.",

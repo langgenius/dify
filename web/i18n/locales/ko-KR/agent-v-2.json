@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "파일을 찾을 수 없음",
   "agentDetail.configure.files.preview.empty": "미리보기 내용이 없습니다.",
   "agentDetail.configure.files.preview.failed": "미리보기를 불러오지 못했습니다.",
+  "agentDetail.configure.files.preview.truncated": "이 파일의 앞부분만 표시됩니다.",
   "agentDetail.configure.files.preview.unsupported": "이 파일은 미리보기를 지원하지 않습니다.",
   "agentDetail.configure.files.remove": "{{name}} 제거",
   "agentDetail.configure.files.richTip": "Prompt에 붙여넣기에는 너무 긴 참고 자료용입니다: 사양, 템플릿, 가이드라인. <docLink>자세히 알아보기</docLink>\n\nBuild mode에서는 에이전트가 이를 대신 설정할 수 있습니다.",

@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Dosya bulunamadı",
   "agentDetail.configure.files.preview.empty": "Önizleme içeriği yok.",
   "agentDetail.configure.files.preview.failed": "Önizleme yüklenemedi.",
+  "agentDetail.configure.files.preview.truncated": "Bu dosyanın yalnızca başlangıcı gösteriliyor.",
   "agentDetail.configure.files.preview.unsupported": "Bu dosya önizlemeyi desteklemiyor.",
   "agentDetail.configure.files.remove": "{{name}} kaldır",
   "agentDetail.configure.files.richTip": "Prompt içine yapıştırmak için fazla uzun olan referans materyalleri için: teknik özellikler, şablonlar, yönergeler. <docLink>Daha fazla bilgi</docLink>\n\nBuild mode'da agent bunları sizin için ayarlayabilir.",
