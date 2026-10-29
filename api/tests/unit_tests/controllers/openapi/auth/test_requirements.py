@@ -2205,8 +2205,8 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/oauth/device/deny"): frozenset({"200", "404", "409", "503", "default"}),
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
     ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),
-    ("post", "/oauth/token"): frozenset({"200", "400", "401", "429", "default"}),
-    ("post", "/oauth/revoke"): frozenset({"200", "400", "401", "429", "default"}),
+    ("post", "/oauth/token"): frozenset({"200", "400", "401", "default"}),
+    ("post", "/oauth/revoke"): frozenset({"200", "400", "401", "default"}),
     # The consent-page backend: a public client lookup and two Console-session decisions,
     # all with the OAuth-style `OAuthAuthorizeErrorResponse` for their 400s.
     ("get", "/oauth/authorize/client"): frozenset({"200", "400", "default"}),
