@@ -2868,7 +2868,7 @@ describe('DocumentsPage', () => {
     expect(screen.queryByLabelText('knowledgeCreate.uploadDocuments')).not.toBeInTheDocument()
   })
 
-  it('times out an exact 15 MiB staging request and discards a late success', async () => {
+  it('keeps a slow exact 15 MiB staging request alive until it settles', async () => {
     vi.useFakeTimers()
     let resolveStaging!: (value: { id: string }) => void
     let stagingSignal: AbortSignal | undefined
@@ -2891,30 +2891,24 @@ describe('DocumentsPage', () => {
       })
 
       expect(stageUploadMutation).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        vi.advanceTimersByTime(5 * 60_000)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
       expect(stagingSignal?.aborted).toBe(false)
+      expect(toastMock.error).not.toHaveBeenCalled()
 
       await act(async () => {
-        vi.advanceTimersByTime(30_000)
+        resolveStaging({ id: 'slow-boundary-upload' })
         await Promise.resolve()
         await Promise.resolve()
       })
 
-      expect(stagingSignal?.aborted).toBe(true)
-      expect(toastMock.error).toHaveBeenCalledOnce()
-      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
-      expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
-      expect(screen.getByRole('listitem')).not.toHaveAttribute('aria-busy')
-
-      await act(async () => {
-        resolveStaging({ id: 'late-boundary-upload' })
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-
-      expect(discardStagedUploadMutation).toHaveBeenCalledOnce()
-      expect(discardStagedUploadMutation).toHaveBeenCalledWith('late-boundary-upload')
-      expect(toastMock.error).toHaveBeenCalledOnce()
-      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+      expect(discardStagedUploadMutation).not.toHaveBeenCalled()
+      expect(toastMock.error).not.toHaveBeenCalled()
     } finally {
       rendered.unmount()
       vi.useRealTimers()

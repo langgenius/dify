@@ -191,6 +191,7 @@ function setupClassic(item: AgentKnowledgeRetrievalItem) {
 }
 
 const snapshot = () => JSON.parse(screen.getByLabelText('snapshot').textContent ?? '{}')
+const optionName = (name: string) => new RegExp(`^${name}(?: |$)`)
 const open = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.add/ }))
   return screen.findByRole('dialog')
@@ -240,7 +241,9 @@ describe('shared knowledge binding dialog', () => {
       const user = userEvent.setup()
       setup([binding], { enabled })
       const dialog = await open(user)
-      await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+      await user.click(
+        await within(dialog).findByRole('option', { name: optionName('Test Dataset') }),
+      )
       expect(snapshot().knowledge.sets).toEqual([])
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       expect(snapshot().knowledge.sets[0]).toMatchObject({
@@ -268,11 +271,10 @@ describe('shared knowledge binding dialog', () => {
     await user.click(within(dialog).getByRole('button', { name: /operation.cancel/ }))
     expect(snapshot().knowledge.sets[0].name).toBe('Saved search')
     dialog = await open(user)
-    expect(within(dialog).getByRole('checkbox', { name: 'Saved search' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Saved search' }))
+    expect(
+      within(dialog).getByRole('option', { name: optionName('Saved search') }),
+    ).toHaveAttribute('aria-selected', 'true')
+    await user.click(within(dialog).getByRole('option', { name: optionName('Saved search') }))
     await user.click(within(dialog).getByRole('button', { name: /operation.cancel/ }))
     expect(snapshot().knowledge.sets).toHaveLength(1)
   })
@@ -301,8 +303,8 @@ describe('shared knowledge binding dialog', () => {
     })
     const original = snapshot().knowledge.sets[0]
     const dialog = await open(user)
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
     await advanced(user, dialog)
     expect(await within(dialog).findByRole('textbox', { name: /customInputLabel/ })).toHaveValue(
       'original question',
@@ -331,7 +333,9 @@ describe('shared knowledge binding dialog', () => {
     const { queryClient } = setupClassic({ ...binding, isMissing: true })
     queryClient.removeQueries({ queryKey: consoleQuery.knowledgeFs.spaces.get.queryKey() })
     const dialog = await open(user)
-    await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+    await user.click(
+      await within(dialog).findByRole('option', { name: optionName('Test Dataset') }),
+    )
     await advanced(user, dialog)
     expect(dialog.textContent).not.toMatch(/knowledgeFs|view.classic/)
     expect(within(dialog).queryByText('Product manual')).not.toBeInTheDocument()
@@ -345,8 +349,10 @@ describe('shared knowledge binding dialog', () => {
     const user = userEvent.setup()
     setup()
     const dialog = await open(user)
-    await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await user.click(
+      await within(dialog).findByRole('option', { name: optionName('Test Dataset') }),
+    )
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
     await advanced(user, dialog)
     await user.click(within(dialog).getByRole('radio', { name: /dialog.query.custom$/ }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
@@ -1132,13 +1138,15 @@ describe('shared knowledge binding dialog', () => {
     expect(await within(dialog).findByRole('alert')).toBeVisible()
     getDatasets.mockResolvedValueOnce({ ...datasetPage(), has_more: true })
     await user.click(within(dialog).getByRole('button', { name: /operation.retry/ }))
-    await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+    await user.click(
+      await within(dialog).findByRole('option', { name: optionName('Test Dataset') }),
+    )
     getDatasets.mockResolvedValueOnce({
       ...datasetPage([createDatasetFixture({ id: 'dataset-2', name: 'More docs' })]),
       page: 2,
     })
     await user.click(within(dialog).getByRole('button', { name: /loadMore/ }))
-    await user.click(await within(dialog).findByRole('checkbox', { name: 'More docs' }))
+    await user.click(await within(dialog).findByRole('option', { name: optionName('More docs') }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.sets.map((item: { name: string }) => item.name)).toEqual([
       'Test Dataset',
@@ -1152,8 +1160,8 @@ describe('KnowledgeFS composer interaction', () => {
     const user = userEvent.setup()
     setup()
     const dialog = await open(user)
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Engineering' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Engineering') }))
     expect(snapshot().knowledge.spaces).toEqual([])
     expect(within(dialog).queryByText(/retrievalSetting/)).not.toBeInTheDocument()
     expect(
@@ -1172,12 +1180,13 @@ describe('KnowledgeFS composer interaction', () => {
     const user = userEvent.setup()
     setup([], { spaces: [space()] })
     const dialog = await open(user)
-    const list = within(dialog).getByRole('group', { name: /knowledgeFs.select/ })
+    const list = within(dialog).getByRole('listbox', { name: /knowledgeRetrieval.dialog.title/ })
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
-    const checkbox = within(list).getByRole('checkbox', { name: 'Product manual' })
-    expect(checkbox).toHaveAccessibleDescription('A real knowledge space')
-    await user.click(checkbox)
-    expect(checkbox).toHaveAttribute('aria-checked', 'true')
+    const option = within(list).getByRole('option', {
+      name: 'Product manual A real knowledge space',
+    })
+    await user.click(option)
+    expect(option).toHaveAttribute('aria-selected', 'true')
     await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
     expect(within(dialog).getByRole('textbox', { name: /knowledgeFs.alias/ })).toHaveValue(
       'Product manual',
@@ -1200,17 +1209,17 @@ describe('KnowledgeFS composer interaction', () => {
     })
     const dialog = await open(user)
     for (let index = 1; index <= 10; index++) {
-      await user.click(within(dialog).getByRole('checkbox', { name: `Space ${index}` }))
+      await user.click(within(dialog).getByRole('option', { name: optionName(`Space ${index}`) }))
     }
-    const search = within(dialog).getByRole('searchbox')
+    const search = within(dialog).getByRole('combobox', { name: /operation.search/ })
     await user.type(search, 'Space 11')
-    expect(within(dialog).getByRole('checkbox', { name: 'Space 11' })).toHaveAttribute(
+    expect(within(dialog).getByRole('option', { name: optionName('Space 11') })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
     await user.clear(search)
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Space 1' }))
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Space 11' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Space 1') }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Space 11') }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.spaces).toHaveLength(10)
     expect(snapshot().knowledge.sets).toHaveLength(1)
@@ -1228,7 +1237,8 @@ describe('KnowledgeFS composer interaction', () => {
     await user.clear(within(dialog).getByRole('textbox', { name: /knowledgeFs.alias/ }))
     await user.click(advanced)
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
-    expect(advanced).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await user.click(advanced)
     expect(within(dialog).getByRole('textbox', { name: /knowledgeFs.alias/ })).toHaveValue('')
     expect(within(dialog).getByRole('alert')).toBeInTheDocument()
     expect(snapshot().knowledge.spaces[0].name).toBe('Product manual')
@@ -1286,7 +1296,7 @@ describe('KnowledgeFS composer interaction', () => {
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(snapshot().knowledge.spaces[0].is_missing).toBe(true)
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.spaces[0].is_missing).toBe(false)
   })
@@ -1305,7 +1315,7 @@ describe('KnowledgeFS composer interaction', () => {
         ],
       })
       const dialog = await open(user)
-      await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+      await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       expect(snapshot().knowledge.spaces).toEqual([
         expect.objectContaining({ control_space_id: SPACE, name: 'Product manual' }),
@@ -1322,10 +1332,13 @@ describe('KnowledgeFS composer interaction', () => {
       restricted.permission_keys = restricted.permission_keys.filter((key) => key !== permission)
       setup([], { spaces: [space(), restricted] })
       const dialog = await open(user)
-      expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1)
+      expect(within(dialog).getAllByRole('option')).toHaveLength(1)
       expect(within(dialog).queryByText('Restricted')).not.toBeInTheDocument()
-      await user.type(within(dialog).getByRole('searchbox'), 'Restricted')
-      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      await user.type(
+        within(dialog).getByRole('combobox', { name: /operation.search/ }),
+        'Restricted',
+      )
+      expect(within(dialog).queryByRole('option')).not.toBeInTheDocument()
       expect(within(dialog).getByText(/knowledgeFs.empty/)).toBeVisible()
       expect(within(dialog).queryByText(/knowledgeFs.publishPermission/)).not.toBeInTheDocument()
     },
@@ -1337,7 +1350,7 @@ describe('KnowledgeFS composer interaction', () => {
       spaces: [space(SPACE, 'Unavailable', false), { ...space(SECOND), state: 'deleting' }],
     })
     const dialog = await open(user)
-    expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('option')).not.toBeInTheDocument()
     expect(within(dialog).getByText(/knowledgeFs.empty/)).toBeVisible()
   })
 
@@ -1349,15 +1362,17 @@ describe('KnowledgeFS composer interaction', () => {
         spaces: status === 'missing' ? [] : [{ ...space(), permission_keys: [] }],
       })
       const dialog = await open(user)
-      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('option', { name: optionName('Product manual') }),
+      ).toHaveAttribute('aria-selected', 'true')
       expect(snapshot().knowledge.spaces[0]).toMatchObject({ id: binding.id })
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       expect(dialog).toBeInTheDocument()
       expect(within(dialog).getByRole('alert').textContent).toMatch(/knowledgeFs.unavailable/)
       const advanced = within(dialog).getByRole('button', { name: /advancedSettings.label/ })
-      expect(advanced).toHaveAttribute('aria-expanded', 'true')
+      await user.click(advanced)
       expect(within(dialog).queryByText(SPACE)).not.toBeInTheDocument()
-      await user.click(within(dialog).getByRole('button', { name: /knowledgeRetrieval.remove/ }))
+      await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
       expect(snapshot().knowledge.spaces).toHaveLength(1)
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       expect(snapshot().knowledge.spaces).toEqual([])
@@ -1378,7 +1393,7 @@ describe('KnowledgeFS composer interaction', () => {
     const user = userEvent.setup()
     const { queryClient } = setup([], { spaces: [space()] })
     const dialog = await open(user)
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
     const options = consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
       input: (pageParam) => ({ query: { limit: 50, page: pageParam } }),
       initialPageParam: 1,
@@ -1397,18 +1412,22 @@ describe('KnowledgeFS composer interaction', () => {
         pageParams: [1],
       })
     refresh([{ ...space(), permission_keys: ['knowledge_space_read'] }])
-    await waitFor(() => expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('option', { name: /knowledgeFs.unavailable/ }),
+      ).toHaveAttribute('aria-selected', 'true'),
+    )
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(within(dialog).getByRole('alert').textContent).toMatch(/knowledgeFs.unavailable/)
+    await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
     expect(within(dialog).getByRole('textbox', { name: /knowledgeFs.alias/ })).toHaveValue(
       'Product manual',
     )
     expect(snapshot().knowledge.spaces).toEqual([])
     refresh([space()])
-    expect(await within(dialog).findByRole('checkbox', { name: 'Product manual' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
+    expect(
+      await within(dialog).findByRole('option', { name: optionName('Product manual') }),
+    ).toHaveAttribute('aria-selected', 'true')
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.spaces[0]).toMatchObject({
       control_space_id: SPACE,
@@ -1422,7 +1441,7 @@ describe('KnowledgeFS composer interaction', () => {
     const dialog = await open(user)
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
     expect(snapshot().knowledge.sets).toHaveLength(1)
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Product manual') }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(snapshot().knowledge.sets[0]).toMatchObject({
       id: 'legacy',
@@ -1480,7 +1499,7 @@ describe('KnowledgeFS composer interaction', () => {
     if (!firstAdd) throw new Error('First composer must expose an add button')
     await user.click(firstAdd)
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Engineering' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Engineering') }))
     await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
     expect(
       JSON.parse(screen.getByLabelText('first').textContent ?? '{}').knowledge.spaces,
@@ -1502,7 +1521,7 @@ describe('KnowledgeFS composer interaction', () => {
     const user = userEvent.setup()
     setup([binding])
     const dialog = await open(user)
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Engineering' }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Engineering') }))
     await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
     const aliases = within(dialog).getAllByRole('textbox', { name: /knowledgeFs.alias/ })
     const secondAlias = aliases[1]

@@ -131,7 +131,7 @@ function setup({
 
 async function confirmSpace(user: ReturnType<typeof userEvent.setup>) {
   const dialog = await screen.findByRole('dialog', { name: /knowledgeRetrieval.dialog.title/ })
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Product manual' }))
+  await user.click(within(dialog).getByRole('option', { name: /Product manual/ }))
   await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 }
@@ -152,8 +152,8 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
       expect(screen.getByText('Product manual')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.add/ }))
       const dialog = await screen.findByRole('dialog', { name: /knowledgeRetrieval.dialog.title/ })
-      expect(within(dialog).getByRole('checkbox', { name: 'Product manual' })).toHaveAttribute(
-        'aria-checked',
+      expect(within(dialog).getByRole('option', { name: /Product manual/ })).toHaveAttribute(
+        'aria-selected',
         'true',
       )
     },
@@ -192,7 +192,7 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     await user.click(within(menu).getByRole('button', { name: /knowledgeRetrieval.label/ }))
     await user.click(within(menu).getByRole('button', { name: /knowledgeRetrieval.add/ }))
     const dialog = await screen.findByRole('dialog', { name: /knowledgeRetrieval.dialog.title/ })
-    await user.click(await within(dialog).findByRole('checkbox', { name: 'Test Dataset' }))
+    await user.click(await within(dialog).findByRole('option', { name: /^Test Dataset/ }))
     await user.click(within(dialog).getByRole('button', { name: /advancedSettings.label/ }))
     const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
     await user.clear(name)
