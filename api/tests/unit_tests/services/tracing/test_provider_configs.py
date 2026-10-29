@@ -1,5 +1,6 @@
 import pytest
 from dify_trace_arize_phoenix.provider import PhoenixProvider
+from dify_trace_langfuse.config import LangfuseConfig
 from dify_trace_langfuse.provider import LangfuseProvider
 from dify_trace_sdk.egress import Egress, EgressResponse
 from dify_trace_sdk.testing import RecordingEgress, response
@@ -55,6 +56,26 @@ def test_presentation_never_returns_secrets_or_derived_fields() -> None:
     assert configured_secrets(LangfuseProvider, _stored(secret_key="")) == ("public_key",)
 
 
+def test_legacy_config_is_presented_and_decoded_without_resaving_or_verification() -> None:
+    egress = RecordingEgress([], grpc_target=None)
+    stored = _stored(project_url="https://langfuse.example.com/project/legacy-project")
+    stored.pop("project_key")
+    original = stored.copy()
+
+    presented = _gateway(egress).present_config(
+        workspace_id=WORKSPACE, tracing_provider="langfuse", tracing_config=stored
+    )
+    decoded = ProviderConfigCodec(CIPHER).decode(WORKSPACE, LangfuseProvider, stored)
+
+    assert isinstance(decoded, LangfuseConfig)
+    assert presented.values == {"host": stored["host"], "project_url": stored["project_url"]}
+    assert presented.configured_secrets == ("public_key", "secret_key")
+    assert decoded.model_dump()["secret_key"] == SECRET_KEY
+    assert LangfuseProvider(egress).project_url(decoded) == stored["project_url"]
+    assert stored == original
+    assert egress.requests == []
+
+
 def test_new_configs_are_verified_and_store_derived_fields() -> None:
     egress = RecordingEgress([_projects("project-9")], grpc_target=None)
     gateway = _gateway(egress)
@@ -67,10 +88,12 @@ def test_new_configs_are_verified_and_store_derived_fields() -> None:
             "secret_key": SECRET_KEY,
             "host": "https://langfuse.example.com",
             "project_key": "client-supplied",
+            "project_url": "https://client-supplied.example/project/wrong",
         },
     )
 
     assert stored["project_key"] == "project-9"
+    assert stored["project_url"] is None
     assert stored["secret_key"] == _encrypt(WORKSPACE, SECRET_KEY)
     (request,) = egress.requests
     assert request.url == "https://langfuse.example.com/api/public/projects"

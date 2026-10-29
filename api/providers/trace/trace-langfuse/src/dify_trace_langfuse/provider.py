@@ -23,6 +23,7 @@ from dify_trace_sdk.exporting import export_endpoint, json_value, send_export_re
 from dify_trace_sdk.ids import span_uuid, trace_uuid
 from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
 from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
+from pydantic import JsonValue
 
 from dify_trace_langfuse.config import LangfuseConfig
 
@@ -33,6 +34,20 @@ MAX_BATCH_BYTES = 3_000_000
 
 def _iso(value: datetime) -> str:
     return value.isoformat()
+
+
+def _messages(value: JsonValue, *, role: str) -> JsonValue:
+    """Preserve Langfuse's chat preview without rewriting multimodal content blocks."""
+    if isinstance(value, str):
+        return [{"role": role, "content": value}]
+    if isinstance(value, list):
+        return [
+            {("content" if key == "text" else key): part for key, part in item.items()}
+            if isinstance(item, dict) and "role" in item and "content" not in item
+            else item
+            for item in value
+        ]
+    return value
 
 
 class LangfuseProvider(TraceProvider[LangfuseConfig]):
@@ -73,9 +88,9 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
         return config.model_copy(update={"project_key": project_id})
 
     @override
-    def project_url(self, config: LangfuseConfig) -> str | None:
+    def project_url(self, config: LangfuseConfig) -> str:
         host = config.host.rstrip("/")
-        return f"{host}/project/{config.project_key}" if config.project_key else host
+        return f"{host}/project/{config.project_key}" if config.project_key else config.project_url or host
 
     @override
     def send(self, config: LangfuseConfig, trace: Trace) -> SendResult:
@@ -101,7 +116,11 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
                 # Something between Dify and Langfuse answered; re-sending is idempotent.
                 raise ExportRetryableError("Langfuse ingestion answered with an unreadable body") from None
             self._check_results(body)
-        trace_url = f"{self.project_url(config)}/traces/{quote(trace_key, safe='')}" if config.project_key else None
+        trace_url = (
+            f"{self.project_url(config).rstrip('/')}/traces/{quote(trace_key, safe='')}"
+            if config.project_key or config.project_url
+            else None
+        )
         span_urls = (
             {
                 span.span_id: f"{trace_url}?observation={self._observation_id(trace, span.span_id)}"
@@ -130,8 +149,8 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
                         "timestamp": _iso(root.start_time),
                         "userId": trace.user_id,
                         "sessionId": trace.session_id,
-                        "input": root.inputs,
-                        "output": root.outputs,
+                        "input": _messages(root.inputs, role="user"),
+                        "output": _messages(root.outputs, role="assistant"),
                         "metadata": {**root.attributes, "dify_trace_id": trace.trace_id},
                     },
                 )
@@ -155,8 +174,8 @@ class LangfuseProvider(TraceProvider[LangfuseConfig]):
                 "name": span.name,
                 "startTime": _iso(span.start_time),
                 "endTime": _iso(span.end_time),
-                "input": span.inputs,
-                "output": span.outputs,
+                "input": _messages(span.inputs, role="user"),
+                "output": _messages(span.outputs, role="assistant"),
                 "metadata": {**span.attributes, "dify_span_kind": span.kind.value},
                 "level": "ERROR" if span.status is SpanStatus.ERROR else "DEFAULT",
                 "statusMessage": span.error,
