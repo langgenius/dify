@@ -6,7 +6,6 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Callable, Iterator
-from unittest.mock import Mock, call
 
 import pytest
 from PIL import Image
@@ -19,6 +18,17 @@ from models.model import UploadFile
 from services.agent.errors import RosterAgentPackageResourceUnavailableError
 from services.agent.package_resource_importer import AgentPackageResourceImporter
 from services.agent.roster_package_entities import PackageIcon, PreparedPackageArchive, RosterAgentPackageMember
+
+
+class RecordingStorage:
+    def __init__(self, *, failure: Exception | None = None) -> None:
+        self.saved: list[tuple[str, bytes]] = []
+        self.failure = failure
+
+    def save(self, filename: str, data: bytes) -> None:
+        if self.failure is not None and len(self.saved) == 1:
+            raise self.failure
+        self.saved.append((filename, data))
 
 
 @pytest.fixture
@@ -51,7 +61,7 @@ def test_materialize_icons_commits_destination_owned_uploads(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     archive, icons, payloads = packaged_icons
-    storage = Mock()
+    storage = RecordingStorage()
 
     mapping = AgentPackageResourceImporter(storage_backend=storage).materialize_icons(
         archive=archive, icons=icons, tenant_id="destination", account_id="importer"
@@ -75,7 +85,7 @@ def test_materialize_icons_commits_destination_owned_uploads(
         assert row.hash == hashlib.sha3_256(payload).hexdigest()
         assert row.mime_type == ("image/png" if extension == "png" else "image/jpeg")
         assert row.key == f"upload_files/destination/{row.id}.{extension}"
-    storage.save.assert_has_calls([call(rows[mapping[icon.id]].key, payloads[icon.path]) for icon in icons])
+    assert storage.saved == [(rows[mapping[icon.id]].key, payloads[icon.path]) for icon in icons]
 
 
 def test_materialize_icons_storage_failure_does_not_persist_partial_metadata(
@@ -84,8 +94,7 @@ def test_materialize_icons_storage_failure_does_not_persist_partial_metadata(
 ) -> None:
     archive, icons, _ = packaged_icons
     error = OSError("storage unavailable")
-    storage = Mock()
-    storage.save.side_effect = [None, error]
+    storage = RecordingStorage(failure=error)
 
     with pytest.raises(RosterAgentPackageResourceUnavailableError) as caught:
         AgentPackageResourceImporter(storage_backend=storage).materialize_icons(
@@ -102,7 +111,7 @@ def test_materialize_icons_commit_failure_rolls_back_all_uploads(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     archive, icons, _ = packaged_icons
-    storage = Mock()
+    storage = RecordingStorage()
     error = RuntimeError("database commit failed")
 
     def fail_commit(session: Session) -> None:
