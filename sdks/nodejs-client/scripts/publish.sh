@@ -127,7 +127,7 @@ main() {
     # Step 1: Environment Check
     # ========================================================================
     step "Step 1/6: Checking environment..."
-    
+
     # Check Node.js
     if ! command -v node &> /dev/null; then
         error "Node.js is not installed"
@@ -146,7 +146,7 @@ main() {
 
     if ! command -v pnpm &> /dev/null; then
         error "pnpm is required because this workspace publishes catalog: dependencies"
-        info "Install the native pnpm 12 binary: npm install -g pnpm@12"
+        info "Install the native pnpm 12 binary: npm install -g --allow-scripts=pnpm pnpm@12"
         exit 1
     fi
     PNPM_VERSION=$(pnpm -v)
@@ -164,10 +164,10 @@ main() {
     # Step 2: Read Package Info
     # ========================================================================
     step "Step 2/6: Reading package info..."
-    
+
     PACKAGE_NAME=$(node -p "require('./package.json').name")
     PACKAGE_VERSION=$(node -p "require('./package.json').version")
-    
+
     success "Package: ${BOLD}$PACKAGE_NAME${NC}"
     success "Version: ${BOLD}$PACKAGE_VERSION${NC}"
 
@@ -187,7 +187,7 @@ main() {
     # Step 3: Install Dependencies
     # ========================================================================
     step "Step 3/6: Installing dependencies..."
-    
+
     pnpm --dir "$REPO_ROOT" install --frozen-lockfile 2>/dev/null || pnpm --dir "$REPO_ROOT" install
     success "Dependencies installed"
 
@@ -195,7 +195,7 @@ main() {
     # Step 4: Run Tests
     # ========================================================================
     step "Step 4/6: Running tests..."
-    
+
     if [[ "$SKIP_TESTS" == true ]]; then
         warning "Skipping tests (--skip-tests flag)"
     else
@@ -207,10 +207,10 @@ main() {
     # Step 5: Build
     # ========================================================================
     step "Step 5/6: Building package..."
-    
+
     # Clean previous build
     rm -rf dist
-    
+
     pnpm run build
     success "Build completed"
 
@@ -263,7 +263,7 @@ main() {
         read -r
 
         pnpm publish --access public --no-git-checks
-        
+
         echo ""
         success "🎉 Successfully published ${BOLD}$PACKAGE_NAME@$PACKAGE_VERSION${NC} to npm!"
         echo ""

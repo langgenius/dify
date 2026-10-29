@@ -2,7 +2,7 @@
 WORKSPACE_ROOT=$(pwd)
 
 # pnpm 12 is a native binary. Corepack skips its install script and launches a Node shim.
-npm install -g --prefix "$HOME/.local" "pnpm@$(node -p "require('./package.json').packageManager.slice(5).split('+')[0]")"
+npm install -g --prefix "$HOME/.local" --allow-scripts=pnpm "pnpm@$(node -p "require('./package.json').packageManager.slice(5).split('+')[0]")"
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 export PATH="$HOME/.local/bin:$PATH"
 cd web && pnpm install

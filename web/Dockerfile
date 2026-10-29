@@ -26,7 +26,7 @@ COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
 COPY packages /app/packages
 
 # pnpm 12 is a native binary. Corepack skips its install script and launches a Node shim.
-RUN npm install -g "pnpm@$(node -p "require('/app/package.json').packageManager.slice(5).split('+')[0]")"
+RUN npm install -g --allow-scripts=pnpm "pnpm@$(node -p "require('/app/package.json').packageManager.slice(5).split('+')[0]")"
 
 # Install workspace dependencies for the Docker build environment.
 RUN pnpm install --frozen-lockfile --ignore-scripts
@@ -41,7 +41,7 @@ WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false
 # Same native install as the packages stage. This stage does not inherit its global bin.
-RUN npm install -g "pnpm@$(node -p "require('/app/package.json').packageManager.slice(5).split('+')[0]")"
+RUN npm install -g --allow-scripts=pnpm "pnpm@$(node -p "require('/app/package.json').packageManager.slice(5).split('+')[0]")"
 RUN pnpm build && pnpm build:vinext
 
 
