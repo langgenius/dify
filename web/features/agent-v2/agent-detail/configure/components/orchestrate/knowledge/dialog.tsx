@@ -39,6 +39,7 @@ import {
   useKnowledgeValidationMessage,
   validateKnowledgeRetrievals,
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
+import { getVisibleKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { consoleQuery } from '@/service/console'
 import { useClassicKnowledgeCatalog } from './classic-catalog'
 import { ClassicKnowledgeSettings } from './classic-settings'
@@ -71,6 +72,21 @@ const parseValue = (value: string) => {
   const separator = value.indexOf(':')
   return { kind: value.slice(0, separator), id: value.slice(separator + 1) }
 }
+
+// Metadata condition rows are keyed by id while editing; older saved conditions may lack one.
+const withConditionIds = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRetrievalItem =>
+  item.metadataFilteringConditions
+    ? {
+        ...item,
+        metadataFilteringConditions: {
+          ...item.metadataFilteringConditions,
+          conditions: item.metadataFilteringConditions.conditions.map((condition) => ({
+            ...condition,
+            id: condition.id || crypto.randomUUID(),
+          })),
+        },
+      }
+    : item
 
 type KnowledgeOption = {
   value: string
@@ -204,22 +220,7 @@ function AgentKnowledgeRetrievalForm({
 }: FormProps) {
   const { t } = useTranslation(['agentV2', 'datasetSettings', 'appDebug', 'knowledgeSpace'])
   const { t: tc } = useTranslation(['common'])
-  const [initialBindings] = useState(() =>
-    bindings.map((item) =>
-      item.metadataFilteringConditions
-        ? {
-            ...item,
-            metadataFilteringConditions: {
-              ...item.metadataFilteringConditions,
-              conditions: item.metadataFilteringConditions.conditions.map((condition) => ({
-                ...condition,
-                id: condition.id || crypto.randomUUID(),
-              })),
-            },
-          }
-        : item,
-    ),
-  )
+  const [initialBindings] = useState(() => bindings.map(withConditionIds))
   const [draft, setDraft] = useState(initialBindings)
   const [submitted, setSubmitted] = useState(false)
   const validationMessage = useKnowledgeValidationMessage()
@@ -330,7 +331,7 @@ function AgentKnowledgeRetrievalForm({
     getValue: (option) => option.value,
     getLabel: (option) => option.name,
   })
-  const visibleBindings = draft.filter((item) => knowledgeFsEnabled || !item.controlSpaceId)
+  const visibleBindings = getVisibleKnowledgeRetrievals(draft, knowledgeFsEnabled)
   const validation = validateKnowledgeRetrievals(visibleBindings, draft)
   const update = (id: string, patch: Partial<AgentKnowledgeRetrievalItem>) =>
     setDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))

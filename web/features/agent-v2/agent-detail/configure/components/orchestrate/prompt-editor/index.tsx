@@ -39,7 +39,10 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import {
+  agentComposerKnowledgeRetrievalsAtom,
+  getVisibleKnowledgeRetrievals,
+} from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
   addProviderToolsAtom,
@@ -1063,9 +1066,7 @@ export function AgentPromptEditor() {
           onAddKnowledge={addActions.knowledge}
           onAddSkill={addActions.skills}
           canAddWorkspaceSkill={enableSkill === true}
-          knowledgeRetrievals={
-            knowledgeEnabled ? retrievals : retrievals.filter((item) => !item.controlSpaceId)
-          }
+          knowledgeRetrievals={getVisibleKnowledgeRetrievals(retrievals, knowledgeEnabled)}
           onBack={returnToSlashMenuMain}
           onOpenCategory={handleOpenSlashMenuCategory}
           onInsertToken={handleSlashSelect}

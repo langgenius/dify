@@ -17,7 +17,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQueries } from '@tanstack/react-query'
-import { intersectionBy } from 'es-toolkit/compat'
+import { intersectionBy, xorBy } from 'es-toolkit/compat'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -135,7 +135,7 @@ const createMetadataCondition = ({
   name,
   type,
 }: DatasetDocMetadataResponse): MetadataFilteringCondition => ({
-  id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+  id: crypto.randomUUID(),
   metadata_id: id,
   name,
   comparison_operator:
@@ -184,10 +184,7 @@ function ClassicSettingsFields({
     const nextDatasets = selected.map(
       (dataset) => selectedDatasets.find((current) => current.id === dataset.id) ?? dataset,
     )
-    const datasetsChanged =
-      nextDatasets.length !== selectedDatasets.length ||
-      nextDatasets.some((dataset) => !selectedDatasets.some((current) => current.id === dataset.id))
-    if (!datasetsChanged) return
+    if (!xorBy(nextDatasets, selectedDatasets, 'id').length) return
     onChange({
       selectedDatasets: nextDatasets,
       metadataFilteringConditions: reconcileMetadataConditions(
@@ -441,31 +438,31 @@ function ClassicSettingsFields({
 }
 
 /** Only mounted inside the shared binding dialog's advanced settings. */
-export function ClassicKnowledgeSettings(props: Props) {
+export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
   const { t } = useTranslation(['common'])
-  const ids = props.item.datasetRefs?.flatMap((dataset) => (dataset.id ? [dataset.id] : [])) ?? []
+  const ids = item.datasetRefs?.flatMap((dataset) => (dataset.id ? [dataset.id] : [])) ?? []
   const queries = useQueries({
-    queries: (props.item.selectedDatasets === undefined ? ids : []).map((id) =>
+    queries: (item.selectedDatasets === undefined ? ids : []).map((id) =>
       consoleQuery.datasets.byDatasetId.get.queryOptions({ input: { params: { dataset_id: id } } }),
     ),
   })
   const datasets =
-    props.item.selectedDatasets ?? queries.flatMap((query) => (query.data ? [query.data] : []))
+    item.selectedDatasets ?? queries.flatMap((query) => (query.data ? [query.data] : []))
   const removeFailedDataset = (id: string) => {
-    const datasetRefs = props.item.datasetRefs?.filter((dataset) => dataset.id !== id)
+    const datasetRefs = item.datasetRefs?.filter((dataset) => dataset.id !== id)
     const remainingDatasets = queries.flatMap((query) =>
       query.isSuccess && query.data.id !== id ? [query.data] : [],
     )
     const allResolved = ids
       .filter((current) => current !== id)
       .every((current) => remainingDatasets.some((dataset) => dataset.id === current))
-    props.onChange({
+    onChange({
       datasetRefs,
       ...(allResolved
         ? {
             selectedDatasets: remainingDatasets,
             metadataFilteringConditions: reconcileMetadataConditions(
-              props.item.metadataFilteringConditions,
+              item.metadataFilteringConditions,
               remainingDatasets,
               datasets,
             ),
@@ -498,7 +495,7 @@ export function ClassicKnowledgeSettings(props: Props) {
           {ids
             .filter((_, index) => queries[index]?.isError)
             .map((id) => {
-              const name = props.item.datasetRefs?.find((dataset) => dataset.id === id)?.name || id
+              const name = item.datasetRefs?.find((dataset) => dataset.id === id)?.name || id
               return (
                 <li key={id} className="flex items-center justify-between gap-2">
                   <span className="min-w-0 system-xs-regular wrap-break-word text-text-secondary">
@@ -517,5 +514,12 @@ export function ClassicKnowledgeSettings(props: Props) {
         </ul>
       </div>
     )
-  return <ClassicSettingsFields {...props} selectedDatasets={datasets} />
+  return (
+    <ClassicSettingsFields
+      item={item}
+      onChange={onChange}
+      errors={errors}
+      selectedDatasets={datasets}
+    />
+  )
 }

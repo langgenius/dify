@@ -8,6 +8,7 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   agentComposerKnowledgeRetrievalsAtom,
+  getVisibleKnowledgeRetrievals,
   removeKnowledgeRetrievalAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentKnowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
@@ -87,7 +88,7 @@ export function AgentKnowledgeRetrieval() {
   }
   useRegisterAgentOrchestrateAddAction('knowledge', addRetrieval)
 
-  const visibleRetrievals = enabled ? retrievals : retrievals.filter((item) => !item.controlSpaceId)
+  const visibleRetrievals = getVisibleKnowledgeRetrievals(retrievals, enabled)
 
   return (
     <>
