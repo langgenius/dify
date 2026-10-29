@@ -3853,6 +3853,15 @@ def test_cancel_before_queued_resume_claim_stops_original_pause(
         "saved-pause-remains",
         "saved-source-drift",
         "sensitive-child-error",
+        "postcommit-history",
+        "postcommit-publish",
+        "postcommit-unknown-source",
+        "postcommit-wrong-binding",
+        "postcommit-missing-proof",
+        "postcommit-unsettled-claim",
+        "postcommit-missing-fence",
+        "postcommit-pause-remains",
+        "postcommit-observation-race",
     ],
 )
 def test_cancel_control_repause_uses_real_workflow_stop_owner(
@@ -3928,7 +3937,8 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
     from services.dify_builder.native_testing import confirmed_agent_cancellation
 
     confirmed_agent_cancellation.storage.load.return_value = current_pause.dumps().encode()
-    lease = datetime(2020, 1, 1) if fault == "expired-sdk-unavailable" else datetime(2099, 1, 1)
+    postcommit = fault is not None and fault.startswith("postcommit-")
+    lease = datetime(2020, 1, 1) if fault == "expired-sdk-unavailable" or postcommit else datetime(2099, 1, 1)
     with owner.factory.begin() as sql:
         for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
             model.__table__.create(sql.connection(), checkfirst=True)
@@ -4046,6 +4056,184 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
         )
 
     owner.commands.backend.client.get_run_sync = child_status
+    if postcommit:
+        from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+        from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+        from services.dify_builder.native_testing.confirmed_agent_completion import STOP_CONTROL
+
+        # A committed revocation can lose its request before the first observer.
+        # The ordinary worker then owns both stop settlement and lease expiry.
+        owner.commands.api.lifecycle.cancel(
+            actor=owner.case.actor, request_id=owner.request_id, idempotency_key="control-stop"
+        )
+        original_history = task_module.AppTaskService._persist_stopped_history
+        original_publish = Topic.publish
+
+        def postcommit_failure(*_: object, **__: object) -> None:
+            with owner.factory.begin() as sql:
+                native = sql.get(WorkflowRun, owner.native_id)
+                source = sql.get(NativeDispatch, "claimed-source")
+                request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+                root = sql.scalar(select(NativeInvocationState))
+                assert native is not None
+                assert source is not None
+                assert request is not None
+                assert root is not None
+                assert native.status == "stopped"
+                assert native.stop_requested_at is not None
+                assert sql.scalar(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id == native.id)) is None
+                assert any(STOP_CONTROL in record for record in request.observations)
+                assert source.state == "claimed"
+                assert request.state == "running"
+                assert root.outcome is None
+                if fault == "postcommit-unknown-source":
+                    source.state = "unknown"
+                elif fault == "postcommit-wrong-binding":
+                    source.idempotency_digest = "f" * 64
+                elif fault == "postcommit-missing-proof":
+                    request.observations = [record for record in request.observations if STOP_CONTROL not in record]
+                elif fault == "postcommit-unsettled-claim":
+                    operation = sql.scalar(select(NativeEffectOperation))
+                    assert operation is not None
+                    sql.add(
+                        NativeEffectDispatchClaim(
+                            id="in-flight",
+                            tenant_id=owner.case.actor.tenant_id,
+                            request_id=owner.request_id,
+                            invocation_id=owner.ref.invocation_id,
+                            operation_id=operation.id,
+                            attempt_id="unsettled-attempt",
+                            claimed_at=datetime(2026, 1, 1),
+                        )
+                    )
+                elif fault == "postcommit-missing-fence":
+                    native.stop_requested_at = None
+                elif fault == "postcommit-pause-remains":
+                    sql.add(
+                        WorkflowPause(
+                            workflow_id=owner.case.workflow.id,
+                            workflow_run_id=owner.native_id,
+                            state_object_key="unexpected-pause",
+                        )
+                    )
+            raise ConnectionError("temporary post-commit history/publication failure")
+
+        def postcommit_publish_failure(topic: Topic, payload: bytes) -> None:
+            if json.loads(payload).get("event") == "workflow_finished":
+                postcommit_failure()
+            original_publish(topic, payload)
+
+        if fault == "postcommit-publish":
+            monkeypatch.setattr(Topic, "publish", postcommit_publish_failure)
+        else:
+            monkeypatch.setattr(
+                task_module.AppTaskService, "_persist_stopped_history", staticmethod(postcommit_failure)
+            )
+        service = ProfiledNativeTestCommands(
+            sessions=owner.factory,
+            actor=owner.case.actor,
+            confirmed_factory=lambda: owner.commands,
+            legacy_factory=lambda: pytest.fail("stop control changed profile"),
+        )
+
+        def reconcile() -> None:
+            service.reconcile_pending(
+                actor=owner.case.actor,
+                session_id=owner.session.id,
+                request_id=owner.request_id,
+                publish=lambda **_: pytest.fail("revoked stop request published execution"),
+            )
+
+        interleaved = False
+        if fault == "postcommit-observation-race":
+            from services.dify_builder.native_testing import confirmed_agent_completion
+
+            actual_request = confirmed_agent_completion._request
+            settlement_writer = owner.commands.loader.locked
+            deferred_stops = []
+
+            def second_observer() -> None:
+                owner.commands.backend.client.get_run_sync = child_status
+                with pytest.raises(ConnectionError, match="temporary post-commit"):
+                    ConfirmedAgentCancellation(owner.commands).settle(ref=owner.ref)
+
+            @contextmanager
+            def serialized_writer(**values: object):
+                # SQLite does not implement FOR UPDATE. Model the existing C04
+                # writer contract by admitting the competing writer only after
+                # this transaction closes; all stop/proof writes remain real.
+                with settlement_writer(**values) as rows:
+                    yield rows
+                while deferred_stops:
+                    deferred_stops.pop(0)()
+
+            def interleaved_request(sql, *, actor, ref):
+                nonlocal interleaved
+                request = actual_request(sql, actor=actor, ref=ref)
+                if not interleaved:
+                    assert request is not None
+                    assert not any(STOP_CONTROL in record for record in request.observations)
+                    interleaved = True
+                    if owner.writer_depth:
+                        deferred_stops.append(second_observer)
+                    else:
+                        # An unprotected fallback keeps this stale request while
+                        # the competing observer commits its proof and Run stop.
+                        second_observer()
+                        assert not any(STOP_CONTROL in record for record in request.observations)
+                return request
+
+            def first_observation_unavailable(_: str) -> RunStatusResponse:
+                raise ConnectionError("first observer unavailable before fallback")
+
+            owner.commands.loader.locked = serialized_writer
+            owner.commands.backend.client.get_run_sync = first_observation_unavailable
+            monkeypatch.setattr(confirmed_agent_completion, "_request", interleaved_request)
+
+        reconcile()
+        if fault == "postcommit-observation-race":
+            assert interleaved
+        recoverable = fault in {"postcommit-history", "postcommit-publish", "postcommit-observation-race"}
+        with owner.factory() as sql:
+            source = sql.get(NativeDispatch, "claimed-source")
+            request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+            root = sql.scalar(select(NativeInvocationState))
+            assert source is not None
+            assert request is not None
+            assert root is not None
+            assert source.state == ("claimed" if recoverable else "unknown")
+            assert source.claim_expires_at == lease
+            assert request.state == "running"
+            assert root.outcome is None
+
+        monkeypatch.setattr(task_module.AppTaskService, "_persist_stopped_history", staticmethod(original_history))
+        monkeypatch.setattr(Topic, "publish", original_publish)
+        owner.commands.backend.client.get_run_sync = lambda _: pytest.fail("saved stop queried a retained child")
+        assert ConfirmedAgentCancellation(owner.commands).settle(ref=owner.ref) is recoverable
+        owner.commands.get(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+        reconcile()
+        with owner.factory() as sql:
+            source = sql.get(NativeDispatch, "claimed-source")
+            request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+            root = sql.scalar(select(NativeInvocationState))
+            assert source is not None
+            assert request is not None
+            assert root is not None
+            assert source.state == ("cancelled" if recoverable else "unknown")
+            assert source.claim_expires_at == lease
+            assert request.state == ("sealed" if recoverable else "running")
+            if recoverable:
+                assert root.outcome is not None
+                assert (root.outcome["status"], root.outcome["native_status"], root.outcome["reason_code"]) == (
+                    "stopped",
+                    "stopped",
+                    "native_cancelled",
+                )
+            else:
+                assert root.outcome is None
+        assert stops == [owner.native_id]
+        assert reads == ["original-child"]
+        return
     receipt = owner.commands.cancel(
         actor=owner.case.actor,
         session_id=owner.session.id,
