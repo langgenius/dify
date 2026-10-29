@@ -123,10 +123,11 @@ def _mark_tool_span_failed(ctx: RunContext[Deps], error: DifyCoreToolsClientErro
     and the instrumentation's content policy controls whether that text is traced.
     """
     span = get_current_span()
+    # Logfire wraps unsampled NonRecordingSpan as ReadableSpan, so check recording
+    # before accessing SDK attributes that the underlying span does not expose.
     if not span.is_recording():
         return
-    # Logfire can wrap a NonRecordingSpan as ReadableSpan without SDK attributes.
-    attributes = getattr(span, "attributes", None) if isinstance(span, ReadableSpan) else None
+    attributes = span.attributes if isinstance(span, ReadableSpan) else None
     if (
         not attributes
         or attributes.get("gen_ai.operation.name") != "execute_tool"
