@@ -300,7 +300,7 @@ class AppPackageExportApi(Resource):
     """
 
     @endpoint(
-        context="app",
+        context="workspace",
         op="export.console_app.package",
         kind=Kind.FILE,
         summary="Download an app as a .ifpkg package: its draft, or one published version",
