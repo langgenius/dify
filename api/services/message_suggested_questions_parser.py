@@ -1,6 +1,7 @@
+"""Parse model responses for the shared suggested-questions service."""
+
 import json
 import logging
-import re
 from collections.abc import Sequence
 
 from core.llm_generator.prompts import DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
@@ -24,11 +25,12 @@ class SuggestedQuestionsAfterAnswerOutputParser:
 
     def parse(self, text: str) -> Sequence[str]:
         stripped_text = text.strip()
-        action_match = re.search(r"\[.*?\]", stripped_text, re.DOTALL)
+        array_start = stripped_text.find("[")
         questions: list[str] = []
-        if action_match is not None:
+        if array_start != -1:
             try:
-                json_obj = json.loads(action_match.group(0).strip())
+                # Let the decoder honor quoted brackets, escapes, and nested values.
+                json_obj, _ = json.JSONDecoder().raw_decode(stripped_text[array_start:])
             except json.JSONDecodeError as exc:
                 logger.warning("Failed to decode suggested questions payload: %s", exc)
             else:
