@@ -358,8 +358,6 @@ class NotionExtractor(BaseExtractor):
         else:
             retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=obj_id)
 
-        query_dict: Mapping[str, Any] = MappingProxyType({})
-
         res = httpx.request(
             "GET",
             retrieve_page_url,
@@ -368,7 +366,6 @@ class NotionExtractor(BaseExtractor):
                 "Content-Type": "application/json",
                 "Notion-Version": "2022-06-28",
             },
-            json=query_dict,
             timeout=_REQUEST_TIMEOUT,
         )
 
