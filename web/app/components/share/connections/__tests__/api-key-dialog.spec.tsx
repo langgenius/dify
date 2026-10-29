@@ -58,7 +58,7 @@ describe('ApiKeyDialog', () => {
       connectionName: 'Original key',
     },
   ])(
-    'requires the name and schema-defined key and accepts a non-sk secret for $mode',
+    'allows a blank name but requires the schema-defined key for $mode',
     async ({ mode, title, connectionName }) => {
       const user = userEvent.setup()
       const onSave = vi.fn()
@@ -79,23 +79,23 @@ describe('ApiKeyDialog', () => {
       const token = within(dialog).getByLabelText(/share\.connections\.setup\.apiKey/)
       const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
       expect(name).toHaveValue(connectionName)
+      expect(name).not.toBeRequired()
       expect(token).toHaveValue('')
       expect(token).toHaveAttribute('type', 'password')
       expect(save).toBeDisabled()
       await user.clear(name)
-      await user.type(name, '   ')
+      if (mode === 'replace') await user.type(name, '   ')
       await user.type(token, '   ')
       expect(save).toBeDisabled()
-      await user.clear(name)
-      await user.type(name, '  Research  ')
-      expect(save).toBeDisabled()
+      await user.click(save)
+      expect(onSave).not.toHaveBeenCalled()
       await user.clear(token)
       await user.type(token, '  provider-secret  ')
       expect(save).toBeEnabled()
       await user.click(save)
 
       expect(onSave).toHaveBeenCalledExactlyOnceWith({
-        name: 'Research',
+        name: '',
         credentials: { api_key: '  provider-secret  ' },
       })
       expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)

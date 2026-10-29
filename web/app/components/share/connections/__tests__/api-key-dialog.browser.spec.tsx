@@ -29,7 +29,6 @@ it('submits on Enter through the external footer button and blocks a rejected ke
     </QueryClientProvider>,
   )
   const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
-  await dialog.getByRole('textbox', { name: 'plugin.auth.authorizationName' }).fill('Research')
   const token = dialog.getByLabelText(/share\.connections\.setup\.apiKey/)
   await token.fill('provider-secret')
   await expect.element(dialog.getByRole('button', { name: 'common.operation.save' })).toBeEnabled()
@@ -40,7 +39,7 @@ it('submits on Enter through the external footer button and blocks a rejected ke
     .toEqual([
       [
         {
-          name: 'Research',
+          name: '',
           credentials: { api_key: 'provider-secret' },
         },
       ],
@@ -59,7 +58,7 @@ it('submits on Enter through the external footer button and blocks a rejected ke
   await expect
     .poll(() => onSave.mock.calls)
     .toEqual([
-      [{ name: 'Research', credentials: { api_key: 'provider-secret' } }],
+      [{ name: '', credentials: { api_key: 'provider-secret' } }],
       [{ name: 'Renamed', credentials: { api_key: 'corrected-secret' } }],
     ])
 })
