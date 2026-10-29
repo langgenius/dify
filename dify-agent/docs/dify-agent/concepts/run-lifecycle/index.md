@@ -17,6 +17,13 @@ If no messages were captured, restored history remains intact. Compaction rewrit
 are included. A terminal state snapshot is built after capability cleanup for
 success, failure and cancellation.
 
+Create-run requests may include an `idempotency_key`. Redis atomically associates
+its digest with the normalized request fingerprint and run id for the run
+retention window. Replaying the same request returns the existing run without
+scheduling another task; reusing the key with a different request returns HTTP
+409. Requests without a key create a new run as before. The stored claim contains
+no request configuration or credentials.
+
 Snapshot v2 stores only JSON state:
 
 ```json

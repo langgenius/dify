@@ -11,9 +11,25 @@ def run_events_key(prefix: str, run_id: str) -> str:
     return f"{prefix}:runs:{run_id}:events"
 
 
+def run_idempotency_key(prefix: str, key_digest: str) -> str:
+    """Return the Redis key claiming one create-run idempotency key digest."""
+    return f"{prefix}:idempotency:{key_digest}"
+
+
+def run_idempotency_index_key(prefix: str, run_id: str) -> str:
+    """Return the per-run index used to refresh its idempotency claim TTL."""
+    return f"{prefix}:runs:{run_id}:idempotency"
+
+
 def run_cancel_intent_key(prefix: str, run_id: str) -> str:
     """Return the private Redis stream key holding one cancellation intent."""
     return f"{prefix}:runs:{run_id}:cancel-intent"
 
 
-__all__ = ["run_cancel_intent_key", "run_events_key", "run_record_key"]
+__all__ = [
+    "run_cancel_intent_key",
+    "run_events_key",
+    "run_idempotency_index_key",
+    "run_idempotency_key",
+    "run_record_key",
+]

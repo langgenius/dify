@@ -26,7 +26,7 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
-from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import IdempotencyConflictError, RedisRunStore, RunNotFoundError
 
 
 def create_runs_router(
@@ -50,6 +50,8 @@ def create_runs_router(
             record = await scheduler.create_run(request)
         except SchedulerStoppingError as exc:
             raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
+        except IdempotencyConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         return CreateRunResponse(run_id=record.run_id, status=record.status)
 
     @router.get("/{run_id}", response_model=RunStatusResponse)
