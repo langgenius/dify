@@ -2,6 +2,18 @@
 
 import type { ReactNode } from 'react'
 import type { ContactTypeFilter, ContactView } from './types'
+import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -187,6 +199,7 @@ function DirectoryLoading() {
 
 export function ContactsDirectoryPage() {
   const { t } = useTranslation(['contacts'])
+  const { t: tCommon } = useTranslation(['common'])
   const context = useContactsFeatureContext()
   const repository = useContactsManagementRepository()
   const [browsing, setBrowsing] = useQueryStates({
@@ -204,6 +217,7 @@ export function ContactsDirectoryPage() {
   const [editingContact, setEditingContact] = useState<ContactView | null>(null)
   const [platformDialogOpen, setPlatformDialogOpen] = useState(false)
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
+  const [removalTargetIds, setRemovalTargetIds] = useState<string[] | null>(null)
   const [removalError, setRemovalError] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const rowTriggersRef = useRef(new Map<string, HTMLButtonElement>())
@@ -306,30 +320,28 @@ export function ContactsDirectoryPage() {
     )
   }
 
-  async function removeSelectedContacts() {
-    if (!selectedContactIds.length || removeContacts.isPending) return
-    setRemovalError(false)
-    const result = await removeContacts.mutateAsync({ contactIds: selectedContactIds })
-    if (result.kind === 'removed') {
-      if (contactId && result.removedContactIds.includes(contactId)) closeDetails()
-      setSelectedContactIds([])
-      return
-    }
-    setRemovalError(true)
-  }
-
-  async function removeContact(contactId: string) {
-    if (removeContacts.isPending) return
-    setRemovalError(false)
-    const result = await removeContacts.mutateAsync({ contactIds: [contactId] })
-    if (result.kind !== 'removed') {
-      setRemovalError(true)
-      return
-    }
-    setSelectedContactIds((current) =>
-      current.filter((id) => !result.removedContactIds.includes(id)),
+  async function confirmRemoval() {
+    if (
+      !removalTargetIds?.length ||
+      !context.permissions.canManageContacts ||
+      removeContacts.isPending
     )
-    closeDetails()
+      return
+    setRemovalError(false)
+    try {
+      const result = await removeContacts.mutateAsync({ contactIds: removalTargetIds })
+      if (result.kind !== 'removed') {
+        setRemovalError(true)
+        return
+      }
+      setSelectedContactIds((current) =>
+        current.filter((id) => !result.removedContactIds.includes(id)),
+      )
+      if (contactId && result.removedContactIds.includes(contactId)) closeDetails()
+      setRemovalTargetIds(null)
+    } catch {
+      setRemovalError(true)
+    }
   }
 
   async function loadMore() {
@@ -616,7 +628,10 @@ export function ContactsDirectoryPage() {
               setEditingContact(selectedContact)
               setExternalDialogOpen(true)
             }}
-            onRemove={() => void removeContact(selectedContact.id)}
+            onRemove={() => {
+              setRemovalError(false)
+              setRemovalTargetIds([selectedContact.id])
+            }}
           />
         )}
         {contactId && !selectedContact && (
@@ -648,18 +663,17 @@ export function ContactsDirectoryPage() {
           </aside>
         )}
       </div>
-      {(selectedContactIds.length > 0 || removalError) && (
-        <div className="pointer-events-none absolute inset-s-0 inset-e-0 bottom-6 z-20 flex justify-center px-4">
-          <div className="pointer-events-auto flex flex-col items-center gap-1">
-            {removalError && (
-              <p
-                role="alert"
-                className="rounded-md bg-state-destructive-hover px-3 py-1 system-xs-regular text-text-destructive"
-              >
-                {t(($) => $['directory.removalFailed'])}
-              </p>
-            )}
-            {selectedContactIds.length > 0 && (
+      <AlertDialog
+        open={Boolean(removalTargetIds)}
+        onOpenChange={(open) => {
+          if (removeContacts.isPending) return
+          setRemovalError(false)
+          setRemovalTargetIds(open ? [...selectedContactIds] : null)
+        }}
+      >
+        {selectedContactIds.length > 0 && (
+          <div className="pointer-events-none absolute inset-s-0 inset-e-0 bottom-6 z-20 flex justify-center px-4">
+            <div className="pointer-events-auto flex flex-col items-center gap-1">
               <div
                 aria-live="polite"
                 className="flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]"
@@ -673,16 +687,19 @@ export function ContactsDirectoryPage() {
                   </span>
                 </div>
                 <span aria-hidden className="mx-0.5 h-3.5 w-px bg-divider-regular" />
-                <Button
-                  variant="ghost"
-                  tone="destructive"
-                  className="gap-0.5 px-3"
-                  loading={removeContacts.isPending}
-                  onClick={removeSelectedContacts}
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      tone="destructive"
+                      className="gap-0.5 px-3"
+                      loading={removeContacts.isPending}
+                    />
+                  }
                 >
                   <span aria-hidden className="i-ri-delete-bin-line size-4" />
                   {t(($) => $['directory.removeSelected'])}
-                </Button>
+                </AlertDialogTrigger>
                 <Button
                   variant="ghost"
                   className="px-3"
@@ -695,10 +712,33 @@ export function ContactsDirectoryPage() {
                   {t(($) => $['directory.cancelSelection'])}
                 </Button>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $['directory.removalTitle'])}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['directory.removalDescription'])}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {removalError && (
+            <AlertDialogBody>
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {t(($) => $['directory.removalFailed'])}
+              </p>
+            </AlertDialogBody>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={removeContacts.isPending}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={removeContacts.isPending} onClick={confirmRemoval}>
+              {t(($) => $['directory.removeSelected'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <ExternalContactDialog
         key={editingContact?.id ?? 'create-external-contact'}
         contact={editingContact ?? undefined}

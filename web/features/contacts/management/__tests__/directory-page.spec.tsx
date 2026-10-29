@@ -73,6 +73,17 @@ async function findLoadedDetails(content: string) {
   return screen.getByRole('complementary', { name: 'contacts.details.title' })
 }
 
+async function confirmContactRemoval(user: ReturnType<typeof userEvent.setup>) {
+  const dialog = await screen.findByRole('alertdialog', {
+    name: 'contacts.directory.removalTitle',
+  })
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: 'contacts.directory.removeSelected',
+    }),
+  )
+}
+
 describe('ContactsDirectoryPage', () => {
   it('waits for capability data without querying contacts or clearing an EE Platform URL', () => {
     const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
@@ -356,6 +367,115 @@ describe('ContactsDirectoryPage', () => {
     expect(await screen.findAllByText('Courtney Cooper')).toHaveLength(2)
   })
 
+  it.each(['details menu', 'selection toolbar'])(
+    'requires confirmation and preserves contacts when canceling removal from the %s',
+    async (entry) => {
+      const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+      const repository = createContactsMockRepository({ scenario })
+      const removeContacts = vi.spyOn(repository, 'removeContacts')
+      const user = userEvent.setup()
+      renderDirectory(scenario, '', repository)
+      await screen.findByText('Courtney Henry')
+      const openConfirmation = async () => {
+        if (entry === 'selection toolbar') {
+          await user.click(
+            screen.getByRole('button', { name: 'contacts.directory.removeSelected' }),
+          )
+        } else {
+          const details = await findLoadedDetails('Courtney Henry')
+          await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
+          await user.click(screen.getByRole('menuitem', { name: 'contacts.details.remove' }))
+        }
+      }
+      if (entry === 'selection toolbar')
+        await user.click(screen.getByRole('checkbox', { name: /Courtney Henry/ }))
+      else await user.click(screen.getByRole('button', { name: /Courtney Henry/ }))
+
+      await openConfirmation()
+      expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+        'contacts.directory.removalDescription',
+      )
+      expect(removeContacts).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(removeContacts).not.toHaveBeenCalled()
+      expect(screen.getAllByText('Courtney Henry').length).toBeGreaterThan(0)
+      if (entry === 'selection toolbar')
+        expect(screen.getByRole('checkbox', { name: /Courtney Henry/ })).toBeChecked()
+      await openConfirmation()
+      await confirmContactRemoval(user)
+
+      await waitFor(() => expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument())
+      expect(removeContacts).toHaveBeenCalledExactlyOnceWith({ contactIds: ['contact-external'] })
+    },
+  )
+
+  it('keeps the confirmation open for retry after a thrown removal failure', async () => {
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    const repository = createContactsMockRepository({ scenario })
+    const remove = repository.removeContacts.bind(repository)
+    const removeContacts = vi
+      .spyOn(repository, 'removeContacts')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockImplementation(remove)
+    const user = userEvent.setup()
+    renderDirectory(scenario, '', repository)
+    await screen.findByText('Courtney Henry')
+    await user.click(screen.getByRole('checkbox', { name: /Courtney Henry/ }))
+    await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+    await confirmContactRemoval(user)
+
+    const dialog = screen.getByRole('alertdialog')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'contacts.directory.removalFailed',
+    )
+    expect(screen.getAllByText('Courtney Henry').length).toBeGreaterThan(0)
+    await user.click(
+      within(dialog).getByRole('button', { name: 'contacts.directory.removeSelected' }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument()
+    expect(removeContacts).toHaveBeenCalledTimes(2)
+  })
+
+  it('prevents duplicate removal and dismissal while the confirmation is submitting', async () => {
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    const repository = createContactsMockRepository({ scenario })
+    const remove = repository.removeContacts.bind(repository)
+    let release = () => {}
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const removeContacts = vi
+      .spyOn(repository, 'removeContacts')
+      .mockImplementation(async (command) => {
+        await pending
+        return remove(command)
+      })
+    const user = userEvent.setup()
+    renderDirectory(scenario, '', repository)
+    await screen.findByText('Courtney Henry')
+    await user.click(screen.getByRole('checkbox', { name: /Courtney Henry/ }))
+    await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+    const dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', {
+      name: 'contacts.directory.removeSelected',
+    })
+    await user.click(confirm)
+
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.click(confirm)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(removeContacts).toHaveBeenCalledTimes(1)
+    await act(async () => release())
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument()
+  })
+
   it('removes a non-workspace contact from the details action menu', async () => {
     const user = userEvent.setup()
     renderDirectory(
@@ -366,6 +486,7 @@ describe('ContactsDirectoryPage', () => {
 
     await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'contacts.details.remove' }))
+    await confirmContactRemoval(user)
 
     await waitFor(() => expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument())
     expect(
@@ -406,9 +527,11 @@ describe('ContactsDirectoryPage', () => {
     const details = await findLoadedDetails('Courtney Henry')
     await user.click(within(details).getByRole('button', { name: 'contacts.details.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'contacts.details.remove' }))
+    await confirmContactRemoval(user)
     await waitFor(() => expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument())
     await user.click(screen.getByRole('checkbox', { name: /Leslie Alexander/ }))
     await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+    await confirmContactRemoval(user)
 
     await waitFor(() => expect(removeContacts).toHaveBeenCalledTimes(2))
     expect(removeContacts).toHaveBeenNthCalledWith(1, { contactIds: ['contact-external'] })
@@ -658,6 +781,7 @@ describe('ContactsDirectoryPage', () => {
     expect(screen.getByText('2')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+    await confirmContactRemoval(user)
     await waitFor(() => expect(screen.queryByText('Leslie Alexander')).not.toBeInTheDocument())
     expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument()
     expect(screen.getByText('Ralph Edwards')).toBeInTheDocument()
@@ -671,6 +795,7 @@ describe('ContactsDirectoryPage', () => {
     const external = screen.getByRole('checkbox', { name: /Courtney Henry/ })
     await user.click(external)
     await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+    await confirmContactRemoval(user)
 
     expect(await screen.findByRole('alert')).toHaveTextContent('contacts.directory.removalFailed')
     expect(external).toBeChecked()

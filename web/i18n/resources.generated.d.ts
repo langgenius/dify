@@ -2077,7 +2077,9 @@ export default interface Resources {
     'directory.noResultsTitle': 'No matching contacts'
     'directory.openDetails': 'Open contact details for {{name}}'
     'directory.pageError': "More contacts couldn't be loaded. Retry this page."
+    'directory.removalDescription': 'The selected contacts will be permanently removed from this workspace. This action cannot be undone.'
     'directory.removalFailed': "The selected contacts couldn't be removed. Your selection has been kept."
+    'directory.removalTitle': 'Remove contacts?'
     'directory.removeSelected': 'Remove'
     'directory.search': 'Search name or email'
     'directory.selectAll': 'Select all removable contacts'
