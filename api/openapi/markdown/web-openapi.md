@@ -148,6 +148,24 @@ Stop a running completion message task.
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /connections/asset
+Read a plugin README asset for a published personal Connection requirement.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| file_name | query | Asset filename relative to the plugin's _assets directory | Yes | string |
+| plugin_unique_identifier | query | Exact plugin artifact from connection_requirements | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin asset | **application/octet-stream**: binary<br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /connections/configuration
 Read saved choices and whether authorization must be renewed, without checking credentials.
 
@@ -1443,6 +1461,12 @@ Invalid email or password.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AuthenticationFailedError |  | Invalid email or password. |  |
+
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
 
 #### BooleanResultResponse
 

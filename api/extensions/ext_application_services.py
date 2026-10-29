@@ -447,6 +447,7 @@ def build_application_services(
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
         plugin_readme=PluginService.fetch_plugin_readme,
+        plugin_asset=PluginService.extract_asset,
         connection_revisions=PluginConnectionRevisions(
             providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
             snapshots=EndUserConnectionRepository(session_factory=database_client),

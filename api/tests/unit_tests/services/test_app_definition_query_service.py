@@ -27,6 +27,7 @@ def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
         AppDefinitionQueryService(
             definitions=definitions,
             plugin_readme=lambda *_args: "# Plugin documentation",
+            plugin_asset=lambda *_args: b"",
             connection_revisions=revisions,
             builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
         ),
