@@ -108,14 +108,21 @@ def test_describe_passes_admitted_scope_and_projects_response(
 
 
 @pytest.mark.parametrize(
-    ("mode", "expected"),
-    [(AppMode.WORKFLOW, "token"), (AppMode.ADVANCED_CHAT, "token"), (AppMode.CHAT, None)],
+    ("mode", "query", "expected"),
+    [
+        (AppMode.WORKFLOW, {"fields": "info"}, "token"),
+        (AppMode.ADVANCED_CHAT, {"fields": "info"}, "token"),
+        (AppMode.CHAT, {"fields": "info"}, None),
+        (AppMode.WORKFLOW, {}, "token"),
+    ],
+    ids=["workflow", "advanced_chat", "chat", "workflow_all_fields"],
 )
 def test_describe_returns_the_draft_hash_of_a_graph_app(
     app: Flask,
     app_query_services: ControllerTestServices,
     monkeypatch: pytest.MonkeyPatch,
     mode: AppMode,
+    query: dict[str, str],
     expected: str | None,
 ) -> None:
     summary = AppSummary("app-id", "workspace-id", "App", "", mode, "normal", None, None)
@@ -127,7 +134,7 @@ def test_describe_returns_the_draft_hash_of_a_graph_app(
             AppDescribeApi(),
             context,
             "app-id",
-            query=_app_discovery_AppDescribeQuery.model_validate({"fields": "info"}),
+            query=_app_discovery_AppDescribeQuery.model_validate(query),
         )
     assert result.info is not None
     assert result.info.draft_hash == expected
