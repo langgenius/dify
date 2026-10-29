@@ -243,8 +243,11 @@ def convert_legacy_human_input_node_data(
 
     if email_template is None:
         # Runtime requires a Request URL even for initiator-only forms.
-        subject = "Human input required"
-        body = "Please complete the form to continue the workflow.\n\n{{#url#}}"
+        subject = "Action required"
+        body = (
+            "A request is waiting for your review. Please review the details and submit your decision to continue. "
+            "Review and respond: {{#url#}}"
+        )
     else:
         subject, body = email_template
 

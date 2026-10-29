@@ -112,8 +112,11 @@ def test_complete_canonical_v1_shared_fields_convert_to_typed_v2() -> None:
         "retry_config": {"retry_enabled": True, "max_retries": 2, "retry_interval": 1000},
         "recipients_spec": [{"type": "initiator"}],
         "message_template": {
-            "subject": "Human input required",
-            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}",
+            "subject": "Action required",
+            "body": (
+                "A request is waiting for your review. Please review the details and submit your decision to continue. "
+                "Review and respond: {{#url#}}"
+            ),
         },
         "debug_mode": {"enabled": False, "channels": []},
         "form_content": "Decision: {{#$output.reason#}}",
@@ -542,8 +545,11 @@ def test_shared_fields_input_immutability_and_repeated_conversion_are_preserved(
         "version": "2",
         "recipients_spec": [{"type": "initiator"}],
         "message_template": {
-            "subject": "Human input required",
-            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}",
+            "subject": "Action required",
+            "body": (
+                "A request is waiting for your review. Please review the details and submit your decision to continue. "
+                "Review and respond: {{#url#}}"
+            ),
         },
         "debug_mode": {"enabled": False, "channels": []},
     }
