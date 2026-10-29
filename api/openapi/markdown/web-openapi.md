@@ -46,7 +46,7 @@ Create a chat message for conversational applications.
 | 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -89,6 +89,7 @@ Create a completion message for text generation applications.
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -813,6 +814,7 @@ Generate a new completion similar to an existing message (completion apps only).
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -834,6 +836,7 @@ Get suggested follow-up questions after a message (chat apps only).
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found or Conversation Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -854,7 +857,7 @@ Retrieve the metadata for a specific app.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Every Passport transfers all Connections, files, conversations and personal state atomically. Pending execution acceptance must finish starting before migration. All unfinished Guest runs must complete or be cancelled before migration. Success includes the App code, Account App Passport and both transferred resource counts. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Every Passport transfers all Connections, files, conversations and personal state atomically. Pending execution acceptance must finish starting before migration. All unfinished Guest runs must complete or be cancelled before migration. Concurrent admission or migration for the same identity reports end_user_busy without waiting. Success includes the App code, Account App Passport and both transferred resource counts. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -1196,7 +1199,7 @@ Check if user has permission to access a web application.
 ### [POST] /workflows/run
 **Run workflow**
 
-Execute a workflow with provided inputs and files.
+Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Identity contention returns 409 end_user_busy; resources changed since preparation return 409 webapp_resources_changed. Refresh and retry.
 
 #### Request Body
 
@@ -1213,7 +1216,7 @@ Execute a workflow with provided inputs and files.
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -1486,7 +1489,7 @@ Completion request failed.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_login_required", "migration_run_in_progress", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_login_required"`, `"migration_run_in_progress"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_busy", "end_user_login_required", "migration_run_in_progress", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_busy"`, `"end_user_login_required"`, `"migration_run_in_progress"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
@@ -1746,6 +1749,14 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmailSendIpLimitError |  | Too many emails have been sent from this IP address recently. Please try again later. |  |
+
+#### EndUserBusyError
+
+This Web App identity is being updated. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndUserBusyError |  | This Web App identity is being updated. Please retry. |  |
 
 #### EndUserConnectionCreatePayload
 
@@ -2924,6 +2935,14 @@ Web App login is temporarily unavailable. Please retry.
 | show_workflow_steps | boolean |  | No |
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### WebappResourcesChangedError
+
+Web App resources changed before execution. Refresh and retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebappResourcesChangedError |  | Web App resources changed before execution. Refresh and retry. |  |
 
 #### WorkflowRunPayload
 

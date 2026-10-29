@@ -176,6 +176,7 @@ export const zConnectionClaimErrorResponse = z.object({
     'app_not_found',
     'connection_claim_unavailable',
     'connection_conflict',
+    'end_user_busy',
     'end_user_login_required',
     'migration_run_in_progress',
     'unauthorized',
@@ -694,6 +695,18 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
   z.object({
     code: z.literal('email_send_ip_limit'),
     status: z.literal(429),
+  }),
+)
+
+/**
+ * EndUserBusyError
+ *
+ * This Web App identity is being updated. Please retry.
+ */
+export const zEndUserBusyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_busy'),
+    status: z.literal(409),
   }),
 )
 
@@ -2371,6 +2384,18 @@ export const zHumanInputFormDefinitionResponse = z.object({
   site: zWebAppSiteResponse.nullish(),
   user_actions: z.array(zUserActionConfig),
 })
+
+/**
+ * WebappResourcesChangedError
+ *
+ * Web App resources changed before execution. Refresh and retry.
+ */
+export const zWebappResourcesChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('webapp_resources_changed'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * WorkflowRunPayload

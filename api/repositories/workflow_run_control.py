@@ -6,15 +6,7 @@ from sqlalchemy.orm import Session
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from libs.datetime_utils import ensure_naive_utc
-from models.enums import CreatorUserRole
-from models.model import App
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
-
-
-def lock_end_user_run_app(session: Session, run: WorkflowRun) -> None:
-    """Serialize durable EndUser run transitions with whole-Passport migration."""
-    if run.created_by_role == CreatorUserRole.END_USER:
-        session.scalar(select(App.id).where(App.id == run.app_id, App.tenant_id == run.tenant_id).with_for_update())
 
 
 def get_stopped_workflow_run(

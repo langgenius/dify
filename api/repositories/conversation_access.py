@@ -7,6 +7,7 @@ from models.account import Account
 from models.enums import AppStatus, ConversationFromSource, CreatorUserRole
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import WorkflowRun
+from repositories.end_user_execution_lock import lock_end_user
 
 
 class ConversationAccessDeniedError(LookupError):
@@ -65,22 +66,14 @@ def message_owner_scope(app_id: str, user: Account | EndUser | None) -> sa.Colum
 
 def lock_web_message_acceptance(
     session: Session, *, tenant_id: str, app_id: str, end_user_id: str, conversation_id: str | None
-) -> None:
+) -> EndUser:
     """Serialize acceptance with migration before creating a message, without provider I/O."""
     app = session.scalar(
-        sa.select(App.id)
-        .where(App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL, App.enable_site.is_(True))
-        .with_for_update()
-    )
-    actor = session.scalar(
-        sa.select(EndUser)
-        .where(
-            EndUser.id == end_user_id,
-            EndUser.app_id == app_id,
-            EndUser.tenant_id == tenant_id,
+        sa.select(App.id).where(
+            App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL, App.enable_site.is_(True)
         )
-        .with_for_update()
     )
+    actor = lock_end_user(session, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, exclusive=False)
     if app is None or actor is None:
         raise ConversationAccessDeniedError("Conversation ownership changed")
     if (
@@ -93,6 +86,7 @@ def lock_web_message_acceptance(
         is None
     ):
         raise ConversationAccessDeniedError("Conversation ownership changed")
+    return actor
 
 
 def may_read_conversation_run(

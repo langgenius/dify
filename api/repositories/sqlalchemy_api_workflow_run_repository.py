@@ -60,7 +60,6 @@ from libs.time_parser import get_time_threshold
 from models import Message
 from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
-from models.model import App
 from models.workflow import (
     WorkflowAppLog,
     WorkflowArchiveLog,
@@ -1429,8 +1428,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             .with_for_update(of=WorkflowRun)
         )
         with self._session_maker(expire_on_commit=False) as session, session.begin():
-            if owner is not None and owner[0] == CreatorUserRole.END_USER:
-                session.scalar(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
             workflow_run = session.scalar(stmt)
             if workflow_run is None:
                 return None

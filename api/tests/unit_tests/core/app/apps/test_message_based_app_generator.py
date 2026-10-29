@@ -193,15 +193,19 @@ class TestMessageBasedAppGeneratorExtras:
         assert generator._get_conversation_introduction(entity) == "Hello {name}"
 
 
-def test_accepted_chat_keeps_only_its_file_snapshot_across_owner_transfer(sqlite_session: Session) -> None:
+def test_accepted_chat_keeps_only_its_file_snapshot_across_owner_transfer(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from sqlalchemy import update
 
+    from configs import dify_config
     from core.app.entities.app_invoke_entities import UserFrom
     from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
     from models.enums import CreatorUserRole
     from models.model import UploadFile
     from tests.helpers.unit.model_factories import make_upload_file
 
+    monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", True)
     sqlite_session.add(make_app(app_id="app-id", tenant_id="tenant-id"))
     sqlite_session.add(
         EndUser(id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session")

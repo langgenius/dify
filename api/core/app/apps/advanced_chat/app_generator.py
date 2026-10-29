@@ -607,7 +607,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 },
             )
 
-            worker_thread.start()
+            with self._web_workflow_launch(
+                application_generate_entity,
+                workflow=workflow,
+                user=user,
+                conversation_id=conversation.id,
+                resume=graph_runtime_state is not None,
+            ):
+                worker_thread.start()
 
             # Capture the scalar fields needed by the response pipeline before
             # releasing the request-scoped SQLAlchemy session.
@@ -670,7 +677,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
 
-        with preserve_flask_contexts(flask_app, context_vars=context):
+        with (
+            preserve_flask_contexts(flask_app, context_vars=context),
+            self._web_workflow_worker(application_generate_entity),
+        ):
             # get conversation and message
             conversation = self._get_conversation(conversation_id)
             message = self._get_message(message_id)

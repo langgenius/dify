@@ -170,6 +170,7 @@ export type ConnectionClaimErrorResponse = {
     | 'app_not_found'
     | 'connection_claim_unavailable'
     | 'connection_conflict'
+    | 'end_user_busy'
     | 'end_user_login_required'
     | 'migration_run_in_progress'
     | 'unauthorized'
@@ -358,6 +359,11 @@ export type EmailPasswordResetLimitError = ErrorResponse & {
 export type EmailSendIpLimitError = ErrorResponse & {
   code: 'email_send_ip_limit'
   status: 429
+}
+
+export type EndUserBusyError = ErrorResponse & {
+  code: 'end_user_busy'
+  status: 409
 }
 
 export type EndUserConnectionCreatePayload = {
@@ -1557,6 +1563,11 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type WebappResourcesChangedError = ErrorResponse & {
+  code: 'webapp_resources_changed'
+  status: 409
+}
+
 export type WorkflowRunPayload = {
   connection_revision?: string | null
   connections?: {
@@ -1698,6 +1709,8 @@ export type PostChatMessagesErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
+    | EndUserBusyError
+    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
@@ -1758,6 +1771,7 @@ export type PostCompletionMessagesErrors = {
     | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
+  409: EndUserBusyError | WebappResourcesChangedError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2638,6 +2652,7 @@ export type GetMessagesByMessageIdMoreLikeThisErrors = {
   401: ErrorResponse
   403: AppMoreLikeThisDisabledError | ErrorResponse
   404: ErrorResponse
+  409: EndUserBusyError | WebappResourcesChangedError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2672,6 +2687,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
   404: ErrorResponse
+  409: EndUserBusyError | WebappResourcesChangedError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -3141,6 +3157,8 @@ export type PostWorkflowsRunErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
+    | EndUserBusyError
+    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

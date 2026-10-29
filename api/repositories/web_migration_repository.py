@@ -22,6 +22,7 @@ from models.tools import ToolFile
 from models.web import PinnedConversation, SavedMessage
 from models.workflow import WorkflowRun
 from repositories.end_user_connection_repository import EndUserConnectionRepository
+from repositories.end_user_execution_lock import lock_end_user, translate_end_user_lock_errors
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionIdentityError
 from services.web_migration_service import GuestMigrationSource, MigrationCounts, MigrationRunInProgressError
@@ -127,18 +128,37 @@ class WebMigrationRepository:
         if session.scalar(sa.select(active)):
             raise MigrationRunInProgressError()
 
+    @translate_end_user_lock_errors()
     def preflight_guest(self, source: GuestMigrationSource) -> None:
-        with self._sessions() as session:
+        with self._sessions.begin() as session:
+            original = lock_end_user(
+                session,
+                tenant_id=source.context.tenant_id,
+                app_id=source.context.app_id,
+                end_user_id=source.context.end_user_id,
+                exclusive=True,
+            )
+            if original is None or original.account_id is not None:
+                raise ConnectionIdentityError()
             self._require_idle_runs(session, source.context)
 
+    @translate_end_user_lock_errors()
     def claim_guest(self, source: GuestMigrationSource, *, account_end_user_id: str) -> MigrationCounts:
         guest = source.context
         if guest.account_id is not None:
             raise ConnectionIdentityError()
         with self._sessions.begin() as session:
+            original = lock_end_user(
+                session,
+                tenant_id=guest.tenant_id,
+                app_id=guest.app_id,
+                end_user_id=guest.end_user_id,
+                exclusive=True,
+            )
+            if original is None or original.type != EndUserType.BROWSER or original.account_id is not None:
+                raise ConnectionIdentityError()
             app = session.scalar(
-                sa.select(App)
-                .where(
+                sa.select(App).where(
                     App.id == guest.app_id,
                     App.mode.in_(_MIGRATION_APP_MODES),
                     App.tenant_id == guest.tenant_id,
@@ -146,7 +166,6 @@ class WebMigrationRepository:
                     App.enable_site.is_(True),
                     published_app_filter(),
                 )
-                .with_for_update()
             )
             if (
                 app is None
@@ -158,29 +177,14 @@ class WebMigrationRepository:
                 is None
             ):
                 raise ConnectionIdentityError()
-            original = session.scalar(
-                sa.select(EndUser)
-                .where(
-                    EndUser.id == guest.end_user_id,
-                    EndUser.tenant_id == guest.tenant_id,
-                    EndUser.app_id == app.id,
-                    EndUser.type == EndUserType.BROWSER,
-                    EndUser.account_id.is_(None),
-                )
-                .with_for_update()
+            target = lock_end_user(
+                session,
+                tenant_id=guest.tenant_id,
+                app_id=app.id,
+                end_user_id=account_end_user_id,
+                exclusive=False,
             )
-            target = session.scalar(
-                sa.select(EndUser)
-                .where(
-                    EndUser.id == account_end_user_id,
-                    EndUser.tenant_id == guest.tenant_id,
-                    EndUser.app_id == app.id,
-                    EndUser.type == EndUserType.BROWSER,
-                    EndUser.account_id.is_not(None),
-                )
-                .with_for_update()
-            )
-            if original is None or target is None or target.account_id is None:
+            if target is None or target.type != EndUserType.BROWSER or target.account_id is None:
                 raise ConnectionIdentityError()
             if (
                 session.scalar(
@@ -189,7 +193,7 @@ class WebMigrationRepository:
                         Account.id == target.account_id,
                         Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
                     )
-                    .with_for_update()
+                    .with_for_update(read=True, nowait=True)
                 )
                 is None
             ):

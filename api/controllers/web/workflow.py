@@ -23,11 +23,13 @@ from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
+    EndUserBusyHTTPError,
     NotWorkflowAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
+    WebExecutionResourcesChangedHTTPError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
@@ -41,6 +43,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from models.model import App, AppMode, EndUser
+from repositories.entities.web_execution import EndUserBusyError, WebExecutionResourcesChangedError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.end_user_connections.errors import ConnectionError
@@ -74,6 +77,8 @@ class WorkflowRunApi(WebApiResource):
         ConnectionRequiredHTTPError,
         ConnectionSecretUnavailableHTTPError,
         ConnectionRevisionChangedHTTPError,
+        EndUserBusyHTTPError,
+        WebExecutionResourcesChangedHTTPError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
         NotWorkflowAppError,
@@ -83,7 +88,14 @@ class WorkflowRunApi(WebApiResource):
         TriggerWorkflowServiceModeUnavailableError,
     )
     @web_ns.doc("Run Workflow")
-    @web_ns.doc(description="Execute a workflow with provided inputs and files.")
+    @web_ns.doc(
+        description=(
+            "Execute a workflow with provided inputs and files. With Account Passport enabled, "
+            "current resource ownership "
+            "is rechecked and the Run is registered before execution. Identity contention returns 409 end_user_busy; "
+            "resources changed since preparation return 409 webapp_resources_changed. Refresh and retry."
+        )
+    )
     @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
     @web_ns.doc(
         responses={
@@ -120,6 +132,10 @@ class WorkflowRunApi(WebApiResource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except EndUserBusyError as error:
+            raise EndUserBusyHTTPError() from error
+        except WebExecutionResourcesChangedError as error:
+            raise WebExecutionResourcesChangedHTTPError() from error
         except ConnectionError as error:
             raise_connection_error(error)
         except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:

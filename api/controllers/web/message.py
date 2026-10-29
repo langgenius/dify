@@ -16,11 +16,13 @@ from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
     CompletionRequestError,
+    EndUserBusyHTTPError,
     NotChatAppError,
     NotCompletionAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    WebExecutionResourcesChangedHTTPError,
 )
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -33,6 +35,7 @@ from libs import helper
 from libs.external_api import error_responses
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
+from repositories.entities.web_execution import EndUserBusyError, WebExecutionResourcesChangedError
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -155,6 +158,8 @@ class MessageFeedbackApi(WebApiResource):
 class MessageMoreLikeThisApi(WebApiResource):
     @error_responses(
         AppMoreLikeThisDisabledError,
+        EndUserBusyHTTPError,
+        WebExecutionResourcesChangedHTTPError,
         CompletionRequestError,
         NotCompletionAppError,
         ProviderModelCurrentlyNotSupportError,
@@ -206,6 +211,10 @@ class MessageMoreLikeThisApi(WebApiResource):
             return helper.compact_generate_response(response)
         except MessageNotExistsError as caught_error:
             raise NotFound("Message Not Exists.") from caught_error
+        except EndUserBusyError as error:
+            raise EndUserBusyHTTPError() from error
+        except WebExecutionResourcesChangedError as error:
+            raise WebExecutionResourcesChangedHTTPError() from error
         except MoreLikeThisDisabledError as caught_error:
             raise AppMoreLikeThisDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
@@ -227,6 +236,8 @@ class MessageMoreLikeThisApi(WebApiResource):
 class MessageSuggestedQuestionApi(WebApiResource):
     @error_responses(
         AppSuggestedQuestionsAfterAnswerDisabledError,
+        EndUserBusyHTTPError,
+        WebExecutionResourcesChangedHTTPError,
         CompletionRequestError,
         NotChatAppError,
         ProviderModelCurrentlyNotSupportError,

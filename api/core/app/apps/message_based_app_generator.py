@@ -7,6 +7,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -48,7 +49,11 @@ from models.enums import (
 )
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from repositories.conversation_access import ConversationAccessDeniedError, lock_web_message_acceptance
-from repositories.conversation_file_access import conversation_file_grants
+from repositories.conversation_file_access import (
+    conversation_file_grants,
+    execution_file_references,
+    require_execution_file_ownership,
+)
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -178,9 +183,12 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         created_new_conversation = conversation is None
         try:
-            if application_generate_entity.invoke_from == InvokeFrom.WEB_APP:
+            if (
+                application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            ):
                 try:
-                    lock_web_message_acceptance(
+                    actor = lock_web_message_acceptance(
                         session,
                         tenant_id=app_config.tenant_id,
                         app_id=app_config.app_id,
@@ -189,6 +197,18 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     )
                 except ConversationAccessDeniedError as exc:
                     raise ConversationNotExistsError() from exc
+                uploads, tools = execution_file_references(
+                    (application_generate_entity.inputs, application_generate_entity.files)
+                )
+                require_execution_file_ownership(
+                    session,
+                    tenant_id=app_config.tenant_id,
+                    app_id=app_config.app_id,
+                    user=actor,
+                    conversation_id=conversation.id if conversation is not None else None,
+                    upload_ids=uploads,
+                    tool_ids=tools,
+                )
             if not conversation:
                 conversation = Conversation(
                     app_id=app_config.app_id,
@@ -280,6 +300,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
             if (
                 application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
                 and not isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
                 and get_current_file_access_scope()
             ):

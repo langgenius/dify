@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
+from repositories.entities.web_execution import EndUserBusyError
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConflictError, ConnectionError, ConnectionIdentityError
 from services.web_identity_service import WebIdentityError, WebIdentityService
@@ -71,6 +72,7 @@ class ConnectionClaimFailure:
     index: int
     error: (
         ConnectionIdentityError
+        | EndUserBusyError
         | ConnectionConflictError
         | ConnectionClaimUnavailableError
         | WebPassportUnauthorizedError
@@ -154,6 +156,7 @@ class WebMigrationService:
                 self._passports.authorize_account(app_code=source.app_code, access_token=access_token)
                 self._store.preflight_guest(source)
             except (
+                EndUserBusyError,
                 ConnectionConflictError,
                 ConnectionIdentityError,
                 WebPassportUnauthorizedError,
@@ -185,6 +188,7 @@ class WebMigrationService:
                     )
                 )
             except (
+                EndUserBusyError,
                 ConnectionIdentityError,
                 ConnectionConflictError,
                 WebPassportUnauthorizedError,

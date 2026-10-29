@@ -19,6 +19,7 @@ from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.token import extract_webapp_access_token
+from repositories.entities.web_execution import EndUserBusyError
 from services.end_user_connections.errors import ConnectionConflictError, ConnectionIdentityError
 from services.web_migration_service import (
     ConnectionClaimFailure,
@@ -61,6 +62,7 @@ class ConnectionClaimErrorResponse(ResponseModel):
         "app_not_found",
         "connection_claim_unavailable",
         "connection_conflict",
+        "end_user_busy",
         "end_user_login_required",
         "migration_run_in_progress",
         "unauthorized",
@@ -101,6 +103,8 @@ class ConnectionClaimResponse(ResponseModel):
 
 def claim_error_response(failure: ConnectionClaimFailure) -> ConnectionClaimErrorResponse:
     error = failure.error
+    if isinstance(error, EndUserBusyError):
+        return ConnectionClaimErrorResponse(code="end_user_busy", status=409, message=str(error))
     if isinstance(error, ConnectionIdentityError):
         return ConnectionClaimErrorResponse(code="unauthorized", status=401, message=str(error))
     if isinstance(error, WebPassportNotFoundError):
@@ -150,6 +154,7 @@ class ConnectionClaimApi(Resource):
         "Every Passport transfers all Connections, files, conversations and personal state atomically. "
         "Pending execution acceptance must finish starting before migration. "
         "All unfinished Guest runs must complete or be cancelled before migration. "
+        "Concurrent admission or migration for the same identity reports end_user_busy without waiting. "
         "Success includes the App code, Account App Passport and both transferred resource counts. "
         "Retries transfer only resources still owned by the Guest; empty resource categories report zero. "
         "New Guest resources are included. "
