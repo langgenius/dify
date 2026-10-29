@@ -36,11 +36,6 @@ jobs:
               - '.github/workflows/lts-ci.yml'
             web:
               - 'web/**'
-              - 'packages/**'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - '.nvmrc'
               - '.github/workflows/lts-ci.yml'
               - '.github/workflows/web-tests.yml'
               - '.github/actions/setup-web/**'
