@@ -146,7 +146,7 @@ main() {
 
     if ! command -v pnpm &> /dev/null; then
         error "pnpm is required because this workspace publishes catalog: dependencies"
-        info "Install pnpm with Corepack: corepack enable"
+        info "Install the native pnpm 12 binary: npm install -g pnpm@12"
         exit 1
     fi
     PNPM_VERSION=$(pnpm -v)
