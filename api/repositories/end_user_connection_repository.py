@@ -227,6 +227,25 @@ class EndUserConnectionRepository:
             else EndUserConnection.end_user_id.is_(None),
         )
 
+    @classmethod
+    def _generate_connection_name(
+        cls,
+        session: Session,
+        context: WebConnectionContext,
+        provider: str,
+        credential_type: ConnectionCredentialType,
+    ) -> str:
+        """Generate under the caller's owner lock so concurrent creations see prior names."""
+        names = session.scalars(
+            sa.select(EndUserConnection.name).where(
+                EndUserConnection.tenant_id == context.tenant_id,
+                *cls._owner(context.owner),
+                EndUserConnection.provider == provider,
+                EndUserConnection.credential_type == credential_type,
+            )
+        ).all()
+        return generate_incremental_name(names, CredentialType(credential_type.value).get_name())
+
     @staticmethod
     def _require_context(session: Session, context: WebConnectionContext, *, lock: bool) -> App:
         stmt = (
@@ -701,15 +720,7 @@ class EndUserConnectionRepository:
             self._require_workflow_scope(session, context, app, workflow_id, None)
             owner = context.owner
             if not name:
-                names = session.scalars(
-                    sa.select(EndUserConnection.name).where(
-                        EndUserConnection.tenant_id == context.tenant_id,
-                        *self._owner(owner),
-                        EndUserConnection.provider == provider,
-                        EndUserConnection.credential_type == ConnectionCredentialType.API_KEY,
-                    )
-                ).all()
-                name = generate_incremental_name(names, CredentialType.API_KEY.get_name())
+                name = self._generate_connection_name(session, context, provider, ConnectionCredentialType.API_KEY)
             row = EndUserConnection(
                 tenant_id=context.tenant_id,
                 account_id=owner.account_id,
@@ -933,7 +944,7 @@ class EndUserConnectionRepository:
             ):
                 raise ConnectionReauthorizationRequiredError()
             if attempt.guard is None:
-                if attempt.target is None or attempt.name is None:
+                if attempt.target is None:
                     raise ConnectionConfigurationError()
                 if attempt.target_workflow_id is None:
                     raise ConnectionConfigurationError()
@@ -944,7 +955,10 @@ class EndUserConnectionRepository:
                     end_user_id=context.owner.end_user_id,
                     provider=attempt.provider,
                     credential_type=ConnectionCredentialType.OAUTH2,
-                    name=attempt.name,
+                    name=attempt.name
+                    or self._generate_connection_name(
+                        session, context, attempt.provider, ConnectionCredentialType.OAUTH2
+                    ),
                     encrypted_credentials=encrypted_credentials,
                     status=ConnectionCredentialStatus.CONNECTED,
                     oauth_client_source=client.source,

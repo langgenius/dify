@@ -85,8 +85,19 @@ def callback_query(response: TestResponse) -> str:
     return f"state={state}&code=provider-code"
 
 
-def test_cross_host_oauth_callback_returns_to_cookie_owner(client: FlaskClient, harness: OAuthHarness) -> None:
-    response = start(client, harness)
+@pytest.mark.parametrize("name", [None, "", "My calendar"])
+def test_cross_host_oauth_callback_returns_to_cookie_owner(
+    client: FlaskClient, harness: OAuthHarness, name: str | None
+) -> None:
+    payload = harness.command().model_dump(mode="json", exclude={"name"})
+    if name is not None:
+        payload["name"] = name
+    response = client.post(
+        "/api/connections/oauth/authorization-url",
+        base_url="https://web-api.example",
+        headers={"X-App-Code": harness.app_code},
+        json=payload,
+    )
     assert response.status_code == 200
     assert set(response.get_json()) == {"authorization_url"}
     cookie = response.headers["Set-Cookie"]
@@ -112,6 +123,9 @@ def test_cross_host_oauth_callback_returns_to_cookie_owner(client: FlaskClient, 
     assert "X-App-Passport" not in harness.handler.callback_headers
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 1
+        connection = session.scalar(sa.select(EndUserConnection))
+        assert connection is not None
+        assert connection.name == (name or "AUTH 1")
     replay = client.get(routed.location)
     assert replay.status_code == 400
     assert replay.get_json()["code"] == "connection_oauth_failed"
@@ -125,6 +139,12 @@ def test_callback_requires_initiating_browser_cookie(client: FlaskClient, harnes
     assert denied.status_code == 400
     assert denied.get_json()["code"] == "connection_oauth_failed"
     assert harness.handler.exchanges == 0
+
+
+def test_oauth_schema_documents_optional_name() -> None:
+    schema = connection_oauth.EndUserConnectionOAuthPayload.model_json_schema()
+    assert "name" not in schema["required"]
+    assert schema["properties"]["name"]["anyOf"] == [{"maxLength": 100, "type": "string"}, {"type": "null"}]
 
 
 def test_invalid_oauth_payload_does_not_echo_input(client: FlaskClient, harness: OAuthHarness) -> None:

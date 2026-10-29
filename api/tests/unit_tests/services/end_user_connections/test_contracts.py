@@ -71,6 +71,33 @@ def test_create_name_respects_storage_limits(name: object) -> None:
         CreateApiKeyConnectionInput.model_validate({**create_payload(), "name": name})
 
 
+def test_oauth_name_can_be_omitted() -> None:
+    assert (
+        StartConnectionOAuthInput.model_validate(
+            {"connection_revision": create_payload()["connection_revision"], "node_id": "tool-1"}
+        ).name
+        is None
+    )
+
+
+@pytest.mark.parametrize("name", [None, "", "Personal account"])
+def test_oauth_name_can_be_empty_or_explicit(name: str | None) -> None:
+    assert (
+        StartConnectionOAuthInput.model_validate(
+            {"connection_revision": create_payload()["connection_revision"], "node_id": "tool-1", "name": name}
+        ).name
+        == name
+    )
+
+
+@pytest.mark.parametrize("name", ["n" * 101, 42])
+def test_oauth_name_respects_storage_limits(name: object) -> None:
+    with pytest.raises(ValidationError):
+        StartConnectionOAuthInput.model_validate(
+            {"connection_revision": create_payload()["connection_revision"], "node_id": "tool-1", "name": name}
+        )
+
+
 @pytest.mark.parametrize("node_id", ["", "n" * 256])
 def test_create_node_reference_respects_storage_limits(node_id: str) -> None:
     with pytest.raises(ValidationError):

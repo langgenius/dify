@@ -334,7 +334,7 @@ export const zEndUserConnectionListQuery = z.object({
  */
 export const zEndUserConnectionOAuthPayload = z.object({
   connection_revision: z.uuid(),
-  name: z.string().min(1).max(100),
+  name: z.string().max(100).nullish(),
   node_id: z.string().min(1).max(255),
 })
 

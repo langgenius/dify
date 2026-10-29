@@ -380,7 +380,7 @@ export type EndUserConnectionListResponse = {
 
 export type EndUserConnectionOAuthPayload = {
   connection_revision: string
-  name: string
+  name?: string | null
   node_id: string
 }
 
