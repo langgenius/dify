@@ -16,6 +16,8 @@
   "settings.membersRequired": "ເລືອກສະມາຊິກທີມຢ່າງໜ້ອຍໜຶ່ງຄົນ.",
   "settings.nameRequired": "ຕ້ອງລະບຸຊື່ຖານຄວາມຮູ້ Agent.",
   "settings.pageDescription": "ຈັດການຂໍ້ມູນພື້ນຖານ, ການເຂົ້າເຖິງ API ແລະ ການຄົ້ນຄືນ.",
+  "settings.reasoningChangeConfirm": "ຢືນຢັນການປ່ຽນແປງ",
+  "settings.reasoningChangeWarning": "ການປ່ຽນໂມເດວການໃຫ້ເຫດຜົນຂອງລະບົບຈະປະມວນຜົນເອກະສານທີ່ສ້າງດັດຊະນີແລ້ວຄືນໃໝ່ ແລະ ອັບເດດດັດຊະນີການຄົ້ນຄືນຂອງເອກະສານ. ຂັ້ນຕອນນີ້ໃຊ້ເວລາ ແລະ ມີຄ່າໃຊ້ຈ່າຍເພີ່ມເຕີມໃນການໃຊ້ໂມເດວ.",
   "settings.reloadLatest": "ໂຫຼດການຕັ້ງຄ່າຫຼ້າສຸດ",
   "settings.rerankModelRequired": "ເລືອກໂມເດວຈັດອັນດັບໃໝ່.",
   "settings.retrievalDepth": "ຄວາມເລິກຂອງການຄົ້ນຄືນ",

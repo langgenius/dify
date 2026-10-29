@@ -573,6 +573,37 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+Delete a logical document and its historical revisions. Use the logical document ID and its rowVersion as expectedRevision; the accepted deletion job runs asynchronously.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSLogicalDocumentDeletePayload](#knowledgefslogicaldocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base logical document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
 
@@ -2370,11 +2401,12 @@ Retrieve variables from a specific conversation.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successfully retrieved conversation variables. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 200 | Conversation variables retrieved successfully. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. `conversation_variable_not_found`: Cursor variable is outside the current list. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ConversationVariableNotFoundError](#conversationvariablenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation variables query. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /conversations/{conversation_id}/variables/{variable_id}
@@ -2400,10 +2432,11 @@ Update the value of a specific conversation variable. The value must match the e
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully. | **application/json**: [ConversationVariableResponse](#conversationvariableresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. `conversation_variable_type_mismatch`: Value does not match the variable's expected type. `invalid_param`: Value violates variable constraints, including the size limit. | **application/json**: [ConversationVariableTypeMismatchError](#conversationvariabletypemismatcherror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. `conversation_variable_not_found`: Variable does not exist for this conversation. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ConversationVariableNotFoundError](#conversationvariablenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation variable update payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
@@ -4587,6 +4620,14 @@ The conversation was not found for this user and app.
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 
+#### ConversationVariableNotFoundError
+
+The conversation variable was not found for this conversation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationVariableNotFoundError |  | The conversation variable was not found for this conversation. |  |
+
 #### ConversationVariableResponse
 
 | Name | Type | Description | Required |
@@ -4599,18 +4640,26 @@ The conversation was not found for this user and app.
 | value | string |  | No |
 | value_type | string |  | Yes |
 
+#### ConversationVariableTypeMismatchError
+
+The new value does not match the conversation variable's type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationVariableTypeMismatchError |  | The new value does not match the conversation variable's type. |  |
+
 #### ConversationVariableUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
+| value | [JsonValue](#jsonvalue) | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariableUpdatePayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
-| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
+| value | [JsonValue](#jsonvalue) | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariablesQuery
 
@@ -6079,6 +6128,12 @@ The metadata content is incorrect. Please check and verify.
 | provider | string |  | Yes |
 | revision | integer |  | No |
 | vector_space_id | string |  | No |
+
+#### KnowledgeFSLogicalDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
 
 #### KnowledgeFSLogicalDocumentListResponse
 
