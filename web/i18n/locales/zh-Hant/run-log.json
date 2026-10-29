@@ -1,5 +1,5 @@
 {
-  "circularInvocationTip": "當前工作流中存在工具/節點的迴圈調用。",
+  "circularInvocationTip": "當前工作流中存在工具/節點的迴圈呼叫。",
   "detail": "詳情",
   "input": "輸入",
   "meta.executor": "執行人",
@@ -13,7 +13,7 @@
   "resultEmpty.link": "詳細資訊面板",
   "resultEmpty.tipLeft": "請到",
   "resultEmpty.tipRight": "查看它。",
-  "resultEmpty.title": "本運行僅輸出 JSON 格式，",
+  "resultEmpty.title": "本執行僅輸出 JSON 格式，",
   "resultPanel.status": "狀態",
   "resultPanel.time": "執行時間",
   "resultPanel.tokens": "總 token 數",
