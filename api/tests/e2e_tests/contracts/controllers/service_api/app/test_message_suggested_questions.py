@@ -18,6 +18,7 @@ from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.service_api.app.message import MessageSuggestedApi
 from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.plugin.plugin_service import PluginService
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -196,6 +197,7 @@ def harness(
         app_definitions=AppDefinitionQueryService(
             definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
             builtin_icon_url_prefix="",
+            plugin_readme=PluginService.fetch_plugin_readme,
             get_connection_requirements=get_tool_connection_requirements,
             connection_revisions=PluginConnectionRevisions(
                 providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),

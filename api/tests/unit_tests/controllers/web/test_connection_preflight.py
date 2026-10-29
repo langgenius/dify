@@ -52,9 +52,16 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
     monkeypatch.setattr(
         connection_preflight, "application_services", lambda: SimpleNamespace(end_user_connection_preflight=service)
     )
+
+    def plugin_readme(tenant_id: str, identifier: str, language: str) -> str:
+        assert tenant_id == harness.base.context.tenant_id
+        assert identifier == harness.providers.controller.plugin_unique_identifier
+        return f"# Plugin documentation ({language})"
+
     definitions = AppDefinitionQueryService(
         get_connection_requirements=get_tool_connection_requirements,
         definitions=AppDefinitionQueryRepository(session_factory=harness.base.sessions),
+        plugin_readme=plugin_readme,
         builtin_icon_url_prefix="",
         connection_revisions=PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository),
     )
@@ -94,6 +101,15 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
         }
     ]
     assert harness.base.auth.calls == []
+    readme = client.get(
+        "/api/connections/readme",
+        query_string={
+            "plugin_unique_identifier": parameters.get_json()["connection_requirements"][0]["plugin_unique_identifier"],
+            "language": "pt_BR",
+        },
+    )
+    assert readme.status_code == 200
+    assert readme.get_json() == {"readme": "# Plugin documentation (pt_BR)"}
     response = client.post("/api/connections/preflight", json={"connection_revision": version, "connections": {}})
     assert response.status_code == 200
     data = response.get_json()
@@ -115,6 +131,25 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
     assert "original-secret" not in response.get_data(as_text=True)
     assert "encrypted_credentials" not in response.get_data(as_text=True)
     assert "account_id" not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    ["vendor/other:1.0.0@" + "a" * 64, "vendor/calendar:0.0.1@" + "b" * 64],
+)
+def test_readme_rejects_plugins_outside_current_requirements(client: FlaskClient, identifier: str) -> None:
+    response = client.get("/api/connections/readme", query_string={"plugin_unique_identifier": identifier})
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "app_unavailable"
+
+
+def test_readme_defaults_to_console_language(client: FlaskClient) -> None:
+    requirement = client.get("/api/parameters").get_json()["connection_requirements"][0]
+    response = client.get(
+        "/api/connections/readme", query_string={"plugin_unique_identifier": requirement["plugin_unique_identifier"]}
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {"readme": "# Plugin documentation (en-US)"}
 
 
 @pytest.mark.parametrize(
@@ -255,6 +290,20 @@ def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revis
     assert {key: value for key, value in old_requirement.items() if key != "plugin_unique_identifier"} == {
         key: value for key, value in new_requirement.items() if key != "plugin_unique_identifier"
     }
+    assert (
+        client.get(
+            "/api/connections/readme",
+            query_string={"plugin_unique_identifier": old_requirement["plugin_unique_identifier"]},
+        ).status_code
+        == 400
+    )
+    assert (
+        client.get(
+            "/api/connections/readme",
+            query_string={"plugin_unique_identifier": new_requirement["plugin_unique_identifier"]},
+        ).status_code
+        == 200
+    )
     snapshot = harness.base.repository.get_revision(
         harness.base.context.tenant_id, harness.base.context.app_id, after["connection_revision"]
     )
