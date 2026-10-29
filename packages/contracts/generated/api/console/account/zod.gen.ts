@@ -26,43 +26,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * AccountAvatarPayload
- */
-export const zAccountAvatarPayload = z.object({
-  avatar: z.string(),
-})
-
-/**
- * AccountResponse
- */
-export const zAccountResponse = z.object({
-  avatar: z.string().nullish(),
-  avatar_url: z.string().nullable(),
-  created_at: z.int().nullish(),
-  email: z.string(),
-  id: z.string(),
-  interface_language: z.string().nullish(),
-  interface_theme: z.string().nullish(),
-  is_password_set: z.boolean(),
-  last_login_at: z.int().nullish(),
-  last_login_ip: z.string().nullish(),
-  name: z.string(),
-  timezone: z.string().nullish(),
-})
-
-/**
- * AccountNotFoundError
- *
- * Account not found.
- */
-export const zAccountNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('account_not_found'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ChangeEmailSendPayload
  */
 export const zChangeEmailSendPayload = z.object({
@@ -79,6 +42,18 @@ export const zSimpleResultDataResponse = z.object({
   data: z.string(),
   result: z.string(),
 })
+
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * InvalidEmailError
@@ -184,6 +159,24 @@ export const zEmailDomainSuspendedError = zErrorResponse.and(
 export const zChangeEmailResetPayload = z.object({
   new_email: z.string(),
   token: z.string(),
+})
+
+/**
+ * AccountResponse
+ */
+export const zAccountResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
 })
 
 /**
@@ -380,27 +373,6 @@ export const zMissingInvitationCodeError = zErrorResponse.and(
 )
 
 /**
- * AccountInterfaceLanguagePayload
- */
-export const zAccountInterfaceLanguagePayload = z.object({
-  interface_language: z.string(),
-})
-
-/**
- * AccountInterfaceThemePayload
- */
-export const zAccountInterfaceThemePayload = z.object({
-  interface_theme: z.enum(['dark', 'light']),
-})
-
-/**
- * AccountNamePayload
- */
-export const zAccountNamePayload = z.object({
-  name: z.string().min(3).max(30),
-})
-
-/**
  * AccountPasswordPayload
  */
 export const zAccountPasswordPayload = z.object({
@@ -447,13 +419,6 @@ export const zAccountProfilePatchPayload = z
   .strict()
 
 /**
- * AccountTimezonePayload
- */
-export const zAccountTimezonePayload = z.object({
-  timezone: z.string(),
-})
-
-/**
  * AccountIntegrateResponse
  */
 export const zAccountIntegrateResponse = z.object({
@@ -495,13 +460,6 @@ export const zGetAccountAvatarQuery = z.object({
  * Success
  */
 export const zGetAccountAvatarResponse = zAvatarUrlResponse
-
-export const zPostAccountAvatarBody = zAccountAvatarPayload
-
-/**
- * Success
- */
-export const zPostAccountAvatarResponse = zAccountResponse
 
 export const zPostAccountChangeEmailBody = zChangeEmailSendPayload
 
@@ -590,27 +548,6 @@ export const zPostAccountInitResponse = zSimpleResultResponse
  */
 export const zGetAccountIntegratesResponse = zAccountIntegrateListResponse
 
-export const zPostAccountInterfaceLanguageBody = zAccountInterfaceLanguagePayload
-
-/**
- * Success
- */
-export const zPostAccountInterfaceLanguageResponse = zAccountResponse
-
-export const zPostAccountInterfaceThemeBody = zAccountInterfaceThemePayload
-
-/**
- * Success
- */
-export const zPostAccountInterfaceThemeResponse = zAccountResponse
-
-export const zPostAccountNameBody = zAccountNamePayload
-
-/**
- * Success
- */
-export const zPostAccountNameResponse = zAccountResponse
-
 export const zPostAccountPasswordBody = zAccountPasswordPayload
 
 /**
@@ -629,10 +566,3 @@ export const zPatchAccountProfileBody = zAccountProfilePatchPayload
  * Success
  */
 export const zPatchAccountProfileResponse = zAccountResponse
-
-export const zPostAccountTimezoneBody = zAccountTimezonePayload
-
-/**
- * Success
- */
-export const zPostAccountTimezoneResponse = zAccountResponse
