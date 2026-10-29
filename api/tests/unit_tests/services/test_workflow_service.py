@@ -4132,13 +4132,16 @@ def test_convert_to_workflow_inherits_webapp_access(
         app_model_config: AppModelConfig,
         account_id: str,
         session: Session,
+        destination_app: App,
     ) -> Workflow:
         assert app_model_config.app_id == app_model.id
+        assert destination_app.id != app_model.id
+        assert destination_app.tenant_id == app_model.tenant_id
         if outcome == "conversion_error":
             raise ValueError("conversion failed")
         workflow = Workflow(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
+            tenant_id=destination_app.tenant_id,
+            app_id=destination_app.id,
             type=WorkflowType.CHAT if source_mode == AppMode.CHAT else WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             graph='{"nodes": [], "edges": []}',
