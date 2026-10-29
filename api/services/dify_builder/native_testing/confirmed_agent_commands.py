@@ -384,7 +384,7 @@ class ConfirmedAgentCommands:
                     update={
                         "status": "terminal",
                         "outcome": "cancelled",
-                        "native_status": "stopped",
+                        "native_status": receipt.native_status,
                         "can_resume": False,
                         "wait_reason": None,
                         "pending": (),
@@ -412,11 +412,12 @@ class ConfirmedAgentCommands:
                 validate_private_read(self.loader, ref)
                 if ConfirmedAgentCancellation(self).settle(ref=ref):
                     self._complete_builder(ref=ref)
+                    receipt = self.api.get(actor=actor, session_id=session_id, request_id=request_id)
                     return receipt.model_copy(
                         update={
                             "status": "terminal",
                             "outcome": "cancelled",
-                            "native_status": "stopped",
+                            "native_status": receipt.native_status,
                             "wait_reason": None,
                             "pending": (),
                         }
@@ -1251,6 +1252,27 @@ class ConfirmedAgentCommands:
         return True
 
     def finish_resume(self, *, ref, generation, dispatch_id):
+        from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+
+        with self.loader.session_factory() as session:
+            _, scope = self.loader._load(session, ref=ref, lock=False, settlement=True)
+            cancelled = scope.cancelled
+            if cancelled:
+                state = invocation_state(session, ref, self.actor.tenant_id)
+                source = session.scalar(
+                    owner_query(NativeDispatch, ref, self.actor.tenant_id).where(NativeDispatch.id == dispatch_id)
+                )
+                if source is None or source.generation != generation or state.generation != generation:
+                    raise BuilderExecutionPolicyError("native_dispatch_conflict")
+        if cancelled:
+            # Revocation forbids ordinary continuation settlement, but the real
+            # producer may still report its consumed child cancellation.
+            try:
+                if ConfirmedAgentCancellation(self).settle_terminal(ref=ref):
+                    self._complete_builder(ref=ref)
+            except Exception:
+                logger.warning("Confirmed Agent terminal cancellation observation unavailable")
+            return
         try:
             settled = self._settle_unconsumed_failure(ref=ref, generation=generation, dispatch_id=dispatch_id)
         except Exception:
@@ -1471,7 +1493,30 @@ def finish_confirmed_agent_resume(*, payload) -> None:
     try:
         commands.finish_resume(ref=dispatch.ref, generation=dispatch.generation, dispatch_id=dispatch.dispatch_id)
     except Exception:
-        commands.api.lifecycle._mark_unknown(ref=dispatch.ref, dispatch_id=dispatch.dispatch_id)
+        with commands.loader.session_factory() as session:
+            owned, scope = commands.loader._load(session, ref=dispatch.ref, lock=False, settlement=True)
+            state = invocation_state(session, dispatch.ref, owned.tenant_id)
+            source = session.scalar(
+                owner_query(NativeDispatch, dispatch.ref, owned.tenant_id).where(
+                    NativeDispatch.id == dispatch.dispatch_id,
+                )
+            )
+            revoked = scope.cancelled
+            current = source is not None and source.generation == state.generation == dispatch.generation
+        if revoked:
+            # Cancellation may commit after the callback's first authority read.
+            # A stale callback or unavailable observation cannot quarantine the
+            # revoked source; no execution authority survives this scope.
+            if current:
+                from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+
+                try:
+                    if ConfirmedAgentCancellation(commands).settle_terminal(ref=dispatch.ref):
+                        commands._complete_builder(ref=dispatch.ref)
+                except Exception:
+                    logger.warning("Confirmed Agent terminal cancellation observation unavailable")
+            return
+        commands.api.lifecycle._mark_unknown(ref=dispatch.ref, dispatch_id=dispatch.dispatch_id, skip_cancelled=True)
         raise
 
 
@@ -1513,6 +1558,29 @@ class ProfiledNativeTestCommands:
     ) -> int:
         service = self._service(actor=actor, session_id=session_id, request_id=request_id)
         lifecycle = service.api.lifecycle if isinstance(service, ConfirmedAgentCommands) else service.lifecycle
+        if isinstance(service, ConfirmedAgentCommands):
+            from services.dify_builder.native_testing.confirmed_agent_cancellation import ConfirmedAgentCancellation
+
+            # Observe a known revoked terminal producer before claim expiry can
+            # quarantine an otherwise settled cancellation after a lost callback.
+            # Already-unknown sources stay unknown; this never grants execution.
+            with self.sessions() as session:
+                revoked = session.scalar(
+                    select(NativeTestScope.request_id).where(
+                        NativeTestScope.request_id == request_id,
+                        NativeTestScope.tenant_id == actor.tenant_id,
+                        NativeTestScope.cancelled.is_(True),
+                    )
+                )
+            if revoked:
+                ref = service._root_ref(actor=actor, request_id=request_id)
+                settled = False
+                try:
+                    settled = ConfirmedAgentCancellation(service).settle_terminal(ref=ref)
+                except Exception:
+                    logger.warning("Confirmed Agent terminal cancellation observation unavailable")
+                if settled:
+                    service._complete_builder(ref=ref)
         reconciled = lifecycle.reconcile(limit=limit, request_id=request_id)
         if isinstance(service, ConfirmedAgentCommands):
             return reconciled + service.publish_pending(limit=limit, request_id=request_id)

@@ -23,12 +23,21 @@ from models.dify_builder import (
     DifyBuilderSessionCommit,
     DifyBuilderTestInput,
 )
-from models.dify_builder_native_tests import NativeEffectOperation, NativeInvocationState, NativeTestScope
+from models.dify_builder_native_tests import (
+    NativeDispatch,
+    NativeEffectDispatchClaim,
+    NativeEffectOperation,
+    NativeEffectOutcome,
+    NativeInvocationState,
+    NativeTestInvocation,
+    NativeTestScope,
+)
 from models.enums import CreatorUserRole
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import ExecutionEvidenceSummary, canonical_digest
 from runtime_contracts.builder.native.contracts import ID, NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome
+from services.agent.workflow_run_recovery import WorkflowAgentRunRecovery
 from services.dify_builder import session_lock
 from services.dify_builder.application.handlers_fix import append_card
 from services.dify_builder.application.verification import has_output_blocker, result_card
@@ -112,7 +121,14 @@ def _terminal_proof(sql, *, request, ref):
         and outcome.native_status == "stopped"
         and outcome.reason_code == "effect_denied"
     )
-    if not declined and (scope.cancelled or state.state != "completed" or outcome.status != "completed"):
+    cancelled = (
+        scope.cancelled
+        and state.state == "cancelled"
+        and outcome.status == "stopped"
+        and outcome.native_status == "failed"
+        and outcome.reason_code == "native_cancelled"
+    )
+    if not (declined or cancelled) and (scope.cancelled or state.state != "completed" or outcome.status != "completed"):
         return None
     if (
         outcome.ref != ref
@@ -140,7 +156,148 @@ def _terminal_proof(sql, *, request, ref):
     )
     if native is None or native.status != outcome.native_status:
         return None
+    if cancelled and cancelled_parent_proof(sql, request=request, ref=ref, allow_claimed=False) is None:
+        return None
     return outcome
+
+
+def cancelled_parent_proof(sql, *, request, ref, allow_claimed):
+    """SQL-only proof of the ordinary owner's consumed child cancellation.
+
+    The caller holds the request/scope lock when writing. A current claimed
+    source may close from this exact terminal producer; unknown sources and
+    unresolved physical effects never become cancellation acknowledgements.
+    """
+    states = sql.scalars(select(NativeInvocationState).where(NativeInvocationState.request_id == request.id)).all()
+    invocations = sql.scalars(select(NativeTestInvocation).where(NativeTestInvocation.request_id == request.id)).all()
+    scope = sql.get(NativeTestScope, request.id)
+    if (
+        len(states) != 1
+        or len(invocations) != 1
+        or scope is None
+        or scope.tenant_id != request.tenant_id
+        or not scope.cancelled
+    ):
+        return None
+    state, invocation = states[0], invocations[0]
+    if (
+        (state.tenant_id, state.invocation_id, state.parent_invocation_id)
+        != (request.tenant_id, ref.invocation_id, None)
+        or (state.app_id, state.workflow_id) != (request.app_id, request.workflow_id)
+        or (invocation.tenant_id, invocation.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or invocation.active
+        or state.state != "cancelled"
+        or not state.cancellation_key
+        or type(state.generation) is not int
+        or state.generation < 0
+        or state.generation != scope.generation
+    ):
+        return None
+    native = sql.scalar(
+        select(WorkflowRun)
+        .where(
+            WorkflowRun.id == _native_run_id(request),
+            WorkflowRun.tenant_id == request.tenant_id,
+            WorkflowRun.app_id == request.app_id,
+            WorkflowRun.workflow_id == request.workflow_id,
+            WorkflowRun.created_by == request.actor_id,
+            WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+            WorkflowRun.status == "failed",
+            WorkflowRun.finished_at.is_not(None),
+        )
+        .with_for_update()
+    )
+    if native is None:
+        return None
+    nodes = sql.scalars(
+        select(WorkflowNodeExecutionModel)
+        .where(
+            WorkflowNodeExecutionModel.workflow_run_id == native.id,
+            WorkflowNodeExecutionModel.tenant_id == request.tenant_id,
+            WorkflowNodeExecutionModel.app_id == request.app_id,
+            WorkflowNodeExecutionModel.workflow_id == request.workflow_id,
+            WorkflowNodeExecutionModel.created_by == request.actor_id,
+            WorkflowNodeExecutionModel.created_by_role == CreatorUserRole.ACCOUNT,
+            WorkflowNodeExecutionModel.node_type == "agent",
+        )
+        .with_for_update()
+    ).all()
+    failed = [node for node in nodes if node.status == "failed" and node.error == native.error]
+    if (
+        len(failed) != 1
+        or not native.error
+        or any(node is not failed[0] and node.status not in {"succeeded", "skipped"} for node in nodes)
+    ):
+        return None
+    node = failed[0]
+    child = node.execution_metadata_dict.get("agent_backend", {})
+    if (
+        not isinstance(child, dict)
+        or child.get("status") != "cancelled"
+        or not child.get("run_id")
+        or not child.get("terminal_event_id")
+    ):
+        return None
+    # Reuse the ordinary create owner's durable child association. Terminal
+    # metadata alone cannot select an unrelated cancelled backend run.
+    try:
+        intents = WorkflowAgentRunRecovery._intents(node)
+    except ValueError:
+        return None
+    binding = (node.process_data_dict or {}).get("workflow_agent_binding_id")
+    if (
+        not intents
+        or not node.agent_workspace_binding_id
+        or not isinstance(binding, str)
+        or not binding
+        or max(intents, key=lambda intent: intent.attempt).child_run_id != child["run_id"]
+    ):
+        return None
+    sources = sql.scalars(select(NativeDispatch).where(NativeDispatch.request_id == request.id)).all()
+    current = [source for source in sources if source.generation == state.generation]
+    if (state.generation == 0 and sources) or (state.generation > 0 and len(current) != 1):
+        return None
+    if current and current[0].checkpoint_id != state.checkpoint_id:
+        return None
+    if any(
+        (source.tenant_id, source.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or not 0 <= source.generation <= state.generation
+        or source.state not in ({"completed", "claimed"} if allow_claimed and source in current else {"completed"})
+        for source in sources
+    ):
+        return None
+    operations = sql.scalars(select(NativeEffectOperation).where(NativeEffectOperation.request_id == request.id)).all()
+    if any(
+        (operation.tenant_id, operation.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or operation.state not in {"completed", "failed", "not_dispatched"}
+        for operation in operations
+    ):
+        return None
+    outcomes = sql.scalars(select(NativeEffectOutcome).where(NativeEffectOutcome.request_id == request.id)).all()
+    claims = sql.scalars(
+        select(NativeEffectDispatchClaim).where(NativeEffectDispatchClaim.request_id == request.id)
+    ).all()
+    if any(
+        (outcome.tenant_id, outcome.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or outcome.outcome not in {"completed", "failed", "not_dispatched"}
+        for outcome in outcomes
+    ) or any(
+        (claim.tenant_id, claim.invocation_id) != (request.tenant_id, ref.invocation_id)
+        or not any(
+            (outcome.operation_id, outcome.attempt_id) == (claim.operation_id, claim.attempt_id)
+            and outcome.outcome in {"completed", "failed"}
+            and any(
+                operation.id == outcome.operation_id
+                and operation.state == outcome.outcome
+                and operation.result_ref == outcome.result_ref
+                for operation in operations
+            )
+            for outcome in outcomes
+        )
+        for claim in claims
+    ):
+        return None
+    return native, child, current[0] if current else None
 
 
 def _write_run(row, run):

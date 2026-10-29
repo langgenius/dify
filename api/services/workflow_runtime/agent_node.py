@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, cast, override
+from contextlib import contextmanager, suppress
+from time import perf_counter
+from typing import TYPE_CHECKING, Any, Literal, cast, override
 
 from dify_agent.protocol import CancelRunRequest
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -67,11 +69,36 @@ from services.workflow_runtime.agent_binding import WorkflowAgentBindingError, W
 
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState
+    from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
     from services.agent.workflow_run_recovery import AgentCreateRecoveryClient, WorkflowAgentRunRecovery
     from services.dify_builder.native_testing.agent_preparation import AgentPreparationService
     from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _confirmed_node_phase(
+    context: BuilderAgentExecutionContext,
+    phase: Literal["parent_restore", "recover_existing", "load_wait", "continue_wait"],
+) -> Generator[None]:
+    """Disjoint node recovery phases; their native reads and transport spans are nested."""
+    started, error_type = perf_counter(), "none"
+    try:
+        yield
+    except BaseException as error:
+        error_type = type(error).__name__
+        raise
+    finally:
+        with suppress(Exception):  # Observability cannot replace a native control exception.
+            logger.info(
+                "Confirmed node timing request_id=%s run_id=%s phase=%s duration_seconds=%.6f error_type=%s",
+                context.ref.request_id,
+                context.native_run_id,
+                phase,
+                perf_counter() - started,
+                error_type,
+            )
 
 
 # Terminal and waiting controls that `_consume_event_stream` may return.
@@ -612,24 +639,28 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             execution_id=self.execution_id,
             workflow_binding_id=session_scope.workflow_agent_binding_id,
         )
-        parent = load_confirmed_agent_parent(
-            state_store=self._agent_preparation.state_store, ref=marker.ref, execution_id=self.execution_id
-        )
-        response = self._agent_run_recovery.recover_existing(
-            scope=scope,
-            client=cast("AgentCreateRecoveryClient", self._agent_backend_client),
-            on_persisted=process_data.update,
-        )
+        with _confirmed_node_phase(marker, "parent_restore"):
+            parent = load_confirmed_agent_parent(
+                state_store=self._agent_preparation.state_store, ref=marker.ref, execution_id=self.execution_id
+            )
+        with _confirmed_node_phase(marker, "recover_existing"):
+            response = self._agent_run_recovery.recover_existing(
+                scope=scope,
+                client=cast("AgentCreateRecoveryClient", self._agent_backend_client),
+                on_persisted=process_data.update,
+            )
         if parent is not None:
             if response is None:
                 # A previously prepared occurrence cannot acquire first-POST
                 # authority merely because another process stopped before ACK.
                 raise AgentCreateAcknowledgementUnknown("Agent create acknowledgement is unknown")
-            protected = self._agent_commands.load_wait(ref=marker.ref, parent_node=parent)
+            with _confirmed_node_phase(marker, "load_wait"):
+                protected = self._agent_commands.load_wait(ref=marker.ref, parent_node=parent)
             if protected is not None:
                 if protected.association.agent_run_id != response.run_id:
                     raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
-                continued = self._agent_commands.continue_wait(ref=marker.ref, parent_node=parent)
+                with _confirmed_node_phase(marker, "continue_wait"):
+                    continued = self._agent_commands.continue_wait(ref=marker.ref, parent_node=parent)
                 if continued.association.agent_run_id != response.run_id or continued.wait is None:
                     raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
                 return response, parent, continued.wait.backend_wait_event_id

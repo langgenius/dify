@@ -1328,8 +1328,14 @@ class NativeTestLifecycleService:
                     raise BuilderExecutionPolicyError("native_children_running")
                 self._request_row(session, ref.request_id).state = "sealed"
 
-    def _mark_unknown(self, *, ref: NativeTestContextRef, dispatch_id: str) -> None:
-        with self.loader.locked(ref=ref, settlement=True) as (session, owned, _):
+    def _mark_unknown(self, *, ref: NativeTestContextRef, dispatch_id: str, skip_cancelled: bool = False) -> None:
+        with self.loader.locked(ref=ref, settlement=True) as (session, owned, scope):
+            # The ordinary callback may lose authority while preparing its
+            # terminal observation. Check revocation at this mutation boundary,
+            # so an observational failure cannot destroy cancellation proof.
+            # Expiry/recovery callers retain the existing quarantine behavior.
+            if skip_cancelled and scope.cancelled:
+                return
             dispatch = session.scalar(
                 owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
             )

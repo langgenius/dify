@@ -287,3 +287,58 @@ def test_inherited_send_waiting_for_body_cannot_dispatch_after_owner_exit():
         assert seen == []
 
     asyncio.run(exercise())
+
+
+def test_native_transport_timing_contains_only_route_identity_and_safe_outcome(caplog):
+    import logging
+
+    async def exercise():
+        m = api()
+        caplog.set_level(logging.INFO, logger=m.__name__)
+        async with m.AgentRuntimeHTTPClient(
+            api_url="http://api:5001",
+            api_token="private-bearer",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json={"private-response": "private-value"})
+            ),
+        ) as client:
+            with m.bind_runtime_identity(identity(native=True, generation=3)):
+                await client.post(
+                    "http://api:5001/inner/api/agent/runtime/native-testing/before-call",
+                    json={"private-payload": "private-value"},
+                )
+        records = [record for record in caplog.records if record.name == m.__name__]
+        assert len(records) == 1
+        message = records[0].getMessage()
+        assert "phase=native-testing/before-call" in message
+        assert "run_id=run-A" in message
+        assert "generation=3" in message
+        assert "duration_seconds=" in message
+        assert "http_status=200" in message
+        assert all(
+            secret not in message for secret in ("private-bearer", "private-payload", "private-value", "http://")
+        )
+
+    asyncio.run(exercise())
+
+
+def test_native_transport_logging_failure_preserves_redirect_refusal(monkeypatch):
+    async def exercise():
+        m = api()
+        seen = []
+
+        def broken_log(*args, **kwargs):
+            raise RuntimeError("diagnostic unavailable")
+
+        monkeypatch.setattr(m.logger, "info", broken_log)
+        async with m.AgentRuntimeHTTPClient(
+            api_url="http://api:5001",
+            api_token="backend",
+            transport=httpx.MockTransport(lambda request: seen.append(request) or httpx.Response(307)),
+        ) as client:
+            with m.bind_runtime_identity(identity(native=True)):
+                with pytest.raises(m.AgentRuntimeTransportError, match="agent_runtime_redirect_refused"):
+                    await client.post("http://api:5001/inner/api/agent/runtime/native-testing/before-call", json={})
+        assert len(seen) == 1
+
+    asyncio.run(exercise())

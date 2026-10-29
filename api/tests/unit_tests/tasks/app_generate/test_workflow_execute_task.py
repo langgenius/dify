@@ -1402,3 +1402,16 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         WorkflowStartReason.RESUMPTION,
     )
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)
+
+
+def test_confirmed_resume_timing_does_not_replace_business_error_when_logging_fails(mocker):
+    payload = {
+        "workflow_run_id": "b5d46044-09cc-46d2-b0a6-2b68e71f63ac",
+        "builder_agent_dispatch": {"ref": {"request_id": "request-1"}, "generation": 2},
+    }
+    mocker.patch.object(workflow_execute_task_module.logger, "info", side_effect=RuntimeError("log unavailable"))
+    with (
+        pytest.raises(ValueError, match="original business error"),
+        workflow_execute_task_module._confirmed_resume_phase(payload, "preflight"),
+    ):
+        raise ValueError("original business error")

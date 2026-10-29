@@ -794,6 +794,78 @@ def test_actual_agent_access_and_publication_guards_precede_private_write(
     assert c.loader.rows == before
 
 
+def v2_wait_state(c: AgentStateCase) -> tuple[AgentNodeAssociation, AgentWaitAssociation]:
+    prepared = c.store._agent_prepare(ref=c.ref, parent_node=c.parent, writing=True, expected_generation=0)
+    config = c.store._agent_executable_config({"composition": {"layers": []}, "session_snapshot": None}, c.parent)
+    value = {
+        "schema": "agent-config-v2",
+        "parent_node": c.parent.model_dump(mode="json"),
+        "workflow_native_run_id": prepared.context.native_run_id,
+        "workspace": prepared.workspace.model_dump(mode="json"),
+        "resource_digest": prepared.resource_digest,
+        "config": config,
+    }
+    config_ref = c.store._agent_ack(prepared, logical_key=c.store._agent_key("agent-config", c.parent), value=value)
+    association = AgentNodeAssociation.model_validate(
+        {
+            **association_data(),
+            "parent_node": c.parent,
+            "config_ref": config_ref,
+            "config_digest": canonical_digest(config),
+        }
+    )
+    association_ref = c.store.bind_agent_run(
+        ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, association=association
+    )
+    wait = c.store.store_agent_wait(
+        ref=c.ref,
+        parent_node=c.parent,
+        association_object_ref=association_ref,
+        agent_generation=7,
+        checkpoint=backend_checkpoint(c, association),
+        backend_wait_event_id="1234-0",
+    )
+    return association, wait
+
+
+@pytest.mark.parametrize("read", ["checkpoint", "association"])
+def test_v2_association_validation_reads_selected_config_once(state_case: AgentStateCase, monkeypatch, read):
+    c = state_case
+    association, wait = v2_wait_state(c)
+    checkpoint = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
+    reads = []
+    original = c.store._read_object
+
+    def record(row, **values):
+        reads.append(row.id)
+        return original(row, **values)
+
+    monkeypatch.setattr(c.store, "_read_object", record)
+    if read == "checkpoint":
+        c.store.read_checkpoint(ref=c.ref, checkpoint=checkpoint)
+    else:
+        c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait)
+    assert reads.count(association.config_ref) == 1
+
+
+@pytest.mark.parametrize("drift", ["workspace", "config-metadata"])
+def test_v2_single_config_read_keeps_sql_recheck_after_io(state_case: AgentStateCase, drift):
+    from models.agent import AgentWorkspace
+
+    c = state_case
+    association, wait = v2_wait_state(c)
+
+    def change():
+        if drift == "workspace":
+            required_resource(c.loader, AgentWorkspace).owner_id = "foreign-run"
+        else:
+            next(row for row in c.loader.rows if row.id == association.config_ref).value_digest = "f" * 64
+
+    c.loader.before_lock = change
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait)
+
+
 def test_actual_state_nonempty_bind_wait_final_are_immutable_owned_objects(state_case: AgentStateCase) -> None:
     c = state_case
     config, association, ref = bound_state(c)
@@ -1369,3 +1441,17 @@ def test_nullable_normal_home_cannot_enter_isolated_workspace_owner(
             ref=c.ref, parent_node=c.parent, expected_invocation_generation=0, config={"inert": True}
         )
     assert "save" not in c.events
+
+
+def test_protected_read_timing_failure_does_not_change_guard_result(state_case: AgentStateCase, mocker):
+    from models.agent import AgentWorkspace
+    from services.dify_builder.native_testing import state_store as module
+
+    c = state_case
+    association, wait = v2_wait_state(c)
+    log = mocker.patch.object(module.logger, "info", side_effect=RuntimeError("diagnostic unavailable"))
+    assert c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait).association == association
+    assert log.call_count > 0
+    required_resource(c.loader, AgentWorkspace).owner_id = "foreign-run"
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.store.load_agent_association(ref=c.ref, parent_node=c.parent, wait=wait)

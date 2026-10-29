@@ -6,8 +6,10 @@ All key-provider and object-storage work happens outside SQL transactions.
 """
 
 import json
-from contextlib import contextmanager
+import logging
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -83,6 +85,7 @@ from services.dify_builder.native_testing.repository import (
 from services.dify_builder.native_testing.transitions import require_ancestor_authority
 
 _JSON = TypeAdapter(FiniteJSON)
+logger = logging.getLogger(__name__)
 PayloadKind = Literal["context", "checkpoint", "result"]
 
 
@@ -270,6 +273,7 @@ class NativeExecutionStateStore:
 
     @staticmethod
     def _read_object(row: NativePayloadObject | ObjectReceipt, *, max_bytes: int | None = None) -> JsonValue:
+        started, error_type = perf_counter(), "none"
         try:
             stored = storage.load(row.storage_key)
             if max_bytes is not None and len(stored) > max_bytes:
@@ -288,10 +292,24 @@ class NativeExecutionStateStore:
             if canonical_digest(value) != row.value_digest:
                 raise BuilderExecutionPolicyError("native_payload_invalid")
             return value
-        except BuilderExecutionPolicyError:
+        except BuilderExecutionPolicyError as error:
+            error_type = type(error).__name__
             raise
-        except Exception:
+        except Exception as error:
+            error_type = type(error).__name__
             raise BuilderExecutionPolicyError("native_payload_unavailable") from None
+        finally:
+            # This leaf duration includes storage, key-provider I/O and decoding.
+            # Never log the protected value, storage key or exception message.
+            with suppress(Exception):  # Diagnostics cannot change protected reads.
+                logger.info(
+                    "Native read timing request_id=%s invocation_id=%s phase=protected_object_read "
+                    "duration_seconds=%.6f error_type=%s",
+                    row.request_id,
+                    row.invocation_id,
+                    perf_counter() - started,
+                    error_type,
+                )
 
     def initialize_context(self, *, context: ResolvedNativeTestContext) -> None:
         """Trusted admission only, after C02 request/scope creation; child creation has its own port."""
@@ -1250,7 +1268,12 @@ class NativeExecutionStateStore:
             object_ref=config_ref,
         )
         assert selected is not None
-        receipt, value = selected
+        return self._agent_validate_prepared_config(prepared, *selected)
+
+    def _agent_validate_prepared_config(
+        self, prepared: _AgentPreparation, receipt: ObjectReceipt, value: JsonValue
+    ) -> AgentPreparedConfig:
+        """Validate the already selected immutable object; its receipt stays in the SQL recheck."""
         if (
             not isinstance(value, dict)
             or set(value)
@@ -1405,7 +1428,7 @@ class NativeExecutionStateStore:
         assert selected is not None
         value = selected[1]
         if isinstance(value, dict) and value.get("schema") == "agent-config-v2":
-            selected_config = self._agent_prepared_config(prepared, association.config_ref)
+            selected_config = self._agent_validate_prepared_config(prepared, *selected)
             if selected_config.config_digest != association.config_digest:
                 raise BuilderExecutionPolicyError("native_agent_config_mismatch")
             return
