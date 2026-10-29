@@ -62,6 +62,8 @@ def test_multipart_places_every_part_name_shape(app: Flask) -> None:
             {"files[doc]": [_part("a.pdf"), _part("b.pdf")]}, r"files\[doc\]\[\]", id="repeated_without_marker"
         ),
         pytest.param({"files": '{"doc": "x"}', "files[doc]": _part()}, "file parts", id="json_text_in_file_field"),
+        pytest.param({"file": _part(), "file[doc]": _part()}, "one file and as keyed files", id="file_then_keyed"),
+        pytest.param({"file[doc]": _part(), "file": _part()}, "given more than once", id="keyed_then_file"),
     ],
 )
 def test_multipart_rejects_malformed_bodies(app: Flask, data: Mapping[str, object], reason: str) -> None:

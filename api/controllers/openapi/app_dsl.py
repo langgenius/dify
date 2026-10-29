@@ -1,32 +1,55 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+from contextlib import contextmanager
 from http import HTTPStatus
-from typing import Final
+from typing import BinaryIO, Final, cast
 from uuid import UUID, uuid4
 
 from flask import send_file
 from flask_restx import Resource
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, NotFound
 
+from configs import dify_config
 from constants.oauth_bearer import Scope
 from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
-from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, ErrorDetail, VersionNotFound
+from controllers.openapi._archive import FolderRejections, build_folder_archive
+from controllers.openapi._contract import (
+    CapRequestBody,
+    Effect,
+    Example,
+    Kind,
+    endpoint,
+    multipart_header_allowance,
+    op_of,
+)
+from controllers.openapi._errors import (
+    AppPackageInvalid,
+    AppPackageTooLarge,
+    DraftChanged,
+    DraftNotFound,
+    DslInvalid,
+    ErrorDetail,
+    VersionNotFound,
+)
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
     AppPackageExportQuery,
+    AppPackageImportPayload,
     CheckDependenciesResponse,
     DslCheckPayload,
     DslCheckResponse,
     DslIssueRow,
     Hint,
 )
+from controllers.openapi._upload import UploadPart, UploadParts, file_fields
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     account_app_guards,
@@ -35,7 +58,9 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
+from libs.archive_writer import ArchiveLimits
 from machinery.context import AppRequestContext, RequestContext
+from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportMode, ImportStatus
@@ -64,6 +89,18 @@ _PACKAGE_READ_GUARDS: Final = account_app_guards(
     agent_permission=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
 )
 _DSL_WRITE_GUARDS: Final = workspace_write_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, roles=EDITOR_ROLES)
+_PACKAGE_FOLDER: Final = FolderRejections("package folder", AppPackageInvalid, AppPackageTooLarge)
+
+
+def _package_upload_parts() -> int:
+    plain_fields = len(AppPackageImportPayload.model_fields) - len(file_fields(AppPackageImportPayload))
+    return dify_config.AGENT_PACKAGE_MAX_ENTRIES + plain_fields
+
+
+_PACKAGE_UPLOAD_CAP: Final = CapRequestBody(
+    max_bytes=lambda: dify_config.AGENT_PACKAGE_MAX_BYTES + multipart_header_allowance(_package_upload_parts()),
+    max_parts=_package_upload_parts,
+)
 
 
 def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
@@ -74,14 +111,12 @@ def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
     )
 
 
-def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
+def _prepared_yaml(
+    context: RequestContext, *, mode: ImportMode, source: str, app_id: str | None, draft_hash: str | None
+) -> str:
     try:
         return application_services().apps.dsl_imports.prepare(
-            context,
-            mode=ImportMode(body.mode),
-            source=body.source,
-            app_id=body.app_id,
-            draft_hash=body.draft_hash,
+            context, mode=mode, source=source, app_id=app_id, draft_hash=draft_hash
         )
     except ConsoleAppNotFoundError as error:
         raise NotFound(str(error)) from error
@@ -90,8 +125,24 @@ def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
     except DslRefusedError as error:
         raise DslInvalid(
             details=[ErrorDetail(type=i.code, loc=list(i.loc), msg=i.message) for i in error.issues],
-            hints=[_check_hint(context, body.app_id)],
+            hints=[_check_hint(context, app_id)],
         ) from error
+
+
+@contextmanager
+def _package_source(package: UploadPart | UploadParts) -> Generator[BinaryIO]:
+    """A file part is the package as sent; a folder is zipped into a temporary archive, closed on exit."""
+    if isinstance(package, FileStorage):
+        yield cast(BinaryIO, package.stream)
+        return
+    limits = ArchiveLimits(
+        max_entries=dify_config.AGENT_PACKAGE_MAX_ENTRIES, max_bytes=dify_config.AGENT_PACKAGE_MAX_BYTES
+    )
+    archive = build_folder_archive(package, limits=limits, rejections=_PACKAGE_FOLDER)
+    try:
+        yield archive.file
+    finally:
+        archive.file.close()
 
 
 def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
@@ -105,6 +156,16 @@ def _import_response(result: Import, *, workspace_id: str) -> AppDslImportRespon
             )
         )
     return AppDslImportResponse(**result.model_dump(), hints=hints)
+
+
+def _import_status(result: Import) -> HTTPStatus:
+    match result.status:
+        case ImportStatus.FAILED:
+            return HTTPStatus.BAD_REQUEST
+        case ImportStatus.PENDING:
+            return HTTPStatus.ACCEPTED
+        case _:
+            return HTTPStatus.OK
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
@@ -153,7 +214,9 @@ class AppDslImportApi(Resource):
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: AppDslImportPayload):
         try:
-            yaml_content = _prepared_yaml(ctx, body)
+            yaml_content = _prepared_yaml(
+                ctx, mode=ImportMode(body.mode), source=body.source, app_id=body.app_id, draft_hash=body.draft_hash
+            )
         except YamlUrlFetchError as error:
             failed = Import(id=str(uuid4()), status=ImportStatus.FAILED, error=str(error))
             return _import_response(failed, workspace_id=workspace_id), HTTPStatus.BAD_REQUEST
@@ -167,14 +230,68 @@ class AppDslImportApi(Resource):
         except DraftChangedError as exc:
             raise DraftChanged() from exc
 
-        response = _import_response(result, workspace_id=workspace_id)
-        match result.status:
-            case ImportStatus.FAILED:
-                return response, HTTPStatus.BAD_REQUEST
-            case ImportStatus.PENDING:
-                return response, HTTPStatus.ACCEPTED
-            case _:
-                return response, HTTPStatus.OK
+        return _import_response(result, workspace_id=workspace_id), _import_status(result)
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>/apps/packages")
+class AppPackageImportApi(Resource):
+    """Import an app from a ``.ifpkg`` package: one file, or the unpacked folder with one part per file.
+
+    Provide ``app_id`` to overwrite an existing workflow or advanced-chat app; omit it to create a new app.
+    Roster Agent nodes keep their links to the workspace's Agents. The root app's YAML goes through the
+    same checks as ``import.console_app.dsl``: 409 ``draft_changed`` when ``draft_hash`` no longer matches
+    the draft, 422 ``dsl_invalid`` when the graph has errors.
+
+    Returns 202 when the DSL version requires an explicit confirmation step; confirm it with the imports
+    :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read, and 413 for one
+    over this server's limits.
+    """
+
+    @endpoint(
+        context="workspace",
+        op="import.console_app.package",
+        kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
+        summary="Import an app from a .ifpkg package or an unpacked package folder",
+        examples=(
+            Example(title="Import an app from a .ifpkg file", input={"package": "./app.ifpkg"}),
+            Example(
+                title="Overwrite an existing workflow app from an unpacked package folder",
+                input={"package": "./app/", "app_id": "<app_id>", "draft_hash": "<draft_hash>"},
+            ),
+        ),
+        requirements=(*_DSL_WRITE_GUARDS, _PACKAGE_UPLOAD_CAP),
+        body=AppPackageImportPayload,
+        returns=(
+            (HTTPStatus.OK, AppDslImportResponse, "Import completed"),
+            (HTTPStatus.ACCEPTED, AppDslImportResponse, "Import pending confirmation"),
+            (HTTPStatus.BAD_REQUEST, AppDslImportResponse, "Import failed"),
+        ),
+    )
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: AppPackageImportPayload):
+        params = DraftGuardedImportParams.model_validate(
+            body.model_dump(exclude={"package"}) | {"mode": ImportMode.YAML_CONTENT}
+        )
+        with _package_source(body.package) as source:
+            try:
+                result = application_services().apps.console.import_app(
+                    ctx,
+                    params,
+                    source=source,
+                    preserve_agent_bindings=True,
+                    prepare_dsl=lambda dsl: _prepared_yaml(
+                        ctx, mode=ImportMode.YAML_CONTENT, source=dsl, app_id=body.app_id, draft_hash=body.draft_hash
+                    ),
+                )
+            except InvalidRosterAgentPackageError as exc:
+                raise AppPackageInvalid(exc.description) from exc
+            except RosterAgentPackageTooLargeError as exc:
+                raise AppPackageTooLarge(exc.description) from exc
+            except NoPermissionError as exc:
+                raise ForbiddenError(str(exc)) from exc
+            except DraftChangedError as exc:
+                raise DraftChanged() from exc
+        return _import_response(result, workspace_id=workspace_id), _import_status(result)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports:check")
