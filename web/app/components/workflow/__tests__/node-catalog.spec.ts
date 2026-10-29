@@ -197,45 +197,50 @@ describe('useWorkflowNodeCatalog', () => {
     )
   })
 
-  it('offers legacy Human Input only while existing legacy fields cannot migrate', () => {
-    const legacy = createNode({
-      data: {
-        type: BlockEnum.HumanInput,
-        inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')],
-      },
-    })
-    const { result, setCanvas } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
-      nodes: [legacy],
-      queryClient: catalogQueryClient(),
-    })
-    const humanInputCandidates = () =>
-      result.current.nodes.filter(
-        (node) =>
-          node.metaData.type === BlockEnum.HumanInput ||
-          node.metaData.type === BlockEnum.HumanInputV2,
+  it.each([InputVarType.select, InputVarType.singleFile, InputVarType.multiFiles])(
+    'keeps supported legacy %s fields on the v2 migration path',
+    (type) => {
+      const legacy = createNode({
+        data: {
+          type: BlockEnum.HumanInput,
+          inputs: [createDefaultFormInputByType(type, 'decision')],
+        },
+      })
+      const { result, setCanvas } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+        nodes: [legacy],
+        queryClient: catalogQueryClient(),
+      })
+      const humanInputCandidates = () =>
+        result.current.nodes.filter(
+          (node) =>
+            node.metaData.type === BlockEnum.HumanInput ||
+            node.metaData.type === BlockEnum.HumanInputV2,
+        )
+
+      expect(humanInputCandidates().map((node) => node.metaData.type)).toEqual([
+        BlockEnum.HumanInputV2,
+      ])
+      expect(humanInputCandidates()[0]?.defaultValue).toMatchObject({ version: '2' })
+
+      act(() =>
+        setCanvas({
+          nodes: [
+            createNode({
+              ...legacy,
+              data: {
+                ...legacy.data,
+                version: '2',
+              },
+            }),
+          ],
+        }),
       )
 
-    expect(humanInputCandidates().map((node) => node.metaData.type)).toEqual([BlockEnum.HumanInput])
-    expect(humanInputCandidates()[0]?.defaultValue).toHaveProperty('delivery_methods')
-
-    act(() =>
-      setCanvas({
-        nodes: [
-          createNode({
-            ...legacy,
-            data: {
-              ...legacy.data,
-              inputs: [createDefaultFormInputByType(InputVarType.paragraph, 'decision')],
-            },
-          }),
-        ],
-      }),
-    )
-
-    expect(humanInputCandidates().map((node) => node.metaData.type)).toEqual([
-      BlockEnum.HumanInputV2,
-    ])
-  })
+      expect(humanInputCandidates().map((node) => node.metaData.type)).toEqual([
+        BlockEnum.HumanInputV2,
+      ])
+    },
+  )
 
   it('should use explicit docs pages and skip nodes without generated docs pages', () => {
     const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
