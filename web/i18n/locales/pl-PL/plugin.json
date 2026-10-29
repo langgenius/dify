@@ -301,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Przewodnik publikowania szablonów",
-  "upgrade.close": "Zamykać",
   "upgrade.description": "Informacje o instalacji następującej wtyczki",
-  "upgrade.successfulTitle": "Instalacja powiodła się",
   "upgrade.title": "Zainstaluj wtyczkę",
   "upgrade.upgrade": "Instalować",
   "upgrade.upgrading": "Instalowanie..."

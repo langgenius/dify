@@ -1,76 +1,37 @@
 import type { ReactNode } from 'react'
-import type { Variable } from '../../../types'
 import type { TemplateTransformNodeType } from '../types'
-import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { BlockEnum, VarType } from '../../../types'
 import Panel from '../panel'
-import useConfig from '../use-config'
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-list', () => ({
-  __esModule: true,
-  default: ({
-    onChange,
-    onVarNameChange,
-  }: {
-    onChange: (value: Variable[]) => void
-    onVarNameChange: (oldName: string, newName: string) => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() =>
-          onChange([
-            {
-              variable: 'updated_input',
-              value_selector: ['node-1', 'updated_input'],
-              value_type: VarType.string,
-            },
-          ])
-        }
-      >
-        change-var-list
-      </button>
-      <button type="button" onClick={() => onVarNameChange('input_text', 'renamed_input')}>
-        rename-var
-      </button>
-    </div>
-  ),
-}))
-
+// The external code editor is a text-input boundary; variable editing and configuration stay real.
 vi.mock(
   '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars',
   () => ({
-    __esModule: true,
     default: ({
-      onAddVar,
-      headerRight,
       value,
       onChange,
+      readOnly,
+      headerRight,
     }: {
-      onAddVar: (value: Variable) => void
-      headerRight?: ReactNode
       value: string
       onChange: (value: string) => void
+      readOnly: boolean
+      headerRight: ReactNode
     }) => (
       <div>
-        <div>{headerRight}</div>
-        <button
-          type="button"
-          onClick={() =>
-            onAddVar({
-              variable: 'result_text',
-              value_selector: ['node-2', 'result_text'],
-              value_type: VarType.string,
-            })
-          }
-        >
-          add-var
-        </button>
+        {headerRight}
         <textarea
           aria-label="template-editor"
           value={value}
+          readOnly={readOnly}
           onChange={(event) => onChange(event.target.value)}
         />
       </div>
@@ -78,47 +39,20 @@ vi.mock(
   }),
 )
 
-vi.mock('../use-config', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseConfig = vi.mocked(useConfig)
-
-const createVariable = (overrides: Partial<Variable> = {}): Variable => ({
-  variable: 'input_text',
-  value_selector: ['node-1', 'input_text'],
-  value_type: VarType.string,
-  ...overrides,
-})
-
-const createData = (
-  overrides: Partial<TemplateTransformNodeType> = {},
-): TemplateTransformNodeType => ({
-  title: 'Template Transform',
+const payload: TemplateTransformNodeType = {
+  title: 'Template',
   desc: '',
   type: BlockEnum.TemplateTransform,
-  variables: [createVariable()],
+  variables: [
+    {
+      variable: 'input_text',
+      value_selector: ['source', 'input_text'],
+      value_type: VarType.string,
+    },
+  ],
   template: '{{ input_text }}',
-  ...overrides,
-})
-
-const createConfigResult = (
-  overrides: Partial<ReturnType<typeof useConfig>> = {},
-): ReturnType<typeof useConfig> => ({
-  readOnly: false,
-  inputs: createData(),
-  availableVars: [],
-  handleVarListChange: vi.fn(),
-  handleVarNameChange: vi.fn(),
-  handleAddVariable: vi.fn(),
-  handleAddEmptyVariable: vi.fn(),
-  handleCodeChange: vi.fn(),
-  filterVar: () => true,
-  ...overrides,
-})
-
-const panelProps: PanelProps = {
+}
+const panelProps = {
   getInputVars: vi.fn(() => []),
   toVarInputs: vi.fn(() => []),
   runInputData: {},
@@ -126,79 +60,74 @@ const panelProps: PanelProps = {
   setRunInputData: vi.fn(),
   runResult: null,
 }
-
-describe('template-transform/panel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult())
+const ConnectedPanel = () => {
+  const nodes = useNodes<TemplateTransformNodeType>()
+  return (
+    <Panel
+      id="template"
+      data={nodes.find((node) => node.id === 'template')?.data ?? payload}
+      panelProps={panelProps}
+    />
+  )
+}
+const setup = (readOnly = false) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
-
-  it('wires variable list and code editor actions', async () => {
-    const user = userEvent.setup()
-    const handleVarListChange = vi.fn()
-    const handleVarNameChange = vi.fn()
-    const handleAddVariable = vi.fn()
-    const handleAddEmptyVariable = vi.fn()
-    const handleCodeChange = vi.fn()
-
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        handleVarListChange,
-        handleVarNameChange,
-        handleAddVariable,
-        handleAddEmptyVariable,
-        handleCodeChange,
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  return renderWorkflowFlowComponent(<ConnectedPanel />, {
+    queryClient,
+    initialStoreState: { canvasReadOnly: readOnly },
+    nodes: [
+      createNode({ id: 'template', data: payload }),
+      createNode({
+        id: 'source',
+        data: { type: BlockEnum.Code, outputs: { input_text: { type: VarType.string } } },
       }),
-    )
-
-    render(<Panel id="template-node" data={createData()} panelProps={panelProps} />)
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'common.operation.add workflow.nodes.templateTransform.inputVars',
-      }),
-    )
-    await user.click(screen.getByRole('button', { name: 'change-var-list' }))
-    await user.click(screen.getByRole('button', { name: 'rename-var' }))
-    await user.click(screen.getByRole('button', { name: 'add-var' }))
-    fireEvent.change(screen.getByLabelText('template-editor'), {
-      target: { value: '{{ renamed_input }}' },
-    })
-
-    expect(handleAddEmptyVariable).toHaveBeenCalled()
-    expect(handleVarListChange).toHaveBeenCalledWith([
-      {
-        variable: 'updated_input',
-        value_selector: ['node-1', 'updated_input'],
-        value_type: VarType.string,
-      },
-    ])
-    expect(handleVarNameChange).toHaveBeenCalledWith('input_text', 'renamed_input')
-    expect(handleAddVariable).toHaveBeenCalledWith({
-      variable: 'result_text',
-      value_selector: ['node-2', 'result_text'],
-      value_type: VarType.string,
-    })
-    expect(handleCodeChange).toHaveBeenCalledWith('{{ renamed_input }}')
-    expect(screen.getByText('workflow.nodes.common.outputVars')).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: /workflow.nodes.templateTransform.codeSupportTip/i }),
-    ).toHaveAttribute('href', 'https://jinja.palletsprojects.com/en/3.1.x/templates/')
+    ],
+    edges: [createEdge({ source: 'source', target: 'template' })],
   })
+}
 
-  it('hides the add-variable operation when the panel is read only', () => {
-    mockUseConfig.mockReturnValueOnce(
-      createConfigResult({
-        readOnly: true,
-      }),
-    )
+it('renames real input variables and keeps the template synchronized through subsequent edits', async () => {
+  const user = userEvent.setup()
+  setup()
+  const variable = screen.getByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' })
+  // One change event represents replacing the selected identifier, preserving a valid name throughout.
+  fireEvent.change(variable, { target: { value: 'renamed_input' } })
+  expect(screen.getByRole('textbox', { name: 'template-editor' })).toHaveValue(
+    '{{ renamed_input }}',
+  )
+  await user.click(
+    screen.getByRole('button', {
+      name: 'common.operation.add workflow.nodes.templateTransform.inputVars',
+    }),
+  )
+  expect(
+    screen.getAllByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' }),
+  ).toHaveLength(2)
+  expect(variable).toHaveValue('renamed_input')
+  expect(screen.getByRole('textbox', { name: 'template-editor' })).toHaveValue(
+    '{{ renamed_input }}',
+  )
+  expect(
+    screen.getByRole('link', { name: /workflow.nodes.templateTransform.codeSupportTip/i }),
+  ).toHaveAttribute('href', 'https://jinja.palletsprojects.com/en/3.1.x/templates/')
+})
 
-    render(<Panel id="template-node" data={createData()} panelProps={panelProps} />)
-
-    expect(
-      screen.queryByRole('button', {
-        name: 'common.operation.add workflow.nodes.templateTransform.inputVars',
-      }),
-    ).not.toBeInTheDocument()
-  })
+it('keeps both variable names and the template readonly when editing is denied', () => {
+  setup(true)
+  expect(
+    screen.queryByRole('button', {
+      name: 'common.operation.add workflow.nodes.templateTransform.inputVars',
+    }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('textbox', { name: 'template-editor' })).toHaveAttribute('readonly')
+  expect(
+    screen.getByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' }),
+  ).toBeDisabled()
 })

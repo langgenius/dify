@@ -1,17 +1,26 @@
 'use client'
 
+import type { UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { noop, useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  noop,
+  useMutation,
+  useQueryClient,
+  useSuspenseQueries,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import dynamic from 'next/dynamic'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { getTemplateImportSource } from '@/app/components/explore/template-import'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import {
@@ -44,9 +53,6 @@ import { HomeRecommendations } from './recommendations'
 import { HomeTemplatesHeader } from './templates-header'
 
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
-const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
-  ssr: false,
-})
 const DSLConfirmModal = dynamic(
   () => import('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'),
   { ssr: false },
@@ -153,6 +159,7 @@ export function HomeContent() {
 
   const [currApp, setCurrApp] = useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
+  const createNameRef = useRef<HTMLInputElement>(null)
 
   const { handleImportDSL, handleImportDSLConfirm, versions, isFetching } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
@@ -225,7 +232,7 @@ export function HomeContent() {
 
     abandonHomeTour()
     setCurrentTryApp(undefined)
-    setCurrApp(null)
+    setIsShowCreateModal(false)
     currentCreateAppTrackingRef.current = null
     currentCreateAppModeRef.current = null
     isCurrentTryAppFromLearnDifyRef.current = false
@@ -316,6 +323,7 @@ export function HomeContent() {
       activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
       !completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
       activeStepByStepTourGuideIndex === 1
+
     setIsShowCreateModal(true)
   }, [
     activeStepByStepTourGuideIndex,
@@ -326,6 +334,7 @@ export function HomeContent() {
   ])
   const handleCreateFromLearnDify = useCallback((app: RecommendedAppResponse) => {
     setCurrApp(app)
+
     setIsShowCreateModal(true)
   }, [])
   const handleCreateFromTemplate = useCallback(
@@ -336,6 +345,7 @@ export function HomeContent() {
         templateId: app.app_id,
       }
       setCurrApp(app)
+
       setIsShowCreateModal(true)
     },
     [canCreateTemplate],
@@ -358,8 +368,8 @@ export function HomeContent() {
     setIsShowCreateModal(false)
   }, [abandonHomeTourCreate])
 
-  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(
-    async ({ name, icon_type, icon, icon_background, description }) => {
+  const onCreate = useCallback(
+    async ({ name, icon_type, icon, icon_background, description }: UpdateAppPayload) => {
       const appId = currApp?.app_id
       if (!appId || !canCreateTemplate(currApp.app?.mode)) return
       isSubmittingHomeTourCreateRef.current = shouldCompleteHomeTourOnCreateRef.current
@@ -404,6 +414,7 @@ export function HomeContent() {
         },
         onPending: () => {
           didTransitionCreateFlow = true
+          setIsShowCreateModal(false)
           setShowDSLConfirmModal(true)
         },
         skipRedirectOnSuccess: shouldCompleteHomeTourOnCreateRef.current,
@@ -426,6 +437,9 @@ export function HomeContent() {
       trackCurrentCreateApp,
     ],
   )
+
+  const submission = useMutation({ mutationFn: onCreate })
+  const isCreatePending = submission.isPending || isFetching
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
@@ -499,26 +513,42 @@ export function HomeContent() {
           </section>
         </div>
       </div>
-      {isShowCreateModal && (
-        <CreateAppModal
-          appIconType={
-            currApp?.app?.icon_type === 'image' ||
-            currApp?.app?.icon_type === 'emoji' ||
-            currApp?.app?.icon_type === 'link'
-              ? currApp.app.icon_type
-              : 'emoji'
+      <Dialog
+        open={isShowCreateModal}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && isCreatePending) details.cancel()
+          else if (!open) handleCreateModalHide()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            if (!submission.isPending) submission.reset()
+            setCurrApp(null)
           }
-          appIcon={currApp?.app?.icon || ''}
-          appIconBackground={currApp?.app?.icon_background || ''}
-          appIconUrl={currApp?.app?.icon_url}
-          appName={currApp?.app?.name || ''}
-          appDescription={currApp?.description || ''}
-          show={isShowCreateModal}
-          onConfirm={onCreate}
-          confirmLoading={isFetching}
-          onHide={handleCreateModalHide}
-        />
-      )}
+        }}
+      >
+        <DialogContent initialFocus={createNameRef}>
+          {currApp && (
+            <AppMetadataForm
+              operation="create"
+              appDetail={{
+                name: currApp.app?.name ?? '',
+                description: currApp.description ?? '',
+                icon_type: zIconType.safeParse(currApp.app?.icon_type).data ?? 'emoji',
+                icon: currApp.app?.icon ?? null,
+                icon_background: currApp.app?.icon_background,
+                icon_url: currApp.app?.icon_url ?? null,
+              }}
+              nameInputRef={createNameRef}
+              isPending={isCreatePending}
+              error={submission.error?.message}
+              onSubmit={(body) => {
+                if (!isCreatePending) submission.mutate(body)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       {showDSLConfirmModal && (
         <DSLConfirmModal
           versions={versions}

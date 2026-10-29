@@ -62,7 +62,8 @@ class AppListBaseParams(BaseModel):
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     accessible_app_ids: list[str] | None = None
-    include_own_apps: bool = False
+    # Credential resource bindings are a strict scope; None means no binding restriction.
+    resource_app_ids: list[str] | None = None
 
 
 class AppListParams(AppListBaseParams):
@@ -226,12 +227,6 @@ class AppReference:
 
 
 @dataclass(frozen=True, slots=True)
-class AppTraceSettings:
-    enabled: bool = False
-    tracing_provider: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class AppCreationSettings:
     app: dict[str, Any]
     model_config: dict[str, Any] | None
@@ -269,6 +264,19 @@ class AppUpdateArguments(TypedDict):
     use_icon_as_answer_icon: bool
     max_active_requests: int
     role: NotRequired[str | None]
+
+
+class AppFieldChanges(TypedDict, total=False):
+    """A partial update of the App row and its backing agent's role: only the keys present are written."""
+
+    name: str
+    description: str
+    icon_type: IconType
+    icon: str
+    icon_background: str
+    use_icon_as_answer_icon: bool
+    max_active_requests: int
+    role: str
 
 
 @dataclass(frozen=True, slots=True)

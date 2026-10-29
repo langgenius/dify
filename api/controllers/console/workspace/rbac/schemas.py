@@ -130,6 +130,10 @@ class _AccessControlLanguageQuery(BaseModel):
     language: Literal["en", "ja", "zh"] | None = Field(default=None, description="Localized policy label language")
 
 
+class _WorkspaceMatrixQuery(_PaginationQuery, _AccessControlLanguageQuery):
+    pass
+
+
 class _ResourceUserAccessPoliciesQuery(_PaginationQuery):
     language: Literal["en", "ja", "zh"] | None = Field(default=None, description="Localized policy label language")
 
@@ -156,7 +160,7 @@ class _ReplaceMemberRolesRequest(BaseModel):
         return value
 
 
-register_schema_models(console_ns, _ReplaceMemberRolesRequest)
+register_schema_models(console_ns, _ReplaceMemberRolesRequest, _RoleUpsertRequest, CopyRoleParam)
 
 
 def pagination_options() -> dto.ListOption:

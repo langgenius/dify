@@ -10,6 +10,7 @@ import AccessControlItem from '../access-control-item'
 import AddMemberOrGroupDialog from '../add-member-or-group-pop'
 
 const mockUseSearchForWhiteListCandidates = vi.fn()
+const originalIntersectionObserver = globalThis.IntersectionObserver
 const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
 }))
@@ -107,6 +108,10 @@ describe('AddMemberOrGroupDialog', () => {
     })
   })
 
+  afterAll(() => {
+    globalThis.IntersectionObserver = originalIntersectionObserver
+  })
+
   it('should open the search popover and display candidates', async () => {
     const user = userEvent.setup()
     render(<ControlledDialog />)
@@ -196,24 +201,6 @@ describe('AddMemberOrGroupDialog', () => {
     view.rerender(<ControlledDialog />)
     expect(screen.getByRole('status')).toBe(status)
     expect(status).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
-  })
-
-  it('should show the empty state when no candidates are returned', async () => {
-    mockUseSearchForWhiteListCandidates.mockReturnValue({
-      isLoading: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-      data: { pages: [] },
-    })
-
-    const user = userEvent.setup()
-    render(<ControlledDialog />)
-
-    await user.click(screen.getByText('common.operation.add'))
-
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'app.accessControlDialog.operateGroupAndMember.noResult',
-    )
   })
 
   it('should keep breadcrumbs visible when the current group has no candidates', async () => {

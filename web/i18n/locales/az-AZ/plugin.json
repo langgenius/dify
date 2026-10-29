@@ -301,9 +301,7 @@
   "task.runningPlugins": "Quraşdırılan inteqrasiyalar",
   "task.successPlugins": "Uğurla quraşdırılan inteqrasiyalar",
   "templatePublishingGuide": "Şablon dərc etmə təlimatı",
-  "upgrade.close": "Bağla",
   "upgrade.description": "Aşağıdakı inteqrasiya quraşdırılacaq",
-  "upgrade.successfulTitle": "Quraşdırma uğurla tamamlandı",
   "upgrade.title": "İnteqrasiyanın quraşdırılması",
   "upgrade.upgrade": "Quraşdır",
   "upgrade.upgrading": "Quraşdırılır..."

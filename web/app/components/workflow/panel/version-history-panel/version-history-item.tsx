@@ -1,5 +1,5 @@
 import type { VersionHistoryContextMenuOptions } from '../../types'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import dayjs from 'dayjs'
 import * as React from 'react'
@@ -11,17 +11,20 @@ import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 
 type VersionHistoryItemProps = {
-  item: VersionHistory
-  currentVersion: VersionHistory | null
+  item: FetchWorkflowDraftResponse
+  currentVersion: FetchWorkflowDraftResponse | null
   latestVersionId: string
-  onClick: (item: VersionHistory) => void
+  onClick: (item: FetchWorkflowDraftResponse) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   canImportExportDSL: boolean
   isLast: boolean
   hideActionMenu?: boolean
 }
 
-const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
+const formatVersion = (
+  versionHistory: FetchWorkflowDraftResponse,
+  latestVersionId: string,
+): string => {
   const { version, id } = versionHistory
   if (version === WorkflowVersion.Draft) return WorkflowVersion.Draft
   if (id === latestVersionId) return WorkflowVersion.Latest

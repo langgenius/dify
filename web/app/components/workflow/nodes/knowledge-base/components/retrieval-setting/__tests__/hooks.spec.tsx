@@ -3,10 +3,6 @@ import { HybridSearchModeEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from
 import { useRetrievalSetting } from '../hooks'
 
 describe('useRetrievalSetting', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   // The hook should switch between economical and qualified retrieval option sets.
   describe('Options', () => {
     it('should return semantic, full-text, and hybrid options for qualified indexing', () => {

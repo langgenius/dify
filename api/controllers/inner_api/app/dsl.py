@@ -10,21 +10,28 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, RootModel, ValidationError, field_validator
+from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import SimpleMessageResponse
-from controllers.common.schema import query_params_from_model, register_schema_model
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_model,
+    register_response_schema_models,
+    register_schema_model,
+)
 from controllers.console.wraps import setup_required, validate_request
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
-from fields.app_export_fields import AppExportResponse
+from fields.app_fields import AppExportResponse
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import AppDiscoveryNotFoundError, IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 
 
 class InnerAppDSLImportPayload(BaseModel):
@@ -52,7 +59,14 @@ class EnterpriseAppDSLWorkflowErrorResponse(ResponseModel):
     status: int
 
 
+class EnterpriseAppDSLExportNotFoundResponse(RootModel[SimpleMessageResponse | EnterpriseAppDSLWorkflowErrorResponse]):
+    """Export 404: either an app-level message or a workflow-version error."""
+
+
 register_schema_model(inner_api_ns, InnerAppDSLImportPayload)
+register_response_schema_models(inner_api_ns, Import, AppExportResponse, EnterpriseAppDSLWorkflowErrorResponse)
+register_response_schema_model(inner_api_ns, SimpleMessageResponse)
+register_response_schema_model(inner_api_ns, EnterpriseAppDSLExportNotFoundResponse)
 
 
 @inner_api_ns.route("/enterprise/workspaces/<string:workspace_id>/dsl/import")
@@ -61,29 +75,39 @@ class EnterpriseAppDSLImport(Resource):
     @enterprise_inner_api_only
     @inner_api_ns.doc("enterprise_app_dsl_import")
     @inner_api_ns.expect(inner_api_ns.models[InnerAppDSLImportPayload.__name__])
-    @inner_api_ns.doc(
-        responses={
-            HTTPStatus.OK: "Import completed",
-            HTTPStatus.ACCEPTED: "Import pending (DSL version mismatch requires confirmation)",
-            HTTPStatus.BAD_REQUEST: "Import failed (business error)",
-            HTTPStatus.NOT_FOUND: "Creator account not found or inactive",
-        }
+    @inner_api_ns.response(HTTPStatus.OK, "Import completed", inner_api_ns.models[Import.__name__])
+    @inner_api_ns.response(
+        HTTPStatus.ACCEPTED,
+        "Import pending (DSL version mismatch requires confirmation)",
+        inner_api_ns.models[Import.__name__],
+    )
+    @inner_api_ns.response(
+        HTTPStatus.BAD_REQUEST, "Import failed (business error)", inner_api_ns.models[Import.__name__]
+    )
+    @inner_api_ns.response(HTTPStatus.FORBIDDEN, "Import permission denied or app quota exceeded")
+    @inner_api_ns.response(
+        HTTPStatus.NOT_FOUND,
+        "Creator account not found or inactive",
+        inner_api_ns.models[SimpleMessageResponse.__name__],
     )
     def post(self, workspace_id: str):
         """Import a DSL into a workspace on behalf of a specified creator."""
         args = validate_request(InnerAppDSLImportPayload)
-        result = application_services().apps.imports.import_as_creator(
-            workspace_id=workspace_id,
-            creator_email=args.creator_email,
-            params=AppImportParams(
-                mode=ImportMode.YAML_CONTENT,
-                yaml_content=args.yaml_content,
-                name=args.name,
-                description=args.description,
-            ),
-            request_id=get_request_id(),
-            trace_id=get_trace_id(),
-        )
+        try:
+            result = application_services().apps.imports.import_as_creator(
+                workspace_id=workspace_id,
+                creator_email=args.creator_email,
+                params=AppImportParams(
+                    mode=ImportMode.YAML_CONTENT,
+                    yaml_content=args.yaml_content,
+                    name=args.name,
+                    description=args.description,
+                ),
+                request_id=get_request_id(),
+                trace_id=get_trace_id(),
+            )
+        except NoPermissionError as error:
+            raise Forbidden(str(error)) from error
         if result is None:
             return dump_response(
                 SimpleMessageResponse, {"message": f"account '{args.creator_email}' not found or inactive"}
@@ -103,11 +127,17 @@ class EnterpriseAppDSLExport(Resource):
     @inner_api_ns.doc(
         "enterprise_app_dsl_export",
         params=query_params_from_model(EnterpriseAppDSLExportQuery),
-        responses={
-            200: "Export successful",
-            400: "Invalid workflow ID or unpublished workflow version",
-            404: "App or workflow version not found",
-        },
+    )
+    @inner_api_ns.response(200, "Export successful", inner_api_ns.models[AppExportResponse.__name__])
+    @inner_api_ns.response(
+        400,
+        "Invalid workflow ID or unpublished workflow version",
+        inner_api_ns.models[EnterpriseAppDSLWorkflowErrorResponse.__name__],
+    )
+    @inner_api_ns.response(
+        404,
+        "App or workflow version not found",
+        inner_api_ns.models[EnterpriseAppDSLExportNotFoundResponse.__name__],
     )
     def get(self, app_id: str):
         """Export an app's DSL as YAML."""

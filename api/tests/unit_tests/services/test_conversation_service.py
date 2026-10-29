@@ -135,10 +135,10 @@ class ConversationServiceTestDataFactory:
             from_end_user_id=kwargs.get("from_end_user_id"),
             from_account_id=kwargs.get("from_account_id", ACCOUNT_ID),
             is_deleted=kwargs.get("is_deleted", False),
-            created_at=kwargs.get("created_at", naive_utc_now()),
-            updated_at=kwargs.get("updated_at", naive_utc_now()),
         )
         conversation._inputs = {}
+        conversation.created_at = kwargs.get("created_at", naive_utc_now())
+        conversation.updated_at = kwargs.get("updated_at", naive_utc_now())
         for key, value in kwargs.items():
             setattr(conversation, key, value)
         return conversation
@@ -237,6 +237,21 @@ def test_retire_rejects_participants_owned_by_another_scope(
     assert binding.status == workspace.status == AgentWorkingResourceStatus.ACTIVE
 
 
+def test_cleanup_propagates_agent_enqueue_failure_before_conversation_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        conversation_service, "enqueue_agent_resource_collection", MagicMock(side_effect=RuntimeError("unavailable"))
+    )
+    delete_related = MagicMock()
+    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", delete_related)
+
+    with pytest.raises(RuntimeError, match="unavailable"):
+        ConversationService.enqueue_delete_cleanup(
+            tenant_id=TENANT_ID, conversation_id=CONVERSATION_ID, retired_workspace_ids=("workspace-1",)
+        )
+
+    delete_related.assert_not_called()
+
+
 def test_cleanup_keeps_soft_deleted_marker_when_dispatch_fails(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -256,18 +271,3 @@ def test_cleanup_keeps_soft_deleted_marker_when_dispatch_fails(
     persisted = sqlite_session.get(Conversation, conversation.id)
     assert persisted is not None
     assert persisted.is_deleted is True
-
-
-def test_cleanup_propagates_agent_enqueue_failure_before_conversation_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        conversation_service, "enqueue_agent_resource_collection", MagicMock(side_effect=RuntimeError("unavailable"))
-    )
-    delete_related = MagicMock()
-    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", delete_related)
-
-    with pytest.raises(RuntimeError, match="unavailable"):
-        ConversationService.enqueue_delete_cleanup(
-            tenant_id=TENANT_ID, conversation_id=CONVERSATION_ID, retired_workspace_ids=("workspace-1",)
-        )
-
-    delete_related.assert_not_called()

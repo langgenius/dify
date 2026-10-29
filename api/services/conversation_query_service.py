@@ -1,6 +1,6 @@
 """Read owned conversations and restore their inputs outside the query transaction."""
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from typing import Protocol
 
@@ -20,7 +20,7 @@ from services.entities.conversation_entities import (
     ConversationScope,
     ConversationSort,
 )
-from services.entities.message_entities import MessageFileProjection, MessageFileReference
+from services.message_query_service import MessageFiles
 
 
 class ConversationQueryStore(Protocol):
@@ -52,17 +52,6 @@ class ConversationInputRestorer(Protocol):
     def __call__(
         self, *, inputs: Mapping[str, ConversationInputValue], tenant_resolver: Callable[[], str]
     ) -> dict[str, ConversationInputValue]: ...
-
-
-class MessageFiles(Protocol):
-    def resolve(
-        self,
-        *,
-        tenant_id: str,
-        inputs: dict[str, ConversationInputValue],
-        answer: str,
-        files: Sequence[MessageFileReference],
-    ) -> MessageFileProjection: ...
 
 
 class ConversationQueryService:
@@ -132,7 +121,7 @@ class ConversationQueryService:
             scope=scope, invoke_from=invoke_from, last_id=last_id, limit=limit, pinned=pinned, sort_by=sort_by
         )
         # Legacy file reconstruction may query metadata. Keep that compatibility
-        # outside the repository transaction and reuse the model's shared helper.
+        # outside the repository transaction.
         return replace(
             page,
             data=tuple(

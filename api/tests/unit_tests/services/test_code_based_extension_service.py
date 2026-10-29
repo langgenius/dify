@@ -7,7 +7,9 @@ from services.code_based_extension_service import CodeBasedExtensionService
 
 
 class TestCodeBasedExtensionService:
-    def test_should_return_only_non_builtin_extensions_with_public_fields(self, monkeypatch: pytest.MonkeyPatch):
+    def test_should_return_only_non_builtin_extensions_with_public_fields(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test service returns only non-builtin extensions with name/label/form_schema fields."""
         moderation_extension = SimpleNamespace(
             name="custom-moderation",
@@ -56,7 +58,7 @@ class TestCodeBasedExtensionService:
         assert set(result[0].keys()) == {"name", "label", "form_schema"}
         module_extensions_mock.assert_called_once_with("external_data_tool")
 
-    def test_should_return_empty_list_when_all_extensions_are_builtin(self, monkeypatch: pytest.MonkeyPatch):
+    def test_should_return_empty_list_when_all_extensions_are_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test builtin extensions are filtered out completely."""
         builtin_extension = SimpleNamespace(
             name="builtin-moderation",
@@ -75,7 +77,7 @@ class TestCodeBasedExtensionService:
         assert result == []
         module_extensions_mock.assert_called_once_with("moderation")
 
-    def test_should_propagate_error_when_module_extensions_lookup_fails(self, monkeypatch: pytest.MonkeyPatch):
+    def test_should_propagate_error_when_module_extensions_lookup_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test ValueError from extension lookup bubbles up unchanged."""
         module_extensions_mock = MagicMock(side_effect=ValueError("Extension Module invalid-module not found"))
         monkeypatch.setattr(

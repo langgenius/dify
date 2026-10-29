@@ -30,6 +30,7 @@ from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
 from libs.datetime_utils import parse_time_range
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
@@ -83,6 +84,7 @@ register_response_schema_models(
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations")
 class CompletionConversationApi(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("list_completion_conversations")
     @console_ns.doc(description="Get completion conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(CompletionConversationQuery)})
@@ -129,6 +131,7 @@ class CompletionConversationApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 class CompletionConversationDetailApi(Resource):
+    @error_responses(AppNotFoundError, ConversationNotFoundHTTPError)
     @console_ns.doc("get_completion_conversation")
     @console_ns.doc(description="Get completion conversation details with messages")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
@@ -157,6 +160,7 @@ class CompletionConversationDetailApi(Resource):
             raise ConversationNotFoundHTTPError() from exc
         return response
 
+    @error_responses(AppNotFoundError, ConversationNotFoundHTTPError)
     @console_ns.doc("delete_completion_conversation")
     @console_ns.doc(description="Delete a completion conversation")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
@@ -182,6 +186,7 @@ class CompletionConversationDetailApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
 class ChatConversationApi(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("list_chat_conversations")
     @console_ns.doc(description="Get chat conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ChatConversationQuery)})
@@ -230,6 +235,7 @@ class ChatConversationApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
 class ChatConversationDetailApi(Resource):
+    @error_responses(AppNotFoundError, ConversationNotFoundHTTPError)
     @console_ns.doc("get_chat_conversation")
     @console_ns.doc(description="Get chat conversation details")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
@@ -258,6 +264,7 @@ class ChatConversationDetailApi(Resource):
             raise ConversationNotFoundHTTPError() from exc
         return response
 
+    @error_responses(AppNotFoundError, ConversationNotFoundHTTPError)
     @console_ns.doc("delete_chat_conversation")
     @console_ns.doc(description="Delete a chat conversation")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})

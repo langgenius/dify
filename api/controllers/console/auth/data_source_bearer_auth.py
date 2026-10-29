@@ -18,6 +18,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -101,6 +102,7 @@ class ApiKeyAuthDataSource(Resource):
 
 @console_ns.route("/api-key-auth/data-source/binding")
 class ApiKeyAuthDataSourceBinding(Resource):
+    @error_responses(DataSourceApiKeyAuthProviderNotSupportedError, DataSourceApiKeyAuthProviderUnavailableRequestError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     @console_account_admission(

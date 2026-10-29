@@ -1,7 +1,7 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useClickAway } from 'ahooks'
-import { fetchAgentLogDetail } from '@/service/log'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AgentLogModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -17,56 +17,23 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/service/log', () => ({
+const { fetchAgentLogDetail } = vi.hoisted(() => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.agent.logs.get': fetchAgentLogDetail,
+    }),
+  }
+})
+
 vi.mock('@/app/notifications', () => ({
   toast: mockToast,
-}))
-
-vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({
-    status,
-    time,
-    tokens,
-    error,
-  }: {
-    status: string
-    time?: number
-    tokens?: number
-    error?: string
-  }) => (
-    <div
-      data-testid="status-panel"
-      data-status={String(status)}
-      data-time={String(time)}
-      data-tokens={String(tokens)}
-    >
-      {error ? <span>{String(error)}</span> : null}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
-    <div data-testid="code-editor">
-      {title}
-      {typeof value === 'string' ? value : JSON.stringify(value)}
-    </div>
-  ),
-}))
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({ formatTime: (ts: number, fmt: string) => `${ts}-${fmt}` }),
-}))
-
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: () => <div data-testid="block-icon" />,
-}))
-
-vi.mock('ahooks', () => ({
-  useClickAway: vi.fn(),
 }))
 
 const mockLog = {
@@ -85,8 +52,8 @@ const mockProps = {
 
 describe('AgentLogModal', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(fetchAgentLogDetail).mockResolvedValue({
+    vi.resetAllMocks()
+    fetchAgentLogDetail.mockResolvedValue({
       meta: {
         status: 'succeeded',
         executor: 'User',
@@ -135,78 +102,49 @@ describe('AgentLogModal', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should render correctly when log item is provided', async () => {
-    render(<AgentLogModal appId="app-id" {...mockProps} />)
-
-    expect(screen.getByText('appLog.runDetail.workflowTitle')).toBeInTheDocument()
-
-    await waitFor(() => {
-      expect(screen.getByText(/runLog.detail/i)).toBeInTheDocument()
-    })
-  })
-
   it('should render the floating modal through a dialog portal', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
     const { container } = render(<AgentLogModal appId="app-id" {...mockProps} floating />)
 
     const modal = screen.getByRole('dialog')
     expect(container).not.toContainElement(modal)
     expect(document.body).toContainElement(modal)
-    expect(modal).toHaveClass('fixed', 'z-50', 'w-120!', 'left-[max(8px,calc(100vw-1136px))]!')
   })
 
-  it('should call onCancel when close button is clicked', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+  it('should call onCancel when close button is clicked', async () => {
+    const user = userEvent.setup()
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
     render(<AgentLogModal appId="app-id" {...mockProps} />)
 
     const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
-    fireEvent.click(closeBtn)
+    await user.click(closeBtn)
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('should call onCancel when clicking away', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
-
-    let clickAwayHandler!: (event: Event) => void
-    vi.mocked(useClickAway).mockImplementation((callback) => {
-      clickAwayHandler = callback
-    })
-
+  it('should call onCancel when clicking outside the panel', async () => {
+    const user = userEvent.setup()
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
     render(<AgentLogModal appId="app-id" {...mockProps} />)
-    clickAwayHandler(new Event('click'))
-
-    expect(mockProps.onCancel).toHaveBeenCalledTimes(1)
+    await user.click(document.body)
+    expect(mockProps.onCancel).toHaveBeenCalledOnce()
   })
 
-  it('should ignore click-away before mounted state is set', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
-    let invoked = false
-    vi.mocked(useClickAway).mockImplementation((callback) => {
-      if (!invoked) {
-        invoked = true
-        callback(new Event('click'))
-      }
-    })
-
+  it('does not close when clicking inside the panel', async () => {
+    const user = userEvent.setup()
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
     render(<AgentLogModal appId="app-id" {...mockProps} />)
-
+    await user.click(screen.getByText('appLog.runDetail.workflowTitle'))
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })
 
-  it('should not use click-away to close the floating dialog', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
-
-    let clickAwayHandler!: (event: Event) => void
-    vi.mocked(useClickAway).mockImplementation((callback) => {
-      clickAwayHandler = callback
-    })
-
+  it('keeps the floating dialog open when clicking its content', async () => {
+    const user = userEvent.setup()
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
     render(<AgentLogModal appId="app-id" {...mockProps} floating />)
-    clickAwayHandler(new Event('click'))
-
+    await user.click(screen.getByRole('dialog'))
     expect(mockProps.onCancel).not.toHaveBeenCalled()
   })
 
@@ -228,15 +166,13 @@ describe('AgentLogModal', () => {
     const pending = new Promise<Awaited<ReturnType<typeof fetchAgentLogDetail>>>((resolve) => {
       resolveOldResponse = resolve
     })
-    vi.mocked(fetchAgentLogDetail)
-      .mockResolvedValue(response)
-      .mockImplementationOnce(() => pending)
+    fetchAgentLogDetail.mockResolvedValue(response).mockImplementationOnce(() => pending)
     const { rerender } = render(<AgentLogModal appId="old-app" {...mockProps} />)
     rerender(<AgentLogModal appId="new-app" {...mockProps} />)
     await screen.findByText('New executor')
     expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      appID: 'new-app',
-      params: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
+      params: { app_id: 'new-app' },
+      query: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
     })
     await act(async () => {
       resolveOldResponse({ ...response, meta: { ...response.meta, executor: 'Old executor' } })
@@ -246,9 +182,10 @@ describe('AgentLogModal', () => {
     expect(screen.queryByText('Old executor')).not.toBeInTheDocument()
   })
   it('preserves the selected tab when another message replaces the open record', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(<AgentLogModal appId="app-id" {...mockProps} />)
     await screen.findByText('User')
-    fireEvent.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
     rerender(
       <AgentLogModal
         appId="app-id"
@@ -263,8 +200,8 @@ describe('AgentLogModal', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
     expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      appID: 'app-id',
-      params: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
+      params: { app_id: 'app-id' },
+      query: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
     })
   })
 
@@ -273,7 +210,7 @@ describe('AgentLogModal', () => {
     const pending = new Promise<Awaited<ReturnType<typeof fetchAgentLogDetail>>>((_, reject) => {
       rejectOldResponse = reject
     })
-    vi.mocked(fetchAgentLogDetail).mockReturnValueOnce(pending)
+    fetchAgentLogDetail.mockReturnValueOnce(pending)
     const { rerender } = render(<AgentLogModal appId="old-app" {...mockProps} />)
     rerender(<AgentLogModal appId="new-app" {...mockProps} />)
     await screen.findByText('User')

@@ -1,6 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Theme } from '@/types/app'
 import { CodeBlock } from '../code-block'
 
 const runtime = vi.hoisted(() => {
@@ -24,10 +23,6 @@ const runtime = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: Theme.light }) }))
-vi.mock('../shiki-highlight', () => ({
-  highlightCode: async ({ code }: { code: string }) => <pre>{code}</pre>,
-}))
 vi.mock('echarts-for-react', () => {
   runtime.chartLoaded = true
   return {
@@ -67,7 +62,11 @@ it('loads chart, music, and SVG runtimes only when their code-block language is 
   const { rerender, container } = render(
     <CodeBlock className="language-typescript">const answer = 42</CodeBlock>,
   )
-  await waitFor(() => expect(screen.getByText('const answer = 42')).toBeInTheDocument())
+  await waitFor(() =>
+    expect(container.querySelector('.code-line-numbers code')).toHaveTextContent(
+      'const answer = 42',
+    ),
+  )
   expect(runtime.svgLoaded).toBe(false)
   expect(runtime.chartLoaded).toBe(false)
   expect(runtime.musicLoaded).toBe(false)

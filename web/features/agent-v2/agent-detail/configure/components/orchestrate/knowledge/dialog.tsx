@@ -1,754 +1,456 @@
 'use client'
-import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { ReactNode } from 'react'
+
 import type {
-  MetadataFilteringCondition,
-  MetadataFilteringModeEnum,
-  MultipleRetrievalConfig,
-  SingleRetrievalConfig,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { ModelConfig } from '@/app/components/workflow/types'
+  KnowledgeFsSpaceListItemResponse,
+  KnowledgeFsTechnicalSummary,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { RefObject } from 'react'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
-import type { DataSet, MetadataInDoc } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxItemText,
+  ComboboxList,
+  ComboboxStatus,
+  createComboboxItems,
+} from '@langgenius/dify-ui/combobox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { intersectionBy } from 'es-toolkit/compat'
-import { useAtomValue } from 'jotai'
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IndexingType } from '@/app/components/datasets/create/step-two/hooks/use-indexing-config'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useCurrentProviderAndModel,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
-import DatasetList from '@/app/components/workflow/nodes/knowledge-retrieval/components/dataset-list'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
-import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
-import {
-  ComparisonOperator,
-  LogicalOperator,
-  MetadataFilteringVariableType,
-  MetadataFilteringModeEnum as WorkflowMetadataFilteringModeEnum,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { DATASET_DEFAULT } from '@/config'
-import { useDocLink } from '@/context/i18n'
 import {
   useKnowledgeValidationMessage,
   validateKnowledgeRetrievals,
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { consoleQuery } from '@/service/console'
 
-type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
-type MetadataFilteringConditions = {
-  logical_operator: LogicalOperator
-  conditions: MetadataFilteringCondition[]
-}
-
-type KnowledgeRetrievalDialogState = {
-  customQuery: string
-  metadataFilterMode: MetadataFilteringModeEnum
-  metadataFilteringConditions: MetadataFilteringConditions
-  metadataModelConfig?: ModelConfig
-  multipleRetrievalConfig: MultipleRetrievalConfig
-  name: string
-  queryMode: KnowledgeRetrievalQueryMode
-  retrievalMode: (typeof RETRIEVE_TYPE)[keyof typeof RETRIEVE_TYPE]
-  selectedDatasets: DataSet[]
-  singleRetrievalConfig?: SingleRetrievalConfig
-}
-
-type AgentKnowledgeRetrievalDialogProps = {
-  item?: AgentKnowledgeRetrievalItem
-  initialName?: string
-  onItemCreate?: (item: AgentKnowledgeRetrievalItem) => void
-  onItemChange?: (item: AgentKnowledgeRetrievalItem) => void
+type Props = {
   open: boolean
+  initialBindings: AgentKnowledgeRetrievalItem[]
+  onConfirm: (bindings: AgentKnowledgeRetrievalItem[]) => void
   onOpenChange: (open: boolean) => void
 }
 
-const queryModeOptions: KnowledgeRetrievalQueryMode[] = ['agent', 'custom']
-
-const optionCardClassName = cn(
-  'flex h-8 flex-1 items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2 text-center system-sm-regular text-text-secondary transition-colors',
-  'hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
-  'focus-visible:ring-1 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-  'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:font-medium data-checked:text-text-primary data-checked:shadow-xs data-checked:shadow-shadow-shadow-3',
-)
-
-function KnowledgeRetrievalDialogIcon() {
-  return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-1 text-text-primary-on-surface shadow-md shadow-shadow-shadow-5">
-      <span aria-hidden className="i-ri-book-open-line size-4" />
-    </span>
-  )
+type FormProps = Omit<Props, 'open' | 'onOpenChange'> & {
+  filterRef: RefObject<HTMLInputElement | null>
+  onClose: () => void
 }
 
-function DialogFormLabel({ children, id }: { children: ReactNode; id?: string }) {
-  return (
-    <div
-      id={id}
-      className="flex min-h-6 items-center system-sm-semibold-uppercase text-text-secondary"
-    >
-      {children}
-    </div>
-  )
-}
+const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
+  space.state === 'active' &&
+  space.technical_status === 'available' &&
+  space.permission_keys.includes('knowledge_space_read') &&
+  space.permission_keys.includes('knowledge_space_query')
 
-const createDefaultRetrievalConfig = (): MultipleRetrievalConfig => ({
-  top_k: DATASET_DEFAULT.top_k,
-  score_threshold: null,
-  reranking_enable: false,
-})
-
-const createDefaultMetadataFilteringConditions = (): MetadataFilteringConditions => ({
-  logical_operator: LogicalOperator.and,
-  conditions: [],
-})
-
-const createDatasetFromRef = (dataset: AgentKnowledgeDatasetConfig, index: number): DataSet => {
-  const id = dataset.id ?? dataset.name ?? `dataset-${index}`
-  const name = dataset.name ?? id
-
-  return {
-    id,
-    name,
-    indexing_status: 'completed',
-    icon_info: {
-      icon: '📙',
-      icon_type: 'emoji',
-      icon_background: '#FFF4ED',
-      icon_url: '',
-    },
-    description: dataset.description ?? '',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    created_by: '',
-    updated_by: '',
-    updated_at: 0,
-    app_count: 0,
-    doc_form: ChunkingMode.text,
-    document_count: 0,
-    total_document_count: 0,
-    word_count: 0,
-    provider: '',
-    embedding_model: '',
-    embedding_model_provider: '',
-    embedding_available: false,
-    retrieval_model_dict: {
-      search_method: RETRIEVE_METHOD.semantic,
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: DATASET_DEFAULT.top_k,
-      score_threshold_enabled: false,
-      score_threshold: 0,
-    },
-    retrieval_model: {
-      search_method: RETRIEVE_METHOD.semantic,
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: DATASET_DEFAULT.top_k,
-      score_threshold_enabled: false,
-      score_threshold: 0,
-    },
-    tags: [],
-    external_knowledge_info: {
-      external_knowledge_id: '',
-      external_knowledge_api_id: '',
-      external_knowledge_api_name: '',
-      external_knowledge_api_endpoint: '',
-    },
-    external_retrieval_model: {
-      top_k: DATASET_DEFAULT.top_k,
-      score_threshold: 0,
-      score_threshold_enabled: false,
-    },
-    built_in_field_enabled: false,
-    runtime_mode: 'general',
-    enable_api: false,
-    is_multimodal: false,
-  }
-}
-
-const getSelectedDatasets = (item?: AgentKnowledgeRetrievalItem) =>
-  item?.selectedDatasets ?? item?.datasetRefs?.map(createDatasetFromRef) ?? []
-
-const getDialogName = (
-  item: AgentKnowledgeRetrievalItem | undefined,
-  initialName: string | undefined,
-  fallbackName: string,
-) => item?.name ?? initialName ?? fallbackName
-
-const createDialogState = (
-  item: AgentKnowledgeRetrievalItem | undefined,
-  initialName: string | undefined,
-  fallbackName: string,
-): KnowledgeRetrievalDialogState => ({
-  customQuery: item?.customQuery ?? '',
-  metadataFilterMode: item?.metadataFilterMode ?? WorkflowMetadataFilteringModeEnum.disabled,
-  metadataFilteringConditions:
-    item?.metadataFilteringConditions ?? createDefaultMetadataFilteringConditions(),
-  metadataModelConfig: item?.metadataModelConfig,
-  multipleRetrievalConfig: item?.multipleRetrievalConfig ?? createDefaultRetrievalConfig(),
-  name: getDialogName(item, initialName, fallbackName),
-  queryMode: item?.queryMode ?? 'agent',
-  retrievalMode: item?.retrievalMode ?? RETRIEVE_TYPE.multiWay,
-  selectedDatasets: getSelectedDatasets(item),
-  singleRetrievalConfig: item?.singleRetrievalConfig,
-})
-
-const createMetadataCondition = ({
-  id,
-  name,
-  type,
-}: MetadataInDoc): MetadataFilteringCondition => ({
-  id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
-  metadata_id: id,
-  name,
-  comparison_operator:
-    type === MetadataFilteringVariableType.number
-      ? ComparisonOperator.equal
-      : ComparisonOperator.is,
-})
-
-function EditableKnowledgeRetrievalName({
-  editLabel,
-  inputLabel,
-  invalid,
-  name,
-  onCommit,
-}: {
-  editLabel: string
-  inputLabel: string
-  invalid: boolean
+type SpaceOption = {
+  id: string
   name: string
-  onCommit: (name: string) => void
+  description?: KnowledgeFsTechnicalSummary['description']
+  unavailable: boolean
+}
+
+function KnowledgeSpaceOptionItem({
+  option,
+  disabled,
+}: {
+  option: SpaceOption
+  disabled: boolean
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draftName, setDraftName] = useState(name)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const restoreButtonFocusRef = useRef(false)
-
-  useLayoutEffect(() => {
-    if (editing) {
-      inputRef.current?.focus()
-      inputRef.current?.select()
-      return
-    }
-
-    if (!restoreButtonFocusRef.current) return
-
-    restoreButtonFocusRef.current = false
-    const button = buttonRef.current
-    if (!button) return
-
-    const activeElement = button.ownerDocument.activeElement
-    if (!activeElement || activeElement === button.ownerDocument.body)
-      button.focus({ preventScroll: true })
-  }, [editing])
-
-  const finishEditing = (commit: boolean) => {
-    if (commit) onCommit(draftName)
-    else setDraftName(name)
-
-    restoreButtonFocusRef.current = true
-    setEditing(false)
-  }
-
-  if (editing) {
-    return (
-      <Input
-        ref={inputRef}
-        aria-label={inputLabel}
-        aria-invalid={invalid || undefined}
-        autoComplete="off"
-        className="h-7 min-w-0 flex-1 rounded-md px-1 py-0 system-xl-semibold text-text-primary"
-        name="knowledgeRetrievalName"
-        value={draftName}
-        onBlur={() => {
-          onCommit(draftName)
-          setEditing(false)
-        }}
-        onChange={(event) => setDraftName(event.currentTarget.value)}
-        onKeyDown={(event) => {
-          if (event.nativeEvent.isComposing) return
-
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            finishEditing(true)
-            return
-          }
-
-          if (event.key === 'Escape') {
-            event.preventDefault()
-            event.stopPropagation()
-            finishEditing(false)
-          }
-        }}
-      />
-    )
-  }
+  const { t } = useTranslation(['agentV2'])
+  const description = option.unavailable
+    ? t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])
+    : option.description
 
   return (
-    <button
-      ref={buttonRef}
-      type="button"
-      aria-label={editLabel}
-      className="flex h-7 min-w-0 flex-1 items-center rounded-md border border-transparent px-1 py-0 text-left system-xl-semibold text-text-primary hover:bg-components-input-bg-hover focus-visible:border-components-input-border-active focus-visible:bg-components-input-bg-active focus-visible:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-      onClick={() => {
-        setDraftName(name)
-        setEditing(true)
-      }}
+    <ComboboxItem<string>
+      value={option.id}
+      disabled={disabled}
+      className="group/space min-h-12 gap-3"
     >
-      <span className="min-w-0 truncate">{name}</span>
-    </button>
+      <span className="flex min-w-0 items-center gap-2.5">
+        <span
+          aria-hidden
+          className={cn(
+            'flex size-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs',
+            option.unavailable ? 'text-text-warning' : 'text-text-tertiary',
+          )}
+        >
+          <span
+            className={cn(
+              'size-4',
+              option.unavailable ? 'i-ri-error-warning-line' : 'i-ri-book-open-line',
+            )}
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <ComboboxItemText className="block">{option.name}</ComboboxItemText>
+          {!!description && (
+            <span
+              className={cn(
+                'block truncate system-xs-regular',
+                option.unavailable ? 'text-text-warning' : 'text-text-tertiary',
+              )}
+            >
+              {description}
+            </span>
+          )}
+        </span>
+      </span>
+      <span
+        aria-hidden
+        className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border border-components-checkbox-border bg-components-checkbox-bg-unchecked text-components-checkbox-icon shadow-xs shadow-shadow-shadow-3 group-data-disabled/space:border-components-checkbox-border-disabled group-data-disabled/space:bg-components-checkbox-bg-disabled group-data-selected/space:border-transparent group-data-selected/space:bg-components-checkbox-bg"
+      >
+        <ComboboxItemIndicator className="ms-0 text-components-checkbox-icon">
+          <span className="i-ri-check-line size-3" />
+        </ComboboxItemIndicator>
+      </span>
+    </ComboboxItem>
   )
 }
 
-function AgentKnowledgeRetrievalDialogContent({
-  item,
-  initialName,
-  onItemCreate,
-  onItemChange,
-}: Omit<AgentKnowledgeRetrievalDialogProps, 'open' | 'onOpenChange'>) {
-  const { t } = useTranslation(['agentV2', 'common', 'datasetSettings'])
-  const docLink = useDocLink()
-  const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
-  const getValidationMessage = useKnowledgeValidationMessage()
-  const fallbackName = t(($) => $['agentDetail.configure.knowledgeRetrieval.retrievalOne'])
-  const [dialogState, setDialogState] = useState(() =>
-    createDialogState(item, initialName, fallbackName),
-  )
-  const [rerankModelOpen, setRerankModelOpen] = useState(false)
-  const queryModeLabelId = 'agent-knowledge-retrieval-query-mode-label'
-  const {
-    customQuery,
-    metadataFilterMode,
-    metadataFilteringConditions,
-    metadataModelConfig,
-    multipleRetrievalConfig,
-    name,
-    queryMode,
-    retrievalMode,
-    selectedDatasets,
-    singleRetrievalConfig,
-  } = dialogState
-  const { modelList: rerankModelList, defaultModel: rerankDefaultModel } =
-    useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
-  const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
-    useCurrentProviderAndModel(
-      rerankModelList,
-      rerankDefaultModel
-        ? {
-            ...rerankDefaultModel,
-            provider: rerankDefaultModel.provider.provider,
-          }
-        : undefined,
-    )
-  const fallbackRerankModel = {
-    provider: currentRerankProvider?.provider,
-    model: currentRerankModel?.model,
-  }
-  const resolveMultipleRetrievalConfig = (
-    config: MultipleRetrievalConfig,
-    nextSelectedDatasets = selectedDatasets,
-    originalDatasets = selectedDatasets,
-  ) =>
-    getMultipleRetrievalConfig(config, nextSelectedDatasets, originalDatasets, fallbackRerankModel)
-  const effectiveMultipleRetrievalConfig =
-    retrievalMode === RETRIEVE_TYPE.multiWay && selectedDatasets.length > 0
-      ? resolveMultipleRetrievalConfig(multipleRetrievalConfig)
-      : multipleRetrievalConfig
-  const createItemFromDialogState = (
-    state: KnowledgeRetrievalDialogState,
-    id = globalThis.crypto?.randomUUID?.() ?? `retrieval-${Date.now()}`,
-  ): AgentKnowledgeRetrievalItem => ({
-    id,
-    name: state.name,
-    queryMode: state.queryMode,
-    customQuery: state.customQuery,
-    selectedDatasets: state.selectedDatasets,
-    retrievalMode: state.retrievalMode,
-    multipleRetrievalConfig: state.multipleRetrievalConfig,
-    singleRetrievalConfig: state.singleRetrievalConfig,
-    metadataFilterMode: state.metadataFilterMode,
-    metadataFilteringConditions: state.metadataFilteringConditions,
-    metadataModelConfig: state.metadataModelConfig,
+/** Draft state lives as long as the dialog content: each opening starts from the saved bindings. */
+function AgentKnowledgeRetrievalForm({
+  initialBindings,
+  onConfirm,
+  onClose,
+  filterRef,
+}: FormProps) {
+  const { t } = useTranslation(['agentV2'])
+  const { t: tc } = useTranslation(['common'])
+  const [draft, setDraft] = useState(initialBindings)
+  const [submitted, setSubmitted] = useState(false)
+  const validationMessage = useKnowledgeValidationMessage()
+  const spacesQuery = useInfiniteQuery({
+    ...consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
+      input: (pageParam) => ({ query: { limit: 50, page: pageParam } }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
+    }),
   })
-  const applyDialogStatePatch = (patch: Partial<KnowledgeRetrievalDialogState>) => {
-    const nextState = {
-      ...dialogState,
-      ...patch,
-    }
-    setDialogState(nextState)
-
-    if (item) {
-      onItemChange?.({
-        ...item,
-        ...createItemFromDialogState(nextState, item.id),
+  const spaces = useMemo(
+    () => spacesQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [spacesQuery.data],
+  )
+  const spacesById = useMemo(
+    () => new Map(spaces.map((space) => [space.control_space_id, space])),
+    [spaces],
+  )
+  // A later catalog page may contain a saved binding; absence is conclusive only
+  // after a successful, complete listing. Never discard a binding on query refresh.
+  const catalogComplete = spacesQuery.isSuccess && !spacesQuery.hasNextPage
+  const unavailableBindingIds = useMemo(
+    () =>
+      new Set(
+        draft
+          .filter((item) => {
+            if (!item.controlSpaceId) return false
+            const space = spacesById.get(item.controlSpaceId)
+            return space ? !canBindSpace(space) : catalogComplete
+          })
+          .map((item) => item.id),
+      ),
+    [catalogComplete, draft, spacesById],
+  )
+  const fallbackName = t(($) => $['agentDetail.configure.knowledgeFs.title'])
+  const spaceName = (space?: KnowledgeFsSpaceListItemResponse) =>
+    space?.technical_summary?.name || fallbackName
+  // Unavailable bindings stay listed as selected options, so deselecting one is how it is removed.
+  const optionItems = useMemo(() => {
+    const options = new Map<string, SpaceOption>()
+    for (const space of spaces) {
+      if (!canBindSpace(space)) continue
+      options.set(space.control_space_id, {
+        id: space.control_space_id,
+        name: space.technical_summary?.name || fallbackName,
+        description: space.technical_summary?.description,
+        unavailable: false,
       })
     }
-
-    return nextState
-  }
-  const handleSelectedDatasetsChange = (nextDatasets: DataSet[]) => {
-    const nextMultipleRetrievalConfig =
-      retrievalMode === RETRIEVE_TYPE.multiWay && nextDatasets.length > 0
-        ? resolveMultipleRetrievalConfig(multipleRetrievalConfig, nextDatasets)
-        : multipleRetrievalConfig
-    const nextState = applyDialogStatePatch({
-      multipleRetrievalConfig: nextMultipleRetrievalConfig,
-      selectedDatasets: nextDatasets,
+    for (const item of draft) {
+      if (!item.controlSpaceId || !unavailableBindingIds.has(item.id)) continue
+      if (options.has(item.controlSpaceId)) continue
+      options.set(item.controlSpaceId, {
+        id: item.controlSpaceId,
+        name:
+          item.name || spacesById.get(item.controlSpaceId)?.technical_summary?.name || fallbackName,
+        unavailable: true,
+      })
+    }
+    return createComboboxItems([...options.values()], {
+      getValue: (option) => option.id,
+      getLabel: (option) => option.name,
     })
-
-    if (item) return
-
-    if (nextDatasets.length > 0) onItemCreate?.(createItemFromDialogState(nextState))
+  }, [draft, fallbackName, spaces, spacesById, unavailableBindingIds])
+  const selectedIds = useMemo(
+    () => [
+      ...new Set(
+        draft.flatMap((item) =>
+          item.controlSpaceId && (!item.isMissing || unavailableBindingIds.has(item.id))
+            ? [item.controlSpaceId]
+            : [],
+        ),
+      ),
+    ],
+    [draft, unavailableBindingIds],
+  )
+  const validation = validateKnowledgeRetrievals(draft)
+  const spaceCount = draft.filter((item) => item.controlSpaceId).length
+  const update = (id: string, patch: Partial<AgentKnowledgeRetrievalItem>) =>
+    setDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+  const select = (nextIds: string[]) => {
+    const removed = new Set(selectedIds.filter((id) => !nextIds.includes(id)))
+    const added = nextIds.filter((id) => !selectedIds.includes(id))
+    setDraft((current) => {
+      const next = current
+        .filter((item) => !item.controlSpaceId || !removed.has(item.controlSpaceId))
+        .map((item) =>
+          item.controlSpaceId && item.isMissing && added.includes(item.controlSpaceId)
+            ? { ...item, isMissing: false }
+            : item,
+        )
+      for (const id of added) {
+        const space = spacesById.get(id)
+        if (!space || !canBindSpace(space) || next.some((item) => item.controlSpaceId === id))
+          continue
+        if (next.filter((item) => item.controlSpaceId).length >= 10) break
+        const title = spaceName(space)
+        const name = next.some((item) => item.name?.toLowerCase() === title.toLowerCase())
+          ? `${title.slice(0, 109)} (${id.slice(0, 8)})`
+          : title.slice(0, 120)
+        next.push({
+          id: crypto.randomUUID(),
+          controlSpaceId: id,
+          name,
+          description: space.technical_summary?.description?.slice(0, 2000) ?? '',
+          isMissing: false,
+        })
+      }
+      return next
+    })
   }
-  const metadataList = useMemo(() => {
-    const datasetsWithMetadata = selectedDatasets.filter((dataset) => !!dataset.doc_metadata)
-
-    if (datasetsWithMetadata.length === 0) return []
-
-    return intersectionBy(...datasetsWithMetadata.map((dataset) => dataset.doc_metadata!), 'name')
-  }, [selectedDatasets])
-  const validation = useMemo(() => validateKnowledgeRetrievals(retrievals), [retrievals])
-  const itemValidation = item ? validation.byId[item.id] : undefined
-  const nameError = getValidationMessage(itemValidation?.name)
-  const datasetsError = getValidationMessage(itemValidation?.datasets)
-  const queryError = getValidationMessage(itemValidation?.query)
-  const retrievalError = getValidationMessage(itemValidation?.retrieval)
-  const metadataError =
-    itemValidation?.metadata === 'metadata_model_required'
-      ? undefined
-      : getValidationMessage(itemValidation?.metadata)
 
   return (
-    <>
-      <DialogTitle className="sr-only">
-        {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.title'])}
-      </DialogTitle>
-      <div className="flex items-center gap-2 px-4 pt-3">
-        <KnowledgeRetrievalDialogIcon />
-        <EditableKnowledgeRetrievalName
-          editLabel={t(($) => $['agentDetail.configure.knowledgeRetrieval.edit'], { name })}
-          inputLabel={t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'])}
-          invalid={!!nameError}
-          name={name}
-          onCommit={(nextName) => applyDialogStatePatch({ name: nextName })}
-        />
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="-my-0.5 shrink-0"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-      </div>
-      {nameError && (
-        <div role="alert" className="px-4 pt-1 system-xs-regular text-text-destructive">
-          {nameError}
+    <form
+      noValidate
+      className="flex max-h-[80dvh] min-h-0 flex-col text-text-primary"
+      onSubmit={(event) => {
+        event.preventDefault()
+        setSubmitted(true)
+        if (validation.isValid && unavailableBindingIds.size === 0) onConfirm(draft)
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['agentDetail.configure.knowledgeFs.title'])}</DialogTitle>
+        <DialogDescription>
+          {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+        </DialogDescription>
+        <DialogHeaderCloseButton aria-label={tc(($) => $['operation.close'])} />
+      </DialogHeader>
+      <Combobox<string, true, SpaceOption>
+        inline
+        open
+        multiple
+        items={optionItems}
+        value={selectedIds}
+        onValueChange={select}
+      >
+        <div className="shrink-0 px-6 pb-3">
+          <ComboboxInputGroup>
+            <span
+              aria-hidden
+              className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+            />
+            <ComboboxInput
+              ref={filterRef}
+              enterKeyHint="search"
+              aria-label={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
+              placeholder={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
+            />
+          </ComboboxInputGroup>
         </div>
-      )}
-
-      <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
-        <div className="flex flex-col gap-1 px-4 py-2">
-          <DialogFormLabel id={queryModeLabelId}>
-            {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
-          </DialogFormLabel>
-          <RadioGroup<KnowledgeRetrievalQueryMode>
-            aria-labelledby={queryModeLabelId}
-            className="w-full gap-2"
-            value={queryMode}
-            onValueChange={(nextMode) => {
-              if (nextMode) applyDialogStatePatch({ queryMode: nextMode })
-            }}
-          >
-            {queryModeOptions.map((mode) => (
-              <RadioItem<KnowledgeRetrievalQueryMode>
-                key={mode}
-                value={mode}
-                nativeButton
-                render={<button type="button" className={optionCardClassName} />}
-              >
-                <span className="min-w-0 truncate">
-                  {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
-                </span>
-              </RadioItem>
-            ))}
-          </RadioGroup>
-          {queryMode === 'custom' ? (
+        <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-6 pb-4 system-sm-regular">
+          {draft.some((item) => item.isMissing && !unavailableBindingIds.has(item.id)) && (
+            <p role="alert" className="system-xs-regular text-text-warning">
+              {t(($) => $['agentDetail.configure.knowledgeFs.rebind'])}
+            </p>
+          )}
+          <ComboboxStatus className="sr-only">
+            {spacesQuery.isPending && t(($) => $['agentDetail.configure.knowledgeFs.loading'])}
+          </ComboboxStatus>
+          {spacesQuery.isPending && (
+            <div aria-hidden className="space-y-1">
+              {Array.from({ length: 5 }, (_, index) => (
+                <div
+                  key={index}
+                  className="flex h-14 items-center gap-3 px-2 motion-safe:animate-pulse"
+                >
+                  <span className="size-8 rounded-lg bg-background-section" />
+                  <span className="h-4 w-1/2 rounded bg-background-section" />
+                </div>
+              ))}
+            </div>
+          )}
+          {spacesQuery.isError && (
+            <div role="alert" className="space-y-2 py-3 system-sm-regular text-text-destructive">
+              <p>{t(($) => $['agentDetail.configure.knowledgeFs.loadError'])}</p>
+              <Button onClick={() => void spacesQuery.refetch()} loading={spacesQuery.isFetching}>
+                {t(($) => $['agentDetail.configure.knowledgeFs.retry'])}
+              </Button>
+            </div>
+          )}
+          {!spacesQuery.isPending && !spacesQuery.isError && (
             <>
-              <div className="pt-1">
-                <Textarea
-                  aria-label={t(
-                    ($) =>
-                      $['agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'],
-                  )}
-                  aria-invalid={queryError ? true : undefined}
-                  className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
-                  placeholder={t(
-                    ($) =>
-                      $['agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder'],
-                  )}
-                  value={customQuery}
-                  onValueChange={(nextQuery) => applyDialogStatePatch({ customQuery: nextQuery })}
-                />
-              </div>
-              <p className="system-xs-regular text-text-tertiary">
-                {t(
-                  ($) =>
-                    $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'],
+              <ComboboxList<SpaceOption>
+                aria-label={t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+                className="max-h-none overflow-visible p-0"
+              >
+                {(option) => (
+                  <KnowledgeSpaceOptionItem
+                    key={option.id}
+                    option={option}
+                    disabled={!selectedIds.includes(option.id) && spaceCount >= 10}
+                  />
                 )}
-              </p>
-              {queryError && (
-                <p role="alert" className="system-xs-regular text-text-destructive">
-                  {queryError}
-                </p>
-              )}
+              </ComboboxList>
+              <ComboboxEmpty className="px-0 py-8 text-center">
+                {t(($) => $['agentDetail.configure.knowledgeFs.empty'])}
+              </ComboboxEmpty>
             </>
-          ) : (
-            <p className="pt-1 system-xs-regular text-text-tertiary">
-              {t(
-                ($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription'],
-              )}
+          )}
+          {spacesQuery.hasNextPage && (
+            <Button
+              onClick={() => void spacesQuery.fetchNextPage()}
+              loading={spacesQuery.isFetchingNextPage}
+            >
+              {t(($) => $['agentDetail.configure.knowledgeFs.loadMore'])}
+            </Button>
+          )}
+          {draft.length > 0 && (
+            <Collapsible className="border-t-[0.5px] border-divider-subtle pt-3">
+              <CollapsibleTrigger className="group -mx-2 flex h-8 w-[calc(100%+1rem)] touch-manipulation items-center gap-1 rounded-lg px-2 text-start system-sm-medium text-text-secondary select-none hover:bg-state-base-hover">
+                <span className="flex-1">
+                  {t(($) => $['agentDetail.configure.advancedSettings.label'])}
+                </span>
+                <span
+                  aria-hidden
+                  className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
+                />
+              </CollapsibleTrigger>
+              <CollapsiblePanel>
+                <div className="space-y-2 pt-2">
+                  {draft.map((item) => {
+                    const title = item.controlSpaceId
+                      ? spaceName(spacesById.get(item.controlSpaceId))
+                      : item.name || fallbackName
+                    const unavailable = unavailableBindingIds.has(item.id)
+                    return (
+                      <fieldset
+                        key={item.id}
+                        className="min-w-0 space-y-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-3 shadow-xs"
+                      >
+                        <legend className="sr-only">{title}</legend>
+                        <div aria-hidden className="flex min-w-0 items-center gap-2">
+                          <span
+                            className={cn(
+                              'flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg',
+                              unavailable ? 'text-text-warning' : 'text-text-tertiary',
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'size-3.5',
+                                unavailable ? 'i-ri-error-warning-line' : 'i-ri-book-open-line',
+                              )}
+                            />
+                          </span>
+                          <span className="min-w-0 truncate system-sm-semibold text-text-primary">
+                            {title}
+                          </span>
+                        </div>
+                        <Field invalid={submitted && !!validation.byId[item.id]?.name}>
+                          <FieldLabel className="system-xs-medium text-text-tertiary">
+                            {t(($) => $['agentDetail.configure.knowledgeFs.alias'])}
+                          </FieldLabel>
+                          <Input
+                            required
+                            maxLength={120}
+                            value={item.name ?? ''}
+                            onChange={(event) => update(item.id, { name: event.target.value })}
+                          />
+                        </Field>
+                        <Field>
+                          <FieldLabel className="system-xs-medium text-text-tertiary">
+                            {t(($) => $['agentDetail.configure.knowledgeFs.bindingDescription'])}
+                          </FieldLabel>
+                          <Textarea
+                            maxLength={2000}
+                            value={item.description ?? ''}
+                            onValueChange={(value) => update(item.id, { description: value })}
+                          />
+                        </Field>
+                      </fieldset>
+                    )
+                  })}
+                </div>
+              </CollapsiblePanel>
+            </Collapsible>
+          )}
+          {submitted && (validation.firstIssue || unavailableBindingIds.size > 0) && (
+            <p role="alert" className="system-xs-regular text-text-destructive">
+              {validation.firstIssue
+                ? validationMessage(validation.firstIssue.code)
+                : t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])}
             </p>
           )}
         </div>
-
-        <div className="px-4 py-2">
-          <Field
-            title={t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'])}
-            required
-            operations={
-              <div className="flex items-center space-x-1">
-                <RetrievalConfig
-                  payload={{
-                    retrieval_mode: retrievalMode,
-                    multiple_retrieval_config: effectiveMultipleRetrievalConfig,
-                    single_retrieval_config: singleRetrievalConfig,
-                  }}
-                  onRetrievalModeChange={(nextRetrievalMode) => {
-                    const nextMultipleRetrievalConfig =
-                      nextRetrievalMode === RETRIEVE_TYPE.multiWay
-                        ? resolveMultipleRetrievalConfig(multipleRetrievalConfig)
-                        : multipleRetrievalConfig
-
-                    applyDialogStatePatch({
-                      multipleRetrievalConfig: nextMultipleRetrievalConfig,
-                      retrievalMode: nextRetrievalMode,
-                    })
-                  }}
-                  onMultipleRetrievalConfigChange={(nextMultipleRetrievalConfig) => {
-                    const normalizedMultipleRetrievalConfig = resolveMultipleRetrievalConfig(
-                      nextMultipleRetrievalConfig,
-                    )
-
-                    applyDialogStatePatch({
-                      multipleRetrievalConfig: normalizedMultipleRetrievalConfig,
-                    })
-                  }}
-                  singleRetrievalModelConfig={singleRetrievalConfig?.model}
-                  onSingleRetrievalModelChange={(model) => {
-                    applyDialogStatePatch({
-                      singleRetrievalConfig: {
-                        model: {
-                          provider: model.provider,
-                          name: model.modelId,
-                          mode: model.mode ?? singleRetrievalConfig?.model.mode ?? AppModeEnum.CHAT,
-                          completion_params: singleRetrievalConfig?.model.completion_params ?? {
-                            temperature: 0.7,
-                          },
-                        },
-                      },
-                    })
-                  }}
-                  onSingleRetrievalModelParamsChange={(completionParams) => {
-                    applyDialogStatePatch({
-                      singleRetrievalConfig: {
-                        model: {
-                          provider: singleRetrievalConfig?.model.provider ?? '',
-                          name: singleRetrievalConfig?.model.name ?? '',
-                          mode: singleRetrievalConfig?.model.mode ?? AppModeEnum.CHAT,
-                          completion_params: completionParams,
-                        },
-                      },
-                    })
-                  }}
-                  readonly={!selectedDatasets.length}
-                  modal
-                  rerankModalOpen={rerankModelOpen}
-                  onRerankModelOpenChange={setRerankModelOpen}
-                  selectedDatasets={selectedDatasets}
-                />
-                <div className="h-3 w-px bg-divider-regular" />
-                <AddKnowledge
-                  selectedIds={selectedDatasets.map((dataset) => dataset.id)}
-                  modal
-                  onChange={handleSelectedDatasetsChange}
-                />
-              </div>
-            }
-          >
-            <>
-              {selectedDatasets.length > 0 && (
-                <DatasetList
-                  list={selectedDatasets}
-                  onChange={handleSelectedDatasetsChange}
-                  settingsDrawerBackdropClassName="bg-background-overlay"
-                  settingsDrawerBackdropForceRender
-                  settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"
-                  settingsModalHeight="100%"
-                />
-              )}
-              {(datasetsError || retrievalError) && (
-                <div role="alert" className="pt-2 system-xs-regular text-text-destructive">
-                  {datasetsError ?? retrievalError}
-                </div>
-              )}
-            </>
-          </Field>
-        </div>
-
-        <div className="py-2">
-          <MetadataFilter
-            metadataList={metadataList}
-            selectedDatasetsLoaded
-            metadataFilterMode={metadataFilterMode}
-            metadataFilteringConditions={metadataFilteringConditions}
-            handleMetadataFilterModeChange={(nextMode) =>
-              applyDialogStatePatch({ metadataFilterMode: nextMode })
-            }
-            handleAddCondition={(metadataItem) => {
-              applyDialogStatePatch({
-                metadataFilteringConditions: {
-                  ...metadataFilteringConditions,
-                  conditions: [
-                    ...metadataFilteringConditions.conditions,
-                    createMetadataCondition(metadataItem),
-                  ],
-                },
-              })
-            }}
-            handleRemoveCondition={(conditionId) => {
-              applyDialogStatePatch({
-                metadataFilteringConditions: {
-                  ...metadataFilteringConditions,
-                  conditions: metadataFilteringConditions.conditions.filter(
-                    (condition) => condition.id !== conditionId,
-                  ),
-                },
-              })
-            }}
-            handleToggleConditionLogicalOperator={() => {
-              applyDialogStatePatch({
-                metadataFilteringConditions: {
-                  ...metadataFilteringConditions,
-                  logical_operator:
-                    metadataFilteringConditions.logical_operator === LogicalOperator.and
-                      ? LogicalOperator.or
-                      : LogicalOperator.and,
-                },
-              })
-            }}
-            handleUpdateCondition={(conditionId, nextCondition) => {
-              applyDialogStatePatch({
-                metadataFilteringConditions: {
-                  ...metadataFilteringConditions,
-                  conditions: metadataFilteringConditions.conditions.map((condition) =>
-                    condition.id === conditionId ? nextCondition : condition,
-                  ),
-                },
-              })
-            }}
-            metadataModelConfig={metadataModelConfig}
-            handleMetadataModelChange={(model) => {
-              applyDialogStatePatch({
-                metadataModelConfig: {
-                  provider: model.provider,
-                  name: model.modelId,
-                  mode: model.mode ?? metadataModelConfig?.mode ?? AppModeEnum.CHAT,
-                  completion_params: metadataModelConfig?.completion_params ?? { temperature: 0.7 },
-                },
-              })
-            }}
-            handleMetadataCompletionParamsChange={(completionParams) => {
-              applyDialogStatePatch({
-                metadataModelConfig: {
-                  provider: metadataModelConfig?.provider ?? '',
-                  name: metadataModelConfig?.name ?? '',
-                  mode: metadataModelConfig?.mode ?? AppModeEnum.CHAT,
-                  completion_params: completionParams,
-                },
-              })
-            }}
-          />
-          {metadataError && (
-            <div role="alert" className="px-4 pt-2 system-xs-regular text-text-destructive">
-              {metadataError}
-            </div>
-          )}
-        </div>
+      </Combobox>
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
+        <span role="status" className="me-auto system-xs-medium text-text-tertiary tabular-nums">
+          {spaceCount} / 10
+        </span>
+        <Button onClick={onClose}>{tc(($) => $['operation.cancel'])}</Button>
+        <Button type="submit" variant="primary">
+          {tc(($) => $['operation.confirm'])}
+        </Button>
       </div>
-
-      <div className="flex flex-col gap-2 px-4 pb-4">
-        <div aria-hidden className="h-2 w-8 border-b border-divider-regular" />
-        <a
-          href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-book-read-line size-3 shrink-0" />
-          <span className="min-w-0 truncate">
-            {t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
-          </span>
-        </a>
-      </div>
-    </>
+    </form>
   )
 }
 
+/** The composer changes only on explicit confirmation. */
 export function AgentKnowledgeRetrievalDialog({
-  item,
-  initialName,
-  onItemCreate,
-  onItemChange,
   open,
+  initialBindings,
+  onConfirm,
   onOpenChange,
-}: AgentKnowledgeRetrievalDialogProps) {
+}: Props) {
+  const filterRef = useRef<HTMLInputElement>(null)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="flex h-130 max-h-[calc(100dvh-2rem)] w-100 flex-col overflow-hidden p-0"
-      >
-        <AgentKnowledgeRetrievalDialogContent
-          item={item}
-          initialName={initialName}
-          onItemCreate={onItemCreate}
-          onItemChange={onItemChange}
+      <DialogContent initialFocus={filterRef} className="w-xl overflow-hidden">
+        <AgentKnowledgeRetrievalForm
+          initialBindings={initialBindings}
+          filterRef={filterRef}
+          onConfirm={onConfirm}
+          onClose={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>

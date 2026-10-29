@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { fn } from 'storybook/test'
 import NotionConnector from '.'
 
 const meta = {
@@ -14,9 +15,7 @@ const meta = {
     },
   },
   args: {
-    onSetting: () => {
-      console.log('Open Notion settings')
-    },
+    onSetting: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof NotionConnector>

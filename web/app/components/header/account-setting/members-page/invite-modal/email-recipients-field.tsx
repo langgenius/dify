@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react'
 import type { EmailRecipient } from './email-recipients'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
-import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { hasEmailDelimiter, mergeEmailRecipients } from './email-recipients'
@@ -171,15 +171,9 @@ export function EmailRecipientsField({
           </span>
         )}
       </div>
-      <div
-        className={cn(
-          'flex max-h-24 min-h-10 flex-wrap content-start items-center gap-1 overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1.5 transition-[background-color,border-color,box-shadow]',
-          'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-          'focus-within:bg-components-input-bg-active has-[input:focus]:border-transparent has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid',
-          'group-data-invalid/field:border-components-input-border-destructive group-data-invalid/field:bg-components-input-bg-destructive',
-          disabled &&
-            'cursor-not-allowed bg-components-input-bg-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
-        )}
+      <InputGroup
+        // oxlint-disable-next-line shadcn/no-restyle -- Recipient chips keep the shared field indicator while showing their own navigation highlight.
+        className="max-h-24 flex-wrap content-start gap-1 overflow-y-auto px-2 py-0.75 focus-within:ring-2 focus-within:ring-state-accent-solid"
       >
         {recipients.length > 0 && (
           <ul
@@ -194,7 +188,7 @@ export function EmailRecipientsField({
                   key={value}
                   className={cn(
                     'flex h-6 max-w-full items-center gap-1 rounded-md bg-components-badge-bg-gray-soft px-2 system-xs-medium text-text-secondary outline-hidden',
-                    'focus-within:inset-ring-1 focus-within:inset-ring-components-input-border-active',
+                    'focus-within:ring-1 focus-within:ring-state-accent-solid',
                     !isValid && 'bg-components-badge-bg-red-soft text-text-destructive',
                   )}
                 >
@@ -247,7 +241,7 @@ export function EmailRecipientsField({
             })}
           </ul>
         )}
-        <Input
+        <InputGroupInput
           ref={internalInputRef}
           type="text"
           disabled={disabled}
@@ -260,10 +254,7 @@ export function EmailRecipientsField({
               : ''
           }
           value={draft}
-          className={cn(
-            'h-6 w-0 flex-1 rounded-none border-0 bg-transparent p-0 shadow-none hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:ring-0 disabled:bg-transparent disabled:hover:bg-transparent enabled:data-invalid:border-transparent enabled:data-invalid:bg-transparent',
-            recipients.length > 0 ? 'min-w-12' : 'min-w-40',
-          )}
+          className={cn('h-6 p-0', recipients.length > 0 ? 'min-w-12' : 'min-w-40')}
           onChange={(event) => {
             updateDraft(event.target.value)
             setDraftTouched(false)
@@ -308,7 +299,7 @@ export function EmailRecipientsField({
             setDraftTouched(false)
           }}
         />
-      </div>
+      </InputGroup>
       {fieldError ? (
         <FieldError match>{fieldError}</FieldError>
       ) : (

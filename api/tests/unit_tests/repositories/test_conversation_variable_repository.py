@@ -20,7 +20,7 @@ from repositories.conversation_variable_repository import ConversationVariableRe
 from services.conversation_variable_query import ConversationVariableAppNotFoundError
 from services.entities.conversation_entities import EndUserConversationRef
 from services.errors.conversation import ConversationNotExistsError, ConversationVariableNotExistsError
-from tests.unit_tests.model_factories import make_app, make_conversation, make_end_user
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user
 
 CONTEXT = RequestContext(request_id="request", trace_id=None, account_id="account-1", active_workspace_id="tenant-1")
 
@@ -192,7 +192,7 @@ def test_end_user_page_preserves_storage_ids_order_limit_and_cursor(
         repository.get_page(ref=end_user_ref, last_id="draft-mid", limit=2, variable_name=None)
 
 
-def test_end_user_empty_page_and_strict_timestamp_cursor(
+def test_end_user_empty_page_and_missing_cursor(
     sqlite_session_factory: sessionmaker[Session], end_user_ref: EndUserConversationRef
 ) -> None:
     repository = ConversationVariableRepository(session_factory=sqlite_session_factory)
@@ -201,13 +201,35 @@ def test_end_user_empty_page_and_strict_timestamp_cursor(
     assert empty.has_more is False
     with pytest.raises(ConversationVariableNotExistsError):
         repository.get_page(ref=end_user_ref, last_id="missing", limit=20, variable_name=None)
+
+
+@pytest.mark.parametrize("limit", [1, 2, 3])
+def test_end_user_pagination_returns_all_timestamp_ties_in_id_order(
+    sqlite_session_factory: sessionmaker[Session], end_user_ref: EndUserConversationRef, limit: int
+) -> None:
+    ids = [str(UUID(int=index)) for index in range(1, 5)]
     with sqlite_session_factory.begin() as session:
-        first = _variable(session, end_user_ref, logical_id="one", name="One", created_at=_TIME)
-        _variable(session, end_user_ref, logical_id="two", name="Two", created_at=_TIME)
-    page = repository.get_page(ref=end_user_ref, last_id=None, limit=1, variable_name=None)
-    assert len(page.data) == 1
-    assert page.has_more is True
-    assert repository.get_page(ref=end_user_ref, last_id=first.id, limit=1, variable_name=None).data == ()
+        # Insert ties in reverse ID order; the newest variable has the smallest ID.
+        for index in (3, 2, 1, 0):
+            _variable(
+                session,
+                end_user_ref,
+                logical_id=ids[index],
+                name=f"Variable {index}",
+                created_at=_TIME + timedelta(seconds=1 if index == 0 else 0),
+            )
+    repository = ConversationVariableRepository(session_factory=sqlite_session_factory)
+    expected_ids = ids[1:] + ids[:1]
+    last_id: str | None = None
+    for offset in range(0, len(expected_ids), limit):
+        page = repository.get_page(ref=end_user_ref, last_id=last_id, limit=limit, variable_name=None)
+        assert [row.id for row in page.data] == expected_ids[offset : offset + limit]
+        assert page.has_more is (offset + limit < len(expected_ids))
+        last_id = page.data[-1].id
+
+    empty = repository.get_page(ref=end_user_ref, last_id=last_id, limit=limit, variable_name=None)
+    assert empty.data == ()
+    assert empty.has_more is False
 
 
 @pytest.mark.parametrize("search", ["CUSTOM", "stom", "%", "_", "\\"])

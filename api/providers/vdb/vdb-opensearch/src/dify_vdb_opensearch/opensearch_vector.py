@@ -205,7 +205,7 @@ class OpenSearchVector(BaseVector):
         if not all(isinstance(x, float) for x in query_vector):
             raise ValueError("All elements in query_vector should be floats")
 
-        query = {
+        query: dict[str, Any] = {
             "size": kwargs.get("top_k", 4),
             "query": {"knn": {Field.VECTOR: {Field.VECTOR: query_vector, "k": kwargs.get("top_k", 4)}}},
         }

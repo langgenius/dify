@@ -1,10 +1,12 @@
-import type { DataSourceCredential } from '../../header/account-setting/data-source-page-new/types'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { NotionIntegrateInfoListResponse } from '@dify/contracts/api/console/notion/types.gen'
 import type { NotionCredential } from './credential-selector'
 import type {
   DataSourceNotionPageMap,
   DataSourceNotionWorkspace,
   NotionPage,
 } from '@/models/common'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,15 +15,34 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import {
-  useInvalidPreImportNotionPages,
-  usePreImportNotionPages,
-} from '@/service/knowledge/use-import'
+import { consoleQuery } from '@/service/console'
 import Header from '../../datasets/create/website/base/header'
 import NotionConnector from '../notion-connector'
 import WorkspaceSelector from './credential-selector'
 import PageSelector from './page-selector'
 import SearchInput from './search-input'
+
+// Top-level pages have no parent in the API response; the page tree calls them `root`.
+const toNotionWorkspaces = ({ notion_info }: NotionIntegrateInfoListResponse) =>
+  notion_info.map((workspace): DataSourceNotionWorkspace => ({
+    ...workspace,
+    workspace_id: workspace.workspace_id ?? '',
+    workspace_name: workspace.workspace_name ?? '',
+    pages: workspace.pages.map((page) => ({
+      ...page,
+      parent_id: page.parent_id ?? 'root',
+      page_icon: page.page_icon && {
+        type: page.page_icon.type ?? null,
+        url: page.page_icon.url ?? null,
+        emoji: page.page_icon.emoji ?? null,
+      },
+    })),
+  }))
+
+const getStringField = (record: Record<string, unknown>, key: string) => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
 
 type NotionPageSelectorProps = {
   value?: string[]
@@ -30,7 +51,7 @@ type NotionPageSelectorProps = {
   previewPageId?: string
   onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
-  credentialList: DataSourceCredential[]
+  credentialList: DatasourceCredentialResponse[]
   onSelectCredential?: (credentialId: string) => void
 }
 
@@ -48,15 +69,24 @@ const NotionPageSelector = ({
   const [searchValue, setSearchValue] = useState('')
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
-  const invalidPreImportNotionPages = useInvalidPreImportNotionPages()
+  const queryClient = useQueryClient()
+  const invalidPreImportNotionPages = useCallback(
+    ({ datasetId, credentialId }: { datasetId: string; credentialId: string }) =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.notion.preImport.pages.get.queryKey({
+          input: { query: { dataset_id: datasetId, credential_id: credentialId } },
+        }),
+      }),
+    [queryClient],
+  )
 
   const notionCredentials = useMemo((): NotionCredential[] => {
     return credentialList.map((item) => {
       return {
         credentialId: item.id,
         credentialName: item.name,
-        workspaceIcon: item.credential.workspace_icon,
-        workspaceName: item.credential.workspace_name,
+        workspaceIcon: getStringField(item.credential, 'workspace_icon'),
+        workspaceName: getStringField(item.credential, 'workspace_name'),
       }
     })
   }, [credentialList])
@@ -99,14 +129,20 @@ const NotionPageSelector = ({
     data: notionsPages,
     isFetching: isFetchingNotionPages,
     isError: isFetchingNotionPagesError,
-  } = usePreImportNotionPages({ datasetId, credentialId: currentCredentialId })
-  const notionPages = notionsPages?.notion_info?.flatMap((workspace) => workspace.pages) || []
+  } = useQuery(
+    consoleQuery.notion.preImport.pages.get.queryOptions({
+      input: { query: { dataset_id: datasetId, credential_id: currentCredentialId } },
+      retry: 0,
+      select: toNotionWorkspaces,
+    }),
+  )
+  const notionPages = notionsPages?.flatMap((workspace) => workspace.pages) || []
 
   const pagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] =
     useMemo(() => {
       const selectedPagesId = new Set<string>()
       const boundPagesId = new Set<string>()
-      const notionWorkspaces = notionsPages?.notion_info || []
+      const notionWorkspaces = notionsPages || []
       const pagesMap = notionWorkspaces.reduce(
         (prev: DataSourceNotionPageMap, cur: DataSourceNotionWorkspace) => {
           cur.pages.forEach((page) => {
@@ -125,7 +161,7 @@ const NotionPageSelector = ({
         {},
       )
       return [pagesMap, selectedPagesId, boundPagesId]
-    }, [notionsPages?.notion_info])
+    }, [notionsPages])
 
   const defaultSelectedPagesId = useMemo(() => {
     return [...Array.from(pagesMapAndSelectedPagesId[1]), ...(value || [])]

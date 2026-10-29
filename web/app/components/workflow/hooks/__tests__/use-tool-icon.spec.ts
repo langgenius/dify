@@ -1,17 +1,21 @@
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
-import { resetReactFlowMockState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { renderWorkflowHook as renderWorkflowHookBase } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useGetToolIcon, useToolIcon } from '../use-tool-icon'
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
-
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock({
-    buildInTools: [
+const renderWorkflowHook = <T>(
+  hook: () => T,
+  options?: Parameters<typeof renderWorkflowHookBase>[1],
+) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  const tools = consoleQuery.workspaces.current.tools
+  const fixtures = [
+    [
+      tools.builtin.get,
       {
         id: 'builtin-1',
         name: 'builtin',
@@ -20,13 +24,17 @@ vi.mock('@/service/use-tools', async () =>
         plugin_id: 'p1',
       },
     ],
-    customTools: [{ id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
-    workflowTools: [
+    [tools.api.get, { id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
+    [
+      tools.workflow.get,
       { id: 'workflow-1', name: 'workflow-tool', icon: '/workflow.svg', plugin_id: 'p3' },
     ],
-    mcpTools: [{ id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
-  }),
-)
+    [tools.mcp.get, { id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
+  ] as const
+  for (const [operation, provider] of fixtures)
+    queryClient.setQueryData(operation.queryKey(), [createToolProviderFixture(provider)])
+  return renderWorkflowHookBase(hook, { ...options, queryClient })
+}
 
 vi.mock('@/service/use-triggers', async () =>
   (await import('../../__tests__/service-mock-factory')).createTriggerServiceMock({
@@ -44,15 +52,10 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   basePath: '/dify',
 }))
 
-vi.mock('@/utils', () => ({
-  canFindTool: (id: string, target: string) => id === target,
-}))
-
 const baseNodeData = { title: '', desc: '' }
 
 describe('useToolIcon', () => {
   beforeEach(() => {
-    resetReactFlowMockState()
     mockTheme = 'light'
   })
 
@@ -201,7 +204,7 @@ describe('useToolIcon', () => {
 
 describe('useGetToolIcon', () => {
   beforeEach(() => {
-    resetReactFlowMockState()
+    mockTheme = 'light'
   })
 
   it('should find icon for TriggerPlugin node via returned function', () => {

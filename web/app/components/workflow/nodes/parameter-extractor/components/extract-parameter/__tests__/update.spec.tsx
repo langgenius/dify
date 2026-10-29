@@ -31,23 +31,17 @@ describe('parameter-extractor/extract-parameter/update', () => {
   })
 
   it('opens from the add trigger and saves a new parameter', async () => {
+    const user = userEvent.setup()
     const handleSave = vi.fn()
 
     render(<ParameterDialog type="add" onSave={handleSave} />)
 
-    const existingDialogs = screen.queryAllByRole('dialog').length
-
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
       }),
     )
-    const dialogs = await waitFor(() => {
-      const nextDialogs = screen.getAllByRole('dialog')
-      expect(nextDialogs.length).toBeGreaterThan(existingDialogs)
-      return nextDialogs
-    })
-    const dialog = dialogs.at(-1)!
+    const dialog = await screen.findByRole('dialog')
     const nameInput = within(dialog).getByRole('textbox', {
       name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
     })
@@ -55,19 +49,10 @@ describe('parameter-extractor/extract-parameter/update', () => {
       'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
     )
 
-    fireEvent.change(nameInput, {
-      target: { value: 'budget' },
-    })
-    fireEvent.change(descriptionInput, {
-      target: { value: 'Budget amount' },
-    })
+    await user.type(nameInput, 'budget')
+    await user.type(descriptionInput, 'Budget amount')
 
-    await waitFor(() => {
-      expect(nameInput).toHaveValue('budget')
-      expect(descriptionInput).toHaveValue('Budget amount')
-    })
-
-    fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
 
     await waitFor(() => {
       expect(handleSave).toHaveBeenCalledWith(
@@ -88,19 +73,12 @@ describe('parameter-extractor/extract-parameter/update', () => {
 
     render(<ParameterDialog type="add" onSave={handleSave} />)
 
-    const existingDialogs = screen.queryAllByRole('dialog').length
-
     await user.click(
       screen.getByRole('button', {
         name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
       }),
     )
-    const dialogs = await waitFor(() => {
-      const nextDialogs = screen.getAllByRole('dialog')
-      expect(nextDialogs.length).toBeGreaterThan(existingDialogs)
-      return nextDialogs
-    })
-    const dialog = dialogs.at(-1)!
+    const dialog = await screen.findByRole('dialog')
 
     fireEvent.change(
       within(dialog).getByRole('textbox', {

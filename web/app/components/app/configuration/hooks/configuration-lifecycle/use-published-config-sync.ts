@@ -1,7 +1,7 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ConfigurationPublishConfig } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ExternalDataTool } from '@/models/common'
-import type { DataSet } from '@/models/datasets'
 import type {
   DatasetConfigs,
   ModelConfig,
@@ -20,7 +20,7 @@ type UsePublishedConfigSyncParams = {
   setCitationConfig: (value: MoreLikeThisConfig) => void
   setCompletionParams: (value: FormValue) => void
   setCompletionPromptConfig: (value: ConfigurationPublishConfig['completionPromptConfig']) => void
-  setDataSets: (value: DataSet[]) => void
+  setDataSets: (value: DatasetDetailWithPartialMembersResponse[]) => void
   setDatasetConfigs: (value: DatasetConfigs) => void
   setExternalDataToolsConfig: (value: ExternalDataTool[]) => void
   setIntroduction: (value: string) => void

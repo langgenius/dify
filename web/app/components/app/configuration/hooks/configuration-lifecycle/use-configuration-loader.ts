@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { ConfigurationPublishConfig } from './types'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Collection } from '@/app/components/tools/types'
 import type { AnnotationReplyConfig } from '@/models/debug'
-import type { AppModeEnum } from '@/types/app'
 import { useEffect, useRef, useState } from 'react'
 import { basePath } from '@/utils/var'
 import { loadConfigurationState } from './load'
@@ -13,7 +13,7 @@ type ConfigurationLoaderOperations = {
   setAnnotationConfig: (config: AnnotationReplyConfig, notSetFormatChanged?: boolean) => void
   setCollectionList: Dispatch<SetStateAction<Collection[]>>
   setHasFetchedDetail: Dispatch<SetStateAction<boolean>>
-  setMode: Dispatch<SetStateAction<AppModeEnum>>
+  setMode: Dispatch<SetStateAction<ConfigurationAppMode>>
   setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig | null>>
   syncToPublishedConfig: (config: ConfigurationPublishConfig) => void
 }

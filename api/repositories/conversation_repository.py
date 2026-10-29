@@ -254,9 +254,7 @@ class ConversationRepository:
             common = self._console_detail_record(conversation=conversation, session=session)
             if kind == "completion":
                 message = conversation.first_message_with_session(session=session)
-                first_message, files = (
-                    snapshot_console_message(message=message, session=session) if message else (None, ())
-                )
+                message_source = snapshot_console_message(message=message, session=session) if message else None
                 return ConsoleConversationDetailSource(
                     tenant_id=app.tenant_id,
                     record=ConsoleCompletionConversationDetail(
@@ -267,9 +265,9 @@ class ConversationRepository:
                         from_account_id=common.from_account_id,
                         created_at=common.created_at,
                         model_config=common.model_config,
-                        first_message=first_message,
+                        first_message=message_source.record if message_source is not None else None,
                     ),
-                    files=files,
+                    files=message_source.files if message_source is not None else (),
                 )
             return ConsoleConversationDetailSource(
                 tenant_id=app.tenant_id,

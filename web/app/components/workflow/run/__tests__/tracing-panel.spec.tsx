@@ -1,222 +1,98 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { withSelectorKey } from '@/test/i18n-mock'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { getHoveredParallelId } from '../get-hovered-parallel-id'
 import TracingPanel from '../tracing-panel'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockFormatNodeList = vi.hoisted(() => vi.fn())
-const mockUseLogs = vi.hoisted(() => vi.fn())
-const mockNodePanel = vi.hoisted(() => vi.fn())
-const mockSpecialResultPanel = vi.hoisted(() => vi.fn())
+it('formats parallel branches and supports keyboard collapse without bubbling to its parent', async () => {
+  const user = userEvent.setup()
+  const parentClick = vi.fn()
+  render(
+    <div onClick={parentClick}>
+      <TracingPanel
+        list={[
+          createNodeTracing({
+            node_id: 'first',
+            title: 'First',
+            parallel_id: 'parallel',
+            parallel_start_node_id: 'first',
+          }),
+          createNodeTracing({
+            node_id: 'child',
+            title: 'Child',
+            parallel_id: 'parallel',
+            parallel_start_node_id: 'first',
+            index: 1,
+          }),
+          createNodeTracing({ node_id: 'end', title: 'End', index: 2 }),
+        ]}
+        hideNodeInfo
+        hideNodeProcessDetail
+      />
+    </div>,
+  )
+  expect(screen.getByText('workflow.common.branch-1-A')).toBeInTheDocument()
+  const toggle = screen.getByRole('button', { name: 'workflow.common.parallel-1', expanded: true })
+  expect(screen.getByText('Child')).toBeVisible()
+  expect(screen.queryByRole('button', { name: /Child/ })).not.toBeInTheDocument()
+  toggle.focus()
+  await user.keyboard('{Enter}')
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.getByText('Child')).not.toBeVisible()
+  expect(screen.getByText('End')).toBeVisible()
+  await user.keyboard(' ')
+  expect(screen.getByText('Child')).toBeVisible()
+  expect(parentClick).not.toHaveBeenCalled()
+})
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
+it('opens real retry details and returns to the trace', async () => {
+  const user = userEvent.setup()
+  render(
+    <TracingPanel
+      list={[
+        createNodeTracing({
+          id: 'attempt-1',
+          node_id: 'code',
+          title: 'Attempt',
+          status: NodeRunningStatus.Retry,
+          error: 'Temporary error',
+        }),
+        createNodeTracing({
+          id: 'finished',
+          node_id: 'code',
+          title: 'Completed code',
+          status: NodeRunningStatus.Succeeded,
+          index: 1,
+        }),
+      ]}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: /Completed code/ }))
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.nodes.common.retry.retries:{"num":1}' }),
+  )
+  expect(screen.queryByText('Completed code')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /workflow.nodes.common.retry.retry 1/ }))
+  expect(screen.getByText('Temporary error')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'workflow.singleRun.back' }))
+  expect(screen.getByText('Completed code')).toBeVisible()
+})
 
-vi.mock('@/app/components/workflow/run/utils/format-log', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockFormatNodeList(...args),
-}))
+it('should resolve hovered parallel ids from related targets', () => {
+  const sameParallelTarget = document.createElement('div')
+  sameParallelTarget.setAttribute('data-parallel-id', 'parallel-1')
+  document.body.appendChild(sameParallelTarget)
 
-vi.mock('../hooks', () => ({
-  useLogs: () => mockUseLogs(),
-}))
+  const nestedChild = document.createElement('span')
+  sameParallelTarget.appendChild(nestedChild)
 
-vi.mock('../node', () => ({
-  __esModule: true,
-  default: (props: { nodeInfo: { id: string } }) => {
-    mockNodePanel(props)
-    return <div data-testid={`node-${props.nodeInfo.id}`}>{props.nodeInfo.id}</div>
-  },
-}))
+  const unrelatedTarget = document.createElement('div')
 
-vi.mock('../special-result-panel', () => ({
-  __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    mockSpecialResultPanel(props)
-    return <div data-testid="special-result-panel">special</div>
-  },
-}))
+  expect(getHoveredParallelId(nestedChild)).toBe('parallel-1')
+  expect(getHoveredParallelId(unrelatedTarget)).toBeNull()
+  expect(getHoveredParallelId(null)).toBeNull()
 
-describe('TracingPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-    mockUseLogs.mockReturnValue({
-      showSpecialResultPanel: false,
-      showRetryDetail: false,
-      setShowRetryDetailFalse: vi.fn(),
-      retryResultList: [],
-      handleShowRetryResultList: vi.fn(),
-      showIteratingDetail: false,
-      setShowIteratingDetailFalse: vi.fn(),
-      iterationResultList: [],
-      iterationResultDurationMap: {},
-      handleShowIterationResultList: vi.fn(),
-      showLoopingDetail: false,
-      setShowLoopingDetailFalse: vi.fn(),
-      loopResultList: [],
-      loopResultDurationMap: {},
-      loopResultVariableMap: {},
-      handleShowLoopResultList: vi.fn(),
-      agentOrToolLogItemStack: [],
-      agentOrToolLogListMap: {},
-      handleShowAgentOrToolLog: vi.fn(),
-    })
-  })
-
-  it('should render formatted nodes, preserve branch labels, and collapse parallel groups', () => {
-    mockFormatNodeList.mockReturnValue([
-      {
-        id: 'parallel-1',
-        parallelDetail: {
-          isParallelStartNode: true,
-          parallelTitle: 'Parallel Group',
-          children: [
-            {
-              id: 'child-1',
-              title: 'Child Node',
-              parallelDetail: {
-                branchTitle: 'Branch A',
-              },
-            },
-          ],
-        },
-      },
-      {
-        id: 'node-2',
-        title: 'Standalone Node',
-        parallelDetail: {
-          branchTitle: 'Branch B',
-        },
-      },
-    ])
-
-    const parentClick = vi.fn()
-    const { container } = render(
-      <div onClick={parentClick}>
-        <TracingPanel
-          list={[{ id: 'raw-node' } as never]}
-          className="custom-class"
-          hideNodeInfo
-          hideNodeProcessDetail
-        />
-      </div>,
-    )
-
-    expect(screen.getByText('Parallel Group'))!.toBeInTheDocument()
-    expect(screen.getByText('Branch A'))!.toBeInTheDocument()
-    expect(screen.getByText('Branch B'))!.toBeInTheDocument()
-    expect(screen.getByTestId('node-child-1'))!.toBeInTheDocument()
-    expect(screen.getByTestId('node-node-2'))!.toBeInTheDocument()
-
-    fireEvent.click(container.querySelector('.py-2') as HTMLElement)
-    expect(parentClick).not.toHaveBeenCalled()
-
-    const hoverTarget = screen
-      .getByText('Parallel Group')
-      .closest('[data-parallel-id="parallel-1"]') as HTMLElement
-    const nestedParallelTarget = document.createElement('div')
-    nestedParallelTarget.setAttribute('data-parallel-id', 'parallel-1')
-    const unrelatedTarget = document.createElement('div')
-    document.body.appendChild(nestedParallelTarget)
-    document.body.appendChild(unrelatedTarget)
-
-    fireEvent.mouseEnter(hoverTarget)
-    const sameParallelOut = new MouseEvent('mouseout', { bubbles: true })
-    Object.defineProperty(sameParallelOut, 'relatedTarget', { value: nestedParallelTarget })
-    hoverTarget.dispatchEvent(sameParallelOut)
-
-    const differentTargetOut = new MouseEvent('mouseout', { bubbles: true })
-    Object.defineProperty(differentTargetOut, 'relatedTarget', { value: unrelatedTarget })
-    hoverTarget.dispatchEvent(differentTargetOut)
-
-    fireEvent.mouseLeave(hoverTarget)
-
-    const parallelToggle = screen.getByRole('button', {
-      name: 'Parallel Group',
-      expanded: true,
-    })
-    expect(parallelToggle).toHaveAttribute('aria-controls', 'parallel-1-children')
-
-    fireEvent.click(parallelToggle)
-    expect(
-      screen.getByRole('button', { name: 'Parallel Group', expanded: false }),
-    ).toBeInTheDocument()
-    expect(
-      container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'),
-    )!.toHaveClass('hidden')
-    fireEvent.click(parallelToggle)
-    expect(
-      screen.getByRole('button', { name: 'Parallel Group', expanded: true }),
-    ).toBeInTheDocument()
-    expect(
-      container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'),
-    ).not.toHaveClass('hidden')
-    expect(mockNodePanel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        hideInfo: true,
-        hideProcessDetail: true,
-      }),
-    )
-
-    nestedParallelTarget.remove()
-    unrelatedTarget.remove()
-  })
-
-  it('should switch to the special result panel when the log state requests it', () => {
-    mockUseLogs.mockReturnValue({
-      showSpecialResultPanel: true,
-      showRetryDetail: true,
-      setShowRetryDetailFalse: vi.fn(),
-      retryResultList: [{ id: 'retry-1' }],
-      handleShowRetryResultList: vi.fn(),
-      showIteratingDetail: true,
-      setShowIteratingDetailFalse: vi.fn(),
-      iterationResultList: [[{ id: 'iter-1' }]],
-      iterationResultDurationMap: { 0: 1 },
-      handleShowIterationResultList: vi.fn(),
-      showLoopingDetail: true,
-      setShowLoopingDetailFalse: vi.fn(),
-      loopResultList: [[{ id: 'loop-1' }]],
-      loopResultDurationMap: { 0: 2 },
-      loopResultVariableMap: { 0: {} },
-      handleShowLoopResultList: vi.fn(),
-      agentOrToolLogItemStack: [{ id: 'agent-1' }],
-      agentOrToolLogListMap: { agent: [] },
-      handleShowAgentOrToolLog: vi.fn(),
-    })
-
-    render(<TracingPanel list={[]} />)
-
-    expect(screen.getByTestId('special-result-panel'))!.toBeInTheDocument()
-    expect(mockSpecialResultPanel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        showRetryDetail: true,
-        retryResultList: [{ id: 'retry-1' }],
-        showIteratingDetail: true,
-        showLoopingDetail: true,
-        agentOrToolLogItemStack: [{ id: 'agent-1' }],
-      }),
-    )
-  })
-
-  it('should resolve hovered parallel ids from related targets', () => {
-    const sameParallelTarget = document.createElement('div')
-    sameParallelTarget.setAttribute('data-parallel-id', 'parallel-1')
-    document.body.appendChild(sameParallelTarget)
-
-    const nestedChild = document.createElement('span')
-    sameParallelTarget.appendChild(nestedChild)
-
-    const unrelatedTarget = document.createElement('div')
-
-    expect(getHoveredParallelId(nestedChild)).toBe('parallel-1')
-    expect(getHoveredParallelId(unrelatedTarget)).toBeNull()
-    expect(getHoveredParallelId(null)).toBeNull()
-
-    sameParallelTarget.remove()
-  })
+  sameParallelTarget.remove()
 })

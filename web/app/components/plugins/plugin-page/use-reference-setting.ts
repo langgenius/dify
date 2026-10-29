@@ -43,7 +43,6 @@ const useCanSetPluginSettings = () => {
 }
 
 export const usePluginSettingsAccess = () => {
-  const { t } = useTranslation(['common'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -61,11 +60,7 @@ export const usePluginSettingsAccess = () => {
   const permissionQuery = usePluginPermissionSettings()
   const { data: permissions } = permissionQuery
   const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } =
-    useMutationPluginPermissionSettings({
-      onSuccess: () => {
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      },
-    })
+    useMutationPluginPermissionSettings()
   const isAdminOrOwner = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
   const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({
     isAdminOrOwner,

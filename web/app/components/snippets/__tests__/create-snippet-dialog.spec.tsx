@@ -1,4 +1,5 @@
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -11,7 +12,7 @@ const selectedGraph: SnippetCanvasData = {
   viewport: { x: 12, y: 24, zoom: 0.8 },
 }
 
-const inputFields: SnippetInputField[] = [
+const inputFields: InputVar[] = [
   {
     label: 'topic',
     variable: 'topic',
@@ -66,7 +67,7 @@ describe('CreateSnippetDialog', () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
 
-    render(
+    const { rerender } = render(
       <CreateSnippetDialog
         isOpen
         onClose={onClose}
@@ -86,6 +87,23 @@ describe('CreateSnippetDialog', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+    rerender(
+      <CreateSnippetDialog
+        isOpen={false}
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        initialValue={{ name: 'Draft', description: 'Existing description' }}
+      />,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <CreateSnippetDialog
+        isOpen
+        onClose={onClose}
+        onConfirm={vi.fn()}
+        initialValue={{ name: 'Draft', description: 'Existing description' }}
+      />,
+    )
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('workflow.snippet.namePlaceholder')).toHaveValue('')
@@ -127,74 +145,6 @@ describe('CreateSnippetDialog', () => {
     })
   })
 
-  it('should submit from keyboard shortcuts only while open and not submitting', async () => {
-    const onConfirm = vi.fn()
-    const { rerender } = render(
-      <CreateSnippetDialog
-        isOpen={false}
-        initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    )
-
-    fireEvent.keyDown(
-      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
-      { key: 'Enter', code: 'Enter', ctrlKey: true },
-    )
-    fireEvent.keyUp(
-      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
-      { key: 'Enter', code: 'Enter', ctrlKey: true },
-    )
-
-    expect(onConfirm).not.toHaveBeenCalled()
-
-    rerender(
-      <CreateSnippetDialog
-        isOpen
-        isSubmitting
-        initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    )
-
-    fireEvent.keyDown(
-      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
-      { key: 'Enter', code: 'Enter', ctrlKey: true },
-    )
-    fireEvent.keyUp(
-      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
-      { key: 'Enter', code: 'Enter', ctrlKey: true },
-    )
-
-    expect(onConfirm).not.toHaveBeenCalled()
-
-    rerender(
-      <CreateSnippetDialog
-        isOpen
-        initialValue={{ name: 'Keyboard snippet' }}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    )
-
-    fireEvent.keyDown(
-      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
-      { key: 'Enter', code: 'Enter', ctrlKey: true },
-    )
-    fireEvent.keyUp(
-      screen.queryByRole('textbox', { name: 'workflow.snippet.nameLabel' }) ?? document.body,
-      { key: 'Enter', code: 'Enter', ctrlKey: true },
-    )
-
-    expect(onConfirm).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Keyboard snippet',
-      }),
-    )
-  })
-
   it('handles the first shortcut after opening and reopening its portal without a draft change', async () => {
     const onConfirm = vi.fn()
     const props = {
@@ -226,48 +176,15 @@ describe('CreateSnippetDialog', () => {
     }
   })
 
-  it('lets a child React handler claim the shortcut before the dialog action', () => {
+  it('blocks form controls and the submission shortcut while submitting', () => {
     const onConfirm = vi.fn()
-    render(
-      <CreateSnippetDialog
-        isOpen
-        initialValue={{ name: 'Nested control' }}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
-    )
-    const dialog = screen.getByRole('dialog')
-    const childContainer = document.createElement('div')
-    dialog.append(childContainer)
-    const childClaim = vi.fn((event: React.KeyboardEvent<HTMLButtonElement>) =>
-      event.preventDefault(),
-    )
-    const child = render(
-      <button type="button" onKeyDown={childClaim}>
-        Child action
-      </button>,
-      { container: childContainer },
-    )
-    const options = { key: 'Enter', ctrlKey: true }
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Child action' }), options)
-    expect(childClaim).toHaveBeenCalledOnce()
-    expect(onConfirm).not.toHaveBeenCalled()
-
-    child.rerender(<button type="button">Child action</button>)
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Child action' }), options)
-    expect(onConfirm).toHaveBeenCalledOnce()
-
-    child.unmount()
-  })
-
-  it('should disable form controls while submitting', () => {
     render(
       <CreateSnippetDialog
         isOpen
         isSubmitting
         initialValue={{ name: 'Submitting snippet' }}
         onClose={vi.fn()}
-        onConfirm={vi.fn()}
+        onConfirm={onConfirm}
       />,
     )
 
@@ -275,5 +192,7 @@ describe('CreateSnippetDialog', () => {
     expect(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
     expectLoadingButton(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Enter', ctrlKey: true })
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 })

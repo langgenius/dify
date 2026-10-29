@@ -1,13 +1,16 @@
-"""Restore message files after the owning read transaction has closed."""
+"""File and execution-content infrastructure for detached message projections."""
 
 from collections.abc import Sequence
 from typing import cast
 
+from pydantic import JsonValue
+
 from core.app.file_access import DatabaseFileAccessController
 from factories import file_factory
-from graphon.file import FileTransferMethod
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
 from models.model import Message, MessageFileInfo
-from models.utils.file_input_compat import restore_input_files
+from models.utils.file_input_compat import build_file_from_input_mapping
+from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from services.entities.message_entities import (
     MessageFileProjection,
     MessageFileRecord,
@@ -28,7 +31,24 @@ class MessageFileResolver:
         answer: str,
         files: Sequence[MessageFileReference],
     ) -> MessageFileProjection:
-        restored_inputs = restore_input_files(inputs=inputs, tenant_resolver=lambda: tenant_id)
+        restored_inputs = dict(inputs)
+
+        def owner_tenant_id() -> str:
+            return tenant_id
+
+        for key, value in inputs.items():
+            if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                restored_inputs[key] = build_file_from_input_mapping(
+                    file_mapping=value, tenant_resolver=owner_tenant_id
+                )
+            elif isinstance(value, list) and all(
+                isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
+            ):
+                restored_inputs[key] = [
+                    build_file_from_input_mapping(file_mapping=item, tenant_resolver=owner_tenant_id)
+                    for item in value
+                    if isinstance(item, dict)
+                ]
 
         restored_files = [self._file(file, tenant_id=tenant_id) for file in files]
         # Keep the model's legacy URL grammar and signing behavior in one place.
@@ -78,3 +98,14 @@ class MessageFileResolver:
             belongs_to=source.belongs_to,
             upload_file_id=upload_file_id,
         )
+
+
+class ExecutionExtraContentReader:
+    def __init__(self, *, repository: ExecutionExtraContentRepository) -> None:
+        self._repository: ExecutionExtraContentRepository = repository
+
+    def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[dict[str, JsonValue]]]:
+        return [
+            [cast(dict[str, JsonValue], item.model_dump(mode="json", exclude_none=True)) for item in items]
+            for items in self._repository.get_by_message_ids(message_ids)
+        ]

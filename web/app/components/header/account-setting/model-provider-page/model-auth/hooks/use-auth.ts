@@ -6,6 +6,7 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -13,7 +14,7 @@ import {
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
-import { useDeleteModel } from '@/service/use-models'
+import { consoleQuery } from '@/service/console'
 import { useAuthService } from './use-auth-service'
 
 type ProviderCredentialOperationPayload = {
@@ -45,7 +46,9 @@ export const useAuth = (
     getEditCredentialService,
     getAddCredentialService,
   } = useAuthService(provider.provider)
-  const { mutateAsync: deleteModelService } = useDeleteModel(provider.provider)
+  const { mutateAsync: deleteModelService } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.delete.mutationOptions(),
+  )
   const handleOpenModelModal = useModelModalHandler()
   const { handleRefreshModel } = useRefreshModel()
   const pendingOperationCredentialId = useRef<string | null>(null)
@@ -156,7 +159,7 @@ export const useAuth = (
           model: pendingOperationModel.current.model,
           model_type: pendingOperationModel.current.model_type,
         }
-        await deleteModelService(payload)
+        await deleteModelService({ params: { provider: provider.provider }, query: payload })
       }
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')

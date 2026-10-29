@@ -58,9 +58,10 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
   })
   const [isLoading, setIsLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
-  const didInitRef = useRef(false)
+  const requestIdRef = useRef(0)
 
   const fetchSuggestions = useCallback(async () => {
+    const requestId = ++requestIdRef.current
     abortRef.current?.abort()
     setIsLoading(true)
     try {
@@ -68,18 +69,21 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
         { mode, language: i18n.language, count: SUGGESTION_COUNT },
         {
           getAbortController: (c) => {
-            abortRef.current = c
+            if (requestId === requestIdRef.current) abortRef.current = c
+            else c.abort()
           },
         },
       )
       const next = (res?.suggestions ?? []).map((s) => s.trim()).filter(Boolean)
       // Keep the previous set on an empty refresh so the row never flashes empty.
-      if (next.length) setCached(next)
+      if (requestId === requestIdRef.current && next.length) setCached(next)
     } catch {
       // Silent: the static fallback keeps the row populated.
     } finally {
-      setIsLoading(false)
-      abortRef.current = null
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false)
+        abortRef.current = null
+      }
     }
   }, [mode, i18n.language, setCached])
 
@@ -87,10 +91,9 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
   // is fixed per open (the modal remounts each time), so a mount-only effect is
   // correct here.
   useEffect(() => {
-    if (didInitRef.current) return
-    didInitRef.current = true
     if (!cached || cached.length === 0) void fetchSuggestions()
     return () => {
+      requestIdRef.current += 1
       abortRef.current?.abort()
       abortRef.current = null
     }

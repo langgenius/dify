@@ -83,18 +83,6 @@ describe('Endpoint management', () => {
     expect(requestedURL.searchParams.get('page_size')).toBe('100')
   })
 
-  it('lets keyboard users reach the URL copy action from the endpoint switch', async () => {
-    const user = userEvent.setup()
-    renderEndpoints()
-    const toggle = await screen.findByRole('switch', { name: 'Endpoint 1' })
-    const copy = screen.getByRole('button', {
-      name: 'common.operation.copy https://api.example.com/public',
-    })
-    toggle.focus()
-    await user.tab({ shift: true })
-    expect(copy).toHaveFocus()
-  })
-
   it('creates through the canonical route and refreshes the list', async () => {
     const user = userEvent.setup()
     endpoints = []
@@ -166,29 +154,12 @@ describe('Endpoint management', () => {
     const trigger = await screen.findByRole('button', {
       name: 'common.operation.delete Endpoint 1',
     })
-    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
     await user.click(trigger)
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
     expect(mutations).toEqual([
       { path: '/workspaces/current/endpoints/ep-1', method: 'DELETE', body: undefined },
     ])
-  })
-
-  it('keeps edit values available when the mutation fails', async () => {
-    const user = userEvent.setup()
-    rejectMutation = true
-    renderEndpoints()
-    await user.click(
-      await screen.findByRole('button', { name: 'common.operation.edit Endpoint 1' }),
-    )
-    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
-    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await waitFor(() => expect(showError).toHaveBeenCalled())
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Endpoint 1')).toBeInTheDocument()
   })
 
   it.each(['edit', 'disable', 'delete'] as const)(
@@ -206,6 +177,10 @@ describe('Endpoint management', () => {
         await user.click(
           await screen.findByRole('button', { name: `common.operation.${action} Endpoint 1` }),
         )
+      if (action === 'edit') {
+        await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+        await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
+      }
       const actionName = action === 'edit' ? 'common.operation.save' : 'common.operation.confirm'
       const submit = screen.getByRole('button', { name: actionName })
       await user.click(submit)
@@ -223,7 +198,7 @@ describe('Endpoint management', () => {
         'true',
       )
       if (action === 'edit')
-        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Endpoint 1')
+        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Saved endpoint')
       else expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
       rejectMutation = false

@@ -1,4 +1,4 @@
-import type { DataSourceAuth } from './types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -16,7 +16,7 @@ import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
   onOpenMarketplace?: () => void
-  providers: DataSourceAuth[]
+  providers: DatasourceProviderAuthResponse[]
   searchText: string
 }
 const InstallFromMarketplace = ({
@@ -46,7 +46,7 @@ const InstallFromMarketplace = ({
         <button
           type="button"
           aria-expanded={!collapse}
-          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-md-semibold text-text-primary"
+          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-start system-md-semibold text-text-primary"
           onClick={() => setCollapse(!collapse)}
         >
           <span
@@ -56,7 +56,7 @@ const InstallFromMarketplace = ({
           {t(($) => $['modelProvider.installDataSource'], { ns: 'modelProvider' })}
         </button>
         <div className="mb-2 flex flex-wrap items-center pt-2">
-          <span className="pr-1 system-sm-regular text-text-tertiary">
+          <span className="pe-1 system-sm-regular text-text-tertiary">
             {t(($) => $['modelProvider.discoverMore'], { ns: 'modelProvider' })}
           </span>
           {onOpenMarketplace ? (
@@ -66,7 +66,10 @@ const InstallFromMarketplace = ({
               onClick={onOpenMarketplace}
             >
               {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              <span
+                className="i-ri-arrow-right-up-line size-4 rtl:-scale-x-100"
+                aria-hidden="true"
+              />
             </button>
           ) : (
             <Link
@@ -76,7 +79,10 @@ const InstallFromMarketplace = ({
               className="inline-flex items-center system-sm-medium text-text-accent"
             >
               {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              <span
+                className="i-ri-arrow-right-up-line size-4 rtl:-scale-x-100"
+                aria-hidden="true"
+              />
             </Link>
           )}
         </div>

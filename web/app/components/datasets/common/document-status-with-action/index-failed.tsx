@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import type { IndexingStatusResponse } from '@/models/datasets'
+import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
 import { retryErrorDocs } from '@/service/datasets'
-import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 import StatusWithAction from './status-with-action'
 
 type Props = Readonly<{
@@ -36,16 +36,25 @@ const indexStateReducer = (state: IIndexState, action: IAction) => {
 const RetryButton: FC<Props> = ({ datasetId }) => {
   const { t } = useTranslation(['dataset'])
   const [indexState, dispatch] = useReducer(indexStateReducer, { value: 'success' })
-  const { data: errorDocs, isLoading, refetch: refetchErrorDocs } = useDatasetErrorDocs(datasetId)
+  const {
+    data: errorDocs,
+    isLoading,
+    refetch: refetchErrorDocs,
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.errorDocs.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+      enabled: !!datasetId,
+    }),
+  )
 
   const onRetryErrorDocs = async () => {
     dispatch({ type: 'retry' })
-    const document_ids = errorDocs?.data.map((doc: IndexingStatusResponse) => doc.id) || []
-    const res = await retryErrorDocs({ datasetId, document_ids })
-    if (res.result === 'success') {
+    const document_ids = errorDocs?.data.map((doc) => doc.id) || []
+    try {
+      await retryErrorDocs({ datasetId, document_ids })
       refetchErrorDocs()
       dispatch({ type: 'success' })
-    } else {
+    } catch {
       dispatch({ type: 'error' })
     }
   }

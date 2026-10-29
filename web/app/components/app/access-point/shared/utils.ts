@@ -5,7 +5,6 @@ import type {
 import type { InputVar, Node } from '@/app/components/workflow/types'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 
 export type PublishedWorkflow = WorkflowResponse | null | undefined
@@ -25,16 +24,18 @@ export function getAppApiReferencePath(appMode: AppDetailWithSite['mode']) {
 }
 
 export function getPublishedWorkflowState(appInfo: AppDetailWithSite, workflow: PublishedWorkflow) {
-  const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
+  const isWorkflowApp = appInfo.mode === 'workflow'
+  const requiresPublishedWorkflow = isAdvancedApp(appInfo)
   const nodes = getPublishedWorkflowNodes(workflow)
   const hasStartNode = nodes.some((node) => node.data.type === BlockEnum.Start)
-  const hasTriggerNode = nodes.some((node) => isTriggerNode(node.data.type))
+  const hasTriggerNode = isWorkflowApp && nodes.some((node) => isTriggerNode(node.data.type))
 
   return {
     hasStartNode,
     hasTriggerNode,
-    isUnpublished: isWorkflowApp && !workflow?.graph,
+    isUnpublished: requiresPublishedWorkflow && !workflow?.graph,
     isWorkflowApp,
+    requiresPublishedWorkflow,
   }
 }
 
@@ -46,9 +47,7 @@ export function getPublishedWorkflowNodes(workflow: PublishedWorkflow) {
 
 export function getBuiltInAccessUrls(appInfo: AppDetailWithSite) {
   const appMode =
-    appInfo.mode === AppModeEnum.COMPLETION || appInfo.mode === AppModeEnum.WORKFLOW
-      ? appInfo.mode
-      : AppModeEnum.CHAT
+    appInfo.mode === 'completion' || appInfo.mode === 'workflow' ? appInfo.mode : 'chat'
 
   return {
     api: appInfo.api_base_url ?? '',
@@ -69,5 +68,5 @@ export function getHiddenStartInputs(workflow: PublishedWorkflow) {
 }
 
 export function isAdvancedApp(appInfo: AppDetailWithSite) {
-  return appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
+  return appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat'
 }
