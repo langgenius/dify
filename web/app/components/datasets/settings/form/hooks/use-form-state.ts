@@ -59,6 +59,8 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
   // Basic form state
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
+  const [hasSubmitted, setHasSubmitted] = useState(false)
+  const nameInvalid = hasSubmitted && !name.trim()
   const [description, setDescription] = useState(currentDataset?.description ?? '')
 
   // Icon state
@@ -168,8 +170,8 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
 
     if (loading) return
 
+    setHasSubmitted(true)
     if (!name?.trim()) {
-      toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
 
@@ -274,6 +276,7 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
 
     // Basic form
     name,
+    nameInvalid,
     setName,
     description,
     setDescription,
