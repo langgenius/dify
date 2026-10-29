@@ -14,7 +14,6 @@ import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provid
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { seedFeatures } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
@@ -84,7 +83,6 @@ const mocks = vi.hoisted(() => ({
   fileUploadConfig: {
     skill_file_size_limit: 64,
   },
-  skillEnabled: true,
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -392,8 +390,6 @@ function renderAgentSkills({
     },
   })
 
-  seedFeatures(queryClient, { enable_skill: mocks.skillEnabled })
-
   queryClient.setQueryData(
     consoleQuery.files.upload.get.queryKey(),
     createFileUploadConfigFixture(mocks.fileUploadConfig),
@@ -424,7 +420,6 @@ function renderAgentSkills({
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.skillEnabled = true
     mocks.fileUploadConfig.skill_file_size_limit = 64
     vi.stubGlobal('fetch', mocks.fetch)
     document.cookie = 'csrf_token=csrf-token; path=/'
@@ -825,29 +820,6 @@ describe('AgentSkills', () => {
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([])
     expect(toast.success).not.toHaveBeenCalled()
-  })
-
-  it('should hide workspace skill selection when skill is disabled', async () => {
-    const user = userEvent.setup()
-    mocks.skillEnabled = false
-
-    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
-
-    await user.click(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
-    )
-
-    expect(
-      screen.queryByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
-      }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.upload\.label/i,
-      }),
-    ).toBeInTheDocument()
-    expect(mocks.workspaceSkillsInfiniteOptions).not.toHaveBeenCalled()
   })
 
   it('should not replace existing workspace skill bindings before they finish loading', async () => {

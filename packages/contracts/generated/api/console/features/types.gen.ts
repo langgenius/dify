@@ -12,7 +12,6 @@ export type FeatureModel = {
   can_replace_logo: boolean
   documents_upload_quota: LimitationModel
   education: EducationModel
-  enable_skill: boolean
   human_input_email_delivery_enabled: boolean
   is_allow_transfer_workspace: boolean
   knowledge_pipeline: KnowledgePipeline

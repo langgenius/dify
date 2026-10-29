@@ -31,7 +31,6 @@ import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useMarketplace, useMarketplacePluginSearch } from '@/features/marketplace/client'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
@@ -147,13 +146,8 @@ export function GotoAnything() {
   const router = useRouter()
   const defaultLocale = useGetLanguage()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const { data: enableSkill } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.enable_skill,
-    }),
-  )
   const agentsAvailable = isAgentV2Enabled()
-  const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
+  const skillsAvailable = !isCurrentWorkspaceDatasetOperator
   const pluginsAvailable = useMarketplace() !== null
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)

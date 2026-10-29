@@ -230,18 +230,6 @@ def test_site_import_entitlement(
     assert get_plan.call_count == (1 if edition == DeploymentEdition.CLOUD else 0)
 
 
-def test_skill_feature_is_disabled_by_default() -> None:
-    assert FeatureModel().enable_skill is True
-
-
-def test_skill_feature_follows_env_config(config_overrides: Callable[..., None]) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_SKILL=True)
-
-    features = FeatureService.get_features("")
-
-    assert features.enable_skill is True
-
-
 def test_get_public_system_features_excludes_trial_models() -> None:
     result = SystemFeatureService.get_public_system_features().model_dump()
 

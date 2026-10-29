@@ -90,7 +90,7 @@ beforeEach(() => {
     app: { default_permission_keys: [], overrides: [] },
     dataset: { default_permission_keys: [], overrides: [] },
   })
-  mocks.features.mockResolvedValue({ enable_skill: true })
+  mocks.features.mockResolvedValue({ can_replace_logo: true })
 })
 afterEach(() => clients.splice(0).forEach((client) => client.clear()))
 
@@ -108,21 +108,21 @@ it('hydrates the profile, workspace, permissions and feature data', async () => 
   expect(client.getQueryData(keys.permissions)).toMatchObject({
     workspace: { permission_keys: ['agent.acl.preview'] },
   })
-  expect(client.getQueryData(keys.features)).toEqual({ enable_skill: true })
+  expect(client.getQueryData(keys.features)).toEqual({ can_replace_logo: true })
 })
 
 it.each([true, false])(
-  'hydrates the initial skill flag as %s without fetching it again',
-  async (enableSkill) => {
-    mocks.features.mockResolvedValue({ enable_skill: enableSkill })
+  'hydrates the initial feature flag as %s without fetching it again',
+  async (canReplaceLogo) => {
+    mocks.features.mockResolvedValue({ can_replace_logo: canReplaceLogo })
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
-    function SkillFlag() {
+    function FeatureFlag() {
       const { data } = useQuery(consoleQuery.features.get.queryOptions({ staleTime: Infinity }))
-      return <output aria-label="Skills enabled">{String(data?.enable_skill)}</output>
+      return <output aria-label="Can replace logo">{String(data?.can_replace_logo)}</output>
     }
-    const element = await CommonLayoutHydrationBoundary({ children: <SkillFlag /> })
+    const element = await CommonLayoutHydrationBoundary({ children: <FeatureFlag /> })
     render(<QueryClientProvider client={createClient()}>{element}</QueryClientProvider>)
-    expect(screen.getByLabelText('Skills enabled')).toHaveTextContent(String(enableSkill))
+    expect(screen.getByLabelText('Can replace logo')).toHaveTextContent(String(canReplaceLogo))
     expect(mocks.features).toHaveBeenCalledTimes(1)
   },
 )
@@ -130,7 +130,7 @@ it.each([true, false])(
 it('does not hydrate another request’s feature flag after a failed prefetch', async () => {
   const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
   await CommonLayoutHydrationBoundary({ children: null })
-  expect(mocks.queryClient?.getQueryData(keys.features)).toEqual({ enable_skill: true })
+  expect(mocks.queryClient?.getQueryData(keys.features)).toEqual({ can_replace_logo: true })
 
   mocks.queryClient = createClient()
   mocks.features.mockRejectedValue(new Error('features unavailable'))

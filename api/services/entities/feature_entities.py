@@ -148,7 +148,6 @@ class FeatureModel(FeatureResponseModel):
 
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
-    enable_skill: bool = True
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.

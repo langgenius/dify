@@ -131,10 +131,9 @@ const isMac = detectPlatform() === 'mac'
 const triggerSearchShortcut = (target: HTMLElement = document.body) =>
   fireEvent.keyDown(target, { key: 'k', ctrlKey: !isMac, metaKey: isMac })
 
-function setup({ datasetOperator = false, enableSkill = true, canInstall = true } = {}) {
+function setup({ datasetOperator = false, canInstall = true } = {}) {
   const { wrapper: ConsoleWrapper, queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { role: datasetOperator ? 'dataset_operator' : 'owner' },
-    features: { enable_skill: enableSkill },
     accountProfileMeta: { currentVersion: '1.0.0' },
     workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
     systemFeatures: {
@@ -491,17 +490,14 @@ describe('resource search', () => {
     expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/configuration')
   })
 
-  it.each([{ datasetOperator: true }, { enableSkill: false }])(
-    'hides and excludes skills when workspace capabilities disallow them: %j',
-    async (options) => {
-      const { user } = setup(options)
-      const input = await openSearch()
-      expect(screen.queryByRole('gridcell', { name: /@skill/ })).not.toBeInTheDocument()
-      await user.type(input, 'research')
-      await waitFor(() => expect(api.apps).toHaveBeenCalled())
-      expect(api.skills).not.toHaveBeenCalled()
-    },
-  )
+  it('hides and excludes skills for dataset operators', async () => {
+    const { user } = setup({ datasetOperator: true })
+    const input = await openSearch()
+    expect(screen.queryByRole('gridcell', { name: /@skill/ })).not.toBeInTheDocument()
+    await user.type(input, 'research')
+    await waitFor(() => expect(api.apps).toHaveBeenCalled())
+    expect(api.skills).not.toHaveBeenCalled()
+  })
 
   it('hides and excludes agents when the feature is disabled', async () => {
     api.agentEnabled = false

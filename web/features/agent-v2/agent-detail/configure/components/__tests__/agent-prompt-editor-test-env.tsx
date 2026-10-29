@@ -79,7 +79,6 @@ export function createAgentPromptEnvironment({
     ...draft,
   })
   const { wrapper: QueryProvider, queryClient } = createConsoleQueryWrapper({
-    features: { enable_skill: true },
     knowledgeFsFeatures: { enabled: false, upload_enabled: false, agent_enabled: false },
   })
   store.set(queryClientAtom, queryClient)
