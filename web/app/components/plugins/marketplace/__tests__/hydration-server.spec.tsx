@@ -8,10 +8,7 @@ vi.mock('@/config', () => ({
   APP_VERSION: '1.0.0',
   IS_MARKETPLACE: false,
   MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
-}))
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.dify.ai${path}`,
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.dify.ai',
 }))
 
 const mockCollections = vi.fn()

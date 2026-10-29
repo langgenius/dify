@@ -35,10 +35,10 @@ import {
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
+import { useMarketplace } from '@/features/marketplace/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { getMarketplaceUrl } from '@/utils/var'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../step-by-step-tour/target-registry'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
@@ -53,7 +53,6 @@ import {
 
 type IntegrationsPageProps = {
   onSectionChange?: (section: IntegrationSection) => void
-  onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
   syncDocumentTitle?: boolean
 }
@@ -144,7 +143,6 @@ function ToolsDisclosureIcon({ className }: { className?: string }) {
 
 export default function IntegrationsPage({
   onSectionChange,
-  onSwitchToMarketplace,
   section: routeSection,
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
@@ -216,6 +214,7 @@ export default function IntegrationsPage({
         <UpdateSettingDialog category={pluginSettingCategory} />
       </div>
     ) : undefined
+  const marketplace = useMarketplace()
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
   const headerDescription =
     integrationHeader?.description ??
@@ -235,13 +234,10 @@ export default function IntegrationsPage({
       headerDescription
     )
   const handleSwitchToMarketplace = () => {
-    if (onSwitchToMarketplace) {
-      onSwitchToMarketplace(marketplaceUrlPath)
-      return
-    }
+    if (!marketplace) return
 
     window.open(
-      getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }),
+      marketplace.page(marketplaceUrlPath, undefined, window.location.origin),
       '_blank',
       'noopener,noreferrer',
     )

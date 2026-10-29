@@ -15,7 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import {
@@ -25,29 +24,14 @@ import {
 import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
-import { PluginSource } from '@/app/components/plugins/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import useTheme from '@/hooks/use-theme'
 import useTimestamp from '@/hooks/use-timestamp'
 import { marketplaceQuery } from '@/service/marketplace'
 import { isEarlierThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
   detail: PluginDetail
   onUpdate?: (isDelete?: boolean) => void
-}
-
-const getDetailUrl = (detail: PluginDetail, locale: string, theme: string) => {
-  const { source, meta } = detail
-  const { author, name } = detail.declaration || detail
-
-  if (source === PluginSource.github) return meta?.repo ? `https://github.com/${meta.repo}` : ''
-
-  if (source === PluginSource.marketplace)
-    return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
-
-  return ''
 }
 
 const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
@@ -55,8 +39,6 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   const versionMenuLabelId = useId()
   const { formatDate } = useTimestamp()
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
-  const { theme } = useTheme()
-  const locale = useLocale()
   const renderI18nObject = useRenderI18nObject()
   const readmeTriggerId = useId()
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
@@ -228,7 +210,8 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
         onCheckVersion={handleUpdate}
         onRemove={modalStates.showDeleteConfirm}
         onViewReadme={detail.plugin_unique_identifier ? handleViewReadme : undefined}
-        detailUrl={getDetailUrl(detail, locale, theme || 'light')}
+        pluginId={detail.plugin_id}
+        repo={detail.meta?.repo}
         triggerSize="xs"
         showCheckVersion={canUpdatePlugin}
         showRemove={canDeletePlugin}

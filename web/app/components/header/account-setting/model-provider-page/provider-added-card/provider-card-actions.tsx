@@ -34,14 +34,12 @@ import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types
 import { checkGitHubPluginUpdate } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
 import { useModalContext } from '@/context/modal-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useTheme from '@/hooks/use-theme'
+import { useMarketplace } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { marketplaceQuery } from '@/service/marketplace'
 import { normalizeInstalledPluginDetail, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type Props =
   | Readonly<{
@@ -81,7 +79,6 @@ function ProviderCardActions(props: Props) {
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const { setShowUpdatePluginModal } = useModalContext()
   const locale = useLocale()
-  const { theme } = useTheme()
   const { onUpdate } = props
   const pluginID = props.detail ? props.detail.plugin_id : props.summary.plugin_id
   const source = props.detail ? props.detail.source : pluginSourceMap[props.summary.source]
@@ -95,13 +92,10 @@ function ProviderCardActions(props: Props) {
   const hasNewVersion = isFromMarketplace && !!latestVersion && latestVersion !== version
   const category = props.detail?.declaration.category ?? PluginCategoryEnum.model
   const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
-  const { data: enableMarketplace } = useQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (value) => value.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const policy = autoUpgradeSettings.data?.auto_upgrade
   const autoUpgradeEnabled =
-    enableMarketplace &&
+    marketplace !== null &&
     policy &&
     policy.strategy_setting !== 'disabled' &&
     (policy.upgrade_mode === 'all' ||
@@ -144,15 +138,6 @@ function ProviderCardActions(props: Props) {
       (!props.detail && detailQuery.isPending) ||
       autoUpgradeSettings.isPending)
   const versionMenuOpen = versionMenuRequested && canChangeVersion && !loadingVersions
-  const detailUrl =
-    isFromMarketplace && organization && pluginName
-      ? getMarketplaceUrl(
-          `/plugins/${props.detail?.declaration.author ?? organization}/${props.detail?.declaration.name ?? pluginName}`,
-          { language: locale, theme },
-        )
-      : isFromGitHub && detail?.meta?.repo
-        ? `https://github.com/${detail.meta.repo}`
-        : ''
 
   const handlePluginChanged = async () => {
     await Promise.all([
@@ -337,7 +322,8 @@ function ProviderCardActions(props: Props) {
         onInfo={handleInfo}
         onCheckVersion={handleUpdate}
         onRemove={() => setShowDeleteConfirm(true)}
-        detailUrl={detailUrl}
+        pluginId={pluginID}
+        repo={detail?.meta?.repo}
         align="start"
         destructiveRemove
         showCheckVersion={canUpdatePlugin}

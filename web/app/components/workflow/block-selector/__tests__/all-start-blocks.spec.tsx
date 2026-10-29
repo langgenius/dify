@@ -41,20 +41,10 @@ vi.mock('@/service/use-plugins', () => ({
   useFeaturedTriggersRecommendations: vi.fn(),
 }))
 
-vi.mock('@/utils/var', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/var')>()
-  return {
-    ...actual,
-    getMarketplaceUrl: (path = '', params?: Record<string, string | undefined>) => {
-      const searchParams = new URLSearchParams()
-      Object.entries(params || {}).forEach(([key, value]) => {
-        if (value) searchParams.set(key, value)
-      })
-      const query = searchParams.toString()
-      return `https://marketplace.test${path}${query ? `?${query}` : ''}`
-    },
-  }
-})
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
+}))
 
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseLocale = vi.mocked(useLocale)

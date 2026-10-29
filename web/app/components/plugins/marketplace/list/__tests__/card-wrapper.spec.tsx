@@ -13,16 +13,16 @@ import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import CardWrapper from '../card-wrapper'
 
 // Keep the real dialog/iframe while preventing navigation to a remote document.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
+vi.mock('@/features/marketplace/links', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
+  const toBlank = (url: string) =>
+    `about:blank${new URL(url, 'https://marketplace.example.test').search}`
   return {
     ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) => {
-      const url = new URL(
-        actual.getPluginLinkInMarketplace(...args),
-        'https://marketplace.example.test',
-      )
-      return `about:blank${url.search}`
+    marketplaceLinks: {
+      ...actual.marketplaceLinks,
+      plugin: (...args: Parameters<typeof actual.marketplaceLinks.plugin>) =>
+        toBlank(actual.marketplaceLinks.plugin(...args)),
     },
   }
 })

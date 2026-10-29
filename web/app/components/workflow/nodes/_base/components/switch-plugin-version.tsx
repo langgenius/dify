@@ -3,6 +3,7 @@
 import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { FC, ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -33,6 +34,7 @@ import Card from '@/app/components/plugins/card'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
+import { useMarketplace } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -41,7 +43,6 @@ import {
   normalizeInstalledPluginDetail,
   useUpdatePackageFromMarketPlace,
 } from '@/service/use-plugins'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type PluginVersionSelection = {
   plugin: PluginDetail
@@ -64,6 +65,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const [installOpen, setInstallOpen] = useState(false)
   const [selection, setSelection] = useState<PluginVersionSelection>()
   const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
+  const marketplace = useMarketplace()
   const pluginDetails = useQuery(
     consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
       input: pluginId ? { body: { plugin_ids: [pluginId] } } : skipToken,
@@ -93,6 +95,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   )
   const loadingVersions = requestedOpen && versionsQuery.isPending
 
+  if (!marketplace) return null
+
   return (
     <div
       className={cn('flex w-fit items-center justify-center', className)}
@@ -102,6 +106,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         <DialogContent className="w-140" finalFocus={triggerRef}>
           {selection && (
             <PluginVersionInstallConfirmation
+              marketplace={marketplace}
               selection={selection}
               onInstalled={(version) => {
                 void pluginDetails.refetch()
@@ -186,9 +191,11 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
 }
 
 function PluginVersionInstallConfirmation({
+  marketplace,
   selection,
   onInstalled,
 }: {
+  marketplace: MarketplaceLinks
   selection: PluginVersionSelection
   onInstalled: (version: PluginVersionSelection['target']['version']) => void
 }) {
@@ -227,9 +234,10 @@ function PluginVersionInstallConfirmation({
       <DialogFooter>
         <Link
           className="me-auto flex items-center justify-center gap-1"
-          href={getMarketplaceUrl(
-            `/plugins/${selection.plugin.declaration.author}/${selection.plugin.declaration.name}`,
-          )}
+          href={marketplace.plugin({
+            org: selection.plugin.declaration.author,
+            name: selection.plugin.declaration.name,
+          })}
           target="_blank"
           rel="noopener noreferrer"
         >

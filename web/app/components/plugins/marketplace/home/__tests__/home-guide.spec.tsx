@@ -75,7 +75,7 @@ describe('HomeGuide', () => {
       'href',
       'https://docs.dify.ai/en/develop-plugin/publishing/marketplace-listing/release-overview',
     )
-    expect(options[3]).toHaveAttribute('href', 'https://creators.dify.ai')
+    expect(options[3]).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(mocks.useDocLink).not.toHaveBeenCalled()
   })
 

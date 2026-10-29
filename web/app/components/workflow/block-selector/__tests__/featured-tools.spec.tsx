@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import FeaturedTools from '../featured-tools'
 import { createPlugin, createToolProvider } from './factories'
 
@@ -24,9 +25,9 @@ vi.mock(
   }),
 )
 
-vi.mock('@/utils/var', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
 }))
 
 describe('FeaturedTools', () => {
@@ -55,7 +56,14 @@ describe('FeaturedTools', () => {
     )
     const providerMap = new Map(providers.map((provider) => [provider.plugin_id!, provider]))
 
-    render(<FeaturedTools plugins={plugins} providerMap={providerMap} onSelect={vi.fn()} />)
+    render(
+      <FeaturedTools
+        marketplace={marketplaceLinks}
+        plugins={plugins}
+        providerMap={providerMap}
+        onSelect={vi.fn()}
+      />,
+    )
 
     expect(screen.getByText('Provider 1')).toBeInTheDocument()
     expect(screen.queryByText('Provider 6')).not.toBeInTheDocument()
@@ -89,6 +97,7 @@ describe('FeaturedTools', () => {
 
     render(
       <FeaturedTools
+        marketplace={marketplaceLinks}
         plugins={[createPlugin()]}
         providerMap={new Map([['plugin-1', createToolProvider()]])}
         onSelect={vi.fn()}
@@ -113,6 +122,7 @@ describe('FeaturedTools', () => {
 
     render(
       <FeaturedTools
+        marketplace={marketplaceLinks}
         plugins={[createPlugin({ name: 'plugin-one' })]}
         providerMap={new Map()}
         onSelect={vi.fn()}
@@ -136,7 +146,14 @@ describe('FeaturedTools', () => {
   })
 
   it('shows the marketplace empty state when no featured tools are available', () => {
-    render(<FeaturedTools plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
+    render(
+      <FeaturedTools
+        marketplace={marketplaceLinks}
+        plugins={[]}
+        providerMap={new Map()}
+        onSelect={vi.fn()}
+      />,
+    )
 
     expect(screen.getByText('workflow.tabs.noFeaturedPlugins')).toBeInTheDocument()
   })

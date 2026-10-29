@@ -57,7 +57,7 @@ beforeEach(() => {
     },
   })
 })
-function setup() {
+function setup({ enableMarketplace = true } = {}) {
   const onChange = vi.fn()
   renderWithConsoleQuery(
     <SwitchPluginVersion
@@ -66,11 +66,17 @@ function setup() {
       onChange={onChange}
     />,
     {
+      systemFeatures: { enable_marketplace: enableMarketplace },
       workspacePermissionKeys: ['plugin.install'],
     },
   )
   return { user: userEvent.setup(), onChange }
 }
+it('does not offer version switching when Marketplace is disabled', () => {
+  setup({ enableMarketplace: false })
+
+  expect(screen.queryByRole('button', { name: /switchVersion/ })).not.toBeInTheDocument()
+})
 it('submits the selected package once and reports the version only after success', async () => {
   const result = createDeferred<Awaited<ReturnType<typeof api.upgrade>>>()
   api.upgrade.mockReturnValueOnce(result.promise)

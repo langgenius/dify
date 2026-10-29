@@ -27,12 +27,12 @@ import { selectToolCollections } from '@/app/components/tools/utils/query-select
 import { API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import useTheme from '@/hooks/use-theme'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { marketplaceQuery } from '@/service/marketplace'
 import { isEarlierThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
 import Icon from '../../card/base/card-icon'
@@ -44,7 +44,7 @@ import {
   convertUTCDaySecondsToLocalSeconds,
   timeOfDayToDayjs,
 } from '../../reference-setting-modal/auto-update-setting/utils'
-import { PluginCategoryEnum, PluginSource } from '../../types'
+import { PluginCategoryEnum } from '../../types'
 import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
@@ -70,24 +70,6 @@ const getIconSrc = (
     : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${iconFileName}`
 }
 
-const getDetailUrl = (
-  source: PluginSource,
-  meta: PluginDetail['meta'],
-  author: string,
-  name: string,
-  locale: string,
-  theme: string,
-): string => {
-  if (source === PluginSource.github) {
-    const repo = meta?.repo
-    if (!repo) return ''
-    return `https://github.com/${repo}`
-  }
-  if (source === PluginSource.marketplace)
-    return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
-  return ''
-}
-
 const DetailHeader = ({
   canDeletePlugin = true,
   canUpdatePlugin = true,
@@ -108,6 +90,7 @@ const DetailHeader = ({
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
+  const marketplace = useMarketplace()
   const detailCategory = detail.declaration?.category ?? PluginCategoryEnum.tool
   const { referenceSetting } = useReferenceSetting(detailCategory)
 
@@ -173,7 +156,6 @@ const DetailHeader = ({
   }, [collectionList, providerKey])
 
   const iconSrc = getIconSrc(icon, icon_dark, theme, tenant_id)
-  const detailUrl = getDetailUrl(source, meta, author, name, currentLocale, theme)
   const canViewReadme =
     !!detail.plugin_unique_identifier && !BUILTIN_TOOLS_ARRAY.includes(detail.id)
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
@@ -386,7 +368,8 @@ const DetailHeader = ({
               onCheckVersion={handleUpdate}
               onRemove={modalStates.showDeleteConfirm}
               onViewReadme={canViewReadme ? handleViewReadme : undefined}
-              detailUrl={detailUrl}
+              pluginId={plugin_id}
+              repo={meta?.repo}
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
             />
@@ -401,12 +384,12 @@ const DetailHeader = ({
       </div>
 
       {/* Deprecation Notice */}
-      {isFromMarketplace && (
+      {isFromMarketplace && marketplace && (
         <DeprecationNotice
           status={status}
           deprecatedReason={deprecated_reason}
           alternativePluginId={alternative_plugin_id}
-          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, {
+          alternativePluginURL={marketplace.page(`/plugins/${alternative_plugin_id}`, {
             language: currentLocale,
             theme,
           })}

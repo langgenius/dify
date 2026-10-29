@@ -29,6 +29,7 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useMarketplace } from '@/features/marketplace/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
@@ -153,6 +154,7 @@ export function GotoAnything() {
   )
   const agentsAvailable = isAgentV2Enabled()
   const skillsAvailable = enableSkill === true && !isCurrentWorkspaceDatasetOperator
+  const pluginsAvailable = useMarketplace() !== null
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -167,9 +169,17 @@ export function GotoAnything() {
     () =>
       createActions(createSlashAction(commandContext), isWorkflowPage, isRagPipelinePage, {
         agents: agentsAvailable,
+        plugins: pluginsAvailable,
         skills: skillsAvailable,
       }),
-    [agentsAvailable, commandContext, isWorkflowPage, isRagPipelinePage, skillsAvailable],
+    [
+      agentsAvailable,
+      commandContext,
+      isWorkflowPage,
+      isRagPipelinePage,
+      pluginsAvailable,
+      skillsAvailable,
+    ],
   )
   const { commandOptions, scopeOptions } = useCommandOptions(actions, searchQuery, commandContext)
   const trimmedSearchQuery = searchQuery.trim()
@@ -190,7 +200,9 @@ export function GotoAnything() {
   const knowledgeSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@knowledge')
   const pluginSearchEnabled =
-    remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@plugin')
+    remoteSearchEnabled &&
+    pluginsAvailable &&
+    (!debouncedAction || debouncedAction.key === '@plugin')
   const skillSearchEnabled =
     remoteSearchEnabled && skillsAvailable && (!debouncedAction || debouncedAction.key === '@skill')
   const agentSearchEnabled =
