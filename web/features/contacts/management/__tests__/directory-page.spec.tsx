@@ -992,7 +992,7 @@ describe('Contact IM binding controls', () => {
   })
 
   it('does not offer a binding action when no IM channel is configured', async () => {
-    const { scenario, repository, contact, listIMChannels } = setup()
+    const { scenario, repository, contact, listIMChannels } = setup(undefined, false)
     listIMChannels.mockResolvedValue([])
     renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const details = await findLoadedDetails(contact.name)
@@ -1256,31 +1256,16 @@ describe('Contact IM binding controls', () => {
     expect(repository.removeIMBinding).not.toHaveBeenCalled()
   })
 
-  it('binds an unbound configured channel as a workspace customization', async () => {
-    const { scenario, repository, contact } = setup()
-    const user = userEvent.setup()
+  it('does not discover unbound channels through workspace management in centrally managed mode', async () => {
+    const { scenario, repository, contact, listIMChannels } = setup()
     renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const details = await findLoadedDetails(contact.name)
-    expect(await within(details).findByText('contacts.imBinding.notBound')).toBeInTheDocument()
-    const dialog = await openEditor(user, contact)
-    const save = within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' })
-    await user.click(
-      within(dialog).getByRole('radio', { name: 'contacts.imBinding.workspaceMode' }),
-    )
-    expect(save).toBeDisabled()
-
-    await chooseIdentity(user, dialog)
-    expect(save).toBeEnabled()
-    await user.click(save)
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(repository.setIMBinding).toHaveBeenCalledWith({
-      contactId: contact.id,
-      identityId: identity.id,
-      override: true,
-    })
-    expect(await within(details).findByText('contacts.imBinding.customized')).toBeInTheDocument()
-    expect(within(details).queryByText('contacts.imBinding.notBound')).not.toBeInTheDocument()
+    expect(listIMChannels).not.toHaveBeenCalled()
+    expect(within(details).queryByText('Feishu')).not.toBeInTheDocument()
+    expect(
+      within(details).queryByRole('button', { name: 'contacts.imBinding.bind' }),
+    ).not.toBeInTheDocument()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
   })
 
   it('keeps the organization binding unchanged until a custom identity is submitted', async () => {
@@ -1452,7 +1437,7 @@ describe('Contact IM binding controls', () => {
   })
 
   it('shows unavailable identities as a recoverable error without allowing an empty save', async () => {
-    const { scenario, repository, contact } = setup()
+    const { scenario, repository, contact } = setup('organization')
     vi.mocked(repository.listIMIdentities).mockRejectedValue(
       new ContactIMRequestError('im_integration_not_configured'),
     )
@@ -1474,7 +1459,7 @@ describe('Contact IM binding controls', () => {
   })
 
   it('pages through identities, retains a conflicting selection, and updates details after a successful retry', async () => {
-    const { scenario, repository, contact } = setup()
+    const { scenario, repository, contact } = setup('organization')
     const second = {
       ...identity,
       id: 'identity-2',
@@ -1513,7 +1498,7 @@ describe('Contact IM binding controls', () => {
       'contacts.imBinding.conflict',
     )
     expect(picker).toHaveTextContent('Second Member')
-    expect(within(details).getByText('contacts.imBinding.notBound')).toBeInTheDocument()
+    expect(within(details).getByText('contacts.imBinding.identityUnavailable')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -1609,7 +1594,7 @@ describe('Contact IM binding controls', () => {
   })
 
   it('keeps a selected identity when a later search has no results', async () => {
-    const { scenario, repository, contact } = setup()
+    const { scenario, repository, contact } = setup('organization')
     vi.mocked(repository.listIMIdentities).mockImplementation(async ({ search, page, limit }) => ({
       data: search === 'Nobody' ? [] : [identity],
       page,

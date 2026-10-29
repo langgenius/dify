@@ -277,7 +277,7 @@ export function useContactIMChannels(enabled = true) {
       enabled:
         enabled &&
         Boolean(context.workspaceId) &&
-        context.imCentrallyManaged !== undefined &&
+        context.imCentrallyManaged === false &&
         context.permissions.canManageContacts,
       retry: false,
     }),
