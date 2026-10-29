@@ -188,11 +188,9 @@ def write_archive(entries: Iterable[ArchiveEntry], options: ArchiveOptions) -> A
         raise ArchiveTooLargeError(ArchiveLimitKind.ENTRIES, limits.max_entries)
     admitted = sorted(options.path_policy.admit(items), key=lambda entry: entry.path)
 
-    now = time.localtime()
-    date_time = (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec)
     spool = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_MEMORY, mode="w+b"))  # noqa: SIM115
     try:
-        written = _write_entries(spool, admitted, options, date_time)
+        written = _write_entries(spool, admitted, options)
         spool.seek(0)
     except BaseException:
         spool.close()
@@ -200,13 +198,9 @@ def write_archive(entries: Iterable[ArchiveEntry], options: ArchiveOptions) -> A
     return ArchiveResult(file=spool, entries=written)
 
 
-def _write_entries(
-    spool: BinaryIO,
-    entries: Sequence[ArchiveEntry],
-    options: ArchiveOptions,
-    date_time: tuple[int, int, int, int, int, int],
-) -> list[WrittenEntry]:
+def _write_entries(spool: BinaryIO, entries: Sequence[ArchiveEntry], options: ArchiveOptions) -> list[WrittenEntry]:
     max_bytes = options.limits.max_bytes
+    date_time = time.localtime()[:6]
     written: list[WrittenEntry] = []
     with zipfile.ZipFile(spool, "w", allowZip64=True) as archive:
         for entry in entries:
