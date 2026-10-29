@@ -157,6 +157,7 @@ describe('useEmbeddedChatbot', () => {
     localStorage.removeItem(CONVERSATION_ID_INFO)
     mockStoreState.appInfo = {
       app_id: 'app-1',
+      end_user_id: 'end-user-1',
       custom_config: null,
       site: {
         title: 'Test App',
@@ -341,10 +342,74 @@ describe('useEmbeddedChatbot', () => {
       await waitFor(() => {
         const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
         const parsed = storedValue ? JSON.parse(storedValue) : {}
-        const storedUserId = parsed['app-1']?.['embedded-user-1']
-        const storedDefaultId = parsed['app-1']?.DEFAULT
-        expect([storedUserId, storedDefaultId]).toContain('conversation-new')
+        expect(parsed['app-1']?.['end-user-1']).toBe('conversation-new')
       })
+    })
+  })
+
+  // Scenario: web apps key the saved conversation by end user, not by the embedded user id.
+  describe('saved conversation owner', () => {
+    it('should not resume the previous end user\'s conversation after the end user changes', async () => {
+      // Arrange
+      mockStoreState.embeddedConversationId = null
+      const { result, rerender } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      act(() => {
+        result.current.handleConversationIdInfoChange('conversation-of-previous-end-user')
+      })
+      expect(result.current.currentConversationId).toBe('conversation-of-previous-end-user')
+
+      // Act: an access mode change issues a new end user for this browser.
+      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: 'end-user-2' }
+      rerender()
+
+      // Assert
+      expect(result.current.currentConversationId).toBe('')
+    })
+
+    it('should ignore conversations saved under the embedded user id', async () => {
+      // Arrange
+      mockStoreState.embeddedConversationId = null
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'embedded-user-1': 'conversation-under-embedded-user' } }))
+
+      // Act
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      // Assert
+      expect(result.current.currentConversationId).toBe('')
+    })
+
+    it('should still open the conversation id passed by the embedding page', async () => {
+      // Arrange
+      mockStoreState.embeddedConversationId = null
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({ conversation_id: 'conversation-1' })
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'previous-end-user': 'conversation-of-previous-end-user' } }))
+
+      // Act
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      // Assert
+      await waitFor(() => {
+        expect(result.current.currentConversationId).toBe('conversation-1')
+      })
+    })
+
+    it('should neither read nor write a saved conversation when the web app has no end user id', async () => {
+      // Arrange
+      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: undefined }
+      mockStoreState.embeddedConversationId = null
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }))
+      const original = localStorage.getItem(CONVERSATION_ID_INFO)
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      // Act
+      act(() => {
+        result.current.handleConversationIdInfoChange('unused-conversation-id')
+      })
+
+      // Assert
+      expect(result.current.currentConversationId).toBe('')
+      expect(localStorage.getItem(CONVERSATION_ID_INFO)).toBe(original)
     })
   })
 
@@ -659,17 +724,16 @@ describe('useEmbeddedChatbot', () => {
 
       await waitFor(() => {
         const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
-        const appEntry = stored['app-1']
-        // userId may be 'embedded-user-1' or 'DEFAULT' depending on timing; either is valid
-        const storedId = appEntry?.['embedded-user-1'] ?? appEntry?.DEFAULT
-        expect(storedId).toBe('new-conv-id')
+        expect(stored['app-1']?.['end-user-1']).toBe('new-conv-id')
       })
     })
 
-    it('should use DEFAULT when userId is null', async () => {
+    it('should use DEFAULT for try apps when userId is null', async () => {
       // Override userId to be null/empty to exercise the "|| 'DEFAULT'" fallback path
+      const { useGetTryAppInfo } = await import('@/service/use-try-app');
+      (useGetTryAppInfo as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: { app_id: 'try-app-1', site: { title: 'Try App' } } })
       mockStoreState.embeddedUserId = null
-      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.tryApp, 'try-app-1'))
 
       act(() => {
         result.current.handleConversationIdInfoChange('default-conv-id')
@@ -677,9 +741,7 @@ describe('useEmbeddedChatbot', () => {
 
       await waitFor(() => {
         const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
-        const appEntry = stored['app-1']
-        // Should use DEFAULT key since userId is null
-        expect(appEntry?.DEFAULT).toBe('default-conv-id')
+        expect(stored['try-app-1']?.DEFAULT).toBe('default-conv-id')
       })
     })
   })
@@ -813,7 +875,7 @@ describe('useEmbeddedChatbot', () => {
   describe('getFormattedChatList edge cases', () => {
     it('should handle messages with no message_files and no agent_thoughts', async () => {
       // Ensure a currentConversationId is set so appChatListData is fetched
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }))
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'end-user-1': 'conversation-1' } }))
       mockFetchConversations.mockResolvedValue(
         createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
       )
@@ -844,7 +906,7 @@ describe('useEmbeddedChatbot', () => {
         return pinned ? pinnedData : createConversationData({ data: [] })
       })
       mockFetchChatList.mockResolvedValue({ data: [] })
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'pinned-conv' } }))
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'end-user-1': 'pinned-conv' } }))
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -882,7 +944,7 @@ describe('useEmbeddedChatbot', () => {
   describe('currentConversationLatestInputs', () => {
     it('should return inputs from latest chat message when conversation has data', async () => {
       const convId = 'conversation-with-inputs'
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: convId } }))
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'end-user-1': convId } }))
       mockFetchConversations.mockResolvedValue(
         createConversationData({ data: [createConversationItem({ id: convId })] }),
       )

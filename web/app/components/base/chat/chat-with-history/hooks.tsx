@@ -177,21 +177,30 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
+  // Web apps key the saved conversation by end user: an access mode change issues a new end user,
+  // which must not resume a conversation owned by the previous one.
+  const conversationOwnerId = isInstalledApp ? (userId || 'DEFAULT') : appData?.end_user_id
+  const currentConversationId = useMemo(() => {
+    if (!conversationOwnerId)
+      return ''
+    return conversationIdInfo?.[appId || '']?.[conversationOwnerId] || ''
+  }, [appId, conversationIdInfo, conversationOwnerId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
-    if (appId) {
-      let prevValue = conversationIdInfo?.[appId || '']
-      if (typeof prevValue === 'string')
-        prevValue = {}
-      setConversationIdInfo({
-        ...conversationIdInfo,
-        [appId || '']: {
-          ...prevValue,
-          [userId || 'DEFAULT']: changeConversationId,
-        },
-      })
-    }
-  }, [appId, conversationIdInfo, setConversationIdInfo, userId])
+    if (!appId)
+      return
+    if (!conversationOwnerId)
+      return
+    let prevValue = conversationIdInfo?.[appId]
+    if (typeof prevValue === 'string')
+      prevValue = {}
+    setConversationIdInfo({
+      ...conversationIdInfo,
+      [appId]: {
+        ...prevValue,
+        [conversationOwnerId]: changeConversationId,
+      },
+    })
+  }, [appId, conversationIdInfo, conversationOwnerId, setConversationIdInfo])
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {

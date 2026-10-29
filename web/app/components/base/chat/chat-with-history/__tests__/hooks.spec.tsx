@@ -131,14 +131,18 @@ const createConversationData = (overrides: Partial<AppConversationData> = {}): A
   ...overrides,
 })
 
-const setConversationIdInfo = (appId: string, conversationId: string) => {
+const setConversationIdInfo = (appId: string, conversationId: string, ownerId = 'end-user-1') => {
   const value = {
     [appId]: {
-      'user-1': conversationId,
-      'DEFAULT': conversationId,
+      [ownerId]: conversationId,
     },
   }
   localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify(value))
+}
+
+const readConversationIdInfo = (): Record<string, Record<string, string>> => {
+  const stored = localStorage.getItem(CONVERSATION_ID_INFO)
+  return stored ? JSON.parse(stored) : {}
 }
 
 // Scenario: useChatWithHistory integrates share queries for conversations and chat list.
@@ -149,6 +153,7 @@ describe('useChatWithHistory', () => {
     localStorage.removeItem('webappSidebarCollapse')
     mockStoreState.appInfo = {
       app_id: 'app-1',
+      end_user_id: 'end-user-1',
       custom_config: null,
       site: {
         title: 'Test App',
@@ -288,11 +293,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
-        const parsed = storedValue ? JSON.parse(storedValue) : {}
-        const storedUserId = parsed['app-1']?.['user-1']
-        const storedDefaultId = parsed['app-1']?.DEFAULT
-        expect([storedUserId, storedDefaultId]).toContain('conversation-new')
+        expect(readConversationIdInfo()['app-1']?.['end-user-1']).toBe('conversation-new')
       })
     })
   })
@@ -1861,6 +1862,77 @@ describe('useChatWithHistory', () => {
     })
   })
 
+  // Scenario: web apps key the saved conversation by end user; installed apps keep the URL user key.
+  describe('saved conversation owner', () => {
+    it('should not resume the previous end user\'s conversation after the end user changes', async () => {
+      // Arrange
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { result, rerender } = await renderWithClient(() => useChatWithHistory())
+      act(() => {
+        result!.current.handleConversationIdInfoChange('conversation-of-previous-end-user')
+      })
+      expect(result!.current.currentConversationId).toBe('conversation-of-previous-end-user')
+
+      // Act: an access mode change issues a new end user for this browser.
+      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: 'end-user-2' }
+      rerender!()
+
+      // Assert
+      expect(result!.current.currentConversationId).toBe('')
+    })
+
+    it('should ignore conversations saved under the URL user id for web apps', async () => {
+      // Arrange
+      setConversationIdInfo('app-1', 'conversation-under-url-user', 'user-1')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+
+      // Act
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      // Assert
+      expect(result!.current.currentConversationId).toBe('')
+    })
+
+    it('should neither read nor write a saved conversation when the web app has no end user id', async () => {
+      // Arrange
+      mockStoreState.appInfo = { ...mockStoreState.appInfo!, end_user_id: undefined }
+      setConversationIdInfo('app-1', 'conversation-1', 'DEFAULT')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      const original = localStorage.getItem(CONVERSATION_ID_INFO)
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      // Act
+      act(() => {
+        result!.current.handleConversationIdInfoChange('unused-conversation-id')
+      })
+
+      // Assert
+      expect(result!.current.currentConversationId).toBe('')
+      expect(localStorage.getItem(CONVERSATION_ID_INFO)).toBe(original)
+    })
+
+    it('should key installed apps by the URL user id', async () => {
+      // Arrange
+      const installedAppInfo = {
+        id: 'installed-app-id',
+        app: { name: 'Installed App' },
+      } as unknown as InstalledApp
+      setConversationIdInfo('installed-app-id', 'conversation-installed', 'user-1')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      // Act
+      const { result } = await renderWithClient(() => useChatWithHistory(installedAppInfo))
+
+      // Assert
+      await waitFor(() => {
+        expect(result!.current.currentConversationId).toBe('conversation-installed')
+      })
+    })
+  })
+
   // Scenario: conversation id update should no-op without appId and use DEFAULT key without userId.
   describe('handleConversationIdInfoChange fallback branches', () => {
     it('should no-op when appId is absent', async () => {
@@ -1881,14 +1953,18 @@ describe('useChatWithHistory', () => {
       expect(localStorage.getItem(CONVERSATION_ID_INFO)).toBe(original)
     })
 
-    it('should write conversation id under DEFAULT key when user id is missing', async () => {
+    it('should write conversation id under DEFAULT key for installed apps when user id is missing', async () => {
       // Arrange
       const { getProcessedSystemVariablesFromUrlParams } = await import('../../utils')
       vi.mocked(getProcessedSystemVariablesFromUrlParams).mockResolvedValueOnce({ user_id: undefined as unknown as string })
+      const installedAppInfo = {
+        id: 'installed-app-id',
+        app: { name: 'Installed App' },
+      } as unknown as InstalledApp
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 
-      const { result } = await renderWithClient(() => useChatWithHistory())
+      const { result } = await renderWithClient(() => useChatWithHistory(installedAppInfo))
 
       // Act
       act(() => {
@@ -1897,9 +1973,7 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        const stored = localStorage.getItem(CONVERSATION_ID_INFO)
-        const parsed = stored ? JSON.parse(stored) : {}
-        expect(parsed['app-1']?.DEFAULT).toBe('conversation-default-user')
+        expect(readConversationIdInfo()['installed-app-id']?.DEFAULT).toBe('conversation-default-user')
       })
     })
   })
