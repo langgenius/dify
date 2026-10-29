@@ -96,6 +96,15 @@ class DifyPluginToolInvokeMessage(BaseModel):
         data: Mapping[str, object] = Field(default_factory=dict)
         metadata: Mapping[str, object] = Field(default_factory=dict)
 
+        @field_validator("metadata", mode="before")
+        @classmethod
+        def _normalize_metadata(cls, value: object) -> object:
+            # The plugin SDK's ``create_log_message`` defaults ``metadata`` to
+            # None, which the daemon serializes as ``metadata: null``. Mirror the
+            # canonical core model (ToolInvokeMessage.LogMessage) and coerce that
+            # null back to an empty mapping so the message union still resolves.
+            return value or {}
+
     class MessageType(StrEnum):
         TEXT = "text"
         IMAGE = "image"
