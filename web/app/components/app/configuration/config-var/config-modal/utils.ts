@@ -95,6 +95,7 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
       InputVarType.multiFiles,
     ]
 
+    if (fileInputTypes.includes(draft.type) && draft.type !== type) draft.default = undefined
     draft.type = type
     if (type === InputVarType.select) draft.default = undefined
     if (isStringInputType(type) && typeof draft.default === 'number')
@@ -202,9 +203,13 @@ export const validateConfigModalPayload = ({
       ? { ...normalizedTempPayload, json_schema: undefined }
       : normalizedTempPayload,
     (draft) => {
-      if (!draft.default || typeof draft.default !== 'object') return
+      if (
+        !fileInputTypes.includes(draft.type) ||
+        !draft.default ||
+        typeof draft.default !== 'object'
+      )
+        return
 
-      // Native File is uploader state and would make oRPC send the draft as multipart.
       const files = Array.isArray(draft.default) ? draft.default : [draft.default]
       for (const file of files) {
         if (file?.originalFile instanceof Blob) delete file.originalFile
