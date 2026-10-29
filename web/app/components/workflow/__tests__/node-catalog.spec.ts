@@ -5,7 +5,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 
 // The node catalog reads KnowledgeFS availability from the console features query.
 const catalogQueryClient = ({ enabled = true } = {}) =>
-  createConsoleQueryWrapper({ knowledgeFsFeatures: { enabled } }).queryClient
+  createConsoleQueryWrapper({ features: { enable_knowledge_fs: enabled } }).queryClient
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 const mockIsAgentV2InChatflowEnabled = vi.hoisted(() => vi.fn(() => false))
