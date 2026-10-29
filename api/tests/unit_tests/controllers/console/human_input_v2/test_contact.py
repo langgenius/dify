@@ -131,11 +131,14 @@ def test_administrators_can_read_create_edit_and_remove_contacts(
         assert session.scalar(select(HumanInputExternalContactProfile)) is None
 
 
-def test_editor_can_select_contacts_without_access_to_management(client: FlaskClient, current_account: Account) -> None:
+@pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR])
+def test_editing_roles_can_select_contacts(
+    client: FlaskClient, current_account: Account, role: TenantAccountRole
+) -> None:
     created = client.post(f"{_BASE_URL}/contacts/external", json={"name": "Reviewer", "email": "contact@example.com"})
     assert created.status_code == 200
     contact_id = created.get_json()["contact"]["id"]
-    current_account.role = TenantAccountRole.EDITOR
+    current_account.role = role
 
     options = client.get(f"{_BASE_URL}/contact-options")
     assert options.status_code == 200
@@ -146,4 +149,26 @@ def test_editor_can_select_contacts_without_access_to_management(client: FlaskCl
     resolved = client.get(f"{_BASE_URL}/contact-options/batch", query_string={"contact_ids": contact_id})
     assert resolved.status_code == 200
     assert resolved.get_json()["data"] == options.get_json()["data"]
-    assert client.get(f"{_BASE_URL}/contacts").status_code == 403
+    if role == TenantAccountRole.EDITOR:
+        assert client.get(f"{_BASE_URL}/contacts").status_code == 403
+
+
+@pytest.mark.parametrize("role", [TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR])
+@pytest.mark.parametrize("path", ["/contact-options", f"/contact-options/batch?contact_ids={_CONTACT_ID}"])
+def test_contact_options_reject_non_editing_roles_before_query(
+    client: FlaskClient,
+    current_account: Account,
+    monkeypatch: pytest.MonkeyPatch,
+    role: TenantAccountRole,
+    path: str,
+) -> None:
+    current_account.role = role
+
+    def reject_contact_query(*_args: object, **_kwargs: object) -> Never:
+        raise AssertionError("Unauthorized requests must not query Contact options")
+
+    monkeypatch.setattr(controller, "_contact_service", reject_contact_query)
+
+    response = client.get(f"{_BASE_URL}{path}")
+
+    assert response.status_code == 403, response.get_json()
