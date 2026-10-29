@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import ORMExecuteState, Session
 from testcontainers.community.mysql import MySqlContainer
@@ -53,10 +54,13 @@ def write_engine(request: pytest.FixtureRequest) -> Iterator[Engine]:
             external_url = container.get_connection_url()
         engine = sa.create_engine(external_url)
         tables = [
-            HumanInputDelivery.__table__,
-            HumanInputIMIdentity.__table__,
-            HumanInputIMBinding.__table__,
-            HumanInputIMBindingWorkspaceOverride.__table__,
+            HumanInputDelivery.metadata.tables[model.__tablename__]
+            for model in (
+                HumanInputDelivery,
+                HumanInputIMIdentity,
+                HumanInputIMBinding,
+                HumanInputIMBindingWorkspaceOverride,
+            )
         ]
         try:
             HumanInputDelivery.metadata.create_all(engine, tables=tables)
@@ -133,6 +137,7 @@ def test_locator_assignment_is_serialized_idempotent_and_owner_scoped(write_engi
         assert saved is not None
         assert isinstance(saved.target_snapshot, IMUserTargetSnapshot)
         locator = saved.target_snapshot.message_locator
+        assert locator is not None
         assert locator in (MessageLocator("card-one"), MessageLocator("card-two"))
         assert (
             repository.set_im_message_locator(
@@ -220,7 +225,7 @@ def test_stale_binding_replacement_cannot_delete_a_concurrent_replacement(
     def stale_replace() -> None:
         with Session(write_engine) as session:
             # Pause at the database boundary after the old Binding was observed.
-            sa.event.listen(session, "do_orm_execute", pause_before_delete)
+            event.listen(session, "do_orm_execute", pause_before_delete)
             with pytest.raises(IMBindingConflictError, match="changed concurrently"):
                 replace(session, identities[2])
             session.rollback()
