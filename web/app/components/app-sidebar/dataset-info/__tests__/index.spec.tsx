@@ -11,7 +11,7 @@ import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
-import Dropdown from '../dropdown'
+import ActionsMenu from '../actions-menu'
 
 let mockDataset: ReturnType<typeof createDatasetFixture>
 const mockPush = vi.fn()
@@ -134,14 +134,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.useCheck.get': (input) => mockCheckIsUsedInApp(input),
+      'datasets.byDatasetId.delete': (input) => mockDeleteDataset(input),
       'rag.pipelines.byPipelineId.exports.get': (input) => mockExportPipeline(input),
     }),
   }
 })
 
 vi.mock('@/service/datasets', () => ({
-  checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
-  deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
   updateDatasetSetting: (...args: unknown[]) => mockUpdateDataset(...args),
 }))
 
@@ -193,7 +193,7 @@ describe('DatasetInfo', () => {
   })
 })
 
-describe('Dropdown', () => {
+describe('ActionsMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
@@ -226,7 +226,7 @@ describe('Dropdown', () => {
         runtime_mode: 'rag_pipeline',
         permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.ImportExportDSL],
       })
-      render(<Dropdown expand />)
+      render(<ActionsMenu expand />)
 
       // Act
       await openMenu(user)
@@ -242,7 +242,7 @@ describe('Dropdown', () => {
         runtime_mode: 'general',
         permission_keys: [DatasetACLPermission.AccessConfig],
       })
-      render(<Dropdown expand />)
+      render(<ActionsMenu expand />)
 
       // Act
       await openMenu(user)
@@ -261,7 +261,7 @@ describe('Dropdown', () => {
         runtime_mode: 'general',
         permission_keys: [DatasetACLPermission.AccessConfig, DatasetACLPermission.Delete],
       })
-      render(<Dropdown expand />)
+      render(<ActionsMenu expand />)
 
       // Act
       await openMenu(user)
@@ -277,7 +277,7 @@ describe('Dropdown', () => {
     it('renames the dataset and invalidates cached list and detail', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { queryClient } = render(<Dropdown expand />)
+      const { queryClient } = render(<ActionsMenu expand />)
 
       // Act
       await openMenu(user)
@@ -312,7 +312,7 @@ describe('Dropdown', () => {
         .mockReturnValue('blob:pipeline-export')
       const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL')
       // Arrange
-      render(<Dropdown expand />)
+      render(<ActionsMenu expand />)
 
       // Act
       await openMenu(user)
@@ -333,7 +333,7 @@ describe('Dropdown', () => {
     it('should delete dataset and redirect when confirm is clicked', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { queryClient } = render(<Dropdown expand />)
+      const { queryClient } = render(<ActionsMenu expand />)
 
       // Act
       await openMenu(user)
@@ -342,8 +342,9 @@ describe('Dropdown', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockDeleteDataset).toHaveBeenCalledWith('dataset-1')
+        expect(mockDeleteDataset).toHaveBeenCalledWith({ params: { dataset_id: 'dataset-1' } })
       })
+      expect(queryClient.getQueryData(datasetListKey)).toMatchObject({ data: [], total: 0 })
       expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
@@ -355,7 +356,7 @@ describe('Dropdown', () => {
         runtime_mode: 'general',
         permission_keys: [DatasetACLPermission.AccessConfig],
       })
-      render(<Dropdown expand />)
+      render(<ActionsMenu expand />)
 
       // Act
       await openMenu(user)

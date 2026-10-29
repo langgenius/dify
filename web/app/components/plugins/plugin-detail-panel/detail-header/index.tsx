@@ -4,35 +4,34 @@ import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { selectToolCollections } from '@/app/components/tools/utils/query-select'
 import { API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTheme from '@/hooks/use-theme'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { marketplaceQuery } from '@/service/marketplace'
 import { isEarlierThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
 import Icon from '../../card/base/card-icon'
@@ -44,7 +43,7 @@ import {
   convertUTCDaySecondsToLocalSeconds,
   timeOfDayToDayjs,
 } from '../../reference-setting-modal/auto-update-setting/utils'
-import { PluginCategoryEnum, PluginSource } from '../../types'
+import { PluginCategoryEnum } from '../../types'
 import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
@@ -70,24 +69,6 @@ const getIconSrc = (
     : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${iconFileName}`
 }
 
-const getDetailUrl = (
-  source: PluginSource,
-  meta: PluginDetail['meta'],
-  author: string,
-  name: string,
-  locale: string,
-  theme: string,
-): string => {
-  if (source === PluginSource.github) {
-    const repo = meta?.repo
-    if (!repo) return ''
-    return `https://github.com/${repo}`
-  }
-  if (source === PluginSource.marketplace)
-    return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
-  return ''
-}
-
 const DetailHeader = ({
   canDeletePlugin = true,
   canUpdatePlugin = true,
@@ -108,6 +89,7 @@ const DetailHeader = ({
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
+  const marketplace = useMarketplace()
   const detailCategory = detail.declaration?.category ?? PluginCategoryEnum.tool
   const { referenceSetting } = useReferenceSetting(detailCategory)
 
@@ -144,16 +126,10 @@ const DetailHeader = ({
       onUpdate,
     })
 
-  const [organization, pluginName] = plugin_id.split('/')
-  const versionsQuery = useQuery(
-    marketplaceQuery.pluginVersions.queryOptions({
-      input:
-        organization && pluginName
-          ? { params: { organization, pluginName }, query: { page: 1, page_size: 100 } }
-          : skipToken,
-      enabled: versionPicker.isShow && canUpdatePlugin && isFromMarketplace && !isReadmeView,
-      retry: false,
-    }),
+  const canChangeVersion = canUpdatePlugin && isFromMarketplace && !!marketplace && !isReadmeView
+  const versionsQuery = useMarketplacePluginVersions(
+    plugin_id,
+    versionPicker.isShow && canChangeVersion,
   )
   const loadingVersions =
     versionPicker.isShow && (versionsQuery.isPending || autoUpgradeSettings.isPending)
@@ -173,7 +149,6 @@ const DetailHeader = ({
   }, [collectionList, providerKey])
 
   const iconSrc = getIconSrc(icon, icon_dark, theme, tenant_id)
-  const detailUrl = getDetailUrl(source, meta, author, name, currentLocale, theme)
   const canViewReadme =
     !!detail.plugin_unique_identifier && !BUILTIN_TOOLS_ARRAY.includes(detail.id)
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
@@ -237,24 +212,17 @@ const DetailHeader = ({
             )}
 
             {/* Version Picker */}
-            <DropdownMenu
-              open={
-                !!version &&
-                versionPicker.isShow &&
-                canUpdatePlugin &&
-                isFromMarketplace &&
-                !isReadmeView &&
-                !loadingVersions
-              }
+            <Menu
+              open={!!version && versionPicker.isShow && canChangeVersion && !loadingVersions}
               onOpenChange={versionPicker.setIsShow}
             >
               {!!version && (
-                <DropdownMenuTrigger
+                <MenuTrigger
                   render={
                     <Button
                       variant="ghost"
                       size="small"
-                      disabled={!canUpdatePlugin || !isFromMarketplace || isReadmeView}
+                      disabled={!canChangeVersion}
                       loading={loadingVersions}
                       className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-xs-medium text-text-tertiary"
                     >
@@ -262,28 +230,25 @@ const DetailHeader = ({
                         <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                       )}
                       <span>{isFromGitHub ? (meta?.version ?? version) : version}</span>
-                      {canUpdatePlugin &&
-                        isFromMarketplace &&
-                        !isReadmeView &&
-                        !loadingVersions && (
-                          <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
-                        )}
+                      {canChangeVersion && !loadingVersions && (
+                        <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
+                      )}
                     </Button>
                   }
                 />
               )}
-              <DropdownMenuContent
+              <MenuContent
                 className="max-h-[min(16rem,var(--available-height))]"
                 align="start"
                 aria-labelledby={versionMenuLabelId}
               >
-                <DropdownMenuGroup>
-                  <DropdownMenuGroupLabel id={versionMenuLabelId}>
+                <MenuGroup>
+                  <MenuGroupLabel id={versionMenuLabelId}>
                     {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
-                  </DropdownMenuGroupLabel>
+                  </MenuGroupLabel>
                   {versionsQuery.data && autoUpgradeSettings.data ? (
                     versionsQuery.data.data.versions.map((item) => (
-                      <DropdownMenuItem
+                      <MenuItem
                         key={item.unique_identifier}
                         disabled={version === item.version}
                         onClick={() => handleVersionSelect(item)}
@@ -295,10 +260,10 @@ const DetailHeader = ({
                         <span className="ms-auto text-text-tertiary">
                           {formatDate(item.created_at, dateFormat)}
                         </span>
-                      </DropdownMenuItem>
+                      </MenuItem>
                     ))
                   ) : (
-                    <DropdownMenuItem
+                    <MenuItem
                       closeOnClick={false}
                       onClick={() => {
                         if (versionsQuery.isError) void versionsQuery.refetch()
@@ -306,11 +271,11 @@ const DetailHeader = ({
                       }}
                     >
                       {t(($) => $['operation.retry'], { ns: 'common' })}
-                    </DropdownMenuItem>
+                    </MenuItem>
                   )}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </MenuGroup>
+              </MenuContent>
+            </Menu>
 
             {/* Auto Update Badge */}
             {isAutoUpgradeEnabled && !isReadmeView && (
@@ -380,13 +345,14 @@ const DetailHeader = ({
         {/* Action Buttons */}
         {!isReadmeView && (
           <div className="flex gap-1">
-            <OperationDropdown
+            <OperationMenu
               source={source}
               onInfo={modalStates.showPluginInfo}
               onCheckVersion={handleUpdate}
               onRemove={modalStates.showDeleteConfirm}
               onViewReadme={canViewReadme ? handleViewReadme : undefined}
-              detailUrl={detailUrl}
+              marketplacePlugin={{ org: author, name }}
+              repo={meta?.repo}
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
             />
@@ -405,11 +371,13 @@ const DetailHeader = ({
         <DeprecationNotice
           status={status}
           deprecatedReason={deprecated_reason}
-          alternativePluginId={alternative_plugin_id}
-          alternativePluginURL={getMarketplaceUrl(`/plugins/${alternative_plugin_id}`, {
-            language: currentLocale,
-            theme,
-          })}
+          alternativePluginId={marketplace ? alternative_plugin_id : ''}
+          alternativePluginURL={
+            marketplace?.page(`/plugins/${alternative_plugin_id}`, {
+              language: currentLocale,
+              theme,
+            }) ?? ''
+          }
           className="mt-3"
         />
       )}

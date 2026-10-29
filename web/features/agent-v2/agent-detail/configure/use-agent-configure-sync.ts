@@ -7,6 +7,7 @@ import type {
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-query'
+import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
@@ -174,7 +175,7 @@ export function useAgentConfigureSync({
             body: {
               variant: 'agent_app',
               save_strategy: 'save_to_current_version',
-              agent_soul: configSnapshot,
+              agent_soul: omit(configSnapshot, ['config_files']),
             },
           })
         } catch (error) {
@@ -245,7 +246,7 @@ export function useAgentConfigureSync({
           body: {
             variant: 'agent_app',
             save_strategy: 'save_to_current_version',
-            agent_soul: configSnapshot,
+            agent_soul: omit(configSnapshot, ['config_files']),
           },
         })
       } catch {

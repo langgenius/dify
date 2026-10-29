@@ -505,21 +505,6 @@ export const zConversationVariableInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayload = z.object({
-  value: z.unknown(),
-})
-
-/**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayloadWithUser = z.object({
-  user: z.string().optional(),
-  value: z.unknown(),
-})
-
-/**
  * ConversationVariablesQuery
  */
 export const zConversationVariablesQuery = z.object({
@@ -945,6 +930,66 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AppAbnormalStatusError
+ *
+ * The app's status is abnormal.
+ */
+export const zAppAbnormalStatusError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_abnormal_status'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppApiDisabledError
+ *
+ * The app's API service has been disabled.
+ */
+export const zAppApiDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_api_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppNotFoundError
+ *
+ * The app no longer exists.
+ */
+export const zAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_not_found'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * The 'Suggested Questions After Answer' feature is disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AppUnavailableError
  *
  * App unavailable, please check your app configurations.
@@ -988,6 +1033,66 @@ export const zAudioTooLargeError = zErrorResponse.and(
 export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationVariableNotFoundError
+ *
+ * The conversation variable was not found for this conversation.
+ */
+export const zConversationVariableNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationVariableTypeMismatchError
+ *
+ * The new value does not match the conversation variable's type.
+ */
+export const zConversationVariableTypeMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_type_mismatch'),
     status: z.literal(400),
   }),
 )
@@ -1164,6 +1269,18 @@ export const zFilenameNotExistsError = zErrorResponse.and(
   z.object({
     code: z.literal('filename_not_exists_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
   }),
 )
 
@@ -1357,6 +1474,21 @@ export const zChatPauseReasonResponse = z.object({
 export const zJsonValueType = z.unknown()
 
 export const zJsonValue = z.unknown()
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayload = z.object({
+  value: zJsonValue,
+})
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayloadWithUser = z.object({
+  user: z.string().optional(),
+  value: zJsonValue,
+})
 
 /**
  * DocumentResponse
@@ -1833,6 +1965,13 @@ export const zKnowledgeFsEmbeddingSettingsResponse = z.object({
   provider: z.string(),
   revision: z.int().gte(1).nullish(),
   vector_space_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSLogicalDocumentDeletePayload
+ */
+export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
+  expectedRevision: z.int().gte(0),
 })
 
 /**
@@ -3902,6 +4041,18 @@ export const zMessageFeedbackPayloadWithUser = z.object({
 })
 
 /**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * MessageFile
  */
 export const zMessageFile = z.object({
@@ -5867,6 +6018,30 @@ export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
 )
 
 /**
+ * WorkspaceArchivedError
+ *
+ * The workspace's status is archived.
+ */
+export const zWorkspaceArchivedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_archived'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * WorkspaceNotFoundError
+ *
+ * Tenant does not exist.
+ */
+export const zWorkspaceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_not_found'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
@@ -6066,7 +6241,7 @@ export const zGetConversationsQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversations list.
+ * Conversations retrieved successfully.
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
@@ -6088,7 +6263,7 @@ export const zPostConversationsByConversationIdNamePath = z.object({
 })
 
 /**
- * Conversation renamed successfully.
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 
@@ -6104,7 +6279,7 @@ export const zGetConversationsByConversationIdVariablesQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversation variables.
+ * Conversation variables retrieved successfully.
  */
 export const zGetConversationsByConversationIdVariablesResponse =
   zConversationVariableInfiniteScrollPaginationResponse
@@ -7064,6 +7239,26 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.obje
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsLogicalDocumentListResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
+  zKnowledgeFsLogicalDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders = z.object(
+  {
+    'Idempotency-Key': z.string().min(8).max(255),
+  },
+)
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base logical document deletion accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  zKnowledgeFsDurableDeletionAcceptedResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
   control_space_id: z.string(),

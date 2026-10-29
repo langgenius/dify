@@ -1,186 +1,157 @@
 'use client'
-import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
-import type { FC } from 'react'
+
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@langgenius/dify-ui/alert-dialog'
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerClose,
-  DrawerContent,
-  DrawerPopup,
-  DrawerPortal,
-  DrawerTitle,
-  DrawerViewport,
-} from '@langgenius/dify-ui/drawer'
+  Dialog,
+  DialogBackdrop,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import * as React from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleClient } from '@/service/console'
-import EditItem, { EditItemType } from './edit-item'
+import { consoleQuery } from '@/service/console'
+import { AnnotationEditor } from './annotation-editor'
+import { RemoveAnnotationDialog } from './remove-annotation-dialog'
 
-type Props = Readonly<{
-  isShow: boolean
-  onHide: () => void
+export type EditAnnotationDialogProps = {
   appId: string
   annotationId: string
-  query: string
+  question: string
   answer: string
-  onEdited: (editedQuery: string, editedAnswer: string) => void
   createdAt?: number
-  onRemove: () => void
   onlyEditResponse?: boolean
-}>
+  onEdited: (question: string, answer: string) => void
+  onRemoved: () => void
+}
 
-const EditAnnotationModal: FC<Props> = ({
-  isShow,
-  onHide,
-  query,
-  answer,
-  onEdited,
+export default function EditAnnotationDialog({
   appId,
   annotationId,
+  question,
+  answer,
   createdAt,
-  onRemove,
   onlyEditResponse,
-}) => {
+  onEdited,
+  onRemoved,
+}: EditAnnotationDialogProps) {
   const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
-  const handleSave = async (type: EditItemType, editedContent: string) => {
-    let postQuery = query
-    let postAnswer = answer
-    if (type === EditItemType.Query) postQuery = editedContent
-    else postAnswer = editedContent
-    try {
-      await consoleClient.apps.byAppId.annotations.byAnnotationId.post({
-        params: { app_id: appId, annotation_id: annotationId },
-        body: { question: postQuery, answer: postAnswer },
-      })
-      onEdited(postQuery, postAnswer)
-
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
-    } catch (error) {
-      const fallbackMessage = t(($) => $['api.actionFailed'], { ns: 'common' }) as string
-      const message = error instanceof Error && error.message ? error.message : fallbackMessage
-      toast.error(message)
-      // Re-throw to preserve edit mode behavior for UI components
-      throw error
-    }
-  }
-  const removeActionsRef = useRef<AlertDialogActions>(null)
-  if (!isShow) return null
-
+  const actionsRef = useRef<DialogActions>(null)
+  const removed = useRef(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const update = useMutation(
+    consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   return (
-    <div>
-      <Drawer
-        open
-        modal
-        disablePointerDismissal
-        swipeDirection="right"
-        onOpenChange={(open) => {
-          if (!open) onHide()
-        }}
-      >
-        <DrawerPortal>
-          <DrawerBackdrop />
-          <DrawerViewport>
-            <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle">
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                <div className="shrink-0 border-b border-divider-subtle py-4">
-                  <div className="flex h-6 items-center justify-between pr-5 pl-6">
-                    <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                      {t(($) => $['editModal.title'], { ns: 'appAnnotation' })}
-                    </DrawerTitle>
-                    <DrawerClose
-                      render={
-                        <IconButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          size="md"
-                        >
-                          <span aria-hidden="true" className="i-ri-close-line size-4" />
-                        </IconButton>
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  <div className="space-y-6 p-6 pb-4">
-                    <EditItem
-                      type={EditItemType.Query}
-                      content={query}
-                      readonly={onlyEditResponse}
-                      onSave={(editedContent) => handleSave(EditItemType.Query, editedContent)}
-                    />
-                    <EditItem
-                      type={EditItemType.Answer}
-                      content={answer}
-                      onSave={(editedContent) => handleSave(EditItemType.Answer, editedContent)}
-                    />
-                  </div>
-                </div>
-                <div className="shrink-0">
-                  <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                    <AlertDialog actionsRef={removeActionsRef}>
-                      <AlertDialogTrigger className="flex cursor-pointer items-center space-x-2 pl-3">
-                        <span
-                          aria-hidden
-                          className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
-                        />
-                        <span>
-                          {t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}
-                        </span>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
-                          </AlertDialogTitle>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancelButton>
-                            {t(($) => $['operation.cancel'], { ns: 'common' })}
-                          </AlertDialogCancelButton>
-                          <AlertDialogConfirmButton
-                            onClick={() => {
-                              onRemove()
-                              removeActionsRef.current?.close()
-                              onHide()
-                            }}
-                          >
-                            {t(($) => $['operation.confirm'], { ns: 'common' })}
-                          </AlertDialogConfirmButton>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    {!!createdAt && (
-                      <div>
-                        {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
-                        &nbsp;
-                        {formatTime(
-                          createdAt,
-                          t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </DrawerContent>
-            </DrawerPopup>
-          </DrawerViewport>
-        </DrawerPortal>
-      </Drawer>
-    </div>
+    <Dialog
+      actionsRef={actionsRef}
+      disablePointerDismissal
+      onOpenChange={(open, details) => {
+        if (open) removed.current = false
+        if (!open && update.isPending && details.reason !== 'imperative-action') details.cancel()
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          update.reset()
+          if (removed.current) onRemoved()
+        }
+      }}
+    >
+      <Tooltip>
+        <DialogTrigger
+          ref={triggerRef}
+          render={
+            <TooltipTrigger
+              render={
+                <IconButton aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}>
+                  <span aria-hidden className="i-ri-edit-line size-4" />
+                </IconButton>
+              }
+            />
+          }
+        >
+          <span aria-hidden className="i-ri-edit-line size-4" />
+        </DialogTrigger>
+        <TooltipContent>
+          {t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
+        </TooltipContent>
+      </Tooltip>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup
+          finalFocus={() => {
+            if (!removed.current) return true
+            return (
+              Array.from(
+                triggerRef.current?.parentElement?.querySelectorAll<HTMLButtonElement>(
+                  'button:not([disabled])',
+                ) ?? [],
+              ).find((button) => button !== triggerRef.current) ?? true
+            )
+          }}
+          className="fixed inset-e-2 top-16 bottom-3 flex min-h-0 w-120 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl"
+        >
+          <DialogHeader>
+            <DialogTitle>{t(($) => $['editModal.title'], { ns: 'appAnnotation' })}</DialogTitle>
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              disabled={update.isPending}
+            />
+          </DialogHeader>
+          <DialogBody>
+            <AnnotationEditor
+              question={question}
+              answer={answer}
+              onlyEditResponse={onlyEditResponse}
+              isPending={update.isPending}
+              isError={update.isError}
+              onSave={(body, onSuccess) =>
+                update.mutate(
+                  { params: { app_id: appId, annotation_id: annotationId }, body },
+                  {
+                    onSuccess: () => {
+                      onEdited(body.question, body.answer)
+                      onSuccess()
+                    },
+                  },
+                )
+              }
+            />
+          </DialogBody>
+          <DialogFooter>
+            <RemoveAnnotationDialog
+              appId={appId}
+              annotationId={annotationId}
+              disabled={update.isPending}
+              onRemoved={() => {
+                removed.current = true
+                actionsRef.current?.close()
+              }}
+            />
+            {createdAt != null && (
+              <span className="ms-auto system-xs-regular text-text-tertiary">
+                {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}{' '}
+                {formatTime(
+                  createdAt,
+                  t(($) => $.dateTimeFormat, { ns: 'appLog' }),
+                )}
+              </span>
+            )}
+          </DialogFooter>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
   )
 }
-export default React.memo(EditAnnotationModal)

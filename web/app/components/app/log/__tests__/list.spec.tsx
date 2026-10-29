@@ -53,6 +53,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
       'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': (input) => api.externalTrace(input),
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatConversations.byConversationId.get': (input) => api.chatDetail(input),
@@ -63,8 +65,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.feedbacks.post': (input) => api.feedback(input),
       'apps.byAppId.annotations.post': (input) => api.addAnnotation(input),
-      'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
-      'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
       'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
     }),
   }
@@ -408,10 +408,11 @@ it('adds, edits and removes an annotation from a conversation answer', async () 
   await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
   const editor = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
   await user.click(within(editor).getAllByRole('button', { name: 'common.operation.edit' })[1]!)
-  await user.type(
-    within(editor).getByRole('textbox', { name: 'appAnnotation.editModal.yourAnswer' }),
-    'Improved answer',
-  )
+  const answerInput = within(editor).getByRole('textbox', {
+    name: 'appAnnotation.editModal.yourAnswer',
+  })
+  await user.clear(answerInput)
+  await user.type(answerInput, 'Improved answer')
   await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
     expect(api.editAnnotation).toHaveBeenCalledExactlyOnceWith({

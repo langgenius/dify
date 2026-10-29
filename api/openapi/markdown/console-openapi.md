@@ -732,6 +732,7 @@ Get Agent App chat messages for a conversation with pagination
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -886,6 +887,29 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /agent/{agent_id}/config/files/batch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentConfigFilesUploadPayload](#agentconfigfilesuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Bound config files | **application/json**: [AgentConfigFilesUploadResponse](#agentconfigfilesuploadresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1192,6 +1216,7 @@ Create or update Agent App message feedback
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1278,6 +1303,7 @@ Get Agent App message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2291,6 +2317,31 @@ Run draft workflow for advanced chat application
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/agent/config/files/batch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentConfigFilesUploadPayload](#agentconfigfilesuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Bound config files | **application/json**: [AgentConfigFilesUploadResponse](#agentconfigfilesuploadresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [DELETE] /apps/{app_id}/agent/config/files/{name}
 #### Parameters
 
@@ -2576,7 +2627,10 @@ Enable or disable annotation reply for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Action completed successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 400 | Invalid action | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotation-reply/{action}/status/{job_id}
@@ -2595,7 +2649,9 @@ Get status of annotation reply action job
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
+| 400 | Invalid action | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App or owned job not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotation-setting
@@ -2652,6 +2708,7 @@ Update annotation settings for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Annotations deleted successfully |  |
+| 400 | Bad Request | **application/json**: [BadRequestError](#badrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations
@@ -2710,11 +2767,13 @@ Batch import annotations from CSV file with rate limiting and security checks
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import started successfully | **application/json**: [AnnotationBatchImportResponse](#annotationbatchimportresponse)<br> |
-| 400 | No file uploaded or too many files | **application/json**: [NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 200 | Import started, or CSV/subscription validation failed (error_msg) | **application/json**: [AnnotationBatchImportResponse](#annotationbatchimportresponse)<br> |
+| 400 | Missing, multiple, empty or invalid file | **application/json**: [NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | File too large | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests or concurrent imports | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Import infrastructure failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations/batch-import-status/{job_id}
@@ -2733,6 +2792,8 @@ Get status of batch import job
 | ---- | ----------- | ------ |
 | 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App or owned job not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Import status could not be read | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations/count
@@ -2958,6 +3019,7 @@ Get chat messages for a conversation with pagination
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2979,7 +3041,7 @@ Get suggested questions for a message
 | 400 | App or model provider unavailable, or generation failed | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Account authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | App, message, or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App, message, or conversation not found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3219,6 +3281,8 @@ Create or update message feedback (like/dislike)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3260,6 +3324,7 @@ Get message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7986,7 +8051,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ExploreMessageInfiniteScrollPagination](#exploremessageinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -8011,7 +8076,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -8176,7 +8241,7 @@ Request body:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| 200 | Success | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportTextToSpeechError](#providernotsupporttexttospeecherror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -9193,6 +9258,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| query | query |  | No | string |
+| status | query |  | No | string, <br>**Available values:** "disabled", "failed", "processing", "queued", "ready" |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -13774,6 +13841,7 @@ Remove one or more tag bindings from a target.
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/parameters
@@ -13859,7 +13927,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| 200 | Success | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportTextToSpeechError](#providernotsupporttexttospeecherror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -15318,7 +15386,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 200 | Success | **application/octet-stream**: binary<br> |
 | 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15400,7 +15468,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 200 | Success | `*/*`: binary<br> |
 | 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -16595,6 +16663,15 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/agents/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -16651,6 +16728,15 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/apps/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -16707,6 +16793,15 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/datasets/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -16763,6 +16858,12 @@ Update a plugin endpoint
 
 ### [POST] /workspaces/current/skills/import
 Import a Skill zip package from multipart form field `file`.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -16962,7 +17063,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Skill file content | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 200 | Skill file content | `*/*`: binary<br> |
 | 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19042,6 +19143,19 @@ Stable Agent Soul reference to one config file payload.
 | ---- | ---- | ----------- | -------- |
 | config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
 | file | [AgentConfigFileItemResponse](#agentconfigfileitemresponse) |  | Yes |
+
+#### AgentConfigFilesUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file_ids | [ string (uuid) ] | UploadFile UUIDs from POST /console/api/files/upload, in replacement order | Yes |
+
+#### AgentConfigFilesUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
+| files | [ [AgentConfigFileItemResponse](#agentconfigfileitemresponse) ] |  | Yes |
 
 #### AgentConfigManifestResponse
 
@@ -22159,6 +22273,14 @@ Invalid email or password.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AverageSessionInteractionStatisticItem](#averagesessioninteractionstatisticitem) ] |  | Yes |
 
+#### BadRequestError
+
+annotation_ids are required if the parameter is provided.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BadRequestError |  | annotation_ids are required if the parameter is provided. |  |
+
 #### BannerContentResponse
 
 | Name | Type | Description | Required |
@@ -22690,7 +22812,7 @@ Rate limit exceeded for downloading compliance report.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) | For Agent draft saves and workflow node_job_only updates, omit config_files to preserve the latest server-managed files. An explicit list replaces the files, including an empty list to clear them. | No |
 | binding | [ComposerBindingPayload](#composerbindingpayload) |  | No |
 | client_revision_id | string |  | No |
 | description | string |  | No |

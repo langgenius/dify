@@ -12,7 +12,7 @@ from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueWorkflowFailedEvent,
@@ -53,6 +53,7 @@ from models.workflow import (
     WorkflowPause,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.agent.workspace_service import AgentWorkspaceService
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow_run_agg import WorkflowRunAgg
@@ -101,10 +102,10 @@ def _pipeline_tool_runner(
                 id="source-workflow",
                 tenant_id="tenant",
                 app_id="source-app",
-                type="workflow",
+                type=ModelWorkflowType.WORKFLOW,
                 version="v1",
                 graph=json.dumps(source_graph),
-                features="{}",
+                _features="{}",
                 created_by="user",
             )
         )
@@ -313,13 +314,14 @@ def make_workflow_runner(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version="draft",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=user_id,
     )
     entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=str(uuid4()),
         app_config=WorkflowAppConfig(
             tenant_id=tenant_id, app_id=app_id, workflow_id=workflow_id, app_mode=AppMode.WORKFLOW
@@ -648,9 +650,9 @@ class TestWorkflowRunAggCases:
                         app_id=source_app_id,
                         tenant_id=tenant_id,
                         created_by=original_entity.user_id,
-                        type="workflow",
+                        type=ModelWorkflowType.WORKFLOW,
                         version=version,
-                        features="{}",
+                        _features="{}",
                         graph=json.dumps(
                             {
                                 "nodes": [

@@ -23,7 +23,12 @@ from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedA
 from core.app.apps.advanced_chat.generate_task_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
@@ -47,6 +52,7 @@ from models.enums import CreatorUserRole, EndUserType, MessageStatus, WorkflowRu
 from models.human_input import HumanInputForm
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
@@ -124,11 +130,11 @@ def _workflow(*, workflow_id: str = "workflow-id", app_id: str = "app-id", tenan
         type=WorkflowType.WORKFLOW,
         version="1",
         graph=json.dumps({"nodes": [], "edges": []}),
-        features="{}",
+        _features="{}",
         created_by="owner-id",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 
@@ -157,6 +163,7 @@ def _persist_human_input_form(
 
 def _build_service_api_pause_converter() -> WorkflowResponseConverter:
     application_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         workflow_execution_id="run-id",
         user_id="user",
@@ -267,12 +274,12 @@ class _FakePauseEntity(WorkflowPauseEntity):
 
 
 def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_record = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         triggered_from="app-run",
         version="v1",
         graph=None,
@@ -285,8 +292,9 @@ def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
         total_steps=0,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
+    workflow_record.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_record
 
 
 def _build_snapshot(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecutionSnapshot:
@@ -315,6 +323,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_id="workflow-1",
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=task_id,
         app_config=app_config,
         inputs={},
@@ -823,7 +832,7 @@ def _workflow_events_end_user() -> EndUser:
 
 
 def _workflow_run(*, created_by_role: CreatorUserRole = CreatorUserRole.END_USER) -> WorkflowRun:
-    return WorkflowRun(
+    run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -841,8 +850,9 @@ def _workflow_run(*, created_by_role: CreatorUserRole = CreatorUserRole.END_USER
         total_steps=0,
         created_by_role=created_by_role,
         created_by="end-user-1" if created_by_role == CreatorUserRole.END_USER else "account-1",
-        created_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
+    run.created_at = datetime(2026, 1, 1, tzinfo=UTC)
+    return run
 
 
 def _workflow_events_mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_engine: Engine):

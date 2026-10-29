@@ -10,17 +10,17 @@ from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowRun, WorkflowType
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.workflow_event_snapshot_service import _build_snapshot_events
 
@@ -69,6 +69,7 @@ def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext
         workflow_id=str(uuid4()),
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task-1",
         app_config=app_config,
         inputs={},
@@ -89,13 +90,13 @@ def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext
 
 
 def _build_workflow_run(workflow_run_id: str) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id=workflow_run_id,
         tenant_id=str(uuid4()),
         app_id=str(uuid4()),
         workflow_id=str(uuid4()),
-        type="workflow",
-        triggered_from="app-run",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="v1",
         graph=None,
         inputs="{}",
@@ -107,8 +108,9 @@ def _build_workflow_run(workflow_run_id: str) -> WorkflowRun:
         total_steps=0,
         created_by_role=CreatorUserRole.END_USER,
         created_by=str(uuid4()),
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def test_build_snapshot_events_resolves_variable_select_options(db_session_with_containers: Session) -> None:

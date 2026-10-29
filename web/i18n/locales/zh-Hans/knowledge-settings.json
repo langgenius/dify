@@ -16,6 +16,8 @@
   "settings.membersRequired": "请至少选择一名团队成员。",
   "settings.nameRequired": "Agent 知识库名称为必填项。",
   "settings.pageDescription": "管理基本信息、API 访问和检索设置。",
+  "settings.reasoningChangeConfirm": "确认更换",
+  "settings.reasoningChangeWarning": "更换系统推理模型将重新处理已索引文档并更新检索索引，需要一定时间，并产生额外的模型调用费用。",
   "settings.reloadLatest": "重新加载最新配置",
   "settings.rerankModelRequired": "请选择 Rerank 模型。",
   "settings.retrievalDepth": "检索深度",
