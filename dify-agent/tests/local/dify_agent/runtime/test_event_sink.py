@@ -9,9 +9,7 @@ from dify_agent.runtime.event_sink import InMemoryRunEventSink, RunStreamSealedE
 @pytest.mark.anyio
 async def test_append_event_after_terminal_finalization_is_rejected():
     sink = InMemoryRunEventSink()
-    finalization = await sink.finalize_run(
-        RunFailedEvent(run_id="run-1", data=RunFailedEventData(error="boom"))
-    )
+    finalization = await sink.finalize_run(RunFailedEvent(run_id="run-1", data=RunFailedEventData(error="boom")))
     assert finalization.applied
 
     with pytest.raises(RunStreamSealedError) as sealed:
