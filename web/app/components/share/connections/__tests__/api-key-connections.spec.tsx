@@ -59,7 +59,7 @@ describe('API Key connection management', () => {
     expect(name).toHaveValue('Personal key')
     expect(apiKey).toHaveValue('')
     expect(apiKey).toHaveAttribute('type', 'password')
-    expect(apiKey).toHaveAttribute('placeholder', 'share.connections.apiKeys.newKeyPlaceholder')
+    expect(apiKey).toHaveAttribute('placeholder', 'Enter API Key')
     expect(save).toBeDisabled()
     await user.type(apiKey, '   ')
     expect(save).toBeDisabled()

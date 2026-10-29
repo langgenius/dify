@@ -32,7 +32,6 @@
   "connections.accounts.remove": "Kaldır",
   "connections.accounts.title": "{{provider}} hesapları",
   "connections.apiKeys.invalid": "Geçersiz API anahtarı",
-  "connections.apiKeys.newKeyPlaceholder": "Yeni bir API anahtarı girin",
   "connections.apiKeys.remove": "API anahtarını kaldır",
   "connections.apiKeys.replace": "Değiştir",
   "connections.apiKeys.replaceTitle": "API anahtarını değiştir",

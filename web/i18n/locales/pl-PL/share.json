@@ -32,7 +32,6 @@
   "connections.accounts.remove": "Usuń",
   "connections.accounts.title": "Konta {{provider}}",
   "connections.apiKeys.invalid": "Nieprawidłowy klucz API",
-  "connections.apiKeys.newKeyPlaceholder": "Wprowadź nowy klucz API",
   "connections.apiKeys.remove": "Usuń klucz API",
   "connections.apiKeys.replace": "Zastąp",
   "connections.apiKeys.replaceTitle": "Zastąp klucz API",

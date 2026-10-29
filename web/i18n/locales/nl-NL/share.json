@@ -32,7 +32,6 @@
   "connections.accounts.remove": "Verwijderen",
   "connections.accounts.title": "{{provider}}-accounts",
   "connections.apiKeys.invalid": "Ongeldige API-sleutel",
-  "connections.apiKeys.newKeyPlaceholder": "Voer een nieuwe API-sleutel in",
   "connections.apiKeys.remove": "API-sleutel verwijderen",
   "connections.apiKeys.replace": "Vervangen",
   "connections.apiKeys.replaceTitle": "API-sleutel vervangen",
