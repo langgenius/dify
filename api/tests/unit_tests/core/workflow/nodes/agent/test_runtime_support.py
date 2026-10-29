@@ -1,8 +1,13 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from core.agent.plugin_entities import AgentStrategyParameter
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
+from core.workflow.nodes.agent.entities import AgentNodeData
+from core.workflow.nodes.agent.exceptions import AgentVariableNotFoundError
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
@@ -15,6 +20,7 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterType,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.workflow_test_utils import build_test_variable_pool
 
 
 def test_fetch_model_reuses_single_model_assembly():
@@ -156,3 +162,125 @@ def test_extract_default_completion_params_empty_when_no_defaults():
         parameter_rules=[],
     )
     assert AgentRuntimeSupport._extract_default_completion_params(schema) == {}
+
+
+@pytest.mark.parametrize("empty_selector", ["", [], None])
+def test_build_parameters_empty_selector_optional_parameter_treated_as_unset(empty_selector: object) -> None:
+    support = AgentRuntimeSupport()
+    variable_pool = build_test_variable_pool(node_id="start", inputs={"text": "hello"})
+    param = AgentStrategyParameter(
+        name="context",
+        label={"en_US": "Context"},
+        type=AgentStrategyParameter.AgentStrategyParameterType.ANY,
+        required=False,
+    )
+    node_data = AgentNodeData(
+        agent_parameters={"context": AgentNodeData.AgentInput(type="variable", value=empty_selector)}
+    )
+
+    result = support.build_parameters(
+        agent_parameters=[param],
+        variable_pool=variable_pool,
+        node_data=node_data,
+        strategy=MagicMock(),
+        tenant_id="tenant-1",
+        user_id="user-1",
+        app_id="app-1",
+        invoke_from="debugger",
+    )
+
+    assert "context" not in result
+
+
+@pytest.mark.parametrize("empty_selector", ["", [], None])
+def test_build_parameters_empty_selector_required_parameter_raises_error(empty_selector: object) -> None:
+    support = AgentRuntimeSupport()
+    variable_pool = build_test_variable_pool(node_id="start", inputs={"text": "hello"})
+    param = AgentStrategyParameter(
+        name="context",
+        label={"en_US": "Context"},
+        type=AgentStrategyParameter.AgentStrategyParameterType.ANY,
+        required=True,
+    )
+    node_data = AgentNodeData(
+        agent_parameters={"context": AgentNodeData.AgentInput(type="variable", value=empty_selector)}
+    )
+
+    with pytest.raises(AgentVariableNotFoundError):
+        support.build_parameters(
+            agent_parameters=[param],
+            variable_pool=variable_pool,
+            node_data=node_data,
+            strategy=MagicMock(),
+            tenant_id="tenant-1",
+            user_id="user-1",
+            app_id="app-1",
+            invoke_from="debugger",
+        )
+
+
+def test_build_parameters_non_empty_unresolvable_selector_raises_error() -> None:
+    support = AgentRuntimeSupport()
+    variable_pool = build_test_variable_pool(node_id="start", inputs={"text": "hello"})
+    param = AgentStrategyParameter(
+        name="context",
+        label={"en_US": "Context"},
+        type=AgentStrategyParameter.AgentStrategyParameterType.ANY,
+        required=False,
+    )
+    node_data = AgentNodeData(
+        agent_parameters={"context": AgentNodeData.AgentInput(type="variable", value=["start", "missing"])}
+    )
+
+    with pytest.raises(AgentVariableNotFoundError):
+        support.build_parameters(
+            agent_parameters=[param],
+            variable_pool=variable_pool,
+            node_data=node_data,
+            strategy=MagicMock(),
+            tenant_id="tenant-1",
+            user_id="user-1",
+            app_id="app-1",
+            invoke_from="debugger",
+        )
+
+
+@pytest.mark.parametrize(
+    ("selector_key", "expected_value"),
+    [
+        ("empty_str", ""),
+        ("zero", 0),
+        ("falsy", False),
+    ],
+)
+def test_build_parameters_resolving_to_empty_or_falsy_not_treated_as_unset(
+    selector_key: str,
+    expected_value: object,
+) -> None:
+    support = AgentRuntimeSupport()
+    variable_pool = build_test_variable_pool(
+        node_id="start",
+        inputs={"empty_str": "", "zero": 0, "falsy": False},
+    )
+    param = AgentStrategyParameter(
+        name="context",
+        label={"en_US": "Context"},
+        type=AgentStrategyParameter.AgentStrategyParameterType.ANY,
+        required=False,
+    )
+    node_data = AgentNodeData(
+        agent_parameters={"context": AgentNodeData.AgentInput(type="variable", value=["start", selector_key])}
+    )
+
+    result = support.build_parameters(
+        agent_parameters=[param],
+        variable_pool=variable_pool,
+        node_data=node_data,
+        strategy=MagicMock(),
+        tenant_id="tenant-1",
+        user_id="user-1",
+        app_id="app-1",
+        invoke_from="debugger",
+    )
+
+    assert result["context"] == expected_value
