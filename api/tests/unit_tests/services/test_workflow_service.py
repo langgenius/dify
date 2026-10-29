@@ -1,3 +1,16 @@
+"""Unit tests for WorkflowService.
+
+This test suite covers:
+- Workflow creation from template
+- Workflow validation (graph and features structure)
+- Draft/publish transitions
+- Version management
+- Execution triggering
+
+Tests for human-input delivery with a persisted draft workflow.
+
+Agent preview callers are committed before execution and retain their identity."""
+
 import json
 import os
 import time
@@ -28,7 +41,6 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
 )
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
-from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
@@ -38,12 +50,7 @@ from extensions.logstore.repositories.logstore_workflow_node_execution_repositor
     LogstoreWorkflowNodeExecutionRepository,
 )
 from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
-from graphon.enums import (
-    BuiltinNodeTypes,
-    ErrorStrategy,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
@@ -80,6 +87,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
+from services.workflow_runtime.agent_node import DifyAgentNode
 from services.workflow_runtime.node_factory import DifyNodeFactory
 from services.workflow_service import (
     WorkflowService,
@@ -91,18 +99,8 @@ from services.workflow_service import (
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
+from tests.workflow_empty_draft_test_utils import EmptyDraftDatabase
 from tests.workflow_test_utils import build_test_graph_init_params
-
-"""
-Unit tests for WorkflowService.
-
-This test suite covers:
-- Workflow creation from template
-- Workflow validation (graph and features structure)
-- Draft/publish transitions
-- Version management
-- Execution triggering
-"""
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -275,8 +273,13 @@ class TestWorkflowServiceCases:
         """
 
         @pytest.fixture
-        def workflow_service(self, sqlite_engine: _workflow_service_Engine) -> WorkflowService:
+        def workflow_service(
+            self, sqlite_engine: _workflow_service_Engine, monkeypatch: pytest.MonkeyPatch
+        ) -> WorkflowService:
             """Create a WorkflowService whose repositories use the test SQLite engine."""
+            monkeypatch.setattr(
+                "services.workflow.draft_coordination_service.db", SimpleNamespace(engine=sqlite_engine)
+            )
             return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
 
         def test_get_tenant_app_maintainers_scopes_requested_apps(
@@ -294,13 +297,9 @@ class TestWorkflowServiceCases:
                 ]
             )
             sqlite_session.commit()
-
             assert workflow_service.get_tenant_app_maintainers(
                 ["app-1", "app-2", "app-3", "missing"], "tenant-1", session=sqlite_session
             ) == {"app-1": "owner-1", "app-2": None}
-
-        # ==================== Workflow Existence Tests ====================
-        # These tests verify the service can check if a draft workflow exists
 
         def test_is_workflow_exist_returns_true(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
@@ -312,21 +311,14 @@ class TestWorkflowServiceCases:
             app = TestWorkflowAssociatedDataFactory.create_app()
             sqlite_session.add(TestWorkflowAssociatedDataFactory.create_workflow())
             sqlite_session.commit()
-
             result = workflow_service.is_workflow_exist(app, session=sqlite_session)
-
             assert result is True
 
         def test_is_workflow_exist_returns_false(self, workflow_service: WorkflowService, sqlite_session: Session):
             """Test is_workflow_exist returns False when no draft workflow exists."""
             app = TestWorkflowAssociatedDataFactory.create_app()
-
             result = workflow_service.is_workflow_exist(app, session=sqlite_session)
-
             assert result is False
-
-        # ==================== Get Draft Workflow Tests ====================
-        # These tests verify retrieval of draft workflows (version="draft")
 
         def test_get_draft_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
@@ -339,9 +331,7 @@ class TestWorkflowServiceCases:
             workflow = TestWorkflowAssociatedDataFactory.create_workflow()
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             result = workflow_service.get_draft_workflow(app, session=sqlite_session)
-
             assert result is workflow
 
         def test_get_draft_workflow_uses_provided_session(
@@ -352,21 +342,14 @@ class TestWorkflowServiceCases:
             workflow = TestWorkflowAssociatedDataFactory.create_workflow()
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             result = workflow_service.get_draft_workflow(app, session=sqlite_session)
-
             assert result is workflow
 
         def test_get_draft_workflow_returns_none(self, workflow_service: WorkflowService, sqlite_session: Session):
             """Test get_draft_workflow returns None when no draft exists."""
             app = TestWorkflowAssociatedDataFactory.create_app()
-
             result = workflow_service.get_draft_workflow(app, session=sqlite_session)
-
             assert result is None
-
-        # ==================== Get Published Workflow Tests ====================
-        # These tests verify retrieval of published workflows (versioned snapshots)
 
         def test_get_published_workflow_by_id_reuses_provided_session(self, sqlite_session: Session):
             """Published lookup sees uncommitted rows through the caller's session."""
@@ -375,9 +358,7 @@ class TestWorkflowServiceCases:
             workflow = TestWorkflowAssociatedDataFactory.create_workflow(workflow_id=workflow_id, version="v1")
             sqlite_session.add(workflow)
             sqlite_session.flush()
-
             result = WorkflowService.get_published_workflow_by_id(app, workflow_id, session=sqlite_session)
-
             assert result is workflow
 
         def test_get_published_workflow_by_id_success(self, workflow_service: WorkflowService, sqlite_session: Session):
@@ -387,9 +368,7 @@ class TestWorkflowServiceCases:
             workflow = TestWorkflowAssociatedDataFactory.create_workflow(workflow_id=workflow_id, version="v1")
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             result = workflow_service.get_published_workflow_by_id(app, workflow_id, session=sqlite_session)
-
             assert result is workflow
 
         def test_get_published_workflow_by_id_can_lock_restore_source(
@@ -401,14 +380,7 @@ class TestWorkflowServiceCases:
             session.add(workflow)
             session.commit()
             lookup = mocker.spy(session, "scalar")
-
-            result = workflow_service.get_published_workflow_by_id(
-                app,
-                workflow.id,
-                session=session,
-                for_update=True,
-            )
-
+            result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=session, for_update=True)
             stmt = lookup.call_args.args[0]
             sql = str(stmt.compile(dialect=postgresql.dialect()))
             assert result is workflow
@@ -430,7 +402,6 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             with pytest.raises(IsDraftWorkflowError):
                 workflow_service.get_published_workflow_by_id(app, workflow_id, session=sqlite_session)
 
@@ -440,34 +411,20 @@ class TestWorkflowServiceCases:
             """Test get_published_workflow_by_id returns None when workflow not found."""
             app = TestWorkflowAssociatedDataFactory.create_app()
             workflow_id = "nonexistent-workflow"
-
             result = workflow_service.get_published_workflow_by_id(app, workflow_id, session=sqlite_session)
-
             assert result is None
 
-        @pytest.mark.parametrize(
-            ("tenant_id", "app_id"),
-            [("other-tenant", "app-123"), ("tenant-456", "other-app")],
-        )
+        @pytest.mark.parametrize(("tenant_id", "app_id"), [("other-tenant", "app-123"), ("tenant-456", "other-app")])
         def test_get_published_workflow_by_id_rejects_foreign_workflow(
-            self,
-            tenant_id: str,
-            app_id: str,
-            workflow_service: WorkflowService,
-            sqlite_session: Session,
+            self, tenant_id: str, app_id: str, workflow_service: WorkflowService, sqlite_session: Session
         ):
             app = TestWorkflowAssociatedDataFactory.create_app()
             workflow = TestWorkflowAssociatedDataFactory.create_workflow(
-                workflow_id="workflow-123",
-                tenant_id=tenant_id,
-                app_id=app_id,
-                version="v1",
+                workflow_id="workflow-123", tenant_id=tenant_id, app_id=app_id, version="v1"
             )
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=sqlite_session)
-
             assert result is None
 
         def test_get_published_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
@@ -477,9 +434,7 @@ class TestWorkflowServiceCases:
             workflow = TestWorkflowAssociatedDataFactory.create_workflow(workflow_id=workflow_id, version="v1")
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             result = workflow_service.get_published_workflow(app, session=sqlite_session)
-
             assert result is workflow
 
         def test_get_published_workflow_returns_none_when_no_workflow_id(
@@ -487,13 +442,8 @@ class TestWorkflowServiceCases:
         ):
             """Test get_published_workflow returns None when app has no workflow_id."""
             app = TestWorkflowAssociatedDataFactory.create_app(workflow_id=None)
-
             result = workflow_service.get_published_workflow(app, session=sqlite_session)
-
             assert result is None
-
-        # ==================== Sync Draft Workflow Tests ====================
-        # These tests verify creating and updating draft workflows with validation
 
         def test_sync_draft_workflow_creates_new_draft(
             self, workflow_service: WorkflowService, sqlite_session: Session
@@ -505,17 +455,20 @@ class TestWorkflowServiceCases:
             The draft is validated before creation to ensure graph and features are valid.
             """
             app = TestWorkflowAssociatedDataFactory.create_app()
+            sqlite_session.add(app)
+            sqlite_session.flush()
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
             features = {"file_upload": {"enabled": False}}
-
             with (
-                patch("services.workflow_service.app_draft_workflow_was_synced"),
+                patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"),
                 patch(
                     "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
                     return_value={"retired-agent"},
                 ),
-                patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+                patch(
+                    "services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned"
+                ) as retire_unowned,
             ):
                 result = workflow_service.sync_draft_workflow(
                     app_model=app,
@@ -527,15 +480,12 @@ class TestWorkflowServiceCases:
                     conversation_variables=[],
                     session=sqlite_session,
                 )
-
             persisted_workflow = sqlite_session.scalar(select(Workflow).where(Workflow.id == result.id))
             assert persisted_workflow is result
             assert result.graph_dict == graph
             assert result.features_dict == features
             retire_unowned.assert_called_once_with(
-                tenant_id=app.tenant_id,
-                agent_ids={"retired-agent"},
-                account_id=account.id,
+                tenant_id=app.tenant_id, agent_ids={"retired-agent"}, account_id=account.id
             )
 
         def test_sync_draft_workflow_updates_existing_draft(
@@ -555,8 +505,7 @@ class TestWorkflowServiceCases:
             sqlite_session.add(workflow)
             sqlite_session.commit()
             unique_hash = workflow.unique_hash
-
-            with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
                 result = workflow_service.sync_draft_workflow(
                     app_model=app,
                     graph=graph,
@@ -567,7 +516,6 @@ class TestWorkflowServiceCases:
                     conversation_variables=[],
                     session=sqlite_session,
                 )
-
             sqlite_session.refresh(workflow)
             assert result is workflow
             assert workflow.graph_dict == graph
@@ -582,10 +530,7 @@ class TestWorkflowServiceCases:
             account = TestWorkflowAssociatedDataFactory.create_account()
             workflow = TestWorkflowAssociatedDataFactory.create_workflow()
             remote_variable = StringVariable(
-                id="env-shared",
-                name="shared",
-                value="remote-value",
-                selector=["env", "shared"],
+                id="env-shared", name="shared", value="remote-value", selector=["env", "shared"]
             )
             stale_variable = remote_variable.model_copy(update={"value": "stale-client-value"})
             workflow.environment_variables = [remote_variable]
@@ -616,7 +561,6 @@ class TestWorkflowServiceCases:
                 commit=False,
                 sync_agent_bindings=False,
             )
-
             assert "FOR UPDATE" in str(statements[0].compile(dialect=postgresql.dialect()))
             assert result.environment_variables == [remote_variable]
             assert commits == []
@@ -636,25 +580,20 @@ class TestWorkflowServiceCases:
             unique_hash = workflow.unique_hash
             next_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
             next_graph["viewport"] = {"x": 10, "y": 20, "zoom": 1}
-
-            with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
                 result = workflow_service.sync_draft_workflow(
                     app_model=app,
                     graph=next_graph,
                     features={},
                     unique_hash=unique_hash,
                     account=account,
-                    environment_variables=[
-                        remote_variable.model_copy(update={"value": "stale-a"}),
-                        replaced_variable,
-                    ],
+                    environment_variables=[remote_variable.model_copy(update={"value": "stale-a"}), replaced_variable],
                     conversation_variables=[],
                     session=sqlite_session,
                     environment_variable_upserts=[replaced_variable.model_copy(update={"value": "new-b"})],
                     deleted_environment_variable_ids=[],
                     preserve_environment_variables=True,
                 )
-
             assert result.graph_dict == next_graph
             assert [(variable.id, variable.value) for variable in result.environment_variables] == [
                 ("env-a", "remote-a"),
@@ -674,8 +613,7 @@ class TestWorkflowServiceCases:
             sqlite_session.add(workflow)
             sqlite_session.commit()
             replacement = StringVariable(id="env-new", name="new", value="new", selector=["env", "new"])
-
-            with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
                 result = workflow_service.sync_draft_workflow(
                     app_model=app,
                     graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
@@ -686,7 +624,6 @@ class TestWorkflowServiceCases:
                     conversation_variables=[],
                     session=sqlite_session,
                 )
-
             assert result.environment_variables == [replacement]
 
         def test_sync_draft_workflow_graph_only_preserves_independently_updated_draft_fields(
@@ -699,12 +636,7 @@ class TestWorkflowServiceCases:
                 StringVariable(id="env-new", name="region", value="new", selector=["env", "region"])
             ]
             existing_conversation_variables = [
-                StringVariable(
-                    id="conversation-new",
-                    name="topic",
-                    value="new",
-                    selector=["conversation", "topic"],
-                )
+                StringVariable(id="conversation-new", name="topic", value="new", selector=["conversation", "topic"])
             ]
             workflow = TestWorkflowAssociatedDataFactory.create_workflow(
                 features=existing_features,
@@ -716,8 +648,7 @@ class TestWorkflowServiceCases:
             unique_hash = workflow.unique_hash
             updated_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
             updated_graph["nodes"][0]["data"]["title"] = "Updated graph"
-
-            with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
                 result = workflow_service.sync_draft_workflow(
                     app_model=app,
                     graph=updated_graph,
@@ -729,16 +660,12 @@ class TestWorkflowServiceCases:
                     ],
                     conversation_variables=[
                         StringVariable(
-                            id="conversation-old",
-                            name="topic",
-                            value="old",
-                            selector=["conversation", "topic"],
+                            id="conversation-old", name="topic", value="old", selector=["conversation", "topic"]
                         )
                     ],
                     session=sqlite_session,
                     graph_only=True,
                 )
-
             sqlite_session.refresh(workflow)
             assert result is workflow
             assert workflow.graph_dict == updated_graph
@@ -750,6 +677,8 @@ class TestWorkflowServiceCases:
             self, workflow_service: WorkflowService, sqlite_session: Session
         ):
             app = TestWorkflowAssociatedDataFactory.create_app()
+            sqlite_session.add(app)
+            sqlite_session.flush()
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
             features = {"file_upload": {"enabled": True}}
@@ -757,15 +686,9 @@ class TestWorkflowServiceCases:
                 StringVariable(id="env-id", name="region", value="new", selector=["env", "region"])
             ]
             conversation_variables = [
-                StringVariable(
-                    id="conversation-id",
-                    name="topic",
-                    value="new",
-                    selector=["conversation", "topic"],
-                )
+                StringVariable(id="conversation-id", name="topic", value="new", selector=["conversation", "topic"])
             ]
-
-            with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
                 workflow = workflow_service.sync_draft_workflow(
                     app_model=app,
                     graph=graph,
@@ -777,7 +700,6 @@ class TestWorkflowServiceCases:
                     session=sqlite_session,
                     graph_only=True,
                 )
-
             assert workflow.graph_dict == graph
             assert workflow.features_dict == features
             assert workflow.environment_variables == environment_variables
@@ -797,10 +719,8 @@ class TestWorkflowServiceCases:
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
             features = {}
-
             sqlite_session.add(TestWorkflowAssociatedDataFactory.create_workflow())
             sqlite_session.commit()
-
             with pytest.raises(WorkflowHashNotEqualError):
                 workflow_service.sync_draft_workflow(
                     app_model=app,
@@ -820,11 +740,7 @@ class TestWorkflowServiceCases:
             account = TestWorkflowAssociatedDataFactory.create_account()
             legacy_features = {
                 "file_upload": {
-                    "image": {
-                        "enabled": True,
-                        "number_limits": 6,
-                        "transfer_methods": ["remote_url", "local_file"],
-                    }
+                    "image": {"enabled": True, "number_limits": 6, "transfer_methods": ["remote_url", "local_file"]}
                 },
                 "opening_statement": "",
                 "retriever_resource": {"enabled": True},
@@ -862,9 +778,8 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add_all([source_workflow, draft_workflow])
             sqlite_session.commit()
-
             with (
-                patch("services.workflow_service.app_draft_workflow_was_synced"),
+                patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"),
                 patch.object(
                     workflow_service,
                     "get_published_workflow_by_id",
@@ -874,65 +789,44 @@ class TestWorkflowServiceCases:
                     "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
                     return_value={"retired-agent"},
                 ),
-                patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+                patch(
+                    "services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned"
+                ) as retire_unowned,
             ):
                 result = workflow_service.restore_published_workflow_to_draft(
-                    app_model=app,
-                    workflow_id=source_workflow.id,
-                    account=account,
-                    session=sqlite_session,
+                    app_model=app, workflow_id=source_workflow.id, account=account, session=sqlite_session
                 )
-
             assert result is draft_workflow
             assert source_workflow.serialized_features == json.dumps(legacy_features)
             assert draft_workflow.serialized_features == json.dumps(legacy_features)
             sqlite_session.refresh(draft_workflow)
             assert draft_workflow.serialized_features == json.dumps(legacy_features)
             get_published_workflow_by_id.assert_called_once_with(
-                app_model=app,
-                workflow_id=source_workflow.id,
-                session=sqlite_session,
-                for_update=True,
+                app_model=app, workflow_id=source_workflow.id, session=sqlite_session, for_update=True
             )
             retire_unowned.assert_called_once_with(
-                tenant_id=app.tenant_id,
-                agent_ids={"retired-agent"},
-                account_id=account.id,
+                tenant_id=app.tenant_id, agent_ids={"retired-agent"}, account_id=account.id
             )
 
         def test_restore_historical_inline_agent_after_current_pointer_moves_uses_real_clone(
-            self,
-            workflow_service: WorkflowService,
-            sqlite_session: Session,
+            self, workflow_service: WorkflowService, sqlite_session: Session
         ) -> None:
             app = TestWorkflowAssociatedDataFactory.create_app(workflow_id=None)
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = {
                 "nodes": [
-                    {
-                        "id": "agent-node",
-                        "data": {
-                            "type": "agent",
-                            "version": "2",
-                            "agent_node_kind": "dify_agent",
-                        },
-                    }
+                    {"id": "agent-node", "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}
                 ],
                 "edges": [],
             }
             historical = TestWorkflowAssociatedDataFactory.create_workflow(
-                workflow_id="historical-workflow",
-                version="historical-version",
-                graph=graph,
+                workflow_id="historical-workflow", version="historical-version", graph=graph
             )
             current = TestWorkflowAssociatedDataFactory.create_workflow(
-                workflow_id="current-workflow",
-                version="current-version",
-                graph=graph,
+                workflow_id="current-workflow", version="current-version", graph=graph
             )
             draft = TestWorkflowAssociatedDataFactory.create_workflow(
-                workflow_id="draft-workflow",
-                version=Workflow.VERSION_DRAFT,
+                workflow_id="draft-workflow", version=Workflow.VERSION_DRAFT
             )
             source_agent = Agent(
                 id="historical-agent",
@@ -977,28 +871,19 @@ class TestWorkflowServiceCases:
             sqlite_session.add_all([app, historical, current, draft, source_agent, source_snapshot, historical_binding])
             app.workflow_id = historical.id
             sqlite_session.commit()
-
             app.workflow_id = current.id
             sqlite_session.commit()
-
             WorkflowAgentRetirementService.retire_unowned(
-                tenant_id=app.tenant_id,
-                agent_ids=[source_agent.id],
-                account_id=account.id,
+                tenant_id=app.tenant_id, agent_ids=[source_agent.id], account_id=account.id
             )
             sqlite_session.expire_all()
             retained_agent = sqlite_session.get(Agent, source_agent.id)
             assert retained_agent is not None
             assert retained_agent.status is AgentStatus.ACTIVE
-
-            with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
                 restored_draft = workflow_service.restore_published_workflow_to_draft(
-                    app_model=app,
-                    workflow_id=historical.id,
-                    account=account,
-                    session=sqlite_session,
+                    app_model=app, workflow_id=historical.id, account=account, session=sqlite_session
                 )
-
             restored_binding = sqlite_session.scalar(
                 select(WorkflowAgentNodeBinding).where(
                     WorkflowAgentNodeBinding.workflow_id == draft.id,
@@ -1021,21 +906,14 @@ class TestWorkflowServiceCases:
             assert restored_snapshot is not None
             assert restored_snapshot.config_snapshot_dict == source_snapshot.config_snapshot_dict
 
-        # ==================== Workflow Validation Tests ====================
-        # These tests verify graph structure and feature configuration validation
-
         def test_validate_graph_structure_empty_graph(self, workflow_service: WorkflowService):
             """Test validate_graph_structure accepts empty graph."""
             graph = {"nodes": []}
-
-            # Should not raise any exception
             workflow_service.validate_graph_structure(graph)
 
         def test_validate_graph_structure_valid_graph(self, workflow_service: WorkflowService):
             """Test validate_graph_structure accepts valid graph."""
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
-
-            # Should not raise any exception
             workflow_service.validate_graph_structure(graph)
 
         def test_validate_graph_structure_start_and_trigger_coexist_raises_error(
@@ -1050,28 +928,13 @@ class TestWorkflowServiceCases:
 
             These two patterns cannot be mixed in a single workflow.
             """
-            # Create a graph with both start and trigger nodes
-            # Use actual trigger node types: trigger-webhook, trigger-schedule, trigger-plugin
             graph = {
                 "nodes": [
-                    {
-                        "id": "start",
-                        "data": {
-                            "type": "start",
-                            "title": "START",
-                        },
-                    },
-                    {
-                        "id": "trigger-1",
-                        "data": {
-                            "type": "trigger-webhook",
-                            "title": "Webhook Trigger",
-                        },
-                    },
+                    {"id": "start", "data": {"type": "start", "title": "START"}},
+                    {"id": "trigger-1", "data": {"type": "trigger-webhook", "title": "Webhook Trigger"}},
                 ],
                 "edges": [],
             }
-
             with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
                 workflow_service.validate_graph_structure(graph)
 
@@ -1084,7 +947,6 @@ class TestWorkflowServiceCases:
             """
             app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.WORKFLOW)
             features = {"file_upload": {"enabled": False}}
-
             with patch("services.workflow_service.WorkflowAppConfigManager.config_validate") as mock_validate:
                 workflow_service.validate_features_structure(app, features)
                 mock_validate.assert_called_once_with(
@@ -1095,7 +957,6 @@ class TestWorkflowServiceCases:
             """Test validate_features_structure for advanced chat mode."""
             app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.ADVANCED_CHAT)
             features = {"opening_statement": "Hello"}
-
             with patch("services.workflow_service.AdvancedChatAppConfigManager.config_validate") as mock_validate:
                 workflow_service.validate_features_structure(app, features)
                 mock_validate.assert_called_once_with(
@@ -1106,12 +967,8 @@ class TestWorkflowServiceCases:
             """Test validate_features_structure raises error for invalid mode."""
             app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.COMPLETION)
             features = {}
-
             with pytest.raises(ValueError, match="Invalid app mode"):
                 workflow_service.validate_features_structure(app, features)
-
-        # ==================== Draft Workflow Variable Update Tests ====================
-        # These tests verify updating draft workflow environment/conversation variables
 
         def test_update_draft_workflow_environment_variables_updates_workflow(
             self, workflow_service: WorkflowService, sqlite_session: Session
@@ -1123,14 +980,9 @@ class TestWorkflowServiceCases:
             sqlite_session.add(workflow)
             sqlite_session.commit()
             variables = [StringVariable(id="env-id", name="region", value="us-east-1", selector=["env", "region"])]
-
             workflow_service.update_draft_workflow_environment_variables(
-                app_model=app,
-                environment_variables=variables,
-                account=account,
-                session=sqlite_session,
+                app_model=app, environment_variables=variables, account=account, session=sqlite_session
             )
-
             assert workflow.environment_variables == variables
             assert workflow.updated_by == account.id
             sqlite_session.expire_all()
@@ -1144,13 +996,9 @@ class TestWorkflowServiceCases:
             """Test update_draft_workflow_environment_variables raises when draft missing."""
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
             with pytest.raises(ValueError, match="No draft workflow found."):
                 workflow_service.update_draft_workflow_environment_variables(
-                    app_model=app,
-                    environment_variables=[],
-                    account=account,
-                    session=sqlite_session,
+                    app_model=app, environment_variables=[], account=account, session=sqlite_session
                 )
 
         def test_patch_draft_workflow_environment_variables_merges_by_id(
@@ -1167,7 +1015,6 @@ class TestWorkflowServiceCases:
             ]
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             workflow_service.patch_draft_workflow_environment_variables(
                 app_model=app,
                 environment_variables=[
@@ -1178,7 +1025,6 @@ class TestWorkflowServiceCases:
                 account=account,
                 session=sqlite_session,
             )
-
             sqlite_session.expire_all()
             persisted_workflow = sqlite_session.get(Workflow, workflow.id)
             assert persisted_workflow is not None
@@ -1211,7 +1057,6 @@ class TestWorkflowServiceCases:
                 account=account,
                 session=sqlite_session,
             )
-
             compiled_statement = str(statements[0].compile(dialect=postgresql.dialect()))
             assert "FOR UPDATE" in compiled_statement
             assert sqlite_session.get(Workflow, workflow.id) is workflow
@@ -1225,7 +1070,6 @@ class TestWorkflowServiceCases:
             variable = StringVariable(id="env-a", name="a", value="a", selector=["env", "a"])
             sqlite_session.add(TestWorkflowAssociatedDataFactory.create_workflow())
             sqlite_session.commit()
-
             with pytest.raises(ValueError, match="cannot be upserted and deleted"):
                 workflow_service.patch_draft_workflow_environment_variables(
                     app_model=app,
@@ -1241,7 +1085,6 @@ class TestWorkflowServiceCases:
             """A patch fails when the app has no draft workflow to lock."""
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
             with pytest.raises(ValueError, match="No draft workflow found."):
                 workflow_service.patch_draft_workflow_environment_variables(
                     app_model=app,
@@ -1263,14 +1106,9 @@ class TestWorkflowServiceCases:
             variables = [
                 StringVariable(id="conversation-id", name="topic", value="sqlite", selector=["conversation", "topic"])
             ]
-
             workflow_service.update_draft_workflow_conversation_variables(
-                app_model=app,
-                conversation_variables=variables,
-                account=account,
-                session=sqlite_session,
+                app_model=app, conversation_variables=variables, account=account, session=sqlite_session
             )
-
             assert workflow.conversation_variables == variables
             assert workflow.updated_by == account.id
             sqlite_session.expire_all()
@@ -1278,56 +1116,16 @@ class TestWorkflowServiceCases:
             assert persisted_workflow is not None
             assert persisted_workflow.conversation_variables == variables
 
-        def test_publish_workflow_uses_expected_locked_draft_id(self, workflow_service, sqlite_session):
-            app = TestWorkflowAssociatedDataFactory.create_app()
-            account = TestWorkflowAssociatedDataFactory.create_account()
-            graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
-            other = TestWorkflowAssociatedDataFactory.create_workflow(
-                workflow_id="other-draft", version=Workflow.VERSION_DRAFT, graph=graph
-            )
-            locked_graph = {**graph, "verified-marker": "locked"}
-            locked = TestWorkflowAssociatedDataFactory.create_workflow(
-                workflow_id="locked-draft", version=Workflow.VERSION_DRAFT, graph=locked_graph
-            )
-            sqlite_session.add_all([other, locked])
-            sqlite_session.commit()
-            with patch("services.workflow_service.app_published_workflow_was_updated"):
-                published = workflow_service.publish_workflow(
-                    session=sqlite_session, app_model=app, account=account, expected_draft_id=locked.id
-                )
-            assert published.graph_dict == locked_graph
-            assert published.graph_dict != other.graph_dict
-
-        def test_publish_workflow_expected_draft_keeps_owner_scope(self, workflow_service, sqlite_session):
-            app = TestWorkflowAssociatedDataFactory.create_app()
-            account = TestWorkflowAssociatedDataFactory.create_account()
-            foreign = TestWorkflowAssociatedDataFactory.create_workflow(
-                workflow_id="foreign-draft", tenant_id="other-tenant", version=Workflow.VERSION_DRAFT
-            )
-            sqlite_session.add(foreign)
-            sqlite_session.commit()
-            with pytest.raises(ValueError, match="No valid workflow"):
-                workflow_service.publish_workflow(
-                    session=sqlite_session, app_model=app, account=account, expected_draft_id=foreign.id
-                )
-
         def test_update_draft_workflow_conversation_variables_raises_when_missing(
             self, workflow_service: WorkflowService, sqlite_session: Session
         ):
             """Test update_draft_workflow_conversation_variables raises when draft missing."""
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
             with pytest.raises(ValueError, match="No draft workflow found."):
                 workflow_service.update_draft_workflow_conversation_variables(
-                    app_model=app,
-                    conversation_variables=[],
-                    account=account,
-                    session=sqlite_session,
+                    app_model=app, conversation_variables=[], account=account, session=sqlite_session
                 )
-
-        # ==================== Publish Workflow Tests ====================
-        # These tests verify creating published versions from draft workflows
 
         def test_publish_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
@@ -1342,11 +1140,9 @@ class TestWorkflowServiceCases:
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
-
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
             sqlite_session.add(draft)
             sqlite_session.commit()
-
             with patch("services.workflow_service.app_published_workflow_was_updated"):
                 result = workflow_service.publish_workflow(
                     session=sqlite_session,
@@ -1355,7 +1151,6 @@ class TestWorkflowServiceCases:
                     marked_name="Version 1",
                     marked_comment="Initial release",
                 )
-
             sqlite_session.flush()
             assert result in sqlite_session
             assert result.version != Workflow.VERSION_DRAFT
@@ -1374,17 +1169,12 @@ class TestWorkflowServiceCases:
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
-
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
             sqlite_session.add(draft)
             sqlite_session.commit()
-
-            with (
-                patch("services.workflow_service.app_published_workflow_was_updated"),
-            ):
+            with patch("services.workflow_service.app_published_workflow_was_updated"):
                 first = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
                 second = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
-
             assert first.version_number == 1
             assert second.version_number == 2
 
@@ -1400,21 +1190,15 @@ class TestWorkflowServiceCases:
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
-
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
             sqlite_session.add(draft)
             sqlite_session.commit()
-
-            with (
-                patch("services.workflow_service.app_published_workflow_was_updated"),
-            ):
+            with patch("services.workflow_service.app_published_workflow_was_updated"):
                 published = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
                 sqlite_session.flush()
                 sqlite_session.delete(published)
                 sqlite_session.flush()
-
                 republished = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
-
             assert republished.version_number == 2
 
         def test_publish_workflow_numbers_each_app_independently(
@@ -1427,25 +1211,17 @@ class TestWorkflowServiceCases:
             """
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
-
             published: list[Workflow] = []
             for app_id in ("app-first", "app-second"):
                 app = TestWorkflowAssociatedDataFactory.create_app(app_id=app_id)
                 draft = TestWorkflowAssociatedDataFactory.create_workflow(
-                    workflow_id=f"draft-{app_id}",
-                    app_id=app_id,
-                    version=Workflow.VERSION_DRAFT,
-                    graph=graph,
+                    workflow_id=f"draft-{app_id}", app_id=app_id, version=Workflow.VERSION_DRAFT, graph=graph
                 )
                 sqlite_session.add(draft)
                 sqlite_session.commit()
-
-                with (
-                    patch("services.workflow_service.app_published_workflow_was_updated"),
-                ):
+                with patch("services.workflow_service.app_published_workflow_was_updated"):
                     workflow = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
                 published.append(workflow)
-
             assert [workflow.version_number for workflow in published] == [1, 1]
 
         def test_publish_workflow_no_draft_raises_error(
@@ -1459,7 +1235,6 @@ class TestWorkflowServiceCases:
             """
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
             with pytest.raises(ValueError, match="No valid workflow found"):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
@@ -1470,8 +1245,7 @@ class TestWorkflowServiceCases:
                 (
                     [
                         LLMEnvironmentVariable(
-                            name="shared_model",
-                            value={"provider": "provider", "name": "model", "mode": "completion"},
+                            name="shared_model", value={"provider": "provider", "name": "model", "mode": "completion"}
                         )
                     ],
                     "uses mode 'completion'.*uses mode 'chat'",
@@ -1500,21 +1274,16 @@ class TestWorkflowServiceCases:
             draft.environment_variables = environment_variables
             sqlite_session.add(draft)
             sqlite_session.commit()
-
             with (
                 patch(
-                    "services.system_feature_service.SystemFeatureService.is_plugin_manager_enabled",
-                    return_value=False,
+                    "services.system_feature_service.SystemFeatureService.is_plugin_manager_enabled", return_value=False
                 ),
                 pytest.raises(ValueError, match=error),
             ):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
         def test_publish_workflow_trigger_limit_exceeded(
-            self,
-            workflow_service: WorkflowService,
-            sqlite_session: Session,
-            config_overrides: Callable[..., None],
+            self, workflow_service: WorkflowService, sqlite_session: Session, config_overrides: Callable[..., None]
         ):
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             """
@@ -1526,9 +1295,6 @@ class TestWorkflowServiceCases:
             """
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
-            # Create graph with 3 trigger nodes (exceeds SANDBOX limit of 2)
-            # Trigger nodes enable event-driven automation which consumes resources
             graph = {
                 "nodes": [
                     {"id": "trigger-1", "data": {"type": "trigger-webhook"}},
@@ -1540,17 +1306,10 @@ class TestWorkflowServiceCases:
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
             sqlite_session.add(draft)
             sqlite_session.commit()
-
-            with (
-                patch("services.workflow_service.BillingService") as mock_billing_service,
-            ):
+            with patch("services.workflow_service.BillingService") as mock_billing_service:
                 mock_billing_service.get_info.return_value = builders.subscription_info("sandbox")
-
                 with pytest.raises(TriggerNodeLimitExceededError):
                     workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
-
-        # ==================== Version Management Tests ====================
-        # These tests verify listing and managing published workflow versions
 
         def test_get_all_published_workflow_with_pagination(
             self, workflow_service: WorkflowService, sqlite_session: Session
@@ -1562,7 +1321,6 @@ class TestWorkflowServiceCases:
             Pagination prevents loading all versions at once, improving performance.
             """
             app = TestWorkflowAssociatedDataFactory.create_app(workflow_id="workflow-123")
-
             sqlite_session.add_all(
                 [
                     TestWorkflowAssociatedDataFactory.create_workflow(workflow_id=f"workflow-{i}", version=f"v{i}")
@@ -1570,11 +1328,9 @@ class TestWorkflowServiceCases:
                 ]
             )
             sqlite_session.commit()
-
             workflows, has_more = workflow_service.get_all_published_workflow(
                 session=sqlite_session, app_model=app, page=1, limit=10, user_id=None
             )
-
             assert len(workflows) == 5
             assert has_more is False
 
@@ -1590,12 +1346,9 @@ class TestWorkflowServiceCases:
             """
             app = TestWorkflowAssociatedDataFactory.create_app(workflow_id="workflow-3")
             app_created_at = datetime(2026, 1, 1)
-
             sqlite_session.add(
                 TestWorkflowAssociatedDataFactory.create_workflow(
-                    workflow_id="workflow-draft",
-                    version=Workflow.VERSION_DRAFT,
-                    created_at=app_created_at,
+                    workflow_id="workflow-draft", version=Workflow.VERSION_DRAFT, created_at=app_created_at
                 )
             )
             sqlite_session.add_all(
@@ -1609,11 +1362,9 @@ class TestWorkflowServiceCases:
                 ]
             )
             sqlite_session.commit()
-
             workflows, _ = workflow_service.get_all_published_workflow(
                 session=sqlite_session, app_model=app, page=1, limit=2, user_id=None
             )
-
             assert [workflow.id for workflow in workflows] == ["workflow-draft", "workflow-3"]
 
         def test_get_all_published_workflow_excludes_draft_when_requested(
@@ -1625,12 +1376,9 @@ class TestWorkflowServiceCases:
             """
             app = TestWorkflowAssociatedDataFactory.create_app(workflow_id="workflow-3")
             app_created_at = datetime(2026, 1, 1)
-
             sqlite_session.add(
                 TestWorkflowAssociatedDataFactory.create_workflow(
-                    workflow_id="workflow-draft",
-                    version=Workflow.VERSION_DRAFT,
-                    created_at=app_created_at,
+                    workflow_id="workflow-draft", version=Workflow.VERSION_DRAFT, created_at=app_created_at
                 )
             )
             sqlite_session.add(
@@ -1641,11 +1389,9 @@ class TestWorkflowServiceCases:
                 )
             )
             sqlite_session.commit()
-
             workflows, has_more = workflow_service.get_all_published_workflow(
                 session=sqlite_session, app_model=app, page=1, limit=10, user_id=None, include_draft=False
             )
-
             assert [workflow.id for workflow in workflows] == ["workflow-3"]
             assert has_more is False
 
@@ -1657,7 +1403,6 @@ class TestWorkflowServiceCases:
             This is determined by fetching limit+1 records and checking if we got that many.
             """
             app = TestWorkflowAssociatedDataFactory.create_app(workflow_id="workflow-123")
-
             sqlite_session.add_all(
                 [
                     TestWorkflowAssociatedDataFactory.create_workflow(workflow_id=f"workflow-{i}", version=f"v{i}")
@@ -1665,11 +1410,9 @@ class TestWorkflowServiceCases:
                 ]
             )
             sqlite_session.commit()
-
             workflows, has_more = workflow_service.get_all_published_workflow(
                 session=sqlite_session, app_model=app, page=1, limit=10, user_id=None
             )
-
             assert len(workflows) == 10
             assert has_more is True
 
@@ -1678,16 +1421,11 @@ class TestWorkflowServiceCases:
         ):
             """Test get_all_published_workflow returns empty when app has no workflow_id."""
             app = TestWorkflowAssociatedDataFactory.create_app(workflow_id=None)
-
             workflows, has_more = workflow_service.get_all_published_workflow(
                 session=sqlite_session, app_model=app, page=1, limit=10, user_id=None
             )
-
             assert workflows == []
             assert has_more is False
-
-        # ==================== Update Workflow Tests ====================
-        # These tests verify updating workflow metadata (name, comments, etc.)
 
         def test_update_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
@@ -1707,14 +1445,12 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             result = workflow_service.update_workflow(
                 session=sqlite_session,
                 account_id=account_id,
                 data={"marked_name": "Updated Name", "marked_comment": "Updated Comment"},
                 workflow_ref=workflow_ref,
             )
-
             sqlite_session.flush()
             assert result is workflow
             assert workflow.marked_name == "Updated Name"
@@ -1729,7 +1465,6 @@ class TestWorkflowServiceCases:
                 data={"marked_name": "Test"},
                 workflow_ref=WorkflowRef(tenant_id="tenant-456", owner_id="app-789", workflow_id="nonexistent"),
             )
-
             assert result is None
 
         def test_update_workflow_with_ref_scopes_lookup_to_app(
@@ -1746,19 +1481,14 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             result = workflow_service.update_workflow(
                 session=sqlite_session,
                 account_id=account_id,
                 data={"marked_name": "Updated Name"},
                 workflow_ref=workflow_ref,
             )
-
             assert result is None
             assert workflow.marked_name == ""
-
-        # ==================== Delete Workflow Tests ====================
-        # These tests verify workflow deletion with safety checks
 
         def test_delete_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
@@ -1815,10 +1545,8 @@ class TestWorkflowServiceCases:
             ]
             sqlite_session.add_all([workflow, inline_binding, roster_binding, *non_target_bindings])
             sqlite_session.commit()
-
             result = workflow_service.delete_workflow(session=sqlite_session, workflow_ref=workflow_ref)
             sqlite_session.flush()
-
             assert result == ["inline-agent"]
             assert sqlite_session.get(Workflow, workflow_id) is None
             assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
@@ -1830,18 +1558,12 @@ class TestWorkflowServiceCases:
             self, workflow_service: WorkflowService, sqlite_session: Session, mocker: MockerFixture
         ):
             workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
-            workflow_ref = WorkflowRef(
-                tenant_id=workflow.tenant_id,
-                owner_id=workflow.app_id,
-                workflow_id=workflow.id,
-            )
+            workflow_ref = WorkflowRef(tenant_id=workflow.tenant_id, owner_id=workflow.app_id, workflow_id=workflow.id)
             session = sqlite_session
             session.add(workflow)
             session.commit()
             lookup = mocker.spy(session, "scalar")
-
             result = workflow_service.delete_workflow(session=session, workflow_ref=workflow_ref)
-
             stmt = lookup.call_args_list[0].args[0]
             sql = str(stmt.compile(dialect=postgresql.dialect()))
             assert result == []
@@ -1864,10 +1586,8 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             with pytest.raises(ValueError, match="not found"):
                 workflow_service.delete_workflow(session=sqlite_session, workflow_ref=workflow_ref)
-
             assert sqlite_session.get(Workflow, workflow_id) is workflow
 
         def test_delete_workflow_draft_raises_error(self, workflow_service: WorkflowService, sqlite_session: Session):
@@ -1888,7 +1608,6 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add(workflow)
             sqlite_session.commit()
-
             with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow"):
                 workflow_service.delete_workflow(session=sqlite_session, workflow_ref=workflow_ref)
 
@@ -1920,7 +1639,6 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add_all([workflow, app])
             sqlite_session.commit()
-
             with pytest.raises(WorkflowInUseError, match="currently in use by app"):
                 workflow_service.delete_workflow(session=sqlite_session, workflow_ref=workflow_ref)
 
@@ -1953,7 +1671,6 @@ class TestWorkflowServiceCases:
             )
             sqlite_session.add_all([workflow, tool_provider])
             sqlite_session.commit()
-
             with pytest.raises(WorkflowInUseError, match="published as a tool"):
                 workflow_service.delete_workflow(session=sqlite_session, workflow_ref=workflow_ref)
 
@@ -1964,12 +1681,8 @@ class TestWorkflowServiceCases:
             workflow_id = "nonexistent"
             tenant_id = "tenant-456"
             workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
-
             with pytest.raises(ValueError, match="not found"):
                 workflow_service.delete_workflow(session=sqlite_session, workflow_ref=workflow_ref)
-
-        # ==================== Get Default Block Config Tests ====================
-        # These tests verify retrieval of default node configurations
 
         def test_get_default_block_configs(self, workflow_service: WorkflowService):
             """
@@ -1980,15 +1693,11 @@ class TestWorkflowServiceCases:
             when users add new nodes to their workflow.
             """
             with patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping:
-                # Mock node class with default config
                 mock_node_class = MagicMock()
                 mock_node_class.get_default_config.return_value = {"type": "llm", "config": {}}
-
                 mock_mapping.return_value = {BuiltinNodeTypes.LLM: {"latest": mock_node_class}}
-
                 with patch("services.workflow_service.LATEST_VERSION", "latest"):
                     result = workflow_service.get_default_block_configs()
-
                     assert len(result) > 0
 
         def test_get_default_block_configs_http_request_injects_default_config(self, workflow_service: WorkflowService):
@@ -2001,13 +1710,11 @@ class TestWorkflowServiceCases:
                 ssl_verify=True,
                 ssrf_default_max_retries=6,
             )
-
             with (
                 patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
                 patch("services.workflow_service.LATEST_VERSION", "latest"),
                 patch(
-                    "services.workflow_service.build_http_request_config",
-                    return_value=injected_config,
+                    "services.workflow_service.build_http_request_config", return_value=injected_config
                 ) as mock_build_config,
             ):
                 mock_http_node_class = MagicMock()
@@ -2018,13 +1725,8 @@ class TestWorkflowServiceCases:
                     BuiltinNodeTypes.HTTP_REQUEST: {"latest": mock_http_node_class},
                     BuiltinNodeTypes.LLM: {"latest": mock_llm_node_class},
                 }
-
                 result = workflow_service.get_default_block_configs()
-
-                assert result == [
-                    {"type": "http-request", "config": {}},
-                    {"type": "llm", "config": {}},
-                ]
+                assert result == [{"type": "http-request", "config": {}}, {"type": "llm", "config": {}}]
                 mock_build_config.assert_called_once()
                 passed_http_filters = mock_http_node_class.get_default_config.call_args.kwargs["filters"]
                 assert passed_http_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is injected_config
@@ -2041,16 +1743,11 @@ class TestWorkflowServiceCases:
                 patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
                 patch("services.workflow_service.LATEST_VERSION", "latest"),
             ):
-                # Mock node class with default config
                 mock_node_class = MagicMock()
                 mock_config = {"type": "llm", "config": {"provider": "openai"}}
                 mock_node_class.get_default_config.return_value = mock_config
-
-                # Create a mock mapping that includes BuiltinNodeTypes.LLM
                 mock_mapping.return_value = {BuiltinNodeTypes.LLM: {"latest": mock_node_class}}
-
                 result = workflow_service.get_default_block_config(BuiltinNodeTypes.LLM)
-
                 assert result == mock_config
                 mock_node_class.get_default_config.assert_called_once()
 
@@ -2058,10 +1755,7 @@ class TestWorkflowServiceCases:
             """Test get_default_block_config returns empty dict for invalid node type."""
             with patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping:
                 mock_mapping.return_value = {}
-
-                # Use a valid NodeType but one that's not in the mapping
                 result = workflow_service.get_default_block_config(BuiltinNodeTypes.LLM)
-
                 assert result == {}
 
         def test_get_default_block_config_http_request_injects_default_config(self, workflow_service: WorkflowService):
@@ -2074,22 +1768,18 @@ class TestWorkflowServiceCases:
                 ssl_verify=False,
                 ssrf_default_max_retries=7,
             )
-
             with (
                 patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
                 patch("services.workflow_service.LATEST_VERSION", "latest"),
                 patch(
-                    "services.workflow_service.build_http_request_config",
-                    return_value=injected_config,
+                    "services.workflow_service.build_http_request_config", return_value=injected_config
                 ) as mock_build_config,
             ):
                 mock_node_class = MagicMock()
                 expected = {"type": "http-request", "config": {}}
                 mock_node_class.get_default_config.return_value = expected
                 mock_mapping.return_value = {BuiltinNodeTypes.HTTP_REQUEST: {"latest": mock_node_class}}
-
                 result = workflow_service.get_default_block_config(BuiltinNodeTypes.HTTP_REQUEST)
-
                 assert result == expected
                 mock_build_config.assert_called_once()
                 passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
@@ -2105,7 +1795,6 @@ class TestWorkflowServiceCases:
                 ssl_verify=True,
                 ssrf_default_max_retries=2,
             )
-
             with (
                 patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping,
                 patch("services.workflow_service.LATEST_VERSION", "latest"),
@@ -2115,12 +1804,9 @@ class TestWorkflowServiceCases:
                 expected = {"type": "http-request", "config": {}}
                 mock_node_class.get_default_config.return_value = expected
                 mock_mapping.return_value = {BuiltinNodeTypes.HTTP_REQUEST: {"latest": mock_node_class}}
-
                 result = workflow_service.get_default_block_config(
-                    BuiltinNodeTypes.HTTP_REQUEST,
-                    filters={HTTP_REQUEST_CONFIG_FILTER_KEY: provided_config},
+                    BuiltinNodeTypes.HTTP_REQUEST, filters={HTTP_REQUEST_CONFIG_FILTER_KEY: provided_config}
                 )
-
                 assert result == expected
                 mock_build_config.assert_not_called()
                 passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
@@ -2138,12 +1824,8 @@ class TestWorkflowServiceCases:
             ):
                 with pytest.raises(TypeError, match="http_request_config must be an HttpRequestNodeConfig instance"):
                     workflow_service.get_default_block_config(
-                        BuiltinNodeTypes.HTTP_REQUEST,
-                        filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"},
+                        BuiltinNodeTypes.HTTP_REQUEST, filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"}
                     )
-
-        # ==================== Workflow Conversion Tests ====================
-        # These tests verify converting basic apps to workflow apps
 
         def test_convert_to_workflow_from_chat_app(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
@@ -2155,20 +1837,12 @@ class TestWorkflowServiceCases:
             """
             app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.CHAT)
             account = TestWorkflowAssociatedDataFactory.create_account()
-            args = {
-                "name": "Converted Workflow",
-                "icon_type": "emoji",
-                "icon": "🤖",
-                "icon_background": "#FFEAD5",
-            }
-
+            args = {"name": "Converted Workflow", "icon_type": "emoji", "icon": "🤖", "icon_background": "#FFEAD5"}
             with patch("services.workflow_service.WorkflowConverter") as mock_converter_type:
                 mock_converter = mock_converter_type.return_value
                 mock_new_app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.WORKFLOW)
                 mock_converter.convert_to_workflow.return_value = mock_new_app
-
                 result = workflow_service.convert_to_workflow(app, account, args, session=sqlite_session)
-
                 assert result == mock_new_app
                 mock_converter.convert_to_workflow.assert_called_once()
 
@@ -2185,14 +1859,11 @@ class TestWorkflowServiceCases:
             app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.COMPLETION)
             account = TestWorkflowAssociatedDataFactory.create_account()
             args = {"name": "Converted Workflow"}
-
             with patch("services.workflow_service.WorkflowConverter") as mock_converter_type:
                 mock_converter = mock_converter_type.return_value
                 mock_new_app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.WORKFLOW)
                 mock_converter.convert_to_workflow.return_value = mock_new_app
-
                 result = workflow_service.convert_to_workflow(app, account, args, session=sqlite_session)
-
                 assert result == mock_new_app
 
         def test_convert_to_workflow_invalid_mode_raises_error(
@@ -2207,9 +1878,41 @@ class TestWorkflowServiceCases:
             app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.WORKFLOW)
             account = TestWorkflowAssociatedDataFactory.create_account()
             args = {}
-
             with pytest.raises(ValueError, match="not supported convert to workflow"):
                 workflow_service.convert_to_workflow(app, account, args, session=sqlite_session)
+
+        def test_publish_workflow_uses_expected_locked_draft_id(self, workflow_service, sqlite_session):
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+            other = TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="other-draft", version=Workflow.VERSION_DRAFT, graph=graph
+            )
+            locked_graph = {**graph, "verified-marker": "locked"}
+            locked = TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="locked-draft", version=Workflow.VERSION_DRAFT, graph=locked_graph
+            )
+            sqlite_session.add_all([other, locked])
+            sqlite_session.commit()
+            with patch("services.workflow_service.app_published_workflow_was_updated"):
+                published = workflow_service.publish_workflow(
+                    session=sqlite_session, app_model=app, account=account, expected_draft_id=locked.id
+                )
+            assert published.graph_dict == locked_graph
+            assert published.graph_dict != other.graph_dict
+
+        def test_publish_workflow_expected_draft_keeps_owner_scope(self, workflow_service, sqlite_session):
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            foreign = TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="foreign-draft", tenant_id="other-tenant", version=Workflow.VERSION_DRAFT
+            )
+            sqlite_session.add(foreign)
+            sqlite_session.commit()
+            with pytest.raises(ValueError, match="No valid workflow"):
+                workflow_service.publish_workflow(
+                    session=sqlite_session, app_model=app, account=account, expected_draft_id=foreign.id
+                )
 
     # ===========================================================================
     # TestWorkflowServiceCredentialValidation
@@ -3371,7 +3074,6 @@ class TestWorkflowServiceCases:
         def test_run_draft_workflow_node_should_execute_start_node_successfully(
             self, service: WorkflowService, sqlite_engine: _workflow_service_Engine
         ) -> None:
-            # Arrange
             app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
             account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
             node_id = "start-node"
@@ -3381,16 +3083,11 @@ class TestWorkflowServiceCases:
                 app_id="app-1",
                 graph={
                     "nodes": [
-                        {
-                            "id": node_id,
-                            "data": {"type": BuiltinNodeTypes.START, "title": "Start", "variables": []},
-                        }
+                        {"id": node_id, "data": {"type": BuiltinNodeTypes.START, "title": "Start", "variables": []}}
                     ],
                     "edges": [],
                 },
             )
-
-            # Mocking complex dependencies
             with (
                 patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
                 patch("services.workflow_service.WorkflowDraftVariableService"),
@@ -3420,18 +3117,14 @@ class TestWorkflowServiceCases:
                     start_at=naive_utc_now(),
                 )
                 mock_run.return_value = (mock_node, [mock_event])
-
                 mock_repo = MagicMock()
                 mock_repo_factory.create_workflow_node_execution_repository.return_value = mock_repo
-
                 service._node_execution_service_repo = MagicMock()
                 mock_execution_record = MagicMock()
                 mock_execution_record.node_type = "start"
                 mock_execution_record.node_id = "start-node"
                 mock_execution_record.load_full_outputs.return_value = {}
                 service._node_execution_service_repo.get_execution_by_id.return_value = mock_execution_record
-
-                # Act
                 result = service.run_draft_workflow_node(
                     app_model=app,
                     draft_workflow=draft_workflow,
@@ -3441,8 +3134,6 @@ class TestWorkflowServiceCases:
                     query="hi",
                     files=[],
                 )
-
-                # Assert
                 assert result is not None
                 mock_run.assert_called_once()
                 mock_repo.save_synchronously.assert_called_once()
@@ -3451,7 +3142,6 @@ class TestWorkflowServiceCases:
         def test_run_draft_workflow_node_should_execute_non_start_node_successfully(
             self, service: WorkflowService, sqlite_engine: _workflow_service_Engine
         ) -> None:
-            # Arrange
             app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
             account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
             node_id = "llm-node"
@@ -3473,7 +3163,6 @@ class TestWorkflowServiceCases:
                     "edges": [],
                 },
             )
-
             with (
                 patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
                 patch("services.workflow_service.WorkflowDraftVariableService"),
@@ -3501,15 +3190,12 @@ class TestWorkflowServiceCases:
                     start_at=naive_utc_now(),
                 )
                 mock_run.return_value = (mock_node, [mock_event])
-
                 service._node_execution_service_repo = MagicMock()
                 mock_execution_record = MagicMock()
                 mock_execution_record.node_type = "llm"
                 mock_execution_record.node_id = "llm-node"
                 mock_execution_record.load_full_outputs.return_value = {"answer": "hello"}
                 service._node_execution_service_repo.get_execution_by_id.return_value = mock_execution_record
-
-                # Act
                 service.run_draft_workflow_node(
                     app_model=app,
                     draft_workflow=draft_workflow,
@@ -3519,9 +3205,6 @@ class TestWorkflowServiceCases:
                     query="",
                     files=None,
                 )
-
-                # Assert
-                # For non-start nodes, bootstrap variables should be loaded into an empty pool.
                 mock_pool_cls.assert_called_once_with()
                 mock_build_system_variables.assert_called_once_with()
                 mock_build_bootstrap_variables.assert_called_once_with(
@@ -3545,6 +3228,7 @@ class TestWorkflowServiceCases:
             self,
             service: WorkflowService,
             sqlite_engine: _workflow_service_Engine,
+            sqlite_session: Session,
             config_overrides: Callable[..., None],
             repository_type: type[SQLAlchemyWorkflowNodeExecutionRepository]
             | type[CeleryWorkflowNodeExecutionRepository]
@@ -3604,10 +3288,7 @@ class TestWorkflowServiceCases:
                 )
                 if repository_type is LogstoreWorkflowNodeExecutionRepository:
                     config_overrides(
-                        API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
-                            "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
-                            "LogstoreAPIWorkflowNodeExecutionRepository"
-                        )
+                        API_WORKFLOW_NODE_EXECUTION_REPOSITORY="extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.LogstoreAPIWorkflowNodeExecutionRepository"
                     )
                     service._node_execution_service_repo = (
                         DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -3641,7 +3322,6 @@ class TestWorkflowServiceCases:
                     execution.agent_workspace_binding_id = workspace_binding_id
                     execution.process_data = json.dumps({"workflow_agent_binding_id": workflow_binding_id})
                     session.commit()
-
                 result = NodeRunResult(
                     status=status,
                     outputs={"text": "done"} if status == WorkflowNodeExecutionStatus.SUCCEEDED else {},
@@ -3661,7 +3341,7 @@ class TestWorkflowServiceCases:
                     yield NodeRunSucceededEvent(**event_kwargs)
 
             with (
-                patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
+                patch("services.workflow_service.db", EmptyDraftDatabase(sqlite_session)),
                 patch("services.workflow_service.WorkflowDraftVariableService"),
                 patch("services.workflow_service.DraftVarLoader"),
                 patch(
@@ -3681,7 +3361,6 @@ class TestWorkflowServiceCases:
                 result = service.run_draft_workflow_node(
                     app_model=app, draft_workflow=workflow, node_id=node_id, user_inputs={}, account=account
                 )
-
             assert result.id == execution_id
             assert result.node_execution_id == execution_id
             assert result.status == status
@@ -4031,11 +3710,10 @@ class TestWorkflowServiceCases:
             _merge_environment_variable_patch(current, [upsert], [])
 
 
-"""Tests for human-input delivery with a persisted draft workflow."""
-
-
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
+
 APP_ID = "22222222-2222-2222-2222-222222222222"
+
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
@@ -4266,9 +3944,6 @@ class TestWorkflowHumanInputDeliveryCases:
         assert isinstance(recipient, MemberRecipient)
         assert recipient.reference_id == account.id
         assert sqlite_session.in_transaction()
-
-
-"""Agent preview callers are committed before execution and retain their identity."""
 
 
 Factory = TestWorkflowAssociatedDataFactory
@@ -4583,13 +4258,16 @@ def test_convert_to_workflow_inherits_webapp_access(
         app_model_config: AppModelConfig,
         account_id: str,
         session: Session,
+        destination_app: App,
     ) -> Workflow:
         assert app_model_config.app_id == app_model.id
+        assert destination_app.id != app_model.id
+        assert destination_app.tenant_id == app_model.tenant_id
         if outcome == "conversion_error":
             raise ValueError("conversion failed")
         workflow = Workflow(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
+            tenant_id=destination_app.tenant_id,
+            app_id=destination_app.id,
             type=WorkflowType.CHAT if source_mode == AppMode.CHAT else WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             graph='{"nodes": [], "edges": []}',
