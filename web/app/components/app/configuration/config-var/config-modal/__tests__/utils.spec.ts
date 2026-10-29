@@ -1,5 +1,10 @@
+import type { ContractRouterClient } from '@orpc/contract'
 import type { TFunction } from 'i18next'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
+import { contract } from '@dify/contracts/api/console/apps/orpc.gen'
+import { createORPCClient } from '@orpc/client'
+import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
@@ -134,6 +139,128 @@ describe('config-modal utils', () => {
   })
 
   describe('validation', () => {
+    it.each([InputVarType.singleFile, InputVarType.multiFiles])(
+      'should save uploaded %s defaults as JSON without changing the uploader file',
+      async (type) => {
+        const originalFile = new File(['document'], 'document.txt', { type: 'text/plain' })
+        const uploadedMetadata: FileEntity = {
+          id: 'local-file',
+          name: 'document.txt',
+          size: originalFile.size,
+          type: originalFile.type,
+          progress: 100,
+          transferMethod: 'local_file',
+          supportFileType: 'document',
+          uploadedId: 'uploaded-file-id',
+        }
+        const uploadedFile = { ...uploadedMetadata, originalFile }
+        const remoteFile: FileEntity = {
+          ...uploadedMetadata,
+          id: 'remote-file',
+          transferMethod: 'remote_url',
+          url: 'https://example.com/document.txt',
+        }
+        const tempPayload = createInputVar({
+          type,
+          allowed_file_types: [SupportUploadFileTypes.document],
+          default: type === InputVarType.singleFile ? uploadedFile : [uploadedFile, remoteFile],
+        })
+        const { payloadToSave } = validateConfigModalPayload({ tempPayload, t })
+        expect(payloadToSave).toBeDefined()
+
+        const requests: Request[] = []
+        const client = createORPCClient<ContractRouterClient<typeof contract>>(
+          new OpenAPILink(contract, {
+            url: 'https://example.com/console/api',
+            fetch: async (request) => {
+              requests.push(request)
+              return new Response(
+                JSON.stringify({ result: 'success', hash: 'saved', updated_at: 1 }),
+                {
+                  headers: { 'content-type': 'application/json' },
+                },
+              )
+            },
+          }),
+        )
+        await client.apps.byAppId.workflows.draft.post({
+          params: { app_id: 'app-id' },
+          body: {
+            graph: {
+              nodes: [{ id: 'start', data: { type: 'start', variables: [payloadToSave] } }],
+              edges: [],
+            },
+            features: {},
+          },
+        })
+
+        const request = requests[0]!
+        expect(request.headers.get('content-type')).toBe('application/json')
+        const body = await request.json()
+        expect(body.graph.nodes[0].data.variables[0].default).toEqual(
+          type === InputVarType.singleFile ? uploadedMetadata : [uploadedMetadata, remoteFile],
+        )
+        expect(uploadedFile.originalFile).toBe(originalFile)
+        expect(await uploadedFile.originalFile.text()).toBe('document')
+      },
+    )
+
+    it('should remove upload binaries when a file input changes to text before saving', () => {
+      const originalFile = new File(['document'], 'document.txt', { type: 'text/plain' })
+      const uploadedMetadata: FileEntity = {
+        id: 'local-file',
+        name: 'document.txt',
+        size: originalFile.size,
+        type: originalFile.type,
+        progress: 100,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        uploadedId: 'uploaded-file-id',
+      }
+      const filePayload = createInputVar({
+        type: InputVarType.singleFile,
+        default: { ...uploadedMetadata, originalFile },
+      })
+      const tempPayload = createPayloadForType(filePayload, InputVarType.textInput)
+
+      const { payloadToSave } = validateConfigModalPayload({ tempPayload, t })
+
+      expect(payloadToSave?.type).toBe(InputVarType.textInput)
+      expect(payloadToSave?.default).toEqual(uploadedMetadata)
+      expect(filePayload.default).toEqual({ ...uploadedMetadata, originalFile })
+    })
+
+    it.each([
+      '{"originalFile":"document.txt","count":2}',
+      '[null,{"originalFile":"document.txt"}]',
+    ])('should preserve JSON default data: %s', (json) => {
+      const defaultValue = JSON.parse(json)
+      const { payloadToSave } = validateConfigModalPayload({
+        tempPayload: createInputVar({ type: InputVarType.jsonObject, default: defaultValue }),
+        t,
+      })
+
+      expect(payloadToSave?.default).toEqual(defaultValue)
+    })
+
+    it.each([
+      { type: InputVarType.singleFile, defaultValue: undefined },
+      { type: InputVarType.singleFile, defaultValue: '' },
+      { type: InputVarType.multiFiles, defaultValue: undefined },
+      { type: InputVarType.multiFiles, defaultValue: [] },
+    ])('should preserve an empty $type default', ({ type, defaultValue }) => {
+      const { payloadToSave } = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type,
+          default: defaultValue,
+          allowed_file_types: [SupportUploadFileTypes.document],
+        }),
+        t,
+      })
+
+      expect(payloadToSave?.default).toEqual(defaultValue)
+    })
+
     it('should reject duplicate select options', () => {
       const result = validateConfigModalPayload({
         tempPayload: createInputVar({

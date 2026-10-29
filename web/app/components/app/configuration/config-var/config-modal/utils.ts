@@ -197,10 +197,20 @@ export const validateConfigModalPayload = ({
   const jsonSchemaValue = tempPayload.json_schema
   const schemaEmpty = isJsonSchemaEmpty(jsonSchemaValue)
   const normalizedJsonSchema = schemaEmpty ? undefined : jsonSchemaValue
-  const payloadToSave =
+  const payloadToSave = produce(
     normalizedTempPayload.type === InputVarType.jsonObject && schemaEmpty
       ? { ...normalizedTempPayload, json_schema: undefined }
-      : normalizedTempPayload
+      : normalizedTempPayload,
+    (draft) => {
+      if (!draft.default || typeof draft.default !== 'object') return
+
+      // Native File is uploader state and would make oRPC send the draft as multipart.
+      const files = Array.isArray(draft.default) ? draft.default : [draft.default]
+      for (const file of files) {
+        if (file?.originalFile instanceof Blob) delete file.originalFile
+      }
+    },
+  )
 
   const moreInfo =
     normalizedTempPayload.variable === payload?.variable
