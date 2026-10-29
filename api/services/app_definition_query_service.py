@@ -1,7 +1,7 @@
 """Application service for reading an app's externally visible definition."""
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NamedTuple, Protocol
 
 from pydantic import Field
@@ -112,10 +112,12 @@ class AppDefinitionQueryService:
         definitions: AppDefinitionQuery,
         builtin_icon_url_prefix: str,
         connection_revisions: ConnectionRevisions,
+        plugin_readme: Callable[[str, str, str], str],
     ) -> None:
         self._definitions = definitions
         self._connection_revisions = connection_revisions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
+        self._plugin_readme = plugin_readme
 
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)
@@ -182,6 +184,16 @@ class AppDefinitionQueryService:
             "requires_end_user_connections": config.requires_end_user_connections,
             "connection_requirements": tuple(web_requirements),
         }
+
+    def get_web_plugin_readme(self, app_id: str, tenant_id: str, plugin_unique_identifier: str, language: str) -> str:
+        """Only expose documentation for this App's published personal tool providers."""
+        parameters = self.get_web_parameters(app_id, tenant_id)
+        if not any(
+            requirement.plugin_unique_identifier == plugin_unique_identifier
+            for requirement in parameters["connection_requirements"]
+        ):
+            raise AppDefinitionUnavailableError()
+        return self._plugin_readme(tenant_id, plugin_unique_identifier, language)
 
     @staticmethod
     def _map_parameters(config: AppParameterConfig | None) -> AppParametersDict:

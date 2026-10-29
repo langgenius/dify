@@ -263,6 +263,24 @@ Read API-key form fields for an authorized published tool node; no credential va
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /connections/readme
+Read plugin documentation for a published personal Connection requirement.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | README language, as in the Console plugin API | No | string, <br>**Default:** en-US |
+| plugin_unique_identifier | query | Exact plugin artifact from connection_requirements | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Plugin README | **application/json**: [ConnectionReadmeResponse](#connectionreadmeresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [DELETE] /connections/{connection_id}
 Disconnect locally and remove live selections, then attempt OAuth revocation against the original plugin artifact and Client. Remote failures never undo local deletion or fall back to installed versions.
 
@@ -1657,6 +1675,12 @@ OAuth authorization could not be completed. Start authorization again.
 | connection_id | string |  | Yes |
 | node_id | string | Independent authorization node ID to use as the selection key. | Yes |
 | status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
+
+#### ConnectionReadmeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| readme | string |  | Yes |
 
 #### ConnectionReauthorizationRequiredError
 

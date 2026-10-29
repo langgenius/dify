@@ -19,6 +19,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
+from core.plugin.plugin_service import PluginService
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -437,6 +438,7 @@ def build_application_services(
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
+        plugin_readme=PluginService.fetch_plugin_readme,
         connection_revisions=PluginConnectionRevisions(
             providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
             snapshots=EndUserConnectionRepository(session_factory=database_client),
