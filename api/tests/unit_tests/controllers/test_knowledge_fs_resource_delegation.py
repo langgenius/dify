@@ -1950,7 +1950,32 @@ def test_console_unavailable_and_timeout_rejections_preserve_safe_failure_metada
         "message": safe_message,
         "status": status,
         "failure": expected_failure,
+        "details": expected_failure,
     }
+
+
+def test_console_settings_conflict_exposes_documented_failure_details() -> None:
+    from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
+
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {
+            "category": "conflict",
+            "code": "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+            "message": "Private worker diagnostic",
+            "retryPolicy": "manual",
+        }
+    )
+    guarded = console_resources._knowledge_fs_errors(
+        raising(KnowledgeFSProductRequestRejectedError(status_code=409, failure=failure))
+    )
+
+    with pytest.raises(KnowledgeFSConflictHTTPError) as raised:
+        guarded()
+
+    assert raised.value.data is not None
+    assert raised.value.data["details"] == failure.model_dump(by_alias=True, exclude_none=True)
+    assert raised.value.data["failure"] == raised.value.data["details"]
+    assert "Private worker diagnostic" not in str(raised.value.data)
 
 
 def test_console_request_rejection_preserves_safe_failure_metadata() -> None:
@@ -1977,6 +2002,7 @@ def test_console_request_rejection_preserves_safe_failure_metadata() -> None:
         "code": "knowledge_fs_request_rejected",
         "message": "The Agent Knowledge Base operation requires a configuration change before it can continue.",
         "status": 422,
+        "details": failure.model_dump(by_alias=True, exclude_none=True),
         "failure": {
             "action": "configure_model",
             "category": "configuration",
