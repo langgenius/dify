@@ -411,7 +411,8 @@ def test_copy_success_requires_materialized_app_and_enriches_permissions(ports: 
 
 
 _ROOT_DSL = "app:\n  name: Root\n"
-_PREPARED_ROOT_DSL = _ROOT_DSL + "prepared: true\n"
+_PREPARED_SUFFIX = "prepared: true\n"
+_PREPARED_ROOT_DSL = _ROOT_DSL + _PREPARED_SUFFIX
 _WORKFLOW_TOOL_DSL = "app:\n  name: Summarize\n"
 _PACKAGED_TOOL = PackagedWorkflowTool(
     id="w_000001",
@@ -568,7 +569,7 @@ def test_prepare_dsl_rewrites_the_root_yaml_only(
         CONTEXT,
         AppImportParams(mode="yaml-content"),
         source=BytesIO(b"package"),
-        prepare_dsl=lambda dsl: dsl + "prepared: true\n",
+        prepare_dsl=lambda dsl: dsl + _PREPARED_SUFFIX,
     )
     assert transfers.calls == expected
 
