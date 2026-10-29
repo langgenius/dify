@@ -12,7 +12,7 @@ from werkzeug.exceptions import NotFound
 from constants.oauth_bearer import Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._app_response import app_list_row, build_app_describe_response
+from controllers.openapi._app_response import app_list_row, build_app_describe_response, wants_block
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse, Hint
 from controllers.openapi.app_info import (
@@ -48,10 +48,10 @@ from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext, RequestContext
 from models.model import AppMode
 from services.app.query_service import AppDiscoveryQuery
+from services.entities.app_entities import AppSummary
 from services.errors.app import AppDiscoveryNotFoundError
+from services.workflow.graph_check import GRAPH_MODES
 from services.workflow.graph_diff import current_draft_token
-
-_GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 
 _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
     AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
@@ -70,6 +70,14 @@ _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
 
 def _webapp_auth_gated(view: Any) -> bool:
     return any(isinstance(r, CheckWebAppAuthEnterprise) for r in view.__spec__.requirements)
+
+
+def _draft_hash(ctx: AppRequestContext, app: AppSummary, fields: set[str] | None) -> str | None:
+    if not wants_block(fields, "info"):
+        return None
+    if app.mode not in GRAPH_MODES:
+        return None
+    return current_draft_token(ctx.tenant_id, app.id)
 
 
 def settings_hints(app_id: str, mode: str) -> list[Hint]:
@@ -115,10 +123,7 @@ class AppDescribeApi(Resource):
             result = application_services().apps.discovery.describe(ctx, query.fields)
         except AppDiscoveryNotFoundError as exc:
             raise NotFound(str(exc)) from exc
-        draft_hash = None
-        if query.fields is None or "info" in query.fields:
-            if result.app.mode in _GRAPH_MODES:
-                draft_hash = current_draft_token(ctx.tenant_id, result.app.id)
+        draft_hash = _draft_hash(ctx, result.app, query.fields)
         response = build_app_describe_response(result, query.fields, draft_hash=draft_hash)
         response.hints = settings_hints(result.app.id, result.app.mode)
         return response
