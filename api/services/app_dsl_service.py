@@ -48,7 +48,7 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
-from graphon.nodes.tool.entities import ToolNodeData
+from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -84,6 +84,7 @@ from services.icon_configuration import (
     DEFAULT_ICON_TYPE,
     is_valid_image_icon,
 )
+from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow.graph_diff import draft_token
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -95,6 +96,8 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
+# Other provider types reference workspace records by id, so they never map to a plugin.
+PLUGIN_TOOL_PROVIDER_TYPES = frozenset({ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN})
 
 
 def initialize_imported_app_creator_access(result: Import, *, tenant_id: str, account_id: str) -> None:
@@ -143,6 +146,7 @@ class PendingData(PendingImportOwner):
     icon_background: str | None = None
     app_id: str | None = None
     draft_hash: str | None = None
+    preserve_agent_bindings: bool = False
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
@@ -165,12 +169,19 @@ class AppDslService:
         tenant_id = account.current_tenant_id
         if tenant_id is None:
             raise ValueError("Current tenant is not set")
+        AppDslService.check_app_quota(tenant_id=tenant_id, new_apps=1)
+
+    @staticmethod
+    def check_app_quota(*, tenant_id: str, new_apps: int) -> None:
+        """Reject an import on Cloud when creating ``new_apps`` more Apps would exceed the plan's limit."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
         try:
             apps = FeatureService.get_features(tenant_id, exclude_vector_space=True).apps
         except Exception as error:
             # A failed lookup is a server failure, not an invalid DSL or exhausted quota.
             raise AppQuotaCheckError("Unable to check the app quota.") from error
-        if 0 < apps.limit <= apps.size:
+        if 0 < apps.limit < apps.size + new_apps:
             raise NoPermissionError("The number of apps has reached the limit of your subscription.")
 
     def import_app(
@@ -363,6 +374,7 @@ class AppDslService:
                     icon_background=icon_background,
                     app_id=app_id,
                     draft_hash=draft_hash,
+                    preserve_agent_bindings=preserve_agent_bindings,
                     warnings=self._warnings,
                 )
                 redis_client.setex(
@@ -514,6 +526,7 @@ class AppDslService:
                 icon_background=pending_data.icon_background,
                 allow_premium_site_settings=allow_premium_site_settings,
                 draft_hash=pending_data.draft_hash,
+                preserve_agent_bindings=pending_data.preserve_agent_bindings,
             )
 
             # Delete import info from Redis
@@ -791,6 +804,23 @@ class AppDslService:
                                 )
                             )
                         ]
+                missing_knowledge_fs_spaces = missing_control_space_ids(
+                    session=self._session,
+                    tenant_id=app.tenant_id,
+                    graph=graph,
+                )
+                for control_space_id in missing_knowledge_fs_spaces:
+                    self._warnings.append(
+                        DslImportWarning(
+                            code="knowledge_fs_space_unresolved",
+                            path="workflow.graph.nodes",
+                            message=(
+                                "A KnowledgeFS Space reference is unavailable in the target workspace "
+                                "and must be reselected before publishing."
+                            ),
+                            details={"control_space_id": control_space_id},
+                        )
+                    )
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")
@@ -1036,7 +1066,9 @@ class AppDslService:
         reference_nodes: dict[str, dict[str, Any]] = {}
         if preserve_agent_bindings:
             graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-                session=session, draft_workflow=workflow
+                session=session,
+                draft_workflow=workflow,
+                binding_version=workflow.version,
             )
             agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
             for binding in cls._workflow_agent_bindings(workflow=workflow, session=session):
@@ -1197,6 +1229,8 @@ class AppDslService:
                 match typ:
                     case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
+                        if tool_entity.provider_type not in PLUGIN_TOOL_PROVIDER_TYPES:
+                            continue
                         dependencies.append(
                             node_data.get("plugin_id")
                             or DependenciesAnalysisService.analyze_tool_provider_reference(tool_entity.provider_id),
@@ -1297,6 +1331,8 @@ class AppDslService:
             agent_configs = model_config.get("agent_mode", {})
             if agent_configs:
                 for agent_config in agent_configs.get("tools", []):
+                    if agent_config.get("provider_type") not in PLUGIN_TOOL_PROVIDER_TYPES:
+                        continue
                     dependencies.append(
                         DependenciesAnalysisService.analyze_tool_dependency(agent_config.get("provider_id"))
                     )

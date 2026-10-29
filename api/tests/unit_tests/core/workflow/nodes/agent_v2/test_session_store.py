@@ -2,6 +2,7 @@ import json
 from collections.abc import Iterator
 from contextlib import nullcontext
 from dataclasses import replace
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +13,8 @@ from dify_agent.runtime_backend.errors import SharedWorkspaceUnsupportedError
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.node_execution import WorkflowNodeExecution
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
@@ -30,6 +33,7 @@ from models.agent import (
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -37,6 +41,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.app_service import AppService
+from tests.helpers.unit.model_factories import make_account
 
 
 def _scope() -> WorkflowAgentSessionScope:
@@ -473,6 +478,65 @@ def test_load_or_create_persists_binding_on_node_execution(
     assert persisted_binding.base_home_snapshot_id == home_snapshot_id
 
 
+def test_node_completion_preserves_workspace_binding_and_sandbox_access(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    scope = _scope()
+    repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        sqlite_session_factory,
+        scope.tenant_id,
+        make_account(),
+        scope.app_id,
+        WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+    execution = WorkflowNodeExecution(
+        id=scope.node_execution_id,
+        node_execution_id=scope.node_execution_id,
+        workflow_id=scope.workflow_id,
+        workflow_execution_id=scope.workflow_run_id,
+        index=1,
+        node_id=scope.node_id,
+        node_type="agent",
+        title="Agent",
+        status=WorkflowNodeExecutionStatus.RUNNING,
+        created_at=datetime(2026, 9, 23),
+    )
+    repository.save_synchronously(execution)
+    _install_backend_client(monkeypatch)
+    stored = WorkflowAgentWorkspaceStore().load_or_create_node_execution_session(scope, home_snapshot_id=None)
+
+    execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
+    execution.outputs = {"result": "completed"}
+    execution.process_data = {"result": "completed"}
+    execution.elapsed_time = 1.0
+    execution.finished_at = datetime(2026, 9, 23, 0, 0, 1)
+    assert repository._to_db_model(execution).agent_workspace_binding_id is None
+    repository.save(execution)
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.agent_workspace_binding_id == stored.binding_id
+        assert persisted.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert persisted.outputs_dict == {"result": "completed"}
+        assert persisted.process_data_dict == {
+            "result": "completed",
+            "workflow_agent_binding_id": scope.workflow_agent_binding_id,
+        }
+        assert persisted.elapsed_time == 1.0
+        assert persisted.finished_at == execution.finished_at
+        binding = AgentSandboxRepository._resolve_workflow_binding(
+            tenant_id=scope.tenant_id,
+            app_id=scope.app_id,
+            workflow_run_id="run-1",
+            node_id=scope.node_id,
+            node_execution_id=scope.node_execution_id,
+            session=session,
+        )
+        assert binding.backend_binding_ref == stored.backend_binding_ref
+
+
 def test_load_existing_pointer_rejects_missing_workflow_identity(sqlite_session: Session) -> None:
     execution = _execution_row(binding_id="binding-1", process_data={"existing": "value"})
     sqlite_session.add(execution)
@@ -696,7 +760,7 @@ def test_retire_workflow_tool_workspace_follows_persisted_run_owner(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="1",
         graph="{}",
@@ -807,7 +871,7 @@ def test_deleting_paused_root_app_retires_and_deletes_nested_participants(
                 tenant_id="tenant-1",
                 app_id="app-1",
                 workflow_id="workflow-1",
-                type=WorkflowType.WORKFLOW,
+                type=ModelWorkflowType(WorkflowType.WORKFLOW),
                 triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 version="1",
                 graph="{}",

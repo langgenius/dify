@@ -134,6 +134,7 @@ export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
   id: string
+  knowledge_space_ids?: Array<string>
   last_used_at?: number | null
   token: string
   type: string
@@ -433,6 +434,11 @@ export type AppMessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
 export type AgentLogSourceListResponse = {
   data: Array<AgentLogSourceResponse>
   groups: Array<AgentLogSourceGroupResponse>
@@ -479,6 +485,7 @@ export type MessageDetailResponse = {
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
+  retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
 }
@@ -1251,6 +1258,36 @@ export type MessageFile = {
   url?: string | null
 }
 
+export type RetrievalSourceMetadata = {
+  content?: string | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: unknown
+  } | null
+  document_asset_id?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
+  files?: Array<{
+    [key: string]: unknown
+  }> | null
+  hit_count?: number | null
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  page?: number | null
+  position?: number | null
+  retriever_from?: string | null
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  title?: string | null
+  word_count?: number | null
+}
+
 export type AgentReferencingWorkflowResponse = {
   app_icon?: string | null
   app_icon_background?: string | null
@@ -1581,6 +1618,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -1729,9 +1767,11 @@ export type AgentComposerDifyToolCandidateResponse = {
 }
 
 export type AgentComposerKnowledgeSetCandidateResponse = {
+  control_space_id?: string | null
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
+  missing?: boolean
   missing_dataset_ids?: Array<string>
   name: string
 }
@@ -1793,6 +1833,22 @@ export type HumanInputFormSubmissionData = {
 }
 
 export type ExecutionContentType = 'human_input'
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
 
 export type AgentAverageResponseTimeStatisticResponse = {
   date: string
@@ -2070,6 +2126,14 @@ export type AgentKnowledgeSetConfig = {
   name: string
   query: AgentKnowledgeQueryConfig
   retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
 }
 
 export type AgentMemoryArtifactConfig = {
@@ -3077,6 +3141,7 @@ export type GetAgentByAgentIdChatMessagesData = {
 }
 
 export type GetAgentByAgentIdChatMessagesErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -3734,6 +3799,7 @@ export type PostAgentByAgentIdFeedbacksData = {
 }
 
 export type PostAgentByAgentIdFeedbacksErrors = {
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -3856,6 +3922,7 @@ export type GetAgentByAgentIdMessagesByMessageIdData = {
 }
 
 export type GetAgentByAgentIdMessagesByMessageIdErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }

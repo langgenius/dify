@@ -711,8 +711,6 @@ export type TextToSpeechRequest = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
 export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
   code: 'provider_not_support_text_to_speech'
   status: 400
@@ -1056,6 +1054,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -1213,6 +1212,14 @@ export type AgentKnowledgeSetConfig = {
   name: string
   query: AgentKnowledgeQueryConfig
   retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
 }
 
 export type AgentMemoryArtifactConfig = {
@@ -2052,6 +2059,7 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2184,7 +2192,7 @@ export type PostTrialAppsByAppIdTextToAudioError =
   PostTrialAppsByAppIdTextToAudioErrors[keyof PostTrialAppsByAppIdTextToAudioErrors]
 
 export type PostTrialAppsByAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: Blob | File
 }
 
 export type PostTrialAppsByAppIdTextToAudioResponse =

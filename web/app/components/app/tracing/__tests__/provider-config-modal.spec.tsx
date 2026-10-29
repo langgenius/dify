@@ -539,6 +539,31 @@ describe('ProviderConfigModal', () => {
       ).toBeInTheDocument()
     })
 
+    it('clears a removal error on reopening while preserving the provider draft', async () => {
+      request.mockRejectedValueOnce(
+        await httpErrorFromResponse(Response.json({ message: 'Removal failed' }, { status: 400 })),
+      )
+      const user = userEvent.setup()
+      renderProviderConfigModal({ payload: validConfigs.langfuse })
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://draft.langfuse.com')
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.remove',
+        }),
+      )
+      expect(await screen.findByRole('alert')).toHaveTextContent('Removal failed')
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+
+      expect(host).toHaveValue('https://draft.langfuse.com')
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(within(screen.getByRole('alertdialog')).queryByRole('alert')).not.toBeInTheDocument()
+      expect(request).toHaveBeenCalledOnce()
+    })
+
     it('keeps the draft and returns focus to Remove when confirmation is canceled', async () => {
       const user = userEvent.setup()
       renderProviderConfigModal({

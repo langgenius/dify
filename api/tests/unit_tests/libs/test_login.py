@@ -11,7 +11,7 @@ from extensions.ext_login import DifyLoginManager
 from libs.login import current_user
 from machinery.errors import ActiveWorkspaceRequiredError
 from models.account import Account, Tenant
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.fixture

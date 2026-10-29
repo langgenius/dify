@@ -9,8 +9,8 @@ from enums import DeploymentEdition
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_dataset, make_document
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_dataset, make_document
 
 
 def _dataset(tenant_id: str) -> Dataset:

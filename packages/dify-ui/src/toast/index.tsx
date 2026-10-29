@@ -7,7 +7,9 @@ import type {
   ToastObject,
 } from '@base-ui/react/toast'
 import type * as React from 'react'
+import type { ButtonProps } from '../button'
 import { Toast as BaseToast } from '@base-ui/react/toast'
+import { Button } from '../button'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
 import { focusRingClassName } from '../internal/focus'
@@ -18,10 +20,13 @@ type ToastType = 'success' | 'error' | 'warning' | 'info'
 
 const toastCloseLabel = 'Close notification'
 
+type ToastActionProps = React.ComponentPropsWithoutRef<'button'> & Pick<ButtonProps, 'variant'>
+
 type ToastAddOptions = Omit<
   ToastManagerAddOptions<ToastData>,
   'data' | 'positionerProps' | 'type'
 > & {
+  actionProps?: ToastActionProps
   type?: ToastType
 }
 
@@ -29,6 +34,7 @@ type ToastUpdateOptions = Omit<
   ToastManagerUpdateOptions<ToastData>,
   'data' | 'positionerProps' | 'type'
 > & {
+  actionProps?: ToastActionProps
   type?: ToastType
 }
 
@@ -151,7 +157,7 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
       swipeDirection={['up', 'right']}
       className={cn(
         focusRingClassName,
-        'group/toast pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none',
+        'group/toast pointer-events-auto absolute inset-s-0 top-0 w-full origin-top cursor-default rounded-xl select-none',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
@@ -161,7 +167,7 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
         'data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(var(--toast-swipe-movement-y)-150%))]',
         'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--toast-expanded-offset-y))]',
         'data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
-        "after:pointer-events-auto after:absolute after:bottom-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",
+        "after:pointer-events-auto after:absolute after:inset-s-0 after:bottom-full after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",
       )}
     >
       <div className="relative h-full overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -194,13 +200,7 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
           <div className="min-w-0 flex-1 p-1">
             <BaseToast.Title className="min-w-0 system-sm-semibold wrap-break-word text-text-primary" />
             <BaseToast.Description className="mt-1 min-w-0 system-xs-regular wrap-break-word text-text-secondary" />
-            <BaseToast.Action
-              className={cn(
-                'mt-2 mb-1 flex w-fit items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
-                focusRingClassName,
-                'hover:bg-state-base-hover focus-visible:bg-state-base-hover',
-              )}
-            />
+            <BaseToast.Action render={<Button />} className="mt-2" />
           </div>
           {children}
           <div className="flex shrink-0 items-center justify-center rounded-md p-0.5">
@@ -240,7 +240,11 @@ function Toaster({
     <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
         <BaseToast.Viewport
-          className="pointer-events-none fixed top-4 right-4 z-50 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
+          className={
+            // Once the offset API is removed, migrate placement, horizontal swipe, and exit animations together to logical inline-end.
+            // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- Dify's offset.right API currently requires physical right positioning, paired with rightward swipe dismissal.
+            'pointer-events-none fixed top-4 right-4 z-50 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8'
+          }
           style={offset}
         >
           {children}

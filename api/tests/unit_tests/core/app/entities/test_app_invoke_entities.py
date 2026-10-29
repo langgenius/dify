@@ -10,6 +10,7 @@ from core.app.entities.app_invoke_entities import (
     CreditUsageCreatedBy,
     DifyRunContext,
     InvokeFrom,
+    UserFrom,
     WorkflowAppGenerateEntity,
     get_credit_usage_app_type,
     get_credit_usage_created_by,
@@ -43,6 +44,7 @@ def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
 
 def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = None) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="workflow-task",
         app_config=_build_workflow_app_config(AppMode.WORKFLOW),
         inputs={"topic": "serialization"},
@@ -200,3 +202,27 @@ def test_workflow_resumption_context_roundtrip(case: ResumptionContextCase):
     assert isinstance(entity, expected_type)
     assert entity.model_dump() == context.get_generate_entity().model_dump()
     assert entity.trace_manager is None
+
+
+def test_openapi_variant_present():
+    assert InvokeFrom.OPENAPI.value == "openapi"
+
+
+def test_openapi_distinct_from_service_api():
+    assert InvokeFrom.OPENAPI != InvokeFrom.SERVICE_API
+
+
+def test_runs_as_account_only_for_console_contexts():
+    # Console contexts (studio debugger / explore) run as the signed-in Account.
+    assert InvokeFrom.DEBUGGER.runs_as_account() is True
+    assert InvokeFrom.EXPLORE.runs_as_account() is True
+    # Everything else is attributed to an end user.
+    for invoke_from in (
+        InvokeFrom.WEB_APP,
+        InvokeFrom.SERVICE_API,
+        InvokeFrom.OPENAPI,
+        InvokeFrom.TRIGGER,
+        InvokeFrom.PUBLISHED_PIPELINE,
+        InvokeFrom.VALIDATION,
+    ):
+        assert invoke_from.runs_as_account() is False
