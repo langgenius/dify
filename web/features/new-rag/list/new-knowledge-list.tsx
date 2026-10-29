@@ -296,10 +296,7 @@ export function NewKnowledgeList({
             )}
             <ServiceApi
               apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
-              apiReferenceUrl={docLink(
-                // @ts-expect-error Agent Knowledge Base API guide not yet in the generated doc paths.
-                '/api-reference/guides/knowledge-base',
-              )}
+              apiReferenceUrl={docLink('/api-reference/guides/knowledge-base')}
             />
           </div>
         </div>
