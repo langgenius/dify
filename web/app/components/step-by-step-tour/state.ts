@@ -188,21 +188,12 @@ export const startStepByStepTourTaskAtom = atom(
   (
     _get,
     set,
-    {
-      taskId,
-      guideGroup,
-      guideIndexes,
-    }: {
-      taskId: StepByStepTourTaskId
-      guideGroup?: StepByStepTourGuideGroup
-      guideIndexes?: number[]
-    },
+    { taskId, guideGroup }: { taskId: StepByStepTourTaskId; guideGroup?: StepByStepTourGuideGroup },
   ) => {
     set(stepByStepTourSessionAtom, {
       activeTaskId: taskId,
       activeGuideIndex: 0,
       activeGuideGroup: guideGroup,
-      activeGuideIndexes: guideIndexes,
     })
   },
 )

@@ -16,6 +16,8 @@
   "settings.membersRequired": "En az bir ekip üyesi seçin.",
   "settings.nameRequired": "Agent bilgi tabanı adı zorunludur.",
   "settings.pageDescription": "Temel bilgileri, API erişimini ve getirme ayarlarını yönetin.",
+  "settings.reasoningChangeConfirm": "Değişikliği onayla",
+  "settings.reasoningChangeWarning": "Sistem çıkarım modelinin değiştirilmesi, dizine eklenmiş belgelerin yeniden işlenmesini ve bilgi getirme dizinlerinin güncellenmesini sağlayacaktır. Bu işlem zaman alır ve ek model kullanım maliyetlerine yol açar.",
   "settings.reloadLatest": "Güncel ayarları yükle",
   "settings.rerankModelRequired": "Bir yeniden sıralama modeli seçin.",
   "settings.retrievalDepth": "Getirme derinliği",

@@ -1,5 +1,6 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,7 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
-import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
+import { consoleQuery } from '@/service/console'
 import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 
 const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
@@ -33,7 +34,11 @@ export const useWorkflowNodeCatalog = () => {
   // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
   // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
   const shouldUseAgentV2 = agentV2Enabled && (!isChatflow || isAgentV2InChatflowEnabled())
-  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
+  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_knowledge_fs,
+    }),
+  )
 
   const startNodeMetaData = useMemo(
     () => ({

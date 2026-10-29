@@ -16,6 +16,8 @@
   "settings.membersRequired": "Sélectionnez au moins un membre de l’équipe.",
   "settings.nameRequired": "Le nom de la base de connaissances Agent est obligatoire.",
   "settings.pageDescription": "Gérez les informations de base, l’accès à l’API et la récupération.",
+  "settings.reasoningChangeConfirm": "Confirmer le changement",
+  "settings.reasoningChangeWarning": "Changer le modèle de raisonnement du système entraînera le retraitement des documents indexés et la mise à jour de leurs index de recherche. Cette opération prend du temps et entraîne des frais supplémentaires liés à l’utilisation du modèle.",
   "settings.reloadLatest": "Recharger les paramètres",
   "settings.rerankModelRequired": "Sélectionnez un modèle de reranking.",
   "settings.retrievalDepth": "Profondeur de récupération",

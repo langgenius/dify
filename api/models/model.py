@@ -1744,7 +1744,8 @@ class Message(TypeBase):
 
     @property
     def retriever_resources(self) -> Any:
-        return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
+        resources = self.message_metadata_dict.get("retriever_resources", []) if self.message_metadata else []
+        return [] if resources is None else resources
 
     def message_files_with_session(self, *, session: Session) -> list[MessageFileInfo]:
         from factories import file_factory
@@ -1943,6 +1944,7 @@ class MessageFile(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_file_pkey"),
         sa.Index("message_file_message_idx", "message_id"),
+        sa.Index("message_file_upload_file_id_idx", "upload_file_id"),
         sa.Index("message_file_created_by_idx", "created_by"),
     )
 
