@@ -27,9 +27,6 @@ def test_oauth_ttl_days_clamps_or_falls_back_instead_of_failing(configured: str,
 @pytest.mark.parametrize(
     ("setting", "configured", "expected"),
     [
-        ("OAUTH_MAX_TOKENS_PER_ACCOUNT", "0", 1),
-        ("OAUTH_MAX_TOKENS_PER_ACCOUNT", "500", 100),
-        ("OAUTH_MAX_TOKENS_PER_ACCOUNT", "abc", 15),
         ("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", "999999", 8760),
         ("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", "", 24),
         ("OAUTH_AUTHORIZATION_CODE_TTL_SECONDS", "0", 60),

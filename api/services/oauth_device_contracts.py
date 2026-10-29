@@ -133,8 +133,6 @@ class OAuthDeviceTokenRotation:
     token_id: str
     replaced_token_id: str | None
     replaced_token_hash: str | None
-    evicted_token_ids: tuple[str, ...] = ()
-    evicted_token_hashes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

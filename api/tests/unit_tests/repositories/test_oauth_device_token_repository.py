@@ -1,22 +1,20 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import partial
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs.feature import DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import sha256_hex
-from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
+from models.oauth import OpenAPIOAuthAccessToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
-from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, GrantKey, IssuedOAuthToken, OAuthDeviceTokenWrite
-from tests.helpers.unit.repositories.oauth_refresh_tokens import seed_refresh_token
+from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, OAuthDeviceTokenWrite
 
 
 @dataclass
@@ -84,8 +82,6 @@ def _write(token_hash: str) -> OAuthDeviceTokenWrite:
 
 def _repository(
     sqlite_session_factory: sessionmaker[Session],
-    *,
-    max_sessions_per_account: int = DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT,
 ) -> tuple[
     OAuthDeviceTokenIssuanceGateway,
     SQLAlchemyOAuthDeviceTokenRepository,
@@ -99,7 +95,6 @@ def _repository(
     repository = SQLAlchemyOAuthDeviceTokenRepository(
         session_factory=sqlite_session_factory,
         redis=redis,
-        max_sessions_per_account=max_sessions_per_account,
     )
     return (
         OAuthDeviceTokenIssuanceGateway(tokens=repository, ttl_policy=ttl_policy),
@@ -296,172 +291,3 @@ def test_issue_external_token_rejects_empty_issuer(sqlite_session_factory: sessi
             client_id="difyctl",
             device_label="CLI",
         )
-
-
-def _issue_sessions(issuer: OAuthDeviceTokenIssuanceGateway, device_labels: Sequence[str]) -> list[IssuedOAuthToken]:
-    return [
-        issuer.issue_account_token(
-            account=_account(),
-            workspace_id="workspace-1",
-            client_id="difyctl",
-            device_label=device_label,
-        )
-        for device_label in device_labels
-    ]
-
-
-def _set_usage(
-    session: Session,
-    token: IssuedOAuthToken,
-    *,
-    created_at: datetime,
-    last_used_at: datetime | None = None,
-) -> None:
-    session.execute(
-        update(OpenAPIOAuthAccessToken)
-        .where(OpenAPIOAuthAccessToken.id == token.token_id)
-        .values(created_at=created_at, last_used_at=last_used_at)
-    )
-    session.commit()
-
-
-def _expire(session: Session, token: IssuedOAuthToken) -> None:
-    session.execute(
-        update(OpenAPIOAuthAccessToken)
-        .where(OpenAPIOAuthAccessToken.id == token.token_id)
-        .values(expires_at=datetime.now(UTC) - timedelta(minutes=1))
-    )
-    session.commit()
-
-
-def _live_token_ids(session: Session) -> set[str]:
-    session.expire_all()
-    return set(
-        session.scalars(select(OpenAPIOAuthAccessToken.id).where(OpenAPIOAuthAccessToken.revoked_at.is_(None))).all()
-    )
-
-
-def _issue_refresh(factory: sessionmaker[Session], device_label: str) -> str:
-    return seed_refresh_token(
-        factory,
-        grant=GrantKey(
-            subject_email="ada@example.com",
-            subject_issuer="dify:account",
-            client_id="difyctl",
-            device_label=device_label,
-        ),
-        account_id="account-1",
-        workspace_id="workspace-1",
-        lifetime=timedelta(days=30),
-    )
-
-
-def _refresh_labels(session: Session) -> set[str]:
-    session.expire_all()
-    return set(session.scalars(select(OpenAPIOAuthRefreshToken.device_label)).all())
-
-
-def test_sixteenth_login_evicts_the_least_recently_used_login_with_its_refresh(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory)
-    base = datetime.now(UTC) - timedelta(days=1)
-    sessions = _issue_sessions(issuer, [f"device-{index}" for index in range(DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT)])
-    for index, token in enumerate(sessions):
-        _set_usage(sqlite_session, token, created_at=base, last_used_at=base + timedelta(minutes=index + 1))
-    least_recently_used = sessions[0]
-    _issue_refresh(sqlite_session_factory, "device-0")
-    _issue_refresh(sqlite_session_factory, "device-1")
-    sqlite_session.execute(update(OpenAPIOAuthRefreshToken).values(created_at=base))
-    sqlite_session.commit()
-
-    newest = _issue_sessions(issuer, ["device-new"])[0]
-
-    assert newest.rotation.evicted_token_ids == (least_recently_used.token_id,)
-    assert newest.rotation.evicted_token_hashes == (sha256_hex(least_recently_used.token),)
-    assert _refresh_labels(sqlite_session) == {"device-1"}
-    assert redis.deleted == [TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(least_recently_used.token))]
-    live = _live_token_ids(sqlite_session)
-    assert len(live) == DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT
-    assert least_recently_used.token_id not in live
-
-
-def test_expired_access_with_live_refresh_counts_toward_the_cap(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=2)
-    now = datetime.now(UTC)
-    refresh_only, live = _issue_sessions(issuer, ["a", "b"])
-    _issue_refresh(sqlite_session_factory, "a")
-    sqlite_session.execute(update(OpenAPIOAuthRefreshToken).values(created_at=now - timedelta(hours=1)))
-    sqlite_session.commit()
-    _expire(sqlite_session, refresh_only)
-    _set_usage(sqlite_session, live, created_at=now - timedelta(hours=2), last_used_at=now - timedelta(minutes=5))
-
-    newest = _issue_sessions(issuer, ["c"])[0]
-
-    assert newest.rotation.evicted_token_ids == ()
-    assert _refresh_labels(sqlite_session) == set()
-    assert _live_token_ids(sqlite_session) == {refresh_only.token_id, live.token_id, newest.token_id}
-
-
-def test_refresh_rotation_at_the_cap_evicts_nothing(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=2)
-    first, second = _issue_sessions(issuer, ["a", "b"])
-    _issue_refresh(sqlite_session_factory, "a")
-    _expire(sqlite_session, first)
-
-    rotated = _issue_sessions(issuer, ["a"])[0]
-
-    assert rotated.rotation.evicted_token_ids == ()
-    assert _refresh_labels(sqlite_session) == {"a"}
-    assert _live_token_ids(sqlite_session) == {second.token_id, rotated.token_id}
-
-
-def test_rollback_restores_the_evicted_access_row_but_not_its_refresh(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
-    first = _issue_sessions(issuer, ["a"])[0]
-    _issue_refresh(sqlite_session_factory, "a")
-    redis.before_next_delete = _fail_cache_delete
-
-    with pytest.raises(_CacheDeleteError):
-        _issue_sessions(issuer, ["b"])
-
-    sqlite_session.expire_all()
-    assert _live_token_ids(sqlite_session) == {first.token_id}
-    assert set(sqlite_session.scalars(select(OpenAPIOAuthAccessToken.device_label))) == {"a"}
-    assert _refresh_labels(sqlite_session) == set()
-
-
-def test_rollback_keeps_evicted_row_revoked_after_user_revoke(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
-    first = _issue_sessions(issuer, ["a"])[0]
-
-    def user_revokes_first_then_cache_fails() -> None:
-        with sqlite_session_factory() as session:
-            session.execute(
-                update(OpenAPIOAuthAccessToken)
-                .where(OpenAPIOAuthAccessToken.id == first.token_id)
-                .values(token_hash=None)
-            )
-            session.commit()
-        raise _CacheDeleteError
-
-    redis.before_next_delete = user_revokes_first_then_cache_fails
-
-    with pytest.raises(_CacheDeleteError):
-        _issue_sessions(issuer, ["b"])
-
-    sqlite_session.expire_all()
-    assert _live_token_ids(sqlite_session) == set()

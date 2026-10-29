@@ -220,7 +220,7 @@ class RefreshTokenGrantHandler:
 
     The token is read without a lock to find its grant; ``rotate_token`` then
     re-checks and spends it under the account lock, the same lock revocation
-    and the session cap take, so a revoked grant never comes back.
+    takes, so a revoked grant never comes back.
     """
 
     def __init__(
@@ -253,7 +253,7 @@ class RefreshTokenGrantHandler:
         record = self._find(client, request)
         account = _active_account(self._accounts, record.account_id)
         # The access token is keyed by the account's current email; a changed one names another grant.
-        # Such a grant, like one without a workspace, can never refresh again, so it frees its session slot.
+        # Such a grant, like one without a workspace, can never refresh again, so it is ended.
         if account.email != record.subject_email:
             self._end_dead_grant(record)
         if record.workspace_id is None:

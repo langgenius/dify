@@ -25,10 +25,6 @@ DEFAULT_OAUTH_TTL_DAYS: Final = 14
 MIN_OAUTH_TTL_DAYS: Final = 1
 MAX_OAUTH_TTL_DAYS: Final = 365
 
-DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 15
-MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 1
-MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 100
-
 DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 24
 MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 1
 MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 8760
@@ -1180,27 +1176,6 @@ class AuthConfig(BaseSettings):
             default=DEFAULT_OAUTH_TTL_DAYS,
             minimum=MIN_OAUTH_TTL_DAYS,
             maximum=MAX_OAUTH_TTL_DAYS,
-        )
-
-    OAUTH_MAX_TOKENS_PER_ACCOUNT: int = Field(
-        description="Max live OAuth sessions per account, across device and browser logins; issuing one past the "
-        "cap revokes the session with the oldest login or refresh. "
-        f"Values outside {MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT}-{MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT} are clamped; "
-        "a non-integer falls back to the default.",
-        ge=MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT,
-        le=MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT,
-        default=DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT,
-    )
-
-    @field_validator("OAUTH_MAX_TOKENS_PER_ACCOUNT", mode="before")
-    @classmethod
-    def _clamp_oauth_max_tokens_per_account(cls, v: object) -> int:
-        return _clamp_int_setting(
-            "OAUTH_MAX_TOKENS_PER_ACCOUNT",
-            v,
-            default=DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT,
-            minimum=MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT,
-            maximum=MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT,
         )
 
     ENABLE_OAUTH_AUTHORIZATION_CODE: bool = Field(

@@ -360,9 +360,7 @@ def _world(
         if after_find is None
         else _HookedRefreshTokens(session_factory=factory, after_find=after_find)
     )
-    console_sessions = SQLAlchemyOAuthDeviceTokenRepository(
-        session_factory=factory, redis=cache, max_sessions_per_account=15
-    )
+    console_sessions = SQLAlchemyOAuthDeviceTokenRepository(session_factory=factory, redis=cache)
     accounts = FakeAccounts()
     revoker = GrantRevoker(session_factory=factory, redis=cache, refresh=refresh)
     usage = _RecordingClientUsage()

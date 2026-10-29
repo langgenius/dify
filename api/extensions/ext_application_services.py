@@ -414,7 +414,6 @@ def _build_oauth_services(
     token_repository = SQLAlchemyOAuthDeviceTokenRepository(
         session_factory=database_client,
         redis=redis,
-        max_sessions_per_account=dify_config.OAUTH_MAX_TOKENS_PER_ACCOUNT,
     )
     tokens = OAuthDeviceTokenIssuanceGateway(
         tokens=token_repository,

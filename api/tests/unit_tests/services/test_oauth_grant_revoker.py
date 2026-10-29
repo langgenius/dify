@@ -91,9 +91,7 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> _Harness:
     raw = _RawRedis()
     redis = RedisClientWrapper()
     redis.initialize(raw)  # type: ignore[arg-type]
-    tokens = SQLAlchemyOAuthDeviceTokenRepository(
-        session_factory=sqlite_session_factory, redis=redis, max_sessions_per_account=15
-    )
+    tokens = SQLAlchemyOAuthDeviceTokenRepository(session_factory=sqlite_session_factory, redis=redis)
     refresh = SQLAlchemyOAuthRefreshTokenRepository(session_factory=sqlite_session_factory)
     return _Harness(
         issuer=OAuthDeviceTokenIssuanceGateway(tokens=tokens, ttl_policy=_TTLPolicy()),
