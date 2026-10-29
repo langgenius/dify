@@ -424,7 +424,7 @@ class TestAuthorizationCodeGrantCases:
         assert (row.account_id, row.workspace_id, row.client_id) == (ACCOUNT_ID, WORKSPACE_ID, WEB_ID)
         assert (row.subject_email, row.device_label) == (access.subject_email, access.device_label)
         assert access.device_label.startswith("QwenWork (")
-        _assert_close(datetime.fromisoformat(login.payload["expires_at"]), datetime.now(UTC) + timedelta(hours=24))
+        _assert_close(datetime.fromisoformat(login.payload["expires_at"]), datetime.now(UTC) + timedelta(hours=1))
         _assert_close(row.expires_at, datetime.now(UTC) + timedelta(days=30))
         assert world.usage.marked == [WEB_ID]
 

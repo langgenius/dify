@@ -28,7 +28,7 @@ def test_oauth_ttl_days_clamps_or_falls_back_instead_of_failing(configured: str,
     ("setting", "configured", "expected"),
     [
         ("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", "999999", 8760),
-        ("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", "", 24),
+        ("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", "", 1),
         ("OAUTH_AUTHORIZATION_CODE_TTL_SECONDS", "0", 60),
         ("OAUTH_AUTHORIZATION_CODE_TTL_SECONDS", "1000", 600),
         ("OAUTH_REFRESH_TOKEN_TTL_DAYS", "1000", 365),

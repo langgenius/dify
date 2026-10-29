@@ -148,7 +148,7 @@ class DictRedis:
 @dataclass(frozen=True)
 class FakeTokenSettings:
     authorization_code_enabled: bool = True
-    auth_code_access_token_lifetime: timedelta = timedelta(hours=24)
+    auth_code_access_token_lifetime: timedelta = timedelta(hours=1)
     authorization_code_ttl: timedelta = timedelta(seconds=600)
     refresh_token_lifetime: timedelta = timedelta(days=30)
 
