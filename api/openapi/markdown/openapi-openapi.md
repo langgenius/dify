@@ -629,9 +629,9 @@ Upload a file to use as an input variable when running the app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| include_secret | query | Include secret values in plaintext in the exported DSL | No | boolean |
-| preserve_agent_bindings | query | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged. false: every Agent is packaged, as the console does, for moving the App to another workspace | No | boolean, <br>**Default:** true |
-| workflow_id | query | Export a specific workflow version instead of the current draft | No | string (uuid) |
+| include_secret | query | Include secret values in plaintext in the exported DSL. Ignored for Agent Apps, which export the Agent's current state | No | boolean |
+| preserve_agent_bindings | query | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged. false: every Agent is packaged, as the console does, for moving the App to another workspace. Ignored for Agent Apps, which export the Agent's current state | No | boolean, <br>**Default:** true |
+| workflow_id | query | Export a specific workflow version instead of the current draft. Ignored for Agent Apps, which export the Agent's current state | No | string (uuid) |
 | app_id | path |  | Yes | string |
 
 #### Responses
@@ -2519,9 +2519,9 @@ Query parameters for GET /apps/<app_id>/package.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| include_secret | boolean | Include secret values in plaintext in the exported DSL | No |
-| preserve_agent_bindings | boolean, <br>**Default:** true | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged. false: every Agent is packaged, as the console does, for moving the App to another workspace | No |
-| workflow_id | string | Export a specific workflow version instead of the current draft | No |
+| include_secret | boolean | Include secret values in plaintext in the exported DSL. Ignored for Agent Apps, which export the Agent's current state | No |
+| preserve_agent_bindings | boolean, <br>**Default:** true | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged. false: every Agent is packaged, as the console does, for moving the App to another workspace. Ignored for Agent Apps, which export the Agent's current state | No |
+| workflow_id | string | Export a specific workflow version instead of the current draft. Ignored for Agent Apps, which export the Agent's current state | No |
 
 #### AppPackageImportPayload
 
