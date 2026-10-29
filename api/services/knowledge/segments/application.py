@@ -768,7 +768,7 @@ class SegmentMutationService:
         if not previous.enabled and args.enabled is not True:
             raise ValueError("Can't update disabled segment")
         content = args.content or previous.content
-        answer = args.answer or previous.answer
+        answer = args.answer if "answer" in args.model_fields_set else previous.answer
         content_changed = content != previous.content
         keyword_changed = bool(args.keywords) and Counter(previous.keywords or ()) != Counter(args.keywords or ())
         changes: dict[str, object] = {

@@ -1567,16 +1567,19 @@ def test_service_api_child_index_failure_preserves_rows_and_legacy_errors(
     [
         ({"answer": "new answer"}, "new answer"),
         ({"content": "new question", "answer": "new answer"}, "new answer"),
-        # An omitted answer keeps the stored one, like omitted content.
+        # An omitted answer keeps the stored one.
         ({"content": "new question"}, "answer"),
         ({"keywords": ["keyword"]}, "answer"),
+        # An explicit answer is saved as sent, even when it is empty or null.
+        ({"answer": ""}, ""),
+        ({"content": "new question", "answer": None}, None),
     ],
 )
 def test_service_api_partial_qa_update_uses_shared_word_count_and_indexing(
     indexing_probe: IndexingProbe,
     sqlite_session_factory: sessionmaker[Session],
     values: dict[str, object],
-    answer: str,
+    answer: str | None,
 ) -> None:
     app, _, _ = indexing_probe
     with sqlite_session_factory.begin() as session:
@@ -1607,7 +1610,7 @@ def test_service_api_partial_qa_update_uses_shared_word_count_and_indexing(
         )
         assert updated.content == values.get("content", "question")
         assert updated.answer == answer
-        assert updated.word_count == len(updated.content) + len(answer)
+        assert updated.word_count == len(updated.content) + len(answer or "")
         assert document.word_count == updated.word_count
         if "content" in values:
             assert updated.tokens == updated.word_count
