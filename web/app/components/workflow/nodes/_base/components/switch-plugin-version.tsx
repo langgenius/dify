@@ -95,8 +95,6 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   )
   const loadingVersions = requestedOpen && versionsQuery.isPending
 
-  if (!marketplace) return null
-
   return (
     <div
       className={cn('flex w-fit items-center justify-center', className)}
@@ -195,7 +193,7 @@ function PluginVersionInstallConfirmation({
   selection,
   onInstalled,
 }: {
-  marketplace: MarketplaceLinks
+  marketplace: MarketplaceLinks | null
   selection: PluginVersionSelection
   onInstalled: (version: PluginVersionSelection['target']['version']) => void
 }) {
@@ -232,20 +230,22 @@ function PluginVersionInstallConfirmation({
         </div>
       </DialogBody>
       <DialogFooter>
-        <Link
-          className="me-auto flex items-center justify-center gap-1"
-          href={marketplace.plugin({
-            org: selection.plugin.declaration.author,
-            name: selection.plugin.declaration.name,
-          })}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span className="system-xs-regular text-xs text-text-accent">
-            {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
-          </span>
-          <span className="i-ri-external-link-line size-3 text-text-accent" />
-        </Link>
+        {marketplace && (
+          <Link
+            className="me-auto flex items-center justify-center gap-1"
+            href={marketplace.plugin({
+              org: selection.plugin.declaration.author,
+              name: selection.plugin.declaration.name,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span className="system-xs-regular text-xs text-text-accent">
+              {t(($) => $['nodes.agent.installPlugin.changelog'], { ns: 'workflowAgent' })}
+            </span>
+            <span className="i-ri-external-link-line size-3 text-text-accent" />
+          </Link>
+        )}
         {!mutation.isPending && (
           <DialogClose render={<Button />}>
             {t(($) => $['nodes.agent.installPlugin.cancel'], { ns: 'workflowAgent' })}

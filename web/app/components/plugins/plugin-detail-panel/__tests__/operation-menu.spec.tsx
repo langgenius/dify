@@ -20,7 +20,7 @@ describe('OperationMenu', () => {
   const mockOnViewReadme = vi.fn()
   const defaultProps = {
     source: PluginSource.github,
-    pluginId: 'test/repo',
+    marketplacePlugin: { org: 'test', name: 'repo' },
     repo: 'test/repo',
     onInfo: mockOnInfo,
     onCheckVersion: mockOnCheckVersion,

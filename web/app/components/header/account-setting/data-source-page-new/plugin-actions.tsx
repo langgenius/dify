@@ -210,7 +210,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
         onCheckVersion={handleUpdate}
         onRemove={modalStates.showDeleteConfirm}
         onViewReadme={detail.plugin_unique_identifier ? handleViewReadme : undefined}
-        pluginId={detail.plugin_id}
+        marketplacePlugin={{ org: detail.declaration.author, name: detail.declaration.name }}
         repo={detail.meta?.repo}
         triggerSize="xs"
         showCheckVersion={canUpdatePlugin}

@@ -322,7 +322,14 @@ function ProviderCardActions(props: Props) {
         onInfo={handleInfo}
         onCheckVersion={handleUpdate}
         onRemove={() => setShowDeleteConfirm(true)}
-        pluginId={pluginID}
+        marketplacePlugin={
+          organization && pluginName
+            ? {
+                org: props.detail?.declaration.author ?? organization,
+                name: props.detail?.declaration.name ?? pluginName,
+              }
+            : undefined
+        }
         repo={detail?.meta?.repo}
         align="start"
         destructiveRemove

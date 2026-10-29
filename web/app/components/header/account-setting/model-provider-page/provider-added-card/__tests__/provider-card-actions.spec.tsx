@@ -393,7 +393,7 @@ it.each([PluginSource.marketplace, PluginSource.local])(
     if (source === PluginSource.marketplace) {
       expect(link).toBeInTheDocument()
       const url = new URL(link!.getAttribute('href')!, window.location.origin)
-      expect(url.pathname).toBe(`/plugins/${installed.plugin_id}`)
+      expect(url.pathname).toBe('/plugins/Dify/plugin-entity')
       expect(url.searchParams.get('language')).toBe('en-US')
     } else expect(link).not.toBeInTheDocument()
   },

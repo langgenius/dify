@@ -368,7 +368,7 @@ const DetailHeader = ({
               onCheckVersion={handleUpdate}
               onRemove={modalStates.showDeleteConfirm}
               onViewReadme={canViewReadme ? handleViewReadme : undefined}
-              pluginId={plugin_id}
+              marketplacePlugin={{ org: author, name }}
               repo={meta?.repo}
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
@@ -384,15 +384,17 @@ const DetailHeader = ({
       </div>
 
       {/* Deprecation Notice */}
-      {isFromMarketplace && marketplace && (
+      {isFromMarketplace && (
         <DeprecationNotice
           status={status}
           deprecatedReason={deprecated_reason}
-          alternativePluginId={alternative_plugin_id}
-          alternativePluginURL={marketplace.page(`/plugins/${alternative_plugin_id}`, {
-            language: currentLocale,
-            theme,
-          })}
+          alternativePluginId={marketplace ? alternative_plugin_id : ''}
+          alternativePluginURL={
+            marketplace?.page(`/plugins/${alternative_plugin_id}`, {
+              language: currentLocale,
+              theme,
+            }) ?? ''
+          }
           className="mt-3"
         />
       )}

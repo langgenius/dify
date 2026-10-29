@@ -1,12 +1,11 @@
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
-import type { Plugin } from '@/app/components/plugins/types'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { env } from '@/env'
 
 type MarketplaceUrlParams = Record<string, string | undefined>
 
-type MarketplacePluginRef = Pick<MarketplacePlugin, 'org' | 'name'> & {
-  type?: MarketplacePlugin['type'] | Plugin['type']
+export type MarketplacePluginRef = Pick<MarketplacePlugin, 'org' | 'name'> & {
+  type?: MarketplacePlugin['type']
 }
 
 type MarketplaceTemplateRef = Pick<

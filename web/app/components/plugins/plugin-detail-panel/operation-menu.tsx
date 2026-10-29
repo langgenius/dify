@@ -1,5 +1,6 @@
 'use client'
 import type { MenuContentProps } from '@langgenius/dify-ui/menu'
+import type { MarketplacePluginRef } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -19,7 +20,7 @@ import { PluginSource } from '../types'
 type OperationMenuProps = Readonly<
   Pick<MenuContentProps, 'side' | 'align'> & {
     source: PluginSource
-    pluginId: string
+    marketplacePlugin?: MarketplacePluginRef
     repo?: string
     onInfo: () => void
     onCheckVersion: () => void
@@ -36,7 +37,7 @@ type OperationMenuProps = Readonly<
 
 export function OperationMenu({
   source,
-  pluginId,
+  marketplacePlugin,
   repo,
   onInfo,
   onCheckVersion,
@@ -59,8 +60,8 @@ export function OperationMenu({
   const showCheckVersionAction = showCheckVersion && source === PluginSource.github
   const detailUrl = !marketplace
     ? undefined
-    : source === PluginSource.marketplace
-      ? marketplace.page(`/plugins/${pluginId}`, { language: locale, theme })
+    : source === PluginSource.marketplace && marketplacePlugin
+      ? marketplace.plugin(marketplacePlugin, { language: locale, theme })
       : source === PluginSource.github && repo
         ? `https://github.com/${repo}`
         : undefined
