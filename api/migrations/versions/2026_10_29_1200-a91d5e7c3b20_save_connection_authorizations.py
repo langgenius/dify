@@ -1,4 +1,4 @@
-"""Allow saving connection choices before creating a Run.
+"""Remove the obsolete Run reference from saved App connection choices.
 
 Revision ID: a91d5e7c3b20
 Revises: f3a6b9c2d108
@@ -18,11 +18,11 @@ depends_on = None
 
 def upgrade() -> None:
     with op.batch_alter_table("app_connections") as batch:
-        batch.alter_column("source_run_id", existing_type=StringUUID(), nullable=True)
+        batch.drop_column("source_run_id")
 
 
 def downgrade() -> None:
-    # The legacy schema cannot represent defaults saved without an execution.
-    op.execute(sa.text("DELETE FROM app_connections WHERE source_run_id IS NULL"))
+    # Run provenance cannot be reconstructed. Reset only defaults before restoring the legacy constraint.
+    op.execute(sa.text("DELETE FROM app_connections"))
     with op.batch_alter_table("app_connections") as batch:
-        batch.alter_column("source_run_id", existing_type=StringUUID(), nullable=False)
+        batch.add_column(sa.Column("source_run_id", StringUUID(), nullable=False))

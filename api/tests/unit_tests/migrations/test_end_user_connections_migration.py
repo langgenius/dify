@@ -2,6 +2,7 @@ import importlib.util
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Protocol, cast
+from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
@@ -113,6 +114,8 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
         migration.upgrade()
         provenance = load_migration(connection, FEATURE_MIGRATION)
         provenance.upgrade()
+        configuration = load_migration(connection, CONFIGURATION_MIGRATION)
+        configuration.upgrade()
         with Session(connection) as session:
             credential = new_connection()
             session.add(credential)
@@ -120,6 +123,7 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
             session.add(new_app_selection(credential))
             session.flush()
             session.commit()
+        configuration.downgrade()
         provenance.downgrade()
         migration.downgrade()
         assert sa.inspect(connection).get_table_names() == ["builtin_tool_providers"]
@@ -128,6 +132,7 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
         ]
         migration.upgrade()
         provenance.upgrade()
+        configuration.upgrade()
         assert set(sa.inspect(connection).get_table_names()) == TABLE_NAMES | {"builtin_tool_providers"}
     engine.dispose()
 
@@ -154,7 +159,7 @@ def test_revision_migration_preserves_legacy_connection_data() -> None:
     engine.dispose()
 
 
-def test_configuration_migration_preserves_legacy_defaults_and_supports_saves_without_runs() -> None:
+def test_configuration_migration_removes_run_dependency_and_preserves_choices() -> None:
     engine = sa.create_engine("sqlite://")
     with engine.begin() as connection:
         load_migration(connection).upgrade()
@@ -163,21 +168,26 @@ def test_configuration_migration_preserves_legacy_defaults_and_supports_saves_wi
         legacy = new_app_selection(credential)
         credentials = sa.Table("end_user_connections", sa.MetaData(), autoload_with=connection)
         defaults = sa.Table("app_connections", sa.MetaData(), autoload_with=connection)
-        for table, record in ((credentials, credential), (defaults, legacy)):
-            connection.execute(
-                sa.insert(table).values({column.name: getattr(record, column.name) for column in table.columns})
-            )
+        credential_values = {column.name: getattr(credential, column.name) for column in credentials.columns}
+        legacy_values = {
+            column.name: getattr(legacy, column.name) for column in defaults.columns if column.name != "source_run_id"
+        }
+        connection.execute(sa.insert(credentials).values(credential_values))
+        connection.execute(sa.insert(defaults).values({**legacy_values, "source_run_id": str(uuid4())}))
         migration = load_migration(connection, CONFIGURATION_MIGRATION)
         migration.upgrade()
         defaults = sa.Table("app_connections", sa.MetaData(), autoload_with=connection)
-        assert defaults.c.source_run_id.nullable
-        assert connection.execute(sa.select(defaults.c.source_run_id)).scalar_one() == legacy.source_run_id
+        assert "source_run_id" not in defaults.c
+        assert dict(connection.execute(sa.select(defaults)).mappings().one()) == legacy_values
         saved = new_app_selection(credential)
         saved.node_id = "new-selection"
-        saved.source_run_id = None
         connection.execute(
             sa.insert(defaults).values({column.name: getattr(saved, column.name) for column in defaults.columns})
         )
+        assert connection.scalar(sa.select(sa.func.count()).select_from(defaults)) == 2
         migration.downgrade()
-        assert connection.execute(sa.select(defaults.c.id)).scalars().all() == [legacy.id]
+        restored = sa.Table("app_connections", sa.MetaData(), autoload_with=connection)
+        assert not restored.c.source_run_id.nullable
+        assert connection.scalar(sa.select(sa.func.count()).select_from(restored)) == 0
+        assert dict(connection.execute(sa.select(credentials)).mappings().one()) == credential_values
     engine.dispose()

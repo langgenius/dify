@@ -68,7 +68,6 @@ def save_choices(harness: OAuthHarness, connection_ids: list[str]) -> None:
                     node_id=f"tool-{index}",
                     provider=PROVIDER,
                     connection_id=connection_id,
-                    source_run_id=str(uuid4()),
                 )
             )
             session.add(

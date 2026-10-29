@@ -460,7 +460,6 @@ def test_missing_selection_never_uses_saved_defaults(
                 node_id="tool-1",
                 provider=connection.provider,
                 connection_id=connection.id,
-                source_run_id=str(uuid4()),
             )
         )
         if saved_scope == "session":

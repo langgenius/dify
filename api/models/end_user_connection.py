@@ -182,8 +182,7 @@ class AppConnection(DefaultFieldsDCMixin, TypeBase):
 
     Replace the whole set under a stable owner lock, including for an empty set.
     Authorization is recorded separately for the App-scoped EndUser, shared by all
-    Conversations. source_run_id preserves legacy provenance only; execution never
-    updates defaults. Run references never cascade into historical execution records.
+    Conversations. Execution never updates defaults; saved choices do not reference Runs.
     workflow_id and node_id identify the published graph version where this choice
     was saved. Changed authorization requirements require reconfirmation; republishing the
     same requirements preserves the choice. Callers validate Workflow ownership and node authentication requirements
@@ -213,7 +212,6 @@ class AppConnection(DefaultFieldsDCMixin, TypeBase):
     end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     connection_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    source_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
 
 class SessionConnection(DefaultFieldsDCMixin, TypeBase):

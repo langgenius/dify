@@ -375,7 +375,6 @@ def test_save_authorizes_without_execution_or_credential_checks(
         assert acceptance.reason == "approved"
         saved = session.scalar(sa.select(AppConnection))
         assert saved is not None
-        assert saved.source_run_id is None
         assert session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun)) == 0
     query: dict[str, str] = {"conversation_id": conversation_id} if conversation_id is not None else {}
     assert client.get("/api/connections/configuration", query_string=query).get_json() == response.get_json()

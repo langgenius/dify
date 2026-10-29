@@ -274,7 +274,6 @@ def test_claim_preserves_credentials_ids_and_independent_choices(
         assert len(defaults) == 1
         assert defaults[0].end_user_id == harness.account.end_user_id
         assert defaults[0].connection_id == (existing.id if account_defaults else second.id)
-        assert defaults[0].source_run_id is None
     assert base.service.get_connection(harness.account, first.id).id == first.id
     assert harness.claim().get_json()["data"][0]["claimed_connections"] == 0
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)

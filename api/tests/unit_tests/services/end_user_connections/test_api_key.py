@@ -204,7 +204,6 @@ def test_deleting_api_key_cascades_live_selections_only(harness: ConnectionHarne
                 node_id="tool-1",
                 provider=connection.provider,
                 connection_id=connection.id,
-                source_run_id=str(uuid4()),
             )
         )
         session.add(
