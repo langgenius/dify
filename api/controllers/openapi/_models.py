@@ -673,19 +673,25 @@ class AppDslExportQuery(BaseModel):
     )
 
 
+_IGNORED_FOR_AGENT_APPS: Final = "Ignored for Agent Apps, which export the Agent's current state"
+
+
 class AppPackageExportQuery(BaseModel):
     """Query parameters for GET /apps/<app_id>/package."""
 
-    include_secret: bool = Field(False, description="Include secret values in plaintext in the exported DSL")
+    include_secret: bool = Field(
+        False, description=f"Include secret values in plaintext in the exported DSL. {_IGNORED_FOR_AGENT_APPS}"
+    )
     workflow_id: UUIDStr | None = Field(
-        None, description="Export a specific workflow version instead of the current draft"
+        None,
+        description=f"Export a specific workflow version instead of the current draft. {_IGNORED_FOR_AGENT_APPS}",
     )
     preserve_agent_bindings: bool = Field(
         True,
         description=(
             "true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) "
             "and only inline Agents are packaged. false: every Agent is packaged, as the console does, "
-            "for moving the App to another workspace"
+            f"for moving the App to another workspace. {_IGNORED_FOR_AGENT_APPS}"
         ),
     )
 
