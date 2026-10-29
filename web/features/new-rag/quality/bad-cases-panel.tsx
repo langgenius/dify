@@ -270,16 +270,16 @@ function BadCaseRow({
 
   return (
     <tr className="h-12 border-t border-divider-subtle">
-      <th scope="row" className="truncate pr-3 text-left system-sm-medium text-text-primary">
+      <th scope="row" className="truncate pe-3 text-start system-sm-medium text-text-primary">
         {item.question}
       </th>
-      <td className="pr-3">
+      <td className="pe-3">
         <BadCaseStatus status={item.status} />
       </td>
-      <td className="pr-3 system-xs-regular text-text-secondary">
+      <td className="pe-3 system-xs-regular text-text-secondary">
         <BadCaseReason question={item.question} reason={item.reason} tags={item.tags} />
       </td>
-      <td className="pr-3 system-xs-regular text-text-secondary">
+      <td className="pe-3 system-xs-regular text-text-secondary">
         {formatQualityUpdatedAt(item.updated_at, i18n.language)}
       </td>
       <td>
@@ -390,7 +390,7 @@ export function BadCasesPanel() {
         <div className="mt-2.5 w-full overflow-x-auto pt-3">
           <table
             aria-label={t(($) => $['qualityPage.badCasesTab'], { ns: 'knowledgeQuality' })}
-            className="w-full min-w-202 table-fixed border-collapse text-left"
+            className="w-full min-w-202 table-fixed border-collapse text-start"
           >
             <colgroup>
               <col />
@@ -401,16 +401,16 @@ export function BadCasesPanel() {
             </colgroup>
             <thead>
               <tr className="h-9 text-[11px] leading-4 font-medium text-text-tertiary">
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.reason'], { ns: 'knowledgeQuality' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}
                 </th>
                 <td />
