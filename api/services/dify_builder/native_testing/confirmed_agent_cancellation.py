@@ -23,6 +23,7 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
 )
 from models.enums import CreatorUserRole
+from models.model import App, AppMode
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.native.agent_contracts import AgentNodeAssociation
@@ -30,11 +31,14 @@ from runtime_contracts.builder.native.contracts import CheckpointRef
 from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NativeWorkflowOutcome
 from services.dify_builder.native_testing.confirmed_agent_completion import (
     CANCELLED_CHILD_OBSERVATION,
+    STOP_CONTROL,
     _native_run_id,
     _request,
     _terminal_proof,
     cancelled_parent_proof,
     settled_physical_facts,
+    stop_control_facts,
+    stop_observation_matches,
 )
 from services.dify_builder.native_testing.confirmed_agent_continuation import validate_parent_snapshot
 from services.dify_builder.native_testing.private_reads import validate_private_read
@@ -416,6 +420,8 @@ class ConfirmedAgentCancellation:
     def settle(self, *, ref):
         if self.settle_terminal(ref=ref):
             return True
+        if self.settle_control_pause(ref=ref):
+            return True
         with self.loader.session_factory() as sql:
             owned, scope = self.loader._load(sql, ref=ref, lock=False, settlement=True)
             request = _request(sql, actor=self.commands.actor, ref=ref)
@@ -482,6 +488,132 @@ class ConfirmedAgentCancellation:
                 output_result_ref=None,
             ).model_dump(mode="json")
             # cancellation/cleanup state and capacity remain with C02.
+            return True
+
+    def settle_control_pause(self, *, ref):
+        """Acknowledge user stop separately from the child's actual terminal status.
+
+        Read SDK/storage with no SQL writer. Commit its original pause/child
+        receipt before ordinary stop can retire resources. Release the C04 lock
+        before calling that owner; then lock C04 before rereading its durable
+        Run stop fence. A stopped Run cannot be resumed or revived by late saves.
+        """
+        with self.loader.session_factory() as sql:
+            owned, _ = self.loader._load(sql, ref=ref, lock=False, settlement=True)
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            facts = stop_control_facts(sql, request=request, ref=ref)
+            if facts is None:
+                return False
+            native, node, _, binding = facts
+            records = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
+            if len(records) > 1 or (records and not isinstance(records[0], dict)):
+                return False
+            observation = records[0] if records else None
+            if observation is not None and not stop_observation_matches(observation, binding):
+                return False
+            _, pause = self._rows(sql, owned, native.id, lock=False)
+            pause_ref = (pause.id, pause.state_object_key) if pause is not None else None
+            native_status = native.status
+            if (
+                observation is not None
+                and native_status == "paused"
+                and (
+                    pause_ref is None
+                    or observation["pause_id"] != pause_ref[0]
+                    or observation["pause_key_digest"] != canonical_digest(pause_ref[1])
+                )
+            ):
+                return False
+            app = sql.scalar(select(App).where(App.id == request.app_id, App.tenant_id == owned.tenant_id))
+            if app is None:
+                return False
+            mode = AppMode.value_of(app.mode)
+        if observation is None:
+            if native_status != "paused" or pause_ref is None:
+                return False
+            paused = WorkflowResumptionContext.loads(storage.load(pause_ref[1]).decode())
+            runtime = validate_parent_snapshot(state=paused, ref=ref, native_run_id=binding["native_run_id"])
+            if binding["node_execution_id"] not in {
+                entry.execution_id for entry in runtime.graph_execution.node_executions.values()
+            }:
+                return False
+            status = self.commands.backend.client.get_run_sync(binding["child_run_id"])
+            status = RunStatusResponse.model_validate(status.model_dump(mode="json"))
+            if status.run_id != binding["child_run_id"] or status.status not in {"succeeded", "failed", "cancelled"}:
+                return False
+            observation = {
+                **binding,
+                "pause_id": pause_ref[0],
+                "pause_key_digest": canonical_digest(pause_ref[1]),
+                "runtime_digest": canonical_digest(paused.serialized_graph_runtime_state),
+                "source_original_state": "claimed",
+                "child_status": status.status,
+                "child_error_digest": canonical_digest(status.error) if status.error is not None else None,
+                "backend_updated_at": status.updated_at.isoformat(),
+            }
+            with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
+                request = _request(sql, actor=self.commands.actor, ref=ref)
+                if request is None:
+                    return False
+                fresh = stop_control_facts(sql, request=request, ref=ref)
+                if fresh is None or fresh[3] != binding:
+                    return False
+                _, current_pause = self._rows(sql, owned, binding["native_run_id"], lock=True)
+                if current_pause is None or (current_pause.id, current_pause.state_object_key) != pause_ref:
+                    return False
+                current = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
+                if current and current != [observation]:
+                    return False
+                if not current:
+                    request.observations = [*request.observations, {STOP_CONTROL: observation}]
+        if observation.get("child_status") not in {"succeeded", "failed", "cancelled"}:
+            return False
+        if native_status == "paused":
+            # This owner commits the Run lock/fence, forms and pause invalidation,
+            # then publishes history and retires resources outside its writer.
+            from extensions.ext_redis import redis_client
+            from services.app_task_service import AppTaskService
+
+            AppTaskService.stop_workflow_run(
+                tenant_id=self.commands.actor.tenant_id,
+                app_id=owned.app_id,
+                run_id=binding["native_run_id"],
+                app_mode=mode,
+                owner=(CreatorUserRole.ACCOUNT, self.commands.actor.account_id),
+                redis=redis_client,
+            )
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            facts = stop_control_facts(sql, request=request, ref=ref)
+            if facts is None:
+                return False
+            native, _, source, current = facts
+            if native.status != "stopped" or current != binding:
+                return False
+            if sql.scalar(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id == native.id)) is not None:
+                return False
+            saved = [record[STOP_CONTROL] for record in request.observations if STOP_CONTROL in record]
+            if saved != [observation]:
+                return False
+            source.state = "cancelled"  # Preserve its original lease and delivery audit.
+            state = invocation_state(sql, ref, owned.tenant_id)
+            state.pending_ids, state.wait_reason = [], None
+            state.outcome = NativeWorkflowOutcome(
+                status="stopped",
+                ref=ref,
+                native_run_id=native.id,
+                checkpoint_ref=None,
+                pending_operation_ids=(),
+                reason_code="native_cancelled",
+                wait_reason=None,
+                native_status="stopped",
+                output_result_ref=None,
+            ).model_dump(mode="json")
+            request.state = "sealed"
             return True
 
     def settle_terminal(self, *, ref):
