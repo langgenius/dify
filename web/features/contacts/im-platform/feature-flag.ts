@@ -1,4 +1,4 @@
-import { ENABLE_FEATURE_PREVIEW } from '@/config'
+import { ENABLE_HITL_IM } from '@/config'
 
 export const isContactsImPlatformEnabled = (imCentrallyManaged: boolean) =>
-  ENABLE_FEATURE_PREVIEW && !imCentrallyManaged
+  ENABLE_HITL_IM && !imCentrallyManaged

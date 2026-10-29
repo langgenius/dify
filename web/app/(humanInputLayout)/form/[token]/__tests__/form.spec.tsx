@@ -9,6 +9,14 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { TransferMethod } from '@/types/app'
 import FormContent from '../form'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
 const { mockGetForm, mockSubmitForm, uploadState } = vi.hoisted(() => ({
   mockGetForm: vi.fn(),
   mockSubmitForm: vi.fn(),
@@ -43,7 +51,7 @@ const uploadedFile: FileEntity = {
 }
 const completeUpload = () => act(() => uploadState.onChange?.([uploadedFile]))
 
-describe('Human input share form', () => {
+describe.each([false, true])('Human input share form with IM gate %s', (enabled) => {
   const originalTitle = document.title
   afterEach(() => {
     document.title = originalTitle
@@ -97,6 +105,7 @@ describe('Human input share form', () => {
   }
 
   beforeEach(() => {
+    releaseGate.enabled = enabled
     mockGetForm.mockReset()
     mockSubmitForm.mockReset()
     mockGetForm.mockResolvedValue(formData)

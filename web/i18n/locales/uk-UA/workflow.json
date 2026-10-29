@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Не вдалося зберегти перенесений робочий процес. Перегляньте поточну чернетку та спробуйте ще раз.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Залиште ввімкненим принаймні один канал",
+  "nodes.humanInputV2.disabled": "Human Input v2 недоступний, поки HITL IM вимкнено.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Текст повідомлення може містити лише один URL запиту.",
   "nodes.humanInputV2.error.requestURLRequired": "Вставте URL запиту в текст повідомлення.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Усі контакти робочого простору",

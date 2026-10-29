@@ -5,7 +5,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import HumanInputNodeBranches from '@/app/components/workflow/nodes/human-input/shared/node-branches'
+import { ENABLE_HITL_IM } from '@/config'
 import { useContactRecipientOptionProvider } from './contact-provider'
+import { HumanInputV2Disabled } from './disabled'
 import { deriveRecipientSummary } from './recipient-utils'
 
 const HumanInputV2NodeContent = ({
@@ -126,7 +128,20 @@ const HumanInputV2NodeContent = ({
   )
 }
 
-export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
+const EnabledHumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
   const { provider, workspaceId } = useContactRecipientOptionProvider()
   return <HumanInputV2NodeContent key={workspaceId} {...props} provider={provider} />
+}
+
+export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
+  if (!ENABLE_HITL_IM) {
+    return (
+      <>
+        <HumanInputV2Disabled className="mx-2.5 my-1" />
+        <HumanInputNodeBranches {...props} />
+      </>
+    )
+  }
+
+  return <EnabledHumanInputV2Node {...props} />
 }

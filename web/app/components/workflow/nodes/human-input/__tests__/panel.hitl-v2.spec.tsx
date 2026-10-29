@@ -3,9 +3,19 @@ import type useConfig from '../hooks/use-config'
 import type { HumanInputNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import Panel from '../panel'
 import { DeliveryMethodType, UserActionButtonType } from '../types'
+
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
 const mockUseStore = vi.hoisted(() => vi.fn())
@@ -279,6 +289,7 @@ const renderPanel = (data: HumanInputNodeType = createData()) => {
 
 describe('human-input/panel', () => {
   beforeEach(() => {
+    mockHitlIm.enabled = true
     vi.clearAllMocks()
     mockUseStore.mockImplementation((selector) => selector({ nodePanelWidth: 480 }))
     mockUseAvailableVarList.mockImplementation(
@@ -336,5 +347,21 @@ describe('human-input/panel', () => {
     expect(
       screen.queryByText('workflow.nodes.humanInputMigration.oldVersion'),
     ).not.toBeInTheDocument()
+  })
+
+  it('keeps legacy delivery editing available without migration UI while disabled', async () => {
+    mockHitlIm.enabled = false
+    const user = userEvent.setup()
+    const config = createConfigResult()
+    mockUseConfig.mockReturnValue(config)
+    renderPanel()
+
+    expect(
+      screen.queryByText('workflow.nodes.humanInputMigration.oldVersion'),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'delivery-method:editable' }))
+    expect(config.handleDeliveryMethodChange).toHaveBeenCalledWith([
+      { id: 'dm-email', type: DeliveryMethodType.Email, enabled: true },
+    ])
   })
 })

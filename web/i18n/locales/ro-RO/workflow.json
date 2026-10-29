@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Fluxul de lucru migrat nu a putut fi salvat. Verificați schița curentă și încercați din nou.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Păstrează cel puțin un canal activ",
+  "nodes.humanInputV2.disabled": "Human Input v2 nu este disponibil când HITL IM este dezactivat.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Corpul mesajului poate conține un singur URL al cererii.",
   "nodes.humanInputV2.error.requestURLRequired": "Inserează un URL al cererii în corpul mesajului.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Toate contactele din spațiul de lucru",

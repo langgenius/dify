@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Le workflow migré n’a pas pu être enregistré. Vérifiez le brouillon actuel et réessayez.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Gardez au moins un canal activé",
+  "nodes.humanInputV2.disabled": "Human Input v2 est indisponible lorsque HITL IM est désactivé.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Le corps du message ne peut contenir qu’une seule URL de demande.",
   "nodes.humanInputV2.error.requestURLRequired": "Insérez une URL de demande dans le corps du message.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Tous les contacts de l’espace de travail",

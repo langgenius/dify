@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Nie udało się zapisać zmigrowanego przepływu pracy. Sprawdź bieżący szkic i spróbuj ponownie.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Pozostaw włączony co najmniej jeden kanał",
+  "nodes.humanInputV2.disabled": "Human Input v2 jest niedostępny, gdy HITL IM jest wyłączony.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Treść wiadomości może zawierać tylko jeden adres URL wniosku.",
   "nodes.humanInputV2.error.requestURLRequired": "Wstaw adres URL wniosku w treści wiadomości.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Wszystkie kontakty w obszarze roboczym",

@@ -17,6 +17,7 @@ import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-sche
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { getNodePersistedType } from '@/app/components/workflow/utils/node'
+import { ENABLE_HITL_IM } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
 import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
@@ -38,9 +39,10 @@ export const useWorkflowNodeCatalog = () => {
   // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
   const shouldUseAgentV2 = agentV2Enabled && (!isChatflow || isAgentV2InChatflowEnabled())
   const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
-  const useLegacyHumanInput = useStore(
+  const canContinueLegacyHumanInput = useStore(
     (state) => getHumanInputCreationPolicy(state.getNodes(), true).canAddLegacyHumanInput,
   )
+  const useLegacyHumanInput = !ENABLE_HITL_IM || canContinueLegacyHumanInput
 
   const startNodeMetaData = useMemo(
     () => ({

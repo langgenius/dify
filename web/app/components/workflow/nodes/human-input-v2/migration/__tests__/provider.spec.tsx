@@ -14,6 +14,13 @@ import HumanInputMigrationProvider from '../provider'
 const runtime = vi.hoisted(() => ({
   nodes: [] as Node[],
   edges: [] as never[],
+  releaseEnabled: true,
+}))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return runtime.releaseEnabled
+  },
 }))
 const mocks = vi.hoisted(() => ({
   postMigration: vi.fn(),
@@ -126,6 +133,7 @@ const renderProvider = (canEdit = true) =>
 describe('Human Input migration provider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    runtime.releaseEnabled = true
     runtime.nodes = [createLegacyNode()]
     runtime.edges = []
     mocks.postMigration.mockImplementation(async () => ({
@@ -155,6 +163,22 @@ describe('Human Input migration provider', () => {
         callback?.onSettled?.()
       },
     )
+  })
+
+  it('keeps the original canvas without migration UI or writes when the release gate is off', () => {
+    runtime.releaseEnabled = false
+    render(
+      <HumanInputMigrationProvider canEdit>
+        <div>Original workflow canvas</div>
+      </HumanInputMigrationProvider>,
+    )
+
+    expect(screen.getByText('Original workflow canvas')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(mocks.postMigration).not.toHaveBeenCalled()
+    expect(mocks.setNodes).not.toHaveBeenCalled()
+    expect(mocks.doSync).not.toHaveBeenCalled()
   })
 
   it('migrates through one shared dialog, syncs once, and derives the completed UI state', async () => {

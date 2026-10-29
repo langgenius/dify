@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "無法儲存遷移後的工作流程。請檢查目前的草稿後重試。",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "至少保留一個管道開啟",
+  "nodes.humanInputV2.disabled": "HITL IM 已關閉，Human Input v2 暫不可用。",
   "nodes.humanInputV2.error.requestURLDuplicate": "內文只能包含一個請求 URL。",
   "nodes.humanInputV2.error.requestURLRequired": "請在內文中插入請求 URL。",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "工作區所有聯絡人",

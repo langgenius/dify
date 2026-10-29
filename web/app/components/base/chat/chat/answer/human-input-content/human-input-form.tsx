@@ -6,6 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ENABLE_HITL_IM } from '@/config'
 import ContentItem from './content-item'
 import {
   getButtonStyle,
@@ -16,7 +17,7 @@ import {
   splitByOutputVar,
 } from './utils'
 
-const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
+const HumanInputFormContent = ({ formData, onSubmit }: HumanInputFormProps) => {
   const { t } = useTranslation(['common'])
   const formToken = formData.form_token
   const contentList = splitByOutputVar(formData.form_content)
@@ -89,6 +90,18 @@ const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
       </div>
     </>
   )
+}
+
+const HumanInputForm = (props: HumanInputFormProps) => {
+  const { t } = useTranslation(['share'])
+  if (!ENABLE_HITL_IM && props.formData.form_version === '2') {
+    return (
+      <p role="status" className="py-2 system-sm-regular text-text-secondary">
+        {t(($) => $['humanInputV2.unavailable'], { ns: 'share' })}
+      </p>
+    )
+  }
+  return <HumanInputFormContent {...props} />
 }
 
 export default React.memo(HumanInputForm)

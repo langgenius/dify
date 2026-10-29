@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import { ENABLE_HITL_IM } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -846,13 +847,28 @@ export const useNodesInteractions = () => {
       if (getNodesReadOnly()) return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      if (!canInsertHumanInput(nodes, nodeType)) {
-        toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
-        return
-      }
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData) return
       const { defaultValue } = nodeMetaData
+      if (
+        !canInsertHumanInput(nodes, nodeType, {
+          ...(defaultValue as Node['data']),
+          ...pluginDefaultValue,
+        })
+      ) {
+        toast.warning(
+          t(
+            ($) =>
+              $[
+                ENABLE_HITL_IM
+                  ? 'nodes.humanInputMigration.disabledReason'
+                  : 'nodes.humanInputV2.disabled'
+              ],
+            { ns: 'workflow' },
+          ),
+        )
+        return
+      }
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
       const shouldCreateInlineAgentBinding =
         nodeType === BlockEnum.AgentV2 &&
@@ -1367,15 +1383,30 @@ export const useNodesInteractions = () => {
       if (getNodesReadOnly()) return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      if (!canInsertHumanInput(nodes, nodeType)) {
-        toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
+      const nodeMetaData = nodesMetaDataMap?.[nodeType]
+      if (!nodeMetaData) return
+      const { defaultValue } = nodeMetaData
+      if (
+        !canInsertHumanInput(nodes, nodeType, {
+          ...(defaultValue as Node['data']),
+          ...pluginDefaultValue,
+        })
+      ) {
+        toast.warning(
+          t(
+            ($) =>
+              $[
+                ENABLE_HITL_IM
+                  ? 'nodes.humanInputMigration.disabledReason'
+                  : 'nodes.humanInputV2.disabled'
+              ],
+            { ns: 'workflow' },
+          ),
+        )
         return
       }
       const currentNode = nodes.find((node) => node.id === currentNodeId)!
       const connectedEdges = getConnectedEdges([currentNode], edges)
-      const nodeMetaData = nodesMetaDataMap?.[nodeType]
-      if (!nodeMetaData) return
-      const { defaultValue } = nodeMetaData
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
       const shouldCreateInlineAgentBinding =
         nodeType === BlockEnum.AgentV2 &&
@@ -1733,7 +1764,17 @@ export const useNodesInteractions = () => {
 
     const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
     if (!canInsertHumanInputNodes(nodes, validatedClipboardElements)) {
-      toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
+      toast.warning(
+        t(
+          ($) =>
+            $[
+              ENABLE_HITL_IM
+                ? 'nodes.humanInputMigration.disabledReason'
+                : 'nodes.humanInputV2.disabled'
+            ],
+          { ns: 'workflow' },
+        ),
+      )
       return
     }
     const reservedNodeTitles = new Set(

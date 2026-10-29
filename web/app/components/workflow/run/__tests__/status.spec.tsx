@@ -6,6 +6,14 @@ import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
 import Status from '../status'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
 const mockDocLink = createDocLinkMock()
 const mockPauseDetails = vi.hoisted(() => vi.fn())
 
@@ -84,6 +92,7 @@ const createPausedDetails = (
 
 describe('Status', () => {
   beforeEach(() => {
+    releaseGate.enabled = true
     vi.resetAllMocks()
     mockPauseDetails.mockImplementation(() => new Promise(() => {}))
   })
@@ -287,4 +296,39 @@ describe('Status', () => {
       )
     },
   )
+  it('keeps legacy links but disables V2 approval links when the release gate is off', async () => {
+    releaseGate.enabled = false
+    mockPauseDetails.mockResolvedValue(
+      createPausedDetails({
+        paused_nodes: [
+          {
+            node_id: 'v1',
+            node_title: 'Legacy',
+            pause_type: {
+              type: 'human_input',
+              form_id: 'legacy',
+              form_version: '1',
+              backstage_input_url: 'https://example.com/form/legacy',
+            },
+          },
+          {
+            node_id: 'v2',
+            node_title: 'V2',
+            pause_type: {
+              type: 'human_input',
+              form_id: 'new',
+              form_version: '2',
+              backstage_input_url: 'https://example.com/form/v2-token',
+            },
+          },
+        ],
+      }),
+    )
+    render(<Status status="paused" workflowRunId="run" />)
+    expect(
+      await screen.findByRole('link', { name: 'https://example.com/form/legacy' }),
+    ).toHaveAttribute('href', 'https://example.com/form/legacy')
+    expect(screen.getByText('share.humanInputV2.unavailable')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /v2-token/ })).not.toBeInTheDocument()
+  })
 })

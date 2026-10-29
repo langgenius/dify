@@ -1,3 +1,3 @@
-import { ENABLE_FEATURE_PREVIEW } from '@/config'
+import { ENABLE_HITL_IM } from '@/config'
 
-export const isContactsManagementEnabled = () => ENABLE_FEATURE_PREVIEW
+export const isContactsManagementEnabled = () => ENABLE_HITL_IM

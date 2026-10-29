@@ -2,13 +2,16 @@
 import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { ENABLE_HITL_IM } from '@/config'
 import FormStatusCard from '@/features/human-input-form/form-status-card'
 import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
 import { normalizeLegacyHumanInputForm } from '@/features/human-input-form/normalize-legacy-definition'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm } from '@/service/use-share'
+import LegacyLoadedFormContent from './loaded-form-content'
 import { useFormSubmit } from './use-form-submit'
 
 const FormContent = () => {
@@ -95,6 +98,21 @@ const FormContent = () => {
       <FormStatusCard
         iconClassName="i-ri-error-warning-fill text-text-destructive"
         title={t(($) => $['humanInput.formNotFound'], { ns: 'share' })}
+      />
+    )
+  }
+
+  if (!ENABLE_HITL_IM) {
+    return (
+      <LegacyLoadedFormContent
+        key={token}
+        formData={formData}
+        isSubmitting={isSubmitting}
+        removeWebappBrand={removeWebappBrand}
+        replaceWebappLogo={replaceWebappLogo}
+        onSubmit={(inputs, action, formInputs) =>
+          submit(getProcessedHumanInputFormInputs(formInputs, inputs) || {}, action)
+        }
       />
     )
   }

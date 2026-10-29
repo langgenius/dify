@@ -7,6 +7,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { toast } from '@/app/notifications'
+import { ENABLE_HITL_IM } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
@@ -429,7 +430,17 @@ export const useInsertSnippet = () => {
         const { getNodes, setNodes, edges, setEdges } = store.getState()
         const currentNodes = getNodes()
         if (!canInsertHumanInputNodes(currentNodes, snippetNodes)) {
-          toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
+          toast.warning(
+            t(
+              ($) =>
+                $[
+                  ENABLE_HITL_IM
+                    ? 'nodes.humanInputMigration.disabledReason'
+                    : 'nodes.humanInputV2.disabled'
+                ],
+              { ns: 'workflow' },
+            ),
+          )
           return false
         }
         const remappedGraph = remapSnippetGraph(

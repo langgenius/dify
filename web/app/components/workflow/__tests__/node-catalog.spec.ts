@@ -12,6 +12,14 @@ const catalogQueryClient = ({ enabled = true } = {}) =>
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 const mockIsAgentV2InChatflowEnabled = vi.hoisted(() => vi.fn(() => false))
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
@@ -27,7 +35,36 @@ describe('useWorkflowNodeCatalog', () => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(true)
     mockIsAgentV2InChatflowEnabled.mockReturnValue(false)
+    releaseGate.enabled = true
   })
+
+  it.each(['workflow', 'advanced-chat'] as const)(
+    'offers the original Human Input candidate in %s when the release gate is off',
+    (mode) => {
+      releaseGate.enabled = false
+      const { result, setCanvas } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {
+        queryClient: catalogQueryClient(),
+        resource: { kind: 'app', appId: 'app-1', mode },
+      })
+      const candidate = () =>
+        result.current.nodes.filter(
+          (node) =>
+            node.metaData.type === BlockEnum.HumanInput ||
+            node.metaData.type === BlockEnum.HumanInputV2,
+        )
+
+      expect(candidate().map((node) => node.metaData.type)).toEqual([BlockEnum.HumanInput])
+      expect(candidate()[0]?.defaultValue).toMatchObject({ delivery_methods: [], timeout: 3 })
+      expect(candidate()[0]?.defaultValue).not.toHaveProperty('version')
+
+      act(() => setCanvas({ nodes: [createNode({ data: { type: BlockEnum.HumanInput } })] }))
+      expect(candidate().map((node) => node.metaData.type)).toEqual([BlockEnum.HumanInput])
+      expect(result.current.nodesMap?.[BlockEnum.HumanInputV2]?.defaultValue).toMatchObject({
+        type: BlockEnum.HumanInput,
+        version: '2',
+      })
+    },
+  )
 
   it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
     const { result } = renderWorkflowCanvasHook(() => useWorkflowNodeCatalog(), {

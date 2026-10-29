@@ -11,6 +11,18 @@ import {
   isLegacyHumanInputNodeData,
 } from '../policy'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
+beforeEach(() => {
+  releaseGate.enabled = true
+})
+
 const data = (version?: unknown, type: BlockEnum = BlockEnum.HumanInput) =>
   ({
     type,
@@ -21,6 +33,35 @@ const data = (version?: unknown, type: BlockEnum = BlockEnum.HumanInput) =>
 const node = (version?: unknown): Pick<Node, 'data'> => ({ data: data(version) })
 
 describe('Human Input migration policy', () => {
+  it('restores legacy creation and repeated insertion when the release gate is off', () => {
+    releaseGate.enabled = false
+
+    expect(getHumanInputCreationPolicy([], true)).toMatchObject({
+      canAddHumanInputV2: false,
+      canAddLegacyHumanInput: true,
+    })
+    expect(canInsertHumanInput([], BlockEnum.HumanInput)).toBe(true)
+    expect(canInsertHumanInput([node(), node('1')], BlockEnum.HumanInput)).toBe(true)
+    expect(canInsertHumanInputNodes([node()], [node(), node('1')])).toBe(true)
+    expect(getHumanInputCreationPolicy([node()], false).canAddLegacyHumanInput).toBe(false)
+  })
+
+  it('rejects new V2 nodes in all persisted and catalog shapes when the release gate is off', () => {
+    releaseGate.enabled = false
+
+    expect(canInsertHumanInput([], BlockEnum.HumanInputV2)).toBe(false)
+    expect(canInsertHumanInput([], BlockEnum.HumanInput, data('2'))).toBe(false)
+    expect(canInsertHumanInput([], BlockEnum.Code, data('2'))).toBe(false)
+    expect(canInsertHumanInputNodes([], [node('2')])).toBe(false)
+    expect(canInsertHumanInputNodes([], [{ data: data(undefined, BlockEnum.HumanInputV2) }])).toBe(
+      false,
+    )
+    expect(canInsertHumanInputNodes([], [node(), node('2')])).toBe(false)
+    expect(canInsertHumanInputNodes([node('2')], [node()])).toBe(false)
+    expect(canInsertHumanInputNodes([], [node('3')])).toBe(false)
+    expect(canInsertHumanInput([], BlockEnum.Code)).toBe(true)
+  })
+
   it.each([
     [undefined, HumanInputVersionKind.LegacyEligible],
     ['1', HumanInputVersionKind.LegacyEligible],

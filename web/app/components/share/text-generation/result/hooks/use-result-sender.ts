@@ -5,7 +5,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
-import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import { ENABLE_HITL_IM, TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import {
   captureAppAccessScope,
@@ -144,7 +144,7 @@ export const useResultSender = ({
 
     if (isWorkflow) {
       const createStreamHandlers =
-        appSourceType === AppSourceType.webApp
+        ENABLE_HITL_IM && appSourceType === AppSourceType.webApp
           ? createWebAppStreamHandlers
           : createWorkflowStreamHandlers
       const otherOptions = createStreamHandlers({

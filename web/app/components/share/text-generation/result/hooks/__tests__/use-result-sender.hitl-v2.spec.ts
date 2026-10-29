@@ -15,6 +15,14 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useResultSender } from '../use-result-sender'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
 const {
   buildResultRequestDataMock,
   createWorkflowEventsSubscriptionMock,
@@ -254,6 +262,7 @@ const renderSender = ({
 
 describe('useResultSender', () => {
   beforeEach(() => {
+    releaseGate.enabled = true
     vi.clearAllMocks()
     mockWebAppState.appInfo.mode = 'completion'
     validateResultRequestMock.mockReturnValue({ canSend: true })
@@ -397,5 +406,20 @@ describe('useResultSender', () => {
       expect(await result.current.handleSend()).toBe(true)
     })
     expect(sendWorkflowMessageMock).toHaveBeenCalledTimes(2)
+  })
+  it('uses the legacy public stream without creating an IM subscription when disabled', async () => {
+    releaseGate.enabled = false
+    const harness = createRunStateHarness()
+    const { result } = renderSender({ isWorkflow: true, runState: harness.runState })
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
+      expect.objectContaining({ isPublicAPI: true }),
+    )
+    expect(createWorkflowStreamHandlersMock.mock.calls[0]?.[0].onPaused).toBeUndefined()
+    expect(createWorkflowEventsSubscriptionMock).not.toHaveBeenCalled()
+    expect(await result.current.prepareHumanInputSubmission()).toBe(true)
+    expect(workflowEventsSubscription.prepare).not.toHaveBeenCalled()
   })
 })
