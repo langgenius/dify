@@ -18,7 +18,6 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
@@ -265,19 +264,18 @@ class AppGenerateService:
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            connection_context=connection_context,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            workflow_run_id=workflow_run_id,
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        connection_context=connection_context,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        workflow_run_id=workflow_run_id,
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
@@ -337,20 +335,19 @@ class AppGenerateService:
                         if key not in {"workflow_id", "connection_revision", "connections"}
                     }
                 if streaming:
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            connection_context=connection_context,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            root_node_id=root_node_id,
-                            workflow_run_id=workflow_run_id,
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        connection_context=connection_context,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        root_node_id=root_node_id,
+                        workflow_run_id=workflow_run_id,
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
