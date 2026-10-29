@@ -28,14 +28,21 @@ def parameters_payload(config: AppParameterConfig) -> dict:
     return dump_response(Parameters, parameters)
 
 
+def wants_block(fields: set[str] | None, block: str) -> bool:
+    """No ``?fields=`` means every block."""
+    if fields is None:
+        return True
+    return block in fields
+
+
 def build_app_describe_response(
     description: AppDescription, fields: set[str] | None, *, draft_hash: str | None = None
 ) -> AppDescribeResponse:
     """Public projection of an app (name / params / input schema) — never internal config."""
     app = description.app
-    want_info = fields is None or "info" in fields
-    want_params = fields is None or "parameters" in fields
-    want_schema = fields is None or "input_schema" in fields
+    want_info = wants_block(fields, "info")
+    want_params = wants_block(fields, "parameters")
+    want_schema = wants_block(fields, "input_schema")
 
     info = (
         AppDescribeInfo(
