@@ -35,3 +35,5 @@ The token goes to the OS keyring by default. On Linux without a DBus session, di
 ## Files
 
 `DIFY_CONFIG_DIR` holds login, tokens and catalog. `DIFY_CACHE_DIR` is unused.
+
+If you copy a config dir to another machine, delete `installation.yml` in the copy. It identifies this install, so two machines that share it log each other out.
