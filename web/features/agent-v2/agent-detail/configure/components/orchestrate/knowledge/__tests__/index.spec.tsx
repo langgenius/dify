@@ -530,7 +530,7 @@ describe('shared knowledge binding dialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(snapshot().knowledge.sets[0]).toMatchObject({
       datasets: [{ id: first.id }],
-      retrieval: { reranking_enable: false },
+      retrieval: { reranking_mode: 'weighted_score', reranking_enable: true },
     })
   })
 
@@ -563,7 +563,8 @@ describe('shared knowledge binding dialog', () => {
     expect(snapshot().knowledge.sets[0].retrieval).toMatchObject({
       mode: 'multiple',
       top_k: 8,
-      reranking_enable: false,
+      reranking_mode: 'weighted_score',
+      reranking_enable: true,
     })
   })
 
