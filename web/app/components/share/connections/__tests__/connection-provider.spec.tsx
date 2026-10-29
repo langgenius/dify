@@ -8,11 +8,13 @@ import type {
   WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
 import type { WebAppEntryState } from '../../webapp-entry'
+import type { Locale } from '@/i18n/locale'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { captureAppAccessScope } from '@/features/app-access-error/state'
 import {
   expireWebAppAccountSession,
@@ -23,6 +25,12 @@ import { WebAppEntryContext } from '../../webapp-entry'
 import { WebAppConnectionsProvider } from '../connection-provider'
 import RequiredServices from '../required-services'
 import { useWebAppConnections } from '../use-connections'
+
+let mockLocale: Locale = 'en-US'
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => mockLocale,
+}))
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
@@ -90,9 +98,11 @@ const credentialSchema: ProviderConfig[] = [
 function mockCredentialRequests({
   initialConnection,
   loadSchema = () => Response.json(credentialSchema),
+  loadReadme = () => Response.json({ readme: '# Connect GitHub' }),
 }: {
   initialConnection?: EndUserConnectionResponse
   loadSchema?: (request: Request) => Response | Promise<Response>
+  loadReadme?: (request: Request) => Response | Promise<Response>
 } = {}) {
   const requests: Request[] = []
   let savedConnection = initialConnection
@@ -130,6 +140,7 @@ function mockCredentialRequests({
         ),
       })
     }
+    if (path.endsWith('/connections/readme')) return loadReadme(request)
     if (path.endsWith('/connections/credential-schema')) return loadSchema(request)
     if (path.endsWith('/revision'))
       return Response.json({ connection_revision: connectionRevision })
@@ -300,6 +311,7 @@ describe('WebAppConnectionsProvider', () => {
   )
 
   beforeEach(() => {
+    mockLocale = 'en-US'
     localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
@@ -393,6 +405,190 @@ describe('WebAppConnectionsProvider', () => {
       expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
         'API KEY 1',
       )
+    },
+  )
+
+  it.each(['authenticated', 'anonymous'] as const)(
+    'loads README on demand with the %s App session and keeps the API Key draft when it closes',
+    async (account) => {
+      const user = userEvent.setup()
+      const readmeResponse = deferred<Response>()
+      const requests = mockCredentialRequests({ loadReadme: () => readmeResponse.promise })
+      const currentEntry = entry({ account })
+      if (account === 'anonymous') {
+        expireWebAppAccountSession()
+        setWebAppPassport(address, 'anonymous-passport')
+        currentEntry.parameters = {
+          ...currentEntry.parameters,
+          allow_anonymous_end_user_auth: true,
+        }
+      }
+      render(tree({ address, entry: currentEntry }))
+      await waitFor(() =>
+        expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+      )
+      await user.click(screen.getByRole('button', { name: 'share.connections.setup.addApiKey' }))
+      const formDialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+      const name = await within(formDialog).findByRole('textbox', {
+        name: 'plugin.auth.authorizationName',
+      })
+      await user.type(name, 'My research key')
+      await user.type(within(formDialog).getByLabelText('Access token'), 'draft-secret')
+      expect(requests.some((request) => request.url.includes('/readme'))).toBe(false)
+
+      await user.click(
+        within(formDialog).getByRole('button', { name: 'plugin.readmeInfo.needHelpCheckReadme' }),
+      )
+      const readme = await screen.findByRole('dialog', { name: 'plugin.readmeInfo.title' })
+      await waitFor(() =>
+        expect(requests.filter((request) => request.url.includes('/readme'))).toHaveLength(1),
+      )
+      const request = requests.find((request) => request.url.includes('/readme'))!
+      expect(request.method).toBe('GET')
+      expect(new URL(request.url).pathname).toMatch(/\/api\/connections\/readme$/)
+      expect(Object.fromEntries(new URL(request.url).searchParams)).toEqual({
+        plugin_unique_identifier: requirements[0]!.plugin_unique_identifier,
+        language: 'en_US',
+      })
+      expect(request.headers.get('X-App-Code')).toBe(address.code)
+      expect(request.headers.get('X-App-Passport')).toBe(
+        account === 'anonymous' ? 'anonymous-passport' : 'app-passport',
+      )
+      expect(
+        within(readme).getByRole('progressbar', { name: 'common.loading' }),
+      ).toBeInTheDocument()
+      await act(async () => readmeResponse.resolve(Response.json({ readme: '# Connect GitHub' })))
+      expect(
+        await within(readme).findByRole('heading', { name: 'Connect GitHub' }),
+      ).toBeInTheDocument()
+      await user.click(within(readme).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'plugin.readmeInfo.title' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(
+        screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' }),
+      ).toBeInTheDocument()
+      expect(
+        within(formDialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      ).toHaveValue('My research key')
+      expect(within(formDialog).getByLabelText('Access token')).toHaveValue('draft-secret')
+      expect(requests.some((request) => new URL(request.url).pathname.includes('/console/'))).toBe(
+        false,
+      )
+    },
+  )
+
+  it.each(['empty', 'error'] as const)(
+    'shows the README %s state from Replace API Key without losing the replacement draft',
+    async (state) => {
+      const user = userEvent.setup()
+      const requests = mockCredentialRequests({
+        initialConnection: connection({
+          credential_type: 'api-key',
+          credential_status: 'invalid',
+          name: 'Old key',
+          account_label: null,
+        }),
+        loadReadme: () =>
+          state === 'empty'
+            ? Response.json({ readme: '' })
+            : Response.json(
+                { code: 'internal_server_error', message: 'Unavailable' },
+                { status: 500 },
+              ),
+      })
+      render(tree({ address, entry: entry() }))
+      await waitFor(() =>
+        expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+      )
+      await user.click(selectedAccount('Read repositories for the research brief.'))
+      await user.click(
+        await screen.findByRole('button', { name: 'share.connections.apiKeys.replace' }),
+      )
+      const formDialog = await screen.findByRole('dialog', {
+        name: 'share.connections.apiKeys.replaceTitle',
+      })
+      await within(formDialog).findByLabelText('Access token')
+      await user.type(within(formDialog).getByLabelText('Access token'), 'replacement-secret')
+      await user.click(
+        within(formDialog).getByRole('button', { name: 'plugin.readmeInfo.needHelpCheckReadme' }),
+      )
+      const readme = await screen.findByRole('dialog', { name: 'plugin.readmeInfo.title' })
+      expect(
+        await within(readme).findByText(
+          state === 'empty'
+            ? 'plugin.readmeInfo.noReadmeAvailable'
+            : 'plugin.readmeInfo.failedToFetch',
+        ),
+      ).toBeInTheDocument()
+      expect(requests.filter((request) => request.url.includes('/readme'))).toHaveLength(1)
+      expect(toast.error).not.toHaveBeenCalled()
+      await user.click(within(readme).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'plugin.readmeInfo.title' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(within(formDialog).getByLabelText('Access token')).toHaveValue('replacement-secret')
+    },
+  )
+
+  it.each(['version', 'language'] as const)(
+    'keeps README requests isolated after the plugin %s changes',
+    async (change) => {
+      const user = userEvent.setup()
+      const previousReadme = deferred<Response>()
+      let loads = 0
+      const requests = mockCredentialRequests({
+        loadReadme: () => {
+          loads++
+          return loads === 1
+            ? previousReadme.promise
+            : Response.json({ readme: '# Current documentation' })
+        },
+      })
+      const currentEntry = entry()
+      const view = render(tree({ address, entry: currentEntry }))
+      await waitFor(() =>
+        expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+      )
+      await user.click(screen.getByRole('button', { name: 'share.connections.setup.addApiKey' }))
+      await user.click(
+        await screen.findByRole('button', { name: 'plugin.readmeInfo.needHelpCheckReadme' }),
+      )
+      await waitFor(() => expect(loads).toBe(1))
+      const nextEntry = entry()
+      const identifier =
+        change === 'version'
+          ? 'langgenius/github:2.0.0@new-digest'
+          : requirements[0]!.plugin_unique_identifier
+      if (change === 'version')
+        nextEntry.parameters = {
+          ...nextEntry.parameters,
+          connection_requirements: requirements.map((requirement) => ({
+            ...requirement,
+            plugin_unique_identifier: identifier,
+          })),
+        }
+      else mockLocale = 'zh-Hans'
+      view.rerender(tree({ address, entry: nextEntry }))
+      expect(
+        await screen.findByRole('heading', { name: 'Current documentation' }),
+      ).toBeInTheDocument()
+      const latest = requests.filter((request) => request.url.includes('/readme')).at(-1)!
+      expect(Object.fromEntries(new URL(latest.url).searchParams)).toEqual({
+        plugin_unique_identifier: identifier,
+        language: change === 'language' ? 'zh_Hans' : 'en_US',
+      })
+      await act(async () =>
+        previousReadme.resolve(Response.json({ readme: '# Previous documentation' })),
+      )
+      expect(screen.getByRole('heading', { name: 'Current documentation' })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'Previous documentation' }),
+      ).not.toBeInTheDocument()
     },
   )
 

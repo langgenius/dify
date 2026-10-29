@@ -3,9 +3,6 @@
 import type { ReactNode } from 'react'
 import type { ReadmePanelState } from './store'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { Markdown } from '@/app/components/base/markdown'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { resolveDatasourceIcon } from '@/app/components/rag-pipeline/utils/datasource-icon'
 import { useGetLanguage } from '@/context/i18n'
@@ -15,6 +12,7 @@ import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import DetailHeader from '../plugin-detail-panel/detail-header'
+import { ReadmePanelView } from './view'
 
 type ReadmePanelContentProps = {
   detail: ReadmePanelState['detail']
@@ -23,7 +21,6 @@ type ReadmePanelContentProps = {
 }
 
 export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelContentProps) {
-  const { t } = useTranslation(['plugin'])
   const language = useLanguage()
   const locale = useGetLanguage()
   const pluginUniqueIdentifier = detail.plugin_unique_identifier
@@ -45,48 +42,16 @@ export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelCo
     }),
   )
 
-  let readmeContent: ReactNode
-  if (isLoading) {
-    readmeContent = (
-      <div className="flex h-40 items-center justify-center">
-        <LoadingPlaceholder />
-      </div>
-    )
-  } else if (error) {
-    readmeContent = (
-      <div className="py-8 text-center text-text-tertiary">
-        <p>{t(($) => $['readmeInfo.failedToFetch'], { ns: 'plugin' })}</p>
-      </div>
-    )
-  } else if (readmeData?.readme) {
-    readmeContent = (
-      <Markdown
-        content={readmeData.readme}
-        pluginInfo={{ pluginUniqueIdentifier, pluginId: detail.plugin_id }}
-      />
-    )
-  } else {
-    readmeContent = (
-      <div className="py-8 text-center text-text-tertiary">
-        <p>{t(($) => $['readmeInfo.noReadmeAvailable'], { ns: 'plugin' })}</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex size-full min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 rounded-t-xl bg-background-body p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-1">
-            <span
-              aria-hidden="true"
-              className="i-ri-book-read-line size-3 shrink-0 text-text-tertiary"
-            />
-            {title}
-          </div>
-          {closeButton}
-        </div>
-        {'id' in detail ? (
+    <ReadmePanelView
+      title={title}
+      closeButton={closeButton}
+      readme={readmeData?.readme}
+      isLoading={isLoading}
+      error={error}
+      pluginInfo={{ pluginUniqueIdentifier, pluginId: detail.plugin_id }}
+      header={
+        'id' in detail ? (
           <DetailHeader detail={detail} isReadmeView={true} />
         ) : (
           <div>
@@ -94,7 +59,7 @@ export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelCo
               <div className="overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg">
                 <Icon src={resolveDatasourceIcon(detail.declaration.identity.icon)} />
               </div>
-              <div className="ml-3 min-w-0 grow">
+              <div className="ms-3 min-w-0 grow">
                 <Title
                   title={
                     detail.declaration.identity.label[locale] ??
@@ -120,12 +85,8 @@ export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelCo
               descriptionLineRows={2}
             />
           </div>
-        )}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
-        {readmeContent}
-      </div>
-    </div>
+        )
+      }
+    />
   )
 }

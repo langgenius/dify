@@ -30,7 +30,6 @@ type Props = Omit<
 
 type ApiKeyEditor = {
   serviceId: string
-  readmeUrl?: string
 } & ({ mode: 'add' } | { mode: 'replace'; connectionId: string; name: string })
 
 export default function ConfigureConnectionsDialog({
@@ -63,7 +62,6 @@ export default function ConfigureConnectionsDialog({
       serviceId,
       connectionId,
       name: connection.name,
-      readmeUrl: service.readmeUrl,
     })
     setApiKeyEditorOpen(true)
   }
@@ -74,7 +72,6 @@ export default function ConfigureConnectionsDialog({
     setApiKeyEditor({
       mode: 'add',
       serviceId,
-      readmeUrl: service.readmeUrl,
     })
     setApiKeyEditorOpen(true)
   }
@@ -128,7 +125,6 @@ export default function ConfigureConnectionsDialog({
           key={`${apiKeyEditor.mode}:${apiKeyEditor.serviceId}:${apiKeyEditor.mode === 'replace' ? apiKeyEditor.connectionId : ''}`}
           mode={apiKeyEditor.mode}
           connectionName={apiKeyEditor.mode === 'replace' ? apiKeyEditor.name : ''}
-          readmeUrl={apiKeyEditor.readmeUrl}
           open={apiKeyEditorOpen}
           onOpenChange={setApiKeyEditorOpen}
           onCloseComplete={() => setApiKeyEditor(null)}

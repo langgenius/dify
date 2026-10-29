@@ -74,7 +74,13 @@ function ConnectedApiKeyForm({
         onRetry={query.isError ? () => void query.refetch() : undefined}
       />
     )
-  return <ApiKeyForm {...props} schemas={query.data} />
+  return (
+    <ApiKeyForm
+      {...props}
+      schemas={query.data}
+      readmeService={connections.services.find((service) => service.id === serviceId)}
+    />
+  )
 }
 
 function ApiKeyContent({
@@ -93,7 +99,6 @@ export default function ApiKeyDialog({
   serviceId,
   schemas,
   connectionName,
-  readmeUrl,
   open,
   onOpenChange,
   onCloseComplete,
@@ -126,7 +131,6 @@ export default function ApiKeyDialog({
           schemas={schemas}
           mode={mode}
           connectionName={connectionName}
-          readmeUrl={readmeUrl}
           onSave={onSave}
           onClose={() => onOpenChange(false)}
           onSavingChange={(saving) => {

@@ -1,6 +1,10 @@
 'use client'
 
-import type { ConnectionPreflightStatus, ProviderConfig } from '@dify/contracts/api/web/types.gen'
+import type {
+  ConnectionPreflightStatus,
+  ProviderConfig,
+  WebAppConnectionRequirement,
+} from '@dify/contracts/api/web/types.gen'
 import type { ApiKeyValues } from './api-key-form'
 import type { RequiredConnection } from './required-connections'
 import type { ConnectionActions } from './service-connection-selector'
@@ -22,7 +26,7 @@ export type ConnectionMethod = 'oauth' | 'api-key'
 export type RequiredConnectionService = RequiredConnection & {
   description: string
   iconDark?: RequiredConnection['icon']
-  readmeUrl?: string
+  pluginUniqueIdentifier?: WebAppConnectionRequirement['plugin_unique_identifier']
   apiKeySchema?: ProviderConfig[]
   availableConnections: readonly {
     id: string
@@ -209,7 +213,6 @@ function ServiceItem({
         serviceId={service.id}
         schemas={service.apiKeySchema}
         mode="add"
-        readmeUrl={service.readmeUrl}
         open={addApiKeyOpen}
         onOpenChange={setAddApiKeyOpen}
         onSave={(values) => onConnect(service.id, 'api-key', values)}

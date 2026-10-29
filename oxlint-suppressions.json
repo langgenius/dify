@@ -3517,11 +3517,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/readme-panel/content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/plugins-picker.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
