@@ -42,7 +42,6 @@ import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
-import { toast } from '@/app/notifications'
 import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
 
@@ -213,10 +212,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
     (payload: MetadataItemWithValueLength) => {
       return async () => {
         await onRemove(payload.id)
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       }
     },
-    [onRemove, t],
+    [onRemove],
   )
 
   return (

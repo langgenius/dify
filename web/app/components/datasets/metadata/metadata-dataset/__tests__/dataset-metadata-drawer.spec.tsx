@@ -1,6 +1,7 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { DataType } from '../../types'
@@ -136,7 +137,20 @@ describe('DatasetMetadataDrawer', () => {
 
   it('requires confirmation before deleting the selected field', async () => {
     const user = userEvent.setup()
-    render(<DatasetMetadataDrawer {...defaultProps} />)
+    function MetadataDrawer() {
+      const [metadata, setMetadata] = useState(mockUserMetadata)
+      return (
+        <DatasetMetadataDrawer
+          {...defaultProps}
+          userMetadata={metadata}
+          onRemove={(id) => {
+            defaultProps.onRemove(id)
+            setMetadata((items) => items.filter((item) => item.id !== id))
+          }}
+        />
+      )
+    }
+    render(<MetadataDrawer />)
     await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[1]!)
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
@@ -152,6 +166,9 @@ describe('DatasetMetadataDrawer', () => {
       }),
     )
     await waitFor(() => expect(defaultProps.onRemove).toHaveBeenCalledExactlyOnceWith('2'))
+    await waitFor(() => expect(screen.queryByText('field_two')).not.toBeInTheDocument())
+    expect(screen.getByText('field_one')).toBeInTheDocument()
+    expect(mockToastNotify).not.toHaveBeenCalled()
   })
 
   it.each([false, true])(
