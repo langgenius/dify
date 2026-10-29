@@ -126,7 +126,7 @@ from services.human_input_v2.im_contact_sync.service import (
 )
 from services.human_input_v2.node_data_migration import MigrationNode, NodeDataMigrationFailure
 
-from ._decorators import require_admin_or_owner
+from ._decorators import require_admin_or_owner, require_editor
 
 register_enum_models(
     console_ns,
@@ -473,10 +473,7 @@ class WorkspaceContactOptionsApi(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[ListContactOptionsResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
+    @require_editor
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
@@ -927,10 +924,7 @@ class BatchGetContactOptionsAPI(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[BatchGetContactOptionsResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
+    @require_editor
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
