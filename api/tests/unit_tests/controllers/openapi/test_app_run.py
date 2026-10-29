@@ -28,7 +28,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.app_run import (
     AdvancedChatRunApi,
-    AppRunTaskStopApi,
+    AppTaskStopApi,
     ChatRunApi,
     CompletionRunApi,
     _translate_service_errors,
@@ -39,13 +39,11 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_application_services import ApplicationServices
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.file import FileType
 from libs.oauth_bearer import AuthContext
 from models import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
-from models.workflow import WorkflowRun
 from services.app_task_service import AppTaskControlService
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
@@ -158,7 +156,7 @@ def test_chat_payload_normalizes_conversation_id():
 @pytest.mark.parametrize(
     "token_type", [TokenType.OAUTH_ACCOUNT, TokenType.OAUTH_EXTERNAL_SSO, TokenType.RESOURCE_ACCESS]
 )
-@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
 @pytest.mark.parametrize("owns_task", [False, True])
 def test_stop_task_enforces_resolved_caller_ownership(
     app: Flask,
@@ -176,23 +174,6 @@ def test_stop_task_enforces_resolved_caller_ownership(
     owner_id = caller.id if owns_task else "another-user"
     task_id = str(uuid.uuid4())
     redis = _StopRedis(values={f"generate_task_belong:{task_id}": f"end-user-{owner_id}".encode()})
-    if mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-        sqlite_session.add(
-            WorkflowRun(
-                id="run-1",
-                tenant_id="tenant-1",
-                app_id="app-1",
-                workflow_id="workflow-1",
-                task_id=task_id,
-                type=WorkflowType.CHAT if mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW,
-                version="1",
-                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-                status=WorkflowExecutionStatus.RUNNING,
-                created_by_role=CreatorUserRole.END_USER,
-                created_by=owner_id,
-            )
-        )
-        sqlite_session.commit()
     monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
     monkeypatch.setattr(
         sys.modules["controllers.openapi.app_run"],
@@ -204,7 +185,7 @@ def test_stop_task_enforces_resolved_caller_ownership(
         caller=caller,
         app=App(id="app-1", tenant_id="tenant-1", mode=mode),
     )
-    api = AppRunTaskStopApi()
+    api = AppTaskStopApi()
     allowed = owns_task or subject.caller_role == CreatorUserRole.ACCOUNT
     with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/{task_id}:stop", method="POST"):
         if allowed:
@@ -214,10 +195,9 @@ def test_stop_task_enforces_resolved_caller_ownership(
                 api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id)
     if allowed:
         assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
-        assert bool(redis.commands) == (mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT))
     else:
         assert redis.operations == []
-        assert redis.commands == {}
+    assert redis.commands == {}
 
 
 class _SealableContext:

@@ -12,6 +12,9 @@ import {
   zAudioTooLargeError,
   zAuthenticationFailedError,
   zCompletionRequestError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
   zEmailCodeError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
@@ -303,7 +306,14 @@ export const post6 = oc
     }),
   )
   .output(zPostConversationsByCIdNameResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const name = {
   post: post6,
@@ -323,18 +333,22 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdPinPath }))
   .output(zPatchConversationsByCIdPinResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const pin = {
   patch,
 }
 
 /**
- * Unpin a specific conversation to remove it from the top of the list.
+ * Remove the current user's pin. Succeeds when the conversation is already unpinned.
  */
 export const patch2 = oc
   .route({
-    description: 'Unpin a specific conversation to remove it from the top of the list.',
+    description:
+      "Remove the current user's pin. Succeeds when the conversation is already unpinned.",
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -343,7 +357,10 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
   .output(zPatchConversationsByCIdUnpinResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const unpin = {
   patch: patch2,
@@ -364,7 +381,10 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const byCId = {
   delete: delete_,
@@ -387,7 +407,11 @@ export const get = oc
   })
   .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const conversations = {
   get,
@@ -900,7 +924,10 @@ export const get6 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const messages = {
   get: get6,

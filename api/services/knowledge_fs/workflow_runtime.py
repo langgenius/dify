@@ -52,7 +52,7 @@ class _LazyWorkflowCapabilities:
         control_space_id: str,
         payload: KnowledgeFSAppBindingPayload,
     ) -> KnowledgeFSAppBindingResponse:
-        return get_knowledge_fs_runtime(session_factory.get_session_maker()).app_bindings.upsert(
+        return get_knowledge_fs_runtime(session_factory.get_session_maker()).app_bindings.upsert_for_app(
             tenant_id=tenant_id, actor_account_id=actor_account_id, control_space_id=control_space_id, payload=payload
         )
 
