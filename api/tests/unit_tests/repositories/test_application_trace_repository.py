@@ -31,6 +31,7 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Message, TraceAppConfig
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing import service as service_module
 from services.tracing.canonical import CanonicalTraceBuilder
@@ -76,7 +77,13 @@ def identifier(value: str) -> str:
 
 
 def trace_records(sessions: sessionmaker[Session]) -> TraceRecordRepository:
-    return TraceRecordRepository(sessions, files_url="https://files.test", enterprise_details=False)
+    return TraceRecordRepository(
+        sessions,
+        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        files_url="https://files.test",
+        enterprise_details=False,
+    )
 
 
 def collector(
@@ -479,6 +486,14 @@ class TestApplicationTraceLogstoreCases:
         def execute_sql(
             client: AliyunLogStore, *, sql: str, query: str, logstore: str, **_kwargs: object
         ) -> list[dict[str, object]]:
+            if kind == "workflow":
+                assert not transactions, "LogStore I/O must not hold a SQL transaction"
+                assert logstore == AliyunLogStore.workflow_node_execution_logstore
+                assert f"tenant_id = '{case.run.tenant_id}'" in sql
+                assert f"app_id = '{case.run.app_id}'" in sql
+                assert f"workflow_run_id = '{row['id']}'" in sql
+                requests.append(query)
+                return []
             # The node reader now uses SQL in both SDK and PG modes. Preserve the
             # real repository's query/decoding path while isolating this transport.
             assert kind == "node"

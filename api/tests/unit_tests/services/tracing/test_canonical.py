@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+import pytest
 from dify_trace_sdk.ids import span_id_for, trace_id_for
 from dify_trace_sdk.model import SpanKind, SpanStatus
 
@@ -222,6 +223,103 @@ def test_failed_node_marks_its_span_as_error() -> None:
     assert trace is not None
     llm = next(span for span in trace.spans if span.kind is SpanKind.LLM)
     assert (llm.status, llm.error) == (SpanStatus.ERROR, "model timeout")
+
+
+def test_workflow_tool_calls_and_retries_resolve_predecessors_within_each_invocation() -> None:
+    record = _workflow_record(message_id=None, metadata={})
+    nodes = [
+        _node("root-start", "start", index=0, offset=0, node_id="start"),
+        _node("tool-a", "tool", index=1, offset=0),
+        _node("tool-b", "tool", index=2, offset=0),
+    ]
+    parents: dict[str, str] = {}
+    expected: dict[str, str] = {}
+    for invocation, caller in (("first", "tool-a"), ("retry", "tool-a"), ("second", "tool-b")):
+        for node_id, predecessor, node_type in (("start", None, "start"), ("llm", "start", "llm")):
+            execution_id = f"{invocation}-{node_id}"
+            nodes.append(
+                _node(
+                    execution_id,
+                    node_type,
+                    index=3,
+                    offset=1,
+                    node_id=node_id,
+                    predecessor_node_id=predecessor,
+                    process_data={"workflow_tool_invocation_id": invocation},
+                )
+            )
+            parents[execution_id] = caller
+            expected[execution_id] = f"{invocation}-{predecessor}" if predecessor else caller
+    nodes.extend(
+        [
+            _node(
+                "inner-tool",
+                "tool",
+                index=4,
+                offset=2,
+                predecessor_node_id="llm",
+                process_data={"workflow_tool_invocation_id": "first"},
+            ),
+            _node("deep-child", "code", index=5, offset=2, node_id="start", status="failed", error="nested failure"),
+        ]
+    )
+    parents.update({"inner-tool": "tool-a", "deep-child": "inner-tool"})
+    expected.update({"inner-tool": "first-llm", "deep-child": "inner-tool"})
+    record = record.model_copy(update={"node_executions": nodes, "workflow_tool_parents": parents})
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    spans = {span.span_id: span for span in trace.spans}
+    for child, parent in expected.items():
+        assert spans[span_id_for(child)].parent_span_id == span_id_for(parent)
+    assert spans[span_id_for("deep-child")].status is SpanStatus.ERROR
+    assert len(trace.spans) == len(nodes) + 1
+    assert CanonicalTraceBuilder().build(record) == trace
+
+
+@pytest.mark.parametrize("container_type", ["iteration", "loop"])
+def test_workflow_tool_container_rounds_stay_with_their_own_invocation(container_type: str) -> None:
+    record = _workflow_record(message_id=None, metadata={})
+    nodes = [_node("caller", "tool", index=0, offset=0)]
+    parents: dict[str, str] = {}
+    for invocation in ("first", "second"):
+        nodes.extend(
+            (
+                _node(
+                    f"{invocation}-container",
+                    container_type,
+                    index=1,
+                    offset=0,
+                    node_id="container",
+                    process_data={"workflow_tool_invocation_id": invocation},
+                ),
+                _node(
+                    f"{invocation}-llm",
+                    "llm",
+                    index=2,
+                    offset=1,
+                    node_id="llm",
+                    process_data={"workflow_tool_invocation_id": invocation},
+                    metadata={f"{container_type}_id": "container", f"{container_type}_index": 0},
+                ),
+            )
+        )
+        parents[f"{invocation}-container"] = "caller"
+        parents[f"{invocation}-llm"] = "caller"
+
+    trace = CanonicalTraceBuilder().build(
+        record.model_copy(update={"node_executions": nodes, "workflow_tool_parents": parents})
+    )
+
+    assert trace is not None
+    spans = {span.span_id: span for span in trace.spans}
+    for invocation in ("first", "second"):
+        container_id = f"{invocation}-container"
+        wrapper = spans[span_id_for(f"{container_type}:{container_id}:0")]
+        assert wrapper.parent_span_id == span_id_for(container_id)
+        assert spans[span_id_for(container_id)].parent_span_id == span_id_for("caller")
+        assert spans[span_id_for(f"{invocation}-llm")].parent_span_id == wrapper.span_id
 
 
 def test_tool_call_joins_its_message_trace_as_a_fragment() -> None:

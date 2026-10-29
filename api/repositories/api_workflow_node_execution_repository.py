@@ -184,6 +184,14 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return complete inputs, resolving offloaded files within the admitted execution's tenant."""
+        ...
+
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return complete outputs, resolving offloaded files within the admitted execution's tenant."""
+        ...
+
     def get_workflow_tool_executions(
         self,
         tenant_id: str,

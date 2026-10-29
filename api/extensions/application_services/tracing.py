@@ -8,6 +8,7 @@ from configs import dify_config
 from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.adapters import (
     CeleryExportRetryQueue,
@@ -46,6 +47,8 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
     builder = CanonicalTraceBuilder()
     configs = SQLAlchemyAppTracingConfigRepository(session_factory=database_client)
     enterprise_telemetry = is_enterprise_telemetry_enabled()
+    workflow_runs = DifyAPIRepositoryFactory.create_api_workflow_run_repository(database_client)
+    node_executions = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(database_client)
     agent_settings = AgentTraceSettings(
         enabled=dify_config.OPS_AGENT_TRACE_ENABLED,
         max_spans=dify_config.OPS_AGENT_TRACE_MAX_SPANS,
@@ -61,7 +64,13 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
         run_query=agent_trace_runs,
         sources=agent_trace_runs,
         # App, workspace, and credential names are enterprise telemetry dimensions only.
-        records=TraceRecordRepository(database_client, files_url=dify_config.FILES_URL, enterprise_details=False),
+        records=TraceRecordRepository(
+            database_client,
+            workflow_runs=workflow_runs,
+            node_executions=node_executions,
+            files_url=dify_config.FILES_URL,
+            enterprise_details=False,
+        ),
         builder=builder,
         providers=providers,
         codec=codec,
@@ -75,7 +84,11 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
         ),
         delivery=TraceDeliveryService(
             records=TraceRecordRepository(
-                database_client, files_url=dify_config.FILES_URL, enterprise_details=enterprise_telemetry
+                database_client,
+                workflow_runs=workflow_runs,
+                node_executions=node_executions,
+                files_url=dify_config.FILES_URL,
+                enterprise_details=enterprise_telemetry,
             ),
             destinations=configs,
             providers=providers,

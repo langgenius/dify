@@ -2,11 +2,13 @@
 
 Every record is read through the event's tenant and app: a reference that does
 not belong to them is missing, never trusted. Events carry only identifiers
-and facts persisted nowhere else, so records reflect committed state. Rows
-become plain records before their session closes.
+and facts persisted nowhere else, so records reflect committed state. Workflow
+tool descendants are admitted only through their owning caller in the same
+tenant and run. Persistence models never cross the application port.
 """
 
 import json
+from collections import deque
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any, override
@@ -26,16 +28,21 @@ from dify_trace_sdk.events import (
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories import DifyCoreRepositoryFactory
 from graphon.entities import WorkflowNodeExecution
-from graphon.enums import WorkflowExecutionStatus
-from models import Account, App, Tenant
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from models import App, Tenant
 from models.dataset import Dataset
 from models.model import Conversation, EndUser, Message, MessageFile
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from models.workflow import WorkflowAppLog, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
+from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.tracing_store_errors import tracing_store_errors
 from services.tracing.delivery import TraceRecordSource
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError
@@ -124,8 +131,18 @@ def _streaming_metrics(message: Message) -> dict[str, Any]:
 
 
 class TraceRecordRepository(TraceRecordSource):
-    def __init__(self, session_factory: sessionmaker[Session], *, files_url: str, enterprise_details: bool) -> None:
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        *,
+        workflow_runs: APIWorkflowRunRepository,
+        node_executions: DifyAPIWorkflowNodeExecutionRepository,
+        files_url: str,
+        enterprise_details: bool,
+    ) -> None:
         self._sessions = session_factory
+        self._workflow_runs = workflow_runs
+        self._node_executions_repository = node_executions
         self._files_url = files_url
         # App, workspace, and credential names are enterprise telemetry dimensions only.
         self._enterprise_details = enterprise_details
@@ -278,9 +295,8 @@ class TraceRecordRepository(TraceRecordSource):
     def _workflow(self, event: TraceEvent, payload: WorkflowRunCompleted) -> WorkflowTraceInfo:
         if event.app_id is None:
             raise SourceNotFoundError
-        runs = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._sessions)
         with tracing_store_errors():
-            run = runs.get_workflow_run_by_id(
+            run = self._workflow_runs.get_workflow_run_by_id(
                 tenant_id=event.tenant_id, app_id=event.app_id, run_id=payload.workflow_run_id
             )
         # Workflow runs may be persisted asynchronously (including LogStore indexing).
@@ -307,7 +323,7 @@ class TraceRecordRepository(TraceRecordSource):
                 else None
             )
             app_name, workspace_name = self._names(session, event.app_id, event.tenant_id)
-        executions = self._node_executions(run)
+        executions, workflow_tool_parents = self._node_executions(run)
         prompt_tokens, completion_tokens = self._token_split(executions)
         inputs = run.inputs_dict
         file_list = inputs.get("sys.file") or []
@@ -338,6 +354,7 @@ class TraceRecordRepository(TraceRecordSource):
         return WorkflowTraceInfo(
             trace_id=correlation.external_trace_id,
             node_executions=executions,
+            workflow_tool_parents=workflow_tool_parents,
             conversation_id=payload.conversation_id,
             message_started_at=message_row[1] if message_row else None,
             workflow_id=run.workflow_id,
@@ -362,20 +379,63 @@ class TraceRecordRepository(TraceRecordSource):
             invoked_by=_user_of(metadata),
         )
 
-    def _node_executions(self, run: WorkflowRun) -> Sequence[WorkflowNodeExecution]:
-        # Repositories take an identity only to attribute writes. This read needs no member of the
-        # workspace, so a run of an app whose creator left it is still traced.
-        reader = Account(name="Trace assembly", email="trace-assembly@localhost")
-        reader.id = run.created_by
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=self._sessions,
-            tenant_id=run.tenant_id,
-            user=reader,
-            app_id=run.app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
+    def _node_executions(self, run: WorkflowRun) -> tuple[Sequence[WorkflowNodeExecution], Mapping[str, str]]:
+        repository = self._node_executions_repository
+        executions: list[WorkflowNodeExecution] = []
+        tool_parents: dict[str, str] = {}
+        seen: set[str] = set()
         with tracing_store_errors():
-            return repository.get_by_workflow_execution(workflow_execution_id=run.id)
+            pending: deque[tuple[WorkflowNodeExecutionModel, str | None]] = deque(
+                (row, None)
+                for row in repository.get_executions_by_workflow_run(run.tenant_id, run.app_id, run.id)
+                if row.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+            )
+            while pending:
+                row, parent_id = pending.popleft()
+                if row.id in seen or row.status == WorkflowNodeExecutionStatus.PAUSED:
+                    continue
+                seen.add(row.id)
+                executions.append(self._node_execution(row, repository))
+                if parent_id is not None:
+                    tool_parents[row.id] = parent_id
+                if row.node_type == BuiltinNodeTypes.TOOL:
+                    # Descendants are admitted through an already owned Tool, never by source app alone.
+                    pending.extend(
+                        (child, row.id)
+                        for child in repository.get_workflow_tool_executions(
+                            run.tenant_id, run.id, row.node_execution_id or row.id
+                        )
+                    )
+        return executions, tool_parents
+
+    @staticmethod
+    def _node_execution(
+        row: WorkflowNodeExecutionModel, repository: DifyAPIWorkflowNodeExecutionRepository
+    ) -> WorkflowNodeExecution:
+        return WorkflowNodeExecution(
+            id=row.id,
+            node_execution_id=row.node_execution_id,
+            workflow_id=row.workflow_id,
+            workflow_execution_id=row.workflow_run_id,
+            index=row.index,
+            predecessor_node_id=row.predecessor_node_id,
+            node_id=row.node_id,
+            node_type=row.node_type,
+            title=row.title,
+            inputs=repository.load_full_inputs(row),
+            process_data=repository.load_full_process_data(row),
+            outputs=repository.load_full_outputs(row),
+            status=WorkflowNodeExecutionStatus(row.status),
+            error=row.error,
+            elapsed_time=row.elapsed_time,
+            metadata={
+                WorkflowNodeExecutionMetadataKey(key): value
+                for key, value in row.execution_metadata_dict.items()
+                if key in WorkflowNodeExecutionMetadataKey
+            },
+            created_at=row.created_at,
+            finished_at=row.finished_at,
+        )
 
     @staticmethod
     def _token_split(executions: Sequence[WorkflowNodeExecution]) -> tuple[int, int]:

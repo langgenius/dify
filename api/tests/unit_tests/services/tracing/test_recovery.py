@@ -63,6 +63,7 @@ from models.model import App, AppMode, Conversation, Message, TraceAppConfig
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.adapters import StoredPolicyTraceScopes
 from services.tracing.canonical import CanonicalTraceBuilder
@@ -146,7 +147,13 @@ class ScriptedProvider(TraceProvider[LangfuseConfig]):
 
 
 def record_source(sessions: sessionmaker[Session]) -> TraceRecordRepository:
-    return TraceRecordRepository(sessions, files_url="https://files.test", enterprise_details=False)
+    return TraceRecordRepository(
+        sessions,
+        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        files_url="https://files.test",
+        enterprise_details=False,
+    )
 
 
 def tracing_service(

@@ -41,6 +41,7 @@ from models.model import App, AppMode, Message, TraceAppConfig
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.app_tracing_config_service import AppTracingConfigService
 from services.tracing import service as service_module
@@ -195,7 +196,13 @@ class UnreadableSecretCipher(StoredSecretCipher):
 
 
 def trace_records(sessions: sessionmaker[Session]) -> TraceRecordRepository:
-    return TraceRecordRepository(sessions, files_url="https://files.test", enterprise_details=False)
+    return TraceRecordRepository(
+        sessions,
+        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        files_url="https://files.test",
+        enterprise_details=False,
+    )
 
 
 @dataclass
