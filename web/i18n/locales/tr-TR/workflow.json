@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} zaman aşımı dalı için ayrılmıştır. Başka bir eylem kimliği seçin.",
   "nodes.humanInput.timeout.title": "Zaman Aşımı",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Geçersiz varsayılan değer",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "{{field}} alanı henüz taşınamıyor. Eski İnsan Girdisi düğümlerini kullanmaya devam edebilirsiniz.",
   "nodes.humanInputMigration.error.graphChanged": "İş akışı geçiş sırasında değişti. Tekrar deneyin; mevcut düzenlemeleriniz korundu.",
   "nodes.humanInputMigration.error.sync": "Taşınan iş akışı kaydedilemedi. Mevcut taslağı inceleyip tekrar deneyin.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

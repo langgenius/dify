@@ -1,4 +1,6 @@
+import type { HumanInputNodeType } from '../../human-input/types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
+import { zLegacyFormInputType } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 export const HumanInputVersionKind = {
@@ -14,6 +16,7 @@ export type HumanInputVersionKind =
 export type HumanInputCreationPolicy = {
   hasLegacyHumanInput: boolean
   canAddHumanInputV2: boolean
+  canAddLegacyHumanInput: boolean
   candidateCount: 1
 }
 
@@ -33,15 +36,29 @@ export const isLegacyHumanInputNodeData = (data: CommonNodeType): boolean => {
   )
 }
 
+export const getUnsupportedLegacyHumanInputFields = (data: CommonNodeType) => {
+  if (classifyHumanInputVersion(data) !== HumanInputVersionKind.LegacyEligible) return []
+  return ((data as HumanInputNodeType).inputs ?? []).filter(
+    (input) => !zLegacyFormInputType.safeParse(input.type).success,
+  )
+}
+
 export const getHumanInputCreationPolicy = (
   nodes: Pick<Node, 'data'>[],
   canEdit: boolean,
 ): HumanInputCreationPolicy => {
   const hasLegacyHumanInput = nodes.some((node) => isLegacyHumanInputNodeData(node.data))
+  const canContinueLegacy =
+    nodes.some((node) => getUnsupportedLegacyHumanInputFields(node.data).length > 0) &&
+    nodes.every((node) => {
+      const kind = classifyHumanInputVersion(node.data)
+      return kind !== HumanInputVersionKind.V2 && kind !== HumanInputVersionKind.LegacyBlocked
+    })
 
   return {
     hasLegacyHumanInput,
     canAddHumanInputV2: canEdit && !hasLegacyHumanInput,
+    canAddLegacyHumanInput: canEdit && canContinueLegacy,
     candidateCount: 1,
   }
 }
@@ -60,5 +77,28 @@ export const canInsertHumanInput = (
   data?: Pick<CommonNodeType, 'type'> & { version?: unknown },
 ): boolean => {
   if (!isHumanInputInsertion(nodeType, data)) return true
-  return !getHumanInputCreationPolicy(nodes, true).hasLegacyHumanInput
+  if (data?.version !== undefined && data.version !== '1' && data.version !== '2') return false
+  const policy = getHumanInputCreationPolicy(nodes, true)
+  if (nodeType === BlockEnum.HumanInputV2 || data?.version === '2') return policy.canAddHumanInputV2
+  return (
+    !nodes.some((node) => classifyHumanInputVersion(node.data) === HumanInputVersionKind.V2) &&
+    (!policy.hasLegacyHumanInput || policy.canAddLegacyHumanInput)
+  )
+}
+
+export const canInsertHumanInputNodes = (
+  nodes: Pick<Node, 'data'>[],
+  incomingNodes: Pick<Node, 'data'>[],
+): boolean => {
+  const humanInputNodes = incomingNodes.filter((node) =>
+    isHumanInputInsertion(node.data.type, node.data),
+  )
+  const hasIncomingV2 = humanInputNodes.some(
+    (node) =>
+      node.data.type === BlockEnum.HumanInputV2 ||
+      classifyHumanInputVersion(node.data) === HumanInputVersionKind.V2,
+  )
+  const hasIncomingLegacy = humanInputNodes.some((node) => isLegacyHumanInputNodeData(node.data))
+  if (hasIncomingV2 && hasIncomingLegacy) return false
+  return humanInputNodes.every((node) => canInsertHumanInput(nodes, node.data.type, node.data))
 }

@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} สงวนไว้สำหรับสาขาที่หมดเวลา โปรดเลือก ID การดำเนินการอื่น",
   "nodes.humanInput.timeout.title": "หมดเวลา",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "ค่าเริ่มต้นไม่ถูกต้อง",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "ยังไม่สามารถย้ายฟิลด์ {{field}} ได้ คุณสามารถใช้โหนดอินพุตจากมนุษย์เวอร์ชันเดิมต่อไปได้",
   "nodes.humanInputMigration.error.graphChanged": "เวิร์กโฟลว์เปลี่ยนแปลงระหว่างการย้าย กรุณาลองอีกครั้ง การแก้ไขปัจจุบันของคุณยังคงอยู่",
   "nodes.humanInputMigration.error.sync": "ไม่สามารถบันทึกเวิร์กโฟลว์ที่ย้ายแล้วได้ โปรดตรวจสอบแบบร่างปัจจุบันแล้วลองอีกครั้ง",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

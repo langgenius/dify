@@ -3,10 +3,12 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore } from 'reactflow'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
+import { getHumanInputCreationPolicy } from '@/app/components/workflow/nodes/human-input-v2/migration/policy'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import StartPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import StartDefault from '@/app/components/workflow/nodes/start/default'
@@ -36,6 +38,9 @@ export const useWorkflowNodeCatalog = () => {
   // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
   const shouldUseAgentV2 = agentV2Enabled && (!isChatflow || isAgentV2InChatflowEnabled())
   const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
+  const useLegacyHumanInput = useStore(
+    (state) => getHumanInputCreationPolicy(state.getNodes(), true).canAddLegacyHumanInput,
+  )
 
   const startNodeMetaData = useMemo(
     () => ({
@@ -115,12 +120,13 @@ export const useWorkflowNodeCatalog = () => {
     () =>
       nodesMetaData.filter(
         (node) =>
-          node.metaData.type !== BlockEnum.HumanInput &&
+          node.metaData.type !==
+            (useLegacyHumanInput ? BlockEnum.HumanInputV2 : BlockEnum.HumanInput) &&
           (shouldUseAgentV2
             ? node.metaData.type !== BlockEnum.Agent
             : node.metaData.type !== BlockEnum.AgentV2),
       ),
-    [nodesMetaData, shouldUseAgentV2],
+    [nodesMetaData, shouldUseAgentV2, useLegacyHumanInput],
   )
 
   const nodesMetaDataMap = useMemo(

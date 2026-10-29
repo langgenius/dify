@@ -41,7 +41,7 @@ import {
 } from '../nodes/agent-v2/types'
 import {
   canInsertHumanInput,
-  isHumanInputInsertion,
+  canInsertHumanInputNodes,
 } from '../nodes/human-input-v2/migration/policy'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
@@ -1732,10 +1732,7 @@ export const useNodesInteractions = () => {
     if (!validatedClipboardElements.length) return
 
     const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-    const containsHumanInput = validatedClipboardElements.some((node) =>
-      isHumanInputInsertion(node.data.type, node.data),
-    )
-    if (containsHumanInput && !canInsertHumanInput(nodes, BlockEnum.HumanInputV2)) {
+    if (!canInsertHumanInputNodes(nodes, validatedClipboardElements)) {
       toast.warning(t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' }))
       return
     }

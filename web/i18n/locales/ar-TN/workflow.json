@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} محجوز لفرع انتهاء المهلة. اختر معرّف إجراء آخر.",
   "nodes.humanInput.timeout.title": "المهلة الزمنية",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "القيمة الافتراضية غير صالحة",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "لا يمكن ترحيل الحقل {{field}} بعد. يمكنك متابعة استخدام عُقد الإدخال البشري القديمة.",
   "nodes.humanInputMigration.error.graphChanged": "تغير سير العمل أثناء الترحيل. حاول مرة أخرى؛ تم الاحتفاظ بتعديلاتك الحالية.",
   "nodes.humanInputMigration.error.sync": "تعذر حفظ سير العمل بعد الترحيل. راجع المسودة الحالية وحاول مرة أخرى.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

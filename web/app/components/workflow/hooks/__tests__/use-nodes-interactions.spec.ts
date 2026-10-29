@@ -14,7 +14,8 @@ import { WORKFLOW_COMMON_NODES } from '../../constants/node'
 import { HooksStoreContext } from '../../hooks-store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
 import endDefault from '../../nodes/end/default'
-import { BlockEnum } from '../../types'
+import { createDefaultFormInputByType } from '../../nodes/human-input/types'
+import { BlockEnum, InputVarType } from '../../types'
 import { writeWorkflowClipboard } from '../../utils/clipboard'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
@@ -390,6 +391,45 @@ it.each([BlockEnum.Iteration, BlockEnum.Loop])(
       nodeId: child.id,
       nodeType: BlockEnum.HumanInput,
     })
+  },
+)
+
+it('duplicates a legacy approval with an unsupported migration field without changing its input', async () => {
+  const input = createDefaultFormInputByType(InputVarType.select, 'decision')
+  const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', { data: { inputs: [input] } })
+  const { result } = setup({ nodes: [legacy] })
+
+  await act(async () => result.current.handleNodesDuplicate('legacy'))
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+
+  expect(result.current.nodes.find((node) => node.id !== legacy.id)?.data).toMatchObject({
+    type: BlockEnum.HumanInput,
+    inputs: [input],
+  })
+})
+
+it.each(['add', 'replace'] as const)(
+  'allows legacy %s when the current legacy workflow cannot migrate, while blocking v2',
+  (command) => {
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', {
+      data: { inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')] },
+    })
+    const { result } = setup({ nodes: [legacy, codeNode('target')] })
+
+    act(() => {
+      if (command === 'add') {
+        result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInput }, { prevNodeId: 'legacy' })
+      } else {
+        result.current.handleNodeChange('target', BlockEnum.HumanInput, 'source')
+      }
+    })
+    expect(
+      result.current.nodes.filter((node) => node.data.type === BlockEnum.HumanInput),
+    ).toHaveLength(2)
+    const count = result.current.nodes.length
+
+    act(() => result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInputV2 }, {}))
+    expect(result.current.nodes).toHaveLength(count)
   },
 )
 

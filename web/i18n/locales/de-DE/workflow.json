@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} ist für den Zeitüberschreitungszweig reserviert. Wähle eine andere Aktions-ID.",
   "nodes.humanInput.timeout.title": "Zeitüberschreitung",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Ungültiger Standardwert",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Das Feld {{field}} kann noch nicht migriert werden. Sie können die bisherigen Human-Input-Knoten weiterhin verwenden.",
   "nodes.humanInputMigration.error.graphChanged": "Der Workflow wurde während der Migration geändert. Versuchen Sie es erneut. Ihre aktuellen Änderungen wurden beibehalten.",
   "nodes.humanInputMigration.error.sync": "Der migrierte Workflow konnte nicht gespeichert werden. Prüfen Sie den aktuellen Entwurf und versuchen Sie es erneut.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

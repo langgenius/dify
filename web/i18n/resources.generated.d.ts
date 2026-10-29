@@ -6147,6 +6147,7 @@ export default interface Resources {
     'nodes.humanInputMigration.blocker.missingRecipients': 'the node has no supported recipients'
     'nodes.humanInputMigration.blocker.unresolvedMember': 'a workspace member cannot be resolved to a contact or verified email'
     'nodes.humanInputMigration.blocker.unsupportedDeliveryMethod': 'an enabled delivery method is not supported by Human Input v2'
+    'nodes.humanInputMigration.blocker.unsupportedInputType': 'The field {{field}} cannot be migrated yet. You can continue using legacy Human Input nodes.'
     'nodes.humanInputMigration.blocker.unsupportedVersion': 'the node has an unsupported version value'
     'nodes.humanInputMigration.dialog.description': 'Your recipients, form, and actions carry over.'
     'nodes.humanInputMigration.dialog.draftNotice': 'Only this draft changes. Published versions keep running until you publish again.'

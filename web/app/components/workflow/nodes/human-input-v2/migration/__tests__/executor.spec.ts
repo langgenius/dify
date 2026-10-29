@@ -1,11 +1,12 @@
 import type { HumanInputNodeType } from '../../../human-input/types'
+import type { HumanInputV2NodeType } from '../../types'
 import type { HumanInputMigrationExecutorDependencies } from '../executor'
 import type { HumanInputMigrationGraph } from '../types'
 import type { Node } from '@/app/components/workflow/types'
 import { ORPCError } from '@orpc/client'
 import { describe, expect, it, vi } from 'vitest'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { DeliveryMethodType } from '../../../human-input/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { createDefaultFormInputByType, DeliveryMethodType } from '../../../human-input/types'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from '../executor'
 
 vi.mock('@/service/console', () => ({
@@ -29,7 +30,11 @@ const migratedData = (title = 'Approval') => ({
   debug_mode: { enabled: false, channels: [] },
 })
 
-const createLegacyNode = (id: string, valid = true): Node => ({
+const createLegacyNode = (
+  id: string,
+  valid = true,
+  inputs: HumanInputNodeType['inputs'] = [],
+): Node<HumanInputNodeType> => ({
   id,
   type: 'custom',
   position: { x: 100, y: 100 },
@@ -45,11 +50,11 @@ const createLegacyNode = (id: string, valid = true): Node => ({
       },
     ],
     form_content: '',
-    inputs: [],
+    inputs,
     user_actions: [],
     timeout: 3,
     timeout_unit: 'day',
-  } as HumanInputNodeType,
+  },
 })
 
 const createHarness = (
@@ -97,6 +102,35 @@ const createHarness = (
 }
 
 describe('Human Input migration executor', () => {
+  it.each([InputVarType.select, InputVarType.singleFile, InputVarType.multiFiles])(
+    'reports the unsupported %s field before making a migration request',
+    async (type) => {
+      const legacy = createLegacyNode('unsupported-field', true, [
+        createDefaultFormInputByType(type, 'decision'),
+      ])
+      const harness = createHarness({
+        nodes: [legacy],
+        edges: [],
+      })
+
+      expect(await executeHumanInputV2Migration(harness.dependencies)).toEqual({
+        status: 'blocked',
+        blockers: [
+          {
+            code: 'unsupported-input-type',
+            nodeId: legacy.id,
+            nodeTitle: legacy.data.title,
+            value: `decision (${type})`,
+          },
+        ],
+      })
+      expect(harness.post).not.toHaveBeenCalled()
+      expect(harness.replaceGraph).not.toHaveBeenCalled()
+      expect(harness.syncDraft).not.toHaveBeenCalled()
+      expect(harness.saveHistory).not.toHaveBeenCalled()
+    },
+  )
+
   it('applies one complete graph replacement, one sync, and one history transaction', async () => {
     const originalGraph: HumanInputMigrationGraph = {
       nodes: [createLegacyNode('a'), createLegacyNode('b')],
@@ -199,15 +233,10 @@ describe('Human Input migration executor', () => {
   })
 
   it('is a no-op for an already migrated graph', async () => {
-    const v2Node = createLegacyNode('v2')
-    v2Node.data = {
-      ...v2Node.data,
-      version: '2',
-      recipients_spec: [{ type: 'initiator' }],
-      message_template: { subject: '', body: '' },
-      debug_mode: { enabled: false, channels: [] },
-    } as unknown as Node['data']
-    delete (v2Node.data as Record<string, unknown>).delivery_methods
+    const v2Node: Node<HumanInputV2NodeType> = {
+      ...createLegacyNode('v2'),
+      data: { ...migratedData(), version: '2' },
+    }
     const harness = createHarness({ nodes: [v2Node], edges: [] })
 
     expect(await executeHumanInputV2Migration(harness.dependencies)).toEqual({ status: 'noop' })

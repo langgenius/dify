@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} được dành riêng cho nhánh hết thời gian. Hãy chọn ID hành động khác.",
   "nodes.humanInput.timeout.title": "Hết thời gian",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Giá trị mặc định không hợp lệ",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Chưa thể di chuyển trường {{field}}. Bạn có thể tiếp tục sử dụng các nút đầu vào con người phiên bản cũ.",
   "nodes.humanInputMigration.error.graphChanged": "Quy trình đã thay đổi trong khi di chuyển. Hãy thử lại; các chỉnh sửa hiện tại đã được giữ lại.",
   "nodes.humanInputMigration.error.sync": "Không thể lưu quy trình đã di chuyển. Hãy kiểm tra bản nháp hiện tại và thử lại.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} зарезервовано для гілки тайм-ауту. Виберіть інший ідентифікатор дії.",
   "nodes.humanInput.timeout.title": "Тайм-аут",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Недійсне значення за замовчуванням",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Поле {{field}} поки що не можна перенести. Ви можете й надалі використовувати попередні вузли введення даних людиною.",
   "nodes.humanInputMigration.error.graphChanged": "Робочий процес змінився під час міграції. Спробуйте ще раз; поточні зміни збережено.",
   "nodes.humanInputMigration.error.sync": "Не вдалося зберегти перенесений робочий процес. Перегляньте поточну чернетку та спробуйте ще раз.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

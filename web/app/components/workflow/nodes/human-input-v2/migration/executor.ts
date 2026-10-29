@@ -16,7 +16,11 @@ import { cloneDeep } from 'es-toolkit/object'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
 import { isHumanInputV2NodeData } from '../types'
-import { classifyHumanInputVersion, HumanInputVersionKind } from './policy'
+import {
+  classifyHumanInputVersion,
+  getUnsupportedLegacyHumanInputFields,
+  HumanInputVersionKind,
+} from './policy'
 import { HumanInputMigrationBlockerCode } from './types'
 
 /** The backend owns legacy alias handling and recipient conversion. */
@@ -134,6 +138,18 @@ export const executeHumanInputV2Migration = async ({
         code: HumanInputMigrationBlockerCode.UnsupportedVersion,
         value: String((node.data as { version?: unknown }).version),
       })
+      return []
+    }
+    const unsupportedFields = getUnsupportedLegacyHumanInputFields(node.data)
+    if (unsupportedFields.length) {
+      blockers.push(
+        ...unsupportedFields.map((input) => ({
+          nodeId: node.id,
+          nodeTitle: node.data.title,
+          code: HumanInputMigrationBlockerCode.UnsupportedInputType,
+          value: `${input.output_variable_name} (${input.type})`,
+        })),
+      )
       return []
     }
     return [{ node_id: node.id, node_data: cloneDeep(node.data) as HumanInputNodeType }]

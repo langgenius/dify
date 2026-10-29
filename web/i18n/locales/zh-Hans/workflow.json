@@ -383,6 +383,7 @@
   "nodes.humanInputMigration.blocker.missingRecipients": "节点没有可迁移的有效收件人",
   "nodes.humanInputMigration.blocker.unresolvedMember": "无法将工作区成员解析为联系人或有效邮箱",
   "nodes.humanInputMigration.blocker.unsupportedDeliveryMethod": "人工介入 v2 不支持已启用的交付方式",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "字段 {{field}} 暂不支持迁移。你可以继续使用旧版人工确认节点。",
   "nodes.humanInputMigration.blocker.unsupportedVersion": "节点包含不受支持的版本值",
   "nodes.humanInputMigration.dialog.description": "收件人、表单和操作将保留。",
   "nodes.humanInputMigration.dialog.draftNotice": "仅当前草稿会发生变化。已发布版本将继续运行，直至你再次发布。",

@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} jest zarezerwowany dla gałęzi przekroczenia czasu. Wybierz inny identyfikator akcji.",
   "nodes.humanInput.timeout.title": "Limit czasu",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Nieprawidłowa wartość domyślna",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Pola {{field}} nie można jeszcze przenieść. Możesz nadal korzystać ze starszych węzłów wprowadzania danych przez człowieka.",
   "nodes.humanInputMigration.error.graphChanged": "Przepływ pracy zmienił się podczas migracji. Spróbuj ponownie; bieżące zmiany zostały zachowane.",
   "nodes.humanInputMigration.error.sync": "Nie udało się zapisać zmigrowanego przepływu pracy. Sprawdź bieżący szkic i spróbuj ponownie.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

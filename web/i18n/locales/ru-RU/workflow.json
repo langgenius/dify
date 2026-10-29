@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} зарезервирован для ветки тайм-аута. Выберите другой идентификатор действия.",
   "nodes.humanInput.timeout.title": "Тайм-аут",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Недопустимое значение по умолчанию",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Поле {{field}} пока нельзя перенести. Вы можете продолжать использовать прежние узлы ввода данных человеком.",
   "nodes.humanInputMigration.error.graphChanged": "Рабочий процесс изменился во время миграции. Повторите попытку; текущие изменения сохранены.",
   "nodes.humanInputMigration.error.sync": "Не удалось сохранить перенесённый рабочий процесс. Проверьте текущий черновик и повторите попытку.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

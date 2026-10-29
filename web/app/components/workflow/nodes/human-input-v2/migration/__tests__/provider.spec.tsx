@@ -1,11 +1,13 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
 import { ORPCError } from '@orpc/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { use } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { createDefaultFormInputByType } from '@/app/components/workflow/nodes/human-input/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { HumanInputMigrationContext } from '../context'
 import HumanInputMigrationProvider from '../provider'
 
@@ -80,7 +82,11 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-const createLegacyNode = (unsupported = false, id = 'legacy-human-input'): Node => ({
+const createLegacyNode = (
+  unsupported = false,
+  id = 'legacy-human-input',
+  inputs: HumanInputNodeType['inputs'] = [],
+): Node<HumanInputNodeType> => ({
   id,
   type: 'custom',
   position: { x: 100, y: 100 },
@@ -96,11 +102,11 @@ const createLegacyNode = (unsupported = false, id = 'legacy-human-input'): Node 
       },
     ],
     form_content: '',
-    inputs: [],
+    inputs,
     user_actions: [],
     timeout: 3,
     timeout_unit: 'day',
-  } as Node['data'],
+  },
 })
 
 const PolicyProbe = () => {
@@ -254,6 +260,34 @@ describe('Human Input migration provider', () => {
     expect(mocks.doSync).not.toHaveBeenCalled()
     expect(mocks.saveHistory).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('shows the unsupported field and preserves the legacy draft when migration is unavailable', async () => {
+    runtime.nodes = [
+      createLegacyNode(false, 'legacy-human-input', [
+        createDefaultFormInputByType(InputVarType.select, 'decision'),
+      ]),
+    ]
+    const user = userEvent.setup()
+    renderProvider()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrate',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Approval')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'workflow.nodes.humanInputMigration.blocker.unsupportedInputType',
+    )
+    expect(mocks.postMigration).not.toHaveBeenCalled()
+    expect(mocks.setNodes).not.toHaveBeenCalled()
+    expect(mocks.doSync).not.toHaveBeenCalled()
   })
 
   it('locks duplicate confirmation while pending', async () => {

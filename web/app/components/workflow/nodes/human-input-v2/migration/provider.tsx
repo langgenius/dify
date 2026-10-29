@@ -24,7 +24,12 @@ type HumanInputMigrationProviderProps = PropsWithChildren<{
   canEdit: boolean
 }>
 
-const getBlockerTranslationKey = (code: HumanInputMigrationBlocker['code']) => {
+const getBlockerTranslationKey = (
+  code: Exclude<
+    HumanInputMigrationBlocker['code'],
+    typeof HumanInputMigrationBlockerCode.UnsupportedInputType
+  >,
+) => {
   switch (code) {
     case HumanInputMigrationBlockerCode.UnsupportedVersion:
       return 'nodes.humanInputMigration.blocker.unsupportedVersion' as const
@@ -136,9 +141,13 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
       if (result.status === 'blocked') {
         const firstBlocker = result.blockers[0]
         if (!firstBlocker) throw new Error('human-input-migration-invalid-response')
-        const reason = t(($) => $[getBlockerTranslationKey(firstBlocker.code)], {
-          ns: 'workflow',
-        })
+        const reason =
+          firstBlocker.code === HumanInputMigrationBlockerCode.UnsupportedInputType
+            ? t(($) => $['nodes.humanInputMigration.blocker.unsupportedInputType'], {
+                ns: 'workflow',
+                field: firstBlocker.value,
+              })
+            : t(($) => $[getBlockerTranslationKey(firstBlocker.code)], { ns: 'workflow' })
         const message = t(($) => $['nodes.humanInputMigration.error.blocked'], {
           ns: 'workflow',
           nodeTitle: firstBlocker.nodeTitle,

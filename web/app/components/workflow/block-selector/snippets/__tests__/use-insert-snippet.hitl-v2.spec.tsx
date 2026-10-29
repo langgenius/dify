@@ -4,6 +4,9 @@ import { act, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
+import HumanInputDefault from '../../../nodes/human-input/default'
+import { createDefaultFormInputByType } from '../../../nodes/human-input/types'
+import { InputVarType } from '../../../types'
 import { useInsertSnippet } from '../use-insert-snippet'
 
 const mockRequest = vi.hoisted(() => vi.fn())
@@ -98,6 +101,30 @@ describe('useInsertSnippet', () => {
   })
 
   describe('Insert Flow', () => {
+    it('keeps legacy-only snippets usable when existing legacy fields cannot migrate', async () => {
+      const data = {
+        ...HumanInputDefault.defaultValue,
+        inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')],
+      }
+      mockGetNodes.mockReturnValue([
+        { id: 'legacy-human-input', type: 'custom', position: { x: 0, y: 0 }, data },
+      ])
+      seedPublishedWorkflow(queryClient, {
+        graph: {
+          nodes: [{ id: 'snippet-human-input', type: 'custom', position: { x: 10, y: 20 }, data }],
+          edges: [],
+        },
+      })
+      const { result } = renderUseInsertSnippet()
+
+      await act(async () => result.current.handleInsertSnippet('snippet-1'))
+
+      expect(mockToastWarning).not.toHaveBeenCalled()
+      expect(mockSetNodes).toHaveBeenCalledTimes(1)
+      expect(mockSetNodes.mock.lastCall![0]).toHaveLength(2)
+      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    })
+
     it('blocks snippets containing Human Input while the draft has a legacy node', async () => {
       mockGetNodes.mockReturnValue([
         {

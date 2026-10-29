@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} 是逾時分支的保留識別碼，請使用其他操作 ID。",
   "nodes.humanInput.timeout.title": "超時",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "預設值無效",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "欄位 {{field}} 暫不支援遷移。你可以繼續使用舊版人工確認節點。",
   "nodes.humanInputMigration.error.graphChanged": "遷移期間工作流程已更新，請重試。目前的編輯已保留。",
   "nodes.humanInputMigration.error.sync": "無法儲存遷移後的工作流程。請檢查目前的草稿後重試。",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

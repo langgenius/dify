@@ -1,7 +1,10 @@
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { createDefaultFormInputByType } from '../../../human-input/types'
 import {
+  canInsertHumanInput,
+  canInsertHumanInputNodes,
   classifyHumanInputVersion,
   getHumanInputCreationPolicy,
   HumanInputVersionKind,
@@ -54,8 +57,49 @@ describe('Human Input migration policy', () => {
       expect(getHumanInputCreationPolicy(nodes, canEdit)).toEqual({
         hasLegacyHumanInput: hasLegacy,
         canAddHumanInputV2: canAdd,
+        canAddLegacyHumanInput: false,
         candidateCount: 1,
       })
     },
   )
+
+  it.each([InputVarType.select, InputVarType.singleFile, InputVarType.multiFiles])(
+    'keeps legacy insertion available when %s fields cannot migrate',
+    (type) => {
+      const legacy = {
+        data: {
+          ...data(),
+          inputs: [createDefaultFormInputByType(type, 'decision')],
+        },
+      }
+
+      expect(canInsertHumanInput([legacy], BlockEnum.HumanInput)).toBe(true)
+      expect(canInsertHumanInput([legacy], BlockEnum.HumanInputV2)).toBe(false)
+      expect(canInsertHumanInput([legacy, node('2')], BlockEnum.HumanInput)).toBe(false)
+      expect(canInsertHumanInput([node()], BlockEnum.HumanInput)).toBe(false)
+    },
+  )
+
+  it('rejects mixed-version batches while allowing legacy-only batches in the compatibility workflow', () => {
+    const legacy = {
+      data: { ...data(), inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')] },
+    }
+    expect(canInsertHumanInputNodes([legacy], [node()])).toBe(true)
+    expect(canInsertHumanInputNodes([legacy], [node('2')])).toBe(false)
+    expect(canInsertHumanInputNodes([], [node(), node('2')])).toBe(false)
+    expect(
+      canInsertHumanInputNodes([], [node(), { data: data(undefined, BlockEnum.HumanInputV2) }]),
+    ).toBe(false)
+    expect(canInsertHumanInputNodes([node('2')], [node()])).toBe(false)
+    expect(canInsertHumanInputNodes([legacy], [node('3')])).toBe(false)
+    expect(getHumanInputCreationPolicy([legacy], false).canAddLegacyHumanInput).toBe(false)
+  })
+
+  it('keeps backend-supported historical text_input fields on the migration path', () => {
+    const legacy = {
+      data: { ...data(), inputs: [{ type: 'text_input', output_variable_name: 'note' }] },
+    }
+    expect(getHumanInputCreationPolicy([legacy], true).canAddLegacyHumanInput).toBe(false)
+    expect(canInsertHumanInput([legacy], BlockEnum.HumanInput)).toBe(false)
+  })
 })

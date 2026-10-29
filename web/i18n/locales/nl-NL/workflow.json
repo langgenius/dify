@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} is gereserveerd voor de time-outtak. Kies een andere actie-ID.",
   "nodes.humanInput.timeout.title": "Timeout",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Ongeldige standaardwaarde",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Het veld {{field}} kan nog niet worden gemigreerd. Je kunt de oude Human Input-nodes blijven gebruiken.",
   "nodes.humanInputMigration.error.graphChanged": "De workflow is tijdens de migratie gewijzigd. Probeer het opnieuw; uw huidige wijzigingen zijn behouden.",
   "nodes.humanInputMigration.error.sync": "De gemigreerde workflow kon niet worden opgeslagen. Controleer het huidige concept en probeer het opnieuw.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} è riservato al ramo di timeout. Scegli un altro ID azione.",
   "nodes.humanInput.timeout.title": "Timeout",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Valore predefinito non valido",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Il campo {{field}} non può ancora essere migrato. Puoi continuare a utilizzare i nodi di input umano precedenti.",
   "nodes.humanInputMigration.error.graphChanged": "Il flusso di lavoro è cambiato durante la migrazione. Riprova; le modifiche attuali sono state mantenute.",
   "nodes.humanInputMigration.error.sync": "Impossibile salvare il flusso di lavoro migrato. Controlla la bozza attuale e riprova.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

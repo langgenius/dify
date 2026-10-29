@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} ຖືກສະຫງວນໄວ້ສຳລັບສາຂາໝົດເວລາ. ກະລຸນາເລືອກ ID ການດຳເນີນການອື່ນ.",
   "nodes.humanInput.timeout.title": "Timeout",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "ຄ່າເລີ່ມຕົ້ນບໍ່ຖືກຕ້ອງ",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "ຍັງບໍ່ສາມາດຍ້າຍຟິວ {{field}} ໄດ້. ທ່ານສາມາດໃຊ້ໂນດຮັບຂໍ້ມູນຈາກຄົນລຸ້ນເກົ່າຕໍ່ໄປໄດ້.",
   "nodes.humanInputMigration.error.graphChanged": "ຂັ້ນຕອນການເຮັດວຽກປ່ຽນແປງໃນລະຫວ່າງການຍ້າຍ. ກະລຸນາລອງໃໝ່; ການແກ້ໄຂປັດຈຸບັນຂອງທ່ານຍັງຖືກເກັບໄວ້.",
   "nodes.humanInputMigration.error.sync": "ບໍ່ສາມາດບັນທຶກຂັ້ນຕອນການເຮັດວຽກທີ່ຍ້າຍແລ້ວໄດ້. ກະລຸນາກວດເບິ່ງສະບັບຮ່າງປັດຈຸບັນ ແລະ ລອງໃໝ່.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

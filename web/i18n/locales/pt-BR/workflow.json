@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} está reservado para o ramo de tempo limite. Escolha outro ID de ação.",
   "nodes.humanInput.timeout.title": "Tempo Limite",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Valor padrão inválido",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "O campo {{field}} ainda não pode ser migrado. Você pode continuar usando os nós antigos de entrada humana.",
   "nodes.humanInputMigration.error.graphChanged": "O fluxo de trabalho mudou durante a migração. Tente novamente; suas edições atuais foram mantidas.",
   "nodes.humanInputMigration.error.sync": "Não foi possível salvar o fluxo de trabalho migrado. Revise o rascunho atual e tente novamente.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

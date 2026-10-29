@@ -191,7 +191,12 @@ describe('Blocks', () => {
     const onSelect = vi.fn()
     const openMigrationDialog = vi.fn()
     const contextValue = {
-      policy: { hasLegacyHumanInput: true, canAddHumanInputV2: false, candidateCount: 1 as const },
+      policy: {
+        hasLegacyHumanInput: true,
+        canAddHumanInputV2: false,
+        canAddLegacyHumanInput: false,
+        candidateCount: 1 as const,
+      },
       canEdit: true,
       pending: false,
       openMigrationDialog,
@@ -267,7 +272,12 @@ describe('Blocks', () => {
     render(
       <HumanInputMigrationContext
         value={{
-          policy: { hasLegacyHumanInput: true, canAddHumanInputV2: false, candidateCount: 1 },
+          policy: {
+            hasLegacyHumanInput: true,
+            canAddHumanInputV2: false,
+            canAddLegacyHumanInput: false,
+            candidateCount: 1,
+          },
           canEdit: false,
           pending: false,
           openMigrationDialog: vi.fn(),

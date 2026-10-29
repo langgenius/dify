@@ -29,6 +29,7 @@ export type HumanInputMigrationApi = {
 
 export const HumanInputMigrationBlockerCode = {
   UnsupportedVersion: 'unsupported-version',
+  UnsupportedInputType: 'unsupported-input-type',
   ConfiguredDisabledMethod: 'configured-disabled-method',
   UnsupportedDeliveryMethod: 'unsupported-delivery-method',
   InvalidEmailConfiguration: 'invalid-email-configuration',
@@ -39,15 +40,18 @@ export const HumanInputMigrationBlockerCode = {
   MissingRecipients: 'missing-recipients',
 } as const
 
-export type HumanInputMigrationBlockerCode = NodeDataMigrationBlocker['code']
+export type HumanInputMigrationBlockerCode =
+  | NodeDataMigrationBlocker['code']
+  | typeof HumanInputMigrationBlockerCode.UnsupportedInputType
 
 export type HumanInputMigrationBlocker = {
   nodeId: string
   nodeTitle: string
-  code: HumanInputMigrationBlockerCode
   methodId?: string
-  value?: string
-}
+} & (
+  | { code: NodeDataMigrationBlocker['code']; value?: string }
+  | { code: typeof HumanInputMigrationBlockerCode.UnsupportedInputType; value: string }
+)
 
 type HumanInputMigrationReplacement = {
   nodeId: string

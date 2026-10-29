@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} está reservado para la rama de tiempo de espera. Elige otro ID de acción.",
   "nodes.humanInput.timeout.title": "Tiempo de Espera",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Valor predeterminado no válido",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "El campo {{field}} aún no se puede migrar. Puedes seguir utilizando los nodos de entrada humana antiguos.",
   "nodes.humanInputMigration.error.graphChanged": "El flujo de trabajo cambió durante la migración. Inténtalo de nuevo; se han conservado tus cambios actuales.",
   "nodes.humanInputMigration.error.sync": "No se pudo guardar el flujo de trabajo migrado. Revisa el borrador actual e inténtalo de nuevo.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

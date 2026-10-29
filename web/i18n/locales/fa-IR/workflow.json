@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} برای شاخه پایان مهلت رزرو شده است. شناسه دیگری برای اقدام انتخاب کنید.",
   "nodes.humanInput.timeout.title": "مهلت زمانی",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "مقدار پیش‌فرض نامعتبر است",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "فیلد {{field}} هنوز قابل مهاجرت نیست. می‌توانید به استفاده از گره‌های قدیمی ورودی انسانی ادامه دهید.",
   "nodes.humanInputMigration.error.graphChanged": "گردش کار در هنگام انتقال تغییر کرد. دوباره تلاش کنید؛ ویرایش‌های فعلی شما حفظ شده‌اند.",
   "nodes.humanInputMigration.error.sync": "گردش کار منتقل‌شده ذخیره نشد. پیش‌نویس فعلی را بررسی کنید و دوباره تلاش کنید.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",

@@ -363,6 +363,7 @@
   "nodes.humanInput.errorMsg.reservedActionId": "{{id}} dicadangkan untuk cabang batas waktu. Pilih ID tindakan lain.",
   "nodes.humanInput.timeout.title": "Batas waktu",
   "nodes.humanInputMigration.blocker.invalidDefaultValue": "Nilai default tidak valid",
+  "nodes.humanInputMigration.blocker.unsupportedInputType": "Kolom {{field}} belum dapat dimigrasikan. Anda dapat terus menggunakan node Input Manusia versi lama.",
   "nodes.humanInputMigration.error.graphChanged": "Alur kerja berubah selama migrasi. Coba lagi; perubahan Anda saat ini telah dipertahankan.",
   "nodes.humanInputMigration.error.sync": "Alur kerja yang dimigrasikan tidak dapat disimpan. Periksa draf saat ini dan coba lagi.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
