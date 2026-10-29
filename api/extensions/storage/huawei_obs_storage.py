@@ -5,6 +5,7 @@ from obs import ObsClient
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
+from libs.stream import close_stream
 
 
 class HuaweiObsStorage(BaseStorage):
@@ -28,15 +29,22 @@ class HuaweiObsStorage(BaseStorage):
     @override
     def load_once(self, filename: str) -> bytes:
         # TODO: Huawei SDK lacks proper typing
-        data: bytes = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response.read()  # type: ignore
-        return data
+        body = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response  # type: ignore
+        try:
+            data: bytes = body.read()
+            return data
+        finally:
+            close_stream(body)
 
     @override
     def load_stream(self, filename: str) -> Generator:
         # TODO: Huawei SDK lacks proper typing
-        response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response  # type: ignore
-        while chunk := response.read(4096):
-            yield chunk
+        body = self.client.getObject(bucketName=self.bucket_name, objectKey=filename).body.response  # type: ignore
+        try:
+            while chunk := body.read(4096):
+                yield chunk
+        finally:
+            close_stream(body)
 
     @override
     def download(self, filename, target_filepath):
