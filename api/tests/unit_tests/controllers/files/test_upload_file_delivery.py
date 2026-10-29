@@ -123,6 +123,98 @@ class TestFilePreviewApi:
         assert response.headers["Accept-Ranges"] == "bytes"
 
     @patch.object(module, "application_services")
+    def test_audio_preview_honors_range_request(self, mock_application_services, app: Flask):
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
+        )
+
+        with app.test_request_context(_SIGNED_QUERY, headers={"Range": "bytes=0-99"}):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 206
+        assert response.headers["Content-Range"] == "bytes 0-99/1000"
+        assert response.headers["Accept-Ranges"] == "bytes"
+        assert response.headers["Content-Length"] == "100"
+        assert b"".join(response.response) == b"x" * 100
+
+    @patch.object(module, "application_services")
+    def test_range_request_does_not_drain_the_stream(self, mock_application_services, app: Flask):
+        # A Range response must slice while streaming. Joining the whole
+        # stream first loads the entire file into memory for every ranged
+        # request; the old full-file path was streamed.
+        drained = False
+
+        def big_stream():
+            nonlocal drained
+            for index in range(10):
+                yield bytes([index]) * 100
+            drained = True
+
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=big_stream()
+        )
+
+        with app.test_request_context(_SIGNED_QUERY, headers={"Range": "bytes=0-99"}):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 206
+        assert b"".join(response.response) == bytes([0]) * 100
+        assert drained is False
+
+    @patch.object(module, "application_services")
+    def test_audio_preview_ignores_range_when_if_range_is_present(self, mock_application_services, app: Flask):
+        # Same RFC 9110 13.1.5 rule on this route: stale If-Range + Range
+        # must answer 200 with the complete body.
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
+        )
+
+        with app.test_request_context(_SIGNED_QUERY, headers={"Range": "bytes=0-9", "If-Range": '"stale-validator"'}):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 200
+        assert "Content-Range" not in response.headers
+        assert b"".join(response.response) == b"x" * 1000
+
+    @patch.object(module, "application_services")
+    def test_audio_preview_suffix_range_returns_file_tail(self, mock_application_services, app: Flask):
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
+        )
+
+        with app.test_request_context(_SIGNED_QUERY, headers={"Range": "bytes=-50"}):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 206
+        assert response.headers["Content-Range"] == "bytes 950-999/1000"
+        assert response.headers["Content-Length"] == "50"
+
+    @patch.object(module, "application_services")
+    def test_audio_preview_unsatisfiable_range_returns_416(self, mock_application_services, app: Flask):
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
+        )
+
+        with app.test_request_context(_SIGNED_QUERY, headers={"Range": "bytes=1000-"}):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 416
+        assert response.headers["Content-Range"] == "bytes */1000"
+
+    @patch.object(module, "application_services")
+    def test_audio_preview_without_range_still_sends_full_body(self, mock_application_services, app: Flask):
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="audio/mpeg", size=1000, extension="mp3", content=b"x" * 1000
+        )
+
+        with app.test_request_context(_SIGNED_QUERY):
+            response = module.FilePreviewApi().get("file-id")
+
+        assert response.status_code == 200
+        assert "Content-Range" not in response.headers
+        assert b"".join(response.response) == b"x" * 1000
+
+    @patch.object(module, "application_services")
     def test_zero_size_omits_content_length(self, mock_application_services, app: Flask):
         mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
             size=0
