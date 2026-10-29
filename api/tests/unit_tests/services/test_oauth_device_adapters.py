@@ -216,10 +216,6 @@ class _RecordingTokenPersistence:
         self.writes.append(token)
         return OAuthDeviceTokenRotation(token_id="token-1", replaced_token_id=None, replaced_token_hash=None)
 
-    def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool:
-        _ = rotation
-        return True
-
 
 @dataclass(frozen=True)
 class _FixedTTLPolicy:

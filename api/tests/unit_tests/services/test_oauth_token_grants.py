@@ -976,7 +976,6 @@ class TestRefreshTokenGrantCases:
         second = refresh_world.refresh(login.refresh_token)
 
         # One access row per login: the later refresh replaced the earlier caller's access token.
-        assert refresh_world.access_row(first).revoked_at is not None
         assert refresh_world.live_access_ids() == {second.payload["token_id"]}
         after_first = refresh_world.refresh(first.refresh_token)
         after_second = refresh_world.refresh(second.refresh_token)
@@ -1350,7 +1349,8 @@ def collision(refresh_world: _RefreshWorld, monkeypatch: pytest.MonkeyPatch) -> 
     refresh_world.accounts.accounts[ACCOUNT_ID] = replace(account_snapshot(), email="moved@example.com")
     refresh_world.accounts.accounts[OTHER_ACCOUNT_ID] = account_snapshot(OTHER_ACCOUNT_ID)
     taker = refresh_world.login(context=OTHER_CONTEXT)
-    assert refresh_world.access_row(moved).device_label == refresh_world.access_row(taker).device_label
+    # One row per grant key: the taker's login reused the moved account's row.
+    assert refresh_world.live_access_ids() == {taker.payload["token_id"]}
     return _Collision(world=refresh_world, moved=moved, taker=taker)
 
 
@@ -1358,10 +1358,12 @@ def collision(refresh_world: _RefreshWorld, monkeypatch: pytest.MonkeyPatch) -> 
 class TestGrantRevokeStaysInsideTheAccount:
     @staticmethod
     @pytest.mark.parametrize("path", _REVOKE_BY_ID_PATHS)
-    def test_session_revoke_by_an_old_id_spares_the_other_account(
+    def test_session_revoke_by_a_listed_id_spares_the_other_account(
         collision: _Collision, path: _SessionRevokePath
     ) -> None:
-        path.revoke(collision.world, collision.moved.payload["token_id"])
+        # The taker's login reused the access row, so the moved account's session is listed by its refresh token.
+        [listed] = collision.world.console_session_ids()
+        path.revoke(collision.world, listed)
 
         assert collision.world.refresh_row(collision.moved.refresh_token) is None
         collision.assert_taker_untouched()

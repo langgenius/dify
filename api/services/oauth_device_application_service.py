@@ -209,7 +209,7 @@ def build_account_poll_payload(
     return {
         "token": mint.token,
         "expires_at": mint.expires_at,
-        "subject_type": "account",
+        "subject_type": SubjectType.ACCOUNT,
         "account": {"id": account.id, "email": account.email, "name": account.name},
         "workspaces": [
             {"id": workspace.id, "name": workspace.name, "role": workspace.role} for workspace in workspaces
@@ -380,44 +380,7 @@ class OAuthDeviceApplicationService:
         )
         self._publish_approval(device_code, approval)
 
-        try:
-            current = self._store.load_by_user_code(user_code.strip().upper())
-            if current is None or current[0] != device_code:
-                raise DeviceStateLostError
-            state = current[1]
-            if state.status is not DeviceFlowStatus.PENDING:
-                raise AlreadyResolvedError
-            mint = self._tokens.issue_account_token(
-                account=account,
-                workspace_id=context.active_workspace_id,
-                client_id=state.client_id,
-                device_label=state.device_label,
-            )
-            try:
-                poll_payload = build_account_poll_payload(
-                    account,
-                    context.active_workspace_id,
-                    workspaces,
-                    mint,
-                )
-                self._publish_approval(
-                    device_code,
-                    transition_id=transition_id,
-                    token_id=mint.token_id,
-                    poll_payload=poll_payload,
-                )
-            except ApprovalOutcomeUnknownError:
-                raise
-            except Exception as error:
-                self._rollback_issued_token(mint)
-                if isinstance(error, (StateNotFoundError, InvalidTransitionError)):
-                    logger.exception("device_flow: approve raced on %s", device_code)
-                    raise DeviceStateLostError from error
-                raise
-        finally:
-            self._store.release_approval(guard_id, transition_id)
-
-        self._emit_approve_audit(state, account, context.active_workspace_id, mint)
+        self._emit_approve_audit(context.request_id, state, approval)
         return DeviceMutation(status="approved")
 
     def deny(self, *, user_code: str) -> DeviceMutation:
@@ -597,7 +560,8 @@ class OAuthDeviceApplicationService:
             raise AlreadyResolvedError
         return device_code, state
 
-    def _rollback_issued_token(self, mint: IssuedOAuthToken) -> None:
+    def _publish_approval(self, device_code: str, approval: DeviceApprovalRecord) -> None:
+        transition_id = secrets.token_urlsafe(16)
         try:
             self._store.approve(device_code, transition_id=transition_id, approval=approval)
         except (StateNotFoundError, InvalidTransitionError) as error:
@@ -797,7 +761,7 @@ class _ApprovalTokenMinter:
             client_id=state.client_id,
             device_label=state.device_label,
         )
-        return self._build_account_poll_payload(account, workspace_id, workspaces, mint)
+        return build_account_poll_payload(account, workspace_id, workspaces, mint)
 
     def mint_external(
         self,
@@ -822,33 +786,5 @@ class _ApprovalTokenMinter:
             "account": None,
             "workspaces": [],
             "default_workspace_id": None,
-            "token_id": mint.token_id,
-        }
-
-    @staticmethod
-    def _build_account_poll_payload(
-        account: AccountSnapshot,
-        active_workspace_id: str,
-        workspaces: Sequence[DeviceWorkspace],
-        mint: IssuedOAuthToken,
-    ) -> PollPayload:
-        default_workspace_id = next(
-            (workspace.id for workspace in workspaces if workspace.id == active_workspace_id),
-            None,
-        )
-        if default_workspace_id is None:
-            default_workspace_id = next((workspace.id for workspace in workspaces if workspace.current), None)
-        if default_workspace_id is None and workspaces:
-            default_workspace_id = workspaces[0].id
-
-        return {
-            "token": mint.token,
-            "expires_at": mint.expires_at,
-            "subject_type": SubjectType.ACCOUNT,
-            "account": {"id": account.id, "email": account.email, "name": account.name},
-            "workspaces": [
-                {"id": workspace.id, "name": workspace.name, "role": workspace.role} for workspace in workspaces
-            ],
-            "default_workspace_id": default_workspace_id,
             "token_id": mint.token_id,
         }

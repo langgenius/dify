@@ -1,8 +1,10 @@
 """DELETE openapi_oauth_access_tokens past retention, and refresh tokens past expiry.
 
-Revocation is UPDATE (token_id stays for audits) so access rows accumulate
-across re-logins, and expired-but-never-presented rows have no hard-expire
-trigger — both get pruned here. Spec: docs/specs/v1.0/server/tokens.md §Hard-expire.
+Revocation is UPDATE (token_id stays for audits) so a revoked access row stays
+until a new login on the same device reuses it, and expired-but-never-presented
+rows have no hard-expire trigger — both get pruned here. A login can reuse a row
+between the SELECT and the DELETE, which is why ``delete_in_batches`` re-checks.
+Spec: docs/specs/v1.0/server/tokens.md §Hard-expire.
 
 A rotated refresh token stays until it expires: presenting it after the replay
 grace must still find it, so the reuse revokes its grant.

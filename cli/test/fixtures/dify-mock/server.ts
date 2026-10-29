@@ -945,6 +945,8 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
     lastRequest: null,
     requestCount: 0,
     pendingPolls: opts.pendingPolls ?? 0,
+    sessionRevokeCount: 0,
+    lastDeviceCodeBody: null,
   }
   const app = buildApp(() => scenario, state)
   return new Promise((resolve, reject) => {

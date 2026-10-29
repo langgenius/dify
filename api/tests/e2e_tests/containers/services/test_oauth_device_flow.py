@@ -14,7 +14,15 @@ from models.oauth import OpenAPIOAuthAccessToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import EnvironmentOAuthDeviceTokenTTLPolicy, OAuthDeviceTokenIssuanceGateway
-from services.oauth_device_contracts import DeviceFlowStatus, InvalidTransitionError, PollPayload
+from services.oauth_device_contracts import (
+    DEVICE_FLOW_TTL_SECONDS,
+    AccountApprovalRecord,
+    ApprovalTransitionConfirmation,
+    DeviceApprovalRecord,
+    DeviceFlowStatus,
+    ExternalApprovalRecord,
+    InvalidTransitionError,
+)
 from services.oauth_device_flow import DEVICE_CODE_KEY_FMT, USER_CODE_KEY_FMT, DeviceFlowRedis
 
 pytestmark = pytest.mark.usefixtures("flask_app_with_containers")

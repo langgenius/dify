@@ -1,6 +1,6 @@
 import type { TestWorld } from '@test/fixtures/kernel'
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { hostname, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
@@ -377,4 +377,19 @@ it('refuses a bad verification_uri_complete before printing or opening anything'
   expect(w.io.errBuf()).not.toMatch(/open /)
   expect(w.io.errBuf()).not.toMatch(/code ABCD-1234/)
   expect(w.io.outBuf()).toBe('')
+})
+
+it('two config dirs on one host log in with different device labels', async () => {
+  const labels: unknown[] = []
+  for (const _dir of ['first', 'second']) {
+    const w = await loginWorld()
+    expect(await (await w.ctx.get(commands)).run()).toBe(0)
+    const id = await installationId(w.ctx)
+    expect(w.mock.lastDeviceCodeBody).toEqual({
+      client_id: 'difyctl',
+      device_label: `${hostname().slice(0, DEVICE_LABEL_HOSTNAME_MAX)} (${id.slice(0, DEVICE_LABEL_ID_LENGTH)})`,
+    })
+    labels.push(w.mock.lastDeviceCodeBody?.device_label)
+  }
+  expect(new Set(labels).size).toBe(2)
 })

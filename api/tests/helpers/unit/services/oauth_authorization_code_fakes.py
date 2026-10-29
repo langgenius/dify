@@ -264,10 +264,6 @@ class FakeTokenIssuer:
     ) -> IssuedOAuthToken:
         raise AssertionError("external tokens are not issued by the authorization-code grant")
 
-    def rollback_token(self, token: IssuedOAuthToken) -> bool:
-        _ = token
-        return True
-
 
 @dataclass
 class RateLimitHits:

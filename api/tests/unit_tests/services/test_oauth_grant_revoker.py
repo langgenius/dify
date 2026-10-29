@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
 
@@ -34,9 +35,18 @@ REFRESH_LIFETIME = timedelta(days=30)
 @dataclass
 class _RawRedis:
     deleted: list[str | bytes] = field(default_factory=list)
+    # Runs once, on the next delete, before the keys are recorded.
+    before_next_delete: Callable[[], None] | None = None
 
     def delete(self, *names: str | bytes) -> None:
+        hook, self.before_next_delete = self.before_next_delete, None
+        if hook is not None:
+            hook()
         self.deleted.extend(names)
+
+
+class _CacheDeleteError(Exception):
+    pass
 
 
 @dataclass
@@ -202,15 +212,20 @@ def test_revoked_access_token_no_longer_finds_its_grant(harness: _Harness) -> No
 
 
 def test_revoke_grant_stops_a_later_rollback_from_restoring_rows(harness: _Harness) -> None:
-    first = harness.login()
-    second = harness.login()
+    harness.login()
 
-    harness.revoker.revoke_grant(_grant(), account_id="account-1")
+    def revoke_then_fail_cache_delete() -> None:
+        harness.revoker.revoke_grant(_grant(), account_id="account-1")
+        raise _CacheDeleteError
 
-    assert harness.tokens.rollback_rotation(second.rotation) is False
-    assert harness.access_row(first).revoked_at is not None
-    assert harness.access_row(first).token_hash is None
-    assert harness.access_row(second).revoked_at is not None
+    harness.redis.before_next_delete = revoke_then_fail_cache_delete
+
+    with pytest.raises(_CacheDeleteError):
+        harness.login()
+
+    with harness.factory() as session:
+        rows = session.scalars(select(OpenAPIOAuthAccessToken)).all()
+    assert [(row.revoked_at is not None, row.token_hash) for row in rows] == [(True, None)]
 
 
 @pytest.mark.parametrize("by", ["access", "refresh"])

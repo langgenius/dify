@@ -1,7 +1,8 @@
 import builtins
+import json
 from collections.abc import Callable
-from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
@@ -30,23 +31,24 @@ from models.account import Account, AccountStatus
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from services.oauth_device_application_service import (
-    DeviceWorkspaceQuery,
     ExternalApprovalLimiter,
-    OAuthDeviceAccountQuery,
     OAuthDeviceApplicationService,
     OAuthDeviceSessionRepository,
     OAuthDeviceSSOGateway,
-    OAuthDeviceTokenIssuer,
 )
 from services.oauth_device_contracts import (
+    ACCOUNT_ISSUER_SENTINEL,
     AccessDeniedError,
+    AccountApprovalRecord,
     AlreadyResolvedError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
     ApprovalTransitionConfirmation,
     AuthorizationPendingError,
     DeviceApprovalContext,
+    DeviceApprovalRecord,
     DeviceAuthorization,
+    DeviceFlowStateView,
     DeviceFlowStatus,
     DeviceLookup,
     DeviceMutation,
@@ -76,6 +78,8 @@ from services.oauth_token_contracts import GrantType
 from services.oauth_token_grants import ClientUsage, build_grant_handlers
 from services.oauth_token_service import OAuthTokenService
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
+    ACCOUNT_ID,
+    WORKSPACE_ID,
     DictRedis,
     FakeAccounts,
     FakeTokenIssuer,
@@ -838,17 +842,22 @@ class Outcome(StrEnum):
 
 @dataclass
 class FakeState:
+    user_code: str = USER_CODE
     client_id: str = CLIENT_ID
     device_label: str = "CLI"
     status: DeviceFlowStatus = DeviceFlowStatus.PENDING
     token_id: str | None = None
     created_ip: str = "127.0.0.1"
+    approval: DeviceApprovalRecord | None = None
     poll_payload: PollPayload | None = None
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self))
 
 
 @dataclass
 class FakeStore:
-    states: dict[str, FakeState] = field(default_factory=dict)
+    states: dict[str, DeviceFlowStateView] = field(default_factory=dict)
     poll_decision: SlowDownDecision = SlowDownDecision.OK
 
     def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
@@ -856,18 +865,18 @@ class FakeStore:
         self.states[DEVICE_CODE] = FakeState()
         return DEVICE_CODE, USER_CODE, 900
 
-    def load_by_user_code(self, user_code: str) -> tuple[str, FakeState] | None:
+    def load_by_user_code(self, user_code: str) -> tuple[str, DeviceFlowStateView] | None:
         _ = user_code
         return None
 
-    def approve(self, device_code: str, transition_id: str, token_id: str, poll_payload: PollPayload) -> None:
-        _ = (device_code, transition_id, token_id, poll_payload)
+    def approve(self, device_code: str, transition_id: str, approval: DeviceApprovalRecord) -> None:
+        _ = (device_code, transition_id, approval)
 
     def deny(self, device_code: str, transition_id: str) -> None:
         _ = (device_code, transition_id)
 
-    def confirm_approval(self, device_code: str, transition_id: str, token_id: str) -> ApprovalTransitionConfirmation:
-        _ = (device_code, transition_id, token_id)
+    def confirm_approval(self, device_code: str, transition_id: str) -> ApprovalTransitionConfirmation:
+        _ = (device_code, transition_id)
         return ApprovalTransitionConfirmation.UNKNOWN
 
     def try_acquire_approval(self, guard_id: str, owner_id: str, ttl_seconds: int) -> bool:
@@ -877,11 +886,22 @@ class FakeStore:
     def release_approval(self, guard_id: str, owner_id: str) -> None:
         _ = (guard_id, owner_id)
 
-    def load_by_device_code(self, device_code: str) -> FakeState | None:
+    def load_by_device_code(self, device_code: str) -> DeviceFlowStateView | None:
         return self.states.get(device_code)
 
-    def consume_on_poll(self, device_code: str) -> FakeState | None:
-        return self.states.pop(device_code, None)
+    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowStateView, int | None] | None:
+        state = self.states.pop(device_code, None)
+        if state is None:
+            return None
+        return state, 900
+
+    def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
+        _ = ttl_seconds
+        self.states[device_code] = state
+        return True
+
+    def remaining_seconds(self, device_code: str) -> int | None:
+        return 900 if device_code in self.states else None
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         _ = (device_code, interval_seconds)
@@ -901,18 +921,6 @@ class _Services:
     oauth_token: OAuthTokenService
 
 
-def _poll_payload() -> PollPayload:
-    return PollPayload(
-        token="dfoa_secret",
-        expires_at=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
-        subject_type="account",
-        account={"id": "a1", "email": "ada@example.com", "name": "Ada"},
-        workspaces=[{"id": "w1", "name": "Primary", "role": "owner"}],
-        default_workspace_id="w1",
-        token_id="t1",
-    )
-
-
 @pytest.fixture
 def store() -> FakeStore:
     return FakeStore()
@@ -924,9 +932,9 @@ def client(store: FakeStore, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
     monkeypatch.setattr(RateLimiter, "increment_rate_limit", lambda _self, _key: None)
     device = OAuthDeviceApplicationService(
         store=store,
-        accounts=create_autospec(OAuthDeviceAccountQuery, instance=True),
-        workspaces=create_autospec(DeviceWorkspaceQuery, instance=True),
-        tokens=create_autospec(OAuthDeviceTokenIssuer, instance=True),
+        accounts=FakeAccounts(),
+        workspaces=FakeWorkspaces(),
+        tokens=FakeTokenIssuer(),
         sessions=create_autospec(OAuthDeviceSessionRepository, instance=True),
         sso=create_autospec(OAuthDeviceSSOGateway, instance=True),
         external_approval_limiter=create_autospec(ExternalApprovalLimiter, instance=True),
@@ -968,7 +976,12 @@ def _seed(store: FakeStore, outcome: Outcome) -> None:
             store.states[DEVICE_CODE].status = DeviceFlowStatus.DENIED
         case Outcome.SUCCESS:
             store.states[DEVICE_CODE].status = DeviceFlowStatus.APPROVED
-            store.states[DEVICE_CODE].poll_payload = _poll_payload()
+            store.states[DEVICE_CODE].approval = AccountApprovalRecord(
+                account_id=ACCOUNT_ID,
+                workspace_id=WORKSPACE_ID,
+                subject_email="ada@example.com",
+                subject_issuer=ACCOUNT_ISSUER_SENTINEL,
+            )
 
 
 def _poll_old(client: FlaskClient, *, client_id: str = CLIENT_ID) -> TestResponse:
@@ -1004,9 +1017,11 @@ def test_success_matches_between_routes(store: FakeStore, client: FlaskClient) -
     assert old.status_code == new.status_code == 200
     old_body = old.get_json()
     new_body = new.get_json()
-    assert new_body["access_token"] == old_body["token"] == "dfoa_secret"
+    # Each collect mints its own token, so only the token itself differs.
+    assert old_body["token"].startswith("dfoa_")
+    assert new_body["access_token"].startswith("dfoa_")
     assert new_body["token_type"] == "Bearer"
-    for extra in ("subject_type", "account", "workspaces", "default_workspace_id", "token_id"):
+    for extra in ("subject_type", "account", "workspaces", "default_workspace_id"):
         assert new_body[extra] == old_body[extra]
 
 
@@ -1017,7 +1032,7 @@ def test_mismatched_client_id_succeeds_on_old_route_and_fails_on_new(store: Fake
     new = _poll_new(client, client_id="other-client")
 
     assert old.status_code == 200
-    assert old.get_json()["token"] == "dfoa_secret"
+    assert old.get_json()["token"].startswith("dfoa_")
     assert new.status_code == 401
     assert new.headers["WWW-Authenticate"] == 'Basic realm="dify-openapi"'
     assert new.get_json() == {"error": "invalid_client"}

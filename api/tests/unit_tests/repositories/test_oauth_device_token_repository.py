@@ -1,4 +1,4 @@
-from collections.abc import Collection, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -16,7 +16,7 @@ from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
-from services.oauth_device_contracts import GrantKey, IssuedOAuthToken
+from services.oauth_device_contracts import ACCOUNT_ISSUER_SENTINEL, GrantKey, IssuedOAuthToken, OAuthDeviceTokenWrite
 from tests.helpers.unit.repositories.oauth_lock_order import record_locks
 from tests.helpers.unit.repositories.oauth_refresh_tokens import seed_refresh_token
 
@@ -151,12 +151,9 @@ def test_issue_rotates_matching_live_token_and_invalidates_old_cache(
     second = issue_token()
 
     sqlite_session.expire_all()
-    records = list(
-        sqlite_session.scalars(select(OpenAPIOAuthAccessToken).order_by(OpenAPIOAuthAccessToken.created_at)).all()
-    )
-    assert len(records) == 2
-    assert sum(record.revoked_at is None for record in records) == 1
-    assert records[-1].id == second.token_id
+    records = list(sqlite_session.scalars(select(OpenAPIOAuthAccessToken)).all())
+    assert [(record.id, record.revoked_at) for record in records] == [(second.token_id, None)]
+    assert records[0].token_hash == sha256_hex(second.token)
     assert redis.deleted == [TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(first.token))]
 
 
@@ -172,10 +169,10 @@ def test_rollback_rotation_removes_new_token_and_restores_previous_session(
         repository.rotate_token(_write("hash-2"))
 
     sqlite_session.expire_all()
-    first_record = sqlite_session.get(OpenAPIOAuthAccessToken, first.token_id)
-    assert first_record is not None
-    assert first_record.revoked_at is None
-    assert sqlite_session.get(OpenAPIOAuthAccessToken, second.token_id) is None
+    records = list(sqlite_session.scalars(select(OpenAPIOAuthAccessToken)).all())
+    assert [(record.id, record.token_hash, record.revoked_at) for record in records] == [
+        (first.token_id, "hash-1", None)
+    ]
     assert redis.deleted == [
         TOKEN_CACHE_KEY_FMT.format(hash="hash-2"),
         TOKEN_CACHE_KEY_FMT.format(hash="hash-1"),
@@ -199,7 +196,7 @@ def test_rollback_does_not_restore_predecessor_after_later_rotation(
         repository.rotate_token(_write("hash-2"))
 
     sqlite_session.expire_all()
-    records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())
+    records = list(sqlite_session.scalars(select(OpenAPIOAuthAccessToken)).all())
     assert [(record.token_hash, record.revoked_at) for record in records] == [("hash-3", None)]
 
 
@@ -215,7 +212,7 @@ def test_relogin_reuses_the_row_under_a_new_token_id(
     assert second.token_id != first.token_id
     assert second.replaced_token_id == first.token_id
     sqlite_session.expire_all()
-    assert sqlite_session.get(OAuthAccessToken, first.token_id) is None
+    assert sqlite_session.get(OpenAPIOAuthAccessToken, first.token_id) is None
 
 
 def test_login_after_logout_on_the_same_device_succeeds(
@@ -238,10 +235,8 @@ def test_login_after_logout_on_the_same_device_succeeds(
     assert second.rotation.replaced_token_id is None
     sqlite_session.expire_all()
     records = list(sqlite_session.scalars(select(OpenAPIOAuthAccessToken)).all())
-    assert [record.id for record in records if record.revoked_at is None] == [third.token_id]
-    first_record = sqlite_session.get(OpenAPIOAuthAccessToken, first.token_id)
-    assert first_record is not None
-    assert first_record.revoked_at is not None
+    assert [(record.id, record.revoked_at) for record in records] == [(second.token_id, None)]
+    assert records[0].token_hash == sha256_hex(second.token)
 
 
 def test_list_account_sessions_pages_only_live_owned_tokens(
@@ -467,35 +462,44 @@ def test_rollback_restores_evicted_rows(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=2)
+    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=2)
     base = datetime.now(UTC) - timedelta(days=1)
     first, second = _issue_sessions(issuer, ["a", "b"])
     _set_usage(sqlite_session, first, created_at=base)
     _set_usage(sqlite_session, second, created_at=base + timedelta(minutes=1))
-    newest = _issue_sessions(issuer, ["c"])[0]
-    assert newest.rotation.evicted_token_ids == (first.token_id,)
+    redis.before_next_delete = _fail_cache_delete
 
-    assert issuer.rollback_token(newest) is True
+    with pytest.raises(_CacheDeleteError):
+        _issue_sessions(issuer, ["c"])
 
+    sqlite_session.expire_all()
     assert _live_token_ids(sqlite_session) == {first.token_id, second.token_id}
-    assert sqlite_session.get(OpenAPIOAuthAccessToken, newest.token_id) is None
+    assert set(sqlite_session.scalars(select(OpenAPIOAuthAccessToken.device_label))) == {"a", "b"}
 
 
 def test_rollback_keeps_evicted_row_revoked_after_user_revoke(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
+    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
     first = _issue_sessions(issuer, ["a"])[0]
-    newest = _issue_sessions(issuer, ["b"])[0]
-    assert newest.rotation.evicted_token_ids == (first.token_id,)
-    sqlite_session.execute(
-        update(OpenAPIOAuthAccessToken).where(OpenAPIOAuthAccessToken.id == first.token_id).values(token_hash=None)
-    )
-    sqlite_session.commit()
 
-    assert repository.rollback_rotation(newest.rotation) is True
+    def user_revokes_first_then_cache_fails() -> None:
+        with sqlite_session_factory() as session:
+            session.execute(
+                update(OpenAPIOAuthAccessToken)
+                .where(OpenAPIOAuthAccessToken.id == first.token_id)
+                .values(token_hash=None)
+            )
+            session.commit()
+        raise _CacheDeleteError
 
+    redis.before_next_delete = user_revokes_first_then_cache_fails
+
+    with pytest.raises(_CacheDeleteError):
+        _issue_sessions(issuer, ["b"])
+
+    sqlite_session.expire_all()
     assert _live_token_ids(sqlite_session) == set()
 
 
@@ -704,13 +708,15 @@ def test_rollback_after_eviction_restores_the_access_row_but_not_the_refresh(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
+    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
     first = _issue_sessions(issuer, ["a"])[0]
     _issue_refresh(sqlite_session_factory, _grant("a"))
-    newest = _issue_sessions(issuer, ["b"])[0]
+    redis.before_next_delete = _fail_cache_delete
 
-    assert issuer.rollback_token(newest) is True
+    with pytest.raises(_CacheDeleteError):
+        _issue_sessions(issuer, ["b"])
 
+    sqlite_session.expire_all()
     assert _live_token_ids(sqlite_session) == {first.token_id}
     assert _refresh_labels(sqlite_session) == set()
 

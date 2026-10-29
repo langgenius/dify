@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import invalidate_oauth_token_cache
+from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.oauth import OpenAPIOAuthAccessToken
 from repositories.oauth_refresh_token_repository import (
@@ -119,7 +120,7 @@ def find_live_access_grant(session: Session, token_hash: str) -> OwnedGrant | No
 
 def _revoke_access_rows(session: Session, rows_filter: ColumnElement[bool], *, now: datetime) -> list[str]:
     """Revoke the matching access rows and return their hashes. Rows revoked earlier lose
-    their hash too, so ``rollback_rotation`` can never bring them back.
+    their hash too, so ``_rollback_rotation`` can never bring them back.
     """
     rows = session.execute(
         select(OpenAPIOAuthAccessToken.id, OpenAPIOAuthAccessToken.token_hash)
@@ -332,7 +333,7 @@ class _TokenRowValues:
     created_at: datetime
 
     @classmethod
-    def of(cls, record: OAuthAccessToken) -> _TokenRowValues:
+    def of(cls, record: OpenAPIOAuthAccessToken) -> _TokenRowValues:
         return cls(
             id=record.id,
             token_hash=record.token_hash,
@@ -344,7 +345,7 @@ class _TokenRowValues:
             created_at=record.created_at,
         )
 
-    def apply_to(self, record: OAuthAccessToken) -> None:
+    def apply_to(self, record: OpenAPIOAuthAccessToken) -> None:
         record.id = self.id
         record.token_hash = self.token_hash
         record.prefix = self.prefix
@@ -370,43 +371,32 @@ class SQLAlchemyOAuthDeviceTokenRepository:
     def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation:
         now = datetime.now(UTC)
         eviction = _Eviction()
+        # MySQL drops the index's WHERE revoked_at IS NULL, so a revoked row on
+        # the same device key would collide with a new insert. Reuse the row.
+        # None: no row existed, so the rotation inserted one.
+        previous: _TokenRowValues | None = None
         with self._session_factory() as session:
             if token.account_id is not None:
                 lock_account(session, token.account_id)
 
-            prior = session.execute(
-                select(OpenAPIOAuthAccessToken.id, OpenAPIOAuthAccessToken.token_hash)
+            record = session.scalar(
+                select(OpenAPIOAuthAccessToken)
                 .where(
                     OpenAPIOAuthAccessToken.subject_email == token.subject_email,
                     OpenAPIOAuthAccessToken.subject_issuer == token.subject_issuer,
                     OpenAPIOAuthAccessToken.client_id == token.client_id,
                     OpenAPIOAuthAccessToken.device_label == token.device_label,
-                    OpenAPIOAuthAccessToken.revoked_at.is_(None),
                 )
-                .order_by(OAuthAccessToken.revoked_at.is_not(None))
+                .order_by(OpenAPIOAuthAccessToken.revoked_at.is_not(None))
                 .limit(1)
                 .with_for_update()
-            ).first()
-            if prior is not None:
-                session.execute(
-                    update(OpenAPIOAuthAccessToken).where(OpenAPIOAuthAccessToken.id == prior.id).values(revoked_at=now)
-                )
+            )
 
             if token.account_id is not None:
                 eviction = self._evict_over_cap(session, token=token, account_id=token.account_id, now=now)
 
-            record = OpenAPIOAuthAccessToken(
-                subject_email=token.subject_email,
-                subject_issuer=token.subject_issuer,
-                account_id=token.account_id,
-                client_id=token.client_id,
-                device_label=token.device_label,
-                prefix=token.prefix,
-                token_hash=token.token_hash,
-                expires_at=token.expires_at,
-            )
             if record is None:
-                record = OAuthAccessToken(
+                record = OpenAPIOAuthAccessToken(
                     subject_email=token.subject_email,
                     subject_issuer=token.subject_issuer,
                     account_id=token.account_id,
@@ -427,13 +417,13 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                     expires_at=token.expires_at,
                     revoked_at=None,
                     last_used_at=None,
-                    created_at=datetime.now(UTC),
+                    created_at=now,
                 ).apply_to(record)
             session.flush()
             token_id = record.id
             # Refresh rows go last, in lock order. The evicted grants' refresh tokens
             # are deleted in this transaction, so a refresh waiting on the account
-            # lock can never revive them; rollback_rotation cannot bring them back.
+            # lock can never revive them; _rollback_rotation cannot bring them back.
             if token.account_id is not None:
                 delete_refresh_grants(session, eviction.grants, account_id=token.account_id)
             if token.refresh is not None:
@@ -443,15 +433,15 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         replaced = previous if previous is not None and previous.revoked_at is None else None
         rotation = OAuthDeviceTokenRotation(
             token_id=token_id,
-            replaced_token_id=str(prior.id) if prior is not None else None,
-            replaced_token_hash=prior.token_hash if prior is not None else None,
+            replaced_token_id=replaced.id if replaced is not None else None,
+            replaced_token_hash=replaced.token_hash if replaced is not None else None,
             evicted_token_ids=tuple(str(row.id) for row in eviction.access_rows),
             evicted_token_hashes=tuple(row.token_hash for row in eviction.access_rows if row.token_hash),
         )
         try:
             invalidate_oauth_token_cache(self._redis, rotation.replaced_token_hash, *rotation.evicted_token_hashes)
         except Exception:
-            self.rollback_rotation(rotation)
+            self._rollback_rotation(rotation, new_hash=token.token_hash, previous=previous)
             raise
         return rotation
 
@@ -466,7 +456,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         sessions = _live_sessions(session, account_id=account_id, now=now)
         # A refresh of an existing grant reuses its slot.
         sessions.pop((token.subject_email, token.subject_issuer, token.client_id, token.device_label), None)
-        # The row about to be inserted takes one of the slots.
+        # The row about to be written takes one of the slots.
         overflow = len(sessions) + 1 - self._max_sessions_per_account
         if overflow <= 0:
             return _Eviction()
@@ -474,7 +464,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         evicted = sorted(sessions.values(), key=lambda live: live.eviction_order)[:overflow]
         access_rows = [row for live in evicted for row in live.access_rows]
         if access_rows:
-            # The hash stays so rollback_rotation can restore the row.
+            # The hash stays so _rollback_rotation can restore the row.
             session.execute(
                 update(OpenAPIOAuthAccessToken)
                 .where(OpenAPIOAuthAccessToken.id.in_([row.id for row in access_rows]))
@@ -485,49 +475,43 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             grants=tuple(live.grant for live in evicted if live.grant is not None),
         )
 
-    def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool:
-        new_hash: str | None = None
+    def _rollback_rotation(
+        self,
+        rotation: OAuthDeviceTokenRotation,
+        *,
+        new_hash: str,
+        previous: _TokenRowValues | None,
+    ) -> None:
+        """Undo a rotation: delete the inserted row, or put a reused row's values back (``previous``),
+        and restore the rows the session cap evicted.
+        """
         with self._session_factory() as session:
-            current = session.scalar(
+            record = session.scalar(
                 select(OpenAPIOAuthAccessToken)
                 .where(
                     OpenAPIOAuthAccessToken.id == rotation.token_id,
-                    OpenAPIOAuthAccessToken.revoked_at.is_(None),
+                    OpenAPIOAuthAccessToken.token_hash == new_hash,
                 )
                 .with_for_update()
             )
-            # A later successful rotation already superseded this token. In
-            # that case restoring its predecessor would create two live rows.
-            if current is None:
-                return False
-
-            new_hash = current.token_hash
-            session.delete(current)
-            session.flush()
-            if rotation.replaced_token_id is not None:
-                predecessor = session.scalar(
-                    select(OpenAPIOAuthAccessToken)
-                    .where(
-                        OpenAPIOAuthAccessToken.id == rotation.replaced_token_id,
-                        OpenAPIOAuthAccessToken.revoked_at.is_not(None),
+            # A later rotation already replaced this token; leave its row and the evicted rows alone.
+            if record is not None:
+                if previous is None:
+                    session.delete(record)
+                else:
+                    previous.apply_to(record)
+                if rotation.evicted_token_ids:
+                    # A row whose hash was cleared was revoked by the user since; keep it revoked.
+                    session.execute(
+                        update(OpenAPIOAuthAccessToken)
+                        .where(
+                            OpenAPIOAuthAccessToken.id.in_(rotation.evicted_token_ids),
+                            OpenAPIOAuthAccessToken.revoked_at.is_not(None),
+                            OpenAPIOAuthAccessToken.token_hash.is_not(None),
+                        )
+                        .values(revoked_at=None)
                     )
-                    .with_for_update()
-                )
-                if predecessor is None:
-                    raise RuntimeError("OAuth token rotation predecessor could not be restored")
-                predecessor.revoked_at = None
-            if rotation.evicted_token_ids:
-                # A row whose hash was cleared was revoked by the user since; keep it revoked.
-                session.execute(
-                    update(OpenAPIOAuthAccessToken)
-                    .where(
-                        OpenAPIOAuthAccessToken.id.in_(rotation.evicted_token_ids),
-                        OpenAPIOAuthAccessToken.revoked_at.is_not(None),
-                        OpenAPIOAuthAccessToken.token_hash.is_not(None),
-                    )
-                    .values(revoked_at=None)
-                )
-            session.commit()
+                session.commit()
 
         try:
             invalidate_oauth_token_cache(
@@ -535,7 +519,6 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             )
         except Exception:
             logger.exception("failed to invalidate rolled-back OAuth token caches")
-        return True
 
     def list_account_sessions(
         self,

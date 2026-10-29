@@ -1,7 +1,7 @@
 """Framework-neutral contracts shared by the OAuth device-flow use cases."""
 
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Literal, NotRequired, Protocol, TypedDict

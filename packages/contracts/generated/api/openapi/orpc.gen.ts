@@ -1558,7 +1558,7 @@ export const post17 = oc
   .output(zPostOauthAuthorizeApproveResponse)
 
 export const approve = {
-  post: post16,
+  post: post17,
 }
 
 export const get36 = oc
@@ -1576,7 +1576,7 @@ export const client = {
   get: get36,
 }
 
-export const post17 = oc
+export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1588,7 +1588,7 @@ export const post17 = oc
   .output(zPostOauthAuthorizeDenyResponse)
 
 export const deny = {
-  post: post17,
+  post: post18,
 }
 
 export const authorize = {
@@ -1597,7 +1597,7 @@ export const authorize = {
   deny,
 }
 
-export const post18 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1609,10 +1609,10 @@ export const post18 = oc
   .output(zPostOauthDeviceApproveResponse)
 
 export const approve2 = {
-  post: post18,
+  post: post19,
 }
 
-export const post19 = oc
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1624,10 +1624,10 @@ export const post19 = oc
   .output(zPostOauthDeviceCodeResponse)
 
 export const code = {
-  post: post19,
+  post: post20,
 }
 
-export const post20 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1639,7 +1639,7 @@ export const post20 = oc
   .output(zPostOauthDeviceDenyResponse)
 
 export const deny2 = {
-  post: post20,
+  post: post21,
 }
 
 export const get37 = oc
@@ -1657,7 +1657,7 @@ export const lookup = {
   get: get37,
 }
 
-export const post21 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1669,7 +1669,7 @@ export const post21 = oc
   .output(zPostOauthDeviceTokenResponse)
 
 export const token = {
-  post: post21,
+  post: post22,
 }
 
 export const device = {
@@ -1680,7 +1680,7 @@ export const device = {
   token,
 }
 
-export const post22 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1693,10 +1693,10 @@ export const post22 = oc
   .output(zPostOauthRegisterResponse)
 
 export const register = {
-  post: post22,
+  post: post23,
 }
 
-export const post23 = oc
+export const post24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1707,10 +1707,10 @@ export const post23 = oc
   .output(zPostOauthRevokeResponse)
 
 export const revoke = {
-  post: post23,
+  post: post24,
 }
 
-export const post24 = oc
+export const post25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1721,7 +1721,7 @@ export const post24 = oc
   .output(zPostOauthTokenResponse)
 
 export const token2 = {
-  post: post24,
+  post: post25,
 }
 
 export const oauth = {
@@ -1768,7 +1768,7 @@ export const permittedExternalApps = {
   byAppId: byAppId2,
 }
 
-export const post25 = oc
+export const post26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1786,10 +1786,10 @@ export const post25 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsAdvancedChatResponse)
 
 export const advancedChat5 = {
-  post: post25,
+  post: post26,
 }
 
-export const post26 = oc
+export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1801,14 +1801,14 @@ export const post26 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
 
 export const confirm = {
-  post: post26,
+  post: post27,
 }
 
 export const byImportId = {
   confirm,
 }
 
-export const post27 = oc
+export const post28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1825,10 +1825,10 @@ export const post27 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsCheckResponse)
 
 export const check3 = {
-  post: post27,
+  post: post28,
 }
 
-export const post28 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1845,12 +1845,12 @@ export const post28 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
 
 export const imports = {
-  post: post28,
+  post: post29,
   byImportId,
   check: check3,
 }
 
-export const post29 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1868,7 +1868,7 @@ export const post29 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsWorkflowResponse)
 
 export const workflow5 = {
-  post: post29,
+  post: post30,
 }
 
 export const apps2 = {
@@ -1930,7 +1930,7 @@ export const cat = {
  *
  * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
-export const post30 = oc
+export const post31 = oc
   .route({
     description:
       'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
@@ -1950,7 +1950,7 @@ export const post30 = oc
   .output(zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse)
 
 export const diff = {
-  post: post30,
+  post: post31,
 }
 
 /**
@@ -2187,7 +2187,7 @@ export const get48 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post31 = oc
+export const post32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2206,7 +2206,7 @@ export const post31 = oc
 
 export const members = {
   get: get48,
-  post: post31,
+  post: post32,
   byMemberId,
 }
 
@@ -2230,7 +2230,7 @@ export const byCredentialId = {
   patch: patch16,
 }
 
-export const post32 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2248,7 +2248,7 @@ export const post32 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse)
 
 export const credentials = {
-  post: post32,
+  post: post33,
   byCredentialId,
 }
 
@@ -2276,7 +2276,7 @@ export const byCredentialId2 = {
   patch: patch17,
 }
 
-export const post33 = oc
+export const post34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2294,7 +2294,7 @@ export const post33 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse)
 
 export const credentials2 = {
-  post: post33,
+  post: post34,
   byCredentialId: byCredentialId2,
 }
 
@@ -2377,7 +2377,7 @@ export const byPluginId = {
   delete: delete5,
 }
 
-export const post34 = oc
+export const post35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2394,7 +2394,7 @@ export const post34 = oc
   .output(zPostWorkspacesByWorkspaceIdPluginsInstallResponse)
 
 export const install = {
-  post: post34,
+  post: post35,
 }
 
 export const get52 = oc
@@ -2439,7 +2439,7 @@ export const byCredentialId3 = {
   patch: patch18,
 }
 
-export const post35 = oc
+export const post36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2457,7 +2457,7 @@ export const post35 = oc
   .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
 
 export const credentials3 = {
-  post: post35,
+  post: post36,
   byCredentialId: byCredentialId3,
 }
 

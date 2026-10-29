@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from unittest.mock import create_autospec, patch
 
@@ -28,6 +28,8 @@ from services.oauth_device_contracts import (
     ApprovalTransitionConfirmation,
     AuthorizationPendingError,
     ClientMismatchError,
+    DeviceApprovalRecord,
+    DeviceFlowStateView,
     DeviceFlowStatus,
     DeviceMutation,
     DeviceRequestContext,
