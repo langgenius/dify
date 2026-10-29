@@ -62,8 +62,9 @@ class InvokeFrom(StrEnum):
         """Whether a run from this entry point is attributed to a workspace
         Account rather than an end user. Console contexts (debugger/explore)
         run as the signed-in Account; webapp/service-api/trigger run as an
-        EndUser. Single source of truth for the created-by-role / user-type
-        split shared by the app runners and MCP identity forwarding."""
+        EndUser by default. Explicit caller identity takes precedence: scheduled
+        workflows can use SERVICE_API with an Account. This inference is shared
+        by app runners without caller metadata and MCP identity forwarding."""
         return self in (InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE)
 
 
@@ -342,6 +343,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
 
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
+    # Every new execution supplies its actual role. Legacy snapshots are normalized when loaded.
+    user_from: UserFrom
     workflow_execution_id: str
     workflow_execution_timing: WorkflowExecutionTiming = Field(
         default_factory=WorkflowExecutionTiming, exclude=True, repr=False

@@ -99,6 +99,24 @@ class ConversationNotFoundHTTPError(BaseHTTPException):
     code = HTTPStatus.NOT_FOUND
 
 
+class ConversationCursorNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_cursor_not_found"
+    description = "The conversation cursor is not in the current list. Refresh the list and try again."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationVariableNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_variable_not_found"
+    description = "The conversation variable was not found for this conversation."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationVariableTypeMismatchHTTPError(BaseHTTPException):
+    error_code = "conversation_variable_type_mismatch"
+    description = "The new value does not match the conversation variable's type."
+    code = HTTPStatus.BAD_REQUEST
+
+
 class ConversationFirstMessageNotFoundHTTPError(BaseHTTPException):
     error_code = "conversation_first_message_not_found"
     description = "The conversation has no message from which to generate a name."

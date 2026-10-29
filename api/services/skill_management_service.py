@@ -56,6 +56,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
 from libs.datetime_utils import naive_utc_now
+from libs.helper import escape_like_pattern
 from models.account import Account
 from models.agent import (
     Agent,
@@ -738,9 +739,11 @@ class SkillManagementService:
         with self._session_scope() as session:
             stmt = select(Skill).where(Skill.tenant_id == tenant_id).order_by(Skill.updated_at.desc())
             if keyword:
-                like = f"%{keyword.strip()}%"
+                like = f"%{escape_like_pattern(keyword.strip())}%"
                 stmt = stmt.where(
-                    (Skill.name.ilike(like)) | (Skill.display_name.ilike(like)) | (Skill.description.ilike(like))
+                    (Skill.name.ilike(like, escape="\\"))
+                    | (Skill.display_name.ilike(like, escape="\\"))
+                    | (Skill.description.ilike(like, escape="\\"))
                 )
             requested_tags = self._normalize_tags(tags or [])
             if requested_tags:
