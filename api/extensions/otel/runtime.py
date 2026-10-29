@@ -88,7 +88,6 @@ def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
 @worker_init.connect(weak=False)
 def init_celery_worker(*args: object, **kwargs: object):
     if dify_config.ENABLE_OTEL:
-        from opentelemetry.instrumentation.celery import CeleryInstrumentor
         from opentelemetry.metrics import get_meter_provider
         from opentelemetry.trace import get_tracer_provider
 
@@ -98,8 +97,7 @@ def init_celery_worker(*args: object, **kwargs: object):
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
             logger.info("Initializing OpenTelemetry for Celery worker")
-        CeleryInstrumentor().instrument(tracer_provider=tracer_provider, meter_provider=metric_provider)
-        setup_celery_sqlcommenter()
+        setup_celery_sqlcommenter(tracer_provider=tracer_provider, meter_provider=metric_provider)
 
 
 def is_instrument_flag_enabled() -> bool:
