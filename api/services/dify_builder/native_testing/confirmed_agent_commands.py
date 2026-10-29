@@ -1581,6 +1581,27 @@ class ProfiledNativeTestCommands:
                     logger.warning("Confirmed Agent terminal cancellation observation unavailable")
                 if settled:
                     service._complete_builder(ref=ref)
+                else:
+                    from services.dify_builder.native_testing.confirmed_agent_completion import (
+                        _request,
+                        cancelled_parent_proof,
+                    )
+
+                    with self.sessions() as session:
+                        request = _request(session, actor=actor, ref=ref)
+                        candidate = (
+                            cancelled_parent_proof(
+                                session, request=request, ref=ref, allow_claimed=True, allow_unobserved_guard=True
+                            )
+                            if request is not None
+                            else None
+                        )
+                    if candidate is not None and candidate[1].get("needs_observation"):
+                        # Every local effect is settled and authority revoked;
+                        # only the original child's terminal read is pending.
+                        # An unavailable observation must not expire this exact
+                        # source to unknown before the next normal worker pass.
+                        return 0
         reconciled = lifecycle.reconcile(limit=limit, request_id=request_id)
         if isinstance(service, ConfirmedAgentCommands):
             return reconciled + service.publish_pending(limit=limit, request_id=request_id)
