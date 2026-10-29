@@ -1845,8 +1845,10 @@ class DifyBuilderService:
                 raise ConflictError("stale test action session version")
             if self._get_app_revision(s.app_id, actor) != action.base_app_revision:
                 raise ConflictError("stale test action draft revision")
-            current = self._test_actions.current(actor=actor, session_id=s.id, test_input_id=fc.test_input_ref)
-            if current is None or current.request_id != command.request_id:
+            current_request_id = self._test_actions.current_request_id(
+                actor=actor, session_id=s.id, test_input_id=fc.test_input_ref
+            )
+            if current_request_id != command.request_id:
                 raise ConflictError("test request is no longer current")
             saved_receipt = self._test_actions.execute(
                 actor=actor,
