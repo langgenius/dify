@@ -39,8 +39,8 @@ def test_authorization_server_document_full() -> None:
         ],
         "response_types_supported": ["code"],
         "code_challenge_methods_supported": ["S256"],
-        "token_endpoint_auth_methods_supported": ["none", "client_secret_basic", "client_secret_post"],
-        "revocation_endpoint_auth_methods_supported": ["none", "client_secret_basic", "client_secret_post"],
+        "token_endpoint_auth_methods_supported": ["none"],
+        "revocation_endpoint_auth_methods_supported": ["none"],
         "client_id_metadata_document_supported": True,
         "authorization_response_iss_parameter_supported": True,
     }

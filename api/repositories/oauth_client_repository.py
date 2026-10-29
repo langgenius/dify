@@ -5,7 +5,6 @@ from collections.abc import Sequence
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums.oauth_client import OAuthClientKind
 from models.oauth import OpenAPIOAuthClient
 from services.oauth_client_metadata import known_grant_types
 from services.oauth_clients import ResolvedClient
@@ -24,32 +23,26 @@ class SQLAlchemyOAuthClientRepository:
         return ResolvedClient(
             client_id=row.client_id,
             storage_client_id=row.client_id,
-            kind=row.kind,
             display_name=row.display_name,
             logo_uri=row.logo_uri,
             redirect_uris=tuple(row.redirect_uris),
             grant_types=frozenset(known_grant_types(row.grant_types, allowed=GrantType)),
-            secret_hash=row.client_secret_hash,
         )
 
     def create(
         self,
         *,
         client_id: str,
-        kind: OAuthClientKind,
         display_name: str,
         redirect_uris: Sequence[str],
         grant_types: Sequence[GrantType],
-        client_secret_hash: str | None = None,
         logo_uri: str | None = None,
     ) -> None:
         row = OpenAPIOAuthClient(
             client_id=client_id,
-            kind=kind,
             display_name=display_name,
             redirect_uris=list(redirect_uris),
             grant_types=[str(grant) for grant in grant_types],
-            client_secret_hash=client_secret_hash,
             logo_uri=logo_uri,
         )
         with self._session_factory() as session:

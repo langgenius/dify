@@ -1357,7 +1357,6 @@ Upload a file to use as an input variable when running the app
 | 200 | Token revoked, or unknown to this client |  |
 | 400 | Missing token or malformed body | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | 401 | Client authentication failed | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
-| 429 | Too many failed client authentications | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/token
@@ -1368,7 +1367,6 @@ Upload a file to use as an input variable when running the app
 | 200 | Access token | **application/json**: [OAuthTokenResponse](#oauthtokenresponse)<br> |
 | 400 | OAuth token error | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | 401 | Client authentication failed | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
-| 429 | Too many failed client authentications | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /permitted-external-apps
@@ -3479,8 +3477,6 @@ RFC 7591 client metadata; unknown fields are ignored.
 | client_id | string |  | Yes |
 | client_id_issued_at | integer |  | Yes |
 | client_name | string |  | Yes |
-| client_secret | string |  | No |
-| client_secret_expires_at | integer |  | No |
 | grant_types | [ string, <br>**Available values:** "authorization_code", "refresh_token" ] |  | Yes |
 | logo_uri | string |  | No |
 | redirect_uris | [ string ] |  | Yes |

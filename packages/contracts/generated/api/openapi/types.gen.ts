@@ -1092,8 +1092,6 @@ export type OAuthRegisterResponse = {
   client_id: string
   client_id_issued_at: number
   client_name: string
-  client_secret?: string | null
-  client_secret_expires_at?: number | null
   grant_types: Array<'authorization_code' | 'refresh_token'>
   logo_uri?: string | null
   redirect_uris: Array<string>
@@ -1440,7 +1438,7 @@ export type TaskStopResponse = {
   result: 'success'
 }
 
-export type TokenEndpointAuthMethod = 'client_secret_basic' | 'client_secret_post' | 'none'
+export type TokenEndpointAuthMethod = 'none'
 
 export type ToolCredentialCreatePayload = {
   credentials: {
@@ -3671,7 +3669,6 @@ export type PostOauthRevokeData = {
 export type PostOauthRevokeErrors = {
   400: OAuthTokenErrorResponse | ErrorBody
   401: OAuthTokenErrorResponse | ErrorBody
-  429: OAuthTokenErrorResponse | ErrorBody
   default: ErrorBody
 }
 
@@ -3695,7 +3692,6 @@ export type PostOauthTokenData = {
 export type PostOauthTokenErrors = {
   400: OAuthTokenErrorResponse | ErrorBody
   401: OAuthTokenErrorResponse | ErrorBody
-  429: OAuthTokenErrorResponse | ErrorBody
   default: ErrorBody
 }
 

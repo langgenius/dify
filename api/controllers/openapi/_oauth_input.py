@@ -42,7 +42,7 @@ def basic_client_credentials() -> tuple[str, str] | None:
 
 
 def client_credentials(body: dict[str, str]) -> tuple[str | None, str | None]:
-    """``client_secret_basic`` wins over ``client_secret_post``."""
+    """The client id, and any secret sent in the Basic header (preferred) or the body."""
     client_id, client_secret = basic_client_credentials() or (body.get("client_id"), body.get("client_secret"))
     # An empty secret (form `client_secret=` or Basic `id:`) means none was sent.
     return client_id, client_secret or None

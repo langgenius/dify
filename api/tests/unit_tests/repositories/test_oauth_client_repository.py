@@ -3,7 +3,6 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums.oauth_client import OAuthClientKind
 from models.oauth import OpenAPIOAuthClient
 from repositories.oauth_client_repository import SQLAlchemyOAuthClientRepository
 from services.oauth_token_contracts import GrantType
@@ -12,7 +11,6 @@ from services.oauth_token_contracts import GrantType
 def _create(repository: SQLAlchemyOAuthClientRepository, client_id: str) -> None:
     repository.create(
         client_id=client_id,
-        kind=OAuthClientKind.PUBLIC,
         display_name="Agent",
         redirect_uris=["http://127.0.0.1/callback"],
         grant_types=[GrantType.AUTHORIZATION_CODE],

@@ -42,16 +42,13 @@ def test_revoke_answers_200_with_an_empty_body_and_ignores_the_type_hint(app: Fl
     response = app.test_client().post(
         _PATH,
         data={"token": "dfor_x", "client_id": "qwenwork", "client_secret": "s3cret", "token_type_hint": "urn:x:future"},
-        environ_overrides={"REMOTE_ADDR": "192.0.2.10"},
     )
 
     assert response.status_code == 200
     assert response.data == b""
     assert response.headers["Cache-Control"] == "no-store"
     assert response.headers["Pragma"] == "no-cache"
-    assert revocation.seen == [
-        RevokeRequest(client_id="qwenwork", client_secret="s3cret", token="dfor_x", source_ip="192.0.2.10")
-    ]
+    assert revocation.seen == [RevokeRequest(client_id="qwenwork", client_secret="s3cret", token="dfor_x")]
 
 
 def test_revoke_works_with_authorization_code_logins_off_and_reads_an_empty_secret_as_none(

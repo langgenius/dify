@@ -10,15 +10,13 @@ from flask_restx import Resource
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import OAuthRegisterErrorResponse, OAuthRegisterRequest, OAuthRegisterResponse
 from controllers.openapi._oauth_input import NO_STORE_HEADERS, oauth_feature_required
-from enums.oauth_client import OAuthClientKind
+from enums.oauth_client import TokenEndpointAuthMethod
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
 from libs.rate_limit import LIMIT_DCR_PER_IP, rate_limit
 from services.oauth_client_metadata import CODE_RESPONSE_TYPE, RegistrationErrorCode
 from services.oauth_client_registration import RegisteredClient, RegistrationError
 from services.oauth_token_adapters import dcr_enabled
-
-NEVER_EXPIRES = 0
 
 
 def _error(code: RegistrationErrorCode, description: str) -> tuple[dict[str, str], HTTPStatus, dict[str, str]]:
@@ -27,7 +25,6 @@ def _error(code: RegistrationErrorCode, description: str) -> tuple[dict[str, str
 
 
 def _registered_body(client: RegisteredClient) -> dict[str, object]:
-    confidential = client.token_endpoint_auth_method.kind == OAuthClientKind.CONFIDENTIAL
     return dump_response(
         OAuthRegisterResponse,
         {
@@ -37,10 +34,8 @@ def _registered_body(client: RegisteredClient) -> dict[str, object]:
             "redirect_uris": client.redirect_uris,
             "grant_types": client.grant_types,
             "response_types": [CODE_RESPONSE_TYPE],
-            "token_endpoint_auth_method": client.token_endpoint_auth_method,
+            "token_endpoint_auth_method": TokenEndpointAuthMethod.NONE,
             "logo_uri": client.logo_uri,
-            "client_secret": client.client_secret,
-            "client_secret_expires_at": NEVER_EXPIRES if confidential else None,
         },
         exclude_none=True,
     )

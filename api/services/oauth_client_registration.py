@@ -6,8 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from enums.oauth_client import OAuthClientKind, TokenEndpointAuthMethod
-from libs.oauth_bearer import sha256_hex
+from enums.oauth_client import TokenEndpointAuthMethod
 from services.oauth_client_metadata import (
     CODE_RESPONSE_TYPE,
     DEFAULT_GRANT_TYPES,
@@ -27,7 +26,6 @@ from services.oauth_token_contracts import GrantType
 
 CLIENT_ID_PREFIX = "dcr_"
 CLIENT_ID_BYTES = 16
-CLIENT_SECRET_BYTES = 32
 
 
 class RegistrationError(Exception):
@@ -40,12 +38,10 @@ class RegistrationError(Exception):
 @dataclass(frozen=True)
 class RegisteredClient:
     client_id: str
-    client_secret: str | None
     client_id_issued_at: int
     client_name: str
     redirect_uris: tuple[str, ...]
     grant_types: tuple[GrantType, ...]
-    token_endpoint_auth_method: TokenEndpointAuthMethod
     logo_uri: str | None
 
 
@@ -54,11 +50,9 @@ class ClientCreator(Protocol):
         self,
         *,
         client_id: str,
-        kind: OAuthClientKind,
         display_name: str,
         redirect_uris: Sequence[str],
         grant_types: Sequence[GrantType],
-        client_secret_hash: str | None = None,
         logo_uri: str | None = None,
     ) -> None: ...
 
@@ -81,14 +75,12 @@ def _check_response_types(metadata: Mapping[str, object]) -> None:
         raise invalid_metadata("response_types must be [code]")
 
 
-def _auth_method(metadata: Mapping[str, object]) -> TokenEndpointAuthMethod:
+def _check_auth_method(metadata: Mapping[str, object]) -> None:
     value = metadata.get("token_endpoint_auth_method")
     if value is None:
-        return TokenEndpointAuthMethod.NONE
-    try:
-        return TokenEndpointAuthMethod(value)
-    except ValueError:
-        raise invalid_metadata("token_endpoint_auth_method is not supported") from None
+        return
+    if value != TokenEndpointAuthMethod.NONE:
+        raise invalid_metadata("token_endpoint_auth_method must be none")
 
 
 class OAuthClientRegistrationService:
@@ -102,30 +94,24 @@ class OAuthClientRegistrationService:
             logo_uri = validated_logo_uri(metadata)
             grant_types = _grant_types(metadata)
             _check_response_types(metadata)
-            auth_method = _auth_method(metadata)
+            _check_auth_method(metadata)
         except InvalidClientMetadataError as error:
             raise RegistrationError(error.code, error.description) from None
 
         display_name = client_display_name(client_name, fallback=redirect_host(redirect_uris[0]))
         client_id = CLIENT_ID_PREFIX + secrets.token_urlsafe(CLIENT_ID_BYTES)
-        kind = auth_method.kind
-        client_secret = secrets.token_urlsafe(CLIENT_SECRET_BYTES) if kind == OAuthClientKind.CONFIDENTIAL else None
         self._clients.create(
             client_id=client_id,
-            kind=kind,
             display_name=display_name,
             redirect_uris=redirect_uris,
             grant_types=grant_types,
-            client_secret_hash=None if client_secret is None else sha256_hex(client_secret),
             logo_uri=logo_uri,
         )
         return RegisteredClient(
             client_id=client_id,
-            client_secret=client_secret,
             client_id_issued_at=int(time.time()),
             client_name=display_name,
             redirect_uris=redirect_uris,
             grant_types=grant_types,
-            token_endpoint_auth_method=auth_method,
             logo_uri=logo_uri,
         )

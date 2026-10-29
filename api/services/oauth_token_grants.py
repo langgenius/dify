@@ -161,7 +161,6 @@ class AuthorizationCodeGrantHandler:
             self._clients,
             client_id=request.client_id,
             client_secret=request.client_secret,
-            source_ip=request.poll_ip,
         )
         if GrantType.AUTHORIZATION_CODE not in client.grant_types:
             raise TokenEndpointError(TokenErrorCode.UNAUTHORIZED_CLIENT)
@@ -247,7 +246,6 @@ class RefreshTokenGrantHandler:
             self._clients,
             client_id=request.client_id,
             client_secret=request.client_secret,
-            source_ip=request.poll_ip,
         )
         if GrantType.REFRESH_TOKEN not in client.grant_types:
             raise TokenEndpointError(TokenErrorCode.UNAUTHORIZED_CLIENT)

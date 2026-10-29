@@ -20,7 +20,7 @@ import httpx
 from core.helper import ssrf_proxy
 from core.helper.ssrf_proxy import ResponseLimitError
 from core.tools.errors import ToolSSRFError
-from enums.oauth_client import OAuthClientKind, TokenEndpointAuthMethod
+from enums.oauth_client import TokenEndpointAuthMethod
 from libs.oauth_bearer import sha256_hex
 from services.oauth_client_metadata import (
     DEFAULT_GRANT_TYPES,
@@ -265,12 +265,10 @@ def _parse_document(url: str, host: str, body: bytes) -> ResolvedClient:
     return ResolvedClient(
         client_id=url,
         storage_client_id=cimd_storage_id(url),
-        kind=OAuthClientKind.PUBLIC,
         display_name=client_display_name(client_name, fallback=host),
         logo_uri=_logo_uri(document),
         redirect_uris=redirect_uris,
         grant_types=grant_types,
-        secret_hash=None,
     )
 
 
@@ -298,12 +296,10 @@ def _load(url: str, raw: str | bytes) -> _CachedClient | None:
         client = ResolvedClient(
             client_id=url,
             storage_client_id=cimd_storage_id(url),
-            kind=OAuthClientKind.PUBLIC,
             display_name=data["display_name"],
             logo_uri=data["logo_uri"],
             redirect_uris=tuple(data["redirect_uris"]),
             grant_types=frozenset(GrantType(value) for value in data["grant_types"]),
-            secret_hash=None,
         )
         return _CachedClient(client=client, soft_expires_at=float(data["soft_expires_at"]))
     except (ValueError, KeyError, TypeError):

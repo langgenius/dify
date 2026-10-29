@@ -32,7 +32,6 @@ class TokenErrorCode(StrEnum):
     SLOW_DOWN = "slow_down"
     EXPIRED_TOKEN = "expired_token"
     ACCESS_DENIED = "access_denied"
-    TEMPORARILY_UNAVAILABLE = ("temporarily_unavailable", HTTPStatus.TOO_MANY_REQUESTS)
 
     def __new__(cls, value: str, status: HTTPStatus = HTTPStatus.BAD_REQUEST) -> TokenErrorCode:
         obj = str.__new__(cls, value)

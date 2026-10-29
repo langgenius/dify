@@ -18,12 +18,10 @@ from services.oauth_token_contracts import TokenEndpointError, TokenErrorCode
 from tests.helpers.unit.repositories.oauth_lock_order import record_locks
 from tests.helpers.unit.repositories.oauth_refresh_tokens import seed_refresh_token
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
-    CONFIDENTIAL_ID,
-    CONFIDENTIAL_SECRET,
+    WEB_ID,
     account_snapshot,
-    confidential_client,
-    install_rate_limit_store,
     registry,
+    web_client,
 )
 
 OTHER_CLIENT_ID = "other-client"
@@ -51,7 +49,7 @@ class _Harness:
     redis: _RawRedis
     factory: sessionmaker[Session]
 
-    def login(self, *, client_id: str = CONFIDENTIAL_ID, device_label: str = "QwenWork abc123") -> IssuedOAuthToken:
+    def login(self, *, client_id: str = WEB_ID, device_label: str = "QwenWork abc123") -> IssuedOAuthToken:
         return self.issuer.issue_account_token(
             account=account_snapshot(),
             workspace_id="workspace-1",
@@ -79,7 +77,7 @@ class _Harness:
             return set(session.scalars(select(OpenAPIOAuthRefreshToken.device_label)).all())
 
 
-def _grant(client_id: str = CONFIDENTIAL_ID, device_label: str = "QwenWork abc123") -> GrantKey:
+def _grant(client_id: str = WEB_ID, device_label: str = "QwenWork abc123") -> GrantKey:
     return GrantKey(
         subject_email="ada@example.com",
         subject_issuer="dify:account",
@@ -115,7 +113,7 @@ def test_revoke_by_either_token_ends_the_whole_login(harness: _Harness, by: str)
     refresh = harness.issue_refresh(_grant())
 
     with record_locks(harness.factory) as log:
-        harness.revoker.revoke_by_token(access.token if by == "access" else refresh, client_id=CONFIDENTIAL_ID)
+        harness.revoker.revoke_by_token(access.token if by == "access" else refresh, client_id=WEB_ID)
 
     row = harness.access_row(access)
     assert row.revoked_at is not None
@@ -132,7 +130,7 @@ def test_unknown_token_is_a_no_op(harness: _Harness, token: str) -> None:
     access = harness.login()
     harness.issue_refresh(_grant())
 
-    harness.revoker.revoke_by_token(token, client_id=CONFIDENTIAL_ID)
+    harness.revoker.revoke_by_token(token, client_id=WEB_ID)
 
     assert harness.access_row(access).revoked_at is None
     assert harness.refresh_labels() == {"QwenWork abc123"}
@@ -144,8 +142,8 @@ def test_token_issued_to_another_client_is_untouched(harness: _Harness) -> None:
     access = harness.login(client_id=OTHER_CLIENT_ID)
     refresh = harness.issue_refresh(other)
 
-    harness.revoker.revoke_by_token(access.token, client_id=CONFIDENTIAL_ID)
-    harness.revoker.revoke_by_token(refresh, client_id=CONFIDENTIAL_ID)
+    harness.revoker.revoke_by_token(access.token, client_id=WEB_ID)
+    harness.revoker.revoke_by_token(refresh, client_id=WEB_ID)
 
     assert harness.access_row(access).revoked_at is None
     assert harness.refresh_labels() == {"QwenWork abc123"}
@@ -173,17 +171,16 @@ class _RecordingRevoker:
         self.calls.append((token, client_id))
 
 
-def _revoke(revoker: _RecordingRevoker, *, secret: str = CONFIDENTIAL_SECRET, token: str | None = "dfoa_x") -> None:
-    service = OAuthRevocationService(clients=registry(confidential_client()), grants=revoker)
-    service.revoke(RevokeRequest(client_id=CONFIDENTIAL_ID, client_secret=secret, token=token, source_ip="192.0.2.10"))
+def _revoke(revoker: _RecordingRevoker, *, secret: str | None = None, token: str | None = "dfoa_x") -> None:
+    service = OAuthRevocationService(clients=registry(web_client()), grants=revoker)
+    service.revoke(RevokeRequest(client_id=WEB_ID, client_secret=secret, token=token))
 
 
-def test_revocation_authenticates_the_client_before_touching_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_rate_limit_store(monkeypatch)
+def test_revocation_authenticates_the_client_before_touching_tokens() -> None:
     revoker = _RecordingRevoker()
 
     with pytest.raises(TokenEndpointError) as bad_client:
-        _revoke(revoker, secret="wrong")
+        _revoke(revoker, secret="a-secret")
     with pytest.raises(TokenEndpointError) as no_token:
         _revoke(revoker, token=None)
 
@@ -193,4 +190,4 @@ def test_revocation_authenticates_the_client_before_touching_tokens(monkeypatch:
 
     _revoke(revoker)
 
-    assert revoker.calls == [("dfoa_x", CONFIDENTIAL_ID)]
+    assert revoker.calls == [("dfoa_x", WEB_ID)]

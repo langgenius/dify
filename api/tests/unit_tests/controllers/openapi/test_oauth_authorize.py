@@ -21,16 +21,16 @@ from services.oauth_authorize_service import OAuthAuthorizeService
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     ACCOUNT_ID,
     CHALLENGE,
-    CONFIDENTIAL_ID,
-    CONFIDENTIAL_REDIRECT,
     ISSUER,
+    WEB_ID,
+    WEB_REDIRECT,
     WORKSPACE_ID,
     DictRedis,
     FakeTokenSettings,
     RateLimitHits,
-    confidential_client,
     install_rate_limit_store,
     registry,
+    web_client,
 )
 
 if not hasattr(builtins, "MethodView"):
@@ -58,7 +58,7 @@ def world(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
     app.register_blueprint(openapi_bp)
     app.extensions["application_services"] = _Services(
         oauth_authorize=OAuthAuthorizeService(
-            clients=registry(confidential_client(redirect_uris=(CONFIDENTIAL_REDIRECT, QUERY_REDIRECT))),
+            clients=registry(web_client(redirect_uris=(WEB_REDIRECT, QUERY_REDIRECT))),
             codes=RedisAuthorizationCodeRepository(DictRedis()),
             settings=FakeTokenSettings(),
         )
@@ -83,8 +83,8 @@ def world(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 
 def _body(**overrides: object) -> dict[str, object]:
     body: dict[str, object] = {
-        "client_id": CONFIDENTIAL_ID,
-        "redirect_uri": CONFIDENTIAL_REDIRECT,
+        "client_id": WEB_ID,
+        "redirect_uri": WEB_REDIRECT,
         "code_challenge": CHALLENGE,
         "code_challenge_method": "S256",
         "state": "xyz",
@@ -98,7 +98,7 @@ def _post(world: _World, action: str, **overrides: object) -> TestResponse:
 
 
 def _lookup(world: _World, **params: str) -> TestResponse:
-    query = {"client_id": CONFIDENTIAL_ID, "redirect_uri": CONFIDENTIAL_REDIRECT, **params}
+    query = {"client_id": WEB_ID, "redirect_uri": WEB_REDIRECT, **params}
     return world.app.test_client().get(f"{_PREFIX}/client", query_string=query)
 
 
@@ -124,7 +124,7 @@ class TestAuthorizeClientLookupCases:
 
         assert response.status_code == 200
         assert response.get_json() == {
-            "client_id": CONFIDENTIAL_ID,
+            "client_id": WEB_ID,
             "display_name": "QwenWork",
             "logo_uri": "https://nango-qwenwork.cn/logo.png",
             "redirect_host": "nango-qwenwork.cn",

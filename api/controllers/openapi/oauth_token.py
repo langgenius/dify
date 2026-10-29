@@ -72,11 +72,6 @@ class OAuthTokenApi(Resource):
     @openapi_ns.response(
         HTTPStatus.UNAUTHORIZED, "Client authentication failed", openapi_ns.models[OAuthTokenErrorResponse.__name__]
     )
-    @openapi_ns.response(
-        HTTPStatus.TOO_MANY_REQUESTS,
-        "Too many failed client authentications",
-        openapi_ns.models[OAuthTokenErrorResponse.__name__],
-    )
     def post(self):
         try:
             result = application_services().oauth_token.exchange(_token_request(read_oauth_body()))

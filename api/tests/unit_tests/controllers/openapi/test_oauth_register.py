@@ -74,16 +74,6 @@ class TestRegisterRouteCases:
         assert body["client_id"] in world.clients.rows
 
     @staticmethod
-    def test_confidential_registration_returns_the_secret_once(world: _World) -> None:
-        response = _register(world, token_endpoint_auth_method="client_secret_basic")
-
-        assert response.status_code == 201
-        body = response.get_json()
-        assert body["token_endpoint_auth_method"] == "client_secret_basic"
-        assert body["client_secret"]
-        assert body["client_secret_expires_at"] == 0
-
-    @staticmethod
     @pytest.mark.parametrize(
         ("body", "error"),
         [

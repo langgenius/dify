@@ -16,16 +16,16 @@ from services.oauth_token_contracts import GrantType
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     ACCOUNT_ID,
     CHALLENGE,
-    CONFIDENTIAL_ID,
-    CONFIDENTIAL_REDIRECT,
     ISSUER,
-    PUBLIC_ID,
+    NATIVE_ID,
+    WEB_ID,
+    WEB_REDIRECT,
     WORKSPACE_ID,
     DictRedis,
     FakeTokenSettings,
-    confidential_client,
-    public_client,
+    native_client,
     registry,
+    web_client,
 )
 
 CONTEXT = RequestContext(request_id="r1", trace_id=None, account_id=ACCOUNT_ID, active_workspace_id=WORKSPACE_ID)
@@ -35,8 +35,8 @@ LOOPBACK_REDIRECT = "http://127.0.0.1:53412/callback"
 
 
 REQUEST = AuthorizeRequest(
-    client_id=CONFIDENTIAL_ID,
-    redirect_uri=CONFIDENTIAL_REDIRECT,
+    client_id=WEB_ID,
+    redirect_uri=WEB_REDIRECT,
     code_challenge=CHALLENGE,
     code_challenge_method="S256",
     resource=None,
@@ -58,9 +58,9 @@ def codes(redis: DictRedis) -> RedisAuthorizationCodeRepository:
 @pytest.fixture
 def service(codes: RedisAuthorizationCodeRepository) -> OAuthAuthorizeService:
     clients = registry(
-        confidential_client(redirect_uris=(CONFIDENTIAL_REDIRECT, QUERY_REDIRECT, INVALID_REGISTERED_REDIRECT)),
-        confidential_client(client_id="no-code-grant", grant_types=frozenset({GrantType.REFRESH_TOKEN})),
-        public_client(),
+        web_client(redirect_uris=(WEB_REDIRECT, QUERY_REDIRECT, INVALID_REGISTERED_REDIRECT)),
+        web_client(client_id="no-code-grant", grant_types=frozenset({GrantType.REFRESH_TOKEN})),
+        native_client(),
     )
     return OAuthAuthorizeService(clients=clients, codes=codes, settings=FakeTokenSettings())
 
@@ -106,13 +106,13 @@ def test_approve_binds_the_code_and_redirects_with_code_state_and_iss(
 ) -> None:
     url = service.approve(CONTEXT, replace(REQUEST, scope="apps:run"), issuer=ISSUER)
 
-    assert url.startswith(CONFIDENTIAL_REDIRECT + "?")
+    assert url.startswith(WEB_REDIRECT + "?")
     query = _query(url)
     assert (query["state"], query["iss"]) == (["xyz"], [ISSUER])
     assert list(redis.ttls.values()) == [timedelta(seconds=600)]
     assert codes.consume(query["code"][0]) == AuthorizationCodeRecord(
-        client_id=CONFIDENTIAL_ID,
-        redirect_uri=CONFIDENTIAL_REDIRECT,
+        client_id=WEB_ID,
+        redirect_uri=WEB_REDIRECT,
         code_challenge=CHALLENGE,
         resource=ISSUER,
         scope="apps:run",
@@ -124,7 +124,7 @@ def test_approve_binds_the_code_and_redirects_with_code_state_and_iss(
 def test_approve_returns_to_the_requested_loopback_port(
     service: OAuthAuthorizeService, codes: RedisAuthorizationCodeRepository
 ) -> None:
-    url = service.approve(CONTEXT, replace(REQUEST, client_id=PUBLIC_ID, redirect_uri=LOOPBACK_REDIRECT), issuer=ISSUER)
+    url = service.approve(CONTEXT, replace(REQUEST, client_id=NATIVE_ID, redirect_uri=LOOPBACK_REDIRECT), issuer=ISSUER)
 
     assert url.startswith(LOOPBACK_REDIRECT + "?code=")
     record = codes.consume(_query(url)["code"][0])

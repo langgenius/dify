@@ -1,16 +1,10 @@
 import pytest
 
-from enums.oauth_client import OAuthClientKind, TokenEndpointAuthMethod
-from libs.oauth_bearer import sha256_hex
-from services.oauth_client_auth import authenticate_client
 from services.oauth_client_metadata import MAX_REDIRECT_URIS, RegistrationErrorCode
 from services.oauth_client_registration import OAuthClientRegistrationService, RegistrationError
 from services.oauth_clients import OAuthClientRegistry
 from services.oauth_token_contracts import GrantType
-from tests.helpers.unit.services.oauth_authorization_code_fakes import (
-    FakeClientRepository,
-    install_rate_limit_store,
-)
+from tests.helpers.unit.services.oauth_authorization_code_fakes import FakeClientRepository
 
 REDIRECT = "https://agent.example/cb"
 BOTH_GRANTS = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN)
@@ -30,7 +24,7 @@ def _error(metadata: dict[str, object]) -> RegistrationError:
 
 class TestRegisterCases:
     @staticmethod
-    def test_public_client_gets_a_dcr_id_and_no_secret() -> None:
+    def test_client_gets_a_dcr_id() -> None:
         service, repository = _service()
         metadata: dict[str, object] = {
             "redirect_uris": [REDIRECT],
@@ -42,36 +36,20 @@ class TestRegisterCases:
         client = service.register(metadata)
 
         assert client.client_id.startswith("dcr_")
-        assert client.client_secret is None
         assert client.client_name == "Agent"
         assert client.logo_uri == "https://agent.example/logo.png"
-        assert client.token_endpoint_auth_method == TokenEndpointAuthMethod.NONE
         assert client.grant_types == BOTH_GRANTS
         resolved = OAuthClientRegistry([repository]).resolve(client.client_id)
         assert resolved is not None
-        assert resolved.kind == OAuthClientKind.PUBLIC
         assert resolved.redirect_uris == (REDIRECT,)
         assert resolved.grant_types == frozenset(BOTH_GRANTS)
         assert service.register(metadata).client_id != client.client_id
 
     @staticmethod
-    def test_confidential_client_stores_only_the_secret_hash(monkeypatch: pytest.MonkeyPatch) -> None:
-        install_rate_limit_store(monkeypatch)
-        service, repository = _service()
-        method = TokenEndpointAuthMethod.CLIENT_SECRET_BASIC
+    def test_an_explicit_none_auth_method_is_accepted() -> None:
+        service, _ = _service()
 
-        client = service.register({"redirect_uris": [REDIRECT], "token_endpoint_auth_method": method.value})
-
-        assert client.client_secret
-        assert repository.rows[client.client_id].client_secret_hash == sha256_hex(client.client_secret)
-        assert repository.rows[client.client_id].kind == OAuthClientKind.CONFIDENTIAL
-        authenticated = authenticate_client(
-            OAuthClientRegistry([repository]),
-            client_id=client.client_id,
-            client_secret=client.client_secret,
-            source_ip="127.0.0.1",
-        )
-        assert authenticated.client_id == client.client_id
+        assert service.register({"redirect_uris": [REDIRECT], "token_endpoint_auth_method": "none"}).client_id
 
     @staticmethod
     def test_blank_name_falls_back_to_the_redirect_host() -> None:
@@ -111,7 +89,10 @@ class TestInvalidMetadataCases:
         [
             {"grant_types": ["urn:ietf:params:oauth:grant-type:device_code"]},
             {"response_types": ["token"]},
+            {"token_endpoint_auth_method": "client_secret_basic"},
+            {"token_endpoint_auth_method": "client_secret_post"},
             {"token_endpoint_auth_method": "private_key_jwt"},
+            {"token_endpoint_auth_method": 1},
         ],
     )
     def test_bad_metadata_is_rejected(extra: dict[str, object]) -> None:

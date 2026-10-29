@@ -81,7 +81,6 @@ class RevokeRequest:
     client_id: str | None
     client_secret: str | None
     token: str | None
-    source_ip: str
 
 
 class OAuthRevocationService:
@@ -94,7 +93,6 @@ class OAuthRevocationService:
             self._clients,
             client_id=request.client_id,
             client_secret=request.client_secret,
-            source_ip=request.source_ip,
         )
         if not request.token:
             raise TokenEndpointError(TokenErrorCode.INVALID_REQUEST)

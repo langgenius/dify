@@ -233,8 +233,6 @@ class OAuthRegisterResponse(BaseModel):
     response_types: list[Literal["code"]]
     token_endpoint_auth_method: TokenEndpointAuthMethod
     logo_uri: str | None = None
-    client_secret: str | None = None
-    client_secret_expires_at: int | None = None
 
 
 class OAuthRegisterErrorResponse(BaseModel):

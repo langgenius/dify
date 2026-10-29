@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from http import HTTPStatus
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
@@ -21,7 +21,6 @@ from controllers.openapi._oauth_input import (
     token_error_response,
 )
 from extensions.ext_application_services import application_services
-from libs.helper import extract_remote_ip
 from services.oauth_grant_revoker import RevokeRequest
 from services.oauth_token_contracts import TokenEndpointError, TokenErrorCode
 
@@ -32,7 +31,6 @@ def _revoke_request(body: dict[str, str]) -> RevokeRequest:
         client_id=client_id,
         client_secret=client_secret,
         token=body.get("token"),
-        source_ip=extract_remote_ip(request),
     )
 
 
@@ -44,11 +42,6 @@ class OAuthRevokeApi(Resource):
     )
     @openapi_ns.response(
         HTTPStatus.UNAUTHORIZED, "Client authentication failed", openapi_ns.models[OAuthTokenErrorResponse.__name__]
-    )
-    @openapi_ns.response(
-        HTTPStatus.TOO_MANY_REQUESTS,
-        "Too many failed client authentications",
-        openapi_ns.models[OAuthTokenErrorResponse.__name__],
     )
     def post(self):
         try:

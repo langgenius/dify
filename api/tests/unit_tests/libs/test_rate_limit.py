@@ -17,18 +17,15 @@ from libs import rate_limit as rate_limit_module
 from libs.helper import RateLimiter, _RateLimiterRedisClient
 from libs.rate_limit import (
     LIMIT_BEARER_PER_TOKEN,
-    LIMIT_CLIENT_AUTH_FAILURE,
     LIMIT_DEVICE_CODE_PER_IP,
     LIMIT_LOOKUP_PUBLIC,
     RATE_LIMIT_IDENTITY_MISSING,
     RateLimit,
     RateLimitScope,
     _BearerRateLimited,
+    enforce,
     enforce_bearer_rate_limit,
-    is_limited,
-    limiter_prefix,
     rate_limit,
-    record_hit,
 )
 
 
@@ -222,18 +219,6 @@ def test_a_zero_limit_never_counts_and_needs_no_identity(app: Flask, fake_redis:
     with app.test_request_context("/"):
         for _ in range(5):
             _hit(off)
-    record_hit(off, key="k")
+        enforce(off, key="k")
 
-    assert not is_limited(off, key="k")
     assert fake_redis.zsets == {}
-
-
-def test_manual_helpers_count_per_key(fake_redis: _FakeZsetRedis) -> None:
-    key = "client:qwenwork"
-    for _ in range(LIMIT_CLIENT_AUTH_FAILURE.limit):
-        assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)
-        record_hit(LIMIT_CLIENT_AUTH_FAILURE, key=key)
-
-    assert is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)
-    assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key="client:other")
-    assert set(fake_redis.zsets) == {f"{limiter_prefix(LIMIT_CLIENT_AUTH_FAILURE)}:{key}"}

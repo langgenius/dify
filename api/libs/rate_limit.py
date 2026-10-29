@@ -78,8 +78,6 @@ LIMIT_DCR_PER_IP = RateLimit(
 LIMIT_AUTHORIZE_APPROVE = RateLimit(
     name="authorize_approve", limit=10, window=timedelta(hours=1), scopes=(RateLimitScope.CONSOLE_ACCOUNT,)
 )
-# Keyed by the caller as ``client:{client_id}:ip:{source_ip}``; only wrong secrets of known clients count.
-LIMIT_CLIENT_AUTH_FAILURE = RateLimit(name="client_auth_failure", limit=10, window=timedelta(minutes=15), scopes=())
 LIMIT_ME_PER_ACCOUNT = RateLimit(
     name="me_per_account", limit=60, window=timedelta(minutes=1), scopes=(RateLimitScope.ACCOUNT,)
 )
@@ -183,25 +181,16 @@ def rate_limit(spec: RateLimit) -> Callable[[Callable[_P, _R]], Callable[_P, _R]
     return wrap
 
 
-def is_limited(spec: RateLimit, *, key: str) -> bool:
-    if spec.disabled:
-        return False
-    return _build_limiter(spec).is_rate_limited(key)
-
-
-def record_hit(spec: RateLimit, *, key: str) -> None:
-    if spec.disabled:
-        return
-    _build_limiter(spec).increment_rate_limit(key)
-
-
 def enforce(spec: RateLimit, *, key: str) -> None:
     """Imperative form — caller composes the bucket key to match scope
     semantics (the key is opaque here).
     """
-    if is_limited(spec, key=key):
+    if spec.disabled:
+        return
+    limiter = _build_limiter(spec)
+    if limiter.is_rate_limited(key):
         raise TooManyRequests("rate_limited")
-    record_hit(spec, key=key)
+    limiter.increment_rate_limit(key)
 
 
 class _BearerRateLimited(TooManyRequests):

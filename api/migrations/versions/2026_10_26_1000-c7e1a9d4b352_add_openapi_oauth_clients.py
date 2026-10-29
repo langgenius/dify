@@ -37,8 +37,6 @@ def upgrade():
         "openapi_oauth_clients",
         sa.Column("id", models.types.StringUUID(), **id_kwargs),
         sa.Column("client_id", sa.String(length=64), nullable=False),
-        sa.Column("kind", sa.String(length=32), nullable=False),
-        sa.Column("client_secret_hash", sa.String(length=64), nullable=True),
         sa.Column("display_name", sa.String(length=255), nullable=False),
         sa.Column("logo_uri", sa.String(length=1024), nullable=True),
         sa.Column("redirect_uris", models.types.AdjustedJSON(), nullable=False),

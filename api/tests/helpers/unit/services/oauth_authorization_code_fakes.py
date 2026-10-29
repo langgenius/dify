@@ -6,9 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from enums.oauth_client import OAuthClientKind
 from libs.helper import RateLimiter
-from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthClient
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_clients import ClientSource, OAuthClientRegistry, ResolvedClient
@@ -19,11 +17,10 @@ from services.oauth_token_contracts import GrantType
 
 MAX_DISPLAY_NAME_LENGTH = 255
 MAX_LOGO_URI_COLUMN_LENGTH = 1024
-CONFIDENTIAL_ID = "qwenwork"
-CONFIDENTIAL_SECRET = "s3cret"
-CONFIDENTIAL_REDIRECT = "https://nango-qwenwork.cn/oauth/callback"
-PUBLIC_ID = "native-app"
-PUBLIC_REDIRECT = "http://127.0.0.1/callback"
+WEB_ID = "qwenwork"
+WEB_REDIRECT = "https://nango-qwenwork.cn/oauth/callback"
+NATIVE_ID = "native-app"
+NATIVE_REDIRECT = "http://127.0.0.1/callback"
 ISSUER = "https://api.example/openapi/v1"
 VERIFIER = "v" * 43
 # S256 of VERIFIER
@@ -32,34 +29,30 @@ ACCOUNT_ID = "account-1"
 WORKSPACE_ID = "workspace-1"
 
 
-def confidential_client(
+def web_client(
     *,
-    client_id: str = CONFIDENTIAL_ID,
-    redirect_uris: Sequence[str] = (CONFIDENTIAL_REDIRECT,),
+    client_id: str = WEB_ID,
+    redirect_uris: Sequence[str] = (WEB_REDIRECT,),
     grant_types: frozenset[GrantType] = frozenset({GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN}),
 ) -> ResolvedClient:
     return ResolvedClient(
         client_id=client_id,
         storage_client_id=client_id,
-        kind=OAuthClientKind.CONFIDENTIAL,
         display_name="QwenWork",
         logo_uri="https://nango-qwenwork.cn/logo.png",
         redirect_uris=tuple(redirect_uris),
         grant_types=grant_types,
-        secret_hash=sha256_hex(CONFIDENTIAL_SECRET),
     )
 
 
-def public_client(*, redirect_uris: Sequence[str] = (PUBLIC_REDIRECT,)) -> ResolvedClient:
+def native_client(*, redirect_uris: Sequence[str] = (NATIVE_REDIRECT,)) -> ResolvedClient:
     return ResolvedClient(
-        client_id=PUBLIC_ID,
-        storage_client_id=PUBLIC_ID,
-        kind=OAuthClientKind.PUBLIC,
+        client_id=NATIVE_ID,
+        storage_client_id=NATIVE_ID,
         display_name="Native App",
         logo_uri=None,
         redirect_uris=tuple(redirect_uris),
         grant_types=frozenset({GrantType.AUTHORIZATION_CODE}),
-        secret_hash=None,
     )
 
 
@@ -81,22 +74,18 @@ class FakeClientRepository:
         self,
         *,
         client_id: str,
-        kind: OAuthClientKind,
         display_name: str,
         redirect_uris: Sequence[str],
         grant_types: Sequence[GrantType],
-        client_secret_hash: str | None = None,
         logo_uri: str | None = None,
     ) -> None:
         assert len(display_name) <= MAX_DISPLAY_NAME_LENGTH
         assert logo_uri is None or len(logo_uri) <= MAX_LOGO_URI_COLUMN_LENGTH
         row = OpenAPIOAuthClient(
             client_id=client_id,
-            kind=kind,
             display_name=display_name,
             redirect_uris=list(redirect_uris),
             grant_types=[str(grant) for grant in grant_types],
-            client_secret_hash=client_secret_hash,
             logo_uri=logo_uri,
         )
         self.rows[client_id] = row
@@ -108,12 +97,10 @@ class FakeClientRepository:
         return ResolvedClient(
             client_id=row.client_id,
             storage_client_id=row.client_id,
-            kind=row.kind,
             display_name=row.display_name,
             logo_uri=row.logo_uri,
             redirect_uris=tuple(row.redirect_uris),
             grant_types=frozenset(grant for grant in GrantType if grant.value in row.grant_types),
-            secret_hash=row.client_secret_hash,
         )
 
 

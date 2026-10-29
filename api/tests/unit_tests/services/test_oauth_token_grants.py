@@ -43,23 +43,20 @@ from services.oauth_token_service import OAuthTokenService
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     ACCOUNT_ID,
     CHALLENGE,
-    CONFIDENTIAL_ID,
-    CONFIDENTIAL_REDIRECT,
-    CONFIDENTIAL_SECRET,
     ISSUER,
-    PUBLIC_ID,
+    NATIVE_ID,
     VERIFIER,
+    WEB_ID,
+    WEB_REDIRECT,
     WORKSPACE_ID,
     DictRedis,
     FakeAccounts,
     FakeTokenSettings,
     FakeWorkspaces,
-    RateLimitHits,
     account_snapshot,
-    confidential_client,
-    install_rate_limit_store,
-    public_client,
+    native_client,
     registry,
+    web_client,
 )
 
 PAYLOAD: PollPayload = {
@@ -114,10 +111,9 @@ def _code_request(code: str | None, **overrides: Unpack[_Overrides]) -> TokenReq
         _BLANK_REQUEST,
         grant_type=GrantType.AUTHORIZATION_CODE,
         code=code,
-        client_id=CONFIDENTIAL_ID,
-        client_secret=CONFIDENTIAL_SECRET,
+        client_id=WEB_ID,
         code_verifier=VERIFIER,
-        redirect_uri=CONFIDENTIAL_REDIRECT,
+        redirect_uri=WEB_REDIRECT,
     )
     return replace(request, **overrides)
 
@@ -127,8 +123,7 @@ def _refresh_request(token: str | None, **overrides: Unpack[_Overrides]) -> Toke
         _BLANK_REQUEST,
         grant_type=GrantType.REFRESH_TOKEN,
         refresh_token=token,
-        client_id=CONFIDENTIAL_ID,
-        client_secret=CONFIDENTIAL_SECRET,
+        client_id=WEB_ID,
     )
     return replace(request, **overrides)
 
@@ -265,8 +260,8 @@ class _World:
     def approve(
         self,
         *,
-        client_id: str = CONFIDENTIAL_ID,
-        redirect_uri: str = CONFIDENTIAL_REDIRECT,
+        client_id: str = WEB_ID,
+        redirect_uri: str = WEB_REDIRECT,
         context: RequestContext = AUTH_CONTEXT,
         issuer: str = ISSUER,
     ) -> str:
@@ -352,12 +347,12 @@ def _world(
     settings = FakeTokenSettings(authorization_code_enabled=authorization_code_enabled)
     cache = _cache_wrapper()
     clients = registry(
-        confidential_client(),
-        confidential_client(client_id=OTHER_ID),
-        confidential_client(client_id=NO_REFRESH_ID, grant_types=frozenset({GrantType.AUTHORIZATION_CODE})),
-        confidential_client(client_id=DEVICE_ONLY_ID, grant_types=frozenset({GrantType.DEVICE_CODE})),
-        replace(confidential_client(client_id=ALIASED_ID), storage_client_id=ALIASED_STORAGE_ID),
-        public_client(),
+        web_client(),
+        web_client(client_id=OTHER_ID),
+        web_client(client_id=NO_REFRESH_ID, grant_types=frozenset({GrantType.AUTHORIZATION_CODE})),
+        web_client(client_id=DEVICE_ONLY_ID, grant_types=frozenset({GrantType.DEVICE_CODE})),
+        replace(web_client(client_id=ALIASED_ID), storage_client_id=ALIASED_STORAGE_ID),
+        native_client(),
     )
     codes = RedisAuthorizationCodeRepository(redis or DictRedis())
     refresh = (
@@ -403,11 +398,6 @@ def _world(
 
 
 @pytest.fixture
-def client_auth_hits(monkeypatch: pytest.MonkeyPatch) -> RateLimitHits:
-    return install_rate_limit_store(monkeypatch)
-
-
-@pytest.fixture
 def issuer_from_origin(config_overrides: Callable[..., None]) -> None:
     config_overrides(CONSOLE_API_URL="")
 
@@ -421,10 +411,10 @@ def _assert_close(value: datetime, expected: datetime) -> None:
     assert abs(value.replace(tzinfo=UTC) - expected) < timedelta(minutes=1)
 
 
-@pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")
+@pytest.mark.usefixtures("issuer_from_origin")
 class TestAuthorizationCodeGrantCases:
     @staticmethod
-    def test_confidential_client_redeems_with_pkce(world: _World) -> None:
+    def test_web_client_redeems_with_pkce(world: _World) -> None:
         login = world.login()
 
         assert login.payload["default_workspace_id"] == WORKSPACE_ID
@@ -433,21 +423,19 @@ class TestAuthorizationCodeGrantCases:
         access = world.access_row(login)
         row = world.refresh_row(login.refresh_token)
         assert row is not None
-        assert (row.account_id, row.workspace_id, row.client_id) == (ACCOUNT_ID, WORKSPACE_ID, CONFIDENTIAL_ID)
+        assert (row.account_id, row.workspace_id, row.client_id) == (ACCOUNT_ID, WORKSPACE_ID, WEB_ID)
         assert (row.subject_email, row.device_label) == (access.subject_email, access.device_label)
         assert access.device_label.startswith("QwenWork (")
         _assert_close(datetime.fromisoformat(login.payload["expires_at"]), datetime.now(UTC) + timedelta(hours=24))
         _assert_close(row.expires_at, datetime.now(UTC) + timedelta(days=30))
-        assert world.usage.marked == [CONFIDENTIAL_ID]
+        assert world.usage.marked == [WEB_ID]
 
     @staticmethod
     def test_client_without_the_refresh_grant_gets_no_refresh_token(world: _World) -> None:
         redirect = "http://127.0.0.1:53412/callback"
-        code = world.approve(client_id=PUBLIC_ID, redirect_uri=redirect)
+        code = world.approve(client_id=NATIVE_ID, redirect_uri=redirect)
 
-        result = world.service.exchange(
-            _code_request(code, client_id=PUBLIC_ID, client_secret=None, redirect_uri=redirect)
-        )
+        result = world.service.exchange(_code_request(code, client_id=NATIVE_ID, redirect_uri=redirect))
 
         assert result.refresh_token is None
         assert world.refresh_rows() == []
@@ -466,7 +454,7 @@ class TestAuthorizationCodeGrantCases:
         [
             pytest.param({"code_verifier": "w" * 43}, TokenErrorCode.INVALID_GRANT, id="wrong-verifier"),
             pytest.param({"code_verifier": None}, TokenErrorCode.INVALID_GRANT, id="missing-verifier"),
-            pytest.param({"redirect_uri": CONFIDENTIAL_REDIRECT + "?x=1"}, TokenErrorCode.INVALID_GRANT, id="redirect"),
+            pytest.param({"redirect_uri": WEB_REDIRECT + "?x=1"}, TokenErrorCode.INVALID_GRANT, id="redirect"),
             pytest.param({"client_id": OTHER_ID}, TokenErrorCode.INVALID_GRANT, id="other-client"),
             pytest.param({"resource": UNKNOWN_RESOURCE}, TokenErrorCode.INVALID_TARGET, id="unknown-resource"),
         ],
@@ -497,8 +485,7 @@ class TestAuthorizationCodeGrantCases:
     @pytest.mark.parametrize(
         ("overrides", "token_error"),
         [
-            pytest.param({"client_secret": "wrong"}, TokenErrorCode.INVALID_CLIENT, id="wrong-secret"),
-            pytest.param({"client_id": PUBLIC_ID, "client_secret": "s"}, TokenErrorCode.INVALID_CLIENT, id="public"),
+            pytest.param({"client_secret": "a-secret"}, TokenErrorCode.INVALID_CLIENT, id="secret-sent"),
             pytest.param({"client_id": DEVICE_ONLY_ID}, TokenErrorCode.UNAUTHORIZED_CLIENT, id="no-grant"),
         ],
     )
@@ -525,9 +512,7 @@ class TestAuthorizationCodeGrantCases:
     ) -> None:
         config_overrides(REDIS_KEY_PREFIX="")
         raw = DictRedis()
-        legacy = RedisOAuthServerTokenRepository(_cache_wrapper(raw)).issue_authorization_code(
-            CONFIDENTIAL_ID, ACCOUNT_ID
-        )
+        legacy = RedisOAuthServerTokenRepository(_cache_wrapper(raw)).issue_authorization_code(WEB_ID, ACCOUNT_ID)
         world = _world(sqlite_session_factory, redis=raw)
 
         assert world.code_error(_code_request(legacy)).code is TokenErrorCode.INVALID_GRANT
@@ -543,7 +528,7 @@ def test_browser_grants_are_unsupported_when_disabled(sqlite_session_factory: se
         assert caught.value.code is TokenErrorCode.UNSUPPORTED_GRANT_TYPE
 
 
-@pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")
+@pytest.mark.usefixtures("issuer_from_origin")
 class TestRefreshTokenGrantCases:
     @staticmethod
     def test_each_login_starts_its_own_grant(world: _World) -> None:
@@ -569,7 +554,7 @@ class TestRefreshTokenGrantCases:
         assert (old.rotated_at is not None, new.rotated_at) == (True, None)
         assert (new.family_id, new.device_label) == (old.family_id, old.device_label)
         _assert_close(new.expires_at, datetime.now(UTC) + timedelta(days=30))
-        assert world.usage.marked == [CONFIDENTIAL_ID]
+        assert world.usage.marked == [WEB_ID]
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -577,7 +562,7 @@ class TestRefreshTokenGrantCases:
         [
             pytest.param({"resource": UNKNOWN_RESOURCE}, TokenErrorCode.INVALID_TARGET, id="unknown-resource"),
             pytest.param({"client_id": OTHER_ID}, TokenErrorCode.INVALID_GRANT, id="other-client"),
-            pytest.param({"client_secret": "wrong"}, TokenErrorCode.INVALID_CLIENT, id="wrong-secret"),
+            pytest.param({"client_secret": "a-secret"}, TokenErrorCode.INVALID_CLIENT, id="secret-sent"),
             pytest.param({"client_id": NO_REFRESH_ID}, TokenErrorCode.UNAUTHORIZED_CLIENT, id="no-grant"),
         ],
     )
@@ -679,7 +664,7 @@ class TestRefreshTokenGrantCases:
         assert world.access_row(refreshed).client_id == ALIASED_STORAGE_ID
 
 
-@pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")
+@pytest.mark.usefixtures("issuer_from_origin")
 class TestSessionPathsKnowRefreshGrants:
     @staticmethod
     def test_idle_grant_is_listed_with_its_refresh_expiry_and_revoked_by_that_id(world: _World) -> None:

@@ -1,7 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from enums.oauth_client import OAuthClientKind
 from models.oauth import OpenAPIOAuthClient
 from schedule._batch_delete import delete_in_batches
 
@@ -10,7 +9,6 @@ def _add(session: Session, client_id: str) -> None:
     session.add(
         OpenAPIOAuthClient(
             client_id=client_id,
-            kind=OAuthClientKind.PUBLIC,
             display_name="Agent",
             redirect_uris=[],
             grant_types=[],

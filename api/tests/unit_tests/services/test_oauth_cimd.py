@@ -7,7 +7,6 @@ import httpx
 import pytest
 
 import services.oauth_cimd as cimd_module
-from enums.oauth_client import OAuthClientKind
 from libs.oauth_bearer import sha256_hex
 from services.oauth_cimd import (
     CIMD_CACHE_MAX_SECONDS,
@@ -150,8 +149,6 @@ def test_valid_document_resolves_to_a_public_client() -> None:
     assert client is not None
     assert client.client_id == URL
     assert client.storage_client_id == cimd_storage_id(URL)
-    assert client.kind == OAuthClientKind.PUBLIC
-    assert client.secret_hash is None
     assert client.display_name == "Agent"
     assert client.redirect_uris == (REDIRECT,)
     assert client.grant_types == frozenset({GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN})

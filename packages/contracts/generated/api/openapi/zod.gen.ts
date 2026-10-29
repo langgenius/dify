@@ -1989,11 +1989,7 @@ export const zTaskStopResponse = z.object({
 /**
  * TokenEndpointAuthMethod
  */
-export const zTokenEndpointAuthMethod = z.enum([
-  'client_secret_basic',
-  'client_secret_post',
-  'none',
-])
+export const zTokenEndpointAuthMethod = z.enum(['none'])
 
 /**
  * OAuthRegisterRequest
@@ -2016,8 +2012,6 @@ export const zOAuthRegisterResponse = z.object({
   client_id: z.string(),
   client_id_issued_at: z.int(),
   client_name: z.string(),
-  client_secret: z.string().nullish(),
-  client_secret_expires_at: z.int().nullish(),
   grant_types: z.array(z.enum(['authorization_code', 'refresh_token'])),
   logo_uri: z.string().nullish(),
   redirect_uris: z.array(z.string()),

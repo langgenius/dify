@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy import event, select, update
 from sqlalchemy.orm import ORMExecuteState, Session
 
-from enums.oauth_client import OAuthClientKind
 from models.oauth import OpenAPIOAuthClient
 from tests.helpers.unit.schedule.task_module_loader import load_schedule_module
 
@@ -21,7 +20,6 @@ def cleanup_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 def _client(client_id: str) -> OpenAPIOAuthClient:
     return OpenAPIOAuthClient(
         client_id=client_id,
-        kind=OAuthClientKind.PUBLIC,
         display_name="Agent",
         redirect_uris=["http://127.0.0.1/callback"],
         grant_types=["authorization_code"],
