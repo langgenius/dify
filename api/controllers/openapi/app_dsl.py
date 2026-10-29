@@ -80,6 +80,7 @@ _PACKAGE_READ_GUARDS: Final = account_app_guards(
     agent_permission=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
 )
 _DSL_WRITE_GUARDS: Final = workspace_write_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, roles=EDITOR_ROLES)
+_PACKAGE_IMPORT_GUARDS: Final = workspace_write_guards(None, roles=EDITOR_ROLES)
 _PACKAGE_UPLOAD: Final = FolderUpload(
     payload=AppPackageImportPayload,
     max_entries=lambda: dify_config.AGENT_PACKAGE_MAX_ENTRIES,
@@ -242,7 +243,7 @@ class AppPackageImportApi(Resource):
                 input={"package": "./app/", "app_id": "<app_id>", "draft_hash": "<draft_hash>"},
             ),
         ),
-        requirements=(*_DSL_WRITE_GUARDS, _PACKAGE_UPLOAD.cap()),
+        requirements=(*_PACKAGE_IMPORT_GUARDS, _PACKAGE_UPLOAD.cap()),
         body=AppPackageImportPayload,
         returns=(
             (HTTPStatus.OK, AppDslImportResponse, "Import completed"),
