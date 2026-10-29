@@ -321,7 +321,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
 
-        if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
+        if (response.hash)
+          workflowStore.getState().setSyncWorkflowDraftHash(response.hash, response.graph)
 
         // Handle features, variables etc.
         handleWorkflowDataUpdate(response)

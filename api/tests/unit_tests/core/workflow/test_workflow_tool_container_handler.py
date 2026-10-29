@@ -1717,6 +1717,7 @@ class TestWorkflowToolEventDeliveryCases:
         user.id = "user"
         layer = WorkflowPersistenceLayer(
             application_generate_entity=WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 task_id="task",
                 app_config=WorkflowAppConfig(
                     app_id="outer-app",

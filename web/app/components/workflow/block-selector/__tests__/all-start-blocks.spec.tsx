@@ -41,17 +41,13 @@ vi.mock('@/service/use-plugins', () => ({
   useFeaturedTriggersRecommendations: vi.fn(),
 }))
 
-vi.mock('@/utils/var', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/var')>()
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
   return {
     ...actual,
-    getMarketplaceUrl: (path = '', params?: Record<string, string | undefined>) => {
-      const searchParams = new URLSearchParams()
-      Object.entries(params || {}).forEach(([key, value]) => {
-        if (value) searchParams.set(key, value)
-      })
-      const query = searchParams.toString()
-      return `https://marketplace.test${path}${query ? `?${query}` : ''}`
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
     },
   }
 })

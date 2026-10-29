@@ -74,38 +74,8 @@ class AccountInitPayload(BaseModel):
         return timezone(value)
 
 
-class AccountNamePayload(BaseModel):
-    name: str = Field(min_length=3, max_length=30)
-
-
-class AccountAvatarPayload(BaseModel):
-    avatar: str
-
-
 class AccountAvatarQuery(BaseModel):
     avatar: str = Field(..., description="Avatar file ID")
-
-
-class AccountInterfaceLanguagePayload(BaseModel):
-    interface_language: str
-
-    @field_validator("interface_language")
-    @classmethod
-    def validate_language(cls, value: str) -> str:
-        return supported_language(value)
-
-
-class AccountInterfaceThemePayload(BaseModel):
-    interface_theme: Literal["light", "dark"]
-
-
-class AccountTimezonePayload(BaseModel):
-    timezone: str
-
-    @field_validator("timezone")
-    @classmethod
-    def validate_timezone(cls, value: str) -> str:
-        return timezone(value)
 
 
 class AccountProfilePatchPayload(BaseModel):
@@ -203,12 +173,7 @@ class CheckEmailUniquePayload(BaseModel):
 register_schema_models(
     console_ns,
     AccountInitPayload,
-    AccountNamePayload,
-    AccountAvatarPayload,
     AccountAvatarQuery,
-    AccountInterfaceLanguagePayload,
-    AccountInterfaceThemePayload,
-    AccountTimezonePayload,
     AccountProfilePatchPayload,
     AccountPasswordPayload,
     AccountDeletePayload,
@@ -280,14 +245,6 @@ register_response_schema_models(
 )
 
 
-def _update_account_profile(request_context: RequestContext, changes: AccountProfileChanges) -> dict[str, object]:
-    try:
-        account = application_services().accounts.profile.update(request_context, changes)
-    except account_errors.AccountNotFoundError as error:
-        raise AccountNotFound() from error
-    return dump_response(AccountResponse, account)
-
-
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
     @error_responses(
@@ -335,23 +292,11 @@ class AccountProfileApi(Resource):
     @console_account_admission()
     @model_validate(AccountProfilePatchPayload)
     def patch(self, args: AccountProfilePatchPayload, request_context: RequestContext):
-        return _update_account_profile(request_context, args.to_changes())
-
-
-@console_ns.route("/account/name")
-class AccountNameApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
-
-    @error_responses(AccountNotFound)
-    @console_ns.doc("update_account_name_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountNamePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountNamePayload)
-    def post(self, args: AccountNamePayload, request_context: RequestContext):
-        return _update_account_profile(request_context, AccountProfileChanges(name=args.name))
+        try:
+            account = application_services().accounts.profile.update(request_context, args.to_changes())
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        return dump_response(AccountResponse, account)
 
 
 @console_ns.route("/account/avatar")
@@ -368,71 +313,6 @@ class AccountAvatarApi(Resource):
         except account_errors.AvatarFileNotFoundError as error:
             raise NotFound("Avatar file not found") from error
         return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
-
-    @error_responses(AccountNotFound)
-    @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
-    @console_ns.doc("update_account_avatar_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountAvatarPayload)
-    def post(self, args: AccountAvatarPayload, request_context: RequestContext):
-        return _update_account_profile(request_context, AccountProfileChanges(avatar=args.avatar))
-
-
-@console_ns.route("/account/interface-language")
-class AccountInterfaceLanguageApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
-
-    @error_responses(AccountNotFound)
-    @console_ns.doc("update_account_interface_language_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountInterfaceLanguagePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountInterfaceLanguagePayload)
-    def post(self, args: AccountInterfaceLanguagePayload, request_context: RequestContext):
-        return _update_account_profile(
-            request_context,
-            AccountProfileChanges(interface_language=args.interface_language),
-        )
-
-
-@console_ns.route("/account/interface-theme")
-class AccountInterfaceThemeApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
-
-    @error_responses(AccountNotFound)
-    @console_ns.doc("update_account_interface_theme_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountInterfaceThemePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountInterfaceThemePayload)
-    def post(self, args: AccountInterfaceThemePayload, request_context: RequestContext):
-        return _update_account_profile(
-            request_context,
-            AccountProfileChanges(interface_theme=args.interface_theme),
-        )
-
-
-@console_ns.route("/account/timezone")
-class AccountTimezoneApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
-
-    @error_responses(AccountNotFound)
-    @console_ns.doc("update_account_timezone_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountTimezonePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountTimezonePayload)
-    def post(self, args: AccountTimezonePayload, request_context: RequestContext):
-        return _update_account_profile(request_context, AccountProfileChanges(timezone=args.timezone))
 
 
 @console_ns.route("/account/password")

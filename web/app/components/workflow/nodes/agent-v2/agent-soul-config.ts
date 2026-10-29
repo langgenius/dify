@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
@@ -106,14 +107,18 @@ export function useWorkflowInlineAgentConfigureSync({
   )
 
   const saveComposer = useSerialAsyncCallback(
-    async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
+    async (
+      configSnapshot: AgentSoulConfig,
+      fileUpdate: 'preserve' | 'replace' = 'preserve',
+    ): Promise<WorkflowAgentComposerResponse | undefined> => {
       if (resource.kind !== 'app' && resource.kind !== 'snippet') return
 
       const savedDraftKey = JSON.stringify(configSnapshot)
       const body = {
         variant: 'workflow' as const,
         save_strategy: 'node_job_only' as const,
-        agent_soul: configSnapshot,
+        agent_soul:
+          fileUpdate === 'replace' ? configSnapshot : omit(configSnapshot, ['config_files']),
       }
       const composerState =
         resource.kind === 'snippet'
@@ -194,7 +199,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const saveAgentSoulConfig = useCallback(
     async (agentSoulConfig: AgentSoulConfig) => {
       debouncedSaveDraft.cancel?.()
-      return saveComposer(agentSoulConfig)
+      return saveComposer(agentSoulConfig, 'replace')
     },
     [debouncedSaveDraft, saveComposer],
   )
