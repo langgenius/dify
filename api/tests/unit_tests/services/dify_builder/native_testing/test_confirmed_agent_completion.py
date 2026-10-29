@@ -3832,3 +3832,324 @@ def test_cancel_before_queued_resume_claim_stops_original_pause(
     if fault is None:
         receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
         assert (receipt.status, receipt.outcome, receipt.native_status) == ("terminal", "cancelled", "stopped")
+
+
+@pytest.mark.parametrize("declining", [0], indirect=True)
+@pytest.mark.parametrize("child_terminal", ["failed", "succeeded", "cancelled"])
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "unknown-source",
+        "unknown-effect",
+        "unsettled-claim",
+        "sdk-unavailable",
+        "binding-race",
+        "pause-race",
+        "stop-running",
+        "saved-pause-drift",
+        "expired-sdk-unavailable",
+        "saved-fence-drift",
+        "saved-pause-remains",
+        "saved-source-drift",
+        "sensitive-child-error",
+    ],
+)
+def test_cancel_control_repause_uses_real_workflow_stop_owner(
+    declining: CompletedOwner,
+    child_terminal: str,
+    fault: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: pytest_mock.MockerFixture,
+    config_overrides,
+) -> None:
+    """Revocation rejects child restore; a real control pause still belongs to ordinary stop."""
+    from libs.broadcast_channel.redis.pubsub_channel import Topic
+    from models.dify_builder_native_tests import NativeDispatch, NativeEffectDispatchClaim, NativeEffectOutcome
+    from models.workflow import WorkflowPause, WorkflowPauseReason
+    from services import app_task_service as task_module
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+    from services.workflow_runtime.agent_node import DifyAgentNode
+    from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis
+    from tests.unit_tests.services.workflow_runtime.test_agent_node import _node
+
+    owner = declining
+    owner.commands.api.lifecycle.cancel = NativeTestLifecycleService.cancel.__get__(owner.commands.api.lifecycle)
+    redis = _AppTaskServiceStopredis()
+    monkeypatch.setattr("extensions.ext_redis.redis_client", redis)
+    monkeypatch.setattr(task_module, "redis_client", redis)
+    writer = owner.commands.loader.locked
+    from contextlib import contextmanager
+
+    @contextmanager
+    def scoped_writer(**values: object):
+        with writer(**values) as rows:
+            owner.writer_depth += 1
+            try:
+                yield rows
+            finally:
+                owner.writer_depth -= 1
+
+    owner.commands.loader.locked = scoped_writer
+    config_overrides(
+        CORE_WORKFLOW_EXECUTION_REPOSITORY="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
+        CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
+        LOGSTORE_DUAL_WRITE_ENABLED=False,
+    )
+    monkeypatch.setattr(task_module, "db", _CompletionDatabase(engine=owner.factory.kw["bind"]))
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", lambda _: None)
+    publications = []
+    monkeypatch.setattr(Topic, "publish", lambda _self, payload: publications.append(json.loads(payload)))
+    # Retirement is an external lifecycle port. Its independent cleanup is not
+    # acknowledged by this stop-control result.
+    from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
+
+    def retire(**_: object) -> list[str]:
+        assert owner.writer_depth == 0
+        with owner.factory() as sql:
+            native = sql.get(WorkflowRun, owner.native_id)
+            assert native is not None
+            assert native.status == "stopped"
+            assert native.stop_requested_at is not None
+        return []
+
+    monkeypatch.setattr(WorkflowAgentWorkspaceStore, "retire_workflow_run", staticmethod(retire))
+    assert owner.paused is not None
+    execution_id = next(iter(owner.paused.runtime.graph_execution.node_executions.values())).execution_id
+    actual_node = _node()
+    actual_node.bind_execution_id(execution_id)
+    control = DifyAgentNode._control_pause(actual_node, {}, {}, {}, "native_agent_continuation_unknown")
+    owner.paused.runtime.graph_execution.pause_reasons = [control.reason]
+    current_pause = WorkflowResumptionContext(
+        serialized_graph_runtime_state=owner.paused.runtime.dumps(),
+        generate_entity=owner.paused.state.generate_entity,
+    )
+    mocker.stop(WorkflowResumptionContext.loads)
+    from services.dify_builder.native_testing import confirmed_agent_cancellation
+
+    confirmed_agent_cancellation.storage.load.return_value = current_pause.dumps().encode()
+    lease = datetime(2020, 1, 1) if fault == "expired-sdk-unavailable" else datetime(2099, 1, 1)
+    with owner.factory.begin() as sql:
+        for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
+            model.__table__.create(sql.connection(), checkfirst=True)
+        root = sql.scalar(select(NativeInvocationState))
+        scope = sql.get(NativeTestScope, owner.request_id)
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        native = sql.get(WorkflowRun, owner.native_id)
+        node = sql.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent"))
+        assert root is not None
+        assert scope is not None
+        assert request is not None
+        assert native is not None
+        assert node is not None
+        root.state, root.generation, scope.generation, request.state = "running", 1, 1, "running"
+        native.task_id = str(uuid4())
+        node.id = execution_id
+        node.agent_workspace_binding_id = "workspace-binding"
+        node.process_data = json.dumps(
+            {
+                "workflow_agent_binding_id": "original-binding",
+                "agent_create_attempts": [
+                    {"attempt": 0, "key": "original-create", "digest": "a" * 64, "child_run_id": "original-child"}
+                ],
+            }
+        )
+        node.execution_metadata = json.dumps(control.node_run_result.metadata)
+        reason = sql.scalar(select(WorkflowPauseReason))
+        assert reason is not None
+        reason.message = "native_agent_continuation_unknown"
+        sql.add(
+            NativeDispatch(
+                id="claimed-source",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                generation=1,
+                state="unknown" if fault == "unknown-source" else "claimed",
+                checkpoint_id=root.checkpoint_id,
+                idempotency_digest="e" * 64,
+                claim_expires_at=lease,
+            )
+        )
+        if fault in {"unknown-effect", "unsettled-claim"}:
+            operation = sql.scalar(select(NativeEffectOperation))
+            assert operation is not None
+            if fault == "unknown-effect":
+                operation.state = "unknown"
+            else:
+                sql.add(
+                    NativeEffectDispatchClaim(
+                        id="in-flight",
+                        tenant_id=owner.case.actor.tenant_id,
+                        request_id=owner.request_id,
+                        invocation_id=owner.ref.invocation_id,
+                        operation_id=operation.id,
+                        attempt_id="attempt",
+                        claimed_at=datetime(2026, 1, 1),
+                    )
+                )
+    owner.child_status = child_terminal
+    reads = []
+    stops = []
+    actual_stop = task_module.AppTaskService.stop_workflow_run
+
+    def stop_owner(**values: object):
+        assert owner.writer_depth == 0
+        with owner.factory() as sql:
+            request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+            assert request is not None
+            assert any(
+                record.get("confirmed_agent_stop_v1", {}).get("child_status") == child_terminal
+                for record in request.observations
+            )
+        stops.append(values["run_id"])
+        if fault == "saved-pause-drift":
+            raise ConnectionError("temporary stop transport failure")
+        if fault == "stop-running":
+            with owner.factory.begin() as sql:
+                native = sql.get(WorkflowRun, owner.native_id)
+                assert native is not None
+                native.status = "running"
+        return actual_stop(**values)
+
+    monkeypatch.setattr(task_module.AppTaskService, "stop_workflow_run", staticmethod(stop_owner))
+
+    def child_status(child: str) -> RunStatusResponse:
+        assert owner.writer_depth == 0
+        reads.append(child)
+        if fault in {"sdk-unavailable", "expired-sdk-unavailable"}:
+            raise ConnectionError("temporary status failure")
+        if fault in {"binding-race", "pause-race"}:
+            with owner.factory.begin() as sql:
+                if fault == "binding-race":
+                    node = sql.get(WorkflowNodeExecutionModel, execution_id)
+                    assert node is not None
+                    node.agent_workspace_binding_id = "different-binding"
+                else:
+                    pause = sql.scalar(select(WorkflowPause))
+                    assert pause is not None
+                    pause.state_object_key = "different-pause"
+        return RunStatusResponse.model_validate(
+            {
+                "run_id": child,
+                "status": child_terminal,
+                "error": (
+                    "secret-canary-provider-error"
+                    if fault == "sensitive-child-error"
+                    else "native_invocation_mismatch"
+                    if child_terminal == "failed"
+                    else None
+                ),
+                "created_at": datetime(2026, 1, 1),
+                "updated_at": datetime(2026, 1, 2),
+            }
+        )
+
+    owner.commands.backend.client.get_run_sync = child_status
+    receipt = owner.commands.cancel(
+        actor=owner.case.actor,
+        session_id=owner.session.id,
+        request_id=owner.request_id,
+        idempotency_key="control-stop",
+    )
+    if fault == "expired-sdk-unavailable":
+        from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+
+        service = ProfiledNativeTestCommands(
+            sessions=owner.factory,
+            actor=owner.case.actor,
+            confirmed_factory=lambda: owner.commands,
+            legacy_factory=lambda: pytest.fail("stop control changed profile"),
+        )
+        service.reconcile_pending(
+            actor=owner.case.actor,
+            session_id=owner.session.id,
+            request_id=owner.request_id,
+            publish=lambda **_: pytest.fail("revoked stop request published execution"),
+        )
+    if fault == "saved-pause-drift":
+        with owner.factory.begin() as sql:
+            pause = sql.scalar(select(WorkflowPause))
+            assert pause is not None
+            pause.state_object_key = "different-pause"
+        owner.commands.get(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+        assert stops == [owner.native_id]
+    completed = fault in {
+        None,
+        "saved-fence-drift",
+        "saved-pause-remains",
+        "saved-source-drift",
+        "sensitive-child-error",
+    }
+    assert (receipt.status == "terminal") is completed
+    with owner.factory() as sql:
+        native = sql.get(WorkflowRun, owner.native_id)
+        source = sql.get(NativeDispatch, "claimed-source")
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        root = sql.scalar(select(NativeInvocationState))
+        assert native is not None
+        assert source is not None
+        assert request is not None
+        assert root is not None
+        assert native.status == ("stopped" if completed else "running" if fault == "stop-running" else "paused")
+        assert (native.stop_requested_at is not None) is (completed or fault == "stop-running")
+        assert source.state == ("cancelled" if completed else "unknown" if fault == "unknown-source" else "claimed")
+        assert source.claim_expires_at == lease
+        assert (request.state == "sealed") is completed
+        assert not root.cleanup_complete
+        if completed or fault in {"stop-running", "saved-pause-drift"}:
+            assert any(
+                record.get("confirmed_agent_stop_v1", {}).get("child_status") == child_terminal
+                for record in request.observations
+            )
+        if fault == "sensitive-child-error":
+            observation = next(
+                record["confirmed_agent_stop_v1"]
+                for record in request.observations
+                if "confirmed_agent_stop_v1" in record
+            )
+            assert "secret-canary-provider-error" not in json.dumps(observation)
+            assert observation["child_error_digest"] == canonical_digest("secret-canary-provider-error")
+            assert "child_error" not in observation
+            assert "child_error_type" not in observation
+    assert reads == (
+        []
+        if fault in {"unknown-source", "unknown-effect", "unsettled-claim"}
+        else ["original-child"] * (2 if fault == "expired-sdk-unavailable" else 1)
+    )
+    assert owner.child_status == child_terminal
+    assert owner.cancel_calls == ["original-child"]
+    assert (
+        any(
+            event.get("event") == "workflow_finished" and event.get("data", {}).get("status") == "stopped"
+            for event in publications
+        )
+        is completed
+    )
+    if not completed:
+        return
+    owner.commands.backend.client.get_run_sync = lambda _: pytest.fail("saved stop queried a retained child")
+    receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+    assert (receipt.status, receipt.outcome, receipt.native_status) == ("terminal", "cancelled", "stopped")
+    if fault == "sensitive-child-error":
+        assert "secret-canary-provider-error" not in receipt.model_dump_json()
+    if fault in {"saved-fence-drift", "saved-pause-remains", "saved-source-drift"}:
+        with owner.factory.begin() as sql:
+            if fault == "saved-fence-drift":
+                native = sql.get(WorkflowRun, owner.native_id)
+                assert native is not None
+                native.stop_requested_at = None
+            elif fault == "saved-pause-remains":
+                sql.add(
+                    WorkflowPause(
+                        workflow_id=owner.case.workflow.id,
+                        workflow_run_id=owner.native_id,
+                        state_object_key="unexpected-pause",
+                    )
+                )
+            else:
+                source = sql.get(NativeDispatch, "claimed-source")
+                assert source is not None
+                source.idempotency_digest = "f" * 64
+        receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+        assert receipt.status == "running"
