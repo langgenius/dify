@@ -261,7 +261,7 @@ class EndUserConnectionRepository:
     def transfer_guest_connections(
         cls, session: Session, guest: WebConnectionContext, account: WebConnectionContext
     ) -> int:
-        """Transfer credentials/defaults inside the caller's validated identity transaction."""
+        """Transfer credential owners inside the caller's validated identity transaction."""
         transferred = cast(
             CursorResult,
             session.execute(
@@ -277,13 +277,25 @@ class EndUserConnectionRepository:
                 )
             ),
         ).rowcount
-        if session.scalar(sa.select(AppConnection.id).where(*cls._app_selection_scope(account)).limit(1)):
+        return transferred
+
+    @classmethod
+    def transfer_guest_defaults(
+        cls, session: Session, guest: WebConnectionContext, account: WebConnectionContext
+    ) -> None:
+        """Apply whole-set precedence while the caller exclusively locks the target EndUser."""
+        # A current locking read is required even under MySQL's repeatable-read isolation.
+        if session.scalar(
+            sa.select(AppConnection.id)
+            .where(*cls._app_selection_scope(account))
+            .limit(1)
+            .with_for_update(read=True, nowait=True)
+        ):
             session.execute(sa.delete(AppConnection).where(*cls._app_selection_scope(guest)))
         else:
             session.execute(
                 sa.update(AppConnection).where(*cls._app_selection_scope(guest)).values(end_user_id=account.end_user_id)
             )
-        return transferred
 
     def published_graph(self, context: WebConnectionContext) -> tuple[str, Mapping[str, Any]]:
         return self.preflight_graph(context, None, None)

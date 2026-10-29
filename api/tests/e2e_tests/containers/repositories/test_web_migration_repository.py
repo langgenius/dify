@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from models.account import Account, AccountStatus
-from models.end_user_connection import EndUserConnection
+from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, Site, UploadFile
 from models.tools import ToolFile
@@ -19,7 +19,7 @@ from repositories.end_user_execution_lock import lock_end_user
 from repositories.entities.web_execution import EndUserBusyError
 from repositories.web_migration_repository import WebMigrationRepository
 from services.web_migration_service import MigrationCounts
-from tests.helpers.end_user_api_key import make_harness
+from tests.helpers.end_user_api_key import PROVIDER, make_harness
 from tests.helpers.unit.model_factories import make_upload_file
 
 
@@ -310,3 +310,101 @@ def test_shared_admissions_coexist_and_migration_conflicts_only_for_the_same_ide
                 end_user_id=harness.context.end_user_id,
                 exclusive=False,
             )
+
+
+@pytest.mark.timeout(30)
+def test_two_guests_migrating_to_one_account_preserve_a_whole_default_set(
+    db_session_with_containers: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    harness = make_harness(sessions)
+    code = f"default-race-{uuid4()}"
+    with sessions.begin() as session:
+        session.add(
+            Site(
+                app_id=harness.context.app_id,
+                code=code,
+                title="Defaults",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            )
+        )
+        guests = [
+            EndUser(
+                tenant_id=harness.context.tenant_id,
+                app_id=harness.context.app_id,
+                type=EndUserType.BROWSER,
+                session_id=str(uuid4()),
+            )
+            for _ in range(2)
+        ]
+        session.add_all(guests)
+        session.flush()
+        guest_ids = [guest.id for guest in guests]
+    monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", True)
+    source_run_ids = [str(uuid4()), str(uuid4())]
+    for index, guest_id in enumerate(guest_ids):
+        identity = replace(harness.context, end_user_id=guest_id, account_id=None)
+        connection = harness.service.create_api_key(identity, harness.command())
+        with sessions.begin() as session:
+            session.add(
+                AppConnection(
+                    tenant_id=identity.tenant_id,
+                    app_id=identity.app_id,
+                    end_user_id=identity.end_user_id,
+                    workflow_id=harness.workflow_id,
+                    node_id=f"guest-{index}",
+                    provider=PROVIDER,
+                    connection_id=connection.id,
+                    source_run_id=source_run_ids[index],
+                )
+            )
+    repository = WebMigrationRepository(session_factory=sessions)
+    sources = [
+        repository.get_claim_source(
+            app_code=code,
+            app_id=harness.context.app_id,
+            end_user_id=guest_id,
+        )
+        for guest_id in guest_ids
+    ]
+    barrier = Barrier(2)
+
+    def claim(index: int) -> MigrationCounts | None:
+        source = sources[index]
+        assert source is not None
+        barrier.wait(timeout=10)
+        try:
+            return repository.claim_guest(source, account_end_user_id=harness.context.end_user_id)
+        except EndUserBusyError:
+            return None
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(claim, index) for index in range(2)]
+        results = [future.result(timeout=20) for future in futures]
+    assert any(result is not None and result.connections == 1 for result in results)
+    with sessions() as session:
+        initial_defaults = session.scalars(
+            sa.select(AppConnection.source_run_id).where(
+                AppConnection.app_id == harness.context.app_id,
+                AppConnection.end_user_id == harness.context.end_user_id,
+            )
+        ).all()
+        assert len(initial_defaults) == 1
+        assert initial_defaults[0] in source_run_ids
+    for index, result in enumerate(results):
+        if result is None:
+            source = sources[index]
+            assert source is not None
+            repository.claim_guest(source, account_end_user_id=harness.context.end_user_id)
+    with sessions() as session:
+        assert (
+            session.scalars(
+                sa.select(AppConnection.source_run_id).where(
+                    AppConnection.app_id == harness.context.app_id,
+                    AppConnection.end_user_id == harness.context.end_user_id,
+                )
+            ).all()
+            == initial_defaults
+        )

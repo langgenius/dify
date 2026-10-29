@@ -177,23 +177,23 @@ class WebMigrationRepository:
                 is None
             ):
                 raise ConnectionIdentityError()
-            target = lock_end_user(
-                session,
-                tenant_id=guest.tenant_id,
-                app_id=app.id,
-                end_user_id=account_end_user_id,
-                exclusive=False,
+            target = session.scalar(
+                sa.select(EndUser).where(
+                    EndUser.id == account_end_user_id,
+                    EndUser.tenant_id == guest.tenant_id,
+                    EndUser.app_id == app.id,
+                    EndUser.type == EndUserType.BROWSER,
+                    EndUser.account_id.is_not(None),
+                )
             )
-            if target is None or target.type != EndUserType.BROWSER or target.account_id is None:
+            if target is None or target.account_id is None:
                 raise ConnectionIdentityError()
             if (
                 session.scalar(
-                    sa.select(Account.id)
-                    .where(
+                    sa.select(Account.id).where(
                         Account.id == target.account_id,
                         Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
                     )
-                    .with_for_update(read=True, nowait=True)
                 )
                 is None
             ):
@@ -268,4 +268,28 @@ class WebMigrationRepository:
                 .execution_options(synchronize_session=False)
             )
             assert isinstance(result, CursorResult)
+            # Only the small final default-set mutation needs the target identity's
+            # exclusive lock. Keep it out of the potentially large history/file transfer.
+            target = lock_end_user(
+                session,
+                tenant_id=guest.tenant_id,
+                app_id=app.id,
+                end_user_id=account_end_user_id,
+                exclusive=True,
+            )
+            if target is None or target.type != EndUserType.BROWSER or target.account_id != account.account_id:
+                raise ConnectionIdentityError()
+            if (
+                session.scalar(
+                    sa.select(Account.id)
+                    .where(
+                        Account.id == account.account_id,
+                        Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
+                    )
+                    .with_for_update(read=True, nowait=True)
+                )
+                is None
+            ):
+                raise ConnectionIdentityError()
+            EndUserConnectionRepository.transfer_guest_defaults(session, guest, account)
             return MigrationCounts(connections, chat_count)

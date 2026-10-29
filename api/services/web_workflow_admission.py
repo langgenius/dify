@@ -82,8 +82,8 @@ def web_workflow_launch(
             run,
             account_id=user.account_id,
             conversation_id=conversation_id,
-            upload_ids=frozenset(uploads),
-            tool_ids=frozenset(tools),
+            upload_ids=uploads,
+            tool_ids=tools,
             resume=resume,
         )
     except BaseException:

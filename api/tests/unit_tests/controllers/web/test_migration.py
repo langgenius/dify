@@ -442,9 +442,12 @@ def test_guest_check_cannot_write_credentials_after_claim(harness: ClaimHarness)
 
 
 def test_claim_rolls_back_owner_and_default_changes_together(harness: ClaimHarness) -> None:
+    from models.model import UploadFile
+
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
-    save_choices(harness, base.context, selected.id)
+    conversation_id, _, _, upload_id = persist_migration_history(harness, base.context)
+    save_choices(harness, base.context, selected.id, conversation_id)
     engine = base.sessions.kw["bind"]
 
     def fail_defaults(
@@ -467,6 +470,14 @@ def test_claim_rolls_back_owner_and_default_changes_together(harness: ClaimHarne
     assert base.service.get_connection(base.context, selected.id).id == selected.id
     with base.sessions() as session:
         assert session.scalar(sa.select(AppConnection.end_user_id)) == base.context.end_user_id
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+            == base.context.end_user_id
+        )
+        assert (
+            session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id))
+            == base.context.end_user_id
+        )
 
 
 def test_login_is_exchanged_before_delayed_claim_confirmation(
