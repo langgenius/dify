@@ -152,6 +152,7 @@ describe('variable-in-markdown', () => {
           input={{
             type: InputVarType.select,
             output_variable_name: 'approval',
+            default_value: 'Rejected',
             option_source: {
               type: 'constant',
               selector: [],
@@ -162,13 +163,41 @@ describe('variable-in-markdown', () => {
         />,
       )
 
-      await user.click(screen.getByRole('combobox', { name: 'human-input-note-select' }))
-
-      await user.click(await screen.findByRole('option', { name: 'Rejected' }))
       expect(screen.getByRole('combobox', { name: 'human-input-note-select' })).toHaveTextContent(
         'Rejected',
       )
+      await user.click(screen.getByRole('combobox', { name: 'human-input-note-select' }))
+
+      await user.click(await screen.findByRole('option', { name: 'Approved' }))
+      expect(screen.getByRole('combobox', { name: 'human-input-note-select' })).toHaveTextContent(
+        'Approved',
+      )
     })
+
+    it.each([undefined, '', 'Removed option'])(
+      'should preview the first option when the default is unavailable (%s)',
+      (defaultValue) => {
+        render(
+          <Note
+            input={{
+              type: InputVarType.select,
+              output_variable_name: 'approval',
+              default_value: defaultValue,
+              option_source: {
+                type: 'constant',
+                selector: [],
+                value: ['Approved', 'Rejected'],
+              },
+            }}
+            nodeName={(nodeId) => nodeId}
+          />,
+        )
+
+        expect(screen.getByRole('combobox', { name: 'human-input-note-select' })).toHaveTextContent(
+          'Approved',
+        )
+      },
+    )
 
     it('should render upload placeholders for file inputs', () => {
       render(
