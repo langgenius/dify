@@ -38,7 +38,11 @@ export const getMarketplaceTemplateIconUrl = (templateId: string) =>
 export const resolveMarketplaceAssetUrl = (path?: string) => {
   if (!path) return ''
   if (/^https?:\/\//.test(path) || path.startsWith('/_next/')) return path
-  if (path.startsWith('/api/') && URL.canParse(apiPrefix))
+  if (!path.startsWith('/api/')) return getMarketplaceApiUrl(path)
+
+  try {
     return `${new URL(apiPrefix).origin}${path}`
-  return getMarketplaceApiUrl(path)
+  } catch {
+    return path
+  }
 }
