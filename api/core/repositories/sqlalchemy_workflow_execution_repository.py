@@ -23,6 +23,7 @@ from models import (
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 from repositories.entities.workflow_execution import serialize_connection_context
+from repositories.workflow_run_control import lock_end_user_run_app
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +216,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Create a new database session
         with self._session_factory() as session:
+            lock_end_user_run_app(session, db_model)
             existing_model = session.get(WorkflowRun, db_model.id, with_for_update=True)
             if existing_model:
                 if existing_model.tenant_id != self._tenant_id or (

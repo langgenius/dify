@@ -191,3 +191,39 @@ class TestMessageBasedAppGeneratorExtras:
         generator = MessageBasedAppGenerator()
 
         assert generator._get_conversation_introduction(entity) == "Hello {name}"
+
+
+def test_accepted_chat_keeps_only_its_file_snapshot_across_owner_transfer(sqlite_session: Session) -> None:
+    from sqlalchemy import update
+
+    from core.app.entities.app_invoke_entities import UserFrom
+    from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+    from models.enums import CreatorUserRole
+    from models.model import UploadFile
+    from tests.helpers.unit.model_factories import make_upload_file
+
+    sqlite_session.add(make_app(app_id="app-id", tenant_id="tenant-id"))
+    sqlite_session.add(
+        EndUser(id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session")
+    )
+    original = make_upload_file(tenant_id="tenant-id", created_by_role=CreatorUserRole.END_USER, created_by="user-id")
+    subsequent = make_upload_file(
+        tenant_id="tenant-id", created_by_role=CreatorUserRole.END_USER, created_by="target-id"
+    )
+    sqlite_session.add_all([original, subsequent])
+    sqlite_session.commit()
+    entity = _make_chat_generate_entity(_make_app_config(AppMode.CHAT))
+    entity.inputs = {"file": {"transfer_method": "local_file", "upload_file_id": original.id}}
+    scope = FileAccessScope(
+        tenant_id="tenant-id", user_id="user-id", user_from=UserFrom.END_USER, invoke_from=InvokeFrom.WEB_APP
+    )
+    controller = DatabaseFileAccessController()
+    with bind_file_access_scope(scope):
+        conversation, _ = MessageBasedAppGenerator()._init_generate_records(entity, None, session=sqlite_session)
+        sqlite_session.execute(update(UploadFile).where(UploadFile.id == original.id).values(created_by="target-id"))
+        conversation.from_end_user_id = "target-id"
+        sqlite_session.commit()
+        assert controller.get_upload_file(session=sqlite_session, file_id=original.id) is not None
+        assert controller.get_upload_file(session=sqlite_session, file_id=subsequent.id) is None
+    # A fresh Guest request receives no privileges from the accepted execution's snapshot.
+    assert controller.get_upload_file(session=sqlite_session, file_id=original.id, scope=scope) is None

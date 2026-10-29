@@ -12,11 +12,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from models.account import Account, AccountStatus
 from models.end_user_connection import EndUserConnection
-from models.enums import ConversationFromSource, CustomizeTokenStrategy, EndUserType, InvokeFrom
-from models.model import App, AppMode, Conversation, EndUser, Site
+from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, EndUserType, InvokeFrom
+from models.model import App, AppMode, Conversation, EndUser, Site, UploadFile
+from models.tools import ToolFile
 from repositories.web_migration_repository import WebMigrationRepository
 from services.web_migration_service import MigrationCounts
 from tests.helpers.end_user_api_key import make_harness
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 @pytest.mark.parametrize("same_account", [False, True])
@@ -37,6 +39,19 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         session.add(guest)
         session.flush()
         guest_id = guest.id
+        upload = make_upload_file(
+            tenant_id=harness.context.tenant_id, created_by_role=CreatorUserRole.END_USER, created_by=guest_id
+        )
+        tool = ToolFile(
+            tenant_id=harness.context.tenant_id,
+            user_id=guest_id,
+            conversation_id=None,
+            file_key="tools/race.txt",
+            mimetype="text/plain",
+        )
+        session.add_all([upload, tool])
+        session.flush()
+        upload_id, tool_id = upload.id, tool.id
         session.execute(sa.update(App).where(App.id == harness.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
         session.add(
             Site(
@@ -107,6 +122,8 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         stored = session.get(Conversation, conversation_id)
         assert stored is not None
         assert stored.from_end_user_id == winner.id
+        assert session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id)) == winner.id
+        assert session.scalar(sa.select(ToolFile.user_id).where(ToolFile.id == tool_id)) == winner.id
 
 
 def test_message_acceptance_is_serialized_with_passport_migration(db_session_with_containers: Session) -> None:

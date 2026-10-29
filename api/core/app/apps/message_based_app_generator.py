@@ -27,6 +27,7 @@ from core.app.entities.task_entities import (
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
 )
+from core.app.file_access import get_current_file_access_scope, grant_tool_file_access, grant_upload_file_access
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
@@ -47,6 +48,7 @@ from models.enums import (
 )
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from repositories.conversation_access import ConversationAccessDeniedError, lock_web_message_acceptance
+from repositories.conversation_file_access import conversation_file_grants
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -275,6 +277,26 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 initialize_conversation_connections(
                     session, application_generate_entity.connection_context, conversation
                 )
+
+            if (
+                application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                and not isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+                and get_current_file_access_scope()
+            ):
+                # Classic chat has no WorkflowRun busy marker. Capture only its accepted
+                # immutable file references while the migration/acceptance locks are held.
+                actor = session.get(EndUser, end_user_id)
+                assert actor is not None
+                session.flush()
+                grants = conversation_file_grants(
+                    session,
+                    tenant_id=app_config.tenant_id,
+                    app_id=app_config.app_id,
+                    conversation_id=conversation.id,
+                    user=actor,
+                )
+                grant_upload_file_access(grants.uploads)
+                grant_tool_file_access(grants.tools)
 
             session.commit()
 

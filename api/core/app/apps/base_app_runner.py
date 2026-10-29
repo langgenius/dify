@@ -409,6 +409,7 @@ class AppRunner:
                     tenant_id=tenant_id,
                     file_url=image_url,
                     conversation_id=None,
+                    message_id=message_id,
                 )
                 _logger.info("Image saved successfully, tool_file_id: %s", tool_file.id)
             elif base64_data:
@@ -423,6 +424,7 @@ class AppRunner:
                     user_id=user_id,
                     tenant_id=tenant_id,
                     conversation_id=None,
+                    message_id=message_id,
                     file_binary=image_binary,
                     mimetype=mimetype,
                     filename=f"generated_image{extension}",

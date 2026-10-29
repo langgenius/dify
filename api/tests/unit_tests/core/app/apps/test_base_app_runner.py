@@ -124,6 +124,7 @@ class TestBaseAppRunnerMultimodal:
             tenant_id=mock_tenant_id,
             file_url=image_url,
             conversation_id=None,
+            message_id=mock_message_id,
         )
         message_file = sqlite_session.get(MessageFile, message_file_id)
         assert message_file is not None

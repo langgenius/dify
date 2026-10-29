@@ -23,6 +23,7 @@ from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from graphon.file.tool_file_parser import set_tool_file_manager_factory
 from models.model import MessageFile
 from models.tools import ToolFile
+from repositories.conversation_file_access import lock_conversation_file_owner, message_file_conversation_id
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class ToolFileManager:
         file_binary: bytes,
         mimetype: str,
         filename: str | None = None,
+        message_id: str | None = None,
     ) -> ToolFile:
         extension = resolve_extension(filename=filename, mimetype=mimetype)
         unique_name = uuid4().hex
@@ -87,8 +89,14 @@ class ToolFileManager:
         storage.save(filepath, file_binary)
 
         with session_factory.create_session() as session:
+            if conversation_id is None and message_id is not None:
+                conversation_id = message_file_conversation_id(
+                    session, tenant_id=tenant_id, message_id=message_id, user_id=user_id
+                )
             tool_file = ToolFile(
-                user_id=user_id,
+                user_id=lock_conversation_file_owner(
+                    session, tenant_id=tenant_id, user_id=user_id, conversation_id=conversation_id
+                ),
                 tenant_id=tenant_id,
                 conversation_id=conversation_id,
                 file_key=filepath,
@@ -110,6 +118,8 @@ class ToolFileManager:
         tenant_id: str,
         file_url: str,
         conversation_id: str | None = None,
+        *,
+        message_id: str | None = None,
     ) -> ToolFile:
         # try to download image
         try:
@@ -131,8 +141,14 @@ class ToolFileManager:
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
         with session_factory.create_session() as session:
+            if conversation_id is None and message_id is not None:
+                conversation_id = message_file_conversation_id(
+                    session, tenant_id=tenant_id, message_id=message_id, user_id=user_id
+                )
             tool_file = ToolFile(
-                user_id=user_id,
+                user_id=lock_conversation_file_owner(
+                    session, tenant_id=tenant_id, user_id=user_id, conversation_id=conversation_id
+                ),
                 tenant_id=tenant_id,
                 conversation_id=conversation_id,
                 file_key=filepath,

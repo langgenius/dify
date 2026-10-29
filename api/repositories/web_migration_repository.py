@@ -17,7 +17,8 @@ from models.enums import (
     InvokeFrom,
     MessageStatus,
 )
-from models.model import App, AppMode, Conversation, EndUser, Message, MessageFeedback, Site
+from models.model import App, AppMode, Conversation, EndUser, Message, MessageFeedback, Site, UploadFile
+from models.tools import ToolFile
 from models.web import PinnedConversation, SavedMessage
 from models.workflow import WorkflowRun
 from repositories.end_user_connection_repository import EndUserConnectionRepository
@@ -89,7 +90,7 @@ class WebMigrationRepository:
             return GuestMigrationSource(guest, app_code, identity.name, connections or 0, conversations or 0)
 
     @staticmethod
-    def _require_idle_credentials(session: Session, guest: WebConnectionContext) -> None:
+    def _require_idle_runs(session: Session, guest: WebConnectionContext) -> None:
         # The pending message is the durable acceptance marker before variables/Run initialization.
         pending = sa.exists(
             sa.select(Message.id)
@@ -107,15 +108,6 @@ class WebMigrationRepository:
         )
         if session.scalar(sa.select(pending)):
             raise MigrationRunInProgressError()
-        personal = sa.exists(
-            sa.select(EndUserConnection.id).where(
-                EndUserConnection.tenant_id == guest.tenant_id,
-                EndUserConnection.end_user_id == guest.end_user_id,
-                EndUserConnection.account_id.is_(None),
-            )
-        )
-        if not session.scalar(sa.select(personal)):
-            return
         active = sa.exists(
             sa.select(WorkflowRun.id).where(
                 WorkflowRun.tenant_id == guest.tenant_id,
@@ -137,7 +129,7 @@ class WebMigrationRepository:
 
     def preflight_guest(self, source: GuestMigrationSource) -> None:
         with self._sessions() as session:
-            self._require_idle_credentials(session, source.context)
+            self._require_idle_runs(session, source.context)
 
     def claim_guest(self, source: GuestMigrationSource, *, account_end_user_id: str) -> MigrationCounts:
         guest = source.context
@@ -203,7 +195,7 @@ class WebMigrationRepository:
             ):
                 raise ConnectionIdentityError()
             account = WebConnectionContext(guest.tenant_id, app.id, target.id, target.account_id)
-            self._require_idle_credentials(session, guest)
+            self._require_idle_runs(session, guest)
             # Lock the roots before their personal state; accepted producers keep their original identities.
             session.scalars(
                 sa.select(Conversation.id)
@@ -212,6 +204,22 @@ class WebMigrationRepository:
                 .with_for_update()
             ).all()
             connections = EndUserConnectionRepository.transfer_guest_connections(session, guest, account)
+            session.execute(
+                sa.update(UploadFile)
+                .where(
+                    UploadFile.tenant_id == guest.tenant_id,
+                    UploadFile.created_by_role == CreatorUserRole.END_USER,
+                    UploadFile.created_by == guest.end_user_id,
+                )
+                .values(created_by=target.id)
+                .execution_options(synchronize_session=False)
+            )
+            session.execute(
+                sa.update(ToolFile)
+                .where(ToolFile.tenant_id == guest.tenant_id, ToolFile.user_id == guest.end_user_id)
+                .values(user_id=target.id)
+                .execution_options(synchronize_session=False)
+            )
             conversation_ids = sa.select(Conversation.id).where(*guest_history_roots(guest))
             message_ids = sa.select(Message.id).where(
                 Message.app_id == app.id, Message.conversation_id.in_(conversation_ids)

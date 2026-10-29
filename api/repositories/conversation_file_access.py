@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import resolve_file_record_id
 from models.account import Account
-from models.enums import CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import App, Conversation, EndUser, Message, MessageFile, UploadFile
 from models.tools import ToolFile
 from models.workflow import ConversationVariable
@@ -21,6 +21,72 @@ from repositories.conversation_access import conversation_owner_scope
 class ConversationFileGrants:
     uploads: frozenset[str]
     tools: frozenset[str]
+
+
+def lock_conversation_file_owner(session: Session, *, tenant_id: str, user_id: str, conversation_id: str | None) -> str:
+    """Late files from accepted Guest messages follow the current conversation owner.
+
+    Keep the parent lock until insertion commits, so migration either includes
+    the new file or finishes first and supplies its new owner. Callers perform
+    storage and provider I/O before entering this transaction.
+    """
+    if conversation_id is None:
+        return user_id
+    original = session.scalar(
+        sa.select(EndUser).where(
+            EndUser.id == user_id,
+            EndUser.tenant_id == tenant_id,
+            EndUser.type == EndUserType.BROWSER,
+            EndUser.account_id.is_(None),
+        )
+    )
+    if original is None:
+        return user_id
+    conversation = session.scalar(
+        sa.select(Conversation)
+        .join(App, App.id == Conversation.app_id)
+        .where(
+            App.tenant_id == tenant_id,
+            Conversation.app_id == original.app_id,
+            Conversation.id == conversation_id,
+            Conversation.from_source == ConversationFromSource.API,
+            Conversation.from_account_id.is_(None),
+        )
+        .with_for_update(of=Conversation)
+    )
+    if conversation is None or conversation.from_end_user_id == user_id:
+        return user_id
+    target = session.scalar(
+        sa.select(EndUser.id).where(
+            EndUser.id == conversation.from_end_user_id,
+            EndUser.app_id == original.app_id,
+            EndUser.tenant_id == tenant_id,
+            EndUser.type == EndUserType.BROWSER,
+            EndUser.account_id.is_not(None),
+            sa.exists(
+                sa.select(Message.id).where(
+                    Message.app_id == original.app_id,
+                    Message.conversation_id == conversation_id,
+                    Message.from_source == ConversationFromSource.API,
+                    Message.from_end_user_id == user_id,
+                    Message.from_account_id.is_(None),
+                )
+            ),
+        )
+    )
+    return target or user_id
+
+
+def message_file_conversation_id(session: Session, *, tenant_id: str, message_id: str, user_id: str) -> str | None:
+    return session.scalar(
+        sa.select(Message.conversation_id)
+        .join(App, App.id == Message.app_id)
+        .where(
+            App.tenant_id == tenant_id,
+            Message.id == message_id,
+            sa.or_(Message.from_end_user_id == user_id, Message.from_account_id == user_id),
+        )
+    )
 
 
 def _file_references(value: object, uploads: set[str], tools: set[str]) -> None:

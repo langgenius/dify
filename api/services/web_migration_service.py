@@ -63,10 +63,7 @@ class ConnectionClaimUnavailableError(ConnectionError):
 class MigrationRunInProgressError(ConnectionConflictError):
     def __init__(self) -> None:
         super().__init__()
-        self.args = (
-            "Guest execution must finish starting; "
-            "runs with personal Connections must finish or be cancelled before migration.",
-        )
+        self.args = ("Guest runs must finish or be cancelled before migration.",)
 
 
 @dataclass(frozen=True)
