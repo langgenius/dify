@@ -2,7 +2,7 @@
 
 ## Log in
 
-`login` uses the device flow: it prints a URL and a code, the human approves in a browser, and difyctl stores a token. One login at a time. A new login replaces the saved one. An old code the human approves after that does nothing; only the login that collects its token counts.
+`login` uses the device flow: it prints a URL and a code, the human approves in a browser, and difyctl stores a token. One login at a time, shared by every difyctl process that uses the same config dir. A new login replaces the saved one. An old code the human approves after that does nothing; only the login that collects its token counts.
 
 **Check first.** Run `difyctl login --resume`. If it prints an `email`, you are logged in: skip login. If it fails with `not_logged_in`, log in.
 
@@ -10,7 +10,7 @@
 
 Log in only this way:
 
-1. `difyctl login --server <url> --no-browser --no-wait`. It saves a pending login and prints `verification_uri`, `user_code` and `expires_in` (seconds), then exits.
+1. `difyctl login --server <url> --no-browser --no-wait`. It saves a pending login and prints `verification_uri`, `user_code` and `expires_in` (seconds), then exits. If the saved login to that server still works, it prints that login's `email` instead and starts nothing: you are logged in. Pass `--force` only when the human asks for a new login; it logs out every machine and process that shares this config dir.
 2. Give the human the URL and the code. Ask them to reply when they have approved. Then end your turn. Do not poll, do not sleep, and do not start a background job.
 3. When the human replies, run `difyctl login --resume` once. If it prints the account `email`, you are logged in. If it prints `status: pending`, tell the human it is not approved yet and end your turn again.
 4. If the code expires or the human denies it, `--resume` fails. Start again from step 1.

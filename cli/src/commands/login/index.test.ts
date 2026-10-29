@@ -9,6 +9,7 @@ import {
   DEVICE_LABEL_ID_LENGTH,
   installationId,
 } from '@/auth/installation'
+import { withLoginFlowLock } from '@/auth/login-flow-lock'
 import { PENDING_FILE_NAME } from '@/auth/pending-login'
 import { Context } from '@/kernel/context'
 import { commands } from '@/plugins/commands'
@@ -20,12 +21,20 @@ afterEach(async () => {
   for (const w of worlds.splice(0)) await w.stop()
 })
 
-it('logs the previous login out, runs the device flow, saves the pin and the token', async () => {
+it('with --force, logs the previous login out, runs the device flow, saves the pin and the token', async () => {
   const seed = await testContext({ login: true })
   worlds.push(seed)
   const w = await testContext({
     login: true,
-    argv: ['login', '--server', seed.mock.url, '--no-browser', '--no-keyring', '--insecure'],
+    argv: [
+      'login',
+      '--server',
+      seed.mock.url,
+      '--no-browser',
+      '--no-keyring',
+      '--insecure',
+      '--force',
+    ],
     reuseDirOf: seed,
   })
   worlds.push(w)
@@ -38,6 +47,78 @@ it('logs the previous login out, runs the device flow, saves the pin and the tok
   expect(login?.tokenStorage).toBe('file')
   expect(await (await w.ctx.get(token)).get()).toBe('dfoa_test')
   expect(JSON.parse(w.io.outBuf())).toMatchObject({ server: w.mock.url, workspace_id: 'ws-1' })
+})
+
+async function reloginWorld(...extra: string[]): Promise<TestWorld> {
+  const seed = await testContext({ login: true })
+  worlds.push(seed)
+  const w = await testContext({
+    login: true,
+    argv: [
+      'login',
+      '--server',
+      seed.mock.url,
+      '--no-browser',
+      '--no-keyring',
+      '--insecure',
+      ...extra,
+    ],
+    reuseDirOf: seed,
+  })
+  worlds.push(w)
+  return w
+}
+
+it.each([
+  ['external-SSO', null],
+  ['account', { id: 'acc-1', email: 'me@x', name: 'Me' }],
+] as const)('keeps a working %s login instead of starting a new one', async (_kind, account) => {
+  const w = await reloginWorld()
+  const sessionService = await w.ctx.get(session)
+  await sessionService.save({ ...(await sessionService.require()), account })
+
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+
+  expect(w.mock.lastDeviceCodeBody).toBeNull()
+  expect(w.io.errBuf()).toContain('already logged in as me@x; pass --force to log in again')
+  expect(JSON.parse(w.io.outBuf())).toMatchObject({ server: w.mock.url, email: 'me@x' })
+  expect(await (await w.ctx.get(token)).get()).toBe('dfoa_file')
+})
+
+it('starts a new login when the saved token no longer works', async () => {
+  const w = await reloginWorld()
+  w.mock.setScenario('auth-expired')
+
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+
+  expect(w.mock.lastDeviceCodeBody).not.toBeNull()
+  expect(await (await w.ctx.get(token)).get()).toBe('dfoa_test')
+})
+
+it('saves only once another login in the same config dir has finished saving', async () => {
+  const w = await loginWorld()
+  let release = () => {}
+  const otherLoginHolds = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let acquired = () => {}
+  const lockTaken = new Promise<void>((resolve) => {
+    acquired = resolve
+  })
+  const otherLogin = withLoginFlowLock(w.ctx, async () => {
+    acquired()
+    await otherLoginHolds
+  })
+  await lockTaken
+
+  const run = (await w.ctx.get(commands)).run()
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  expect(await (await w.ctx.get(session)).current()).toBeNull()
+
+  release()
+  await otherLogin
+  expect(await run).toBe(0)
+  expect(await (await w.ctx.get(token)).get()).toBe('dfoa_test')
 })
 
 it('refuses under an env login', async () => {

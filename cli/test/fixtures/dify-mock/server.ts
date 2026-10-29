@@ -696,6 +696,20 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     })
   })
 
+  // External subjects have no workspace scope: every app is listed.
+  app.get('/openapi/v1/permitted-external-apps', (c) => {
+    const page = Number(c.req.query('page') ?? '1')
+    const limit = Number(c.req.query('limit') ?? '20')
+    const start = (page - 1) * limit
+    return c.json({
+      page,
+      limit,
+      total: APPS.length,
+      has_more: page * limit < APPS.length,
+      data: APPS.slice(start, start + limit),
+    })
+  })
+
   app.get('/openapi/v1/permitted-external-apps/:id', (c) => {
     const id = c.req.param('id')
     const fieldsRaw = c.req.query('fields') ?? ''

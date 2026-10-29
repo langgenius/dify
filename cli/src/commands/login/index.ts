@@ -1,4 +1,5 @@
 import type { PollSuccess } from '@/auth/device-api'
+import type { AwaitOptions } from '@/auth/device-flow'
 import type { Pending, PendingLoginStore } from '@/auth/pending-login'
 import type { CommandContext } from '@/plugins/base'
 import type { Login as SavedLogin } from '@/plugins/session'
@@ -6,6 +7,8 @@ import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
 import { deviceLabel } from '@/auth/installation'
+import { savedLoginIsLive } from '@/auth/liveness'
+import { withLoginFlowLock } from '@/auth/login-flow-lock'
 import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
 import { pendingLoginStore } from '@/auth/pending-login'
 import { BaseError } from '@/errors/base'
@@ -47,6 +50,12 @@ const INPUT = z.object({
     .default(false)
     .describe(
       'Check a login started with --no-wait once. Prints status pending until the user approves. With no pending login, prints the saved login, or fails with not_logged_in',
+    ),
+  force: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Start a new login even when the saved login to this server still works. The new login replaces it on every machine that shares this config dir',
     ),
 })
 
@@ -105,6 +114,13 @@ export default class Login extends Command<typeof INPUT> {
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
+    const saved = await sessionService.current()
+    // A new login would replace the saved one everywhere this config dir is shared.
+    if (!input.force && saved?.server === server && (await savedLoginIsLive(ctx, saved))) {
+      streams.notice(`already logged in as ${saved.email}; pass --force to log in again`)
+      return loginReport(saved)
+    }
+
     const api = deviceApi(server, { insecure: input.insecure })
     const code = await api.requestCode({ device_label: await deviceLabel(ctx) })
     // Checked before it is printed: a URI difyctl would refuse to open is one the
@@ -134,8 +150,8 @@ export default class Login extends Command<typeof INPUT> {
     }
 
     await pendingLogin.clear()
-    const success = await awaitAuthorization(api, code, { clock: realClock() })
-    return finish(ctx, pending, success)
+    await awaitAuthorization(api, code, { clock: realClock(), around: savingPoll(ctx, pending) })
+    return loginReport(await sessionService.require())
   }
 }
 
@@ -181,19 +197,33 @@ async function resume(ctx: CommandContext, pendingLogin: PendingLoginStore) {
   const api = deviceApi(pending.server, { insecure: pending.insecure })
   let success: PollSuccess | undefined
   try {
-    success = await pollAuthorization(api, pending.device_code, { clock: realClock() })
+    success = await pollAuthorization(api, pending.device_code, {
+      clock: realClock(),
+      around: savingPoll(ctx, pending),
+    })
   } catch (err) {
     if (err instanceof BaseError && FINAL_POLL_ERRORS.includes(err.code))
       await pendingLogin.clearIf(pending.device_code)
     throw err
   }
   if (success === undefined) return { status: PENDING_STATUS }
-  const result = await finish(ctx, pending, success)
   await pendingLogin.clearIf(pending.device_code)
-  return result
+  return loginReport(await sessionService.require())
 }
 
-async function finish(ctx: CommandContext, pending: Pending, success: PollSuccess) {
+// The poll that collects an approval mints the token and makes the previous token on this
+// device label stop working. Holding one lock from that poll until the save means logins
+// sharing this config dir save in the order the server minted, so the saved token is live.
+function savingPoll(ctx: CommandContext, pending: Pending): NonNullable<AwaitOptions['around']> {
+  return (poll) =>
+    withLoginFlowLock(ctx, async () => {
+      const result = await poll()
+      if (result.status === 'approved') await save(ctx, pending, result.success)
+      return result
+    })
+}
+
+async function save(ctx: CommandContext, pending: Pending, success: PollSuccess): Promise<void> {
   const sessionService = await ctx.get(session)
   const tokenService = await ctx.get(token)
   const tokenStorage = await tokenService.detect({ skipKeyring: pending.no_keyring })
@@ -215,5 +245,4 @@ async function finish(ctx: CommandContext, pending: Pending, success: PollSucces
   await replacePrevious(ctx)
   await sessionService.save(login)
   await tokenService.write(login, success.token)
-  return loginReport(login)
 }
