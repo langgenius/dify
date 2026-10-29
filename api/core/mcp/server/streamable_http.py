@@ -339,6 +339,27 @@ def process_mapping_response(app: App, response: Mapping) -> str:
             raise ValueError("Invalid app mode: " + str(app.mode))
 
 
+def _mcp_file_object_shape() -> dict[str, Any]:
+    """JSON-Schema shape for a single Dify file input value (FILE).
+
+    Mirrors ``controllers.openapi._input_schema._file_object_shape`` so an
+    MCP client and an OpenAPI client see the same file-object contract when
+    they call into the same workflow app. ``additionalProperties: True``
+    keeps room for forward-compatible fields (the upstream file-API
+    contract is not yet pinned).
+    """
+    return {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string"},
+            "transfer_method": {"type": "string"},
+            "url": {"type": "string"},
+            "upload_file_id": {"type": "string"},
+        },
+        "additionalProperties": True,
+    }
+
+
 def convert_input_form_to_parameters(
     user_input_form: list[VariableEntity],
     parameters_dict: dict[str, str],
@@ -348,11 +369,10 @@ def convert_input_form_to_parameters(
     required = []
 
     for item in user_input_form:
-        if item.type in (
-            VariableEntityType.FILE,
-            VariableEntityType.FILE_LIST,
-            VariableEntityType.EXTERNAL_DATA_TOOL,
-        ):
+        # EXTERNAL_DATA_TOOL is a Dify-internal concept (variables bound to
+        # an external-data-tool plugin at publish time); it is not a value
+        # the MCP client can supply, so keep skipping it.
+        if item.type == VariableEntityType.EXTERNAL_DATA_TOOL:
             continue
         parameters[item.variable] = {}
         if item.required:
@@ -370,6 +390,15 @@ def convert_input_form_to_parameters(
             parameters[item.variable]["type"] = "number"
         elif item.type == VariableEntityType.CHECKBOX:
             parameters[item.variable]["type"] = "boolean"
+        elif item.type == VariableEntityType.FILE:
+            parameters[item.variable] = _mcp_file_object_shape()
+            parameters[item.variable]["description"] = description
+        elif item.type == VariableEntityType.FILE_LIST:
+            parameters[item.variable] = {
+                "type": "array",
+                "items": _mcp_file_object_shape(),
+            }
+            parameters[item.variable]["description"] = description
         elif item.type == VariableEntityType.JSON_OBJECT:
             parameters[item.variable]["type"] = "object"
             if item.json_schema:
