@@ -178,6 +178,7 @@ class SessionRow(BaseModel):
     prefix: str
     client_id: str
     device_label: str
+    current: bool
     created_at: str | None = None
     last_used_at: str | None = None
     expires_at: str | None = None
