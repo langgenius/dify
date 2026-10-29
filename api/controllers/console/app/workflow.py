@@ -161,9 +161,6 @@ class SyncDraftWorkflowPayload(BaseModel):
 
 
 class BaseWorkflowRunPayload(BaseModel):
-    draft_hash: str | None = Field(
-        default=None, min_length=1, description="Required for EndUser test credentials; hash of the saved draft."
-    )
     files: list[dict[str, Any]] | None = Field(default=None)
 
 
@@ -182,16 +179,10 @@ class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
 
 
 class IterationNodeRunPayload(BaseModel):
-    draft_hash: str | None = Field(
-        default=None, min_length=1, description="Required when the tested subgraph uses EndUser credentials."
-    )
     inputs: dict[str, Any] | None = Field(default=None)
 
 
 class LoopNodeRunPayload(BaseModel):
-    draft_hash: str | None = Field(
-        default=None, min_length=1, description="Required when the tested subgraph uses EndUser credentials."
-    )
     inputs: dict[str, Any] | None = Field(default=None)
 
 
@@ -1308,7 +1299,6 @@ class DraftWorkflowNodeRunApi(Resource):
             account=current_user,
             query=args.get("query", ""),
             files=files,
-            draft_hash=payload.draft_hash,
         )
 
         return WorkflowRunNodeExecutionResponse.model_validate(

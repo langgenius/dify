@@ -45,7 +45,7 @@ from services.app_task_service import AppTaskService
 from services.end_user_connection_execution_adapters import validate_connection_execution
 from services.end_user_connections.errors import ConnectionError, ConnectionIdentityError
 from services.workflow_run_agg import WorkflowRunAgg
-from services.workflow_test_execution import prepare_workflow_test_execution
+from services.workflow_test_execution import require_workflow_test_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -226,11 +226,10 @@ class _AppRunner:
         if exec_params.invoke_from == InvokeFrom.DEBUGGER:
             if not isinstance(user, Account):
                 raise ValueError("Builder tests require an Account.")
-            prepare_workflow_test_execution(
+            require_workflow_test_credentials(
                 app=app,
                 user=user,
                 workflow=workflow,
-                args=exec_params.args,
                 node_id=None,
             )
         if exec_params.connection_context is not None:

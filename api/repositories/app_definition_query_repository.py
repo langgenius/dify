@@ -25,7 +25,7 @@ from services.app_definition_query_service import (
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 from services.workflow.tool_credentials import requires_end_user_connections
-from services.workflow_test_credentials import BuilderScope, TestDraft
+from services.workflow_test_credentials import BuilderScope, BuilderTestMembership
 
 
 def map_site_configuration(site: Site) -> AppSiteConfiguration:
@@ -121,17 +121,15 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def get_test_draft(self, scope: BuilderScope) -> TestDraft | None:
+    def get_test_membership(self, scope: BuilderScope) -> BuilderTestMembership | None:
         with self._session_factory() as session:
             row = session.execute(
-                select(Workflow, App.created_by, TenantAccountJoin.role)
-                .join(App, App.id == Workflow.app_id)
+                select(App.created_by, TenantAccountJoin.role)
+                .select_from(App)
                 .join(TenantAccountJoin, TenantAccountJoin.tenant_id == App.tenant_id)
                 .join(Account, Account.id == TenantAccountJoin.account_id)
                 .where(
-                    Workflow.tenant_id == scope.tenant_id,
-                    Workflow.app_id == scope.app_id,
-                    Workflow.version == Workflow.VERSION_DRAFT,
+                    App.id == scope.app_id,
                     App.tenant_id == scope.tenant_id,
                     Account.id == scope.account_id,
                     Account.status == AccountStatus.ACTIVE,
@@ -139,8 +137,8 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             ).one_or_none()
             if row is None:
                 return None
-            workflow, owner_id, role = row
-            return TestDraft(workflow.id, workflow.unique_hash, workflow.graph_dict, owner_id, role.value)
+            owner_id, role = row
+            return BuilderTestMembership(owner_id, role.value)
 
     @override
     def get_mode(self, app_id: str) -> str | None:

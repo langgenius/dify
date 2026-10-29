@@ -2191,7 +2191,6 @@ Run draft workflow iteration node for advanced chat
 | 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
@@ -2220,7 +2219,6 @@ Run draft workflow loop node for advanced chat
 | 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/run
@@ -2248,7 +2246,6 @@ Run draft workflow for advanced chat application
 | 400 | Invalid request parameters | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4826,7 +4823,6 @@ Submit human input form preview for workflow
 | 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
@@ -4853,7 +4849,6 @@ Submit human input form preview for workflow
 | 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
@@ -5049,7 +5044,6 @@ Get last run result for draft workflow node
 | 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/trigger/run
@@ -5132,7 +5126,6 @@ Get variables for a specific node
 | 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -5226,29 +5219,6 @@ Get system variables for workflow
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /apps/{app_id}/workflows/draft/test-credentials/preflight
-Check saved Builder test credentials without executing tools or creating a Run.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [TestCredentialPreflightPayload](#testcredentialpreflightpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Test credential readiness | **application/json**: [TestCredentialPreflightResponse](#testcredentialpreflightresponse)<br> |
-| 409 | Conflict | **application/json**: [TestCredentialDraftChangedError](#testcredentialdraftchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
@@ -18565,7 +18535,6 @@ Account not link tenant.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string |  | No |
-| draft_hash | string | Required for EndUser test credentials; hash of the saved draft. | No |
 | files | [ object ] |  | No |
 | inputs | object |  | No |
 | parent_message_id | string |  | No |
@@ -24452,7 +24421,6 @@ The uploaded file for file documents; Notion and website documents repeat their 
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| draft_hash | string | Required for EndUser test credentials; hash of the saved draft. | No |
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
@@ -24477,7 +24445,6 @@ Workflow graph might have been modified, please refresh and resubmit.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| draft_hash | string | Required for EndUser test credentials; hash of the saved draft. | No |
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 
@@ -26009,7 +25976,6 @@ This invitation was sent to another account. Please sign in with the invited acc
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| draft_hash | string | Required when the tested subgraph uses EndUser credentials. | No |
 | inputs | object |  | No |
 
 #### JSONValueType
@@ -29007,7 +28973,6 @@ Unable to create account because the licensed seats limit was exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| draft_hash | string | Required when the tested subgraph uses EndUser credentials. | No |
 | inputs | object |  | No |
 
 #### MCPAuthPayload
@@ -33627,35 +33592,11 @@ Tag type
 | retryable | boolean |  | Yes |
 | status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
 
-#### TestCredentialDraftChangedError
-
-Save the current draft and check test credentials again.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| TestCredentialDraftChangedError |  | Save the current draft and check test credentials again. |  |
-
-#### TestCredentialPreflight
+#### TestCredentialReadiness
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
-| draft_hash | string |  | Yes |
-| ready | boolean |  | Yes |
-
-#### TestCredentialPreflightPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| draft_hash | string | Hash of the saved draft, not a historical version selector. | Yes |
-| node_id | string | Omit for full Preview; container nodes check their nested tool nodes. | No |
-
-#### TestCredentialPreflightResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
-| draft_hash | string |  | Yes |
 | ready | boolean |  | Yes |
 
 #### TestCredentialState

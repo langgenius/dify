@@ -12,7 +12,6 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 import services.app_generate_service as ags_module
-from controllers.console.app.workflow import LoopNodeRunPayload
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -1036,7 +1035,7 @@ class TestAppGenerateServiceCases:
                 app_model=app,
                 user=_make_user(),
                 node_id="n1",
-                args=LoopNodeRunPayload(inputs={}),
+                args=MagicMock(),
                 session=session,
             )
             loop_spy.assert_called_once()
@@ -1060,7 +1059,7 @@ class TestAppGenerateServiceCases:
                 app_model=app,
                 user=_make_user(),
                 node_id="n1",
-                args=LoopNodeRunPayload(inputs={}),
+                args=MagicMock(),
                 session=session,
             )
             loop_spy.assert_called_once()
@@ -1071,11 +1070,7 @@ class TestAppGenerateServiceCases:
             app = _make_app(AppMode.COMPLETION)
             with pytest.raises(ValueError, match="Invalid app mode"):
                 AppGenerateService.generate_single_loop(
-                    app_model=app,
-                    user=_make_user(),
-                    node_id="n1",
-                    args=LoopNodeRunPayload(inputs={}),
-                    session=self.session,
+                    app_model=app, user=_make_user(), node_id="n1", args=MagicMock(), session=self.session
                 )
 
     # ---------------------------------------------------------------------------

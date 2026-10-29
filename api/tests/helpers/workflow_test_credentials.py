@@ -1,17 +1,17 @@
 """In-memory Builder credential boundary, with explicit scope assertions."""
 
 from collections.abc import Mapping
-from dataclasses import replace
 from typing import Any
 
 from services.workflow_test_credential_adapters import DraftTestCredentialPlanner
 from services.workflow_test_credentials import (
     BuilderScope,
+    BuilderTestMembership,
     ResolvedTestCredential,
     TestCredentialCheck,
+    TestCredentialError,
     TestCredentialRequirement,
     TestCredentialUnavailableError,
-    TestDraft,
     WorkflowTestCredentialService,
 )
 
@@ -45,21 +45,25 @@ def tool_node(node_id: str, credential_id: str | None = "credential", **fields: 
 
 class BuilderCredentialHarness:
     def __init__(self, graph: Mapping[str, Any]) -> None:
-        self.draft = TestDraft("workflow", "saved-hash", graph, "builder", "editor")
+        self.graph = graph
+        self.membership = BuilderTestMembership("builder", "editor")
         self.available = True
         self.calls: list[str] = []
         self.check = TestCredentialCheck(status="valid", reason_code=None, retryable=False)
         self.failure: TestCredentialUnavailableError | None = None
-        self.change_draft = False
         self.service = WorkflowTestCredentialService(
-            drafts=self,
+            access=self,
             planner=DraftTestCredentialPlanner(),
             credentials=self,
         )
 
-    def get_test_draft(self, scope: BuilderScope) -> TestDraft | None:
+    def get_test_membership(self, scope: BuilderScope) -> BuilderTestMembership | None:
         assert scope == SCOPE
-        return self.draft if self.available else None
+        return self.membership if self.available else None
+
+    def require_access(self, scope: BuilderScope) -> None:
+        if self.get_test_membership(scope) is None:
+            raise TestCredentialError("Builder cannot run this App.")
 
     def resolve(self, scope: BuilderScope, requirement: TestCredentialRequirement) -> ResolvedTestCredential:
         assert scope == SCOPE
@@ -67,6 +71,4 @@ class BuilderCredentialHarness:
         self.calls.append(requirement.credential_id)
         if self.failure:
             raise self.failure
-        if self.change_draft:
-            self.draft = replace(self.draft, hash="changed-hash")
         return ResolvedTestCredential(requirement.credential_id, "oauth2", {"access_token": "secret"}, self.check)

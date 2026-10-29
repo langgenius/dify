@@ -15,32 +15,32 @@ from services.credentials.query import CredentialQuery, ToolCredentialRecord
 from services.workflow.tool_credentials import resolve_tool_credential_root
 from services.workflow_test_credentials import (
     BuilderScope,
+    BuilderTestMembershipQuery,
     ResolvedTestCredential,
     TestCredentialCheck,
     TestCredentialError,
     TestCredentialRequirement,
     TestCredentialUnavailableError,
-    TestDraft,
-    TestDraftQuery,
 )
 
 
-class AuthorizedTestDraftQuery:
-    def __init__(self, *, drafts: TestDraftQuery, rbac_enabled: bool, can_run: Callable[[BuilderScope], bool]) -> None:
-        self._drafts = drafts
+class BuilderTestAccessGateway:
+    def __init__(
+        self, *, memberships: BuilderTestMembershipQuery, rbac_enabled: bool, can_run: Callable[[BuilderScope], bool]
+    ) -> None:
+        self._memberships = memberships
         self._rbac_enabled = rbac_enabled
         self._can_run = can_run
 
-    def get_test_draft(self, scope: BuilderScope) -> TestDraft | None:
-        draft = self._drafts.get_test_draft(scope)
-        if draft is None:
-            return None
-        if self._rbac_enabled:
-            if draft.owner_id != scope.account_id and not self._can_run(scope):
-                raise TestCredentialError("Builder cannot run this App.")
-        elif draft.member_role not in {"owner", "admin", "editor"}:
+    def require_access(self, scope: BuilderScope) -> None:
+        membership = self._memberships.get_test_membership(scope)
+        if membership is None:
             raise TestCredentialError("Builder cannot run this App.")
-        return draft
+        if self._rbac_enabled:
+            if membership.owner_id != scope.account_id and not self._can_run(scope):
+                raise TestCredentialError("Builder cannot run this App.")
+        elif membership.member_role not in {"owner", "admin", "editor"}:
+            raise TestCredentialError("Builder cannot run this App.")
 
 
 class DraftTestCredentialPlanner:

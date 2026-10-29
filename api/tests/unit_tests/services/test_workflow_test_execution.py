@@ -1,5 +1,4 @@
 import json
-from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -8,8 +7,8 @@ from extensions import ext_application_services
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from services.workflow_test_credentials import TestCredentialDraftChangedError as DraftChanged
-from services.workflow_test_execution import prepare_workflow_test_execution
+from services.workflow_test_credentials import TestCredentialError as CredentialError
+from services.workflow_test_execution import require_workflow_test_credentials
 from tests.helpers.workflow_test_credentials import SCOPE, BuilderCredentialHarness, tool_node
 
 
@@ -29,7 +28,6 @@ def execution(monkeypatch: pytest.MonkeyPatch) -> tuple[App, Account, Workflow, 
         created_by=user.id,
     )
     harness = BuilderCredentialHarness(graph)
-    harness.draft = replace(harness.draft, hash=workflow.unique_hash)
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
@@ -38,20 +36,15 @@ def execution(monkeypatch: pytest.MonkeyPatch) -> tuple[App, Account, Workflow, 
     return app, user, workflow, harness
 
 
-def test_worker_rechecks_draft_hash_without_serializing_credentials(
+def test_worker_checks_its_loaded_graph_without_a_client_version(
     execution: tuple[App, Account, Workflow, BuilderCredentialHarness],
 ) -> None:
     app, user, workflow, harness = execution
-    args = prepare_workflow_test_execution(
-        app=app, user=user, workflow=workflow, args={"draft_hash": workflow.unique_hash}, node_id=None
-    )
-    assert "secret" not in json.dumps(args)
-    assert "credential" not in json.dumps(args)
+    assert require_workflow_test_credentials(app=app, user=user, workflow=workflow, node_id=None) is None
     assert harness.calls == ["credential"]
     workflow.graph = json.dumps({"nodes": [tool_node("a", "replacement")]})
-    with pytest.raises(DraftChanged):
-        prepare_workflow_test_execution(app=app, user=user, workflow=workflow, args=args, node_id=None)
-    assert harness.calls == ["credential"]
+    require_workflow_test_credentials(app=app, user=user, workflow=workflow, node_id=None)
+    assert harness.calls == ["credential", "replacement"]
 
 
 def test_test_execution_does_not_accept_a_published_or_cross_app_workflow(
@@ -61,8 +54,6 @@ def test_test_execution_does_not_accept_a_published_or_cross_app_workflow(
     for field, value in [("version", "published"), ("app_id", "other"), ("tenant_id", "other")]:
         original = getattr(workflow, field)
         setattr(workflow, field, value)
-        with pytest.raises(DraftChanged):
-            prepare_workflow_test_execution(
-                app=app, user=user, workflow=workflow, args={"draft_hash": workflow.unique_hash}, node_id=None
-            )
+        with pytest.raises(CredentialError):
+            require_workflow_test_credentials(app=app, user=user, workflow=workflow, node_id=None)
         setattr(workflow, field, original)

@@ -1,7 +1,7 @@
 """Builder-only test credentials, independent of personal Connections.
 
-The saved draft owns test selections. Preflight is advisory: admission and
-runtime resolution check them again. Workspace OAuth keeps its own Client and
+Each test uses the selections in its loaded execution graph. Admission and
+runtime resolution check the selected workspace credentials. Workspace OAuth keeps its own Client and
 refresh lifecycle, independently of the production EndUser Client choice.
 """
 
@@ -20,10 +20,8 @@ class BuilderScope:
 
 
 @dataclass(frozen=True)
-class TestDraft:
-    workflow_id: str
-    hash: str
-    graph: Mapping[str, Any]
+class BuilderTestMembership:
+    # None means the App has no recorded creator.
     owner_id: str | None
     member_role: str
 
@@ -63,11 +61,10 @@ class TestCredentialState(BaseModel):
     status: TestCredentialStatus
 
 
-class TestCredentialPreflight(BaseModel):
+class TestCredentialReadiness(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     credentials: tuple[TestCredentialState, ...]
-    draft_hash: str
 
     @computed_field
     @property
@@ -87,13 +84,8 @@ class TestCredentialError(ValueError):
     pass
 
 
-class TestCredentialDraftChangedError(TestCredentialError):
-    def __init__(self) -> None:
-        super().__init__("The draft has changed. Save the draft and check test credentials again.")
-
-
 class TestCredentialNotReadyError(TestCredentialError):
-    def __init__(self, result: TestCredentialPreflight) -> None:
+    def __init__(self, result: TestCredentialReadiness) -> None:
         super().__init__("Required test credentials are not ready.")
         self.result = result
 
@@ -104,10 +96,14 @@ class TestCredentialUnavailableError(TestCredentialError):
         self.status = status
 
 
-class TestDraftQuery(Protocol):
-    """Read the current draft through its complete tenant/App owner chain."""
+class BuilderTestMembershipQuery(Protocol):
+    """Read active membership through the complete tenant/App/Account owner chain."""
 
-    def get_test_draft(self, scope: BuilderScope) -> TestDraft | None: ...
+    def get_test_membership(self, scope: BuilderScope) -> BuilderTestMembership | None: ...
+
+
+class BuilderTestAccess(Protocol):
+    def require_access(self, scope: BuilderScope) -> None: ...
 
 
 class TestCredentialPlanner(Protocol):
@@ -129,38 +125,21 @@ class TestCredentialGateway(Protocol):
 
 class WorkflowTestCredentialService:
     def __init__(
-        self, *, drafts: TestDraftQuery, planner: TestCredentialPlanner, credentials: TestCredentialGateway
+        self, *, access: BuilderTestAccess, planner: TestCredentialPlanner, credentials: TestCredentialGateway
     ) -> None:
-        self._drafts = drafts
+        self._access = access
         self._planner = planner
         self._credentials = credentials
 
-    def check(self, scope: BuilderScope, *, draft_hash: str | None, node_id: str | None) -> TestCredentialPreflight:
-        draft = self._drafts.get_test_draft(scope)
-        if draft is None:
-            raise TestCredentialError("Workflow draft not found.")
-        requirements = self._planner.requirements(draft.graph, node_id)
-        # Legacy graphs without personal test requirements need no new request field.
-        if (draft_hash is not None and draft_hash != draft.hash) or (requirements and draft_hash is None):
-            raise TestCredentialDraftChangedError()
-        states = tuple(self._state(scope, item) for item in requirements)
-        if requirements:
-            current = self._drafts.get_test_draft(scope)
-            if current is None or current.hash != draft.hash:
-                raise TestCredentialDraftChangedError()
-        return TestCredentialPreflight(draft_hash=draft.hash, credentials=states)
-
-    def require_ready(
-        self, scope: BuilderScope, *, draft_hash: str | None, node_id: str | None
-    ) -> TestCredentialPreflight:
-        result = self.check(scope, draft_hash=draft_hash, node_id=node_id)
+    def require_ready(self, scope: BuilderScope, *, graph: Mapping[str, Any], node_id: str | None) -> None:
+        self._access.require_access(scope)
+        requirements = self._planner.requirements(graph, node_id)
+        result = TestCredentialReadiness(credentials=tuple(self._state(scope, item) for item in requirements))
         if not result.ready:
             raise TestCredentialNotReadyError(result)
-        return result
 
     def resolve(self, scope: BuilderScope, *, graph: Mapping[str, Any], node_id: str) -> ResolvedTestCredential:
-        if self._drafts.get_test_draft(scope) is None:
-            raise TestCredentialError("Workflow draft not found.")
+        self._access.require_access(scope)
         requirements = self._planner.requirements(graph, node_id)
         if len(requirements) != 1:
             raise TestCredentialError("The node has no independent EndUser authentication source.")

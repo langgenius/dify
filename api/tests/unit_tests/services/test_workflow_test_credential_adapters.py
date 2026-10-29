@@ -6,7 +6,7 @@ import pytest
 
 from core.tools.__base.tool import Tool
 from services.credentials.query import CredentialQuery
-from services.workflow_test_credential_adapters import AuthorizedTestDraftQuery, DraftTestCredentialPlanner
+from services.workflow_test_credential_adapters import BuilderTestAccessGateway, DraftTestCredentialPlanner
 from services.workflow_test_credentials import TestCredentialError as CredentialError
 from tests.helpers.workflow_test_credentials import SCOPE, BuilderCredentialHarness, tool_node
 
@@ -63,13 +63,13 @@ def test_worker_rechecks_current_builder_access(
     rbac: bool, role: str, owner: str, allowed: bool, expected: bool
 ) -> None:
     harness = BuilderCredentialHarness({"nodes": []})
-    harness.draft = replace(harness.draft, member_role=role, owner_id=owner)
-    query = AuthorizedTestDraftQuery(drafts=harness, rbac_enabled=rbac, can_run=lambda _scope: allowed)
+    harness.membership = replace(harness.membership, member_role=role, owner_id=owner)
+    query = BuilderTestAccessGateway(memberships=harness, rbac_enabled=rbac, can_run=lambda _scope: allowed)
     if expected:
-        assert query.get_test_draft(SCOPE) == harness.draft
+        assert query.require_access(SCOPE) is None
     else:
         with pytest.raises(CredentialError):
-            query.get_test_draft(SCOPE)
+            query.require_access(SCOPE)
 
 
 @pytest.mark.parametrize("changed", ["removed", "permission", "type", "credentials"])

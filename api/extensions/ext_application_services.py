@@ -235,7 +235,7 @@ from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from services.workflow_test_credential_adapters import (
-    AuthorizedTestDraftQuery,
+    BuilderTestAccessGateway,
     DraftTestCredentialPlanner,
     WorkspaceTestCredentialGateway,
 )
@@ -614,8 +614,8 @@ def build_application_services(
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
         workflow_test_credentials=WorkflowTestCredentialService(
-            drafts=AuthorizedTestDraftQuery(
-                drafts=AppDefinitionQueryRepository(session_factory=database_client),
+            access=BuilderTestAccessGateway(
+                memberships=AppDefinitionQueryRepository(session_factory=database_client),
                 rbac_enabled=dify_config.RBAC_ENABLED,
                 can_run=lambda scope: RBACService.CheckAccess.check(
                     scope.tenant_id,

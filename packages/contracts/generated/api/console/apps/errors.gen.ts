@@ -66,14 +66,6 @@ const zAppNotFoundError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-const zTestCredentialDraftChangedError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('test_credential_draft_changed'),
-      status: z.literal(409),
-    }),
-  ))()
-
 const zRateLimitError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -505,10 +497,9 @@ const zTestCredentialState = /* @__PURE__ */ (() =>
     ]),
   }))()
 
-const zTestCredentialPreflight = /* @__PURE__ */ (() =>
+const zTestCredentialReadiness = /* @__PURE__ */ (() =>
   z.object({
     credentials: z.array(zTestCredentialState),
-    draft_hash: z.string(),
     ready: z.boolean().readonly(),
   }))()
 
@@ -516,7 +507,7 @@ const zTestCredentialsNotReadyError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('test_credentials_not_ready'),
-      details: zTestCredentialPreflight.optional(),
+      details: zTestCredentialReadiness.optional(),
       status: z.literal(400),
     }),
   ))()
@@ -545,20 +536,17 @@ export const post5Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 
 export const post6Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
   test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
 export const post7Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
   test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
 export const post8Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
   test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
@@ -968,13 +956,11 @@ export const post49Errors = { app_not_found: { status: 404, data: zAppNotFoundEr
 
 export const post50Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
   test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
 export const post51Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
   test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
@@ -1027,7 +1013,6 @@ export const get71Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 
 export const post56Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
   test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
@@ -1040,7 +1025,6 @@ export const get72Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 export const post58Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
   test_credentials_not_ready: { status: 400, data: zTestCredentialsNotReadyError },
 }
 
@@ -1070,15 +1054,11 @@ export const get76Errors = {
 export const get77Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const post59Errors = {
-  test_credential_draft_changed: { status: 409, data: zTestCredentialDraftChangedError },
-}
-
-export const post60Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
 }
 
-export const post61Errors = {
+export const post60Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
 }
@@ -1103,14 +1083,14 @@ export const get80Errors = {
   draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
 }
 
-export const post62Errors = {
+export const post61Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
 }
 
 export const get81Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post63Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post62Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const get82Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
@@ -1140,7 +1120,7 @@ export const get86Errors = {
   webhook_trigger_not_found: { status: 404, data: zWebhookTriggerNotFoundError },
 }
 
-export const post64Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post63Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const delete14Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -1148,7 +1128,7 @@ export const patch3Errors = { app_not_found: { status: 404, data: zAppNotFoundEr
 
 export const get87Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post65Errors = {
+export const post64Errors = {
   agent_not_published: { status: 409, data: zAgentNotPublishedError },
   max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
 }
