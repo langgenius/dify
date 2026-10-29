@@ -36,6 +36,7 @@ from extensions.application_services.end_user_connections import (
     build_end_user_connection_oauth,
     build_end_user_connection_preflight,
     build_end_user_connection_runtime,
+    build_end_user_connection_selections,
     build_end_user_connections,
 )
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
@@ -912,9 +913,7 @@ def build_application_services(
             console_web_url=dify_config.CONSOLE_WEB_URL,
             now=lambda: datetime.now(UTC),
         ),
-        connection_selections=ConnectionSelectionService(
-            store=EndUserConnectionRepository(session_factory=database_client)
-        ),
+        connection_selections=build_end_user_connection_selections(database_client=database_client),
         end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
         end_user_connection_runtime=build_end_user_connection_runtime(
             database_client=database_client, connections=end_user_connections

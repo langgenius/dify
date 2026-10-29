@@ -47,7 +47,6 @@ def new_app_selection(connection: EndUserConnection) -> AppConnection:
         end_user_id=connection.end_user_id or str(uuidv7()),
         provider=connection.provider,
         connection_id=connection.id,
-        source_run_id=str(uuidv7()),
     )
 
 
@@ -247,8 +246,6 @@ class ConnectionPersistenceTests:
 
         selection.workflow_id = new_version
         selection.connection_id = second.id
-        if isinstance(selection, AppConnection):
-            selection.source_run_id = str(uuidv7())
         connection_session.flush()
         connection_session.expire(selection)
         assert selection.workflow_id == new_version

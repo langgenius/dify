@@ -57,7 +57,7 @@ def client(harness: ConversationHarness, monkeypatch: pytest.MonkeyPatch) -> Ite
 
 
 @pytest.mark.parametrize("credential_type", ["api-key", "oauth2"])
-def test_read_configuration_without_provider_io(
+def test_read_configuration_without_credential_io(
     harness: ConversationHarness, client: FlaskClient, monkeypatch: pytest.MonkeyPatch, credential_type: str
 ) -> None:
     base = harness.oauth.base
@@ -67,13 +67,13 @@ def test_read_configuration_without_provider_io(
         else base.service.create_api_key(base.context, base.command())
     )
     conversation_id = harness.create_conversation()
-    harness.run(conversation_id, {"tool-1": selected.id})
+    harness.save(conversation_id, {"tool-1": selected.id})
     base.auth.calls.clear()
 
     def unexpected(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("Reading saved references must not resolve Providers.")
+        raise AssertionError("Reading saved references must not validate credentials.")
 
-    monkeypatch.setattr(harness.oauth.providers, "provider", unexpected)
+    monkeypatch.setattr(base.service, "check_connection_result", unexpected)
     detail = client.get(f"/api/connections/{selected.id}").get_json()
     assert detail["id"] == selected.id
     assert detail["name"] == selected.name
@@ -98,7 +98,7 @@ def test_read_configuration_without_provider_io(
     for query in queries:
         response = client.get("/api/connections/configuration", query_string=query)
         assert response.status_code == 200
-        assert response.get_json() == {"connections": {"tool-1": detail}}
+        assert response.get_json() == {"connections": {"tool-1": detail}, "reauthorization_required": False}
         assert "secret" not in response.get_data(as_text=True)
     assert base.auth.calls == []
 
@@ -110,7 +110,7 @@ def test_read_does_not_require_current_publication(
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
-    harness.run(conversation_id, {"tool-1": selected.id})
+    harness.save(conversation_id, {"tool-1": selected.id})
     with harness.sessions.begin() as session:
         session.execute(
             sa.update(App)
@@ -119,7 +119,7 @@ def test_read_does_not_require_current_publication(
         )
     response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
     assert response.status_code == 200
-    assert set(response.get_json()) == {"connections"}
+    assert set(response.get_json()) == {"connections", "reauthorization_required"}
     assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
 
 
@@ -145,7 +145,7 @@ def test_invalid_credentials_remain_a_saved_reference_without_a_readiness_claim(
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
-    harness.run(conversation_id, {"tool-1": selected.id})
+    harness.save(conversation_id, {"tool-1": selected.id})
     base.auth.calls.clear()
     with harness.sessions.begin() as session:
         session.execute(
@@ -155,7 +155,7 @@ def test_invalid_credentials_remain_a_saved_reference_without_a_readiness_claim(
         )
     response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
     assert response.status_code == 200
-    assert set(response.get_json()) == {"connections"}
+    assert set(response.get_json()) == {"connections", "reauthorization_required"}
     assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
     assert response.get_json()["connections"]["tool-1"]["credential_status"] == "invalid"
     assert base.auth.calls == []
@@ -177,12 +177,15 @@ def test_app_defaults_support_workflow_and_new_chatflow(
     base = harness.oauth.base
     with harness.sessions.begin() as session:
         session.execute(sa.update(App).where(App.id == base.context.app_id).values(mode=mode))
-    assert client.get("/api/connections/configuration").get_json() == {"connections": {}}
+    assert client.get("/api/connections/configuration").get_json() == {
+        "connections": {},
+        "reauthorization_required": True,
+    }
     selected = base.service.create_api_key(base.context, base.command())
-    harness.run(None, {"tool-1": selected.id})
+    harness.save(None, {"tool-1": selected.id})
     response = client.get("/api/connections/configuration")
     assert response.status_code == 200
-    assert set(response.get_json()) == {"connections"}
+    assert set(response.get_json()) == {"connections", "reauthorization_required"}
     assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
 
     with pytest.raises(ConnectionRequiredError):
@@ -194,8 +197,8 @@ def test_app_and_conversation_choices_are_independent(harness: ConversationHarne
     a = base.service.create_api_key(base.context, base.command("a"))
     b = base.service.create_api_key(base.context, base.command("b"))
     first, second = harness.create_conversation(), harness.create_conversation()
-    harness.run(first, {"tool-1": a.id})
-    harness.run(second, {"tool-1": b.id})
+    harness.save(first, {"tool-1": a.id})
+    harness.save(second, {"tool-1": b.id})
     assert client.get("/api/connections/configuration").get_json()["connections"]["tool-1"]["id"] == b.id
     assert (
         client.get("/api/connections/configuration", query_string={"conversation_id": first}).get_json()["connections"][
@@ -204,25 +207,22 @@ def test_app_and_conversation_choices_are_independent(harness: ConversationHarne
         == a.id
     )
     harness.run(first)
-    assert client.get("/api/connections/configuration").get_json()["connections"]["tool-1"]["id"] == a.id
+    assert client.get("/api/connections/configuration").get_json()["connections"]["tool-1"]["id"] == b.id
     assert (
         client.get("/api/connections/configuration", query_string={"conversation_id": second}).get_json()[
             "connections"
         ]["tool-1"]["id"]
         == b.id
     )
-    assert (
-        client.get(
-            "/api/connections/configuration", query_string={"conversation_id": harness.create_conversation()}
-        ).get_json()["connections"]["tool-1"]["id"]
-        == a.id
-    )
+    assert client.get(
+        "/api/connections/configuration", query_string={"conversation_id": harness.create_conversation()}
+    ).get_json() == {"connections": {}, "reauthorization_required": False}
 
 
 def test_app_configuration_is_scoped_to_the_end_user(harness: ConversationHarness, client: FlaskClient) -> None:
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
-    harness.run(None, {"tool-1": selected.id})
+    harness.save(None, {"tool-1": selected.id})
     with harness.sessions.begin() as session:
         other = EndUser(
             tenant_id=base.context.tenant_id,
@@ -234,7 +234,9 @@ def test_app_configuration_is_scoped_to_the_end_user(harness: ConversationHarnes
         session.add(other)
         session.flush()
         other_context = replace(base.context, end_user_id=other.id, account_id=None)
-    assert harness.service.get(other_context, None).connections == {}
+    other_configuration = harness.service.get(other_context, None)
+    assert other_configuration.connections == {}
+    assert other_configuration.reauthorization_required
     assert client.get("/api/connections/configuration").get_json()["connections"]["tool-1"]["id"] == selected.id
 
 
@@ -244,23 +246,22 @@ def test_invalid_configuration_query_does_not_fall_back_to_app(client: FlaskClie
     assert response.get_json()["code"] == "invalid_param"
 
 
-def test_empty_conversation_uses_app_choices_only_for_form_initialization(
+def test_empty_conversation_keeps_its_choices_and_shares_app_authorization(
     harness: ConversationHarness, client: FlaskClient
 ) -> None:
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
-    harness.run(None, {"tool-1": selected.id})
+    harness.save(None, {"tool-1": selected.id})
     conversation_id = harness.create_conversation()
     base.auth.calls.clear()
     response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
     assert response.status_code == 200
-    assert set(response.get_json()) == {"connections"}
-    assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
+    assert response.get_json() == {"connections": {}, "reauthorization_required": False}
     assert base.auth.calls == []
-    assert base.repository.conversation_selections(base.context, conversation_id) == ()
+    assert base.repository.configuration(base.context, conversation_id) == ()
     with pytest.raises(ConnectionRequiredError):
         harness.run(conversation_id)
-    harness.run(conversation_id, {node: detail["id"] for node, detail in response.get_json()["connections"].items()})
+    harness.save(conversation_id, {"tool-1": selected.id})
     assert harness.saved(conversation_id) == {"tool-1": selected.id}
 
 
@@ -272,20 +273,20 @@ def test_inaccessible_saved_choice_does_not_fall_back_to_app(
     saved = base.service.create_api_key(base.context, base.command("saved"))
     default = base.service.create_api_key(base.context, base.command("default"))
     conversation_id = harness.create_conversation()
-    harness.run(conversation_id, {"tool-1": saved.id})
-    harness.run(None, {"tool-1": default.id})
+    harness.save(conversation_id, {"tool-1": saved.id})
+    harness.save(None, {"tool-1": default.id})
     with harness.sessions.begin() as session:
         session.execute(
             sa.update(EndUserConnection).where(EndUserConnection.id == saved.id).values({field: str(uuid4())})
         )
     response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
-    assert response.get_json() == {"connections": {"tool-1": None}}
+    assert response.get_json() == {"connections": {"tool-1": None}, "reauthorization_required": False}
 
 
 def test_missing_conversation_does_not_fall_back_to_app(harness: ConversationHarness, client: FlaskClient) -> None:
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
-    harness.run(None, {"tool-1": selected.id})
+    harness.save(None, {"tool-1": selected.id})
     response = client.get("/api/connections/configuration", query_string={"conversation_id": str(uuid4())})
     assert response.status_code == 404
     assert response.get_json()["code"] == "not_found"
@@ -306,7 +307,7 @@ def test_configuration_loads_multiple_connection_details_without_secrets_in_one_
             node["id"] = node_id
             graph["nodes"].append(node)
         workflow.graph = json.dumps(graph)
-    harness.run(None, {"tool-1": first.id, "tool-2": second.id, "tool-3": first.id})
+    harness.save(None, {"tool-1": first.id, "tool-2": second.id, "tool-3": first.id})
     base.auth.calls.clear()
     engine = harness.sessions.kw["bind"]
     assert isinstance(engine, sa.Engine)
@@ -342,3 +343,432 @@ def test_configuration_loads_multiple_connection_details_without_secrets_in_one_
     assert "encrypted_credentials" not in statements[0]
     assert "oauth_client_id" not in statements[0]
     assert base.auth.calls == []
+
+
+@pytest.mark.parametrize("scope", ["app", "conversation"])
+def test_save_authorizes_without_execution_or_credential_checks(
+    harness: ConversationHarness, client: FlaskClient, scope: str
+) -> None:
+    from models.end_user_connection import AppConnection, EndUserConnectionRevisionAcceptance
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id = harness.create_conversation() if scope == "conversation" else None
+    revision = base.connection_revision
+    with harness.sessions.begin() as session:
+        session.execute(sa.delete(EndUserConnectionRevisionAcceptance))
+    base.auth.calls.clear()
+    payload = {"connection_revision": revision, "connections": {"tool-1": selected.id}}
+    if conversation_id is not None:
+        payload["conversation_id"] = conversation_id
+    response = client.put("/api/connections/configuration", json=payload)
+    assert response.status_code == 200
+    assert response.get_json()["reauthorization_required"] is False
+    assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
+    assert "secret" not in response.get_data(as_text=True)
+    assert base.auth.calls == []
+    with harness.sessions() as session:
+        acceptance = session.scalar(sa.select(EndUserConnectionRevisionAcceptance))
+        assert acceptance is not None
+        assert acceptance.revision_id == revision
+        assert acceptance.reason == "approved"
+        saved = session.scalar(sa.select(AppConnection))
+        assert saved is not None
+        assert session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun)) == 0
+    query: dict[str, str] = {"conversation_id": conversation_id} if conversation_id is not None else {}
+    assert client.get("/api/connections/configuration", query_string=query).get_json() == response.get_json()
+
+
+@pytest.mark.parametrize("scope", ["app", "conversation"])
+def test_clear_configuration_does_not_restore_newer_app_defaults(
+    harness: ConversationHarness, client: FlaskClient, scope: str
+) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id = harness.create_conversation() if scope == "conversation" else None
+    harness.save(conversation_id, {"tool-1": selected.id})
+    response = client.put(
+        "/api/connections/configuration",
+        json={
+            "conversation_id": conversation_id,
+            "connection_revision": base.connection_revision,
+            "connections": {},
+        },
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {"connections": {}, "reauthorization_required": False}
+    if conversation_id is not None:
+        harness.save(None, {"tool-1": selected.id})
+    query: dict[str, str] = {"conversation_id": conversation_id} if conversation_id is not None else {}
+    assert client.get("/api/connections/configuration", query_string=query).get_json() == response.get_json()
+    if conversation_id is not None:
+        with pytest.raises(ConnectionRequiredError):
+            harness.run(conversation_id)
+
+
+@pytest.mark.parametrize("change", ["purpose", "tool", "credential_type", "add_node", "remove_node", "layout"])
+def test_builder_changes_report_reauthorization_without_losing_choices_or_recording_consent(
+    harness: ConversationHarness, client: FlaskClient, change: str
+) -> None:
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": selected.id})
+    with harness.sessions.begin() as session:
+        before = session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance))
+        old = session.get(Workflow, base.workflow_id)
+        assert old is not None
+        graph = old.graph_dict
+        data = graph["nodes"][0]["data"]
+        if change == "purpose":
+            data["end_user_auth"]["purpose"] = "Write calendar"
+        elif change == "tool":
+            data["tool_name"] = "write"
+        elif change == "credential_type":
+            data["end_user_auth"]["allowed_credential_types"] = ["api-key"]
+            data["end_user_auth"].pop("oauth_client_type", None)
+        elif change == "add_node":
+            node = deepcopy(graph["nodes"][0])
+            node["id"] = "tool-2"
+            graph["nodes"].append(node)
+        elif change == "remove_node":
+            graph["nodes"].clear()
+        else:
+            graph["nodes"][0]["position"] = {"x": 100, "y": 200}
+        current = Workflow(
+            tenant_id=old.tenant_id,
+            app_id=old.app_id,
+            type=old.type,
+            version="updated",
+            graph=json.dumps(graph),
+            _features=old.features,
+            created_by=old.created_by,
+        )
+        session.add(current)
+        session.flush()
+        session.execute(sa.update(App).where(App.id == base.context.app_id).values(workflow_id=current.id))
+    base.auth.calls.clear()
+    queries: tuple[dict[str, str], ...] = ({}, {"conversation_id": conversation_id})
+    for query in queries:
+        response = client.get("/api/connections/configuration", query_string=query)
+        assert response.status_code == 200
+        assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
+        assert response.get_json()["reauthorization_required"] is (change not in {"layout", "remove_node"})
+    assert base.auth.calls == []
+    with harness.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == before
+
+
+@pytest.mark.parametrize("trusted", [False, True])
+def test_configuration_reports_plugin_upgrade_compatibility(
+    harness: ConversationHarness, client: FlaskClient, trusted: bool
+) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    harness.save(None, {"tool-1": selected.id})
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.oauth.providers.controller.plugin_unique_identifier = upgraded
+    if trusted:
+        harness.oauth.providers.trusted_artifacts.add(upgraded)
+    response = client.get("/api/connections/configuration")
+    assert response.status_code == 200
+    assert response.get_json()["reauthorization_required"] is not trusted
+    assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
+
+
+def test_oauth_client_rotation_requires_new_app_authorization(
+    harness: ConversationHarness, client: FlaskClient
+) -> None:
+    from models.tools import ToolOAuthTenantClient
+
+    selected = harness.oauth.finish(harness.oauth.start())
+    harness.save(None, {"tool-1": selected.id})
+    with harness.sessions.begin() as session:
+        session.execute(
+            sa.update(ToolOAuthTenantClient)
+            .where(ToolOAuthTenantClient.tenant_id == harness.oauth.base.context.tenant_id)
+            .values(encrypted_oauth_params=json.dumps({"client_id": "different-client"}))
+        )
+    response = client.get("/api/connections/configuration")
+    assert response.status_code == 200
+    assert response.get_json()["reauthorization_required"] is True
+
+
+def test_app_reauthorization_is_shared_by_all_conversations(harness: ConversationHarness, client: FlaskClient) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    other = base.service.create_api_key(base.context, base.command("other"))
+    first, second = harness.create_conversation(), harness.create_conversation()
+    harness.save(first, {"tool-1": selected.id})
+    harness.save(second, {"tool-1": other.id})
+    with harness.sessions.begin() as session:
+        workflow = session.get(Workflow, base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["purpose"] = "Read additional calendar data"
+        workflow.graph = json.dumps(graph)
+    assert client.get("/api/connections/configuration").get_json()["reauthorization_required"] is True
+    harness.save(first, {"tool-1": selected.id})
+    assert client.get("/api/connections/configuration").get_json()["reauthorization_required"] is False
+    assert (
+        client.get("/api/connections/configuration", query_string={"conversation_id": first}).get_json()[
+            "reauthorization_required"
+        ]
+        is False
+    )
+    assert (
+        client.get("/api/connections/configuration", query_string={"conversation_id": second}).get_json()[
+            "reauthorization_required"
+        ]
+        is False
+    )
+    assert harness.run(second).selections[0].connection_id == other.id
+
+
+@pytest.mark.parametrize(
+    "invalid", ["stale_revision", "unknown_node", "foreign_connection", "missing_revision", "foreign_conversation"]
+)
+def test_rejected_save_preserves_choices_and_does_not_record_authorization(
+    harness: ConversationHarness, client: FlaskClient, invalid: str
+) -> None:
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    harness.save(None, {"tool-1": selected.id})
+    payload = {"connection_revision": base.connection_revision, "connections": {"tool-1": selected.id}}
+    if invalid == "stale_revision":
+        payload["connection_revision"] = str(uuid4())
+    elif invalid == "unknown_node":
+        payload["connections"] = {"missing": selected.id}
+    elif invalid == "foreign_connection":
+        payload["connections"] = {"tool-1": str(uuid4())}
+    elif invalid == "missing_revision":
+        payload.pop("connection_revision")
+    else:
+        payload["conversation_id"] = str(uuid4())
+    with harness.sessions.begin() as session:
+        session.execute(sa.delete(EndUserConnectionRevisionAcceptance))
+    before = client.get("/api/connections/configuration").get_json()
+    response = client.put("/api/connections/configuration", json=payload)
+    assert response.status_code == {"stale_revision": 409, "foreign_connection": 404, "foreign_conversation": 404}.get(
+        invalid, 400
+    )
+    assert client.get("/api/connections/configuration").get_json() == before
+    with harness.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
+
+
+def test_partial_and_invalid_credential_choices_can_be_saved_without_readiness(
+    harness: ConversationHarness, client: FlaskClient
+) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    with harness.sessions.begin() as session:
+        workflow = session.get(Workflow, base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        node = deepcopy(graph["nodes"][0])
+        node["id"] = "tool-2"
+        graph["nodes"].append(node)
+        workflow.graph = json.dumps(graph)
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == selected.id)
+            .values(status=ConnectionCredentialStatus.INVALID)
+        )
+    base.auth.calls.clear()
+    response = client.put(
+        "/api/connections/configuration",
+        json={
+            "connection_revision": base.connection_revision,
+            "connections": {"tool-1": selected.id, "tool-2": None},
+        },
+    )
+    assert response.status_code == 200
+    assert response.get_json()["reauthorization_required"] is False
+    assert response.get_json()["connections"]["tool-1"]["credential_status"] == "invalid"
+    assert base.auth.calls == []
+
+
+def test_authorization_failure_rolls_back_both_scopes(
+    harness: ConversationHarness, client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+    from services.end_user_connections.entities import WebConnectionContext
+    from services.end_user_connections.errors import ConnectionConflictError
+    from services.end_user_connections.revision import ConnectionRevisionAcceptance
+
+    base = harness.oauth.base
+    first = base.service.create_api_key(base.context, base.command("first"))
+    second = base.service.create_api_key(base.context, base.command("second"))
+    conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": first.id})
+    with harness.sessions.begin() as session:
+        session.execute(sa.delete(EndUserConnectionRevisionAcceptance))
+    record = base.repository._record_revision_acceptance
+
+    def fail_after_acceptance(
+        session: Session, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
+    ) -> None:
+        record(session, context, acceptance)
+        raise ConnectionConflictError()
+
+    monkeypatch.setattr(base.repository, "_record_revision_acceptance", fail_after_acceptance)
+    response = client.put(
+        "/api/connections/configuration",
+        json={
+            "conversation_id": conversation_id,
+            "connection_revision": base.connection_revision,
+            "connections": {"tool-1": second.id},
+        },
+    )
+    assert response.status_code == 409
+    queries: tuple[dict[str, str], ...] = ({}, {"conversation_id": conversation_id})
+    for query in queries:
+        assert (
+            client.get("/api/connections/configuration", query_string=query).get_json()["connections"]["tool-1"]["id"]
+            == first.id
+        )
+    with harness.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
+
+
+@pytest.mark.parametrize("change", ["connection", "requirements", "client"])
+def test_save_rechecks_database_state_after_metadata_resolution(
+    harness: ConversationHarness, client: FlaskClient, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    from collections.abc import Mapping
+
+    from models.end_user_connection import AppConnection, EndUserConnectionRevisionAcceptance
+    from models.tools import ToolOAuthTenantClient
+    from services.end_user_connections.entities import ConnectionAccessRecord, WebConnectionContext
+    from services.end_user_connections.revision import ConnectionRevisionAcceptance
+    from services.end_user_connections.selections import SavedConnectionSelection
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    revision = base.connection_revision
+    with harness.sessions.begin() as session:
+        session.execute(sa.delete(EndUserConnectionRevisionAcceptance))
+    save = base.repository.save_configuration
+
+    def mutate_before_commit(
+        context: WebConnectionContext,
+        *,
+        workflow_id: str,
+        conversation_id: str | None,
+        selections: tuple[SavedConnectionSelection, ...],
+        records: Mapping[str, ConnectionAccessRecord],
+        acceptance: ConnectionRevisionAcceptance,
+    ) -> None:
+        with harness.sessions.begin() as session:
+            if change == "connection":
+                session.execute(
+                    sa.update(EndUserConnection).where(EndUserConnection.id == selected.id).values(revision=2)
+                )
+            elif change == "client":
+                session.execute(
+                    sa.update(ToolOAuthTenantClient)
+                    .where(ToolOAuthTenantClient.tenant_id == base.context.tenant_id)
+                    .values(encrypted_oauth_params=json.dumps({"client_id": "rotated"}))
+                )
+            else:
+                workflow = session.get(Workflow, base.workflow_id)
+                assert workflow is not None
+                graph = workflow.graph_dict
+                graph["nodes"][0]["data"]["end_user_auth"]["purpose"] = "Changed before commit"
+                workflow.graph = json.dumps(graph)
+        save(
+            context,
+            workflow_id=workflow_id,
+            conversation_id=conversation_id,
+            selections=selections,
+            records=records,
+            acceptance=acceptance,
+        )
+
+    monkeypatch.setattr(base.repository, "save_configuration", mutate_before_commit)
+    response = client.put(
+        "/api/connections/configuration",
+        json={
+            "connection_revision": revision,
+            "connections": {"tool-1": selected.id},
+        },
+    )
+    assert response.status_code == 409
+    with harness.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 0
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
+
+
+def test_repeated_save_is_idempotent(harness: ConversationHarness, client: FlaskClient) -> None:
+    from models.end_user_connection import AppConnection, EndUserConnectionRevisionAcceptance
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    payload = {"connection_revision": base.connection_revision, "connections": {"tool-1": selected.id}}
+    first = client.put("/api/connections/configuration", json=payload)
+    second = client.put("/api/connections/configuration", json=payload)
+    assert first.status_code == second.status_code == 200
+    assert first.get_json() == second.get_json()
+    with harness.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 1
+        assert (
+            session.scalar(
+                sa.select(sa.func.count())
+                .select_from(EndUserConnectionRevisionAcceptance)
+                .where(EndUserConnectionRevisionAcceptance.revision_id == base.connection_revision)
+            )
+            == 1
+        )
+
+
+def test_existing_app_authorization_covers_saved_choices_without_new_configuration_state(
+    harness: ConversationHarness, client: FlaskClient
+) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id = harness.create_conversation()
+    harness.save(conversation_id, {"tool-1": selected.id})
+    response = client.get("/api/connections/configuration", query_string={"conversation_id": conversation_id})
+    assert response.status_code == 200
+    assert response.get_json()["connections"]["tool-1"]["id"] == selected.id
+    assert response.get_json()["reauthorization_required"] is False
+    assert harness.run(conversation_id).selections[0].connection_id == selected.id
+
+
+def test_provider_authorization_does_not_implicitly_authorize_the_app(
+    harness: ConversationHarness, client: FlaskClient
+) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    assert base.repository.accepted_contracts(base.context)
+    response = client.get("/api/connections/configuration")
+    assert response.status_code == 200
+    assert response.get_json()["reauthorization_required"] is True
+    harness.save(None, {"tool-1": selected.id})
+    assert client.get("/api/connections/configuration").get_json()["reauthorization_required"] is False
+
+
+def test_previously_accepted_app_contract_remains_authorized_after_republication(
+    harness: ConversationHarness, client: FlaskClient
+) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    harness.save(None, {"tool-1": selected.id})
+    with harness.sessions.begin() as session:
+        workflow = session.get(Workflow, base.workflow_id)
+        assert workflow is not None
+        original_graph = workflow.graph
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["purpose"] = "Read a different calendar"
+        workflow.graph = json.dumps(graph)
+    assert client.get("/api/connections/configuration").get_json()["reauthorization_required"] is True
+    harness.save(None, {"tool-1": selected.id})
+    with harness.sessions.begin() as session:
+        session.execute(sa.update(Workflow).where(Workflow.id == base.workflow_id).values(graph=original_graph))
+    assert client.get("/api/connections/configuration").get_json()["reauthorization_required"] is False

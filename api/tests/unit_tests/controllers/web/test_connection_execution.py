@@ -24,6 +24,7 @@ from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.errors import (
     ConnectionAccountRequiredError,
     ConnectionCheckUnavailableError,
@@ -39,7 +40,7 @@ from services.end_user_connections.errors import (
 )
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.preflight import ConnectionPreflightService
-from services.end_user_connections.selections import ConnectionSelectionService
+from services.end_user_connections.selections import ConnectionSelectionService, SaveConnectionConfigurationInput
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.end_user_api_key import ConnectionHarness, TestProviders, make_harness, plugin_provider
@@ -156,27 +157,30 @@ def real_execution_gate(
     workflow_service = WorkflowService(session_maker=harness.sessions)
     monkeypatch.setattr("services.app_generate_service.WorkflowService", lambda: workflow_service)
     providers = TestProviders(harness.auth, plugin_provider(harness.context.tenant_id))
-    preflight = ConnectionPreflightService(
-        connections=harness.repository,
-        checks=harness.service,
-        requirements=PublishedPreflightRequirements(
-            workflows=harness.repository,
-            snapshots=harness.repository,
+    requirements = PublishedPreflightRequirements(
+        workflows=harness.repository,
+        snapshots=harness.repository,
+        providers=providers,
+        oauth=PluginConnectionOAuthGateway(
+            clients=harness.repository,
             providers=providers,
-            oauth=PluginConnectionOAuthGateway(
-                clients=harness.repository,
-                providers=providers,
-                handler=OAuthHandler(),
-                auth=harness.auth,
-            ),
+            handler=OAuthHandler(),
+            auth=harness.auth,
         ),
+    )
+    preflight = ConnectionPreflightService(
+        connections=harness.repository, checks=harness.service, requirements=requirements
     )
     monkeypatch.setattr(
         ext_application_services,
         "application_services",
         lambda: SimpleNamespace(
             end_user_connection_execution=ConnectionExecutionService(preflight=preflight),
-            connection_selections=ConnectionSelectionService(store=harness.repository),
+            connection_selections=ConnectionSelectionService(
+                store=harness.repository,
+                requirements=requirements,
+                revisions=PluginConnectionRevisions(providers=providers, snapshots=harness.repository),
+            ),
         ),
     )
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, PUBSUB_REDIS_CHANNEL_TYPE="streams")
@@ -301,9 +305,7 @@ def test_ready_selection_is_checked_before_serializing_the_queued_context(
     assert "original-secret" not in enqueue.call_args.args[0]
     with harness.sessions() as session:
         saved = session.scalar(sa.select(AppConnection).where(AppConnection.app_id == harness.context.app_id))
-        assert saved is not None
-        assert saved.source_run_id == params.workflow_run_id
-        assert saved.connection_id == connection.id
+        assert saved is None
 
 
 @pytest.mark.usefixtures("real_execution_gate")
@@ -336,6 +338,16 @@ def test_only_chatflow_omission_restores_last_conversation_choices(
         "conversation_id": conversation_id,
         "connections": {"tool-1": connection.id},
     }
+    ext_application_services.application_services().connection_selections.save(
+        harness.context,
+        SaveConnectionConfigurationInput.model_validate(
+            {
+                "connection_revision": harness.connection_revision,
+                "conversation_id": conversation_id if path == "/api/chat-messages" else None,
+                "connections": {"tool-1": connection.id},
+            }
+        ),
+    )
     assert http.post(path, json=payload).status_code == 200
     params.reset_mock()
     payload.pop("connections")
@@ -359,12 +371,12 @@ def test_only_chatflow_omission_restores_last_conversation_choices(
 
 
 @pytest.mark.usefixtures("real_execution_gate")
-def test_blocking_run_uses_the_same_id_as_app_configuration(
+def test_blocking_run_does_not_write_app_configuration(
     client: tuple[FlaskClient, str], harness: ConnectionHarness, mocker: MockerFixture
 ) -> None:
     _, path = client
     generator = "AdvancedChatAppGenerator" if path == "/api/chat-messages" else "WorkflowAppGenerator"
-    generate = mocker.patch(f"services.app_generate_service.{generator}.generate", return_value={"answer": "done"})
+    mocker.patch(f"services.app_generate_service.{generator}.generate", return_value={"answer": "done"})
     mocker.patch(f"services.app_generate_service.{generator}.convert_to_event_stream", side_effect=lambda value: value)
     connection = harness.service.create_api_key(harness.context, harness.command())
     with harness.sessions() as session:
@@ -387,5 +399,4 @@ def test_blocking_run_uses_the_same_id_as_app_configuration(
         )
         assert result == {"answer": "done"}
         saved = session.scalar(sa.select(AppConnection).where(AppConnection.app_id == harness.context.app_id))
-        assert saved is not None
-        assert saved.source_run_id == generate.call_args.kwargs["workflow_run_id"]
+        assert saved is None

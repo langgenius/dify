@@ -187,6 +187,8 @@ import {
   zPostWorkflowsRunResponse,
   zPostWorkflowsTasksByTaskIdStopPath,
   zPostWorkflowsTasksByTaskIdStopResponse,
+  zPutConnectionsConfigurationBody,
+  zPutConnectionsConfigurationResponse,
 } from './zod.gen.ts'
 
 /**
@@ -348,12 +350,12 @@ export const completionMessages = {
 }
 
 /**
- * Read saved App or Conversation choices without validating or refreshing credentials.
+ * Read saved choices and whether authorization must be renewed, without checking credentials.
  */
 export const get = oc
   .route({
     description:
-      'Read saved App or Conversation choices without validating or refreshing credentials.',
+      'Read saved choices and whether authorization must be renewed, without checking credentials.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getConnectionsConfiguration',
@@ -364,10 +366,40 @@ export const get = oc
   .output(zGetConnectionsConfigurationResponse)
   .errors({
     connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+  })
+
+/**
+ * Replace saved choices and explicitly approve their authorization contract atomically.
+ */
+export const put = oc
+  .route({
+    description:
+      'Replace saved choices and explicitly approve their authorization contract atomically.',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putConnectionsConfiguration',
+    path: '/connections/configuration',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPutConnectionsConfigurationBody }))
+  .output(zPutConnectionsConfigurationResponse)
+  .errors({
+    connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },
+    connection_conflict: { status: 409, data: zConnectionConflictError },
+    connection_not_found: { status: 404, data: zConnectionNotFoundError },
+    connection_reauthorization_required: {
+      status: 409,
+      data: zConnectionReauthorizationRequiredError,
+    },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
+    credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   })
 
 export const configuration = {
   get,
+  put,
 }
 
 /**

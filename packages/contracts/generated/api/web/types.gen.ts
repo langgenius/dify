@@ -223,10 +223,19 @@ export type ConnectionConfigurationInvalidError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionConfigurationPayload = {
+  connection_revision: string
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+}
+
 export type ConnectionConfigurationResponse = {
   connections: {
     [key: string]: EndUserConnectionResponse | null
   }
+  reauthorization_required: boolean
 }
 
 export type ConnectionConflictError = ErrorResponse & {
@@ -382,7 +391,7 @@ export type EndUserConnectionCreatePayload = {
   credentials: {
     [key: string]: JsonValue
   }
-  name: string
+  name?: string | null
   node_id: string
 }
 
@@ -400,7 +409,7 @@ export type EndUserConnectionListResponse = {
 
 export type EndUserConnectionOAuthPayload = {
   connection_revision: string
-  name: string
+  name?: string | null
   node_id: string
 }
 
@@ -1880,6 +1889,7 @@ export type GetConnectionsConfigurationData = {
 
 export type GetConnectionsConfigurationErrors = {
   400: ConnectionConfigurationInvalidError | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1892,6 +1902,36 @@ export type GetConnectionsConfigurationResponses = {
 
 export type GetConnectionsConfigurationResponse =
   GetConnectionsConfigurationResponses[keyof GetConnectionsConfigurationResponses]
+
+export type PutConnectionsConfigurationData = {
+  body: ConnectionConfigurationPayload
+  path?: never
+  query?: never
+  url: '/connections/configuration'
+}
+
+export type PutConnectionsConfigurationErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutConnectionsConfigurationError =
+  PutConnectionsConfigurationErrors[keyof PutConnectionsConfigurationErrors]
+
+export type PutConnectionsConfigurationResponses = {
+  200: ConnectionConfigurationResponse
+}
+
+export type PutConnectionsConfigurationResponse =
+  PutConnectionsConfigurationResponses[keyof PutConnectionsConfigurationResponses]
 
 export type GetConnectionsCredentialSchemaData = {
   body?: never

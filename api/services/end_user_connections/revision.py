@@ -1,9 +1,10 @@
 """Content-addressed authorization contracts, independent of workflow publications."""
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict
 
@@ -90,6 +91,12 @@ class ConnectionRevisionSnapshots(Protocol):
     def save_revision(self, snapshot: ConnectionContractSnapshot) -> str: ...
 
     def get_revision(self, tenant_id: str, app_id: str, revision: str) -> ConnectionContractSnapshot | None: ...
+
+
+class ConnectionSelectionRevisions(Protocol):
+    def requires_reauthorization(
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any], accepted: tuple[ConnectionContractSnapshot, ...]
+    ) -> bool: ...
 
 
 class ConnectionProviderRevisions(Protocol):
