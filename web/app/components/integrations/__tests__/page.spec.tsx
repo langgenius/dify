@@ -310,6 +310,18 @@ it('honors a legacy category-only MCP URL and the explicit route section takes p
   ).toHaveAttribute('href', '/integrations/tools/api')
 })
 
+it('expands tools in the same render that enters a tool section and keeps them expanded after leaving', () => {
+  const view = renderPage({ props: { section: 'provider' } })
+  const tools = screen.getByRole('button', { name: 'navigation.menus.tools' })
+  expect(tools).toHaveAttribute('aria-expanded', 'false')
+
+  view.rerender(<IntegrationsPage section="mcp" />)
+  expect(tools).toHaveAttribute('aria-expanded', 'true')
+
+  view.rerender(<IntegrationsPage section="data-source" />)
+  expect(tools).toHaveAttribute('aria-expanded', 'true')
+})
+
 it('keeps tools expanded while visiting models and changes to tools only when opening the disclosure', async () => {
   const user = userEvent.setup()
   renderPage({ ui: <SettingsIntegrations /> })

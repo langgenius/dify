@@ -6814,11 +6814,6 @@
       "count": 10
     }
   },
-  "web/features/new-rag/quality/golden-question-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/new-rag/quality/golden-questions-panel.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 16
@@ -6867,11 +6862,6 @@
   "web/features/new-rag/settings/basic-information.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/features/new-rag/settings/retrieval-settings.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/features/new-rag/sources/create/connected-source-workflow.tsx": {

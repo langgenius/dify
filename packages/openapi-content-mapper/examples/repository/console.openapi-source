@@ -3,6 +3,8 @@
   "cwd": "../../../..",
   "inputs": [
     "api/**/*.py",
+    "dify-agent/src/**/*.py",
+    "dify-agent/pyproject.toml",
     "api/pyproject.toml",
     "api/uv.lock",
     "packages/contracts/scripts/compose-console-openapi.mjs",

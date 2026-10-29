@@ -2,6 +2,7 @@ import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { MarketplacePlugin } from '@dify/contracts/marketplace'
 import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition } from 'reactflow'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type {
@@ -248,7 +249,7 @@ export type InputVar = {
       }
   variable: string
   max_length?: number
-  default?: string | number | boolean
+  default?: string | number | boolean | FileEntity | FileEntity[]
   required: boolean
   hint?: string
   options?: string[]
