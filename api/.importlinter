@@ -88,6 +88,8 @@ ignore_imports =
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
     core.tools.tool_manager -> services
+    # Legacy tool execution delegates credential resolution to the composition root.
+    core.tools.tool_manager -> extensions.application_services.tools
     core.workflow.node_runtime -> services
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
@@ -309,6 +311,35 @@ forbidden_modules =
     models
     extensions
     flask
+allow_indirect_imports = True
+
+[importlinter:contract:tool-credential-application-boundary]
+name = Runtime credential refresh policies are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.credentials.tool_runtime
+    services.credentials.refresh
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:tool-credential-adapter-boundary]
+name = Tool runtime credential persistence is reached only through composition
+type = forbidden
+source_modules =
+    core.tools.tool_manager
+forbidden_modules =
+    repositories
+    services.credentials.tool_runtime_adapters
+    services.credentials.redis_refresh_lock
 allow_indirect_imports = True
 
 [importlinter:contract:credential-query-implementation-boundary]

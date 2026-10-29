@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from services.credentials.refresh import CredentialRefreshLock, credential_needs_refresh
 from services.data_source.entities.credential import DatasourceCredentialRecord, DatasourceOAuthClientConfigRecord
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,9 @@ class DatasourceProviderCredentialStore(Protocol):
 
     def update_if_unchanged(
         self, *, record: DatasourceCredentialRecord, encrypted_credentials: Mapping[str, object], expires_at: int
-    ) -> bool: ...
+    ) -> bool:
+        """Commit a scoped write guarded by owner, auth type, ciphertext and expiry; return false on a conflict."""
+        ...
 
 
 class DatasourceCredentialStore(Protocol):
@@ -189,11 +192,13 @@ class ActorAwareDatasourceCredentialGateway:
         credentials: DatasourceCredentialStore,
         codec: DatasourceCredentialCodec,
         refresher: DatasourceCredentialRefresher,
+        refresh_lock: CredentialRefreshLock,
         now: Callable[[], float] = time.time,
     ) -> None:
         self._credentials = credentials
         self._codec = codec
         self._refresher = refresher
+        self._refresh_lock = refresh_lock
         self._now = now
 
     def resolve(
@@ -224,6 +229,7 @@ class ActorAwareDatasourceCredentialGateway:
             refresher=self._refresher,
             update=self._credentials.update_if_unchanged,
             load_latest=load_record,
+            refresh_lock=self._refresh_lock,
             now=self._now,
         )
 
@@ -237,11 +243,13 @@ class TrustedStoredDatasourceCredentialGateway:
         credentials: TrustedDatasourceCredentialStore,
         codec: DatasourceCredentialCodec,
         refresher: DatasourceCredentialRefresher,
+        refresh_lock: CredentialRefreshLock,
         now: Callable[[], float] = time.time,
     ) -> None:
         self._credentials = credentials
         self._codec = codec
         self._refresher = refresher
+        self._refresh_lock = refresh_lock
         self._now = now
 
     def resolve_for_document(
@@ -270,17 +278,14 @@ class TrustedStoredDatasourceCredentialGateway:
         record = load_record()
         return resolve_credential_snapshot(
             record,
-            actor_id=record.owner_id,
+            actor_id=None,
             codec=self._codec,
             refresher=self._refresher,
             update=self._credentials.update_if_unchanged,
             load_latest=load_record,
+            refresh_lock=self._refresh_lock,
             now=self._now,
         )
-
-
-def credential_needs_refresh(expires_at: int, *, now: float) -> bool:
-    return expires_at != -1 and expires_at - 60 < int(now)
 
 
 class CredentialSnapshotUpdate(Protocol):
@@ -297,23 +302,38 @@ def resolve_credential_snapshot(
     refresher: DatasourceCredentialRefresher,
     update: CredentialSnapshotUpdate,
     load_latest: Callable[[], DatasourceCredentialRecord],
+    refresh_lock: CredentialRefreshLock,
     now: Callable[[], float],
 ) -> dict[str, object]:
-    decrypted = codec.decrypt(record)
+    """Refresh under one lease; an absent actor selects the persisted credential owner.
+
+    Every caller, including legacy provider execution, uses the same credential
+    lock. Reloading also rechecks the caller's visibility or stored owner chain.
+    """
     if not credential_needs_refresh(record.expires_at, now=now()):
-        return decrypted
-    if actor_id is None:
-        raise DatasourceCredentialRefreshError(record.id)
-    refreshed = refresher.refresh(
-        workspace_id=record.workspace_id, actor_id=actor_id, record=record, credentials=decrypted
-    )
-    if update(
-        record=record,
-        encrypted_credentials=codec.encrypt(record, refreshed.credentials),
-        expires_at=refreshed.expires_at,
-    ):
-        return dict(refreshed.credentials)
-    latest = load_latest()
-    if credential_needs_refresh(latest.expires_at, now=now()):
-        raise DatasourceCredentialConcurrentUpdateError()
-    return codec.decrypt(latest)
+        return codec.decrypt(record)
+    with refresh_lock.acquire(
+        credential_type="datasource", workspace_id=record.workspace_id, credential_id=record.id
+    ) as lease:
+        latest = load_latest()
+        if (latest.workspace_id, latest.id) != (record.workspace_id, record.id):
+            raise DatasourceCredentialConcurrentUpdateError()
+        record = latest
+        if not credential_needs_refresh(record.expires_at, now=now()):
+            return codec.decrypt(record)
+        refresh_actor = actor_id if actor_id is not None else record.owner_id
+        if refresh_actor is None:
+            raise DatasourceCredentialRefreshError(record.id)
+        decrypted = codec.decrypt(record)
+        lease.ensure_owned()
+        refreshed = refresher.refresh(
+            workspace_id=record.workspace_id, actor_id=refresh_actor, record=record, credentials=decrypted
+        )
+        encrypted = codec.encrypt(record, refreshed.credentials)
+        lease.ensure_owned()
+        if update(record=record, encrypted_credentials=encrypted, expires_at=refreshed.expires_at):
+            return dict(refreshed.credentials)
+        latest = load_latest()
+        if credential_needs_refresh(latest.expires_at, now=now()):
+            raise DatasourceCredentialConcurrentUpdateError()
+        return codec.decrypt(latest)
