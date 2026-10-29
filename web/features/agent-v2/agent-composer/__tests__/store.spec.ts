@@ -886,6 +886,26 @@ describe('agent composer store conversions', () => {
     })
   })
 
+  it('should treat null metadata filtering conditions as unset', () => {
+    const formState = agentSoulConfigToFormState({
+      knowledge: {
+        sets: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasets: [{ id: 'dataset-1', name: 'Docs' }],
+            query: { mode: 'generated_query' },
+            retrieval: { mode: 'multiple', top_k: 4 },
+            metadata_filtering: { mode: 'manual', conditions: null },
+          },
+        ],
+      },
+    })
+
+    expect(formState.knowledgeRetrievals[0]).toMatchObject({ metadataFilterMode: 'manual' })
+    expect(formState.knowledgeRetrievals[0]!.metadataFilteringConditions).toBeUndefined()
+  })
+
   it('should omit incomplete environment variables from the config snapshot', () => {
     const publishConfig = formStateToAgentSoulConfig({
       formState: {

@@ -170,7 +170,8 @@ const toKnowledgeRetrievalFormState = (config?: AgentSoulConfig): AgentKnowledge
       singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
       metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ??
         MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
-      metadataFilteringConditions: knowledgeSet.metadata_filtering?.conditions as
+      // The API sends null when no conditions are saved; form defaults only replace undefined.
+      metadataFilteringConditions: (knowledgeSet.metadata_filtering?.conditions ?? undefined) as
         | MetadataFilteringConditions
         | undefined,
       metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
