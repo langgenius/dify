@@ -15601,6 +15601,7 @@ Update a plugin endpoint
 | action | query |  | Yes | string |
 | credential_id | query |  | No | string |
 | parameter | query |  | Yes | string |
+| parameter_values | query |  | No | string |
 | plugin_id | query |  | Yes | string |
 | provider | query |  | Yes | string |
 | provider_type | query |  | Yes | string, <br>**Available values:** "tool", "trigger" |
@@ -15621,6 +15622,26 @@ Update a plugin endpoint
 | Required | Schema |
 | -------- | ------ |
 |  Yes | **application/json**: [ParserDynamicOptionsWithCredentials](#parserdynamicoptionswithcredentials)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/plugin/parameters/dynamic-tree-options
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| action | query |  | Yes | string |
+| credential_id | query |  | No | string |
+| parameter | query |  | Yes | string |
+| parameter_values | query |  | No | string |
+| plugin_id | query |  | Yes | string |
+| provider | query |  | Yes | string |
 
 #### Responses
 
@@ -20400,6 +20421,7 @@ Inherits from ToolIdentity, without any additional fields.
 | ---- | ---- | ----------- | -------- |
 | auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
 | default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| dynamic_select_lazy_load | boolean | When true, DYNAMIC_SELECT/DYNAMIC_TREE_SELECT options load on panel open (lazy); when false (default), options prefetch after mount. | No |
 | help | [I18nObject](#i18nobject) |  | No |
 | label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
 | max | number<br>integer |  | No |
@@ -23955,6 +23977,7 @@ Overrides type
 | auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
 | default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
 | description | [I18nObject](#i18nobject) | The description of the parameter | Yes |
+| dynamic_select_lazy_load | boolean | When true, DYNAMIC_SELECT/DYNAMIC_TREE_SELECT options load on panel open (lazy); when false (default), options prefetch after mount. | No |
 | label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
 | max | number<br>integer |  | No |
 | min | number<br>integer |  | No |
@@ -30338,6 +30361,7 @@ Enum class for parameter type.
 | action | string |  | Yes |
 | credential_id | string |  | No |
 | parameter | string |  | Yes |
+| parameter_values | string |  | No |
 | plugin_id | string |  | Yes |
 | provider | string |  | Yes |
 | provider_type | string, <br>**Available values:** "tool", "trigger" | *Enum:* `"tool"`, `"trigger"` | Yes |
@@ -30350,6 +30374,7 @@ Enum class for parameter type.
 | credential_id | string |  | Yes |
 | credentials | object |  | Yes |
 | parameter | string |  | Yes |
+| parameter_values | object |  | No |
 | plugin_id | string |  | Yes |
 | provider | string |  | Yes |
 
@@ -30988,6 +31013,17 @@ Plaintext secret values are not allowed in Agent config.
 | ---- | ---- | ----------- | -------- |
 | options | [ [PluginParameterOption](#pluginparameteroption) ] |  | Yes |
 
+#### PluginDynamicTreeOptionsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| credential_id | string |  | No |
+| parameter | string |  | Yes |
+| parameter_values | string |  | No |
+| plugin_id | string |  | Yes |
+| provider | string |  | Yes |
+
 #### PluginEntity
 
 | Name | Type | Description | Required |
@@ -31153,6 +31189,7 @@ Plugin operation failed.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| children | [ [PluginParameterOption](#pluginparameteroption) ] | The child options of the option | No |
 | icon | string | The icon of the option, can be a url or a base64 encoded image | No |
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
@@ -33770,6 +33807,7 @@ Tool-specific parameter declaration and invocation-value normalization.
 | ---- | ---- | ----------- | -------- |
 | auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
 | default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| dynamic_select_lazy_load | boolean | When true, DYNAMIC_SELECT/DYNAMIC_TREE_SELECT options load on panel open (lazy); when false (default), options prefetch after mount. | No |
 | form | [ToolParameterForm](#toolparameterform) | The form of the parameter, schema/form/llm | Yes |
 | human_description | [I18nObject](#i18nobject) | The description presented to the user | No |
 | input_schema | object |  | No |
@@ -33777,7 +33815,7 @@ Tool-specific parameter declaration and invocation-value normalization.
 | llm_description | string |  | No |
 | max | number<br>integer |  | No |
 | min | number<br>integer |  | No |
-| multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
+| multiple | boolean | Whether the select, dynamic-select, or dynamic-tree-select parameter accepts multiple values | No |
 | name | string | The name of the parameter | Yes |
 | options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
 | placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |

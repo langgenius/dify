@@ -252,6 +252,19 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
         required=False,
     )
     tags_parameter.multiple = True
+    category_parameter = ToolParameter.get_simple_instance(
+        name="category",
+        llm_description="Search category",
+        typ=ToolParameter.ToolParameterType.DYNAMIC_TREE_SELECT,
+        required=False,
+    )
+    categories_parameter = ToolParameter.get_simple_instance(
+        name="categories",
+        llm_description="Search categories",
+        typ=ToolParameter.ToolParameterType.DYNAMIC_TREE_SELECT,
+        required=False,
+    )
+    categories_parameter.multiple = True
     hidden_parameter = ToolParameter.get_simple_instance(
         name="api_key",
         llm_description="Hidden api key",
@@ -284,6 +297,8 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
         region_parameter,
         regions_parameter,
         tags_parameter,
+        category_parameter,
+        categories_parameter,
         hidden_parameter,
         file_parameter,
         payload_parameter,
@@ -317,6 +332,12 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
                 "type": "array",
                 "items": {"type": "string"},
                 "description": "Search tags",
+            },
+            "category": {"type": "string", "description": "Search category"},
+            "categories": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Search categories",
             },
             "payload": {
                 "type": "object",

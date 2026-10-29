@@ -6,23 +6,17 @@ HIDDEN_VALUE replacement, and error handling for missing records.
 
 from __future__ import annotations
 
-import json
-from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
-from flask import Flask
-from sqlalchemy.orm import Session
 
-from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
-from models.engine import db
 from models.provider_ids import TriggerProviderID
-from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
 from tests.unit_tests.core.trigger.conftest import make_controller
+
+TOOL_IDENTIFIER = "org/plugin:1.0.0@" + "a" * 32
 
 
 @pytest.fixture(autouse=True)
@@ -36,28 +30,15 @@ def trigger_declaration(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(TriggerManager, "get_trigger_provider", resolve)
 
 
-@pytest.fixture
-def plugin_parameter_db() -> Iterator[Session]:
-    """Provide the production database extension with an isolated SQLite credential table."""
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        BuiltinToolProvider.__table__.create(db.engine)
-        with Session(db.engine, expire_on_commit=False) as session:
-            yield session
-
-
 class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
-    @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_no_credentials_needed(self, mock_tool_mgr, mock_client_cls):
-        provider_ctrl = MagicMock()
-        provider_ctrl.entity.identity.name = "google"
-        provider_ctrl.plugin_unique_identifier = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        provider_ctrl.need_credentials = False
-        mock_tool_mgr.get_plugin_provider.return_value = provider_ctrl
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_no_credentials_needed(self, mock_builtin_tool_service, mock_client_cls):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = (
+            {},
+            "unauthorized",
+            TOOL_IDENTIFIER,
+        )
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
         result = PluginParameterService.get_dynamic_select_options(
@@ -74,70 +55,42 @@ class TestGetDynamicSelectOptionsTool:
         assert result == ["opt1"]
         call_kwargs = mock_client_cls.return_value.fetch_dynamic_select_options.call_args
         assert call_kwargs[0][5] == {}  # empty credentials
+        assert call_kwargs[0][3] == "org/plugin/google"
+        assert call_kwargs.kwargs["plugin_unique_identifier"] == TOOL_IDENTIFIER
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.assert_called_once_with(
+            tenant_id="t1", provider="org/plugin/google", credential_id=None
+        )
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
-    @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_fetches_credentials_with_credential_id(
-        self,
-        mock_tool_mgr: MagicMock,
-        mock_encrypter_fn: MagicMock,
-        mock_client_cls,
-        plugin_parameter_db: Session,
-    ) -> None:
-        tenant_id = str(uuid4())
-        provider_ctrl = MagicMock()
-        provider_ctrl.entity.identity.name = "google"
-        provider_ctrl.plugin_unique_identifier = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        provider_ctrl.need_credentials = True
-        mock_tool_mgr.get_plugin_provider.return_value = provider_ctrl
-        encrypter = MagicMock()
-        encrypter.decrypt.return_value = {"api_key": "decrypted"}
-        mock_encrypter_fn.return_value = (encrypter, None)
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_fetches_credentials_with_credential_id(self, mock_builtin_tool_service, mock_client_cls):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = (
+            {"api_key": "decrypted"},
+            "api-key",
+            TOOL_IDENTIFIER,
+        )
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
-        db_record = BuiltinToolProvider(
-            tenant_id=tenant_id,
-            user_id=str(uuid4()),
-            provider="google",
-            name="API KEY 1",
-            encrypted_credentials=json.dumps({"api_key": "encrypted"}),
-            credential_type=CredentialType.API_KEY,
-        )
-        plugin_parameter_db.add(db_record)
-        plugin_parameter_db.commit()
-
         result = PluginParameterService.get_dynamic_select_options(
-            tenant_id=tenant_id,
+            tenant_id="t1",
             user_id="u1",
             plugin_id="org/plugin",
             provider="google",
             action="search",
             parameter="engine",
-            credential_id=db_record.id,
+            credential_id="cred-id",
             provider_type="tool",
         )
 
         assert result == ["opt1"]
 
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
-    @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_raises_when_tool_provider_not_found(
-        self,
-        mock_tool_mgr: MagicMock,
-        mock_encrypter_fn: MagicMock,
-        plugin_parameter_db: Session,
-    ) -> None:
-        provider_ctrl = MagicMock()
-        provider_ctrl.entity.identity.name = "google"
-        provider_ctrl.plugin_unique_identifier = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        provider_ctrl.need_credentials = True
-        mock_tool_mgr.get_plugin_provider.return_value = provider_ctrl
-        mock_encrypter_fn.return_value = (MagicMock(), None)
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_raises_when_tool_provider_not_found(self, mock_builtin_tool_service):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.side_effect = ValueError("not found")
 
         with pytest.raises(ValueError, match="not found"):
             PluginParameterService.get_dynamic_select_options(
-                tenant_id=str(uuid4()),
+                tenant_id="t1",
                 user_id="u1",
                 plugin_id="org/plugin",
                 provider="google",
@@ -175,6 +128,10 @@ class TestGetDynamicSelectOptionsTrigger:
         assert builder_call["user_id"] == "u1"
         assert str(builder_call["provider_id"]) == "org/plugin/github"
         assert builder_call["subscription_builder_id"] == "builder-1"
+        assert (
+            mock_client_cls.return_value.fetch_dynamic_select_options.call_args.kwargs["plugin_unique_identifier"]
+            == TOOL_IDENTIFIER
+        )
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
@@ -201,6 +158,9 @@ class TestGetDynamicSelectOptionsTrigger:
         )
 
         assert result == ["opt"]
+        subscription_call = mock_provider_svc.get_subscription_by_id.call_args
+        assert subscription_call.args == ("t1", "sub-1")
+        assert str(subscription_call.kwargs["provider_id"]) == "org/plugin/github"
 
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
     @patch("services.plugin.plugin_parameter_service.TriggerSubscriptionBuilderService")
@@ -249,6 +209,12 @@ class TestGetDynamicSelectOptionsWithCredentials:
         resolved = call_args[5]
         assert resolved["token"] == "real-secret"  # replaced
         assert resolved["name"] == "new-name"  # kept as-is
+        call = mock_client_cls.return_value.fetch_dynamic_select_options.call_args
+        assert call.kwargs["plugin_unique_identifier"] == TOOL_IDENTIFIER
+        assert call.args[3] == "org/plugin/github"
+        subscription_call = mock_provider_svc.get_subscription_by_id.call_args
+        assert subscription_call.args == ("t1", "cred-1")
+        assert str(subscription_call.kwargs["provider_id"]) == "org/plugin/github"
 
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
     def test_raises_when_subscription_not_found(self, mock_provider_svc):
@@ -265,3 +231,32 @@ class TestGetDynamicSelectOptionsWithCredentials:
                 credential_id="nonexistent",
                 credentials={"token": "val"},
             )
+
+
+class TestGetDynamicTreeSelectOptions:
+    @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_no_credentials_needed(self, mock_builtin_tool_service, mock_client_cls):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = (
+            {},
+            "unauthorized",
+            TOOL_IDENTIFIER,
+        )
+        mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
+
+        result = PluginParameterService.get_dynamic_tree_select_options(
+            tenant_id="t1",
+            user_id="u1",
+            plugin_id="org/plugin",
+            provider="google",
+            action="search",
+            parameter="engine",
+            credential_id=None,
+            parameter_values={"region": "us"},
+        )
+
+        assert result == ["opt1"]
+        call = mock_client_cls.return_value.fetch_dynamic_select_options.call_args
+        assert call.args[3] == "org/plugin/google"
+        assert call.kwargs["plugin_unique_identifier"] == TOOL_IDENTIFIER
+        assert call.kwargs["parameter_values"] == {"region": "us"}

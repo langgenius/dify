@@ -15,7 +15,10 @@ import { seedToolProviders } from '@/test/console/tool-providers'
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
-const { mockDynamicOptions } = vi.hoisted(() => ({ mockDynamicOptions: vi.fn() }))
+const { mockDynamicOptions, mockDynamicTreeOptions } = vi.hoisted(() => ({
+  mockDynamicOptions: vi.fn(),
+  mockDynamicTreeOptions: vi.fn(),
+}))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -25,6 +28,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.parameters.dynamicOptions.get': (input) =>
         mockDynamicOptions(input),
+      'workspaces.current.plugin.parameters.dynamicTreeOptions.get': (input) =>
+        mockDynamicTreeOptions(input),
     }),
   }
 })
@@ -116,6 +121,8 @@ describe('FormInputItem selections', () => {
   beforeEach(() => {
     mockDynamicOptions.mockReset()
     mockDynamicOptions.mockResolvedValue({ options: [] })
+    mockDynamicTreeOptions.mockReset()
+    mockDynamicTreeOptions.mockResolvedValue({ options: [] })
   })
   afterEach(() => vi.restoreAllMocks())
 
@@ -181,7 +188,7 @@ describe('FormInputItem selections', () => {
         action: 'tool-1',
         parameter: 'field',
         provider_type: 'tool',
-        dependent_field: 'parent',
+        parameter_values: JSON.stringify({ field: '', dependent_field: 'parent' }),
       },
     })
     expect(onChange).toHaveBeenLastCalledWith({
@@ -251,4 +258,58 @@ describe('FormInputItem selections', () => {
       field: { type: VarKindType.constant, value: '{"enabled":true}' },
     })
   })
+})
+
+it('loads nested tool choices with sibling values and preserves a multi-selection when reopened', async () => {
+  const user = userEvent.setup()
+  mockDynamicTreeOptions.mockResolvedValue({
+    options: [
+      {
+        value: 'parent',
+        label: { en_US: 'Parent' },
+        children: [
+          { value: 'first', label: { en_US: 'First' } },
+          { value: 'second', label: { en_US: 'Second' } },
+        ],
+      },
+    ],
+  })
+  const { onChange } = renderForm({
+    schema: createSchema({
+      type: FormTypeEnum.dynamicTreeSelect,
+      multiple: true,
+      dynamic_select_lazy_load: true,
+      placeholder: { en_US: 'Choose a tree', zh_Hans: '选择树' },
+    }),
+    currentProvider: { ...provider, credential_id: 'credential-1' },
+    currentTool: tool,
+    providerType: PluginCategoryEnum.tool,
+    value: {
+      region: { type: VarKindType.constant, value: 'us' },
+      field: { type: VarKindType.constant, value: ['first'] },
+    },
+  })
+  await waitFor(() => expect(screen.getByRole('button', { name: 'First' })).toBeEnabled())
+  expect(mockDynamicTreeOptions).toHaveBeenCalledWith({
+    query: {
+      plugin_id: 'plugin-1',
+      provider: 'provider-1',
+      action: 'tool-1',
+      parameter: 'field',
+      credential_id: 'credential-1',
+      parameter_values: JSON.stringify({ region: 'us', field: ['first'] }),
+    },
+  })
+  await user.click(screen.getByRole('button', { name: 'First' }))
+  await user.click(await screen.findByRole('option', { name: 'Second' }))
+  expect(onChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ field: { type: VarKindType.constant, value: ['first', 'second'] } }),
+  )
+  expect(mockDynamicTreeOptions.mock.calls.length).toBeGreaterThan(1)
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'First, Second' }))
+  expect(await screen.findByRole('option', { name: 'Second' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
 })

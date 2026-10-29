@@ -14,6 +14,7 @@ def test_common_parameter_type_values_are_stable() -> None:
     assert CommonParameterType.SECRET_INPUT.value == "secret-input"
     assert CommonParameterType.MODEL_SELECTOR.value == "model-selector"
     assert CommonParameterType.DYNAMIC_SELECT.value == "dynamic-select"
+    assert CommonParameterType.DYNAMIC_TREE_SELECT.value == "dynamic-tree-select"
     assert CommonParameterType.ARRAY.value == "array"
     assert CommonParameterType.OBJECT.value == "object"
     assert CommonParameterType.DATE.value == "date"
