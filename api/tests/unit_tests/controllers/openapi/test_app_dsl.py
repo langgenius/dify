@@ -641,6 +641,11 @@ def _stub_package_export(
     return seen, package
 
 
+@pytest.mark.parametrize("view", [AppPackageExportApi.get, AppPackageImportApi.post])
+def test_package_routes_run_in_the_workspace_context(view: Callable[..., object]) -> None:
+    assert cast(_EndpointView, view).__spec__.context == "workspace"
+
+
 def test_package_export_sends_the_ifpkg_as_an_attachment(
     app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
 ) -> None:
