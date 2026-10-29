@@ -137,7 +137,7 @@ function mockCredentialRequests({
       const payload = await request.json()
       savedConnection = connection({
         id: initialConnection?.id ?? firstId,
-        name: payload.name ?? initialConnection?.name,
+        name: payload.name || initialConnection?.name || 'API KEY 1',
         credential_type: 'api-key',
         account_label: null,
       })
@@ -386,12 +386,12 @@ describe('WebAppConnectionsProvider', () => {
       expect(await created.json()).toEqual({
         connection_revision: connectionRevision,
         node_id: 'source-a',
-        name: 'share.connections.setup.apiKey',
+        name: '',
         credentials: { access_token: '  provider-secret  ', name: 'provider-user', sandbox: false },
       })
       expect(selections()['source-a']).toBe(firstId)
       expect(selectedAccount('Read repositories for the research brief.')).toHaveTextContent(
-        'share.connections.setup.apiKey',
+        'API KEY 1',
       )
     },
   )
