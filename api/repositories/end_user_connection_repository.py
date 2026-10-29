@@ -58,7 +58,7 @@ from services.end_user_connections.revision import (
     ConnectionRevisionAcceptance,
     OAuthClientContractSnapshot,
 )
-from services.end_user_connections.selections import SavedConnectionConfiguration, SavedConnectionSelection
+from services.end_user_connections.selections import SavedConnectionSelection
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow.tool_credentials import get_tool_authorization_requirements
 
@@ -334,30 +334,12 @@ class EndUserConnectionRepository:
             ).rowcount
             if transferred == 0:
                 return 0
-            if target.connection_configuration_revision is not None or session.scalar(
-                sa.select(AppConnection.id).where(*self._app_selection_scope(account)).limit(1)
-            ):
+            if session.scalar(sa.select(AppConnection.id).where(*self._app_selection_scope(account)).limit(1)):
                 session.execute(sa.delete(AppConnection).where(*self._app_selection_scope(guest)))
             else:
-                target.connection_configuration_revision = session.scalar(
-                    sa.select(EndUser.connection_configuration_revision).where(
-                        EndUser.id == guest.end_user_id,
-                        EndUser.tenant_id == guest.tenant_id,
-                        EndUser.app_id == guest.app_id,
-                    )
-                )
                 session.execute(
                     sa.update(AppConnection).where(*self._app_selection_scope(guest)).values(end_user_id=target.id)
                 )
-            session.execute(
-                sa.update(EndUser)
-                .where(
-                    EndUser.id == guest.end_user_id,
-                    EndUser.tenant_id == guest.tenant_id,
-                    EndUser.app_id == guest.app_id,
-                )
-                .values(connection_configuration_revision=None)
-            )
             # Session selections and immutable Run references keep their IDs.
             # Their authoritative Conversation owner migrates independently.
             return transferred
@@ -515,44 +497,46 @@ class EndUserConnectionRepository:
             AppConnection.end_user_id == context.end_user_id,
         )
 
-    def configuration(self, context: WebConnectionContext, conversation_id: str | None) -> SavedConnectionConfiguration:
+    def configuration(
+        self, context: WebConnectionContext, conversation_id: str | None
+    ) -> tuple[SavedConnectionSelection, ...]:
         with self._sessions() as session:
             app = self._require_context(session, context, lock=False)
             if conversation_id is None:
-                rows = session.execute(
-                    sa.select(EndUser.connection_configuration_revision, AppConnection)
-                    .select_from(EndUser)
-                    .outerjoin(AppConnection, sa.and_(*self._app_selection_scope(context)))
-                    .where(
-                        EndUser.id == context.end_user_id,
-                        EndUser.tenant_id == context.tenant_id,
-                        EndUser.app_id == context.app_id,
-                    )
-                    .order_by(AppConnection.node_id)
-                ).all()
+                rows = session.scalars(
+                    sa.select(AppConnection).where(*self._app_selection_scope(context)).order_by(AppConnection.node_id)
+                )
             else:
                 self._require_conversation(session, context, app, conversation_id, lock=False)
-                rows = session.execute(
-                    sa.select(Conversation.connection_configuration_revision, SessionConnection)
-                    .select_from(Conversation)
-                    .outerjoin(
-                        SessionConnection, sa.and_(*self._conversation_selection_scope(context, conversation_id))
-                    )
-                    .where(Conversation.id == conversation_id, Conversation.app_id == context.app_id)
+                rows = session.scalars(
+                    sa.select(SessionConnection)
+                    .where(*self._conversation_selection_scope(context, conversation_id))
                     .order_by(SessionConnection.node_id)
-                ).all()
-            if not rows:
-                if conversation_id is not None:
-                    raise ConversationNotExistsError()
-                raise ConnectionIdentityError()
-            return SavedConnectionConfiguration(
-                revision=rows[0][0],
-                selections=tuple(
-                    SavedConnectionSelection(row.workflow_id, row.node_id, row.provider, row.connection_id)
-                    for _, row in rows
-                    if row is not None
-                ),
+                )
+            return tuple(
+                SavedConnectionSelection(row.workflow_id, row.node_id, row.provider, row.connection_id) for row in rows
             )
+
+    def accepted_contracts(self, context: WebConnectionContext) -> tuple[ConnectionContractSnapshot, ...]:
+        with self._sessions() as session:
+            self._require_context(session, context, lock=False)
+            payloads = session.scalars(
+                sa.select(EndUserConnectionRevision.snapshot)
+                .join(
+                    EndUserConnectionRevisionAcceptance,
+                    sa.and_(
+                        EndUserConnectionRevisionAcceptance.revision_id == EndUserConnectionRevision.id,
+                        EndUserConnectionRevisionAcceptance.tenant_id == EndUserConnectionRevision.tenant_id,
+                        EndUserConnectionRevisionAcceptance.app_id == EndUserConnectionRevision.app_id,
+                    ),
+                )
+                .where(
+                    EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
+                    EndUserConnectionRevisionAcceptance.app_id == context.app_id,
+                    EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
+                )
+            )
+            return tuple(ConnectionContractSnapshot.model_validate_json(payload) for payload in payloads)
 
     def save_configuration(
         self,
@@ -590,25 +574,11 @@ class EndUserConnectionRepository:
                 )
                 for item in selections
             )
-            session.execute(
-                sa.update(EndUser)
-                .where(
-                    EndUser.id == context.end_user_id,
-                    EndUser.tenant_id == context.tenant_id,
-                    EndUser.app_id == context.app_id,
-                )
-                .values(connection_configuration_revision=acceptance.revision_id)
-            )
             if conversation_id is not None:
                 session.execute(
                     sa.delete(SessionConnection).where(*self._conversation_selection_scope(context, conversation_id))
                 )
                 self._insert_conversation_selections(session, context, conversation_id, selections)
-                session.execute(
-                    sa.update(Conversation)
-                    .where(Conversation.id == conversation_id, Conversation.app_id == context.app_id)
-                    .values(connection_configuration_revision=acceptance.revision_id)
-                )
             self._record_revision_acceptance(session, context, acceptance)
 
     @classmethod
@@ -659,7 +629,6 @@ class EndUserConnectionRepository:
             raise ConnectionIdentityError()
         context, _, selections = cls._execution_selections(session, execution)
         cls._insert_conversation_selections(session, context, conversation.id, selections)
-        conversation.connection_configuration_revision = execution.connection_revision
 
     @classmethod
     def _execution_selections(

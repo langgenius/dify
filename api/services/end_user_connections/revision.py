@@ -107,10 +107,8 @@ class ConnectionRevisions(Protocol):
 
 class ConnectionSelectionRevisions(Protocol):
     def requires_reauthorization(
-        self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str | None
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any], accepted: tuple[ConnectionContractSnapshot, ...]
     ) -> bool: ...
-
-    def require(self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str) -> str: ...
 
 
 class ConnectionProviderRevisions(Protocol):

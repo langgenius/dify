@@ -155,7 +155,7 @@ Read saved choices and whether authorization must be renewed, without checking c
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| conversation_id | query | Chatflow Conversation to read. If omitted or the Conversation has never saved a configuration, return the current App user's last choices for form initialization. | No | string (uuid) |
+| conversation_id | query | Existing Chatflow Conversation whose choices to read, including an empty set. Omit for App defaults when initializing a new conversation or plain Workflow. | No | string (uuid) |
 
 #### Responses
 
@@ -1584,7 +1584,7 @@ The connection is not compatible with this tool configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | connections | object | Saved Connection details keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
-| reauthorization_required | boolean | Whether the saved authorization fails to cover the current App requirements; not credential readiness. | Yes |
+| reauthorization_required | boolean | Whether this App user must renew authorization for the current requirements; not credential readiness. | Yes |
 
 #### ConnectionConflictError
 

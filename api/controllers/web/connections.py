@@ -54,8 +54,8 @@ class ConnectionConfigurationQuery(ConnectionInput):
         default=None,
         strict=False,
         description=(
-            "Chatflow Conversation to read. If omitted or the Conversation has never saved a configuration, "
-            "return the current App user's last choices for form initialization."
+            "Existing Chatflow Conversation whose choices to read, including an empty set. "
+            "Omit for App defaults when initializing a new conversation or plain Workflow."
         ),
     )
 
@@ -79,7 +79,7 @@ class ConnectionConfigurationResponse(ResponseModel):
     )
     reauthorization_required: bool = Field(
         description=(
-            "Whether the saved authorization fails to cover the current App requirements; not credential readiness."
+            "Whether this App user must renew authorization for the current requirements; not credential readiness."
         )
     )
 

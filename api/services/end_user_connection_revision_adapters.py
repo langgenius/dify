@@ -78,13 +78,17 @@ class PluginConnectionRevisions:
         raise ConnectionRevisionChangedError(current_revision=canonical)
 
     def requires_reauthorization(
-        self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str | None
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any], accepted: tuple[ConnectionContractSnapshot, ...]
     ) -> bool:
         current, _ = self._snapshot(tenant_id, app_id, graph)
         if not current.requirements:
             return False
-        previous = self._snapshots.get_revision(tenant_id, app_id, revision) if revision is not None else None
-        return previous is None or not self._compatible(tenant_id, previous, current)
+        return not any(
+            previous.tenant_id == tenant_id
+            and previous.app_id == app_id
+            and self._compatible(tenant_id, previous, current)
+            for previous in accepted
+        )
 
     def _compatible(
         self, tenant_id: str, previous: ConnectionContractSnapshot, current: ConnectionContractSnapshot

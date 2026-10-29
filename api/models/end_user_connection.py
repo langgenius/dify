@@ -181,9 +181,9 @@ class AppConnection(DefaultFieldsDCMixin, TypeBase):
     """One explicitly saved Tool node choice for an App-scoped EndUser.
 
     Replace the whole set under a stable owner lock, including for an empty set.
-    EndUser.connection_configuration_revision records authorization and initialization
-    independently of selection rows. source_run_id preserves legacy provenance only;
-    execution never updates defaults. Run references never cascade into historical execution records.
+    Authorization is recorded separately for the App-scoped EndUser, shared by all
+    Conversations. source_run_id preserves legacy provenance only; execution never
+    updates defaults. Run references never cascade into historical execution records.
     workflow_id and node_id identify the published graph version where this choice
     was saved. Changed authorization requirements require reconfirmation; republishing the
     same requirements preserves the choice. Callers validate Workflow ownership and node authentication requirements
@@ -225,9 +225,9 @@ class SessionConnection(DefaultFieldsDCMixin, TypeBase):
     through the business Session, even when no selection rows exist. Retained
     references after identity migration do not transfer credential ownership. Like
     App defaults, workflow_id records the published graph version of the saved choice.
-    Conversation.connection_configuration_revision records the accepted contract,
-    including explicitly empty configurations. Incompatible contract changes require
-    explicit reconfirmation before the choices can be restored for execution.
+    These rows only store choices. Authorization is shared by the App-scoped EndUser;
+    confirming a changed contract in one Conversation authorizes the other Conversations.
+    An empty set remains empty instead of inheriting App defaults.
     """
 
     __tablename__ = "session_connections"

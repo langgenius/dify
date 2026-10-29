@@ -22,7 +22,11 @@ from services.end_user_connections.preflight import (
     NodeId,
     PreflightRequirements,
 )
-from services.end_user_connections.revision import ConnectionRevisionAcceptance, ConnectionSelectionRevisions
+from services.end_user_connections.revision import (
+    ConnectionContractSnapshot,
+    ConnectionRevisionAcceptance,
+    ConnectionSelectionRevisions,
+)
 
 
 @dataclass(frozen=True)
@@ -31,17 +35,6 @@ class SavedConnectionSelection:
     node_id: str
     provider: str
     connection_id: str
-
-
-@dataclass(frozen=True)
-class SavedConnectionConfiguration:
-    # None identifies a legacy or never-authorized configuration.
-    revision: str | None
-    selections: tuple[SavedConnectionSelection, ...]
-
-    @property
-    def initialized(self) -> bool:
-        return self.revision is not None or bool(self.selections)
 
 
 class SaveConnectionConfigurationInput(ConnectionPreflightInput):
@@ -64,7 +57,7 @@ class ConnectionConfiguration(BaseModel):
     )
     reauthorization_required: bool = Field(
         description=(
-            "Whether the saved authorization fails to cover the current App requirements; not credential readiness."
+            "Whether this App user must renew authorization for the current requirements; not credential readiness."
         )
     )
 
@@ -72,7 +65,9 @@ class ConnectionConfiguration(BaseModel):
 class ConnectionSelections(Protocol):
     def configuration(
         self, context: WebConnectionContext, conversation_id: str | None
-    ) -> SavedConnectionConfiguration: ...
+    ) -> tuple[SavedConnectionSelection, ...]: ...
+
+    def accepted_contracts(self, context: WebConnectionContext) -> tuple[ConnectionContractSnapshot, ...]: ...
 
     def preflight_graph(
         self, context: WebConnectionContext, workflow_id: str | None, conversation_id: str | None
@@ -112,27 +107,23 @@ class ConnectionSelectionService:
 
     def restore(self, context: WebConnectionContext, workflow_id: str, conversation_id: str) -> dict[str, UUID]:
         saved = self._store.configuration(context, conversation_id)
-        if saved.initialized:
-            _, graph = self._store.preflight_graph(context, workflow_id, conversation_id)
-            if saved.revision is None:
-                raise ConnectionRevisionChangedError()
-            self._revisions.require(context.tenant_id, context.app_id, graph, saved.revision)
-        return {item.node_id: UUID(item.connection_id) for item in saved.selections}
+        if saved and self._requires_reauthorization(context, workflow_id):
+            raise ConnectionRevisionChangedError()
+        return {item.node_id: UUID(item.connection_id) for item in saved}
 
     def get(self, context: WebConnectionContext, conversation_id: str | None) -> ConnectionConfiguration:
         saved = self._store.configuration(context, conversation_id)
-        if conversation_id is not None and not saved.initialized:
-            saved = self._store.configuration(context, None)
+        return self._view(context, saved, reauthorization_required=self._requires_reauthorization(context, None))
+
+    def _requires_reauthorization(self, context: WebConnectionContext, workflow_id: str | None) -> bool:
         try:
-            _, graph = self._store.preflight_graph(context, None, conversation_id)
+            _, graph = self._store.preflight_graph(context, workflow_id, None)
         except ConnectionRevisionChangedError:
             # Keep historical choices readable when their publication is unavailable.
-            reauthorization_required = True
-        else:
-            reauthorization_required = self._revisions.requires_reauthorization(
-                context.tenant_id, context.app_id, graph, saved.revision
-            )
-        return self._view(context, saved.selections, reauthorization_required=reauthorization_required)
+            return True
+        return self._revisions.requires_reauthorization(
+            context.tenant_id, context.app_id, graph, self._store.accepted_contracts(context)
+        )
 
     def save(self, context: WebConnectionContext, command: SaveConnectionConfigurationInput) -> ConnectionConfiguration:
         conversation_id = str(command.conversation_id) if command.conversation_id is not None else None

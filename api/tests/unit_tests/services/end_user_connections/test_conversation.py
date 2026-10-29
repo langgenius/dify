@@ -290,7 +290,7 @@ def test_workspace_only_run_preserves_saved_configuration_without_preflight(harn
     saved = harness.service.get(base.context, None).connections["tool-1"]
     assert saved is not None
     assert saved.id == selected.id
-    assert base.repository.configuration(base.context, conversation_id).selections[0].connection_id == selected.id
+    assert base.repository.configuration(base.context, conversation_id)[0].connection_id == selected.id
     assert base.auth.calls == []
 
 

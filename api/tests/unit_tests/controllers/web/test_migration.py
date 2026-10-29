@@ -994,23 +994,17 @@ def test_preflight_dependency_failure_starts_no_transfer(harness: ClaimHarness) 
     assert base.service.get_connection(base.context, selected.id).id == selected.id
 
 
-def test_claim_preserves_explicitly_empty_account_configuration(harness: ClaimHarness) -> None:
+def test_claim_transfers_choices_without_transferring_app_authorization(harness: ClaimHarness) -> None:
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
     save_choices(harness, base.context, selected.id)
-    harness.services.connection_selections.save(
-        harness.account,
-        SaveConnectionConfigurationInput.model_validate(
-            {
-                "connection_revision": base.connection_revision,
-                "connections": {},
-            }
-        ),
-    )
     response = harness.claim()
     assert response.status_code == 200
     assert response.get_json()["data"][0]["claimed_connections"] == 1
     saved = base.repository.configuration(harness.account, None)
-    assert saved.initialized
-    assert saved.selections == ()
-    assert not base.repository.configuration(base.context, None).initialized
+    assert saved[0].connection_id == selected.id
+    assert base.repository.configuration(base.context, None) == ()
+    service = harness.services.connection_selections
+    assert service.get(harness.account, None).reauthorization_required
+    save_choices(harness, harness.account, selected.id)
+    assert not service.get(harness.account, None).reauthorization_required

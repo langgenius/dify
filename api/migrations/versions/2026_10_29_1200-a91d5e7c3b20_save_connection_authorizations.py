@@ -1,4 +1,4 @@
-"""Persist explicit configuration authorization independently of execution.
+"""Allow saving connection choices before creating a Run.
 
 Revision ID: a91d5e7c3b20
 Revises: f3a6b9c2d108
@@ -17,8 +17,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("end_users", sa.Column("connection_configuration_revision", StringUUID(), nullable=True))
-    op.add_column("conversations", sa.Column("connection_configuration_revision", StringUUID(), nullable=True))
     with op.batch_alter_table("app_connections") as batch:
         batch.alter_column("source_run_id", existing_type=StringUUID(), nullable=True)
 
@@ -28,5 +26,3 @@ def downgrade() -> None:
     op.execute(sa.text("DELETE FROM app_connections WHERE source_run_id IS NULL"))
     with op.batch_alter_table("app_connections") as batch:
         batch.alter_column("source_run_id", existing_type=StringUUID(), nullable=False)
-    op.drop_column("conversations", "connection_configuration_revision")
-    op.drop_column("end_users", "connection_configuration_revision")
