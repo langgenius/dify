@@ -119,6 +119,11 @@ class AppDescribeInfo(AppInfo):
     updated_at: str | None = None
     service_api_enabled: bool
     is_agent: bool = Field(False, description="True for agent-chat and advanced-chat apps")
+    draft_hash: str | None = Field(
+        None,
+        description="Hash of the draft; pass it to an import as draft_hash to refuse overwriting newer edits. "
+        "Workflow and advanced-chat apps only",
+    )
 
 
 class AppDescribeResponse(Hinted):
