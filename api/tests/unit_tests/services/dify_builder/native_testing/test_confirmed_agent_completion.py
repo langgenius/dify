@@ -821,6 +821,8 @@ def declining(
     from models.dify_builder_native_tests import (
         NativeContinuation,
         NativeDispatch,
+        NativeEffectDispatchClaim,
+        NativeEffectOutcome,
         NativePayloadObject,
         NativeTestInvocation,
     )
@@ -851,6 +853,8 @@ def declining(
             WorkflowPauseReason,
             NativeContinuation,
             NativeDispatch,
+            NativeEffectDispatchClaim,
+            NativeEffectOutcome,
             NativePayloadObject,
             NativeTestInvocation,
         ):
@@ -3283,9 +3287,16 @@ def test_running_cancel_observes_native_cancelled_child_without_rewriting_failed
                 ],
             }
         )
-        node.execution_metadata = json.dumps(
-            {"agent_backend": {"run_id": "original-child", "terminal_event_id": "102-0", "status": "cancelled"}}
+        from clients.agent_backend import AgentBackendRunCancelledInternalEvent
+        from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+
+        produced = WorkflowAgentOutputAdapter().build_failure_result(
+            event=AgentBackendRunCancelledInternalEvent(run_id="original-child", source_event_id="102-0"),
+            inputs={},
+            process_data=json.loads(node.process_data),
+            metadata={},
         )
+        node.execution_metadata = json.dumps(produced.metadata)
         operation.state, operation.result_ref = "completed", "existing-result"
         sql.add(
             NativeEffectDispatchClaim(
@@ -3312,13 +3323,25 @@ def test_running_cancel_observes_native_cancelled_child_without_rewriting_failed
                 )
             )
         if fault == "business-failure":
-            node.execution_metadata = json.dumps({"agent_backend": {"run_id": "original-child", "status": "failed"}})
+            node.execution_metadata = json.dumps(
+                {"agent_log": {"agent_backend": {"run_id": "original-child", "status": "failed"}}}
+            )
         elif fault == "foreign-child":
             node.execution_metadata = json.dumps(
-                {"agent_backend": {"run_id": "foreign-child", "terminal_event_id": "102-0", "status": "cancelled"}}
+                {
+                    "agent_log": {
+                        "agent_backend": {
+                            "run_id": "foreign-child",
+                            "terminal_event_id": "102-0",
+                            "status": "cancelled",
+                        }
+                    }
+                }
             )
         elif fault == "missing-event":
-            node.execution_metadata = json.dumps({"agent_backend": {"run_id": "original-child", "status": "cancelled"}})
+            node.execution_metadata = json.dumps(
+                {"agent_log": {"agent_backend": {"run_id": "original-child", "status": "cancelled"}}}
+            )
         elif fault == "unknown-source":
             source = sql.get(NativeDispatch, "source")
             if source is not None:
@@ -3490,3 +3513,322 @@ def test_running_cancel_observes_native_cancelled_child_without_rewriting_failed
         assert owner.repo.get_session(owner.session.id)[0].version == version
     else:
         assert owner.repo.get_run(owner.verify_id).status == "running"
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "business-failure",
+        "unknown",
+        "physical-claim",
+        "sdk-unavailable",
+        "wrong-child",
+        "child-running",
+        "source-race",
+        "association-race",
+        "generation-race",
+        "sweeper-sdk-unavailable",
+        "receipt-drift",
+    ],
+)
+def test_revocation_before_child_terminal_consumption_observes_original_cancelled_child(
+    declining: CompletedOwner, fault: str | None
+) -> None:
+    """Local smoke: cancelled scope rejects restore before native consumes child cancellation."""
+    from contextlib import contextmanager
+
+    from models.dify_builder_native_tests import NativeDispatch, NativeEffectDispatchClaim, NativeEffectOutcome
+
+    owner = declining
+    with owner.factory.begin() as sql:
+        for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
+            model.__table__.create(sql.connection(), checkfirst=True)
+        native = sql.get(WorkflowRun, owner.native_id)
+        root = sql.scalar(select(NativeInvocationState))
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        source = sql.get(NativeDispatch, "source")
+        assert native is not None
+        assert root is not None
+        assert request is not None
+        assert source is not None
+        native.status, root.state, request.state, source.state = "running", "running", "running", "claimed"
+        if fault == "sweeper-sdk-unavailable":
+            source.claim_expires_at = datetime(2020, 1, 1)
+    owner.commands.cancel(
+        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id, idempotency_key="early-cancel"
+    )
+    with owner.factory.begin() as sql:
+        native = sql.get(WorkflowRun, owner.native_id)
+        node = sql.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent"))
+        assert native is not None
+        assert node is not None
+        native.status = node.status = "failed"
+        native.error = node.error = "Builder execution policy refused: native_invocation_mismatch"
+        native.finished_at = datetime(2026, 1, 2)
+        node.agent_workspace_binding_id = "workspace-binding"
+        node.process_data = json.dumps(
+            {
+                "workflow_agent_binding_id": "original-binding",
+                "agent_create_attempts": [
+                    {"attempt": 0, "key": "original-create", "digest": "a" * 64, "child_run_id": "original-child"}
+                ],
+            }
+        )
+        from services.workflow_runtime.agent_node import DifyAgentNode
+
+        produced = DifyAgentNode._failure_event(
+            inputs={},
+            process_data=json.loads(node.process_data),
+            metadata={"agent_backend": {"status": "not_started"}},
+            error=native.error,
+            error_type="agent_workflow_node_runtime_error",
+        ).node_run_result
+        node.execution_metadata = json.dumps(produced.metadata)
+        if fault == "business-failure":
+            native.error = node.error = "Ordinary business failure"
+        elif fault == "unknown":
+            operation = sql.scalar(select(NativeEffectOperation))
+            assert operation is not None
+            operation.state = "unknown"
+        elif fault == "physical-claim":
+            operation = sql.scalar(select(NativeEffectOperation))
+            assert operation is not None
+            sql.add(
+                NativeEffectDispatchClaim(
+                    id="in-flight",
+                    tenant_id=owner.case.actor.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id=owner.ref.invocation_id,
+                    operation_id=operation.id,
+                    attempt_id="attempt",
+                    claimed_at=datetime(2026, 1, 1),
+                )
+            )
+    locked = owner.commands.loader.locked
+
+    @contextmanager
+    def writer(**values: object):
+        with locked(**values) as rows:
+            owner.writer_depth += 1
+            try:
+                yield rows
+            finally:
+                owner.writer_depth -= 1
+
+    owner.commands.loader.locked = writer
+    reads = []
+
+    def read_original_child(child: str) -> RunStatusResponse:
+        assert owner.writer_depth == 0
+        assert child == "original-child"
+        reads.append(child)
+        if fault in {"sdk-unavailable", "sweeper-sdk-unavailable"}:
+            raise ConnectionError("temporary status failure")
+        if fault in {"source-race", "association-race", "generation-race"}:
+            with owner.factory.begin() as sql:
+                if fault == "source-race":
+                    source = sql.get(NativeDispatch, "source")
+                    assert source is not None
+                    source.state = "unknown"
+                elif fault == "association-race":
+                    node = sql.scalar(
+                        select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent")
+                    )
+                    assert node is not None
+                    node.process_data = node.process_data.replace("original-child", "other-child")
+                else:
+                    scope = sql.get(NativeTestScope, owner.request_id)
+                    assert scope is not None
+                    scope.generation += 1
+        return RunStatusResponse.model_validate(
+            {
+                "run_id": "other-child" if fault == "wrong-child" else child,
+                "status": "running" if fault == "child-running" else "cancelled",
+                "created_at": datetime(2026, 1, 1),
+                "updated_at": datetime(2026, 1, 2),
+            }
+        )
+
+    owner.commands.backend.client.get_run_sync = read_original_child
+    if fault == "sweeper-sdk-unavailable":
+        from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+
+        service = ProfiledNativeTestCommands(
+            sessions=owner.factory,
+            actor=owner.case.actor,
+            confirmed_factory=lambda: owner.commands,
+            legacy_factory=lambda: pytest.fail("early cancellation changed runtime profile"),
+        )
+        service.reconcile_pending(
+            actor=owner.case.actor,
+            session_id=owner.session.id,
+            request_id=owner.request_id,
+            publish=lambda **_: pytest.fail("revoked request published work"),
+        )
+        with owner.factory() as sql:
+            source = sql.get(NativeDispatch, "source")
+            assert source is not None
+            assert source.state == "claimed"
+        receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+    else:
+        receipt = owner.commands.get(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+    with owner.factory() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        native = sql.get(WorkflowRun, owner.native_id)
+        node = sql.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent"))
+        state = sql.scalar(select(NativeInvocationState))
+        assert request is not None
+        assert native is not None
+        assert node is not None
+        assert state is not None
+        assert (request.state == "sealed") is (fault in {None, "receipt-drift"})
+        assert (state.outcome is not None) is (fault in {None, "receipt-drift"})
+        assert native.status == "failed"
+        assert native.error == (
+            "Ordinary business failure"
+            if fault == "business-failure"
+            else "Builder execution policy refused: native_invocation_mismatch"
+        )
+        assert native.finished_at == datetime(2026, 1, 2)
+        assert node.execution_metadata_dict == {"agent_log": {"agent_backend": {"status": "not_started"}}}
+        assert not state.cleanup_complete
+    assert reads == ([] if fault in {"business-failure", "unknown", "physical-claim"} else ["original-child"])
+    assert owner.cancel_calls == ["original-child"]
+    if fault in {None, "receipt-drift"}:
+        assert (receipt.status, receipt.outcome, receipt.native_status) == ("terminal", "cancelled", "failed")
+        assert owner.repo.get_run(owner.verify_id).status == "failed"
+        version = owner.repo.get_session(owner.session.id)[0].version
+        owner.commands.backend.client.get_run_sync = lambda _: pytest.fail(
+            "saved cancellation queried retained backend state"
+        )
+        receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+        assert (receipt.status, receipt.outcome, receipt.native_status) == ("terminal", "cancelled", "failed")
+        owner.commands.get(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+        assert owner.repo.get_session(owner.session.id)[0].version == version
+        if fault == "receipt-drift":
+            with owner.factory.begin() as sql:
+                request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+                assert request is not None
+                request.observations = [
+                    {
+                        "confirmed_agent_cancelled_child_v1": {
+                            **record["confirmed_agent_cancelled_child_v1"],
+                            "child_run_id": "other-child",
+                        }
+                    }
+                    if "confirmed_agent_cancelled_child_v1" in record
+                    else record
+                    for record in request.observations
+                ]
+            receipt = owner.commands.peek(
+                actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id
+            )
+            assert receipt.status == "running"
+
+
+@pytest.mark.parametrize("dispatch_state", ["queued", "published"])
+@pytest.mark.parametrize("fault", [None, "claimed", "unknown", "claim-race", "physical-claim"])
+def test_cancel_before_queued_resume_claim_stops_original_pause(
+    declining: CompletedOwner, dispatch_state: str, fault: str | None
+) -> None:
+    """A queued resume grants no worker claim; cancellation must close its original pause."""
+    from models.dify_builder_native_tests import (
+        NativeDispatch,
+        NativeEffectDispatchClaim,
+        NativeEffectOutcome,
+        NativePayloadObject,
+    )
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+
+    owner = declining
+    with owner.factory.begin() as sql:
+        for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
+            model.__table__.create(sql.connection(), checkfirst=True)
+        root = sql.scalar(select(NativeInvocationState))
+        scope = sql.get(NativeTestScope, owner.request_id)
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        assert root is not None
+        assert scope is not None
+        assert request is not None
+        root.generation = scope.generation = 2
+        root.state, request.state = "queued", "running"
+        sql.add(
+            NativeDispatch(
+                id="queued-source",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                generation=2,
+                state=fault if fault in {"claimed", "unknown"} else dispatch_state,
+                checkpoint_id=root.checkpoint_id,
+                idempotency_digest="e" * 64,
+            )
+        )
+        sql.add(
+            NativePayloadObject(
+                id="context",
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id=owner.ref.invocation_id,
+                kind="context",
+                logical_key="context",
+                storage_key="original-context",
+                payload_digest="b" * 64,
+                value_digest="c" * 64,
+            )
+        )
+        if fault in {"claimed", "unknown"}:
+            root.state = "running"
+        if fault == "physical-claim":
+            operation = sql.scalar(select(NativeEffectOperation))
+            assert operation is not None
+            sql.add(
+                NativeEffectDispatchClaim(
+                    id="unsettled",
+                    tenant_id=owner.case.actor.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id=owner.ref.invocation_id,
+                    operation_id=operation.id,
+                    attempt_id="attempt",
+                    claimed_at=datetime(2026, 1, 1),
+                )
+            )
+    if fault == "claim-race":
+        read_status = owner.commands.backend.client.get_run_sync
+
+        def claimed_during_observation(child: str) -> RunStatusResponse:
+            response = read_status(child)
+            with owner.factory.begin() as sql:
+                source = sql.get(NativeDispatch, "queued-source")
+                assert source is not None
+                source.state, source.claim_expires_at = "claimed", datetime(2026, 1, 2)
+            return response
+
+        owner.commands.backend.client.get_run_sync = claimed_during_observation
+    owner.commands.api.lifecycle.cancel = NativeTestLifecycleService.cancel.__get__(owner.commands.api.lifecycle)
+    receipt = owner.commands.cancel(
+        actor=owner.case.actor,
+        session_id=owner.session.id,
+        request_id=owner.request_id,
+        idempotency_key="queued-cancel",
+    )
+    assert (receipt.status == "terminal") is (fault is None)
+    with owner.factory() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        source = sql.get(NativeDispatch, "queued-source")
+        state = sql.scalar(select(NativeInvocationState))
+        assert request is not None
+        assert source is not None
+        assert state is not None
+        assert (request.state == "sealed") is (fault is None)
+        assert source.state == (
+            "claimed" if fault in {"claimed", "claim-race"} else "unknown" if fault == "unknown" else "cancelled"
+        )
+        if fault is None:
+            assert source.claim_expires_at is None
+        assert not state.cleanup_complete
+    assert owner.cancel_calls == ["original-child"]
+    if fault is None:
+        receipt = owner.commands.peek(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+        assert (receipt.status, receipt.outcome, receipt.native_status) == ("terminal", "cancelled", "stopped")
