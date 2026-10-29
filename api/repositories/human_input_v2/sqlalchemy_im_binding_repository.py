@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from typing import override
 
 import sqlalchemy as sa
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -162,17 +163,18 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
             key=lambda binding: binding.id,
         )
         for record in previous_bindings:
-            deleted_id = self._session.scalar(
+            result = self._session.execute(
                 sa.delete(HumanInputIMBinding)
                 .where(
                     HumanInputIMBinding.channel_id == str(self._channel_id),
                     HumanInputIMBinding.id == record.id,
                     HumanInputIMBinding.im_identity_id == record.im_identity_id,
                 )
-                .returning(HumanInputIMBinding.id)
                 .execution_options(autoflush=False)
             )
-            if deleted_id is None:
+            if not isinstance(result, CursorResult):
+                raise TypeError("Conditional IM Binding deletion did not return a cursor result")
+            if result.rowcount != 1:
                 raise IMBindingConflictError("Default IM Binding changed concurrently")
         return self._insert_default(assignment, bound_by_account_id=bound_by_account_id)
 
@@ -215,7 +217,7 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
         if record is not None:
             # A new Binding ID invalidates cards frozen before this replacement.
             # Delete only the observed override within the caller's transaction.
-            deleted_id = self._session.scalar(
+            result = self._session.execute(
                 sa.delete(HumanInputIMBindingWorkspaceOverride)
                 .where(
                     HumanInputIMBindingWorkspaceOverride.channel_id == str(self._channel_id),
@@ -223,10 +225,11 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
                     HumanInputIMBindingWorkspaceOverride.id == record.id,
                     HumanInputIMBindingWorkspaceOverride.im_identity_id == record.im_identity_id,
                 )
-                .returning(HumanInputIMBindingWorkspaceOverride.id)
                 .execution_options(autoflush=False)
             )
-            if deleted_id is None:
+            if not isinstance(result, CursorResult):
+                raise TypeError("Conditional workspace IM Binding deletion did not return a cursor result")
+            if result.rowcount != 1:
                 raise IMBindingConflictError("Workspace IM Binding changed concurrently")
 
         record = HumanInputIMBindingWorkspaceOverride(

@@ -84,7 +84,7 @@ class SQLAlchemyDeliveryRepository(DeliveryRepository):
             if target.message_locator != message_locator:
                 raise ValueError(f"IM delivery {delivery_id} already has a different message locator")
             return _to_delivery(record)
-        record = self._session.scalars(
+        self._session.execute(
             sa.update(HumanInputDelivery)
             .where(*owner_predicates)
             .values(
@@ -93,9 +93,9 @@ class SQLAlchemyDeliveryRepository(DeliveryRepository):
                     HumanInputDelivery.updated_at: naive_utc_now(),
                 }
             )
-            .returning(HumanInputDelivery)
-            .execution_options(autoflush=False, populate_existing=True)
-        ).one()
+            .execution_options(autoflush=False)
+        )
+        record = self._session.scalars(self._query().where(*owner_predicates)).one()
         return _to_delivery(record)
 
     @override
@@ -114,11 +114,13 @@ class SQLAlchemyDeliveryRepository(DeliveryRepository):
             "created_at": now,
             "updated_at": now,
         }
+        self._session.execute(sa.insert(HumanInputDelivery).values(**values).execution_options(autoflush=False))
         record = self._session.scalars(
-            sa.insert(HumanInputDelivery)
-            .values(**values)
-            .returning(HumanInputDelivery)
-            .execution_options(autoflush=False)
+            self._query().where(
+                HumanInputDelivery.tenant_id == tenant_id,
+                HumanInputDelivery.form_id == form_id,
+                HumanInputDelivery.id == delivery_id,
+            )
         ).one()
         return _to_delivery(record)
 
