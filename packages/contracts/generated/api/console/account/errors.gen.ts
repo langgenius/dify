@@ -162,15 +162,13 @@ const zInvalidAccountPasswordError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-export const postErrors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post2Errors = {
+export const postErrors = {
   account_in_freeze: { status: 400, data: zAccountInFreezeError },
   email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
   email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
 }
 
-export const post3Errors = {
+export const post2Errors = {
   account_in_freeze: { status: 400, data: zAccountInFreezeError },
   account_not_found: { status: 400, data: zAccountNotFoundError },
   email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
@@ -178,14 +176,14 @@ export const post3Errors = {
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post4Errors = {
+export const post3Errors = {
   email_change_limit: { status: 429, data: zEmailChangeLimitError },
   email_code_error: { status: 400, data: zEmailCodeError },
   invalid_email: { status: 400, data: zInvalidEmailError },
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post5Errors = {
+export const post4Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
   email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
   email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
@@ -201,7 +199,7 @@ export const get2Errors = {
   },
 }
 
-export const post7Errors = {
+export const post6Errors = {
   invalid_account_deletion_code: { status: 400, data: zInvalidAccountDeletionCodeError },
 }
 
@@ -210,25 +208,19 @@ export const get4Errors = {
   education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
 }
 
-export const post8Errors = {
+export const post7Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
   education_activate_limit: { status: 429, data: zEducationActivateLimitError },
 }
 
-export const post9Errors = {
+export const post8Errors = {
   account_already_inited: { status: 400, data: zAccountAlreadyInitedError },
   account_not_found: { status: 400, data: zAccountNotFoundError },
   invalid_invitation_code: { status: 400, data: zInvalidInvitationCodeError },
   missing_invitation_code: { status: 400, data: zMissingInvitationCodeError },
 }
 
-export const post10Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post11Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post12Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post13Errors = {
+export const post9Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
   current_password_incorrect: { status: 400, data: zCurrentPasswordIncorrectError },
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
@@ -237,5 +229,3 @@ export const post13Errors = {
 export const get7Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
 
 export const patchErrors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post14Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }

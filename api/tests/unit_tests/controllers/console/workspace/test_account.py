@@ -28,7 +28,6 @@ from controllers.console.error import (
 )
 from controllers.console.workspace.account import (
     AccountAvatarApi,
-    AccountAvatarPayload,
     AccountAvatarQuery,
     AccountDeleteApi,
     AccountDeletePayload,
@@ -38,18 +37,10 @@ from controllers.console.workspace.account import (
     AccountInitApi,
     AccountInitPayload,
     AccountIntegrateApi,
-    AccountInterfaceLanguageApi,
-    AccountInterfaceLanguagePayload,
-    AccountInterfaceThemeApi,
-    AccountInterfaceThemePayload,
-    AccountNameApi,
-    AccountNamePayload,
     AccountPasswordApi,
     AccountPasswordPayload,
     AccountProfileApi,
     AccountProfilePatchPayload,
-    AccountTimezoneApi,
-    AccountTimezonePayload,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
     ChangeEmailResetPayload,
@@ -723,76 +714,6 @@ class TestAccountsCases:
             assert result["id"] == user.id
             get_profile.assert_called_once_with(request_context)
 
-    class TestAccountUpdateApis:
-        @pytest.mark.parametrize(
-            ("api_cls", "payload_model", "payload", "expected_changes"),
-            [
-                (AccountNameApi, AccountNamePayload, {"name": "test"}, AccountProfileChanges(name="test")),
-                (
-                    AccountAvatarApi,
-                    AccountAvatarPayload,
-                    {"avatar": "img.png"},
-                    AccountProfileChanges(avatar="img.png"),
-                ),
-                (
-                    AccountInterfaceLanguageApi,
-                    AccountInterfaceLanguagePayload,
-                    {"interface_language": "en-US"},
-                    AccountProfileChanges(interface_language="en-US"),
-                ),
-                (
-                    AccountInterfaceThemeApi,
-                    AccountInterfaceThemePayload,
-                    {"interface_theme": "dark"},
-                    AccountProfileChanges(interface_theme="dark"),
-                ),
-                (
-                    AccountTimezoneApi,
-                    AccountTimezonePayload,
-                    {"timezone": "UTC"},
-                    AccountProfileChanges(timezone="UTC"),
-                ),
-            ],
-        )
-        def test_deprecated_update_routes_delegate_to_profile_service(
-            self,
-            app: Flask,
-            account_services: AccountServices,
-            api_cls,
-            payload_model,
-            payload,
-            expected_changes: AccountProfileChanges,
-        ):
-            api = api_cls()
-            method = inspect.unwrap(api.post)
-            user = make_account()
-            request_context = RequestContext(
-                request_id="request-1",
-                trace_id=None,
-                account_id=user.id,
-                active_workspace_id="workspace-1",
-            )
-            update_profile = MagicMock(return_value=user)
-
-            with (
-                app.test_request_context("/", json=payload),
-                patch.object(account_services.profile, "update", update_profile),
-            ):
-                result = method(api, payload_model.model_validate(payload), request_context)
-
-            assert result["id"] == user.id
-            update_profile.assert_called_once_with(request_context, expected_changes)
-
-        def test_deprecated_update_routes_are_marked_deprecated(self):
-            for api_cls in (
-                AccountNameApi,
-                AccountAvatarApi,
-                AccountInterfaceLanguageApi,
-                AccountInterfaceThemeApi,
-                AccountTimezoneApi,
-            ):
-                assert api_cls.post.__apidoc__["deprecated"] is True
-
     class TestAccountProfilePatchApi:
         def test_json_schema_matches_runtime_patch_rules(self):
             schema = AccountProfilePatchPayload.model_json_schema()
@@ -939,13 +860,13 @@ class TestAccountsCases:
 
             assert exc_info.value.code == 422
 
-    class TestConvertedPostDecorator:
+    class TestConvertedPatchDecorator:
         def test_rejects_an_invalid_body_through_the_decorator(self, app: Flask):
-            """The decorator validates the JSON body before the view runs, for the POST handlers too."""
+            """The decorator validates the JSON body before the PATCH handler runs."""
             account = make_account()
 
             with (
-                app.test_request_context("/account/name", method="POST", json={}),
+                app.test_request_context("/account/profile", method="PATCH", json={"name": None}),
                 patch("controllers.console.wraps._is_setup_completed", return_value=True),
                 config_overrides_context(LOGIN_DISABLED=True),
                 patch(
@@ -958,7 +879,7 @@ class TestAccountsCases:
                 ),
             ):
                 with pytest.raises(UnprocessableEntity) as exc_info:
-                    AccountNameApi().post()
+                    AccountProfileApi().patch()
 
             assert exc_info.value.code == 422
 
