@@ -1,14 +1,15 @@
 'use client'
 
-import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
-import type { RadioGroup as BaseRadioGroupNS } from '@base-ui/react/radio-group'
 import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { checkedControlFocusClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-type RadioGroupProps<Value = string> = BaseRadioGroupNS.Props<Value>
+type RadioGroupProps<Value = string> = BaseRadioGroup.Props<Value>
+type RadioGroupChangeEventReason = BaseRadioGroup.ChangeEventReason
+type RadioGroupChangeEventDetails = BaseRadioGroup.ChangeEventDetails
 
 function RadioGroup<Value = string>({ className, ...props }: RadioGroupProps<Value>) {
   return (
@@ -19,13 +20,13 @@ function RadioGroup<Value = string>({ className, ...props }: RadioGroupProps<Val
   )
 }
 
-type RadioItemProps<Value = string> = BaseRadioNS.Root.Props<Value>
+type RadioItemProps<Value = string> = BaseRadio.Root.Props<Value>
 
 function RadioItem<Value = string>({ className, ...props }: RadioItemProps<Value>) {
   return <BaseRadio.Root<Value> className={className} {...props} />
 }
 
-type RadioControlProps = Omit<BaseRadioNS.Indicator.Props, 'children' | 'keepMounted'>
+type RadioControlProps = Omit<BaseRadio.Indicator.Props, 'children' | 'keepMounted'>
 
 function RadioControl({ className, ...props }: RadioControlProps) {
   return (
@@ -34,10 +35,9 @@ function RadioControl({ className, ...props }: RadioControlProps) {
       keepMounted
       className={(state) =>
         cn(
-          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
+          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0',
           'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
           'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
-          'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-offset-0 focus-visible:outline-hidden',
           'data-checked:border-[5px] data-checked:border-components-radio-border-checked data-checked:hover:border-components-radio-border-checked-hover',
           'data-disabled:cursor-not-allowed data-disabled:border-components-radio-border-disabled data-disabled:bg-components-radio-bg-disabled',
           'data-disabled:hover:border-components-radio-border-disabled data-disabled:hover:bg-components-radio-bg-disabled',
@@ -57,10 +57,10 @@ function Radio<Value = string>({ className, ...props }: RadioProps<Value>) {
     <BaseRadio.Root<Value>
       className={(state) =>
         cn(
-          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
+          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0',
           'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
           'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
-          'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-offset-0 focus-visible:outline-hidden',
+          checkedControlFocusClassName,
           'data-checked:border-[5px] data-checked:border-components-radio-border-checked data-checked:hover:border-components-radio-border-checked-hover',
           'data-disabled:cursor-not-allowed data-disabled:border-components-radio-border-disabled data-disabled:bg-components-radio-bg-disabled',
           'data-disabled:hover:border-components-radio-border-disabled data-disabled:hover:bg-components-radio-bg-disabled',
@@ -87,4 +87,12 @@ function RadioSkeleton({ className, ...props }: RadioSkeletonProps) {
 
 export { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton }
 
-export type { RadioControlProps, RadioGroupProps, RadioItemProps, RadioProps, RadioSkeletonProps }
+export type {
+  RadioControlProps,
+  RadioGroupChangeEventDetails,
+  RadioGroupChangeEventReason,
+  RadioGroupProps,
+  RadioItemProps,
+  RadioProps,
+  RadioSkeletonProps,
+}

@@ -17,11 +17,10 @@ import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useTheme from '@/hooks/use-theme'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 import Badge from '../../base/badge'
 import Verified from '../base/badges/verified'
 import Description from '../card/base/description'
@@ -105,11 +104,9 @@ const PluginItem: FC<Props> = ({
 
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
+  const titleId = React.useId()
   const descriptionText = getValueFromI18nObject(description)
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? iconFileName.startsWith('http')
@@ -120,17 +117,20 @@ const PluginItem: FC<Props> = ({
   return (
     <div
       className={cn(
-        'group/plugin-item relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl p-0.75',
+        'group/plugin-item relative flex min-w-[min(100%,496px)] flex-1 flex-col overflow-hidden rounded-xl p-0.75',
         selectedPluginID === plugin_id &&
           "after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:inset-ring-[1.5px] after:inset-ring-components-option-card-option-selected-border after:content-['']",
         source === PluginSource.debugging
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
           : 'bg-background-section-burn',
       )}
-      onClick={() => {
-        setSelectedItem({ type: 'plugin', id: plugin.plugin_id })
-      }}
     >
+      <button
+        type="button"
+        aria-labelledby={titleId}
+        className="absolute inset-0 z-10 cursor-pointer rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+        onClick={() => setSelectedItem({ type: 'plugin', id: plugin.plugin_id })}
+      />
       <div
         className={cn(
           'relative rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3',
@@ -152,7 +152,9 @@ const PluginItem: FC<Props> = ({
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
-              <Title title={title} />
+              <div id={titleId} className="min-w-0">
+                <Title title={title} />
+              </div>
               {verified && (
                 <Verified
                   className="ml-0.5 size-4"
@@ -167,7 +169,7 @@ const PluginItem: FC<Props> = ({
                       ns: 'plugin',
                       minimalDifyVersion: declarationMeta.minimum_dify_version ?? '0.0.0',
                     })}
-                    className="ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
+                    className="relative z-20 ml-0.5 inline-flex size-4 shrink-0 border-0 bg-transparent p-0"
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
@@ -195,10 +197,7 @@ const PluginItem: FC<Props> = ({
                 text={descriptionText}
                 descriptionLineRows={1}
               />
-              <div
-                className="pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 opacity-0 transition-opacity group-focus-within/plugin-item:pointer-events-auto group-focus-within/plugin-item:opacity-100 group-hover/plugin-item:pointer-events-auto group-hover/plugin-item:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <div className="pointer-events-none absolute top-1/2 right-0 z-20 -translate-y-1/2 opacity-0 transition-opacity group-focus-within/plugin-item:pointer-events-auto group-focus-within/plugin-item:opacity-100 group-hover/plugin-item:pointer-events-auto group-hover/plugin-item:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
                 <Action
                   pluginUniqueIdentifier={plugin_unique_identifier}
                   installationId={installation_id}
@@ -247,7 +246,7 @@ const PluginItem: FC<Props> = ({
               <a
                 href={`https://github.com/${meta!.repo}`}
                 target="_blank"
-                className="flex items-center gap-1"
+                className="relative z-20 flex items-center gap-1"
               >
                 <div className="system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $.from, { ns: 'plugin' })}
@@ -260,12 +259,12 @@ const PluginItem: FC<Props> = ({
               </a>
             </>
           )}
-          {source === PluginSource.marketplace && enable_marketplace && (
+          {source === PluginSource.marketplace && marketplace && (
             <>
               <a
-                href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
+                href={marketplace.plugin({ org: author, name }, { theme })}
                 target="_blank"
-                className="flex items-center gap-0.5"
+                className="relative z-20 flex items-center gap-0.5"
               >
                 <div className="system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $.from, { ns: 'plugin' })}{' '}
@@ -295,7 +294,7 @@ const PluginItem: FC<Props> = ({
           )}
         </div>
         {/* Deprecated */}
-        {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
+        {source === PluginSource.marketplace && marketplace && isDeprecated && (
           <div className="flex shrink-0 items-center gap-x-2 system-2xs-medium-uppercase">
             <span className="text-text-tertiary">·</span>
             <span className="text-text-warning">{t(($) => $.deprecated, { ns: 'plugin' })}</span>
@@ -303,7 +302,7 @@ const PluginItem: FC<Props> = ({
         )}
       </div>
       {/* BG Effect for Deprecated Plugin */}
-      {source === PluginSource.marketplace && enable_marketplace && isDeprecated && (
+      {source === PluginSource.marketplace && marketplace && isDeprecated && (
         <div className="absolute -right-11.25 -bottom-17.75 z-0 size-40 bg-components-badge-status-light-warning-halo opacity-60 blur-[120px]" />
       )}
     </div>

@@ -8,7 +8,6 @@ const InSiteMessageNotification = dynamic(
   () => import('@/app/components/app/in-site-message/notification'),
   { ssr: false },
 )
-const PartnerStack = dynamic(() => import('@/app/components/billing/partner-stack'), { ssr: false })
 const ReadmePanel = dynamic(() => import('@/app/components/plugins/readme-panel'), { ssr: false })
 const WorkflowGeneratorMount = dynamic(
   () => import('@/app/components/workflow/workflow-generator/mount'),
@@ -23,7 +22,6 @@ export function CommonLayoutGlobalMounts() {
   return (
     <>
       <InSiteMessageNotification />
-      <PartnerStack />
       <ReadmePanel />
       <GotoAnything />
       <WorkflowGeneratorMount />

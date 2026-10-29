@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Următoarele 5 momente de execuție",
   "nodes.triggerSchedule.onMinute": "Într-un minut",
   "nodes.triggerSchedule.selectFrequency": "Selectați frecvența",
-  "nodes.triggerSchedule.selectTime": "Selectează ora",
   "nodes.triggerSchedule.title": "Program",
   "nodes.triggerSchedule.useCronExpression": "Utilizați expresie cron",
   "nodes.triggerSchedule.useVisualPicker": "Utilizați selectorul vizual",

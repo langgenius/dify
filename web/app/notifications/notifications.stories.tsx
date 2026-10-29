@@ -1,45 +1,10 @@
-import type { ToastApi, ToastManager, ToastViewportProps } from '@langgenius/dify-ui/toast'
+import type { ToastApi } from '@langgenius/dify-ui/toast'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import {
-  createToast,
-  createToastManager,
-  ToastCard,
-  ToastPortal,
-  ToastProvider,
-  ToastViewport,
-  useToastManager,
-} from '@langgenius/dify-ui/toast'
+import { createToast, createToastManager, Toaster } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { expect, spyOn, userEvent, within } from 'storybook/test'
 import { toast as globalToast } from '.'
-import { AppToastHost } from './host'
-
-function ToastCards() {
-  const { toasts } = useToastManager<Record<string, never>>()
-  return toasts.map((item) => <ToastCard key={item.id} toast={item} />)
-}
-
-function ExampleToastHost({
-  manager,
-  timeout,
-  limit,
-  offset,
-}: {
-  manager: ToastManager
-  timeout?: number
-  limit?: number
-  offset?: ToastViewportProps['offset']
-}) {
-  return (
-    <ToastProvider toastManager={manager} timeout={timeout} limit={limit}>
-      <ToastPortal>
-        <ToastViewport offset={offset}>
-          <ToastCards />
-        </ToastViewport>
-      </ToastPortal>
-    </ToastProvider>
-  )
-}
+import { AppToaster } from './app-toaster'
 
 type Scenario = { label: string; run: (toast: ToastApi) => void }
 type PlaygroundProps = {
@@ -98,9 +63,9 @@ function Playground({
         />
       </label>
       {primitive ? (
-        <ExampleToastHost manager={manager} timeout={timeout} limit={limit} />
+        <Toaster toastManager={manager} timeout={timeout} limit={limit} />
       ) : (
-        <AppToastHost manager={manager} timeout={timeout} limit={limit} />
+        <AppToaster manager={manager} timeout={timeout} limit={limit} />
       )}
     </main>
   )
@@ -120,9 +85,8 @@ type Story = StoryObj<typeof meta>
 export const Tones: Story = {
   args: {
     description:
-      'Only error notifications gain an automatic copy action. Plain, success, warning, and info retain the primitive appearance.',
+      'Only error notifications gain an automatic copy action. Success, warning, and info retain the primitive appearance.',
     scenarios: [
-      { label: 'Plain', run: (toast) => toast('New activity') },
       {
         label: 'Success',
         run: (toast) => toast.success('Saved', { description: 'Your changes are available.' }),
@@ -551,8 +515,8 @@ function IsolatedHosts() {
           Dismiss right
         </button>
       </div>
-      <AppToastHost manager={left.manager} timeout={0} offset={{ top: 180, right: '52%' }} />
-      <AppToastHost manager={right.manager} timeout={0} offset={{ top: 60 }} />
+      <AppToaster manager={left.manager} timeout={0} offset={{ top: 180, right: '52%' }} />
+      <AppToaster manager={right.manager} timeout={0} offset={{ top: 60 }} />
     </main>
   )
 }
@@ -561,7 +525,7 @@ export const ScopedHostIsolation: Story = { render: () => <IsolatedHosts /> }
 export const GlobalWebInstance: Story = {
   args: {
     description:
-      'Uses the actual web singleton and the AppToastHost already mounted by the Storybook decorator. Copy, typed calls, and dismissals use the same entrypoint as application callers.',
+      'Uses the actual web singleton and the AppToaster already mounted by the Storybook decorator. Copy, typed calls, and dismissals use the same entrypoint as application callers.',
     scenarios: [
       {
         label: 'Global error',

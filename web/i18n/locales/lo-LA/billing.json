@@ -46,6 +46,7 @@
     "ການຊ່ວຍເຫຼືອຜ່ານ Email & Chat ແບບບຸລິມະສິດ"
   ],
   "plans.premium.includesTitle": "ລວມທຸກຢ່າງຈາກ Community ແລະ:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "ພຣີມຽມ (Premium)",
   "plans.premium.price": "ປັບຂະໜາດໄດ້",
   "plans.premium.priceTip": "ຂຶ້ນກັບ Cloud Marketplace",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "ປຽບທຽບແພັກເກດ ແລະ ຟີເຈີ",
   "plansCommon.currentPlan": "ແພັກເກດປັດຈຸບັນ",
   "plansCommon.days": "ມື້",
+  "plansCommon.discountedAnnualPrice": "ລາຄາລາຍປີຫຼັງຫຼຸດ: ",
   "plansCommon.documentProcessingPriority": "ບຸລິມະສິດການປະມວນຜົນເອກະສານ",
   "plansCommon.documentProcessingPriorityTip": "ສຳລັບບຸລິມະສິດການປະມວນຜົນເອກະສານທີ່ສູງກວ່າ, ກະລຸນາອັບເກຣດແພັກເກດຂອງທ່ານ.",
   "plansCommon.documentProcessingPriorityUpgrade": "ປະມວນຜົນຂໍ້ມູນໄດ້ຫຼາຍຂຶ້ນ ດ້ວຍຄວາມຖືກຕ້ອງ ແລະ ຄວາມໄວທີ່ສູງຂຶ້ນ.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "ຮອງຮັບ OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate",
   "plansCommon.month": "ເດືອນ",
   "plansCommon.mostPopular": "ຍອດນິຍົມ",
+  "plansCommon.originalAnnualPrice": "ລາຄາລາຍປີເດີມ: ",
   "plansCommon.priceTip": "ຕໍ່ພື້ນທີ່ເຮັດວຽກ/",
   "plansCommon.priority.priority": "ບຸລິມະສິດ",
   "plansCommon.priority.standard": "ມາດຕະຖານ",

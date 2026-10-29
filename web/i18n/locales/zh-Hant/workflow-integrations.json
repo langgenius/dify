@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "接下來的 5 次執行時間",
   "nodes.triggerSchedule.onMinute": "在一分鐘內",
   "nodes.triggerSchedule.selectFrequency": "選擇頻率",
-  "nodes.triggerSchedule.selectTime": "選擇時間",
   "nodes.triggerSchedule.title": "時間表",
   "nodes.triggerSchedule.useCronExpression": "使用 cron 表達式",
   "nodes.triggerSchedule.useVisualPicker": "使用視覺選擇器",

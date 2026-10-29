@@ -1,43 +1,47 @@
-from typing import Literal
+from collections.abc import Callable
+from functools import wraps
 from uuid import UUID
 
 from flask_restx import Resource
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    enterprise_license_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import model_validate
+from core.rbac import RBACPermission
+from extensions.ext_application_services import application_services
 from fields.dataset_fields import (
     DatasetMetadataBuiltInFieldsResponse,
     DatasetMetadataListResponse,
     DatasetMetadataResponse,
 )
 from libs.helper import dump_response
-from libs.login import login_required
-from models.account import Account
-from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.knowledge_entities import (
+from machinery.context import RequestContext
+from services.errors.metadata import MetadataResourceNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.knowledge.entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataArgs,
     MetadataDetail,
     MetadataOperationData,
 )
-from services.errors.metadata import MetadataResourceNotFoundError
-from services.metadata_service import MetadataService
+
+
+def metadata_errors[**P, T](method: Callable[P, T]) -> Callable[P, T]:
+    @wraps(method)
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+        try:
+            return method(*args, **kwargs)
+        except (DatasetNotFoundError, MetadataResourceNotFoundError) as error:
+            raise NotFound(str(error)) from error
+        except DatasetAccessDeniedError as error:
+            raise Forbidden(str(error)) from error
+
+    return wrapped
+
 
 register_schema_models(
     console_ns, MetadataArgs, MetadataOperationData, MetadataUpdatePayload, DocumentMetadataOperation, MetadataDetail
@@ -52,199 +56,111 @@ register_response_schema_models(
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")
 class DatasetMetadataCreateApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
     @console_ns.response(201, "Metadata created successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
-    @with_session
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    @metadata_errors
     @model_validate(MetadataArgs)
-    def post(
-        self,
-        req_data: MetadataArgs,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        dataset_id: UUID,
-    ):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, session)
-
-        metadata = MetadataService.create_metadata(
-            dataset_id_str, req_data, current_user, current_tenant_id, session=session
-        )
+    def post(self, req_data: MetadataArgs, request_context: RequestContext, dataset_id: UUID):
+        service = application_services().knowledge.metadata
+        ref = service.require_dataset(request_context, str(dataset_id))
+        metadata = service.create_metadata(ref, req_data, actor_id=request_context.account_id)
         return dump_response(DatasetMetadataResponse, metadata), 201
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
     @console_ns.response(
         200, "Metadata retrieved successfully", console_ns.models[DatasetMetadataListResponse.__name__]
     )
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()))
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
-        metadata = MetadataService.get_dataset_metadatas(dataset, session)
-        return dump_response(DatasetMetadataListResponse, metadata), 200
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),),
+    )
+    @metadata_errors
+    def get(self, request_context: RequestContext, dataset_id: UUID):
+        service = application_services().knowledge.metadata
+        ref = service.require_dataset(request_context, str(dataset_id))
+        return dump_response(DatasetMetadataListResponse, service.get_dataset_metadatas(ref)), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 class DatasetMetadataApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
     @console_ns.response(200, "Metadata updated successfully", console_ns.models[DatasetMetadataResponse.__name__])
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
-    @with_session
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    @metadata_errors
     @model_validate(MetadataUpdatePayload)
     def patch(
-        self,
-        req_data: MetadataUpdatePayload,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        dataset_id: UUID,
-        metadata_id: UUID,
+        self, req_data: MetadataUpdatePayload, request_context: RequestContext, dataset_id: UUID, metadata_id: UUID
     ):
-        name = req_data.name
-
-        dataset_id_str = str(dataset_id)
-        metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, session)
-
-        metadata = MetadataService.update_metadata_name(dataset, metadata_id_str, name, current_user, session=session)
+        service = application_services().knowledge.metadata
+        ref = service.require_dataset(request_context, str(dataset_id))
+        metadata = service.update_metadata_name(
+            ref, str(metadata_id), req_data.name, actor_id=request_context.account_id
+        )
         return dump_response(DatasetMetadataResponse, metadata), 200
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
     @console_ns.response(204, "Metadata deleted successfully")
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
-    @with_session
-    def delete(
-        self,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        dataset_id: UUID,
-        metadata_id: UUID,
-    ):
-        dataset_id_str = str(dataset_id)
-        metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, session)
-
-        MetadataService.delete_metadata(dataset, metadata_id_str, session)
-        # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    @metadata_errors
+    def delete(self, request_context: RequestContext, dataset_id: UUID, metadata_id: UUID):
+        service = application_services().knowledge.metadata
+        ref = service.require_dataset(request_context, str(dataset_id))
+        service.delete_metadata(ref, str(metadata_id))
         return "", 204
 
 
 @console_ns.route("/datasets/metadata/built-in")
 class DatasetMetadataBuiltInFieldApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
     @console_ns.response(
         200,
         "Built-in fields retrieved successfully",
         console_ns.models[DatasetMetadataBuiltInFieldsResponse.__name__],
     )
-    def get(self):
-        built_in_fields = MetadataService.get_built_in_fields()
-        return dump_response(DatasetMetadataBuiltInFieldsResponse, {"fields": built_in_fields}), 200
+    @console_account_admission()
+    @metadata_errors
+    def get(self, request_context: RequestContext):
+        fields = application_services().knowledge.metadata.get_built_in_fields()
+        return dump_response(DatasetMetadataBuiltInFieldsResponse, {"fields": fields}), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
 class DatasetMetadataBuiltInFieldActionApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
     @console_ns.response(204, "Action completed successfully")
-    @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
-    @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID, action: Literal["enable", "disable"]):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, session)
-
-        match action:
-            case "enable":
-                MetadataService.enable_built_in_field(dataset, session)
-            case "disable":
-                MetadataService.disable_built_in_field(dataset, session)
-        # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    @metadata_errors
+    def post(self, request_context: RequestContext, dataset_id: UUID, action: str):
+        service = application_services().knowledge.metadata
+        ref = service.require_dataset(request_context, str(dataset_id))
+        if action == "enable":
+            service.enable_built_in_field(ref)
+        elif action == "disable":
+            service.disable_built_in_field(ref)
+        else:
+            raise ValueError("Invalid action.")
         return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
 class DocumentMetadataEditApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @enterprise_license_required
     @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
     @console_ns.response(
         204,
         "Documents metadata updated successfully",
     )
     @console_ns.response(404, "Dataset, document, or metadata not found")
-    @with_current_user
-    @with_current_tenant_id
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()))
-    @with_session
+    @console_account_admission(
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
+    )
+    @metadata_errors
     @model_validate(MetadataOperationData)
-    def post(
-        self,
-        req_data: MetadataOperationData,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        dataset_id: UUID,
-    ):
-        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), current_tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user, session)
-
-        try:
-            MetadataService.update_documents_metadata(dataset, req_data, current_user, session=session)
-        except MetadataResourceNotFoundError as exc:
-            raise NotFound(str(exc)) from exc
-
-        # Frontend callers only await success and invalidate caches; no response body is consumed.
+    def post(self, req_data: MetadataOperationData, request_context: RequestContext, dataset_id: UUID):
+        service = application_services().knowledge.metadata
+        ref = service.require_dataset(request_context, str(dataset_id))
+        service.update_documents_metadata(ref, req_data, actor_id=request_context.account_id)
         return "", 204

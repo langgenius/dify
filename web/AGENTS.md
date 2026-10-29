@@ -1,5 +1,6 @@
 ## Frontend Workflow
 
+- Prefer vinext for frontend development. With a local backend, start the API separately and use `./dev/start-web` or `pnpm -C web dev` for the frontend only; the Dev Container `start-web` alias also starts only the frontend. For a remote backend, use root `pnpm dev` to start vinext and the API proxy. The local API and proxy both default to port 5001, so do not start both on that port. Switch to the Next.js development server (`pnpm -C web dev:next`) only when testing Next.js-specific functionality or investigating behavior that differs from Next.js.
 - Read `docs/test.md` only for frontend test work and `docs/lint.md` only when running or changing static checks.
 - Use the repo-local `how-to-write-component` skill when implementation requires component ownership, state, data-flow, effect, or interaction-boundary decisions. Do not load it for test-only, copy-only, or styling-only changes.
 - Use `frontend-code-review` only for explicit frontend review or audit requests, including test reviews. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
@@ -9,6 +10,7 @@
 Web owns application-specific requirements and consumes shared architecture guidance from skills and primitive contracts from Dify UI. Link to those owners instead of redefining their rules here.
 
 - For truncated text disclosure and native `title` decisions, follow [Truncated Text Disclosure].
+- Before adding or keeping a toast, follow [Toasts]. A toast is only for a result the user cannot see where they acted.
 - When adding or changing page layouts, navigation, or landmark elements, follow [Page landmarks] and inspect the composed page, including parent layouts.
 - User-facing strings must use `web/i18n/locales/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
 - For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/console`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
@@ -40,5 +42,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 [Input Group contract]: ../packages/dify-ui/src/input-group/README.md
 [Keyboard commands]: docs/hotkeys.md
 [Page landmarks]: docs/landmarks.md
+[Toasts]: docs/toasts.md
 [Truncated Text Disclosure]: docs/truncated-text-disclosure.md
 [form contract]: ../packages/dify-ui/docs/forms.md

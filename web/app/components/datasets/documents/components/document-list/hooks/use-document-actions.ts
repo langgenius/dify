@@ -1,17 +1,10 @@
-import type { CommonResponse } from '@/models/common'
-import { useCallback, useMemo } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { DocumentActionType } from '@/models/datasets'
-import {
-  useDocumentArchive,
-  useDocumentBatchRetryIndex,
-  useDocumentDelete,
-  useDocumentDisable,
-  useDocumentDownloadZip,
-  useDocumentEnable,
-  useDocumentSummary,
-} from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
+import { useDocumentDownloadZip } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { downloadBlob } from '@/utils/download'
 
@@ -44,12 +37,17 @@ export const useDocumentActions = ({
 }: UseDocumentActionsOptions) => {
   const { t } = useTranslation(['common'])
 
-  const { mutateAsync: archiveDocument } = useDocumentArchive()
-  const { mutateAsync: generateSummary } = useDocumentSummary()
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
-  const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
+  const documents = consoleQuery.datasets.byDatasetId.documents
+  const { mutateAsync: changeDocumentStatus } = useMutation(
+    documents.status.byAction.batch.patch.mutationOptions(),
+  )
+  const { mutateAsync: generateSummary } = useMutation(
+    documents.generateSummary.post.mutationOptions(),
+  )
+  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
+  const { mutateAsync: retryIndexDocuments } = useMutation(
+    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions(),
+  )
   const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
 
   type SupportedActionType =
@@ -59,27 +57,33 @@ export const useDocumentActions = ({
     | typeof DocumentActionType.disable
     | typeof DocumentActionType.delete
 
-  const actionMutationMap = useMemo(
-    () =>
-      ({
-        [DocumentActionType.archive]: archiveDocument,
-        [DocumentActionType.summary]: generateSummary,
-        [DocumentActionType.enable]: enableDocument,
-        [DocumentActionType.disable]: disableDocument,
-        [DocumentActionType.delete]: deleteDocument,
-      }) as const,
-    [archiveDocument, generateSummary, enableDocument, disableDocument, deleteDocument],
+  const runAction = useCallback(
+    (actionName: SupportedActionType): Promise<unknown> => {
+      switch (actionName) {
+        case DocumentActionType.summary:
+          return generateSummary({
+            params: { dataset_id: datasetId },
+            body: { document_list: selectedIds },
+          })
+        case DocumentActionType.delete:
+          return deleteDocuments({
+            params: { dataset_id: datasetId },
+            query: { document_id: selectedIds },
+          })
+        default:
+          return changeDocumentStatus({
+            params: { dataset_id: datasetId, action: actionName },
+            query: { document_id: selectedIds },
+          })
+      }
+    },
+    [changeDocumentStatus, datasetId, deleteDocuments, generateSummary, selectedIds],
   )
 
   const handleAction = useCallback(
     (actionName: SupportedActionType) => {
       return async () => {
-        const opApi = actionMutationMap[actionName]
-        if (!opApi) return
-
-        const [e] = await asyncRunSafe<CommonResponse>(
-          opApi({ datasetId, documentIds: selectedIds }),
-        )
+        const [e] = await asyncRunSafe(runAction(actionName))
 
         if (!e) {
           if (actionName === DocumentActionType.delete) onClearSelection()
@@ -90,12 +94,15 @@ export const useDocumentActions = ({
         }
       }
     },
-    [actionMutationMap, datasetId, selectedIds, onClearSelection, onUpdate, t],
+    [runAction, onClearSelection, onUpdate, t],
   )
 
   const handleBatchReIndex = useCallback(async () => {
-    const [e] = await asyncRunSafe<CommonResponse>(
-      retryIndexDocument({ datasetId, documentIds: selectedIds }),
+    const [e] = await asyncRunSafe(
+      retryIndexDocuments({
+        params: { dataset_id: datasetId },
+        body: { document_ids: selectedIds },
+      }),
     )
     if (!e) {
       onClearSelection()
@@ -104,7 +111,7 @@ export const useDocumentActions = ({
     } else {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
-  }, [retryIndexDocument, datasetId, selectedIds, onClearSelection, onUpdate, t])
+  }, [retryIndexDocuments, datasetId, selectedIds, onClearSelection, onUpdate, t])
 
   const handleBatchDownload = useCallback(async () => {
     if (isDownloadingZip) return

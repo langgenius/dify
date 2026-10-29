@@ -3,10 +3,35 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * CodeBasedExtensionItemResponse
+ */
+export const zCodeBasedExtensionItemResponse = z.object({
+  form_schema: z.array(z.record(z.string(), z.unknown())).nullish(),
+  label: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string(),
+})
+
+/**
  * CodeBasedExtensionResponse
  */
 export const zCodeBasedExtensionResponse = z.object({
-  data: z.unknown(),
+  data: z.array(zCodeBasedExtensionItemResponse),
   module: z.string(),
 })
 

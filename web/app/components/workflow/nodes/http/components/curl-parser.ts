@@ -157,7 +157,7 @@ const handleCurlArg = (
 
 export const parseCurl = (
   curlCommand: string,
-): { node: HttpNodeType | null; error: string | null } => {
+): { node: HttpNodeType; error: null } | { node: null; error: string } => {
   if (!curlCommand.trim().toLowerCase().startsWith('curl'))
     return { node: null, error: 'Invalid cURL command. Command must start with "curl".' }
 

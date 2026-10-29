@@ -21,7 +21,7 @@ const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
 
   const params = useParams()
   const pathname = usePathname()
-  const audio_finished_call = (event: string): any => {
+  const audio_finished_call = (event: string): void => {
     switch (event) {
       case 'ended':
         setAudioState('ended')
@@ -50,14 +50,14 @@ const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
     if (isInstalledAppPath(pathname)) url = `/installed-apps/${params.appId}/text-to-audio`
     else url = `/apps/${params.appId}/text-to-audio`
   }
-  const handleToggle = async () => {
+  const handleToggle = () => {
     if (audioState === 'playing' || audioState === 'loading') {
-      setTimeout(() => setAudioState('paused'), 1)
+      setAudioState('paused')
       AudioPlayerManager.getInstance()
         .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
         .pauseAudio()
     } else {
-      setTimeout(() => setAudioState('loading'), 1)
+      setAudioState('loading')
       AudioPlayerManager.getInstance()
         .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
         .playAudio()

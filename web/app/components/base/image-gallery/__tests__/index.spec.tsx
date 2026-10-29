@@ -24,7 +24,7 @@ describe('ImageGallery', () => {
     await user.click(screen.getByRole('button', { name: 'Preview image 1 of 1' }))
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(true)
 
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(false)
 
@@ -34,7 +34,7 @@ describe('ImageGallery', () => {
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(false)
   })
 
-  it('previews the selected image and closes on Escape', async () => {
+  it('previews the selected image and closes the preview', async () => {
     const user = userEvent.setup()
     render(
       <ImageGallery srcs={['https://example.com/first.png', 'https://example.com/second.png']} />,
@@ -47,7 +47,7 @@ describe('ImageGallery', () => {
       'https://example.com/second.png',
     )
 
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => {
       expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
     })
@@ -70,18 +70,18 @@ describe('ImageGallery', () => {
     fireEvent(window, new Event('pageshow'))
     expect(onPreviewOpenChange).toHaveBeenLastCalledWith(true)
 
-    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     onPreviewOpenChange.mockClear()
     fireEvent(window, new Event('pageshow'))
     expect(onPreviewOpenChange).not.toHaveBeenCalled()
   })
 
-  it('removes an image that fails to load', () => {
+  it('removes the preview action for an image that fails to load', () => {
     render(<ImageGallery srcs={['https://example.com/broken.png']} />)
 
     fireEvent.error(screen.getByTestId('gallery-image'))
 
-    expect(screen.queryByTestId('gallery-image')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Preview image 1 of 1' })).not.toBeInTheDocument()
   })
 })

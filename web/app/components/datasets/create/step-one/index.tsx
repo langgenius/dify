@@ -1,6 +1,6 @@
 'use client'
 
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,6 +14,7 @@ import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
+import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DataSourceType } from '@/models/datasets'
@@ -46,17 +47,17 @@ type IStepOneProps = {
   onWebsiteCrawlJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
-  authedDataSourceList: DataSourceAuth[]
+  authedDataSourceList: DatasourceProviderAuthResponse[]
 }
 
 // Helper function to check if notion is authenticated
-function checkNotionAuth(authedDataSourceList: DataSourceAuth[]): boolean {
+function checkNotionAuth(authedDataSourceList: DatasourceProviderAuthResponse[]): boolean {
   const notionSource = authedDataSourceList.find((item) => item.provider === 'notion_datasource')
   return Boolean(notionSource && notionSource.credentials_list.length > 0)
 }
 
 // Helper function to get notion credential list
-function getNotionCredentialList(authedDataSourceList: DataSourceAuth[]) {
+function getNotionCredentialList(authedDataSourceList: DatasourceProviderAuthResponse[]) {
   return (
     authedDataSourceList.find((item) => item.provider === 'notion_datasource')?.credentials_list ||
     []
@@ -138,7 +139,7 @@ const StepOne = ({
   // Default to FILE type when no type is provided from either source
   const dataSourceType = isInCreatePage
     ? (inCreatePageDataSourceType ?? DataSourceType.FILE)
-    : (dataset?.data_source_type ?? DataSourceType.FILE)
+    : (toCreationDataSourceType(dataset?.data_source_type) ?? DataSourceType.FILE)
 
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0

@@ -9,8 +9,8 @@ from enums import DeploymentEdition
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_dataset, make_document
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_dataset, make_document
 
 
 def _dataset(tenant_id: str) -> Dataset:
@@ -87,7 +87,7 @@ def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Sess
     with (
         patch("tasks.sync_website_document_indexing_task.FeatureService.get_features", return_value=features),
         patch("tasks.sync_website_document_indexing_task.IndexProcessorFactory") as processor_factory,
-        patch("tasks.sync_website_document_indexing_task.IndexingRunner") as indexing_runner,
+        patch("tasks.sync_website_document_indexing_task.build_document_indexing_service") as indexing_runner,
         patch("tasks.sync_website_document_indexing_task.redis_client"),
     ):
         sync_website_document_indexing_task(dataset.id, document.id)

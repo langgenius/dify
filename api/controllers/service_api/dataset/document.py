@@ -50,7 +50,6 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
-    DocumentIndexingError,
     InvalidMetadataError,
 )
 from controllers.service_api.schema import binary_response
@@ -69,25 +68,39 @@ from fields.document_fields import (
     DocumentMetadataResponse,
     DocumentResponse,
     DocumentStatusListResponse,
-    document_response,
-    document_responses,
     normalize_enum,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
+from models.account import Account
 from models.dataset import Dataset, Document
-from services.dataset_service import DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import (
+from models.enums import DocumentCreatedFrom
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_creator,
+    get_document_hit_count,
+    get_document_process_rule,
+    get_document_segment_count,
+    get_latest_dataset_process_rule,
+)
+from services.feature_service import FeatureService
+from services.file_service import FileService
+from services.knowledge.dataset_read_service import (
+    get_document_metadata_details,
+    get_document_source_detail,
+    load_document_detail,
+    load_document_details,
+)
+from services.knowledge.dataset_service import DatasetService, DocumentService
+from services.knowledge.entities.knowledge_entities import (
     DocForm,
     IndexingTechnique,
     KnowledgeConfig,
     ProcessRule,
     RetrievalModel,
 )
-from services.feature_service import FeatureService
-from services.file_service import FileService
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 
 class DocumentTextCreatePayload(BaseModel):
@@ -304,7 +317,7 @@ class DocumentAndBatchResponse(ResponseModel):
 def _document_and_batch_response(document: Document, batch: str, *, session: Session) -> dict[str, Any]:
     return dump_response(
         DocumentAndBatchResponse,
-        {"document": document_response(document, session=session), "batch": batch},
+        {"document": load_document_detail(document, session=session), "batch": batch},
     )
 
 
@@ -445,14 +458,14 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
             dataset=dataset,
             knowledge_config=knowledge_config,
             account=current_user,
-            dataset_process_rule=dataset.get_latest_process_rule(session=session)
+            dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
 
     return document, batch
@@ -509,23 +522,37 @@ def _update_document_by_text(
             dataset=dataset,
             knowledge_config=knowledge_config,
             account=current_user,
-            dataset_process_rule=dataset.get_latest_process_rule(session=session)
+            dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
 
     return document, batch
+
+
+def _file_document_account(dataset: Dataset, *, session: Session) -> Account:
+    """Keep the dataset creator as the document author when they still belong to its tenant."""
+    creator = get_dataset_creator(dataset, session=session)
+    if creator is not None:
+        creator.set_tenant_id_with_session(dataset.tenant_id, session=session)
+        if creator.current_tenant_id == dataset.tenant_id:
+            return creator
+
+    # The dataset creator may have left the tenant. The authenticated Service API
+    # account is the tenant owner and already has the required tenant context.
+    return current_user
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-text")
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for the canonical text document creation route."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Create Document by Text",
         description=(
@@ -573,6 +600,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DeprecatedDocumentAddByTextApi(DatasetApiResource):
     """Deprecated resource alias for text document creation."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
     @service_api_ns.doc("create_document_by_text_deprecated")
     @service_api_ns.doc(deprecated=True)
@@ -608,6 +636,7 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for the canonical text document update route."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Update Document by Text",
         description=(
@@ -656,6 +685,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
     """Deprecated resource alias for text document updates."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text_deprecated")
     @service_api_ns.doc(deprecated=True)
@@ -703,6 +733,9 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
 
+    @error_responses(
+        FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, ProviderNotInitializeError, TooManyFilesError
+    )
     @service_api_ns.doc(
         summary="Create Document by File",
         description=(
@@ -812,7 +845,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -822,7 +855,9 @@ class DocumentAddByFileApi(DatasetApiResource):
         knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
-        dataset_process_rule = dataset.get_latest_process_rule(session=session) if "process_rule" not in args else None
+        dataset_process_rule = (
+            get_latest_dataset_process_rule(dataset, session=session) if "process_rule" not in args else None
+        )
         if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
             raise ValueError("process_rule is required.")
 
@@ -830,13 +865,13 @@ class DocumentAddByFileApi(DatasetApiResource):
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 knowledge_config=knowledge_config,
-                account=dataset.get_created_by_account(session=session),
+                account=_file_document_account(dataset, session=session),
                 dataset_process_rule=dataset_process_rule,
-                created_from="api",
+                created_from=DocumentCreatedFrom.API,
                 session=session,
             )
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
+            raise ProviderNotInitializeError(ex.description) from ex
         document = documents[0]
         return _document_and_batch_response(document, batch, session=session), 200
 
@@ -890,9 +925,9 @@ def _update_document_by_file(
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
+        except services.errors.file.UnsupportedFileTypeError as caught_error:
+            raise UnsupportedFileTypeError() from caught_error
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -909,15 +944,15 @@ def _update_document_by_file(
         documents, _ = DocumentService.save_document_with_dataset_id(
             dataset=dataset,
             knowledge_config=knowledge_config,
-            account=dataset.get_created_by_account(session=session),
-            dataset_process_rule=dataset.get_latest_process_rule(session=session)
+            account=_file_document_account(dataset, session=session),
+            dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
     return document, document.batch
 
@@ -929,6 +964,13 @@ def _update_document_by_file(
 class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
     """Deprecated resource aliases for file document updates."""
 
+    @error_responses(
+        FilenameNotExistsError,
+        FileTooLargeError,
+        ProviderNotInitializeError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @service_api_ns.doc(
         summary="Update Document by File",
         description=(
@@ -1046,9 +1088,7 @@ class DocumentListApi(DatasetApiResource):
         )
 
         response = {
-            "data": document_responses(documents, session=session),
-            # The result object already knows: it was built from the page the query
-            # ran with, while the requested values are only ever a request.
+            "data": load_document_details(documents, session=session),
             "has_more": paginated_documents.has_next,
             "limit": paginated_documents.per_page,
             "total": paginated_documents.total,
@@ -1233,6 +1273,7 @@ class DocumentDownloadApi(DatasetApiResource):
 class DocumentApi(DatasetApiResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
+    @error_responses(InvalidMetadataError)
     @service_api_ns.doc(
         summary="Get Document",
         description=(
@@ -1298,12 +1339,13 @@ class DocumentApi(DatasetApiResource):
         metadata = query_params.metadata
         response_include: set[str] | None = None
         response_exclude: set[str] | None = None
+        response: dict[str, Any]
 
         # Calculate summary_index_status if needed
         summary_index_status = None
         has_summary_index = dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True
         if has_summary_index and document.need_summary is True:
-            summary_index_status = SummaryIndexService.get_document_summary_index_status(
+            summary_index_status = SummaryIndexAdapter.get_document_summary_index_status(
                 document_id=document_id_str,
                 dataset_id=dataset_id_str,
                 tenant_id=tenant_id,
@@ -1315,15 +1357,15 @@ class DocumentApi(DatasetApiResource):
             response = {
                 "id": document.id,
                 "doc_type": document.doc_type,
-                "doc_metadata": document.get_doc_metadata_details(session=session),
+                "doc_metadata": get_document_metadata_details(document, session=session),
             }
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, session)
             response_exclude = {"doc_type", "doc_metadata"}
-            document_process_rule = document.get_dataset_process_rule(session=session)
+            document_process_rule = get_document_process_rule(document, session=session)
             document_process_rules: Mapping[str, Any] = document_process_rule.to_dict() if document_process_rule else {}
-            data_source_info = document.get_data_source_detail_dict(session=session)
-            segment_count = document.get_segment_count(session=session)
+            data_source_info = get_document_source_detail(document, session=session)
+            segment_count = get_document_segment_count(document, session=session)
             response = {
                 "id": document.id,
                 "position": document.position,
@@ -1348,7 +1390,7 @@ class DocumentApi(DatasetApiResource):
                 "archived": document.archived,
                 "segment_count": segment_count,
                 "average_segment_length": (document.word_count or 0) // segment_count if segment_count else 0,
-                "hit_count": document.get_hit_count(session=session),
+                "hit_count": get_document_hit_count(document, session=session),
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
@@ -1357,10 +1399,10 @@ class DocumentApi(DatasetApiResource):
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, session)
-            document_process_rule = document.get_dataset_process_rule(session=session)
+            document_process_rule = get_document_process_rule(document, session=session)
             document_process_rules = document_process_rule.to_dict() if document_process_rule else {}
-            data_source_info = document.get_data_source_detail_dict(session=session)
-            segment_count = document.get_segment_count(session=session)
+            data_source_info = get_document_source_detail(document, session=session)
+            segment_count = get_document_segment_count(document, session=session)
             response = {
                 "id": document.id,
                 "position": document.position,
@@ -1384,10 +1426,10 @@ class DocumentApi(DatasetApiResource):
                 "disabled_by": document.disabled_by,
                 "archived": document.archived,
                 "doc_type": document.doc_type,
-                "doc_metadata": document.get_doc_metadata_details(session=session),
+                "doc_metadata": get_document_metadata_details(document, session=session),
                 "segment_count": segment_count,
                 "average_segment_length": (document.word_count or 0) // segment_count if segment_count else 0,
-                "hit_count": document.get_hit_count(session=session),
+                "hit_count": get_document_hit_count(document, session=session),
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
@@ -1401,6 +1443,13 @@ class DocumentApi(DatasetApiResource):
             exclude=response_exclude,
         )
 
+    @error_responses(
+        FilenameNotExistsError,
+        FileTooLargeError,
+        ProviderNotInitializeError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @service_api_ns.doc(
         summary="Update Document by File",
         description=(
@@ -1448,6 +1497,7 @@ class DocumentApi(DatasetApiResource):
         )
         return _document_and_batch_response(document, batch, session=session), 200
 
+    @error_responses(ArchivedDocumentImmutableError)
     @service_api_ns.doc(
         summary="Delete Document",
         description="Permanently delete a document and all its chunks from the knowledge base.",
@@ -1495,10 +1545,6 @@ class DocumentApi(DatasetApiResource):
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
 
-        try:
-            # delete document
-            DocumentService.delete_document(document, session)
-        except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+        DocumentService.delete_document(document, session)
 
         return "", 204

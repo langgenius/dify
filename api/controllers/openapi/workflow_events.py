@@ -1,9 +1,8 @@
 """
 OpenAPI bearer-authed workflow reconnect event stream endpoint.
 
-GET /apps/<app_id>/tasks/<task_id>/events
+GET /apps/<app_id>/runs/<run_id>/events
   — reconnect to the SSE stream for a paused/running workflow run.
-  `task_id` is treated as `workflow_run_id`.
 """
 
 from __future__ import annotations
@@ -21,6 +20,8 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
+from controllers.openapi._errors import RunNotFound
+from controllers.openapi.app_workflow import require_uuid
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -50,17 +51,20 @@ class WorkflowEventsQuery(BaseModel):
     continue_on_pause: bool = Field(default=False, description="Whether to keep the event stream open on pause")
 
 
-@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
+@openapi_ns.route("/apps/<string:app_id>/runs/<string:run_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
     @endpoint(
-        op="run.events",
+        op="get.run.event",
         kind=Kind.SSE,
         summary="Stream the events of a workflow run",
         examples=(
-            Example(title="Follow the events of a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),
+            Example(
+                title="Follow the events of a workflow run by its run id",
+                input={"app_id": "<app_id>", "run_id": "<workflow_run_id>"},
+            ),
             Example(
                 title="Keep the stream open across a human-input pause",
-                input={"app_id": "<app_id>", "task_id": "<task_id>", "continue_on_pause": True},
+                input={"app_id": "<app_id>", "run_id": "<workflow_run_id>", "continue_on_pause": True},
             ),
         ),
         requirements=(
@@ -74,7 +78,7 @@ class OpenApiWorkflowEventsApi(Resource):
         query=WorkflowEventsQuery,
         returns=(200, EventStreamResponse, "SSE event stream"),
     )
-    def get(self, ctx: Context, app_id: str, task_id: str, *, query: WorkflowEventsQuery):
+    def get(self, ctx: Context, app_id: str, run_id: str, *, query: WorkflowEventsQuery):
         # The router's session closes as soon as this returns, so everything the SSE
         # body needs is read off `ctx` here and the generators below close over plain
         # values only.
@@ -91,7 +95,7 @@ class OpenApiWorkflowEventsApi(Resource):
         repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
-            run_id=task_id,
+            run_id=require_uuid(run_id, not_found=RunNotFound),
         )
 
         if workflow_run is None:
@@ -118,17 +122,14 @@ class OpenApiWorkflowEventsApi(Resource):
             payload = response.model_dump(mode="json")
             payload["event"] = response.event.value
 
-            def _generate_finished_events() -> Generator[str, None, None]:
+            def _generate_finished_events() -> Generator[str]:
                 yield f"data: {json.dumps(payload)}\n\n"
 
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
-            else:
-                generator = WorkflowAppGenerator()
+            generator: type[BaseAppGenerator]
+            generator = AdvancedChatAppGenerator if app_mode == AppMode.ADVANCED_CHAT else WorkflowAppGenerator
 
             include_state_snapshot = query.include_state_snapshot
             continue_on_pause = query.continue_on_pause

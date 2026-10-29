@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentVersionFilter } from './filter'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -97,21 +98,20 @@ export function AgentPreviewVersionsPanel({
   }
 
   return (
-    <aside className="flex h-full w-67 shrink-0 flex-col rounded-l-lg bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+    <aside className="flex h-full w-67 shrink-0 flex-col rounded-l-lg bg-components-panel-bg shadow-xl shadow-shadow-shadow-5 max-xl:h-100 max-xl:w-full max-xl:min-w-0 max-xl:rounded-lg">
       <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
         <h2 className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
           {tWorkflow(($) => $['versionHistory.title'], { ns: 'workflowHistory' })}
         </h2>
         <VersionFilter filterValue={filterValue} onFilterChange={setFilterValue} />
         <div className="h-3.5 w-px shrink-0 bg-divider-regular" />
-        <button
-          type="button"
+        <IconButton
           aria-label={tCommon(($) => $['operation.close'])}
+          className="shrink-0"
           onClick={onClose}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
           <span aria-hidden className="i-ri-close-line size-4" />
-        </button>
+        </IconButton>
       </div>
 
       <AgentVersionRestore

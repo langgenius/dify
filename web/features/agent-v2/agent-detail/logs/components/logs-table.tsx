@@ -52,7 +52,7 @@ export function AgentLogsTable({
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
-      <div className="shrink-0 pr-3">
+      <div className="hidden shrink-0 pe-3 lg:block">
         <table aria-hidden="true" className="w-full table-fixed border-collapse">
           <LogsTableColGroup />
           <LogsTableHeader labels={tableHeaderLabels} sort={sort} />
@@ -63,13 +63,13 @@ export function AgentLogsTable({
         <ScrollAreaViewport
           aria-label={t(($) => $['agentDetail.logs.title'])}
           role="region"
-          tabIndex={-1}
+          tabIndex={0}
           className="overscroll-contain"
         >
-          <ScrollAreaContent className="pr-3">
-            <table className="w-full table-fixed border-collapse">
+          <ScrollAreaContent className="pe-3">
+            <table className="w-full min-w-[56rem] table-fixed border-collapse lg:min-w-0">
               <LogsTableColGroup />
-              <LogsTableHeader labels={tableHeaderLabels} sort={sort} rowClassName="sr-only" />
+              <LogsTableHeader labels={tableHeaderLabels} sort={sort} rowClassName="lg:sr-only" />
               <AgentLogsTableBody
                 logs={logs}
                 isPending={isPending}
@@ -83,6 +83,9 @@ export function AgentLogsTable({
           </ScrollAreaContent>
         </ScrollAreaViewport>
         <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+        <ScrollAreaScrollbar orientation="horizontal" className="lg:hidden">
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
       </ScrollArea>
@@ -124,7 +127,7 @@ function AgentLogsTableBody({
       {isPending && <LogsSkeletonRows />}
       {isError && (
         <LogsStateRow>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-start gap-2 lg:justify-center">
             <span>{t(($) => $['agentDetail.logs.loadFailed'])}</span>
             <Button variant="secondary" size="small" onClick={onRetry}>
               {tCommon(($) => $['operation.retry'])}
@@ -137,7 +140,6 @@ function AgentLogsTableBody({
       )}
       {isSuccess &&
         logs.map((log) => {
-          const logTitle = log.title || log.conversation_id
           const isSelected = selectedLogId === log.id
 
           return (
@@ -164,14 +166,14 @@ function AgentLogsTableBody({
               <TableCell>
                 <button
                   type="button"
-                  aria-label={logTitle}
-                  className="block w-full truncate rounded-sm text-left system-sm-medium text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  className="block w-full truncate rounded-sm text-start system-sm-medium text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   onClick={(event) => {
                     event.stopPropagation()
                     onOpenLog(log)
                   }}
                 >
                   {log.title || notAvailable}
+                  {!log.title && <span className="sr-only"> {log.conversation_id}</span>}
                 </button>
               </TableCell>
               <td className="px-3">
@@ -224,11 +226,11 @@ function LogsTableHeader({
     <thead>
       <tr
         className={cn(
-          'h-7 bg-background-section-burn text-left system-xs-medium-uppercase text-text-tertiary',
+          'h-7 bg-background-section-burn text-start system-xs-medium-uppercase text-text-tertiary',
           rowClassName,
         )}
       >
-        <th scope="col" className="rounded-l-lg px-0">
+        <th scope="col" className="rounded-s-lg px-0 text-start">
           <span className="sr-only">{labels.unread}</span>
         </th>
         <TableHead>{labels.title}</TableHead>
@@ -242,7 +244,7 @@ function LogsTableHeader({
         </TableHead>
         <TableHead
           aria-sort={sort.field === 'created_at' ? sortDirection : undefined}
-          className="rounded-r-lg"
+          className="rounded-e-lg"
         >
           {labels.createdTime}
         </TableHead>
@@ -270,7 +272,7 @@ function LogsTableColGroup() {
 function LogsStateRow({ children }: { children: ReactNode }) {
   return (
     <tr className="h-20 border-b border-divider-subtle">
-      <td colSpan={9} className="px-3 text-center text-text-tertiary">
+      <td colSpan={9} className="px-3 text-start text-text-tertiary lg:text-center">
         {children}
       </td>
     </tr>
@@ -319,7 +321,9 @@ function LogsSkeletonRows() {
 }
 
 function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th scope="col" className={cn('px-3 text-left whitespace-nowrap', className)} {...props} />
+  return (
+    <th scope="col" className={cn('px-3 text-start whitespace-nowrap', className)} {...props} />
+  )
 }
 
 function TableCell({ children, className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {

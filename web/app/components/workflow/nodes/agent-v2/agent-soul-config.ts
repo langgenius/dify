@@ -4,11 +4,12 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { omit } from 'es-toolkit'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
-import { useStore as useJotaiStore, useSetAtom } from 'jotai'
+import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -19,7 +20,6 @@ import {
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { useSerialAsyncCallback } from '../../hooks/use-serial-async-callback'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
@@ -74,7 +74,7 @@ export function useWorkflowInlineAgentConfigureSync({
   enabled: boolean
 }) {
   const queryClient = useQueryClient()
-  const configsMap = useHooksStore((state) => state.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const store = useJotaiStore()
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
@@ -107,43 +107,43 @@ export function useWorkflowInlineAgentConfigureSync({
   )
 
   const saveComposer = useSerialAsyncCallback(
-    async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
-      if (
-        !configsMap?.flowId ||
-        (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
-      )
-        return
+    async (
+      configSnapshot: AgentSoulConfig,
+      fileUpdate: 'preserve' | 'replace' = 'preserve',
+    ): Promise<WorkflowAgentComposerResponse | undefined> => {
+      if (resource.kind !== 'app' && resource.kind !== 'snippet') return
 
       const savedDraftKey = JSON.stringify(configSnapshot)
       const body = {
         variant: 'workflow' as const,
         save_strategy: 'node_job_only' as const,
-        agent_soul: configSnapshot,
+        agent_soul:
+          fileUpdate === 'replace' ? configSnapshot : omit(configSnapshot, ['config_files']),
       }
       const composerState =
-        configsMap.flowType === FlowType.snippet
+        resource.kind === 'snippet'
           ? await saveSnippetComposer({
               params: {
-                snippet_id: configsMap.flowId,
+                snippet_id: resource.snippetId,
                 node_id: nodeId,
               },
               body,
             })
           : await saveAppComposer({
               params: {
-                app_id: configsMap.flowId,
+                app_id: resource.appId,
                 node_id: nodeId,
               },
               body,
             })
 
-      if (configsMap.flowType === FlowType.snippet) {
+      if (resource.kind === 'snippet') {
         queryClient.setQueryData(
           consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
             {
               input: {
                 params: {
-                  snippet_id: configsMap.flowId,
+                  snippet_id: resource.snippetId,
                   node_id: nodeId,
                 },
               },
@@ -156,7 +156,7 @@ export function useWorkflowInlineAgentConfigureSync({
           consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
             input: {
               params: {
-                app_id: configsMap.flowId,
+                app_id: resource.appId,
                 node_id: nodeId,
               },
             },
@@ -199,7 +199,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const saveAgentSoulConfig = useCallback(
     async (agentSoulConfig: AgentSoulConfig) => {
       debouncedSaveDraft.cancel?.()
-      return saveComposer(agentSoulConfig)
+      return saveComposer(agentSoulConfig, 'replace')
     },
     [debouncedSaveDraft, saveComposer],
   )

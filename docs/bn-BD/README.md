@@ -86,7 +86,7 @@ docker compose up -d
 
 চালানোর পর, আপনি আপনার ব্রাউজারে [http://localhost/install](http://localhost/install)-এ ডিফাই ড্যাশবোর্ডে অ্যাক্সেস করতে পারেন এবং ইনিশিয়ালাইজেশন প্রক্রিয়া শুরু করতে পারেন।
 
-#### সাহায্যের খোঁজে
+### সাহায্যের খোঁজে
 
 ডিফাই সেট আপ করতে সমস্যা হলে দয়া করে আমাদের [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) দেখুন। যদি তবুও সমস্যা থেকে থাকে, তাহলে [কমিউনিটি এবং আমাদের](#কমিউনিটি-এবং-যোগাযোগ) সাথে যোগাযোগ করুন।
 
@@ -120,7 +120,7 @@ LLM ফাংশন কলিং বা ReAct উপর ভিত্তি ক�
 ## ডিফাই-এর ব্যবহার
 
 - **ক্লাউড </br>**
-  জিরো সেটাপে ব্যবহার করতে আমাদের [Dify Cloud](https://dify.ai) সার্ভিসটি ব্যবহার করতে পারেন। এখানে সেল্ফহোস্টিং-এর সকল ফিচার ও ক্যাপাবিলিটিসহ স্যান্ডবক্সে ২০০ জিপিটি-৪ কল ফ্রি পাবেন।
+  সার্ভার পরিচালনা ছাড়াই [Dify Cloud](https://cloud.dify.ai)-এ Dify ব্যবহার করে দেখুন। বর্তমান প্ল্যান ও ব্যবহারের সীমা জানতে [মূল্যতালিকা](https://dify.ai/pricing) দেখুন।
 
 - **সেল্ফহোস্টিং ডিফাই কমিউনিটি সংস্করণ</br>**
   সেল্ফহোস্ট করতে এই [স্টার্টার গাইড](#কুইক-স্টার্ট) ব্যবহার করে দ্রুত আপনার এনভায়রনমেন্টে ডিফাই চালান।
@@ -164,11 +164,11 @@ Dify সব ধরনের অবদানকে স্বাগত জান�
 - [X](https://x.com/dify_ai): রিলিজের খবর এবং প্রকল্পের হালনাগাদ পেতে Dify অনুসরণ করুন।
 ## স্টার হিস্ট্রি
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## নিরাপত্তা বিষয়ক
 
-আপনার গোপনীয়তা রক্ষা করতে, অনুগ্রহ করে GitHub-এ নিরাপত্তা সংক্রান্ত সমস্যা পোস্ট করা এড়িয়ে চলুন। পরিবর্তে, আপনার প্রশ্নগুলি <security@dify.ai> ঠিকানায় পাঠান এবং আমরা আপনাকে আরও বিস্তারিত উত্তর প্রদান করব।
+আমাদের [নিরাপত্তা নীতি](../../SECURITY.md) অনুসারে GitHub Security Advisories-এর মাধ্যমে গোপনে নিরাপত্তা দুর্বলতা জানান। প্রকাশ্য issue, আলোচনা বা pull request-এ তা প্রকাশ করবেন না।
 
 ## লাইসেন্স
 

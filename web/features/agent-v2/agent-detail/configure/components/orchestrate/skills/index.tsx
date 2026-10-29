@@ -9,13 +9,7 @@ import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   keepPreviousData,
@@ -25,8 +19,9 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -36,11 +31,7 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import {
-  getSkillErrorCode,
-  getSkillErrorDetailString,
-  normalizeSkillError,
-} from '@/features/skills/error'
+import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -48,7 +39,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentConfigApiContext } from '../config-context'
+import { useAgentConfigApiContext, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
@@ -355,7 +346,6 @@ function WorkspaceAgentSkillItem({
 }) {
   const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
-  const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
   const displayName = skill.display_name || skill.name
   const handleOpenInLibrary = useCallback(() => {
@@ -394,43 +384,42 @@ function WorkspaceAgentSkillItem({
           className={cn(
             'shrink-0 system-xs-regular text-text-tertiary',
             !readOnly && 'group-focus-within:opacity-0 group-hover:opacity-0',
-            isActionsOpen && 'opacity-0',
+            'group-has-data-popup-open:opacity-0',
           )}
         >
           {skill.name}
         </span>
       </Link>
-      <DropdownMenu
+      <Menu
         modal={false}
         onOpenChange={(open) => {
-          setIsActionsOpen(open)
           if (!open) setIsRemoveHighlighted(false)
         }}
       >
-        <DropdownMenuTrigger
+        <MenuTrigger
           aria-label={t(($) => $['agentDetail.configure.skills.moreActions'], {
             name: displayName,
           })}
           className={cn(
-            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
             isRemoveHighlighted && 'text-text-destructive!',
           )}
           onClick={(event) => event.stopPropagation()}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
-          <DropdownMenuItem className="gap-2" onClick={handleOpenInLibrary}>
+        </MenuTrigger>
+        <MenuContent align="end" className="w-48">
+          <MenuItem className="gap-2" onClick={handleOpenInLibrary}>
             <span
               aria-hidden
               className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
             />
             <span>{t(($) => $['agentDetail.configure.skills.openInLibrary'])}</span>
-          </DropdownMenuItem>
+          </MenuItem>
           {canRemove && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              <MenuSeparator />
+              <MenuItem
                 data-workspace-skill-remove-action
                 className="group gap-2 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
                 onClick={() => onRemove(skill.id)}
@@ -444,11 +433,11 @@ function WorkspaceAgentSkillItem({
                   className="i-ri-delete-bin-line size-4 shrink-0 text-text-tertiary group-data-highlighted:text-text-destructive"
                 />
                 <span>{t(($) => $['agentDetail.configure.skills.removeAction'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }
@@ -526,9 +515,8 @@ export function AgentSkills() {
           },
         },
         {
-          onError: async (error) => {
-            const normalizedError = await normalizeSkillError(error)
-            const errorCode = getSkillErrorCode(normalizedError)
+          onError: (error) => {
+            const errorCode = getSkillErrorCode(error)
             if (errorCode === 'too_many_agent_skills') {
               toast.error(
                 t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
@@ -538,7 +526,7 @@ export function AgentSkills() {
             if (errorCode === 'skill_name_conflict') {
               toast.error(
                 tSkill(($) => $['skillManagement.errors.nameConflict'], {
-                  name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                  name: getSkillErrorDetailString(error, 'name') ?? '',
                 }),
               )
               return
@@ -617,7 +605,7 @@ export function AgentSkills() {
   const handleUploaded = useCallback(
     (skill: AgentSkill) => {
       upsertAgentSkill(skill)
-      promptAddCallbackRef.current?.(skill)
+      promptAddCallbackRef.current?.([skill])
       promptAddCallbackRef.current = undefined
     },
     [upsertAgentSkill],
@@ -638,11 +626,13 @@ export function AgentSkills() {
       }
 
       replaceWorkspaceSkillBindings([...boundSkillIds, skill.id], () => {
-        promptAddCallbackRef.current?.({
-          description: skill.description,
-          id: skill.name,
-          name: skill.display_name,
-        })
+        promptAddCallbackRef.current?.([
+          {
+            description: skill.description,
+            id: skill.name,
+            name: skill.display_name,
+          },
+        ])
         promptAddCallbackRef.current = undefined
         setAddMenuOpen(false)
         setAddMenuView('menu')
@@ -714,8 +704,7 @@ export function AgentSkills() {
         buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="flex flex-col gap-1 pb-4"
+        panelContentClassName="flex flex-col gap-1"
         actions={
           !readOnly && (
             <Popover open={addMenuOpen} onOpenChange={handleAddMenuOpenChange}>
@@ -733,7 +722,7 @@ export function AgentSkills() {
                 }
               />
               <PopoverContent
-                placement="bottom-end"
+                align="end"
                 sideOffset={4}
                 className={
                   addMenuView === 'menu'
@@ -798,6 +787,7 @@ export function AgentSkills() {
               <AgentSkillItem
                 key={skill.id}
                 apiContext={apiContext}
+                canDownload
                 canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveSkill}
@@ -813,5 +803,40 @@ export function AgentSkills() {
         onUploaded={handleUploaded}
       />
     </>
+  )
+}
+
+export function AgentTemplateSkills() {
+  const { t } = useTranslation(['agentV2'])
+  const labelId = useId()
+  const { apiContext, skills } = useAgentConfigSkills()
+
+  return (
+    <ConfigureSection
+      label={t(($) => $['agentDetail.configure.skills.label'])}
+      labelId={labelId}
+      tip={<AgentConfigureTipContent type="skills" />}
+    >
+      {skills.length === 0 ? (
+        <ConfigureSectionEmpty
+          title={t(($) => $['agentDetail.configure.skills.empty.title'])}
+          description={t(($) => $['agentDetail.configure.skills.empty.description'])}
+        />
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {skills.map((skill) => (
+            <li key={skill.id}>
+              <AgentSkillItem
+                apiContext={apiContext}
+                canDownload={false}
+                canRemove={false}
+                skill={skill}
+                onRemove={noop}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </ConfigureSection>
   )
 }

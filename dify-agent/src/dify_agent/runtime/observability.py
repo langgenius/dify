@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal, override
 
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.trace import (
     INVALID_SPAN,
     Link,
+    NonRecordingSpan,
     Span,
+    SpanContext,
     SpanKind,
+    Status,
+    StatusCode,
+    TraceFlags,
     Tracer,
     TracerProvider,
     get_current_span,
@@ -19,7 +25,13 @@ from opentelemetry.trace import (
 )
 from opentelemetry.util.types import Attributes
 
-from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context.configs import ApplicationTracingContext, DifyExecutionContextLayerConfig
+from dify_agent.runtime.application_trace_exporter import (
+    ApplicationBatchSpanProcessor,
+    DIFY_TRACING_INVOCATION_ID_ATTRIBUTE,
+    DIFY_TRACING_RUN_ID_ATTRIBUTE,
+    JSONSpanExporter,
+)
 
 if TYPE_CHECKING:
     from logfire import Logfire
@@ -36,6 +48,7 @@ DIFY_WORKFLOW_RUN_ID_ATTRIBUTE: Final[str] = "dify.workflow.run_id"
 DIFY_NODE_ID_ATTRIBUTE: Final[str] = "dify.node.id"
 DIFY_NODE_EXECUTION_ID_ATTRIBUTE: Final[str] = "dify.node.execution_id"
 GEN_AI_USER_ID_ATTRIBUTE: Final[str] = "gen_ai.user.id"
+logger = logging.getLogger(__name__)
 
 
 def dify_run_attributes(execution_context: DifyExecutionContextLayerConfig) -> tuple[tuple[str, str], ...]:
@@ -63,6 +76,7 @@ class IsolatedTracerProvider(TracerProvider):
     client: Logfire
     preserve_external_parent: bool = False
 
+    @override
     def get_tracer(
         self,
         instrumenting_module_name: str,
@@ -89,14 +103,18 @@ class _IsolatedTracer(Tracer):
         parent = get_current_span(context)
         if not parent.get_span_context().is_valid:
             return context
-        if isinstance(parent, ReadableSpan):
+        # Logfire's ReadableSpan wrapper can delegate to a NonRecordingSpan,
+        # which propagates a valid context but has no SDK resource.
+        resource = getattr(parent, "resource", None) if isinstance(parent, ReadableSpan) else None
+        if resource is not None:
             instance_id = self.client.resource_attributes.get("service.instance.id")
-            if instance_id is not None and parent.resource.attributes.get("service.instance.id") == instance_id:
+            if instance_id is not None and resource.attributes.get("service.instance.id") == instance_id:
                 return context
         elif self.preserve_external_parent:
             return context
         return set_span_in_context(INVALID_SPAN, context)
 
+    @override
     def start_span(
         self,
         name: str,
@@ -119,6 +137,7 @@ class _IsolatedTracer(Tracer):
             set_status_on_exception=set_status_on_exception,
         )
 
+    @override
     def start_as_current_span(
         self,
         name: str,
@@ -151,6 +170,7 @@ class RunScopedTracerProvider(TracerProvider):
     delegate: TracerProvider
     attributes: tuple[tuple[str, str], ...]
 
+    @override
     def get_tracer(
         self,
         instrumenting_module_name: str,
@@ -175,6 +195,10 @@ class _RunScopedTracer(Tracer):
     def _run_attributes(self, attributes: Attributes) -> Attributes:
         return {**(attributes or {}), **dict(self.attributes)}
 
+    def _parent_context(self, context: Context | None) -> Context | None:
+        return context
+
+    @override
     def start_span(
         self,
         name: str,
@@ -188,7 +212,7 @@ class _RunScopedTracer(Tracer):
     ) -> Span:
         return self.delegate.start_span(
             name,
-            context=context,
+            context=self._parent_context(context),
             kind=kind,
             attributes=self._run_attributes(attributes),
             links=links,
@@ -197,6 +221,7 @@ class _RunScopedTracer(Tracer):
             set_status_on_exception=set_status_on_exception,
         )
 
+    @override
     def start_as_current_span(
         self,
         name: str,
@@ -211,7 +236,7 @@ class _RunScopedTracer(Tracer):
     ):
         return self.delegate.start_as_current_span(
             name,
-            context=context,
+            context=self._parent_context(context),
             kind=kind,
             attributes=self._run_attributes(attributes),
             links=links,
@@ -233,6 +258,7 @@ class AgentObservability:
         agent: Agent[Any, Any],
         *,
         execution_context: DifyExecutionContextLayerConfig | None = None,
+        include_content: bool | None = None,
     ) -> None:
         """Instrument one run's agent and attribute its spans to its Dify context.
 
@@ -243,7 +269,7 @@ class AgentObservability:
         """
         self.client.instrument_pydantic_ai(
             agent,
-            include_content=self.include_content,
+            include_content=self.include_content if include_content is None else include_content,
             include_binary_content=False,
             tracer_provider=self._tracer_provider(execution_context),
         )
@@ -269,6 +295,165 @@ class AgentObservability:
         platform Logfire instance running.
         """
         await asyncio.to_thread(self.client.shutdown, timeout_millis=5000)
+
+
+@dataclass(frozen=True)
+class _ApplicationRunTracer(_RunScopedTracer):
+    tracing: ApplicationTracingContext
+
+    @override
+    def _parent_context(self, context: Context | None) -> Context:
+        current = get_current_span(context)
+        # Preserve only this invocation's descendants. Platform spans, a previous
+        # invocation, or caller-supplied ambient context must not choose the root.
+        if isinstance(current, ReadableSpan):
+            # Logfire also wraps non-recording spans as ReadableSpan. Without
+            # attributes they cannot prove invocation ownership; use the API parent.
+            attributes = getattr(current, "attributes", None) or {}
+            current_context = current.get_span_context()
+            if (
+                attributes.get(DIFY_TRACING_RUN_ID_ATTRIBUTE) == str(self.tracing.run_id)
+                and attributes.get(DIFY_TRACING_INVOCATION_ID_ATTRIBUTE) == str(self.tracing.invocation_id)
+                and current_context is not None
+                and current_context.trace_id == int(self.tracing.trace_id, 16)
+            ):
+                return context if context is not None else set_span_in_context(current)
+        parent = SpanContext(
+            trace_id=int(self.tracing.trace_id, 16),
+            span_id=int(self.tracing.parent_span_id, 16),
+            is_remote=True,
+            trace_flags=TraceFlags(TraceFlags.SAMPLED if self.tracing.sampled else TraceFlags.DEFAULT),
+        )
+        return set_span_in_context(NonRecordingSpan(parent), Context())
+
+
+@dataclass(frozen=True)
+class _ApplicationRunTracerProvider(RunScopedTracerProvider):
+    tracing: ApplicationTracingContext
+
+    @override
+    def get_tracer(
+        self,
+        instrumenting_module_name: str,
+        instrumenting_library_version: str | None = None,
+        schema_url: str | None = None,
+        attributes: Attributes = None,
+    ) -> Tracer:
+        delegate = self.delegate.get_tracer(
+            instrumenting_module_name,
+            instrumenting_library_version,
+            schema_url=schema_url,
+            attributes=attributes,
+        )
+        return _ApplicationRunTracer(delegate, self.attributes, self.tracing)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ApplicationAgentObservability(AgentObservability):
+    """Per-invocation policy over one process-owned internal export pipeline."""
+
+    exporter: JSONSpanExporter
+    processor: ApplicationBatchSpanProcessor
+
+    @override
+    def instrument(
+        self,
+        agent: Agent[Any, Any],
+        *,
+        execution_context: DifyExecutionContextLayerConfig | None = None,
+        include_content: bool | None = None,
+    ) -> None:
+        tracing = execution_context.tracing if execution_context else None
+        if tracing is None or not tracing.sampled:
+            agent.instrument = False
+            return
+        # The immutable API policy always wins over process defaults/callers.
+        AgentObservability.instrument(
+            self, agent, execution_context=execution_context, include_content=tracing.capture_content
+        )
+
+    @override
+    def _tracer_provider(self, execution_context: DifyExecutionContextLayerConfig | None) -> TracerProvider:
+        if execution_context is None or execution_context.tracing is None:
+            raise ValueError("Application tracing requires API-issued execution context")
+        tracing = execution_context.tracing
+        attributes = dict(dify_run_attributes(execution_context))
+        attributes.update(
+            {
+                DIFY_TRACING_RUN_ID_ATTRIBUTE: str(tracing.run_id),
+                DIFY_TRACING_INVOCATION_ID_ATTRIBUTE: str(tracing.invocation_id),
+                DIFY_TRACE_ID_ATTRIBUTE: tracing.trace_id,
+                "gen_ai.session.id": tracing.session_id,
+            }
+        )
+        return _ApplicationRunTracerProvider(
+            self.client.config.get_tracer_provider(), tuple(attributes.items()), tracing
+        )
+
+    async def finish_invocation(self, tracing: ApplicationTracingContext) -> bool:
+        """Flush ended spans before the terminal event exposes the completed run."""
+
+        def flush_and_finish() -> bool:
+            if not self.processor.force_flush(timeout_millis=30000):
+                self.exporter.mark_incomplete((tracing.run_id, tracing.invocation_id))
+                return False
+            try:
+                return self.exporter.finish_invocation(tracing.run_id, tracing.invocation_id)
+            finally:
+                self.processor.release_invocation((tracing.run_id, tracing.invocation_id))
+
+        try:
+            # The worker may continue its bounded retries after this deadline;
+            # collection must not hold the Agent's terminal event indefinitely.
+            return await asyncio.wait_for(asyncio.to_thread(flush_and_finish), timeout=5)
+        except TimeoutError:
+            logger.warning("Application trace finalization timed out; invocation_id=%s", tracing.invocation_id)
+            return False
+        except Exception:
+            logger.warning(
+                "Application trace finalization failed; invocation_id=%s", tracing.invocation_id, exc_info=True
+            )
+            return False
+
+    def record_unstarted_invocation(
+        self,
+        execution_context: DifyExecutionContextLayerConfig,
+        *,
+        start_time_ns: int,
+        end_time_ns: int,
+        error: BaseException | None,
+        cancelled: bool,
+    ) -> None:
+        """Represent setup failure/cancellation only when no native run span began.
+
+        Successful invocations keep the native tree. An unexplained empty
+        collector stays incomplete rather than being invented as success.
+        """
+        tracing = execution_context.tracing
+        if tracing is None or not tracing.sampled or (error is None and not cancelled):
+            return
+        if self.processor.invocation_started((tracing.run_id, tracing.invocation_id)):
+            return
+        error_type = type(error).__name__ if error is not None else "CancelledError"
+        message = "Agent cancelled before execution" if cancelled else error_type
+        if not cancelled and error is not None and tracing.capture_content:
+            message = str(error) or error_type
+        try:
+            tracer = self._tracer_provider(execution_context).get_tracer("dify-agent.initialization")
+            span = tracer.start_span(
+                "invoke_agent dify-agent",
+                start_time=start_time_ns,
+                attributes={
+                    "gen_ai.operation.name": "invoke_agent",
+                    "dify.agent.execution_state": "cancelled" if cancelled else "initialization_failed",
+                    "error.type": error_type,
+                },
+            )
+            span.set_status(Status(StatusCode.ERROR, message))
+            span.end(end_time=max(start_time_ns, end_time_ns))
+        except Exception:
+            self.exporter.mark_incomplete((tracing.run_id, tracing.invocation_id))
+            logger.warning("Unable to record Agent initialization failure; invocation_id=%s", tracing.invocation_id)
 
 
 __all__ = [

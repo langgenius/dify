@@ -21,6 +21,8 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.models.test import TestModel
 
 import dify_agent.server.observability as observability
+from pydantic_ai.toolsets import FunctionToolset
+
 from dify_agent.runtime.agent_factory import create_agent
 from dify_agent.runtime.observability import IsolatedTracerProvider
 from dify_agent.server.observability import configure_agent_observability
@@ -156,7 +158,11 @@ def test_agent_pipeline_is_isolated_from_platform_endpoint_and_credentials(
         agent_observability = configure_agent_observability(settings)
         assert agent_observability is not None
 
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[Tool(_static_tool)])
+        agent = create_agent(
+            TestModel(custom_output_text="done"),
+            toolsets=[FunctionToolset(tools=[Tool(_static_tool)])],
+            capabilities=[],
+        )
         assert agent.instrument is False
         agent_observability.instrument(agent)
 
@@ -203,7 +209,9 @@ def test_agent_pipeline_empty_headers_send_no_platform_credentials(
         agent_observability = configure_agent_observability(settings)
         assert agent_observability is not None
 
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[])
+        agent = create_agent(
+            TestModel(custom_output_text="done"), toolsets=[FunctionToolset(tools=[])], capabilities=[]
+        )
         agent_observability.instrument(agent)
         _ = agent.run_sync("business-marker-input")
         assert agent_observability.client.force_flush(timeout_millis=10000)
@@ -228,7 +236,9 @@ def test_agent_observability_disabled_creates_no_instance_or_export(
         )
 
         assert configure_agent_observability(settings) is None
-        agent = create_agent(TestModel(custom_output_text="done"), tools=[])
+        agent = create_agent(
+            TestModel(custom_output_text="done"), toolsets=[FunctionToolset(tools=[])], capabilities=[]
+        )
         assert agent.instrument is False
         _ = agent.run_sync("business-marker-input")
 
@@ -281,5 +291,40 @@ def test_platform_fastapi_instrumentation_omits_parsed_argument_payloads() -> No
             assert sentinel not in serialized_events
         assert "fastapi.arguments.values" not in serialized
         assert "fastapi.arguments.errors" not in serialized
+    finally:
+        client.shutdown(timeout_millis=5000)
+
+
+def test_platform_fastapi_instrumentation_accepts_unsampled_request_bodies() -> None:
+    exporter = InMemorySpanExporter()
+    client = logfire.configure(
+        local=True,
+        send_to_logfire=False,
+        console=False,
+        metrics=False,
+        inspect_arguments=False,
+        additional_span_processors=[SimpleSpanProcessor(exporter)],
+    )
+    app = FastAPI()
+
+    @app.post("/echo")
+    def echo(payload: _SmokePayload) -> dict[str, str]:
+        return {"text": payload.text}
+
+    try:
+        with client.instrument_fastapi(
+            app,
+            request_attributes_mapper=observability._platform_request_attributes,
+            capture_headers=False,
+            tracer_provider=IsolatedTracerProvider(client, preserve_external_parent=True),
+        ):
+            with TestClient(app) as http:
+                headers = {"traceparent": "00-0000000000000000000000000000abcd-0000000000001234-00"}
+                response = http.post("/echo", json={"text": "unsampled-body", "count": 1}, headers=headers)
+                assert response.status_code == 200
+                assert response.json() == {"text": "unsampled-body"}
+                assert http.post("/echo", json={"text": "invalid", "count": "x"}, headers=headers).status_code == 422
+        assert client.force_flush(timeout_millis=10000)
+        assert not exporter.get_finished_spans()
     finally:
         client.shutdown(timeout_millis=5000)

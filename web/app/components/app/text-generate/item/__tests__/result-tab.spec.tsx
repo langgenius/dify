@@ -1,61 +1,42 @@
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { render, screen } from '@testing-library/react'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import ResultTab from '../result-tab'
 
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => (
-    <div>
-      markdown:
-      {content}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileList: ({ files }: { files: Array<{ id: string }> }) => (
-    <div>
-      files:
-      {files.length}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value }: { value: string }) => (
-    <div>
-      code-editor:
-      {value}
-    </div>
+  default: ({ value, readOnly }: { value: string; readOnly: boolean }) => (
+    <textarea aria-label="Raw output" value={value} readOnly={readOnly} />
   ),
 }))
 
-describe('ResultTab', () => {
-  it('should render workflow result text and files on the result tab', () => {
-    render(
-      <ResultTab
-        currentTab="RESULT"
-        content=""
-        data={
-          {
-            resultText: 'Hello world',
-            files: [
-              {
-                varName: 'attachments',
-                list: [{ id: 'file-1' }],
-              },
-            ],
-          } as any
-        }
-      />,
-    )
-
-    expect(screen.getByText('markdown:Hello world')).toBeInTheDocument()
-    expect(screen.getByText('attachments')).toBeInTheDocument()
-    expect(screen.getByText('files:1')).toBeInTheDocument()
-  })
-
-  it('should render the raw detail view on the detail tab', () => {
-    render(<ResultTab currentTab="DETAIL" content='{"answer":"ok"}' />)
-
-    expect(screen.getByText('code-editor:{"answer":"ok"}')).toBeInTheDocument()
-  })
+it('switches between readable workflow output with attachments and read-only raw output', async () => {
+  const file: FileEntity = {
+    id: 'file-1',
+    name: 'report.txt',
+    size: 128,
+    type: 'text/plain',
+    progress: 100,
+    transferMethod: TransferMethod.remote_url,
+    supportFileType: 'document',
+    url: 'https://example.com/report.txt',
+  }
+  const data: WorkflowProcess = {
+    status: WorkflowRunningStatus.Succeeded,
+    tracing: [],
+    resultText: 'Hello **world**',
+    // ResultTab consumes the grouped runtime output; WorkflowProcess currently types files as a flat list.
+    files: [{ varName: 'attachments', list: [file] }] as unknown as WorkflowProcess['files'],
+  }
+  const content = '{"answer":"ok"}'
+  const { rerender } = render(<ResultTab currentTab="RESULT" content={content} data={data} />)
+  expect(await screen.findByText('world')).toBeInTheDocument()
+  expect(screen.getByText('attachments')).toBeInTheDocument()
+  expect(screen.getByText('report.txt')).toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  rerender(<ResultTab currentTab="DETAIL" content={content} data={data} />)
+  expect(screen.getByRole('textbox', { name: 'Raw output' })).toHaveValue(content)
+  expect(screen.getByRole('textbox', { name: 'Raw output' })).toHaveAttribute('readonly')
+  expect(screen.queryByText('attachments')).not.toBeInTheDocument()
 })

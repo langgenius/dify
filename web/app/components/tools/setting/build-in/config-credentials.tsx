@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -14,6 +14,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -97,16 +98,22 @@ const ConfigCredential: FC<Props> = ({
           <DrawerPopup className="data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <div className="shrink-0 border-b border-divider-subtle py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['auth.setupModalTitle'], { ns: 'tools' })}
                   </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="size-6 rounded-md"
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="md"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
-                <DrawerDescription className="pr-10 pl-6 system-xs-regular text-text-tertiary">
+                <DrawerDescription className="ps-6 pe-10 system-xs-regular text-text-tertiary">
                   {t(($) => $['auth.setupModalTitleDescription'], { ns: 'tools' })}
                 </DrawerDescription>
               </div>
@@ -137,7 +144,7 @@ const ConfigCredential: FC<Props> = ({
                             {t(($) => $.howToGet, { ns: 'tools' })}
                             <span
                               aria-hidden
-                              className="ml-1 i-custom-vender-line-general-link-external-02 size-3"
+                              className="ms-1 i-custom-vender-line-general-link-external-02 size-3 rtl:-scale-x-100"
                             />
                           </a>
                         ) : null

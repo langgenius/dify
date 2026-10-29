@@ -155,7 +155,7 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid arguments\\.") as exc_info:
             BillingService._send_request("PUT", "/test", json={"key": "value"})
         assert "Invalid arguments." in str(exc_info.value)
 
@@ -176,30 +176,6 @@ class TestBillingServiceSendRequest:
         assert result == expected_response
         call_args = mock_httpx_request.call_args
         assert call_args[0][0] == method
-
-    def test_new_agent_beta_ensure_uses_secret_authenticated_v1_base(self, mock_httpx_request, mock_billing_config):
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = {"status": "issued"}
-        mock_httpx_request.return_value = mock_response
-
-        BillingService.ensure_new_agent_beta_revision("revision-1")
-
-        call_args = mock_httpx_request.call_args
-        assert call_args.args == (
-            "POST",
-            "https://billing-api.example.com/new-agent-beta/revisions/revision-1/ensure",
-        )
-        assert call_args.kwargs["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
-
-    def test_new_agent_beta_ensure_requires_json_response(self, mock_httpx_request, mock_billing_config):
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
-        mock_httpx_request.return_value = mock_response
-
-        with pytest.raises(json.JSONDecodeError):
-            BillingService.ensure_new_agent_beta_revision("revision-1")
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -239,7 +215,13 @@ class TestBillingServiceSendRequest:
 
         # Act & Assert
         with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "Unable to process delete request https://billing\\-api\\.example\\.com"
+                    "/test\\. Please try again later or contact support\\."
+                ),
+            ) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
             assert "DELETE response" in caplog.text
@@ -283,7 +265,13 @@ class TestBillingServiceSendRequest:
 
         # Act & Assert
         with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "Unable to process delete request https://billing\\-api\\.example\\.com"
+                    "/test\\. Please try again later or contact support\\."
+                ),
+            ) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
             assert "DELETE response" in caplog.text
@@ -1320,39 +1308,6 @@ class TestBillingServiceCacheManagement:
 
         # Assert
         mock_redis_client.delete.assert_called_once_with(expected_key)
-
-
-class TestBillingServicePartnerIntegration:
-    """Unit tests for partner integration features.
-
-    Tests cover:
-    - Partner tenant binding synchronization
-    - Click ID tracking
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_sync_partner_tenants_bindings(self, mock_send_request):
-        """Test syncing partner tenant bindings."""
-        # Arrange
-        account_id = "account-123"
-        partner_key = "partner-xyz"
-        click_id = "click-789"
-        expected_response = {"message": "Successfully synced partner tenants"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.sync_partner_tenants_bindings(account_id, partner_key, click_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "PUT", f"/partners/{partner_key}/tenants", json={"account_id": account_id, "click_id": click_id}
-        )
 
 
 class TestBillingServiceEdgeCases:

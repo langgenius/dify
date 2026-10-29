@@ -46,6 +46,8 @@ class CompletionAppConfigManager(BaseAppConfigManager):
             config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
 
         if config_from != EasyUIBasedAppModelConfigFrom.ARGS:
+            if annotation_reply is None:
+                raise ValueError("Annotation reply config is required")
             app_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
             config_dict = app_model_config_dict.copy()
         else:
@@ -53,13 +55,33 @@ class CompletionAppConfigManager(BaseAppConfigManager):
                 raise Exception("override_config_dict is required when config_from is ARGS")
             config_dict = override_config_dict
 
-        app_mode = AppMode.value_of(app_model.mode)
-        app_config = CompletionAppConfig(
+        return cls.get_app_config_from_dict(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
+            app_model_config_id=app_model_config.id,
+            app_mode=AppMode.value_of(app_model.mode),
+            config_dict=config_dict,
+            config_from=config_from,
+        )
+
+    @classmethod
+    def get_app_config_from_dict(
+        cls,
+        *,
+        tenant_id: str,
+        app_id: str,
+        app_model_config_id: str,
+        app_mode: AppMode,
+        config_dict: AppModelConfigDict,
+        config_from: EasyUIBasedAppModelConfigFrom,
+    ) -> CompletionAppConfig:
+        """Convert materialized configuration without requiring ORM records."""
+        app_config = CompletionAppConfig(
+            tenant_id=tenant_id,
+            app_id=app_id,
             app_mode=app_mode,
             app_model_config_from=config_from,
-            app_model_config_id=app_model_config.id,
+            app_model_config_id=app_model_config_id,
             app_model_config_dict=cast(dict[str, Any], config_dict),
             model=ModelConfigManager.convert(config=config_dict),
             prompt_template=PromptTemplateConfigManager.convert(config=config_dict),

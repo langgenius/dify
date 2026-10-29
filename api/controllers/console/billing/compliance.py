@@ -9,9 +9,12 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.billing.error import (
+    BillingOperationFailedError,
     BillingOperationFailedErrorResponse,
+    BillingUnavailableError,
     BillingUnavailableErrorResponse,
     BillingUnprocessableEntityErrorResponse,
+    ComplianceRateLimitError,
     ComplianceRateLimitErrorResponse,
     to_billing_request_error,
 )
@@ -20,9 +23,10 @@ from controllers.console.wraps import model_validate
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip
 from machinery.context import RequestContext
-from services.errors.billing import BillingError
+from services.errors.billing import BillingError, ComplianceRateLimitExceededError
 
 
 class ComplianceDownloadQuery(BaseModel):
@@ -46,6 +50,7 @@ register_response_schema_models(
 
 @console_ns.route("/compliance/download")
 class ComplianceApi(Resource):
+    @error_responses(BillingOperationFailedError, BillingUnavailableError, ComplianceRateLimitError)
     @console_ns.doc(params=query_params_from_model(ComplianceDownloadQuery))
     @console_ns.doc("download_compliance_document")
     @console_ns.doc(description="Get compliance document download link")
@@ -82,6 +87,8 @@ class ComplianceApi(Resource):
                 ip_address=ip_address,
                 device_info=device_info,
             )
+        except ComplianceRateLimitExceededError as error:
+            raise ComplianceRateLimitError() from error
         except BillingError as error:
             raise to_billing_request_error(error) from error
         return dump_response(ComplianceDownloadResponse, data)

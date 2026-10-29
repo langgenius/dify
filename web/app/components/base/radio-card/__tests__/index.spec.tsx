@@ -1,7 +1,8 @@
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { useState } from 'react'
+import { describe, expect, it } from 'vite-plus/test'
 import RadioCard from '../index'
 
 type ExampleMode = 'standard' | 'advanced'
@@ -28,60 +29,31 @@ function RadioCardTypeExamples() {
 
 void RadioCardTypeExamples
 
-function renderSelectableCard({
-  selected = false,
-  onValueChange = vi.fn(),
-}: {
-  selected?: boolean
-  onValueChange?: (value: string) => void
-} = {}) {
-  render(
-    <RadioGroup
-      aria-label="Options"
-      value={selected ? 'card' : undefined}
-      onValueChange={onValueChange}
-    >
+function SelectableCards() {
+  const [value, setValue] = useState('standard')
+  return (
+    <RadioGroup aria-label="Options" value={value} onValueChange={setValue}>
+      <RadioCard value="standard" icon={<span />} title="Standard" description="Standard mode" />
       <RadioCard
-        value="card"
-        icon={<span data-testid="icon">ICON</span>}
-        title="Card Title"
-        description="Some description"
-        chosenConfig={<div>Config</div>}
+        value="advanced"
+        icon={<span />}
+        title="Advanced"
+        description="Advanced mode"
+        chosenConfig={<div>Advanced config</div>}
       />
-    </RadioGroup>,
+    </RadioGroup>
   )
-
-  return {
-    radio: screen.getByRole('radio', { name: /Card Title/ }),
-    onValueChange,
-  }
 }
 
 describe('RadioCard', () => {
-  it('should render selectable card content and expose radio semantics', () => {
-    const { radio } = renderSelectableCard()
-
-    expect(screen.getByTestId('icon')).toBeInTheDocument()
-    expect(screen.getByText('Card Title')).toBeInTheDocument()
-    expect(screen.getByText('Some description')).toBeInTheDocument()
-    expect(radio).toHaveAttribute('aria-checked', 'false')
-  })
-
-  it('should emit RadioGroup value change when selected', async () => {
+  it('connects card selection to the controlled group', async () => {
     const user = userEvent.setup()
-    const onValueChange = vi.fn()
-    const { radio } = renderSelectableCard({ onValueChange })
-
-    await user.click(radio)
-
-    expect(onValueChange).toHaveBeenCalledWith('card', expect.any(Object))
-  })
-
-  it('should show selected styles and configuration when checked', () => {
-    const { radio } = renderSelectableCard({ selected: true })
-
-    expect(radio).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByText('Config')).toBeInTheDocument()
+    render(<SelectableCards />)
+    const advanced = screen.getByRole('radio', { name: /Advanced/ })
+    expect(advanced).not.toBeChecked()
+    await user.click(advanced)
+    expect(advanced).toBeChecked()
+    expect(screen.getByRole('radio', { name: /Standard/ })).not.toBeChecked()
   })
 
   it('should render noRadio card as static content without radio role', () => {

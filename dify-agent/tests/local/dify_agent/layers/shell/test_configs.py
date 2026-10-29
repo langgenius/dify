@@ -1,9 +1,7 @@
 import pytest
 from pydantic import ValidationError
-
 import dify_agent.layers.shell as shell_exports
 from dify_agent.layers.shell import (
-    DIFY_SHELL_LAYER_TYPE_ID,
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
     DifyShellLayerConfig,
@@ -13,26 +11,24 @@ from dify_agent.layers.shell import (
 
 def test_shell_package_exports_client_safe_config_symbols_only() -> None:
     assert shell_exports.__all__ == [
-        "DIFY_SHELL_LAYER_TYPE_ID",
         "DifyShellCliToolConfig",
         "DifyShellEnvVarConfig",
         "DifyShellLayerConfig",
         "DifyShellSecretRefConfig",
     ]
-    assert DIFY_SHELL_LAYER_TYPE_ID == "dify.shell"
     assert not hasattr(shell_exports, "DifyShellLayer")
 
 
 def test_shell_layer_config_defaults_and_forbids_unknown_fields() -> None:
     config = DifyShellLayerConfig()
-
     assert config.model_dump() == {
+        "runtime": "runtime",
+        "execution_context": "execution_context",
         "cli_tools": [],
         "env": [],
         "secret_refs": [],
         "redact_patterns": [],
     }
-
     with pytest.raises(ValidationError):
         _ = DifyShellLayerConfig.model_validate({"entrypoint": "http://shellctl"})
 
@@ -50,7 +46,6 @@ def test_shell_layer_config_accepts_agent_soul_shell_settings() -> None:
         env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo")],
         secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="credential-1")],
     )
-
     assert config.cli_tools[0].install_commands == ["apt-get update", "apt-get install -y ripgrep"]
     assert config.cli_tools[0].env[0].name == "RG_CONFIG_PATH"
     assert config.cli_tools[0].secret_refs[0].ref == "credential-2"
@@ -61,6 +56,5 @@ def test_shell_layer_config_accepts_agent_soul_shell_settings() -> None:
 def test_shell_layer_config_rejects_invalid_env_names() -> None:
     with pytest.raises(ValidationError):
         _ = DifyShellEnvVarConfig(name="1_BAD", value="x")
-
     with pytest.raises(ValidationError):
         _ = DifyShellSecretRefConfig(name="BAD-NAME", ref="secret")

@@ -1,5 +1,6 @@
 import json
-from typing import cast
+from collections.abc import Callable
+from typing import Protocol, cast
 
 import pytest
 import sqlalchemy as sa
@@ -12,16 +13,130 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
+    AgentHomeSnapshot,
     AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.base import Base, TypeBase
 from models.types import JSONModelColumn, LongText
+
+
+class _AgentModel(Protocol):
+    id: str
+
+
+@pytest.mark.parametrize(
+    ("model", "required_values"),
+    [
+        (
+            Agent,
+            {
+                "tenant_id": "tenant-1",
+                "name": "Agent",
+                "scope": AgentScope.ROSTER,
+                "source": AgentSource.ROSTER,
+            },
+        ),
+        (AgentHomeSnapshot, {"tenant_id": "tenant-1", "agent_id": "agent-1", "snapshot_ref": "backend-home"}),
+        (
+            AgentDebugConversation,
+            {
+                "tenant_id": "tenant-1",
+                "agent_id": "agent-1",
+                "app_id": "app-1",
+                "account_id": "account-1",
+                "conversation_id": "conversation-1",
+            },
+        ),
+        (
+            AgentConfigDraft,
+            {
+                "tenant_id": "tenant-1",
+                "agent_id": "agent-1",
+                "draft_type": AgentConfigDraftType.DRAFT,
+                "config_snapshot": AgentSoulConfig(),
+            },
+        ),
+        (
+            AgentConfigSnapshot,
+            {"tenant_id": "tenant-1", "agent_id": "agent-1", "version": 1, "config_snapshot": AgentSoulConfig()},
+        ),
+        (
+            AgentConfigRevision,
+            {
+                "tenant_id": "tenant-1",
+                "agent_id": "agent-1",
+                "current_snapshot_id": "snapshot-1",
+                "revision": 1,
+                "operation": AgentConfigRevisionOperation.CREATE_VERSION,
+            },
+        ),
+        (
+            WorkflowAgentNodeBinding,
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "workflow_id": "workflow-1",
+                "workflow_version": "draft",
+                "node_id": "node-1",
+                "binding_type": WorkflowAgentBindingType.ROSTER_AGENT,
+                "node_job_config": WorkflowNodeJobConfig(),
+            },
+        ),
+        (
+            AgentWorkspace,
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "owner_type": AgentWorkspaceOwnerType.CONVERSATION,
+                "owner_id": "conversation-1",
+                "owner_scope_key": "root",
+                "backend_workspace_ref": "workspace-ref",
+            },
+        ),
+        (
+            AgentWorkspaceBinding,
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "workspace_id": "workspace-1",
+                "agent_id": "agent-1",
+                "agent_config_version_id": "snapshot-1",
+                "agent_config_version_kind": AgentConfigVersionKind.SNAPSHOT,
+                "backend_binding_ref": "binding-ref",
+            },
+        ),
+    ],
+)
+def test_agent_models_require_fields_and_generate_ids(
+    model: Callable[..., _AgentModel], required_values: dict[str, object]
+) -> None:
+    typebase_models = {mapper.class_ for mapper in TypeBase.registry.mappers}
+    base_models = {mapper.class_ for mapper in Base.registry.mappers}
+
+    assert model in typebase_models
+    assert model not in base_models
+    first = model(**required_values)
+    second = model(**required_values)
+    assert first.id
+    assert second.id != first.id
+    assert model(id="explicit-id", **required_values).id == "explicit-id"
+
+    for missing_field in required_values:
+        incomplete_values = {key: value for key, value in required_values.items() if key != missing_field}
+        with pytest.raises(TypeError, match=missing_field):
+            model(**incomplete_values)
 
 
 def test_agent_enums_match_prd_boundaries():
@@ -166,6 +281,7 @@ def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
         "declared_outputs": [{"name": "questions", "type": "array"}],
     }
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",

@@ -1,25 +1,15 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  baseRunningData,
+  renderWorkflowComponent,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { ChunkingMode } from '@/models/datasets'
 import Result from '../index'
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      workflowRunningData: {
-        result: { status: 'succeeded', outputs: { answer: 'done' } },
-        tracing: [{ id: 'trace-1' }],
-      },
-    }),
-}))
-
-vi.mock('../result-preview', () => ({
-  default: ({ onSwitchToDetail }: { onSwitchToDetail: () => void }) => (
-    <button type="button" onClick={onSwitchToDetail}>
-      Result preview
-    </button>
-  ),
-}))
-
+// The detail and tracing panels are independently tested run components.
 vi.mock('@/app/components/workflow/run/result-panel', () => ({
   default: () => <div>Result detail</div>,
 }))
@@ -31,9 +21,22 @@ vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
 describe('Result', () => {
   it('switches between preview, detail, and tracing', async () => {
     const user = userEvent.setup()
-    render(<Result />)
+    renderWorkflowComponent(<Result />, {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          result: {
+            status: WorkflowRunningStatus.Succeeded,
+            outputs: {
+              chunk_structure: ChunkingMode.text,
+              preview: [{ content: 'Processed document' }],
+            },
+          },
+          tracing: [createNodeTracing({ id: 'trace-1' })],
+        }),
+      },
+    })
 
-    expect(screen.getByRole('button', { name: 'Result preview' })).toBeInTheDocument()
+    expect(screen.getByText('Processed document')).toBeInTheDocument()
 
     await user.tab()
     expect(screen.getByRole('tab', { name: 'runLog.result', selected: true })).toHaveFocus()

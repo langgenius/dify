@@ -6,8 +6,10 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from models.dataset import Document
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +36,16 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
             return
 
         try:
-            indexing_runner = IndexingRunner()
-            if document.indexing_status in {"waiting", "parsing", "cleaning"}:
-                indexing_runner.run([document], session)
-            elif document.indexing_status == "splitting":
-                indexing_runner.run_in_splitting_status(document, session)
-            elif document.indexing_status == "indexing":
-                indexing_runner.run_in_indexing_status(document, session)
+            indexing_service = build_document_indexing_service(session_factory=session_factory.get_session_maker())
+            document_ref = DatasetRef(document.tenant_id, document.dataset_id).document(document.id)
+            status = document.indexing_status
             session.commit()
+            if status in {"waiting", "parsing", "cleaning"}:
+                indexing_service.run([document_ref])
+            elif status == "splitting":
+                indexing_service.run_in_splitting_status(document_ref)
+            elif status == "indexing":
+                indexing_service.run_in_indexing_status(document_ref)
             end_at = time.perf_counter()
             logger.info(click.style(f"Processed document: {document.id} latency: {end_at - start_at}", fg="green"))
         except DocumentIsPausedError as ex:

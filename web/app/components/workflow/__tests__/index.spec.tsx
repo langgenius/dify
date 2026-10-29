@@ -64,6 +64,10 @@ const ContextConsumer = () => {
         {` datasets:${datasetCount}`}
         {` reactflow:${String(!!reactFlowStore)}`}
       </div>
+      <label>
+        Local draft
+        <input aria-label="Local draft" />
+      </label>
       <button onClick={advanceWorkflowHistory}>Advance workflow history</button>
     </>
   )
@@ -109,18 +113,6 @@ const WorkflowRemountHarness = () => {
 }
 
 describe('WorkflowWithDefaultContext', () => {
-  it('wires the ReactFlow, workflow history, and datasets detail providers around its children', () => {
-    render(
-      <WorkflowContextProvider>
-        <WorkflowWithDefaultContext nodes={nodes} edges={edges}>
-          <ContextConsumer />
-        </WorkflowWithDefaultContext>
-      </WorkflowContextProvider>,
-    )
-
-    expect(screen.getByText('history:1 datasets:0 reactflow:true')).toBeInTheDocument()
-  })
-
   it('keeps its children mounted when workflow history advances after initialization', async () => {
     const user = userEvent.setup()
 
@@ -132,9 +124,12 @@ describe('WorkflowWithDefaultContext', () => {
       </WorkflowContextProvider>,
     )
 
+    const draft = screen.getByRole('textbox', { name: 'Local draft' })
+    await user.type(draft, 'Unsaved work')
     await user.click(screen.getByRole('button', { name: 'Advance workflow history' }))
 
     expect(screen.getByText('history:2 datasets:0 reactflow:true')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Local draft' })).toHaveValue('Unsaved work')
   })
 
   it('initializes new history before mounting children again in the same workflow store', async () => {

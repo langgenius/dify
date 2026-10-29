@@ -111,7 +111,9 @@ describe('Endpoint management', () => {
   it('updates through the canonical item route without dropping falsy settings', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'common.operation.edit Endpoint 1' }),
+    )
     await user.clear(screen.getByPlaceholderText('Endpoint Name'))
     await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -131,7 +133,7 @@ describe('Endpoint management', () => {
   it('keeps enabled state when disabling is cancelled, then follows refetched state after confirm', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(await screen.findByRole('switch'))
+    await user.click(await screen.findByRole('switch', { name: 'Endpoint 1' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
     expect(mutations).toHaveLength(0)
@@ -149,25 +151,15 @@ describe('Endpoint management', () => {
   it('deletes through the canonical route and refreshes the empty state', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+    const trigger = await screen.findByRole('button', {
+      name: 'common.operation.delete Endpoint 1',
+    })
+    await user.click(trigger)
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
     expect(mutations).toEqual([
       { path: '/workspaces/current/endpoints/ep-1', method: 'DELETE', body: undefined },
     ])
-  })
-
-  it('keeps edit values available when the mutation fails', async () => {
-    const user = userEvent.setup()
-    rejectMutation = true
-    renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
-    await user.clear(screen.getByPlaceholderText('Endpoint Name'))
-    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    await waitFor(() => expect(showError).toHaveBeenCalled())
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Endpoint 1')).toBeInTheDocument()
   })
 
   it.each(['edit', 'disable', 'delete'] as const)(
@@ -182,7 +174,13 @@ describe('Endpoint management', () => {
       renderEndpoints()
       if (action === 'disable') await user.click(await screen.findByRole('switch'))
       else
-        await user.click(await screen.findByRole('button', { name: `common.operation.${action}` }))
+        await user.click(
+          await screen.findByRole('button', { name: `common.operation.${action} Endpoint 1` }),
+        )
+      if (action === 'edit') {
+        await user.clear(screen.getByPlaceholderText('Endpoint Name'))
+        await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Saved endpoint')
+      }
       const actionName = action === 'edit' ? 'common.operation.save' : 'common.operation.confirm'
       const submit = screen.getByRole('button', { name: actionName })
       await user.click(submit)
@@ -200,7 +198,7 @@ describe('Endpoint management', () => {
         'true',
       )
       if (action === 'edit')
-        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Endpoint 1')
+        expect(screen.getByPlaceholderText('Endpoint Name')).toHaveValue('Saved endpoint')
       else expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
       rejectMutation = false
@@ -219,7 +217,9 @@ describe('Endpoint management', () => {
     rejectMutation = true
     failAfterWrite = true
     renderEndpoints()
-    await user.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'common.operation.edit Endpoint 1' }),
+    )
     await user.clear(screen.getByPlaceholderText('Endpoint Name'))
     await user.type(screen.getByPlaceholderText('Endpoint Name'), 'Submitted name')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))

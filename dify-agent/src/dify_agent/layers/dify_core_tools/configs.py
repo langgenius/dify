@@ -1,4 +1,4 @@
-"""Client-safe DTOs for the Dify core-tools Agenton layer.
+"""Client-safe DTOs for the Dify core-tools layer.
 
 This layer exposes API-routed tool invocations for the Dify-owned provider
 families that should execute inside the API service boundary: `plugin`,
@@ -9,23 +9,20 @@ not need to inspect provider internals or storage state.
 
 from __future__ import annotations
 
-from typing import ClassVar, Final, Literal
+from typing import ClassVar, Literal
 
-from pydantic import ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from agenton.layers import LayerConfig
 from dify_agent.layers.dify_plugin.configs import DifyPluginToolParameter
 
 type DifyCoreToolProviderType = Literal["plugin", "builtin", "api", "workflow", "mcp"]
-
-DIFY_CORE_TOOLS_LAYER_TYPE_ID: Final[str] = "dify.core.tools"
 
 
 def _default_parameters_json_schema() -> dict[str, JsonValue]:
     return {"type": "object", "properties": {}, "required": []}
 
 
-class DifyCoreToolConfig(LayerConfig):
+class DifyCoreToolConfig(BaseModel):
     """Prepared API-routed tool declaration exposed to the model."""
 
     provider_type: DifyCoreToolProviderType
@@ -41,8 +38,10 @@ class DifyCoreToolConfig(LayerConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 
-class DifyCoreToolsLayerConfig(LayerConfig):
+class DifyCoreToolsLayerConfig(BaseModel):
     """Public config for the Dify core-tools layer."""
+
+    execution_context: str = "execution_context"
 
     tools: list[DifyCoreToolConfig] = Field(default_factory=list)
 

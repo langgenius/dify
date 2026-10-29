@@ -10,11 +10,11 @@ sensitive runtime configuration.
 """
 
 from collections.abc import AsyncIterator, Awaitable
-from typing import cast
+from typing import cast, override
 
 from redis.asyncio import Redis
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     RUN_EVENT_ADAPTER,
@@ -198,6 +198,7 @@ class RedisRunStore(RunEventSink):
             value = value.decode()
         return RunRecord.model_validate_json(value)
 
+    @override
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Append a non-terminal event JSON payload with refreshed TTLs."""
         events_key = run_events_key(self.prefix, event.run_id)
@@ -215,6 +216,7 @@ class RedisRunStore(RunEventSink):
         event_id = results[0]
         return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
 
+    @override
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first success/failure event and update its run record."""
         status, error, error_type = terminal_event_status_fields(event)
@@ -297,7 +299,7 @@ class RedisRunStore(RunEventSink):
         run_id: str,
         intent: RunCancellationIntent,
         *,
-        session_snapshot: CompositorSessionSnapshot | None = None,
+        session_snapshot: SessionSnapshot | None = None,
         usage: AgentRunUsage | None = None,
     ) -> RunFinalizationResult:
         """Atomically publish cancellation after the owner runner has exited."""
@@ -340,10 +342,21 @@ class RedisRunStore(RunEventSink):
         )
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
-        """Read a bounded page of events after ``after`` cursor."""
+        """Read a nonblocking page strictly after ``after`` using Redis 6.0-compatible XREAD.
+
+        An empty page preserves the supplied cursor; a missing run raises
+        ``RunNotFoundError``.
+        """
         await self.get_run(run_id)
-        raw_events = await self.redis.xrange(run_events_key(self.prefix, run_id), min=f"({after}", count=limit)
-        events = [self._decode_event(run_id, raw_id, fields) for raw_id, fields in raw_events]
+        response = await self.redis.xread(
+            {run_events_key(self.prefix, run_id): after},
+            count=limit,
+        )
+        events = [
+            self._decode_event(run_id, raw_id, fields)
+            for _stream_name, entries in response
+            for raw_id, fields in entries
+        ]
         next_cursor = events[-1].id if events else after
         return RunEventsResponse(run_id=run_id, events=events, next_cursor=next_cursor)
 

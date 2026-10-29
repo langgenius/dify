@@ -148,9 +148,9 @@ class AudioStream(Iterator[bytes]):
     """Own a MIME-checked stream, including resources opened while peeking."""
 
     def __init__(
-        self, chunks: Generator[bytes, None, None], *, source: Iterable[_AudioChunk], iterator: Iterator[_AudioChunk]
+        self, chunks: Generator[bytes], *, source: Iterable[_AudioChunk], iterator: Iterator[_AudioChunk]
     ) -> None:
-        self._chunks: Generator[bytes, None, None] = chunks
+        self._chunks: Generator[bytes] = chunks
         self._source: Iterable[_AudioChunk] = source
         self._iterator: Iterator[_AudioChunk] = iterator
         self._closed: bool = False
@@ -209,7 +209,7 @@ def inspect_audio_stream(
             close_stream(audio_stream)
         raise
 
-    def validated_stream() -> Generator[bytes, None, None]:
+    def validated_stream() -> Generator[bytes]:
         for chunk in chain(leading_chunks, iterator):
             audio, chunk_mime_type = _extract_audio_chunk(chunk)
             normalized_chunk_mime_type = _normalize_reported_mime_type(chunk_mime_type, "chunk")

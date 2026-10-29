@@ -1,9 +1,9 @@
 'use client'
 
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -29,7 +29,7 @@ import WeightedScore from './weighted-score'
 type Props = Readonly<{
   datasetConfigs: DatasetConfigs
   onChange: (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void
-  selectedDatasets?: DataSet[]
+  selectedDatasets?: DatasetDetailWithPartialMembersResponse[]
   isInWorkflow?: boolean
   singleRetrievalModelConfig?: ModelConfig
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']

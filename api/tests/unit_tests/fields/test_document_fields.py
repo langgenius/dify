@@ -1,18 +1,17 @@
 import json
 from datetime import datetime
 
-import pytest
 from sqlalchemy.orm import Session
 
 from extensions.storage.storage_type import StorageType
-from fields.document_fields import DocumentWithSession
+from fields.document_fields import DocumentProcessRuleResponse, DocumentResponse, DocumentSourceDetailResponse
 from models.dataset import Document, DocumentSegment
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
+from services.knowledge.dataset_read_service import load_document_details
 
 
-@pytest.mark.parametrize("sqlite_session", [(Document, DocumentSegment, UploadFile)], indirect=True)
-def test_document_with_session_uses_explicit_getters(sqlite_session: Session) -> None:
+def test_document_detail_serializes_after_session_closes(sqlite_session: Session) -> None:
     upload = UploadFile(
         tenant_id="tenant-1",
         storage_type=StorageType.LOCAL,
@@ -52,8 +51,39 @@ def test_document_with_session_uses_explicit_getters(sqlite_session: Session) ->
     )
     sqlite_session.add_all([upload, document, segment])
     sqlite_session.flush()
-    source = DocumentWithSession(document=document, session=sqlite_session)
+    source = load_document_details([document], session=sqlite_session)[0]
+    sqlite_session.expire_all()
+    sqlite_session.close()
+    response = DocumentResponse.model_validate(source).model_dump(mode="json")
 
-    assert source.data_source_detail_dict["upload_file"]["name"] == "source.txt"
-    assert source.hit_count == 3
-    assert source.doc_metadata_details is None
+    assert response["data_source_detail_dict"]["upload_file"]["name"] == "source.txt"
+    assert response["hit_count"] == 3
+    assert response["doc_metadata"] == []
+
+
+def test_process_rule_reads_the_legacy_delimiter_as_separator() -> None:
+    rule = DocumentProcessRuleResponse.model_validate(
+        {
+            "mode": "custom",
+            "rules": {
+                "pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}],
+                "segmentation": {"delimiter": "\n\n", "max_tokens": 500},
+            },
+        }
+    )
+
+    assert rule.model_dump(mode="json") == {
+        "mode": "custom",
+        "rules": {
+            "pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}],
+            "segmentation": {"separator": "\n\n", "max_tokens": 500, "chunk_overlap": 0},
+            "parent_mode": None,
+            "subchunk_segmentation": None,
+        },
+    }
+
+
+def test_source_detail_keeps_notion_and_website_source_info() -> None:
+    detail = DocumentSourceDetailResponse.model_validate({"url": "https://example.com", "title": "Example"})
+
+    assert detail.model_dump(mode="json") == {"url": "https://example.com", "title": "Example"}

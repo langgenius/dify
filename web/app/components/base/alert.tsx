@@ -1,4 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { cva } from 'class-variance-authority'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,14 +35,14 @@ const Alert: React.FC<Props> = ({ type = 'info', message, onHide, className }) =
         <div className="p-1">
           <div className="system-xs-regular text-text-secondary">{message}</div>
         </div>
-        <button
-          type="button"
+        <IconButton
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="pointer-events-auto flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-button-secondary-accent-border"
+          className="pointer-events-auto"
+          size="md"
           onClick={onHide}
         >
           <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-        </button>
+        </IconButton>
       </div>
     </div>
   )

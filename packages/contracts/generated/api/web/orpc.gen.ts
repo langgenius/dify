@@ -3,6 +3,60 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountBannedError,
+  zAgentNotPublishedError,
+  zAgentVersionNotFoundError,
+  zAppMoreLikeThisDisabledError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zAuthenticationFailedError,
+  zCompletionRequestError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
+  zEmailCodeError,
+  zEmailPasswordResetLimitError,
+  zEmailSendIpLimitError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zHumanInputFormExpiredError,
+  zHumanInputFormSubmittedError,
+  zInvalidEmailError,
+  zInvalidFormDataError,
+  zInvalidOrExpiredTokenError,
+  zInvalidParamError,
+  zInvalidUploadTokenError,
+  zMalformedUploadTokenError,
+  zMessageFeedbackRatingRequiredError,
+  zModelCurrentlyNotSupportError,
+  zNoAudioUploadedError,
+  zNoFileUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotWorkflowAppError,
+  zPasswordMismatchError,
+  zPasswordResetRateLimitExceededError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zRemoteFileAccessDeniedError,
+  zRemoteFileInvalidResponseError,
+  zRemoteFileInvalidUrlError,
+  zRemoteFileNotFoundError,
+  zRemoteFileUnavailableError,
+  zRemoteFileUrlBlockedError,
+  zSpeechToTextDisabledError,
+  zTooManyFilesError,
+  zTriggerWorkflowServiceModeUnavailableError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedFileTypeError,
+  zUploadTokenRequiredError,
+  zWebFormRateLimitExceededError,
+} from './zod.gen.ts'
+import {
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
   zDeleteSavedMessagesByMessageIdPath,
@@ -106,6 +160,21 @@ export const post = oc
     tags: ['web'],
   })
   .output(zPostAudioToTextResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+  })
 
 export const audioToText = {
   post,
@@ -125,6 +194,7 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
   .output(zPostChatMessagesByTaskIdStopResponse)
+  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
 export const stop = {
   post: post2,
@@ -148,6 +218,16 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostChatMessagesBody }))
   .output(zPostChatMessagesResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+  })
 
 export const chatMessages = {
   post: post3,
@@ -168,6 +248,7 @@ export const post4 = oc
   })
   .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
   .output(zPostCompletionMessagesByTaskIdStopResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const stop2 = {
   post: post4,
@@ -191,6 +272,14 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostCompletionMessagesBody }))
   .output(zPostCompletionMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const completionMessages = {
   post: post5,
@@ -217,6 +306,14 @@ export const post6 = oc
     }),
   )
   .output(zPostConversationsByCIdNameResponse)
+  .errors({
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const name = {
   post: post6,
@@ -236,17 +333,22 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdPinPath }))
   .output(zPatchConversationsByCIdPinResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const pin = {
   patch,
 }
 
 /**
- * Unpin a specific conversation to remove it from the top of the list.
+ * Remove the current user's pin. Succeeds when the conversation is already unpinned.
  */
 export const patch2 = oc
   .route({
-    description: 'Unpin a specific conversation to remove it from the top of the list.',
+    description:
+      "Remove the current user's pin. Succeeds when the conversation is already unpinned.",
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchConversationsByCIdUnpin',
@@ -255,6 +357,10 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
   .output(zPatchConversationsByCIdUnpinResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const unpin = {
   patch: patch2,
@@ -275,6 +381,10 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
+  .errors({
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const byCId = {
   delete: delete_,
@@ -295,8 +405,13 @@ export const get = oc
     path: '/conversations',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
+  .errors({
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const conversations = {
   get,
@@ -317,6 +432,12 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginValidityBody }))
   .output(zPostEmailCodeLoginValidityResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+  })
 
 export const validity = {
   post: post7,
@@ -336,6 +457,7 @@ export const post8 = oc
   })
   .input(z.object({ body: zPostEmailCodeLoginBody }))
   .output(zPostEmailCodeLoginResponse)
+  .errors({ authentication_failed: { status: 401, data: zAuthenticationFailedError } })
 
 export const emailCodeLogin = {
   post: post8,
@@ -382,6 +504,14 @@ export const post9 = oc
     tags: ['web'],
   })
   .output(zPostFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload = {
   post: post9,
@@ -405,6 +535,11 @@ export const post10 = oc
   })
   .input(z.object({ body: zPostForgotPasswordResetsBody }))
   .output(zPostForgotPasswordResetsResponse)
+  .errors({
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    password_mismatch: { status: 400, data: zPasswordMismatchError },
+  })
 
 export const resets = {
   post: post10,
@@ -424,6 +559,12 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostForgotPasswordValidityBody }))
   .output(zPostForgotPasswordValidityResponse)
+  .errors({
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const validity2 = {
   post: post11,
@@ -443,6 +584,11 @@ export const post12 = oc
   })
   .input(z.object({ body: zPostForgotPasswordBody }))
   .output(zPostForgotPasswordResponse)
+  .errors({
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
+  })
 
 export const forgotPassword = {
   post: post12,
@@ -469,6 +615,11 @@ export const post13 = oc
   })
   .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
   .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
 export const uploadToken = {
   post: post13,
@@ -493,6 +644,11 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
 /**
  * Submit human input form by token
@@ -526,6 +682,12 @@ export const post14 = oc
     }),
   )
   .output(zPostFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_form_data: { status: 400, data: zInvalidFormDataError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
 export const byFormToken = {
   get: get2,
@@ -555,6 +717,25 @@ export const post15 = oc
     tags: ['web'],
   })
   .output(zPostHumanInputFormsFilesResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
+  })
 
 export const files2 = {
   post: post15,
@@ -576,7 +757,7 @@ export const get3 = oc
     path: '/login/status',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetLoginStatusQuery.optional() }))
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }).optional())
   .output(zGetLoginStatusResponse)
 
 export const status = {
@@ -600,6 +781,10 @@ export const post16 = oc
   })
   .input(z.object({ body: zPostLoginBody }))
   .output(zPostLoginResponse)
+  .errors({
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+  })
 
 export const login = {
   post: post16,
@@ -644,6 +829,10 @@ export const post18 = oc
     }),
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
   post: post18,
@@ -668,17 +857,27 @@ export const get4 = oc
     }),
   )
   .output(zGetMessagesByMessageIdMoreLikeThisResponse)
+  .errors({
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const moreLikeThis = {
   get: get4,
 }
 
 /**
- * Get suggested follow-up questions after a message (chat apps only).
+ * Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
 export const get5 = oc
   .route({
-    description: 'Get suggested follow-up questions after a message (chat apps only).',
+    description:
+      'Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',
@@ -687,6 +886,19 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const suggestedQuestions = {
   get: get5,
@@ -712,6 +924,10 @@ export const get6 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const messages = {
   get: get6,
@@ -734,6 +950,7 @@ export const get7 = oc
     tags: ['web'],
   })
   .output(zGetMetaResponse)
+  .errors({ app_unavailable: { status: 400, data: zAppUnavailableError } })
 
 export const meta = {
   get: get7,
@@ -755,6 +972,10 @@ export const get8 = oc
     tags: ['web'],
   })
   .output(zGetParametersResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const parameters = {
   get: get8,
@@ -772,7 +993,7 @@ export const get9 = oc
     path: '/passport',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetPassportQuery.optional() }))
+  .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
 
 export const passport = {
@@ -821,6 +1042,17 @@ export const post19 = oc
   })
   .input(z.object({ body: zPostRemoteFilesUploadBody }))
   .output(zPostRemoteFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload2 = {
   post: post19,
@@ -857,6 +1089,14 @@ export const get10 = oc
   })
   .input(z.object({ params: zGetRemoteFilesByUrlPath }))
   .output(zGetRemoteFilesByUrlResponse)
+  .errors({
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+  })
 
 export const byUrl = {
   get: get10,
@@ -882,6 +1122,7 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteSavedMessagesByMessageIdPath }))
   .output(zDeleteSavedMessagesByMessageIdResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const byMessageId2 = {
   delete: delete2,
@@ -899,8 +1140,9 @@ export const get11 = oc
     path: '/saved-messages',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }).optional())
   .output(zGetSavedMessagesResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 /**
  * Save a specific message for later reference.
@@ -916,6 +1158,7 @@ export const post20 = oc
   })
   .input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery }))
   .output(zPostSavedMessagesResponse)
+  .errors({ not_completion_app: { status: 400, data: zNotCompletionAppError } })
 
 export const savedMessages = {
   get: get11,
@@ -987,6 +1230,13 @@ export const post21 = oc
   })
   .input(z.object({ body: zPostTextToAudioBody }))
   .output(zPostTextToAudioResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const textToAudio = {
   post: post21,
@@ -1004,8 +1254,9 @@ export const get14 = oc
     path: '/webapp/access-mode',
     tags: ['web'],
   })
-  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }).optional())
   .output(zGetWebappAccessModeResponse)
+  .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const accessMode = {
   get: get14,
@@ -1054,6 +1305,7 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetWorkflowByTaskIdEventsPath }))
   .output(zGetWorkflowByTaskIdEventsResponse)
+  .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
   get: get16,
@@ -1084,6 +1336,18 @@ export const post22 = oc
   })
   .input(z.object({ body: zPostWorkflowsRunBody }))
   .output(zPostWorkflowsRunResponse)
+  .errors({
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trigger_workflow_service_mode_unavailable: {
+      status: 403,
+      data: zTriggerWorkflowServiceModeUnavailableError,
+    },
+  })
 
 export const run = {
   post: post22,
@@ -1106,6 +1370,7 @@ export const post23 = oc
   })
   .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
+  .errors({ not_workflow_app: { status: 400, data: zNotWorkflowAppError } })
 
 export const stop3 = {
   post: post23,
