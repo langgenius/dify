@@ -775,7 +775,18 @@ def test_inherited_context_cannot_reactivate_a_finished_scope(state_case: AgentS
 def test_changed_full_receipt_never_reuses_bytes(state_case: AgentStateCase, field: str) -> None:
     c = state_case
     receipt = context_receipt(c)
-    changed = replace(receipt, **{field: getattr(receipt, field) + "-changed"})
+    values: dict[str, str] = {
+        "id": receipt.id,
+        "tenant_id": receipt.tenant_id,
+        "request_id": receipt.request_id,
+        "invocation_id": receipt.invocation_id,
+        "kind": receipt.kind,
+        "logical_key": receipt.logical_key,
+        "storage_key": receipt.storage_key,
+        "payload_digest": receipt.payload_digest,
+        "value_digest": receipt.value_digest,
+    }
+    changed = replace(receipt, **{field: values[field] + "-changed"})
     c.blobs[changed.storage_key] = c.blobs[receipt.storage_key]
     c.events.clear()
     with native_payload_read_scope():
