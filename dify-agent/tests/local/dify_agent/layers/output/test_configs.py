@@ -1,9 +1,13 @@
 import pytest
 from pydantic import JsonValue, TypeAdapter, ValidationError
+from pydantic_ai import Agent
+from pydantic_ai.messages import ModelResponse
+from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.output import ToolOutput
 import dify_agent.layers.output as output_exports
 from dify_agent.layers.output import DifyOutputLayerConfig
 from dify_agent.layers.output.output_layer import Capability
+from dify_agent.runtime.agent_factory import create_agent
 from tests.local.dify_agent.module_support import deps_for
 
 
@@ -56,6 +60,34 @@ def _object_local_definitions_ref_schema() -> dict[str, JsonValue]:
         "properties": {"items": {"$ref": "#/definitions/itemArray"}},
         "required": ["items"],
         "definitions": {"itemArray": {"type": "array", "items": {"type": "string"}}},
+    }
+
+
+def _keyword_named_property_ref_schema(property_name: str) -> dict[str, JsonValue]:
+    return {
+        "type": "object",
+        "properties": {property_name: {"$ref": "#/$defs/Widget"}},
+        "required": [property_name],
+        "$defs": {"Widget": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}},
+    }
+
+
+def _keyword_named_property_remote_ref_schema(property_name: str) -> dict[str, JsonValue]:
+    return {"type": "object", "properties": {property_name: {"$ref": "https://example.com/schema.json"}}}
+
+
+def _literal_default_and_examples_schema() -> dict[str, JsonValue]:
+    return {
+        "type": "object",
+        "properties": {
+            "payload": {
+                "type": "object",
+                "default": {"$ref": "https://example.com/default", "note": "literal default"},
+                "examples": [{"$ref": "https://example.com/example", "note": "literal example"}],
+                "properties": {"id": {"type": "string"}},
+            }
+        },
+        "required": ["payload"],
     }
 
 
@@ -165,6 +197,50 @@ def test_output_layer_keeps_local_defs_ref_working_in_direct_object_schema() -> 
     assert output_adapter.validate_python({"items": ["a", "b"]}) == {"items": ["a", "b"]}
 
 
+@pytest.mark.parametrize("property_name", ["widget", "const", "default", "enum", "example", "examples"])
+def test_output_layer_resolves_local_defs_ref_under_keyword_named_property(property_name: str) -> None:
+    config = DifyOutputLayerConfig(json_schema=_keyword_named_property_ref_schema(property_name))
+    output_contract = _output(config)
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+    assert output_schema["properties"] == {
+        property_name: {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}
+    }
+    assert "$defs" not in output_schema
+    payload = {property_name: {"id": "widget-1"}}
+    assert output_adapter.validate_python(payload) == payload
+
+
+@pytest.mark.parametrize("property_name", ["widget", "const", "default", "enum", "example", "examples"])
+def test_output_layer_rejects_remote_ref_under_keyword_named_property(property_name: str) -> None:
+    config = DifyOutputLayerConfig(json_schema=_keyword_named_property_remote_ref_schema(property_name))
+    with pytest.raises(ValueError, match="Remote \\$ref values are not supported"):
+        _ = _output(config)
+
+
+@pytest.mark.parametrize("property_name", ["widget", "default"])
+def test_output_layer_contract_builds_agent_with_keyword_named_ref_property(property_name: str) -> None:
+    config = DifyOutputLayerConfig(json_schema=_keyword_named_property_ref_schema(property_name))
+    output_contract = _output(config)
+    agent = create_agent(
+        FunctionModel(lambda messages, info: ModelResponse(parts=[])),
+        toolsets=[],
+        capabilities=[],
+        output_type=output_contract.output_type,
+    )
+    assert isinstance(agent, Agent)
+
+
+def test_output_layer_keeps_real_default_and_examples_keyword_values_literal() -> None:
+    config = DifyOutputLayerConfig(json_schema=_literal_default_and_examples_schema())
+    output_contract = _output(config)
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    payload_schema = output_adapter.json_schema()["properties"]["payload"]
+    assert payload_schema["default"] == {"$ref": "https://example.com/default", "note": "literal default"}
+    assert payload_schema["examples"] == [{"$ref": "https://example.com/example", "note": "literal example"}]
+    assert payload_schema["properties"] == {"id": {"type": "string"}}
+
+
 def test_output_layer_rejects_recursive_json_schema_during_contract_build() -> None:
     config = DifyOutputLayerConfig(json_schema=_recursive_json_schema())
     with pytest.raises(ValueError):
@@ -190,6 +266,36 @@ def test_output_layer_allows_literal_dollar_ref_values_under_const_and_examples(
     assert output_adapter.validate_python(
         {"payload": {"$ref": "https://example.com/literal", "kind": "literal"}, "metadata": {"note": "runtime value"}}
     ) == {"payload": {"$ref": "https://example.com/literal", "kind": "literal"}, "metadata": {"note": "runtime value"}}
+
+
+def _keyword_named_dependency_ref_schema(remote: bool = False) -> dict[str, JsonValue]:
+    ref = "https://example.com/schema.json" if remote else "#/$defs/Widget"
+    return {
+        "type": "object",
+        "properties": {"payload": {"type": "string"}, "default": {"type": "string"}},
+        "required": ["payload"],
+        "dependencies": {"default": {"$ref": ref}},
+        "$defs": {"Widget": {"type": "object", "properties": {"id": {"type": "string"}}}},
+    }
+
+
+def test_output_layer_resolves_ref_under_keyword_named_dependency() -> None:
+    config = DifyOutputLayerConfig(json_schema=_keyword_named_dependency_ref_schema())
+    output_contract = _output(config)
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+    assert "$defs" not in output_schema
+    assert output_schema["dependencies"]["default"] == {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+    }
+    assert output_adapter.validate_python({"payload": "x"}) == {"payload": "x"}
+
+
+def test_output_layer_rejects_remote_ref_under_keyword_named_dependency() -> None:
+    config = DifyOutputLayerConfig(json_schema=_keyword_named_dependency_ref_schema(remote=True))
+    with pytest.raises(ValueError, match="Remote \\$ref values are not supported"):
+        _ = _output(config)
 
 
 def _output(config):
