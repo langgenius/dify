@@ -380,7 +380,7 @@ function AgentFileTextPreview({ content, fileName }: { content: string; fileName
                     // oxlint-disable-next-line react/no-array-index-key -- Tokens are positional within their line.
                     key={tokenIndex}
                     style={token.htmlStyle}
-                    className="text-(--hls-light) [font-style:var(--hls-light-font-style)] [font-weight:var(--hls-light-font-weight)] in-data-[theme=dark]:text-(--hls-dark) in-data-[theme=dark]:[font-style:var(--hls-dark-font-style)] in-data-[theme=dark]:[font-weight:var(--hls-dark-font-weight)]"
+                    className="[font-weight:var(--hls-light-font-weight)] text-(--hls-light) [font-style:var(--hls-light-font-style)] in-data-[theme=dark]:[font-weight:var(--hls-dark-font-weight)] in-data-[theme=dark]:text-(--hls-dark) in-data-[theme=dark]:[font-style:var(--hls-dark-font-style)]"
                   >
                     {token.content}
                   </span>
