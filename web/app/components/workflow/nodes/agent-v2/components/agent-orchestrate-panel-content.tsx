@@ -489,9 +489,9 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     cancelBuildDraftRefresh()
     setIsApplyingInlineBuildDraft(true)
     try {
-      const { data: latestBuildDraft } = await buildDraft.refetch()
-      const agentSoulConfig = latestBuildDraft?.agent_soul ?? buildDraft.agentSoulConfig
-      if (!agentSoulConfig) return
+      const latestBuildDraft = await buildDraft.refetch()
+      const agentSoulConfig = latestBuildDraft.data?.agent_soul
+      if (latestBuildDraft.isError || !agentSoulConfig) return
 
       const savedComposerState = await saveAgentSoulConfig(agentSoulConfig)
       await discardBuildDraft({

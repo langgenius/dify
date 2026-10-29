@@ -592,6 +592,19 @@ describe('Inline Agent configure workspace', () => {
     )
   })
 
+  it('does not apply a cached build draft when refreshing it fails', async () => {
+    const user = userEvent.setup()
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+    api.loadBuildDraft.mockRejectedValue(createHttpError(new Response(null, { status: 500 })))
+
+    await user.click(applyButton())
+
+    await waitFor(() => expect(applyButton()).toBeEnabled())
+    expect(api.saveComposer).not.toHaveBeenCalled()
+  })
+
   it('keeps an existing build draft until the switch-to-preview confirmation is accepted', async () => {
     const user = userEvent.setup()
     api.loadBuildDraft.mockResolvedValue(createBuildDraft())

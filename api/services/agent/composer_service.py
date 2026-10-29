@@ -145,7 +145,12 @@ class AgentComposerService:
             snapshot_id=snapshot_id,
         )
         return cls._serialize_workflow_state(
-            session=session, binding=binding, agent=agent, version=version, account_id=account_id
+            session=session,
+            binding=binding,
+            agent=agent,
+            version=version,
+            account_id=account_id,
+            include_draft_files=snapshot_id is None,
         )
 
     @classmethod
@@ -286,7 +291,12 @@ class AgentComposerService:
                 version_id=version_id,
             )
             state = cls._serialize_workflow_state(
-                session=session, binding=binding, agent=agent, version=version, account_id=account_id
+                session=session,
+                binding=binding,
+                agent=agent,
+                version=version,
+                account_id=account_id,
+                include_draft_files=True,
             )
             state["validation"] = cls.collect_validation_findings(payload=payload)
             session.commit()
@@ -326,7 +336,12 @@ class AgentComposerService:
                 version_id=binding.current_snapshot_id,
             )
             return cls._serialize_workflow_state(
-                session=session, binding=binding, agent=agent, version=version, account_id=account_id
+                session=session,
+                binding=binding,
+                agent=agent,
+                version=version,
+                account_id=account_id,
+                include_draft_files=True,
             )
 
         if binding.binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
@@ -385,7 +400,12 @@ class AgentComposerService:
             version_id=inline_agent.active_config_snapshot_id,
         )
         return cls._serialize_workflow_state(
-            session=session, binding=binding, agent=inline_agent, version=version, account_id=account_id
+            session=session,
+            binding=binding,
+            agent=inline_agent,
+            version=version,
+            account_id=account_id,
+            include_draft_files=True,
         )
 
     @classmethod
@@ -2410,6 +2430,7 @@ class AgentComposerService:
         agent: Agent | None,
         version: AgentConfigSnapshot | None,
         account_id: str | None = None,
+        include_draft_files: bool,
     ) -> dict[str, Any]:
         locked = bool(agent and agent.scope == AgentScope.ROSTER)
         save_options = [ComposerSaveStrategy.NODE_JOB_ONLY.value]
@@ -2454,7 +2475,9 @@ class AgentComposerService:
                 "can_unlock": locked,
                 "reason": "roster_agent_shared_version" if locked else "workflow_only_agent",
             },
-            "agent_soul": cls._workflow_agent_soul_state(session=session, agent=agent, version=version),
+            "agent_soul": cls._workflow_agent_soul_state(
+                session=session, agent=agent, version=version, include_draft_files=include_draft_files
+            ),
             "node_job": binding.node_job_config_dict,
             "effective_declared_outputs": cls._serialize_effective_outputs(
                 WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
@@ -2536,17 +2559,23 @@ class AgentComposerService:
 
     @classmethod
     def _workflow_agent_soul_state(
-        cls, *, session: Session, agent: Agent | None, version: AgentConfigSnapshot | None
+        cls,
+        *,
+        session: Session,
+        agent: Agent | None,
+        version: AgentConfigSnapshot | None,
+        include_draft_files: bool,
     ) -> dict[str, Any]:
         """Return the node's Agent Soul with the file list its next node save would persist.
 
         Inline file uploads and deletes write the workflow-only Agent's normal Draft. While that Draft is
-        based on the bound snapshot, its ``config_files`` are the current list for the node.
+        based on the bound snapshot, its ``config_files`` are the current list for the node. An explicitly
+        requested snapshot (``include_draft_files`` false) keeps its own files.
         """
         if version is None:
             return AgentSoulConfig().model_dump(mode="json")
         agent_soul = cls._workflow_agent_soul_config(version.config_snapshot_dict)
-        if agent is None or agent.scope != AgentScope.WORKFLOW_ONLY:
+        if not include_draft_files or agent is None or agent.scope != AgentScope.WORKFLOW_ONLY:
             return agent_soul
         normal_draft = cls._get_agent_draft(
             session=session,

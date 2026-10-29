@@ -335,15 +335,24 @@ def test_inline_composer_shows_file_edits_before_the_next_node_save(
     target = composer_target
     assets = AgentConfigService(session_factory=sqlite_session_factory)
 
-    def loaded_file_ids() -> list[str | None]:
+    def loaded_file_ids(snapshot_id: str | None = None) -> list[str | None]:
         with sqlite_session_factory() as session:
             state = AgentComposerService.load_workflow_composer(
-                session=session, tenant_id=target.tenant_id, app_id=target.app_id, node_id="node-1"
+                session=session,
+                tenant_id=target.tenant_id,
+                app_id=target.app_id,
+                node_id="node-1",
+                snapshot_id=snapshot_id,
             )
         return [item.file_id for item in AgentSoulConfig.model_validate(state["agent_soul"]).config_files]
 
     assets.push_files_for_console(**asset_target(target), upload_file_ids=list(target.upload_ids))
     assert loaded_file_ids() == list(target.upload_ids)
+    with sqlite_session_factory() as session:
+        agent = session.get(Agent, target.agent_id)
+        assert agent is not None
+        bound_snapshot_id = agent.active_config_snapshot_id
+    assert loaded_file_ids(bound_snapshot_id) == []
 
     assets.push_for_console(
         **asset_target(target), payload=ConfigPushPayload(files=[ConfigPushFileItem(name="first.md")])
