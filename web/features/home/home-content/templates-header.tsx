@@ -1,8 +1,10 @@
 'use client'
 
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import Category from '@/app/components/explore/category'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 export function HomeTemplatesHeader({
   allCategoriesEn,
@@ -20,6 +22,10 @@ export function HomeTemplatesHeader({
   onKeywordsChange: (keywords: string) => void
 }) {
   const { t } = useTranslation()
+  const { data: enableMarketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ enable_marketplace }) => enable_marketplace,
+  })
 
   return (
     <div className="sticky top-0 z-10 bg-background-body">
@@ -30,15 +36,17 @@ export function HomeTemplatesHeader({
         >
           {t(($) => $['apps.title'], { ns: 'explore' })}
         </h2>
-        <a
-          href="https://marketplace.dify.ai/templates"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="-m-1 flex min-h-6 shrink-0 touch-manipulation items-center gap-1 rounded-md p-1 system-xs-medium text-text-tertiary outline-hidden transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
-        >
-          {t(($) => $['apps.viewMore'], { ns: 'explore' })}
-          <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
-        </a>
+        {enableMarketplace && (
+          <a
+            href="https://marketplace.dify.ai/templates"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="-m-1 flex min-h-6 shrink-0 touch-manipulation items-center gap-1 rounded-md p-1 system-xs-medium text-text-tertiary outline-hidden transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
+          >
+            {t(($) => $['apps.viewMore'], { ns: 'explore' })}
+            <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
+          </a>
+        )}
       </div>
 
       <div className="flex items-start justify-between gap-2 px-8 pt-3 pb-3">
