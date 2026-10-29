@@ -4,11 +4,13 @@ from http import HTTPStatus
 from typing import Final
 from uuid import UUID, uuid4
 
+from flask import send_file
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from constants.oauth_bearer import Scope
 from controllers.common.errors import ForbiddenError, NotFoundError
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
@@ -18,13 +20,18 @@ from controllers.openapi._models import (
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    AppPackageExportQuery,
     CheckDependenciesResponse,
     DslCheckPayload,
     DslCheckResponse,
     DslIssueRow,
     Hint,
 )
-from controllers.openapi.auth.requirements import EDITOR_ROLES, account_app_guards, workspace_write_guards
+from controllers.openapi.auth.requirements import (
+    EDITOR_ROLES,
+    account_app_guards,
+    workspace_write_guards,
+)
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
@@ -49,6 +56,12 @@ from services.workflow.graph_diff import current_draft_token
 
 _DSL_READ_GUARDS: Final = account_app_guards(
     RBACPermission.APP_IMPORT_EXPORT_DSL, scope=Scope.APPS_READ, roles=EDITOR_ROLES
+)
+_PACKAGE_READ_GUARDS: Final = account_app_guards(
+    RBACPermission.APP_IMPORT_EXPORT_DSL,
+    scope=Scope.APPS_READ,
+    roles=EDITOR_ROLES,
+    agent_permission=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
 )
 _DSL_WRITE_GUARDS: Final = workspace_write_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, roles=EDITOR_ROLES)
 
@@ -276,6 +289,58 @@ class AppDslExportApi(Resource):
         except IsDraftWorkflowError as exc:
             raise VersionNotFound() from exc
         return AppDslExportResponse(data=data, draft_hash=draft_hash), 200
+
+
+@openapi_ns.route("/apps/<string:app_id>/package")
+class AppPackageExportApi(Resource):
+    """Download an app as a ``.ifpkg`` package (a zip), from its draft or one published version.
+
+    By default roster Agent nodes export as references and only inline Agents are packaged.
+    Pass ``preserve_agent_bindings=false`` to package every Agent, to move the app to another workspace.
+    """
+
+    @endpoint(
+        context="app",
+        op="export.console_app.package",
+        kind=Kind.FILE,
+        summary="Download an app as a .ifpkg package: its draft, or one published version",
+        examples=(
+            Example(title="Export the draft as a package", input={"app_id": "<app_id>"}),
+            Example(
+                title="Export a published version to move to another workspace",
+                input={"app_id": "<app_id>", "workflow_id": "<workflow_id>", "preserve_agent_bindings": False},
+            ),
+        ),
+        requirements=_PACKAGE_READ_GUARDS,
+        query=AppPackageExportQuery,
+        returns=(HTTPStatus.OK, BinaryFileResponse, "App package"),
+    )
+    def get(self, ctx: RequestContext, app_id: str, *, query: AppPackageExportQuery):
+        options = AppExportOptions(
+            format="ifpkg",
+            include_secret=query.include_secret,
+            workflow_id=query.workflow_id,
+            preserve_agent_bindings=query.preserve_agent_bindings,
+        )
+        try:
+            exported = application_services().apps.console.export(ctx, app_id, options)
+        except ConsoleAppNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except WorkflowNotFoundError as exc:
+            raise (VersionNotFound() if query.workflow_id else DraftNotFound()) from exc
+        except IsDraftWorkflowError as exc:
+            raise VersionNotFound() from exc
+        if isinstance(exported, str):
+            raise TypeError("a package export returned YAML text")
+        try:
+            response = send_file(
+                exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+            )
+        except Exception:
+            exported.close()
+            raise
+        response.call_on_close(exported.close)
+        return response
 
 
 @openapi_ns.route("/apps/<string:app_id>/dependencies:check")
