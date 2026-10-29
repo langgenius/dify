@@ -1338,6 +1338,11 @@ class DataSetConfig(BaseSettings):
     Configuration for dataset management
     """
 
+    DATASET_DESCRIPTION_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters in a knowledge base description",
+        default=400,
+    )
+
     PLAN_SANDBOX_CLEAN_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for dataset cleanup operations - plan: sandbox",
         default=30,

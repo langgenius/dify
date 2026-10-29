@@ -6,9 +6,11 @@ from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
 import pytest
+from pydantic import BaseModel, ValidationError
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.rbac import DatasetId, RBACPermission, Workspace
 from controllers.console.app.error import ProviderNotInitializeError
@@ -72,6 +74,24 @@ from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
 DATASET_ID = UUID(int=1)
+
+
+@pytest.mark.parametrize("payload_model", [DatasetCreatePayload, DatasetUpdatePayload])
+def test_dataset_description_respects_configured_limit(payload_model: type[BaseModel]) -> None:
+    limit = dify_config.DATASET_DESCRIPTION_MAX_LENGTH
+    description = "知" * limit
+    assert payload_model(name="Dataset", description=description).model_dump()["description"] == description
+
+    with pytest.raises(ValidationError) as exc_info:
+        payload_model(name="Dataset", description=description + "识")
+
+    error = exc_info.value.errors()[0]
+    assert error["loc"] == ("description",)
+    assert error["type"] == "string_too_long"
+    assert error["ctx"]["max_length"] == limit
+    schema = payload_model.model_json_schema()["properties"]["description"]
+    alternatives = schema.get("anyOf", [schema])
+    assert next(item for item in alternatives if item.get("type") == "string")["maxLength"] == limit
 
 
 def test_dataset_delete_requires_dataset_delete_permission() -> None:

@@ -10,6 +10,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator, model_validator
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
+from configs import dify_config
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
@@ -152,7 +153,7 @@ def _validate_doc_form(value: str | None) -> str | None:
 
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
-    description: str = Field("", max_length=400)
+    description: str = Field("", max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
     indexing_technique: str | None = None
     permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
     provider: str = "vendor"
@@ -174,7 +175,7 @@ class DatasetCreatePayload(BaseModel):
 
 class DatasetUpdatePayload(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=40)
-    description: str | None = Field(None, max_length=400)
+    description: str | None = Field(None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
     permission: DatasetPermissionEnum | None = None
     indexing_technique: str | None = None
     embedding_model: str | None = None
