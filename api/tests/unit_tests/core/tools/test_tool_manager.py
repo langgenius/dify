@@ -246,6 +246,10 @@ def _setup_list_providers_from_api_mocks(
 
 @pytest.fixture(autouse=True)
 def _reset_tool_manager_state():
+    from extensions.application_services.tools import resolve_tool_credentials
+
+    old_credential_resolver = ToolManager._credential_resolver
+    ToolManager.configure_credential_resolver(resolve_tool_credentials)
     old_hardcoded = ToolManager._hardcoded_providers.copy()
     old_loaded = ToolManager._builtin_providers_loaded
     old_labels = ToolManager._builtin_tools_labels.copy()
@@ -254,6 +258,7 @@ def _reset_tool_manager_state():
     try:
         yield
     finally:
+        ToolManager._credential_resolver = old_credential_resolver
         ToolManager._hardcoded_providers = old_hardcoded
         ToolManager._builtin_providers_loaded = old_loaded
         ToolManager._builtin_tools_labels = old_labels

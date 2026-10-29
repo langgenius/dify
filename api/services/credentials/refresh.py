@@ -10,7 +10,7 @@ def credential_needs_refresh(expires_at: int, *, now: float) -> bool:
 
 class CredentialRefreshUnavailableError(RuntimeError):
     def __init__(self) -> None:
-        super().__init__("Credential refresh is busy or its lock was lost. Please retry.")
+        super().__init__("Credential refresh is temporarily unavailable. Please retry.")
 
 
 class CredentialRefreshLease(Protocol):

@@ -89,8 +89,8 @@ def _service(
 
 def test_concurrent_and_sequential_calls_refresh_once() -> None:
     store = CredentialStore(_record(), barrier=Barrier(4))
-    runtime = CredentialRuntime()
     lock = ThreadCredentialRefreshLock()
+    runtime = CredentialRuntime(during_refresh=lambda: lock.wait_for_callers(4))
     service = _service(store, runtime, lock)
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures = [pool.submit(service.resolve, workspace_id="workspace", credential_id=None) for _ in range(4)]

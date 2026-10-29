@@ -6,7 +6,11 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from services.credentials.refresh import CredentialRefreshLock, credential_needs_refresh
+from services.credentials.refresh import (
+    CredentialRefreshLock,
+    CredentialRefreshUnavailableError,
+    credential_needs_refresh,
+)
 from services.data_source.entities.credential import DatasourceCredentialRecord, DatasourceOAuthClientConfigRecord
 
 logger = logging.getLogger(__name__)
@@ -28,6 +32,7 @@ def resolve_stored_notion_access_token(
     default must not change the integration used to read an existing document.
     Preserve indexing's environment fallback when credential resolution fails,
     including refresh failures. Actor-selected imports do not use this policy.
+    Without a fallback, preserve temporary refresh failures so callers can retry.
     """
     credential_error: Exception | None = None
     if credential_id:
@@ -39,6 +44,8 @@ def resolve_stored_notion_access_token(
             credential_error = error
 
     if not integration_token:
+        if isinstance(credential_error, CredentialRefreshUnavailableError):
+            raise credential_error
         raise NotionCredentialUnavailableError(
             "Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`."
         ) from credential_error

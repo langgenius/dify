@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, cast
 from services.credentials.query import CredentialQuery
 from services.credentials.refresh import (
     CredentialRefreshLock,
-    CredentialRefreshUnavailableError,
     credential_needs_refresh,
 )
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
@@ -214,8 +213,6 @@ class DatasourceProviderService:
                 refresh_lock=self._refresh_lock,
                 now=time.time,
             )
-        except CredentialRefreshUnavailableError as error:
-            raise ValueError(str(error)) from error
         except DatasourceCredentialError as error:
             raise ValueError(
                 f"Failed to refresh datasource credentials for provider {record.provider}"

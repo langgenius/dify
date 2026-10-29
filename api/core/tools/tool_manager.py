@@ -3,7 +3,7 @@ import mimetypes
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, cast
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -40,7 +40,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     emoji_icon_adapter,
 )
-from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.mcp_tool.provider import MCPToolProviderController
 from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -90,12 +90,29 @@ class WorkflowToolRuntimeSpec(Protocol):
     def credential_id(self) -> str | None: ...
 
 
+class ToolCredentialResolver(Protocol):
+    def __call__(
+        self,
+        *,
+        controller: BuiltinToolProviderController,
+        provider_id: str,
+        workspace_id: str,
+        credential_id: str | None,
+    ) -> tuple[Mapping[str, object], CredentialType]: ...
+
+
 class ToolManager:
     _builtin_provider_lock = Lock()
     _hardcoded_providers: dict[str, BuiltinToolProviderController] = {}
     _external_hardcoded_provider_classes: list[type[BuiltinToolProviderController]] = []
     _builtin_providers_loaded = False
     _builtin_tools_labels: dict[str, I18nObject | None] = {}
+    _credential_resolver: ClassVar[ToolCredentialResolver | None] = None
+
+    @classmethod
+    def configure_credential_resolver(cls, resolver: ToolCredentialResolver) -> None:
+        """Register stateless composition; it must not capture an app, database or provider."""
+        cls._credential_resolver = resolver
 
     @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
@@ -226,49 +243,26 @@ class ToolManager:
                             tool_invoke_from=tool_invoke_from,
                         )
                     )
-                from core.db.session_factory import get_session_maker
-                from extensions.application_services.tools import (
-                    CredentialRefreshUnavailableError,
-                    ToolCredentialNotFoundError,
-                    ToolCredentialRefreshError,
-                    build_tool_credential_service,
-                )
-
                 selected_id = (
                     credential_id
                     if isinstance(provider_controller, PluginToolProviderController) and is_valid_uuid(credential_id)
                     else None
                 )
-                credentials = build_tool_credential_service(
-                    database_client=get_session_maker(), controller=provider_controller, provider_id=provider_id
+                if cls._credential_resolver is None:
+                    raise RuntimeError("Tool credential resolver is not configured")
+                credentials, credential_type = cls._credential_resolver(
+                    controller=provider_controller,
+                    provider_id=provider_id,
+                    workspace_id=tenant_id,
+                    credential_id=selected_id,
                 )
-                try:
-                    resolved = credentials.resolve(workspace_id=tenant_id, credential_id=selected_id)
-                except ToolCredentialNotFoundError as exc:
-                    if selected_id is not None:
-                        message = (
-                            f"Tool credential {selected_id} has been deleted. Select or authorize another credential."
-                        )
-                    elif isinstance(provider_controller, PluginToolProviderController):
-                        message = (
-                            f"No workspace credential is configured for tool provider {provider_id}. "
-                            "Authorize the provider or select a credential."
-                        )
-                    else:
-                        message = (
-                            f"No credential is configured for built-in tool provider {provider_id}. "
-                            "Authorize the provider or select a credential."
-                        )
-                    raise ToolProviderCredentialValidationError(message) from exc
-                except (ToolCredentialRefreshError, CredentialRefreshUnavailableError) as exc:
-                    raise ToolProviderCredentialValidationError(str(exc)) from exc
 
                 return builtin_tool.fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
                         user_id=user_id,
-                        credentials=dict(resolved.credentials),
-                        credential_type=CredentialType(resolved.credential_type),
+                        credentials=dict(credentials),
+                        credential_type=credential_type,
                         runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,

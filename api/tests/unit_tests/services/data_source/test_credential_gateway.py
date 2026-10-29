@@ -516,6 +516,7 @@ def test_actor_stored_and_provider_callers_share_one_refresh() -> None:
             assert actor_id in {"actor-1", "credential-owner-1"}
             assert credentials == {"integration_secret": "plain:encrypted"}
             self.calls += 1
+            lock.wait_for_callers(3)
             return RefreshedDatasourceCredential({"integration_secret": "refreshed"}, int(time.time()) + 3600)
 
     catalog, codec, refresher, lock = (

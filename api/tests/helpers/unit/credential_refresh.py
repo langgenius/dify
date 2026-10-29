@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from threading import Lock
+from threading import Condition, Lock
 from typing import TYPE_CHECKING, Literal
 
 from services.credentials.refresh import CredentialRefreshLease, CredentialRefreshUnavailableError
@@ -20,7 +20,7 @@ class ThreadCredentialRefreshLock:
         self.keys: list[tuple[str, str, str]] = []
         self.lost = False
         self.unavailable = False
-        self._mutex = Lock()
+        self._condition = Condition()
         self._locks: dict[tuple[str, str, str], Lock] = {}
 
     @contextmanager
@@ -28,9 +28,10 @@ class ThreadCredentialRefreshLock:
         self, *, credential_type: Literal["tool", "datasource"], workspace_id: str, credential_id: str
     ) -> Generator[CredentialRefreshLease]:
         key = (credential_type, workspace_id, credential_id)
-        with self._mutex:
+        with self._condition:
             self.keys.append(key)
             lock = self._locks.setdefault(key, Lock())
+            self._condition.notify_all()
         if self.unavailable or not lock.acquire(timeout=self.wait_seconds):
             raise CredentialRefreshUnavailableError()
         try:
@@ -41,6 +42,11 @@ class ThreadCredentialRefreshLock:
     def ensure_owned(self) -> None:
         if self.lost:
             raise CredentialRefreshUnavailableError()
+
+    def wait_for_callers(self, count: int) -> None:
+        """Keep the provider request open until competing callers have attempted the lock."""
+        with self._condition:
+            assert self._condition.wait_for(lambda: len(self.keys) >= count, timeout=self.wait_seconds)
 
 
 def build_datasource_provider_service(*, credentials: DatasourceProviderCredentialStore) -> DatasourceProviderService:
