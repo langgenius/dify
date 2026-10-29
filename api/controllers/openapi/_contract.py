@@ -32,10 +32,10 @@ from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
-from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, EndpointSpec, Example, Kind
+from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect, EndpointSpec, Example, Kind
 from enums import DeploymentEdition
 
-__all__ = ["Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+__all__ = ["Effect", "Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
 
@@ -159,6 +159,7 @@ def endpoint(
     context: AdmissionContext | None = "orm",
     internal: bool = False,
     deprecated: bool = False,
+    effect: Effect | None = None,
     examples: Sequence[Example] = (),
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """The one seam a route attaches to for auth, request validation and response
@@ -185,7 +186,8 @@ def endpoint(
 
     ``op``/``kind``/``summary`` feed the catalog (see ``_catalog.py``); ``internal``
     hides the op from the CLI's default listing; ``deprecated`` marks it as kept
-    for compatibility only; ``examples`` are complete inputs the catalog shows
+    for compatibility only; ``effect`` overrides the effect the HTTP method implies;
+    ``examples`` are complete inputs the catalog shows
     next to the schema.
     """
     requirements = tuple(requirements)
@@ -204,6 +206,7 @@ def endpoint(
             body=body,
             internal=internal,
             deprecated=deprecated,
+            effect=effect,
             examples=tuple(examples),
         ),
     )

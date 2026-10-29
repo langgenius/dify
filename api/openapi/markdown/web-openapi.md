@@ -127,9 +127,9 @@ Retrieve paginated list of conversations for a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid conversation list query or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | App Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_cursor_not_found`: Cursor is outside the current list. `conversation_not_found`: The app or user is no longer available. | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -149,7 +149,7 @@ Delete a specific conversation.
 | 204 | Conversation deleted successfully |  |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -198,12 +198,12 @@ Pin a specific conversation to keep it at the top of the list.
 | 200 | Conversation pinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /conversations/{c_id}/unpin
-Unpin a specific conversation to remove it from the top of the list.
+Remove the current user's pin. Succeeds when the conversation is already unpinned.
 
 #### Parameters
 
@@ -218,7 +218,7 @@ Unpin a specific conversation to remove it from the top of the list.
 | 200 | Conversation unpinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: The app or user is no longer available. | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1160,6 +1160,14 @@ Completion request failed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
+
+#### ConversationCursorNotFoundError
+
+The conversation cursor is not in the current list. Refresh the list and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationCursorNotFoundError |  | The conversation cursor is not in the current list. Refresh the list and try again. |  |
 
 #### ConversationFirstMessageNotFoundError
 

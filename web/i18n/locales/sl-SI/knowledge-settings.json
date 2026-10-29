@@ -16,6 +16,8 @@
   "settings.membersRequired": "Izberite vsaj enega člana ekipe.",
   "settings.nameRequired": "Ime zbirke znanja Agent je obvezno.",
   "settings.pageDescription": "Upravljajte osnovne podatke, dostop do API-ja in pridobivanje.",
+  "settings.reasoningChangeConfirm": "Potrdi spremembo",
+  "settings.reasoningChangeWarning": "Sprememba sistemskega modela za sklepanje bo sprožila ponovno obdelavo indeksiranih dokumentov in posodobitev njihovih iskalnih indeksov. To zahteva čas in povzroči dodatne stroške uporabe modela.",
   "settings.reloadLatest": "Naloži najnovejše nastavitve",
   "settings.rerankModelRequired": "Izberite model za ponovno razvrščanje.",
   "settings.retrievalDepth": "Globina pridobivanja",

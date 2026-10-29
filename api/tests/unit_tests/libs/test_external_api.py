@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
+from typing import Literal
 
 import pytest
 from flask import Blueprint, Flask
@@ -621,6 +622,35 @@ def test_details_model_definitions_must_not_collide_with_different_schemas():
 
     with pytest.raises(ValueError, match="_ConflictDetails .*collides with a different component"):
         attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
+
+
+class _EnumConflictDetails(BaseModel):
+    state: Literal["retry", "configure", 1]
+
+
+class _EnumConflictError(BaseHTTPException):
+    error_code = "enum_conflict"
+    code = 409
+    details_model = _EnumConflictDetails
+
+
+def test_details_model_reuses_registered_schema_with_reordered_enum_values() -> None:
+    # Response schema registration sorts enums; their order does not change the contract.
+    schema = _EnumConflictDetails.model_json_schema(mode="serialization")
+    schema["properties"]["state"]["enum"].reverse()
+    document: dict[str, object] = {
+        "components": {"schemas": {"_EnumConflictDetails": schema}},
+        "paths": {
+            "/items": {"get": {"responses": {}, "x-dify-error-codes": _documented_names_for(_EnumConflictError)}}
+        },
+    }
+
+    attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
+
+    schemas = document["components"]["schemas"]  # type: ignore[index]
+    assert schemas["EnumConflictError"]["allOf"][1]["properties"]["details"] == {
+        "$ref": "#/components/schemas/_EnumConflictDetails"
+    }
 
 
 def test_error_component_names_must_not_collide():

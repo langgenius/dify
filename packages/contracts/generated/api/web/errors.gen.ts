@@ -82,6 +82,14 @@ const zCompletionRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConversationCursorNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_cursor_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zConversationFirstMessageNotFoundError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -464,13 +472,26 @@ export const post6Errors = {
   not_chat_app: { status: 400, data: zNotChatAppError },
 }
 
-export const patchErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patchErrors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const patch2Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patch2Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const delete_Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const delete_Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const getErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const getErrors = {
+  conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
 export const post7Errors = {
   account_banned: { status: 400, data: zAccountBannedError },

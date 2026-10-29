@@ -1,13 +1,13 @@
 """Manage an account's conversations in an admitted installation."""
 
-from typing import Protocol
-
+from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_service import ConversationNameService
+from services.conversation_query_service import ConversationQueryService
 from services.entities.conversation_entities import (
-    ConversationDeletion,
     ConversationPage,
     ConversationRecord,
     InstalledAppConversationRef,
+    InstalledAppConversationScope,
 )
 from services.installed_app_access_service import InstalledAppRef
 
@@ -16,42 +16,29 @@ class ConversationNotChatAppError(ValueError):
     """The installed app does not support conversation management."""
 
 
-class InstalledAppConversationStore(Protocol):
-    def get_page(
-        self, *, installed_app: InstalledAppRef, account_id: str, last_id: str | None, limit: int, pinned: bool | None
-    ) -> ConversationPage: ...
-
-    def delete(
-        self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str
-    ) -> ConversationDeletion: ...
-
-    def set_pinned(
-        self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str, is_pinned: bool
-    ) -> None: ...
-
-
-class ConversationCleanup(Protocol):
-    def __call__(self, *, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None: ...
-
-
 class InstalledAppConversationService:
     def __init__(
         self,
         *,
-        conversations: InstalledAppConversationStore,
+        queries: ConversationQueryService,
         names: ConversationNameService,
-        enqueue_delete_cleanup: ConversationCleanup,
+        commands: ConversationCommandService,
     ) -> None:
-        self._conversations: InstalledAppConversationStore = conversations
+        self._queries = queries
         self._names = names
-        self._enqueue_delete_cleanup: ConversationCleanup = enqueue_delete_cleanup
+        self._commands = commands
 
     def get_page(
         self, *, installed_app: InstalledAppRef, account_id: str, last_id: str | None, limit: int, pinned: bool | None
     ) -> ConversationPage:
         self._get_chat_mode(installed_app)
-        return self._conversations.get_page(
-            installed_app=installed_app, account_id=account_id, last_id=last_id, limit=limit, pinned=pinned
+        return self._queries.get_page(
+            scope=InstalledAppConversationScope(installed_app=installed_app, account_id=account_id),
+            invoke_from="explore",
+            last_id=last_id,
+            limit=limit,
+            pinned=pinned,
+            sort_by="-updated_at",
         )
 
     def rename(
@@ -80,22 +67,21 @@ class InstalledAppConversationService:
 
     def delete(self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str) -> None:
         self._get_chat_mode(installed_app)
-        deleted = self._conversations.delete(
-            installed_app=installed_app, account_id=account_id, conversation_id=conversation_id
-        )
-        # The retirement and soft-delete commit must precede physical cleanup.
-        self._enqueue_delete_cleanup(
-            tenant_id=deleted.tenant_id,
-            conversation_id=deleted.conversation_id,
-            retired_workspace_ids=deleted.retired_workspace_ids,
+        self._commands.delete(
+            ref=InstalledAppConversationRef(
+                installed_app=installed_app, account_id=account_id, conversation_id=conversation_id
+            )
         )
 
     def set_pinned(
         self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str, is_pinned: bool
     ) -> None:
         self._get_chat_mode(installed_app)
-        self._conversations.set_pinned(
-            installed_app=installed_app, account_id=account_id, conversation_id=conversation_id, is_pinned=is_pinned
+        self._commands.set_pinned(
+            ref=InstalledAppConversationRef(
+                installed_app=installed_app, account_id=account_id, conversation_id=conversation_id
+            ),
+            is_pinned=is_pinned,
         )
 
     @staticmethod
