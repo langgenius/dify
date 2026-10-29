@@ -12,7 +12,9 @@ import {
   FileTreeIcon,
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -87,6 +89,7 @@ function AgentFileItem({
   selected: boolean
 }) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const readOnly = useAgentOrchestrateReadOnly()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [selectedFileId, setSelectedFileId] = useState<string>()
@@ -326,25 +329,42 @@ function AgentFileItem({
         )}
       >
         {!file.isMissing && onDownloadFile && (
-          <button
-            type="button"
-            aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}
-            onClick={handleDownload}
-            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-download-line size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['agentDetail.configure.files.download'], {
+                    name: file.name,
+                  })}
+                  size="sm"
+                  onClick={handleDownload}
+                >
+                  <span aria-hidden className="i-ri-download-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{tCommon(($) => $['operation.download'])}</TooltipContent>
+          </Tooltip>
         )}
         {canRemoveFile && (
-          <button
-            type="button"
-            data-agent-file-remove-button
-            aria-label={t(($) => $['agentDetail.configure.files.remove'], { name: file.name })}
-            onClick={handleRemove}
-            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  data-agent-file-remove-button
+                  aria-label={t(($) => $['agentDetail.configure.files.remove'], {
+                    name: file.name,
+                  })}
+                  size="sm"
+                  tone="destructive"
+                  onClick={handleRemove}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{tCommon(($) => $['operation.remove'])}</TooltipContent>
+          </Tooltip>
         )}
       </div>
     </li>

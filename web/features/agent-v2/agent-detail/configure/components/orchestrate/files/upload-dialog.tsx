@@ -20,6 +20,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -257,20 +258,24 @@ function AgentFileUploadPanel({ uploadFiles }: { uploadFiles: AgentFilesUploadMu
                     {error && <p className="system-xs-regular text-text-destructive">{error}</p>}
                   </div>
                   <div className="flex items-center pr-3">
-                    <IconButton
-                      aria-label={t(($) => $['agentDetail.configure.files.remove'], {
-                        name: file.name,
-                      })}
-                      disabled={isUploading}
-                      onClick={() =>
-                        setPendingFiles((current) => current.filter((item) => item.id !== id))
-                      }
-                    >
-                      <span
-                        aria-hidden
-                        className="i-ri-delete-bin-line size-4 text-text-tertiary"
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <IconButton
+                            aria-label={t(($) => $['agentDetail.configure.files.remove'], {
+                              name: file.name,
+                            })}
+                            disabled={isUploading}
+                            onClick={() =>
+                              setPendingFiles((current) => current.filter((item) => item.id !== id))
+                            }
+                          >
+                            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                          </IconButton>
+                        }
                       />
-                    </IconButton>
+                      <TooltipContent>{tCommon(($) => $['operation.remove'])}</TooltipContent>
+                    </Tooltip>
                   </div>
                 </li>
               )
