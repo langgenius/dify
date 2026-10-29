@@ -198,7 +198,7 @@ def test_get_upload_owner_scopes_end_user_to_tenant_and_app(
         tenant_id=_TENANT_ID,
         app_id=_APP_ID,
         type=EndUserType.BROWSER,
-        is_anonymous=False,
+        _is_anonymous=False,
         session_id="session",
         external_user_id="external-user",
     )

@@ -3,8 +3,7 @@
 import io
 import json
 import logging
-from collections.abc import Buffer, Generator
-from contextlib import contextmanager
+from collections.abc import Buffer, Iterator
 from dataclasses import dataclass
 from typing import Literal, Never, cast, override
 from unittest.mock import MagicMock
@@ -30,11 +29,12 @@ from controllers.common.access_response import (
 from controllers.mcp import mcp
 from controllers.trigger import webhook
 from extensions import ext_request_logging
+from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import ExternalApi
 from models.engine import db
 from models.model import ApiToken, App, AppMCPServer
 from services.app.mcp_server_service import AppMCPServerStatus
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 type TokenClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
 
@@ -106,7 +106,9 @@ def token_client(http_app: Flask, mocker: MockerFixture) -> TokenClient:
     http_app.register_blueprint(other)
     cache_get = mocker.patch.object(token_wraps.ApiTokenCache, "get", return_value=None)
     fetch = mocker.patch.object(
-        token_wraps, "fetch_token_with_single_flight", side_effect=Unauthorized("Access token is invalid")
+        token_wraps,
+        "fetch_token_with_single_flight",
+        side_effect=token_service.ApiTokenInvalidError("Access token is invalid"),
     )
     usage = mocker.patch.object(token_wraps, "record_token_usage")
     return http_app.test_client(), cache_get, fetch, usage
@@ -162,9 +164,75 @@ def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, mock
     mocker.patch.object(token_service.ApiTokenCache, "set")
     with http_app.app_context():
         cast(Table, ApiToken.__table__).create(db.engine)
-        with pytest.raises(Unauthorized, match="Access token is invalid"):
+        with pytest.raises(token_service.ApiTokenInvalidError, match="Access token is invalid"):
             token_service.query_token_from_db("missing-token", "app")
     usage.assert_not_called()
+
+
+@pytest.fixture
+def uncached_token_client(
+    http_app: Flask, redis_transport: tuple[RedisClientWrapper, MagicMock]
+) -> Iterator[tuple[FlaskClient, MagicMock]]:
+    """Run real token lookup and error translation, replacing only Redis network dispatch."""
+    redis, commands = redis_transport
+
+    def execute(command: str, *_args: object, **_kwargs: object) -> bool | None:
+        return True if command in {"SET", "EVALSHA"} else None
+
+    commands.side_effect = execute
+    previous_redis = token_service.redis_client
+    token_service.redis_client = redis
+    bp = Blueprint("uncached_service_test", __name__, url_prefix="/v1")
+    register_auth_error_response(bp, www_authenticate='Bearer realm="api"')
+    api = ExternalApi(bp)
+
+    class AppTokenResource(Resource):
+        @token_wraps.validate_app_token
+        def get(self, app_model: App) -> Never:
+            pytest.fail(f"Invalid credentials reached the handler for app {app_model.id}")
+
+    class DatasetTokenResource(Resource):
+        @token_wraps.validate_dataset_token
+        def get(self, tenant_id: str) -> Never:
+            pytest.fail(f"Invalid credentials reached the dataset handler for tenant {tenant_id}")
+
+    api.add_resource(AppTokenResource, "/app")
+    api.add_resource(DatasetTokenResource, "/dataset")
+    http_app.register_blueprint(bp)
+    try:
+        with http_app.app_context():
+            cast(Table, ApiToken.__table__).create(db.engine)
+        yield http_app.test_client(), commands
+    finally:
+        token_service.redis_client = previous_redis
+        with http_app.app_context():
+            db.session.remove()
+            db.engine.dispose()
+
+
+@pytest.mark.parametrize("scope", ["app", "dataset"])
+@pytest.mark.parametrize("authorization", [None, "Bearer missing-token"])
+def test_real_token_errors_preserve_http_response_contract(
+    uncached_token_client: tuple[FlaskClient, MagicMock], scope: str, authorization: str | None
+) -> None:
+    client, commands = uncached_token_client
+    response = client.get(f"/v1/{scope}", headers={} if authorization is None else {"Authorization": authorization})
+
+    message = MISSING_BEARER_MESSAGE if authorization is None else "Access token is invalid"
+    expected = {"code": "unauthorized", "message": message, "status": 401}
+    assert response.status_code == 401
+    assert response.data == json.dumps(expected, separators=(",", ":"), sort_keys=True).encode()
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
+
+    if authorization is None:
+        commands.assert_not_called()
+    else:
+        calls = [call.args for call in commands.call_args_list]
+        assert calls.count(("GET", f"api_token:{scope}:missing-token")) == 2
+        assert ("SETEX", f"api_token:{scope}:missing-token", 60, b"null") in calls
+        assert not any(str(call[1]).startswith(token_service.ACTIVE_TOKEN_KEY_PREFIX) for call in calls)
 
 
 def test_success_token_and_other_surface_are_not_rewritten(token_client: TokenClient) -> None:
@@ -193,12 +261,7 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerF
     monkeypatch.setattr(mcp, "mcp_ns", namespace)
     calls = _session_calls(mocker)
     maker = sessionmaker()
-
-    @contextmanager
-    def begin() -> Generator[Session]:
-        yield calls.session
-
-    mocker.patch.object(maker, "begin", side_effect=begin)
+    mocker.patch.object(maker, "class_", return_value=calls.session)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     execute = mocker.patch.object(mcp, "handle_mcp_request")
     end_user = mocker.patch.object(mcp.MCPAppApi, "_retrieve_end_user")
@@ -400,18 +463,23 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     )
     remaining = iter((initial, execution))
 
-    @contextmanager
-    def begin() -> Generator[Session]:
+    def create_session(**_kwargs: object) -> Session:
         session = next(remaining)
         opened.append(session)
         active_sessions.append(session)
-        try:
-            yield session
-        finally:
-            active_sessions.pop()
+        close = session.close
+
+        def close_session() -> None:
+            try:
+                close()
+            finally:
+                active_sessions.pop()
+
+        mocker.patch.object(session, "close", side_effect=close_session)
+        return session
 
     maker = sessionmaker()
-    mocker.patch.object(maker, "begin", side_effect=begin)
+    mocker.patch.object(maker, "class_", side_effect=create_session)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     form = mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
     process = mocker.patch.object(mcp.MCPAppApi, "_process_mcp_message", return_value=Response("ok", status=200))
@@ -440,6 +508,7 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     )
     assert read_sessions
     assert not any(read_sessions)
+    assert not active_sessions
     assert opened == ([initial] if change == "initial-missing" else [initial, execution])
     if change == "unchanged":
         assert response.status_code == 200

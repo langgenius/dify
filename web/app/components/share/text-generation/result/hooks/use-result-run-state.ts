@@ -1,4 +1,4 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { useBoolean } from 'ahooks'
@@ -40,7 +40,7 @@ type UseResultRunStateOptions = {
 }
 
 export type ResultRunStateController = {
-  abortControllerRef: MutableRefObject<AbortController | null>
+  abortControllerRef: RefObject<AbortController | null>
   clearMoreLikeThis: () => void
   completionRes: string
   controlClearMoreLikeThis: number

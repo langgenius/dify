@@ -10,13 +10,15 @@ from core.datasource.entities.datasource_entities import (
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderCredentialValidationError
-from tests.unit_tests.core.datasource.factories import provider_entity
+from tests.helpers.unit.core.datasource.factories import provider_entity
 
 
 class ConcreteDatasourcePluginProviderController(DatasourcePluginProviderController):
     """
     Concrete implementation of DatasourcePluginProviderController for testing purposes.
     """
+
+    plugin_unique_identifier = "langgenius/example:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     def get_datasource(self, datasource_name: str) -> DatasourcePlugin:
         raise AssertionError(f"Credential validation must not fetch datasource {datasource_name!r}")

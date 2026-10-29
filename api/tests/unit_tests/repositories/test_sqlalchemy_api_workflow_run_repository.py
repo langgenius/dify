@@ -18,6 +18,7 @@ from models import Message
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_run_repository import AppWorkflowRunStats
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
@@ -92,8 +93,10 @@ def test_build_human_input_required_reason_prefers_standalone_web_app_token() ->
 
 
 def test_build_human_input_required_reason_falls_back_to_console_token() -> None:
+    reason_model = _build_reason_model()
+    reason_model.node_id = "workflow-tool-node"
     reason = _build_human_input_required_reason(
-        _build_reason_model(),
+        reason_model,
         _build_form_model(),
         [
             _recipient(RecipientType.BACKSTAGE, "btok"),
@@ -101,7 +104,7 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
         ],
     )
 
-    assert reason.node_id == "node-1"
+    assert reason.node_id == "workflow-tool-node"
     assert reason.actions[0].id == "approve"
     assert not hasattr(reason, "form_token")
 
@@ -193,7 +196,7 @@ def _workflow_run(*, run_id: str, tenant_id: str, status: WorkflowExecutionStatu
         tenant_id=tenant_id,
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="1",
         graph="{}",

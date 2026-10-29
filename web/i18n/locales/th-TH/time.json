@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
   "operation.cancel": "ยกเลิก",
+  "operation.close": "ปิด",
   "operation.now": "ตอนนี้",
   "operation.ok": "ตกลง",
   "operation.pickDate": "เลือกวันที่",

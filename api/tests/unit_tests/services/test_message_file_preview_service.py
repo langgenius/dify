@@ -17,7 +17,7 @@ from services.message_file_preview_service import (
     MessageFilePreviewRecord,
     MessageFilePreviewService,
 )
-from tests.unit_tests.model_factories import make_message, make_upload_file
+from tests.helpers.unit.model_factories import make_message, make_upload_file
 
 
 def _record() -> MessageFilePreviewRecord:

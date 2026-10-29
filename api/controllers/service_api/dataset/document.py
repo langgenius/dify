@@ -74,7 +74,9 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
+from models.account import Account
 from models.dataset import Dataset, Document
+from models.enums import DocumentCreatedFrom
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_creator,
     get_document_hit_count,
@@ -459,7 +461,7 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
@@ -523,7 +525,7 @@ def _update_document_by_text(
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
@@ -531,6 +533,19 @@ def _update_document_by_text(
     document = documents[0]
 
     return document, batch
+
+
+def _file_document_account(dataset: Dataset, *, session: Session) -> Account:
+    """Keep the dataset creator as the document author when they still belong to its tenant."""
+    creator = get_dataset_creator(dataset, session=session)
+    if creator is not None:
+        creator.set_tenant_id_with_session(dataset.tenant_id, session=session)
+        if creator.current_tenant_id == dataset.tenant_id:
+            return creator
+
+    # The dataset creator may have left the tenant. The authenticated Service API
+    # account is the tenant owner and already has the required tenant context.
+    return current_user
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-text")
@@ -850,9 +865,9 @@ class DocumentAddByFileApi(DatasetApiResource):
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 knowledge_config=knowledge_config,
-                account=get_dataset_creator(dataset, session=session),
+                account=_file_document_account(dataset, session=session),
                 dataset_process_rule=dataset_process_rule,
-                created_from="api",
+                created_from=DocumentCreatedFrom.API,
                 session=session,
             )
         except ProviderTokenNotInitError as ex:
@@ -929,11 +944,11 @@ def _update_document_by_file(
         documents, _ = DocumentService.save_document_with_dataset_id(
             dataset=dataset,
             knowledge_config=knowledge_config,
-            account=get_dataset_creator(dataset, session=session),
+            account=_file_document_account(dataset, session=session),
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
@@ -1324,6 +1339,7 @@ class DocumentApi(DatasetApiResource):
         metadata = query_params.metadata
         response_include: set[str] | None = None
         response_exclude: set[str] | None = None
+        response: dict[str, Any]
 
         # Calculate summary_index_status if needed
         summary_index_status = None

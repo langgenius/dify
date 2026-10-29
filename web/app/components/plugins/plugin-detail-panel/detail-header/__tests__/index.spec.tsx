@@ -9,7 +9,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -120,7 +120,7 @@ function setup(props: Partial<ComponentProps<typeof DetailHeader>> = {}, enableM
   render(
     <ModalContextProvider>
       <DetailHeader detail={detail} onUpdate={onUpdate} {...props} />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </ModalContextProvider>,
     enableMarketplace,
   )
