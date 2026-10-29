@@ -118,6 +118,18 @@ function mockCredentialRequests({
       }
       return replyToPreflight(request)
     }
+    if (request.method === 'PUT' && path.endsWith('/configuration')) {
+      const payload = await request.json()
+      return Response.json({
+        reauthorization_required: false,
+        connections: Object.fromEntries(
+          Object.entries(payload.connections).map(([nodeId, id]) => [
+            nodeId,
+            savedConnection?.id === id ? savedConnection : null,
+          ]),
+        ),
+      })
+    }
     if (path.endsWith('/connections/credential-schema')) return loadSchema(request)
     if (path.endsWith('/revision'))
       return Response.json({ connection_revision: connectionRevision })
@@ -132,7 +144,10 @@ function mockCredentialRequests({
       return Response.json(savedConnection)
     }
     if (path.endsWith('/configuration')) {
-      return Response.json({ connections: savedConnection ? { 'source-a': savedConnection } : {} })
+      return Response.json({
+        reauthorization_required: false,
+        connections: savedConnection ? { 'source-a': savedConnection } : {},
+      })
     }
     return Response.json(page(savedConnection ? [savedConnection] : []))
   })
@@ -179,6 +194,19 @@ async function replyToPreflight(request: Request) {
   } satisfies EndUserConnectionPreflightResponse)
 }
 
+async function replyToSelection(request: Request) {
+  const payload = (await request.json()) as EndUserConnectionPreflightPayload
+  return Response.json({
+    reauthorization_required: false,
+    connections: Object.fromEntries(
+      Object.entries(payload.connections).map(([nodeId, id]) => [
+        nodeId,
+        [personal, work].find((item) => item.id === id) ?? null,
+      ]),
+    ),
+  } satisfies ConnectionConfigurationResponse)
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((resolvePromise) => {
@@ -216,10 +244,12 @@ function Consumer() {
       <button
         type="button"
         onClick={() => {
-          void state.onConnect('source-a', 'api-key', {
-            name: 'New API Key',
-            credentials: { api_key: 'sk-test' },
-          })
+          void state
+            .onConnect('source-a', 'api-key', {
+              name: 'New API Key',
+              credentials: { api_key: 'sk-test' },
+            })
+            .catch(() => {})
         }}
       >
         Create API Key
@@ -533,11 +563,15 @@ describe('WebAppConnectionsProvider', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
       requests.push(request.clone())
+      if (request.method === 'PUT') return replyToSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
       return Response.json(
         request.url.includes('/configuration')
-          ? { connections: { 'source-a': personal, 'source-b': work } }
+          ? {
+              reauthorization_required: false,
+              connections: { 'source-a': personal, 'source-b': work },
+            }
           : page([personal, work]),
       )
     })
@@ -566,13 +600,17 @@ describe('WebAppConnectionsProvider', () => {
     const checks: EndUserConnectionPreflightPayload[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return replyToSelection(request)
       if (request.url.endsWith('/connections/preflight')) {
         checks.push((await request.clone().json()) as EndUserConnectionPreflightPayload)
         return replyToPreflight(request)
       }
       if (request.url.includes('/configuration')) {
         configurationRequests.push(request)
-        return Response.json({ connections: { 'source-a': personal, 'source-b': work } })
+        return Response.json({
+          reauthorization_required: false,
+          connections: { 'source-a': personal, 'source-b': work },
+        })
       }
       return Response.json(page([personal, work]))
     })
@@ -614,8 +652,10 @@ describe('WebAppConnectionsProvider', () => {
     const user = userEvent.setup()
     const created = deferred<Response>()
     let createStarted = false
+    const saveSelection = vi.fn(replyToSelection)
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return saveSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
       if (request.method === 'POST') {
@@ -624,7 +664,10 @@ describe('WebAppConnectionsProvider', () => {
       }
       return Response.json(
         request.url.includes('/configuration')
-          ? { connections: { 'source-a': personal, 'source-b': work } }
+          ? {
+              reauthorization_required: false,
+              connections: { 'source-a': personal, 'source-b': work },
+            }
           : page([personal, work]),
       )
     })
@@ -656,6 +699,7 @@ describe('WebAppConnectionsProvider', () => {
       expect(screen.getByLabelText('Run configuration')).toHaveTextContent(conversationId),
     )
     expect(selections()).toEqual({ 'source-a': firstId, 'source-b': secondId })
+    expect(saveSelection).not.toHaveBeenCalled()
   })
 
   it('loads both resources in parallel and keeps a saved selection visible before its list page arrives', async () => {
@@ -665,6 +709,7 @@ describe('WebAppConnectionsProvider', () => {
     const requests: Request[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return replyToSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
       requests.push(request)
@@ -694,7 +739,10 @@ describe('WebAppConnectionsProvider', () => {
     await act(async () => {
       initialPage.resolve(Response.json(page([personal], firstId)))
       configuration.resolve(
-        Response.json({ connections: { 'source-a': work, 'source-b': personal } }),
+        Response.json({
+          reauthorization_required: false,
+          connections: { 'source-a': work, 'source-b': personal },
+        }),
       )
     })
 
@@ -728,11 +776,15 @@ describe('WebAppConnectionsProvider', () => {
     const user = userEvent.setup()
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return replyToSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
       return Response.json(
         request.url.includes('/configuration')
-          ? { connections: { 'source-a': personal, 'source-b': work } }
+          ? {
+              reauthorization_required: false,
+              connections: { 'source-a': personal, 'source-b': work },
+            }
           : page([personal, work]),
       )
     })
@@ -766,11 +818,12 @@ describe('WebAppConnectionsProvider', () => {
   it('leaves missing and inaccessible saved selections unselected even when a connection is available', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return replyToSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
       return Response.json(
         request.url.includes('/configuration')
-          ? { connections: { 'source-a': null } }
+          ? { reauthorization_required: false, connections: { 'source-a': null } }
           : page([personal]),
       )
     })
@@ -793,9 +846,14 @@ describe('WebAppConnectionsProvider', () => {
     setWebAppPassport(address, 'anonymous-passport')
     const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return replyToSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
-      return Response.json(request.url.includes('/configuration') ? { connections: {} } : page([]))
+      return Response.json(
+        request.url.includes('/configuration')
+          ? { reauthorization_required: false, connections: {} }
+          : page([]),
+      )
     })
     const anonymous = entry({ account: 'anonymous' })
     anonymous.parameters = { ...anonymous.parameters, allow_anonymous_end_user_auth: true }
@@ -843,11 +901,12 @@ describe('WebAppConnectionsProvider', () => {
     let nextPageAttempts = 0
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return replyToSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
       const url = new URL(request.url)
       if (url.pathname.endsWith('/configuration'))
-        return Response.json({ connections: { 'source-a': work } })
+        return Response.json({ reauthorization_required: false, connections: { 'source-a': work } })
       if (!url.searchParams.has('cursor')) return Response.json(page([personal], firstId))
       nextPageAttempts++
       if (nextPageAttempts === 1) {
@@ -893,10 +952,11 @@ describe('WebAppConnectionsProvider', () => {
     let listAttempts = 0
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = new Request(input, init)
+      if (request.method === 'PUT') return replyToSelection(request)
       if (new URL(request.url).pathname.endsWith('/connections/preflight'))
         return replyToPreflight(request)
       if (request.url.includes('/configuration'))
-        return Response.json({ connections: { 'source-a': work } })
+        return Response.json({ reauthorization_required: false, connections: { 'source-a': work } })
       listAttempts++
       return Response.json(
         listAttempts === 1
@@ -938,6 +998,7 @@ describe('WebAppConnectionsProvider', () => {
       let pendingPreviousRequest = false
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
         const request = new Request(input, init)
+        if (request.method === 'PUT') return replyToSelection(request)
         if (new URL(request.url).pathname.endsWith('/connections/preflight'))
           return replyToPreflight(request)
         if (!request.url.includes('/configuration')) return Response.json(page([personal, work]))
@@ -945,7 +1006,10 @@ describe('WebAppConnectionsProvider', () => {
           pendingPreviousRequest = true
           return previousConfiguration.promise
         }
-        return Response.json({ connections: { 'source-a': personal, 'source-b': work } })
+        return Response.json({
+          reauthorization_required: false,
+          connections: { 'source-a': personal, 'source-b': work },
+        })
       })
       const originalScope: Scope = { address, conversationId, entry: entry() }
       const { rerender } = render(tree(originalScope))
@@ -987,6 +1051,7 @@ describe('WebAppConnectionsProvider', () => {
       await act(async () => {
         previousConfiguration.resolve(
           Response.json({
+            reauthorization_required: false,
             connections: { 'source-a': work },
           } satisfies ConnectionConfigurationResponse),
         )

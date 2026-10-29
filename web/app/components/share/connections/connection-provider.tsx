@@ -167,6 +167,7 @@ function ConnectionSession({
     configuration:
       enabled && configuration.data
         ? {
+            ...configuration.data,
             connections: Object.fromEntries(
               Object.entries(configuration.data.connections).map(([nodeId, connection]) => [
                 nodeId,
@@ -207,26 +208,40 @@ function ConnectionSession({
   const actions = useConnectionActions({
     address,
     authSession,
+    session,
+    conversationId,
+    selections: data.selections,
     connectionRevision: parameters?.connection_revision,
     requirements,
     services,
     disabled: status !== 'ready',
     oauthCallbackOrigin,
     refreshConnections,
-    onSaved: (nodeId, connection) => {
+    onSaved: (connection) => {
       updateDraft((current) => ({
         ...current,
         validationRevision: current.validationRevision + 1,
         confirmedIds: current.confirmedIds.includes(connection.id)
           ? current.confirmedIds
           : [...current.confirmedIds, connection.id],
-        selectionOverrides: { ...current.selectionOverrides, [nodeId]: connection.id },
       }))
       void queryClient.cancelQueries({ queryKey: listKey, exact: true })
       queryClient.setQueryData(
         connectionDetailQueryKey(address, authSession, connection.id),
         connection,
       )
+    },
+    onConfigurationSaved: async (saved, assertCurrent) => {
+      await queryClient.cancelQueries({ queryKey: configurationKey, exact: true })
+      assertCurrent()
+      queryClient.setQueryData(configurationKey, saved)
+      updateDraft((current) => ({
+        ...current,
+        validationRevision: current.validationRevision + 1,
+        selectionOverrides: Object.fromEntries(
+          requirements.map(({ node_id }) => [node_id, saved.connections[node_id]?.id ?? null]),
+        ),
+      }))
     },
     onRemoved: (connectionId) => {
       updateDraft((current) => ({
@@ -259,6 +274,7 @@ function ConnectionSession({
         configurationKey,
         (current) =>
           current && {
+            ...current,
             connections: Object.fromEntries(
               Object.entries(current.connections).map(([nodeId, connection]) => [
                 nodeId,
@@ -321,10 +337,7 @@ function ConnectionSession({
       )
     )
       return
-    updateDraft((current) => ({
-      ...current,
-      selectionOverrides: { ...current.selectionOverrides, [sourceId]: connectionId },
-    }))
+    void actions.onSelect(sourceId, connectionId)
   }
 
   return (

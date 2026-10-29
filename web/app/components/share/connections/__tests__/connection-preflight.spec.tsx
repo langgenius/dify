@@ -123,7 +123,11 @@ function installBackend() {
   const bodies: EndUserConnectionPreflightPayload[] = []
   const requests: Request[] = []
   const backend: Backend = {
-    configuration: () => Response.json({ connections: { 'source-a': personal, 'source-b': work } }),
+    configuration: () =>
+      Response.json({
+        reauthorization_required: false,
+        connections: { 'source-a': personal, 'source-b': work },
+      }),
     records: [personal, work],
     replace: () => Response.json(personal),
     preflight: () => Response.json(checked()),
@@ -132,7 +136,21 @@ function installBackend() {
     const request = new Request(input, init)
     requests.push(request)
     const path = new URL(request.url).pathname
-    if (path.endsWith('/connections/configuration')) return backend.configuration()
+    if (path.endsWith('/connections/configuration')) {
+      if (request.method === 'PUT') {
+        const payload = (await request.json()) as EndUserConnectionPreflightPayload
+        return Response.json({
+          reauthorization_required: false,
+          connections: Object.fromEntries(
+            Object.entries(payload.connections).map(([nodeId, id]) => [
+              nodeId,
+              backend.records.find((item) => item.id === id) ?? null,
+            ]),
+          ),
+        })
+      }
+      return backend.configuration()
+    }
     if (path.endsWith('/connections/preflight')) {
       const body = (await request.json()) as EndUserConnectionPreflightPayload
       bodies.push(body)
@@ -253,7 +271,10 @@ describe('Webapp connection preflight', () => {
 
     await act(async () => {
       configuration.resolve(
-        Response.json({ connections: { 'source-a': personal, 'source-b': null } }),
+        Response.json({
+          reauthorization_required: false,
+          connections: { 'source-a': personal, 'source-b': null },
+        }),
       )
     })
     await waitFor(() => expect(bodies).toHaveLength(1))
@@ -566,7 +587,10 @@ describe('Webapp connection preflight', () => {
     const apiKey = connection({ credential_type: 'api-key' })
     backend.records = [apiKey, work]
     backend.configuration = () =>
-      Response.json({ connections: { 'source-a': apiKey, 'source-b': work } })
+      Response.json({
+        reauthorization_required: false,
+        connections: { 'source-a': apiKey, 'source-b': work },
+      })
     backend.replace = () => replacement.promise
     backend.preflight = (_, index) => (index === 0 ? Response.json(checked()) : recheck.promise)
     render(tree())

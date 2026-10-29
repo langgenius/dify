@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  ConnectionConfigurationResponse,
   ConnectionCredentialSchemaResponse,
   EndUserConnectionResponse,
   WebAppConnectionRequirement,
@@ -22,12 +23,19 @@ import { authorizeConnection } from './oauth-popup'
 type Props = {
   address: WebAppAddress
   authSession: number
+  session: object
+  conversationId?: string
+  selections: Readonly<Record<string, string | null>>
   connectionRevision: string | null | undefined
   requirements: readonly WebAppConnectionRequirement[]
   services: readonly RequiredConnectionService[]
   disabled: boolean
   oauthCallbackOrigin?: string
-  onSaved: (nodeId: string, connection: EndUserConnectionResponse) => void
+  onSaved: (connection: EndUserConnectionResponse) => void
+  onConfigurationSaved: (
+    configuration: ConnectionConfigurationResponse,
+    assertCurrent: () => void,
+  ) => Promise<void>
   onRemoved: (connectionId: string) => void
   refreshConnections: () => Promise<void>
 }
@@ -50,12 +58,16 @@ export function connectionDetailQueryKey(
 export default function useConnectionActions({
   address,
   authSession,
+  session,
+  conversationId,
+  selections,
   connectionRevision,
   requirements,
   services,
   disabled,
   oauthCallbackOrigin,
   onSaved,
+  onConfigurationSaved,
   onRemoved,
   refreshConnections,
 }: Props) {
@@ -63,6 +75,9 @@ export default function useConnectionActions({
   const queryClient = useQueryClient()
   const context = { address, authSession, silent: true }
   const create = useMutation(webAppQuery.connections.post.mutationOptions({ context }))
+  const saveConfiguration = useMutation(
+    webAppQuery.connections.configuration.put.mutationOptions({ context }),
+  )
   const update = useMutation(
     webAppQuery.connections.byConnectionId.patch.mutationOptions({ context }),
   )
@@ -77,8 +92,14 @@ export default function useConnectionActions({
   )
   const [isMutating, setIsMutating] = useState(false)
   const operationRef = useRef<AbortController | null>(null)
+  const configurationKey = ['webapp', ...webAppQuery.connections.configuration.get.key()]
 
-  useEffect(() => () => operationRef.current?.abort(), [])
+  useEffect(
+    () => () => {
+      operationRef.current?.abort()
+    },
+    [session],
+  )
 
   const execute = async (
     run: (signal: AbortSignal, assertCurrent: () => void) => Promise<void>,
@@ -106,7 +127,14 @@ export default function useConnectionActions({
       assertCurrent()
       throw error
     } finally {
-      if (!controller.signal.aborted) {
+      try {
+        // An in-flight write can still commit after the user switches conversations.
+        if (controller.signal.aborted) {
+          await queryClient.invalidateQueries({
+            queryKey: configurationKey,
+          })
+        }
+      } finally {
         operationRef.current = null
         setIsMutating(false)
       }
@@ -165,6 +193,27 @@ export default function useConnectionActions({
       throw new Error('The connection is no longer available for this source.')
     return source
   }
+  const persistSelection = async (
+    nodeId: string,
+    connectionId: string | null,
+    assertCurrent: () => void,
+  ) => {
+    assertCurrent()
+    if (!connectionRevision) throw new Error('Connection configuration is incomplete.')
+    const configuration = await saveConfiguration.mutateAsync({
+      body: {
+        connection_revision: connectionRevision,
+        conversation_id: conversationId,
+        connections: { ...selections, [nodeId]: connectionId },
+      },
+    })
+    assertCurrent()
+    await onConfigurationSaved(configuration, assertCurrent)
+  }
+  const reportActionFailure = (error: unknown) => {
+    if (isAbortError(error)) return
+    toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+  }
   const saveResult = async (
     source: WebAppConnectionRequirement,
     connection: EndUserConnectionResponse,
@@ -176,7 +225,15 @@ export default function useConnectionActions({
       !source.allowed_credential_types.includes(connection.credential_type)
     )
       throw new Error('The returned connection does not match this authorization source.')
-    onSaved(source.node_id, connection)
+    onSaved(connection)
+    try {
+      await persistSelection(source.node_id, connection.id, assertCurrent)
+    } catch (error) {
+      // The credential is already saved; retry selection instead of creating it again.
+      assertCurrent()
+      reportActionFailure(error)
+    }
+    assertCurrent()
     await refreshConnections()
   }
   const getOAuthResult = async (connectionId: string) =>
@@ -190,10 +247,12 @@ export default function useConnectionActions({
       }),
     )
 
-  const reportOAuthFailure = (error: unknown) => {
-    if (isAbortError(error)) return
-    toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
-  }
+  const onSelect = async (nodeId: string, connectionId: string | null) =>
+    execute(async (_signal, assertCurrent) => {
+      const source = findSource(nodeId)
+      if (connectionId !== null) requireConnection(source.node_id, connectionId)
+      await persistSelection(source.node_id, connectionId, assertCurrent)
+    }).catch(reportActionFailure)
 
   const onConnect = async (nodeId: string, method: ConnectionMethod, values?: ApiKeyValues) => {
     if (method === 'api-key') {
@@ -220,7 +279,6 @@ export default function useConnectionActions({
       const connectionId = await authorizeConnection(
         () =>
           startOAuth.mutateAsync({
-            // @ts-expect-error OAuth names are assigned by the server; the generated contract still requires name.
             body: {
               connection_revision: connectionRevision,
               node_id: source.node_id,
@@ -234,7 +292,7 @@ export default function useConnectionActions({
       if (connection.credential_type !== 'oauth2')
         throw new Error('The OAuth callback did not identify an OAuth connection.')
       await saveResult(source, connection, assertCurrent)
-    }).catch(reportOAuthFailure)
+    }).catch(reportActionFailure)
   }
 
   const onReplace = async (nodeId: string, connectionId: string, values: ApiKeyValues) =>
@@ -291,8 +349,16 @@ export default function useConnectionActions({
       if (returnedId !== connectionId)
         throw new Error('The OAuth callback identified a different connection.')
       await saveResult(source, await getOAuthResult(returnedId), assertCurrent)
-    }).catch(reportOAuthFailure)
+    }).catch(reportActionFailure)
   }
 
-  return { onConnect, onReplace, onRemove, onReconnect, isMutating, getApiKeySchemaOptions }
+  return {
+    onConnect,
+    onReplace,
+    onRemove,
+    onReconnect,
+    onSelect,
+    isMutating,
+    getApiKeySchemaOptions,
+  }
 }
