@@ -554,25 +554,22 @@ export function AgentSkills() {
     ],
   )
 
-  const handlePromptAdd = useCallback(
-    (options?: AgentOrchestrateAddActionOptions) => {
-      promptAddCallbackRef.current = options?.onAdded
-      if (options?.skillSource === 'library') {
-        setAddMenuView('workspace-selector')
-        setAddMenuOpen(true)
-        return
-      }
-
-      if (options?.skillSource === 'upload') {
-        setIsUploadOpen(true)
-        return
-      }
-
-      setAddMenuView('menu')
+  const handlePromptAdd = useCallback((options?: AgentOrchestrateAddActionOptions) => {
+    promptAddCallbackRef.current = options?.onAdded
+    if (options?.skillSource === 'library') {
+      setAddMenuView('workspace-selector')
       setAddMenuOpen(true)
-    },
-    [],
-  )
+      return
+    }
+
+    if (options?.skillSource === 'upload') {
+      setIsUploadOpen(true)
+      return
+    }
+
+    setAddMenuView('menu')
+    setAddMenuOpen(true)
+  }, [])
   useRegisterAgentOrchestrateAddAction('skills', handlePromptAdd)
 
   const handleAddMenuOpenChange = useCallback((open: boolean) => {

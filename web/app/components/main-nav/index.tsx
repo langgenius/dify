@@ -58,13 +58,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
         icon: route.icon,
         activeIcon: route.activeIcon,
       })),
-    [
-      agentV2Enabled,
-      canViewSkills,
-      isCurrentWorkspaceDatasetOperator,
-      marketplaceEnabled,
-      t,
-    ],
+    [agentV2Enabled, canViewSkills, isCurrentWorkspaceDatasetOperator, marketplaceEnabled, t],
   )
 
   const renderLogo = () => {
