@@ -12,6 +12,7 @@ from dify_trace_sdk.errors import (
 )
 from dify_trace_sdk.ids import span_uuid
 from dify_trace_sdk.testing import MESSAGE_ID, RecordingEgress, message_trace, response, tool_fragment, workflow_trace
+from pydantic import JsonValue
 
 CONFIG = LangfuseConfig(public_key="pk-lf-1", secret_key="sk-lf-1", host="https://cloud.langfuse.com")
 
@@ -37,6 +38,30 @@ def test_verify_resolves_the_project() -> None:
     assert sent.method == "GET"
     assert sent.url == "https://cloud.langfuse.com/api/public/projects"
     assert sent.headers["Authorization"] == "Basic " + base64.b64encode(b"pk-lf-1:sk-lf-1").decode()
+
+
+def test_legacy_config_keeps_project_and_trace_links_without_verification() -> None:
+    provider, egress = _provider(response(200, {}))
+    config = LangfuseConfig.model_validate(
+        {
+            "public_key": "pk-lf-1",
+            "secret_key": "sk-lf-1",
+            "host": "https://collector.example/langfuse",
+            "project_url": "https://dashboard.example/langfuse/project/legacy-project/",
+        }
+    )
+
+    result = provider.send(config, message_trace())
+
+    assert provider.project_url(config) == config.project_url
+    trace_url = f"https://dashboard.example/langfuse/project/legacy-project/traces/{MESSAGE_ID}"
+    assert result.trace_url == trace_url
+    assert result.span_urls
+    assert all(url.startswith(trace_url + "?observation=") for url in result.span_urls.values())
+    assert len(egress.requests) == 1
+    assert egress.requests[0].url == "https://collector.example/langfuse/api/public/ingestion"
+    verified = config.model_copy(update={"project_key": "new-project"})
+    assert provider.project_url(verified) == "https://collector.example/langfuse/project/new-project"
 
 
 @pytest.mark.parametrize(
@@ -73,8 +98,55 @@ def test_message_trace_becomes_trace_and_generation() -> None:
     assert body["model"] == "gpt-4o"
     assert body["usage"] == {"input": 12, "output": 8, "total": 20, "unit": "TOKENS", "totalCost": 0.0004}
     assert body["completionStartTime"] == "2026-10-01T08:00:00.250000+00:00"
+    assert body["input"] == [{"role": "user", "content": "What is Dify?"}]
+    assert body["output"] == [{"role": "assistant", "content": "An LLM application platform."}]
     assert result.trace_id == MESSAGE_ID
     assert result.trace_url == f"https://cloud.langfuse.com/project/project-1/traces/{MESSAGE_ID}"
+
+
+@pytest.mark.parametrize(
+    ("inputs", "expected"),
+    [
+        ("Hello", [{"role": "user", "content": "Hello"}]),
+        (
+            [{"role": "system", "text": "Be brief", "files": []}, {"role": "user", "text": "Hello"}],
+            [{"role": "system", "content": "Be brief", "files": []}, {"role": "user", "content": "Hello"}],
+        ),
+        (
+            [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Describe this"},
+                        {"type": "image_url", "image_url": {"url": "https://example.com/image.png"}},
+                    ],
+                }
+            ],
+            [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Describe this"},
+                        {"type": "image_url", "image_url": {"url": "https://example.com/image.png"}},
+                    ],
+                }
+            ],
+        ),
+        ({"text": "workflow data"}, {"text": "workflow data"}),
+        ([{"text": "retrieval data"}], [{"text": "retrieval data"}]),
+    ],
+)
+def test_chat_inputs_keep_the_langfuse_preview_format(inputs: JsonValue, expected: JsonValue) -> None:
+    provider, egress = _provider(response(200, {}))
+    trace = message_trace()
+    trace = trace.model_copy(update={"spans": (trace.root, trace.spans[1].model_copy(update={"inputs": inputs}))})
+    source = trace.model_dump()
+
+    provider.send(CONFIG, trace)
+
+    _, generation = _sent_events(egress)
+    assert generation["body"]["input"] == expected
+    assert trace.model_dump() == source
 
 
 def test_workflow_spans_keep_hierarchy_and_errors() -> None:
