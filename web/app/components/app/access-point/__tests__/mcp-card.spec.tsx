@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
     data: undefined as undefined | { id: string; server_code: string; status: string },
     isPending: false,
   },
-  modalProps: vi.fn(),
   refreshServerCode: vi.fn(),
   updateServer: vi.fn(),
 }))
@@ -51,13 +50,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
-  default: (props: Record<string, unknown>) => {
-    mocks.modalProps(props)
-    return <div role="dialog" aria-label="MCP server settings" />
-  },
-}))
 
 const appInfo = createAppDetailFixture({
   api_base_url: 'https://api.example.test/v1',
@@ -124,8 +116,6 @@ function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: Publish
         ...mocks.serverDetail.data,
       }),
     )
-  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-
   const view = render(
     <QueryClientProvider client={queryClient}>
       <MCPAccessPointCard
@@ -136,7 +126,7 @@ function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: Publish
       />
     </QueryClientProvider>,
   )
-  return { ...view, invalidateQueries }
+  return { ...view, queryClient }
 }
 
 describe('MCPAccessPointCard', () => {
@@ -147,34 +137,19 @@ describe('MCPAccessPointCard', () => {
     mocks.updateServer.mockResolvedValue(undefined)
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('uses the provided basic app model config without refetching app detail', async () => {
+  it('opens settings with the provided basic app model config', async () => {
     const user = userEvent.setup()
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response('{}', { status: 200 }))
 
     renderCard()
 
     await user.click(screen.getByRole('button', { name: /addDescription/ }))
 
-    expect(screen.getByRole('dialog', { name: 'MCP server settings' })).toBeInTheDocument()
-    expect(mocks.modalProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        latestParams: [
-          {
-            label: 'Question',
-            required: true,
-            type: 'text-input',
-            variable: 'question',
-          },
-        ],
-      }),
-    )
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('dialog', { name: 'tools.mcp.server.modal.addTitle' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Question' })).toBeInTheDocument()
+    expect(screen.getByText('question')).toBeInTheDocument()
+    expect(screen.getByText('text-input')).toBeInTheDocument()
   })
 
   it('uses workflow inputs when the app model config is null', async () => {
@@ -184,11 +159,11 @@ describe('MCPAccessPointCard', () => {
 
     await user.click(screen.getByRole('button', { name: /addDescription/ }))
 
-    expect(mocks.modalProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        latestParams: [{ label: 'Query', variable: 'query' }],
-      }),
-    )
+    expect(
+      screen.getByRole('dialog', { name: 'tools.mcp.server.modal.addTitle' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Query' })).toBeInTheDocument()
+    expect(screen.getByText('query')).toBeInTheDocument()
   })
 
   it('shows loading without reporting an environment failure', () => {
@@ -241,7 +216,7 @@ describe('MCPAccessPointCard', () => {
     mocks.updateServer
       .mockReturnValueOnce(firstToggle.promise)
       .mockReturnValueOnce(secondToggle.promise)
-    const { invalidateQueries } = renderCard()
+    const { queryClient } = renderCard()
 
     const accessSwitch = screen.getByRole('switch')
     await user.click(accessSwitch)
@@ -259,17 +234,32 @@ describe('MCPAccessPointCard', () => {
     await waitFor(() => {
       expect(mocks.updateServer).toHaveBeenCalledTimes(2)
     })
+    expect(mocks.updateServer.mock.calls.map(([input]) => input.body.status)).toEqual([
+      'inactive',
+      'active',
+    ])
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.apps.byAppId.server.get.queryKey({
+            input: { params: { app_id: 'app-1' } },
+          }),
+        ),
+      ).toEqual(expect.objectContaining({ status: 'inactive' }))
+    })
 
     secondToggle.resolve()
 
     await waitFor(() => {
-      expect(invalidateQueries).toHaveBeenCalledTimes(2)
-      expect(invalidateQueries).toHaveBeenLastCalledWith({
-        queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
-          input: { params: { app_id: 'app-1' } },
-        }),
-      })
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.apps.byAppId.server.get.queryKey({
+            input: { params: { app_id: 'app-1' } },
+          }),
+        ),
+      ).toEqual(expect.objectContaining({ status: 'active' }))
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('agentV2.agentDetail.access.status.inService')).toBeInTheDocument()
   })
 })
