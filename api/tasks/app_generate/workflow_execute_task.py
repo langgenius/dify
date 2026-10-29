@@ -495,12 +495,22 @@ def workflow_based_app_execution_task(
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
     claim_key = f"workflow_based_app_execution:claimed:{exec_params.workflow_run_id}"
-    if not redis_client.set(claim_key, "1", nx=True, ex=_DUPLICATE_RUN_CLAIM_TTL_SECONDS):
-        logger.warning(
-            "Skipping redelivered workflow_based_app_execution_task for workflow run %s",
-            exec_params.workflow_run_id,
-        )
-        return None
+    # A token unique to this consumption attempt. redis-py retries a command
+    # whose success reply was lost (default Retry: 3 attempts on
+    # ConnectionError/TimeoutError); the retried SET then finds its own key
+    # and returns None, which a plain None-check would misread as someone
+    # else's claim and skip the original delivery before it ever ran.
+    claim_token = uuid.uuid4().hex
+    if not redis_client.set(claim_key, claim_token, nx=True, ex=_DUPLICATE_RUN_CLAIM_TTL_SECONDS):
+        stored = redis_client.get(claim_key)
+        if isinstance(stored, bytes):
+            stored = stored.decode()
+        if stored != claim_token:
+            logger.warning(
+                "Skipping redelivered workflow_based_app_execution_task for workflow run %s",
+                exec_params.workflow_run_id,
+            )
+            return None
 
     runner = _AppRunner(db.engine, exec_params=exec_params)
     return runner.run()

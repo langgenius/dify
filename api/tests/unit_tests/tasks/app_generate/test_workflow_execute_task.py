@@ -1412,6 +1412,7 @@ class TestWorkflowBasedAppExecutionTaskDeduplication:
         # tests that go through the task entry are unaffected.
         yield redis_client
         redis_client.set.reset_mock(return_value=True, side_effect=True)
+        redis_client.get.reset_mock(return_value=True, side_effect=True)
 
     def test_runs_when_claim_succeeds(self, redis_claim: MagicMock):
         redis_claim.set.return_value = True
@@ -1431,6 +1432,33 @@ class TestWorkflowBasedAppExecutionTaskDeduplication:
 
     def test_skips_redelivered_payload_when_claim_fails(self, redis_claim: MagicMock):
         redis_claim.set.return_value = None
+        redis_claim.get.return_value = b"first-delivery-token"
+        with patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls:
+            result = workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        assert result is None
+        runner_cls.assert_not_called()
+
+    def test_lost_reply_retry_of_own_claim_still_runs(self, redis_claim: MagicMock):
+        # redis-py (default Retry: 3 attempts, ConnectionError/TimeoutError)
+        # re-sends SET NX when the success reply is lost; the retry finds its
+        # own key and returns None. The original delivery must still run:
+        # distinguish our own claim token from another attempt's (#44937).
+        redis_claim.set.return_value = None
+        redis_claim.get.side_effect = lambda key: redis_claim.set.call_args[0][1]
+        with (
+            patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls,
+            patch("tasks.app_generate.workflow_execute_task.db"),
+        ):
+            runner_cls.return_value.run.return_value = None
+            workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        runner_cls.assert_called_once()
+        runner_cls.return_value.run.assert_called_once()
+
+    def test_lost_reply_retry_skips_when_claim_belongs_to_another_attempt(self, redis_claim: MagicMock):
+        redis_claim.set.return_value = None
+        redis_claim.get.return_value = b"another-attempts-token"
         with patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls:
             result = workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
 
@@ -1443,6 +1471,9 @@ class TestWorkflowBasedAppExecutionTaskDeduplication:
         # effects, so replaying is worse than blocking the duplicate until
         # the claim TTL expires. Pin that recovery semantic.
         redis_claim.set.side_effect = [True, None]
+        # The redelivery's SET loses to the original claim; the stored token
+        # is the original attempt's, not the redelivery's.
+        redis_claim.get.side_effect = lambda key: redis_claim.set.call_args_list[0][0][1]
         with (
             patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls,
             patch("tasks.app_generate.workflow_execute_task.db"),
