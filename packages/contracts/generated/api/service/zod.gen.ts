@@ -505,21 +505,6 @@ export const zConversationVariableInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayload = z.object({
-  value: z.unknown(),
-})
-
-/**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayloadWithUser = z.object({
-  user: z.string().optional(),
-  value: z.unknown(),
-})
-
-/**
  * ConversationVariablesQuery
  */
 export const zConversationVariablesQuery = z.object({
@@ -1089,6 +1074,30 @@ export const zConversationNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * ConversationVariableNotFoundError
+ *
+ * The conversation variable was not found for this conversation.
+ */
+export const zConversationVariableNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationVariableTypeMismatchError
+ *
+ * The new value does not match the conversation variable's type.
+ */
+export const zConversationVariableTypeMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_type_mismatch'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -1465,6 +1474,21 @@ export const zChatPauseReasonResponse = z.object({
 export const zJsonValueType = z.unknown()
 
 export const zJsonValue = z.unknown()
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayload = z.object({
+  value: zJsonValue,
+})
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayloadWithUser = z.object({
+  user: z.string().optional(),
+  value: zJsonValue,
+})
 
 /**
  * DocumentResponse
@@ -6255,7 +6279,7 @@ export const zGetConversationsByConversationIdVariablesQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversation variables.
+ * Conversation variables retrieved successfully.
  */
 export const zGetConversationsByConversationIdVariablesResponse =
   zConversationVariableInfiniteScrollPaginationResponse

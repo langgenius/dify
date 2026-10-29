@@ -17,9 +17,11 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useCallback, useId } from 'react'
+import { queryOptions, useQuery } from '@tanstack/react-query'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getFileExtension } from '@/features/agent-v2/file-icon'
 import { AgentFileTree } from '../files/tree'
 
 type AgentSkillDetailSection = {
@@ -311,10 +313,54 @@ function AgentFilePreviewContent({
     )
   }
 
+  return <AgentFileTextPreview content={content} fileName={fileName} />
+}
+
+const loadFileHighlighter = async () => {
+  const [{ codeToTokens, isSupportedLanguage }, { default: light }, { default: dark }] =
+    await Promise.all([
+      import('@pierre/highlights'),
+      import('@pierre/highlights/themes/github-light'),
+      import('@pierre/highlights/themes/github-dark'),
+    ])
+
+  return (code: string, lang: string) => {
+    if (!isSupportedLanguage(lang)) return undefined
+
+    try {
+      return codeToTokens(code, {
+        lang,
+        themes: { light, dark },
+        defaultColor: false,
+        tokenizeMaxLineLength: 1000,
+      }).tokens
+    } catch {
+      return undefined
+    }
+  }
+}
+
+function AgentFileTextPreview({ content, fileName }: { content: string; fileName?: string }) {
+  const extension = fileName ? getFileExtension(fileName) : ''
+  const language = extension && extension !== 'txt' ? extension : undefined
+  const { data: highlight } = useQuery(
+    queryOptions({
+      queryKey: ['agent-v2', 'file-highlighter'],
+      queryFn: loadFileHighlighter,
+      enabled: !!language,
+      networkMode: 'always',
+      staleTime: Infinity,
+    }),
+  )
+  const highlightedLines = useMemo(
+    () => (highlight && language ? highlight(content, language) : undefined),
+    [content, highlight, language],
+  )
   const lines = content.split('\n').map((line, index) => ({
     content: line,
     key: `${index}:${line}`,
     lineNumber: String(index + 1).padStart(2, '0'),
+    tokens: highlightedLines?.[index],
   }))
 
   return (
@@ -328,7 +374,18 @@ function AgentFilePreviewContent({
             {line.lineNumber}
           </span>
           <code className="block min-w-0 flex-1 wrap-anywhere whitespace-pre-wrap text-text-primary">
-            {line.content}
+            {line.tokens
+              ? line.tokens.map((token, tokenIndex) => (
+                  <span
+                    // oxlint-disable-next-line react/no-array-index-key -- Tokens are positional within their line.
+                    key={tokenIndex}
+                    style={token.htmlStyle}
+                    className="[font-weight:var(--hls-light-font-weight)] text-(--hls-light) [font-style:var(--hls-light-font-style)] in-data-[theme=dark]:[font-weight:var(--hls-dark-font-weight)] in-data-[theme=dark]:text-(--hls-dark) in-data-[theme=dark]:[font-style:var(--hls-dark-font-style)]"
+                  >
+                    {token.content}
+                  </span>
+                ))
+              : line.content}
           </code>
         </div>
       ))}

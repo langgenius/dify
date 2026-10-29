@@ -256,6 +256,15 @@ export type AgentConfigFileUploadResponse = {
   file: AgentConfigFileItemResponse
 }
 
+export type AgentConfigFilesUploadPayload = {
+  upload_file_ids: Array<string>
+}
+
+export type AgentConfigFilesUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  files: Array<AgentConfigFileItemResponse>
+}
+
 export type AgentConfigDeleteResponse = {
   removed_names?: Array<string>
   result: 'success'
@@ -5241,6 +5250,35 @@ export type PostAppsByAppIdAgentConfigFilesResponses = {
 
 export type PostAppsByAppIdAgentConfigFilesResponse =
   PostAppsByAppIdAgentConfigFilesResponses[keyof PostAppsByAppIdAgentConfigFilesResponses]
+
+export type PostAppsByAppIdAgentConfigFilesBatchData = {
+  body: AgentConfigFilesUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    node_id?: string
+    version_id?: string
+  }
+  url: '/apps/{app_id}/agent/config/files/batch'
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchErrors = {
+  400: AgentNotBoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchError =
+  PostAppsByAppIdAgentConfigFilesBatchErrors[keyof PostAppsByAppIdAgentConfigFilesBatchErrors]
+
+export type PostAppsByAppIdAgentConfigFilesBatchResponses = {
+  201: AgentConfigFilesUploadResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchResponse =
+  PostAppsByAppIdAgentConfigFilesBatchResponses[keyof PostAppsByAppIdAgentConfigFilesBatchResponses]
 
 export type DeleteAppsByAppIdAgentConfigFilesByNameData = {
   body?: never

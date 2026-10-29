@@ -1,7 +1,7 @@
 """add openapi_oauth_clients table
 
 Revision ID: c7e1a9d4b352
-Revises: b9d3f7a5c102
+Revises: d7e9a1c3f502
 Create Date: 2026-10-26 10:00:00.000000
 
 Cross-dialect notes:
@@ -19,7 +19,7 @@ from alembic import op
 import models
 
 revision = "c7e1a9d4b352"
-down_revision = "b9d3f7a5c102"
+down_revision = "d7e9a1c3f502"
 branch_labels = None
 depends_on = None
 

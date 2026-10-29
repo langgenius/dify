@@ -49,7 +49,7 @@ function isFileTreeIconType(value: string): value is FileTreeIconType {
   return driveFileIconTypes.has(value)
 }
 
-function getFileExtension(fileName: string) {
+export function getFileExtension(fileName: string) {
   return fileName.split('.').pop()?.toLowerCase() ?? ''
 }
 

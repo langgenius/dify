@@ -16,6 +16,8 @@
   "settings.membersRequired": "Выберите хотя бы одного участника команды.",
   "settings.nameRequired": "Необходимо указать название базы знаний Agent.",
   "settings.pageDescription": "Управляйте основной информацией, доступом к API и поиском.",
+  "settings.reasoningChangeConfirm": "Подтвердить изменение",
+  "settings.reasoningChangeWarning": "Смена системной модели рассуждений приведет к повторной обработке проиндексированных документов и обновлению их поисковых индексов. Это займет время и повлечет дополнительные расходы на использование модели.",
   "settings.reloadLatest": "Загрузить актуальные настройки",
   "settings.rerankModelRequired": "Выберите модель переранжирования.",
   "settings.retrievalDepth": "Глубина поиска",

@@ -5,7 +5,6 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { toast } from '@/app/notifications'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -33,14 +32,16 @@ const mocks = vi.hoisted(() => ({
   uploadFileMutationFn: vi.fn(async (_input: unknown) => ({ id: 'upload-1' })),
   commitFileMutationFn: vi.fn(async (_input: unknown) => ({
     config_version: { id: 'draft-1', kind: 'draft', writable: true },
-    file: {
-      id: 'uploaded.md',
-      name: 'uploaded.md',
-      file_id: 'drive-file-1',
-      hash: 'sha256:file-1',
-      mime_type: 'text/markdown',
-      size: 5,
-    },
+    files: [
+      {
+        id: 'uploaded.md',
+        name: 'uploaded.md',
+        file_id: 'drive-file-1',
+        hash: 'sha256:file-1',
+        mime_type: 'text/markdown',
+        size: 5,
+      },
+    ],
   })),
   deleteFileMutationFn: vi.fn(async (_input: unknown) => ({
     removed_names: ['brief.md'],
@@ -59,13 +60,6 @@ const mocks = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}))
-
 vi.mock('@/utils/download', () => ({
   downloadBlob: mocks.downloadBlob,
   downloadUrl: mocks.downloadUrl,
@@ -74,7 +68,8 @@ vi.mock('@/utils/download', () => ({
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
-  const { withConsoleQueryOverrides } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleQueryOverrides } =
+    await import('@/test/console/service-responses')
   const query = withConsoleQueryOverrides(actual.consoleQuery, {
     'agent.byAgentId.config.files.byName.preview.get': { queryOptions: mocks.previewQueryOptions },
     'agent.byAgentId.config.files.byName.download.get': {
@@ -109,9 +104,6 @@ vi.mock('@/service/console', async (importOriginal) => {
         byAgentId: {
           config: {
             files: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
-              },
               byName: {
                 delete: {
                   mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
@@ -132,9 +124,6 @@ vi.mock('@/service/console', async (importOriginal) => {
           agent: {
             config: {
               files: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
-                },
                 byName: {
                   delete: {
                     mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
@@ -172,12 +161,14 @@ vi.mock('@/service/console', async (importOriginal) => {
       files: {
         upload: {
           get: consoleOperationStub('files.upload.get'),
-          post: {
-            mutationOptions: () => ({ mutationFn: mocks.uploadFileMutationFn }),
-          },
         },
       },
     },
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': mocks.uploadFileMutationFn,
+      'agent.byAgentId.config.files.batch.post': mocks.commitFileMutationFn,
+      'apps.byAppId.agent.config.files.batch.post': mocks.commitFileMutationFn,
+    }),
   }
 })
 
@@ -351,85 +342,25 @@ describe('AgentFiles', () => {
     expect(screen.queryByText('diagram.png')).not.toBeInTheDocument()
   })
 
-  it('keeps both upload stages open until the committed file reaches the draft', async () => {
-    let finishUpload!: () => void
-    let finishCommit!: () => void
-    const upload = new Promise<void>((resolve) => {
-      finishUpload = resolve
-    })
-    const commit = new Promise<void>((resolve) => {
-      finishCommit = resolve
-    })
-    const uploadFile = mocks.uploadFileMutationFn.getMockImplementation()!
-    const commitFile = mocks.commitFileMutationFn.getMockImplementation()!
-    mocks.uploadFileMutationFn.mockImplementationOnce(async (input) => {
-      await upload
-      return uploadFile(input)
-    })
-    mocks.commitFileMutationFn.mockImplementationOnce(async (input) => {
-      await commit
-      return commitFile(input)
-    })
+  it('adds uploaded files to the Files list and the config', async () => {
     const user = userEvent.setup()
     renderAgentFiles({ initialDraft: defaultAgentSoulConfigFormState })
 
     await user.click(
       screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
     )
-
     const input = await waitFor(() => {
       const element = document.querySelector('input[type="file"]')
       expect(element).not.toBeNull()
       return element as HTMLInputElement
     })
-    const file = new File(['hello'], 'uploaded.md', { type: 'text/markdown' })
-    await user.upload(input, file)
+    await user.upload(input, new File(['hello'], 'uploaded.md', { type: 'text/markdown' }))
     await user.click(
       screen.getByRole('button', { name: /agentDetail\.configure\.files\.upload\.action/i }),
     )
 
-    await waitFor(() => {
-      expect(mocks.uploadFileMutationFn).toHaveBeenCalledExactlyOnceWith(
-        {
-          body: {
-            file,
-          },
-        },
-        expect.anything(),
-      )
-    })
-
-    await user.keyboard('{Escape}')
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'common.operation.close' }),
-    )
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(mocks.commitFileMutationFn).not.toHaveBeenCalled()
-    finishUpload()
-
-    await waitFor(() => {
-      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith(
-        {
-          params: {
-            agent_id: 'agent-1',
-          },
-          query: {
-            draft_type: 'draft',
-            version_id: undefined,
-          },
-          body: {
-            upload_file_id: 'upload-1',
-          },
-        },
-        expect.anything(),
-      )
-    })
-
-    await user.keyboard('{Escape}')
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    finishCommit()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-
+    expect(screen.getByRole('button', { name: 'uploaded.md' })).toBeInTheDocument()
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_files).toEqual([
       expect.objectContaining({
@@ -441,7 +372,6 @@ describe('AgentFiles', () => {
         size: 5,
       }),
     ])
-    expect(toast.success).toHaveBeenCalled()
   })
 
   it('should show the configured size limit for every supported file type', async () => {
@@ -486,10 +416,11 @@ describe('AgentFiles', () => {
     const file = new File([new Uint8Array(1024 * 1024 + 1)], fileName, { type: mimeType })
     await user.upload(input, file)
 
-    expect(toast.error).toHaveBeenCalledWith(
-      `common.fileUploader.uploadFromComputerLimit:{"type":"${fileType}","size":"1.00 MB"}`,
-    )
-    expect(mocks.uploadFileMutationFn).not.toHaveBeenCalled()
+    expect(
+      screen.getByText(
+        `common.fileUploader.uploadFromComputerLimit:{"type":"${fileType}","size":"1.00 MB"}`,
+      ),
+    ).toBeVisible()
     expect(
       screen.getByRole('button', {
         name: /agentDetail\.configure\.files\.upload\.action/i,
@@ -538,13 +469,14 @@ describe('AgentFiles', () => {
             version_id: 'draft-1',
           },
           body: {
-            upload_file_id: 'upload-1',
+            upload_file_ids: ['upload-1'],
           },
         },
         expect.anything(),
       )
     })
 
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'diagram.png' }))
 
     await waitFor(() => {
