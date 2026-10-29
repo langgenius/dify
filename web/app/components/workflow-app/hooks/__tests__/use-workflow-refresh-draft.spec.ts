@@ -35,6 +35,7 @@ const setup = (mode: AppMode = 'advanced-chat') => {
   const store = createTestWorkflowStore({
     isWorkflowDataLoaded: true,
     syncWorkflowDraftHash: 'local-hash',
+    syncWorkflowDraftIsEmpty: false,
   })
   const queryClient = createConsoleQueryClient()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode }))
@@ -57,6 +58,7 @@ describe('useWorkflowRefreshDraft', () => {
     'refreshes draft metadata and respects notUpdateCanvas=%s',
     async (notUpdateCanvas) => {
       const { result, store } = setup()
+      store.setState({ syncWorkflowDraftIsEmpty: true })
       await act(async () => {
         expect(await result.current.handleRefreshWorkflowDraft(notUpdateCanvas)).toBe(true)
       })
@@ -65,6 +67,7 @@ describe('useWorkflowRefreshDraft', () => {
       else expect(updateCanvas).toHaveBeenCalledExactlyOnceWith(draftResponse.graph)
       expect(store.getState()).toMatchObject({
         syncWorkflowDraftHash: 'server-hash',
+        syncWorkflowDraftIsEmpty: false,
         isSyncingWorkflowDraft: false,
         isWorkflowDataLoaded: true,
       })
@@ -88,6 +91,7 @@ describe('useWorkflowRefreshDraft', () => {
     expect(updateCanvas).not.toHaveBeenCalled()
     expect(store.getState()).toMatchObject({
       syncWorkflowDraftHash: 'local-hash',
+      syncWorkflowDraftIsEmpty: false,
       environmentVariables: [],
       conversationVariables: [],
     })
@@ -160,7 +164,7 @@ describe('useWorkflowRefreshDraft', () => {
     'restores the appropriate empty canvas for %s',
     async (mode) => {
       fetchDraft.mockResolvedValue({ ...draftResponse, graph: { nodes: [], edges: [] } })
-      const { result } = setup(mode)
+      const { result, store } = setup(mode)
       await act(async () => {
         await result.current.handleRefreshWorkflowDraft()
       })
@@ -179,6 +183,7 @@ describe('useWorkflowRefreshDraft', () => {
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
       })
+      expect(store.getState().syncWorkflowDraftIsEmpty).toBe(true)
     },
   )
 
@@ -202,6 +207,7 @@ describe('useWorkflowRefreshDraft', () => {
       isWorkflowDataLoaded: true,
       isSyncingWorkflowDraft: false,
       syncWorkflowDraftHash: 'local-hash',
+      syncWorkflowDraftIsEmpty: false,
     })
     expect(updateCanvas).not.toHaveBeenCalled()
   })
