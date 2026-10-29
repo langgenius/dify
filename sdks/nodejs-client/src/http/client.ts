@@ -534,9 +534,10 @@ export class HttpClient {
       try {
         const fetchResponse = await fetch(url, requestInit)
         const responseHeaders = normalizeHeaders(fetchResponse.headers)
+        // Decode HTTP error bodies as JSON/text regardless of the success response format.
         const parsedBody = (await parseResponseBody(
           fetchResponse,
-          responseType,
+          fetchResponse.ok ? responseType : 'json',
         )) as ResponseDataFor<TResponseType>
         const response: RawHttpResponse<ResponseDataFor<TResponseType>> = {
           data: parsedBody,
