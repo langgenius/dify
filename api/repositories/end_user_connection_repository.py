@@ -17,6 +17,8 @@ from constants.end_user_connections import (
 )
 from context.connection_execution import ConnectionExecutionContext
 from core.app.public_runtime import published_app_filter
+from core.helper.name_generator import generate_incremental_name
+from core.plugin.entities.plugin_daemon import CredentialType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import (
@@ -224,6 +226,25 @@ class EndUserConnectionRepository:
             if owner.end_user_id is not None
             else EndUserConnection.end_user_id.is_(None),
         )
+
+    @classmethod
+    def _generate_connection_name(
+        cls,
+        session: Session,
+        context: WebConnectionContext,
+        provider: str,
+        credential_type: ConnectionCredentialType,
+    ) -> str:
+        """Generate under the caller's owner lock so concurrent creations see prior names."""
+        names = session.scalars(
+            sa.select(EndUserConnection.name).where(
+                EndUserConnection.tenant_id == context.tenant_id,
+                *cls._owner(context.owner),
+                EndUserConnection.provider == provider,
+                EndUserConnection.credential_type == credential_type,
+            )
+        ).all()
+        return generate_incremental_name(names, CredentialType(credential_type.value).get_name())
 
     @staticmethod
     def _require_context(session: Session, context: WebConnectionContext, *, lock: bool) -> App:
@@ -690,7 +711,7 @@ class EndUserConnectionRepository:
         *,
         workflow_id: str,
         provider: str,
-        name: str,
+        name: str | None,
         encrypted_credentials: str,
         revision_acceptance: ConnectionRevisionAcceptance,
     ) -> ConnectionSummary:
@@ -698,6 +719,8 @@ class EndUserConnectionRepository:
             app = self._require_context(session, context, lock=True)
             self._require_workflow_scope(session, context, app, workflow_id, None)
             owner = context.owner
+            if not name:
+                name = self._generate_connection_name(session, context, provider, ConnectionCredentialType.API_KEY)
             row = EndUserConnection(
                 tenant_id=context.tenant_id,
                 account_id=owner.account_id,
@@ -921,7 +944,7 @@ class EndUserConnectionRepository:
             ):
                 raise ConnectionReauthorizationRequiredError()
             if attempt.guard is None:
-                if attempt.target is None or attempt.name is None:
+                if attempt.target is None:
                     raise ConnectionConfigurationError()
                 if attempt.target_workflow_id is None:
                     raise ConnectionConfigurationError()
@@ -932,7 +955,10 @@ class EndUserConnectionRepository:
                     end_user_id=context.owner.end_user_id,
                     provider=attempt.provider,
                     credential_type=ConnectionCredentialType.OAUTH2,
-                    name=attempt.name,
+                    name=attempt.name
+                    or self._generate_connection_name(
+                        session, context, attempt.provider, ConnectionCredentialType.OAUTH2
+                    ),
                     encrypted_credentials=encrypted_credentials,
                     status=ConnectionCredentialStatus.CONNECTED,
                     oauth_client_source=client.source,

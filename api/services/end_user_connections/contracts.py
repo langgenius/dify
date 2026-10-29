@@ -44,7 +44,9 @@ class ConnectionTargetInput(ConnectionContractInput):
 
 
 class CreateApiKeyConnectionInput(ConnectionTargetInput):
-    name: str = Field(min_length=1, max_length=100)
+    name: str | None = Field(
+        default=None, max_length=100, description="Omit or leave empty to generate an incremental API KEY name."
+    )
     # Provider-schema validation and remote checks precede persistence.
     credentials: dict[str, JsonValue] = Field(min_length=1, repr=False)
 
@@ -87,7 +89,9 @@ class ConnectionRevisionView(BaseModel):
 
 
 class StartConnectionOAuthInput(ConnectionTargetInput):
-    name: str = Field(min_length=1, max_length=100)
+    name: str | None = Field(
+        default=None, max_length=100, description="Omit or leave empty to generate an incremental AUTH name."
+    )
 
 
 class ListConnectionsInput(ConnectionInput):

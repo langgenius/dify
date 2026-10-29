@@ -1751,7 +1751,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | ---- | ---- | ----------- | -------- |
 | connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 | credentials | object |  | Yes |
-| name | string |  | Yes |
+| name | string | Omit or leave empty to generate an incremental API KEY name. | No |
 | node_id | string |  | Yes |
 
 #### EndUserConnectionListQuery
@@ -1775,7 +1775,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
-| name | string |  | Yes |
+| name | string | Omit or leave empty to generate an incremental AUTH name. | No |
 | node_id | string |  | Yes |
 
 #### EndUserConnectionOAuthResponse
