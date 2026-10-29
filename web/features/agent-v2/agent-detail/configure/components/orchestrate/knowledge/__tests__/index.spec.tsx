@@ -534,6 +534,26 @@ describe('shared knowledge binding dialog', () => {
     })
   })
 
+  it('requires a reranker when same-name embedding models come from different providers', async () => {
+    const user = userEvent.setup()
+    const first = createDatasetFixture()
+    const second = createDatasetFixture({
+      id: 'dataset-2',
+      name: 'Azure docs',
+      embedding_model_provider: 'azure_openai',
+    })
+    getDatasets.mockResolvedValue(datasetPage([first, second]))
+    setupClassic({ id: 'group', name: 'Saved group', selectedDatasets: [first] })
+    const original = snapshot().knowledge
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    await toggleDatasets(user, dialog, [/Azure docs/])
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getAllByRole('alert')[0]?.textContent).toMatch(/rerankModel/)
+    expect(snapshot().knowledge).toEqual(original)
+  })
+
   it('stages retrieval limit edits and discards them when the shared dialog is cancelled', async () => {
     const user = userEvent.setup()
     setupClassic({
