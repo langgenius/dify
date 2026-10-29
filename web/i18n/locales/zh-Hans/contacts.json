@@ -234,7 +234,7 @@
   "imPlatform.diagnostics.notConfigured": "请选择一个 IM 平台开始绑定。",
   "imPlatform.diagnostics.title": "连接诊断",
   "imPlatform.disconnect.confirm": "断开",
-  "imPlatform.disconnect.description": "通讯录同步将停止，并移除当前模拟绑定。",
+  "imPlatform.disconnect.description": "通讯录同步将停止，并移除当前绑定。",
   "imPlatform.disconnect.failed": "无法断开 IM 平台连接，请重试。",
   "imPlatform.disconnect.title": "断开与 {{provider}} 的连接？",
   "imPlatform.email.apiKey": "API Key",

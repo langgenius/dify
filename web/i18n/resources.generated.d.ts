@@ -2261,7 +2261,7 @@ export default interface Resources {
     'imPlatform.diagnostics.notConfigured': 'Choose a provider to start the binding flow.'
     'imPlatform.diagnostics.title': 'Connection diagnostics'
     'imPlatform.disconnect.confirm': 'Disconnect'
-    'imPlatform.disconnect.description': 'Directory sync will stop and the current mock binding will be removed.'
+    'imPlatform.disconnect.description': 'Directory sync will stop and the current binding will be removed.'
     'imPlatform.disconnect.failed': "The provider couldn't be disconnected. Try again."
     'imPlatform.disconnect.title': 'Disconnect {{provider}}?'
     'imPlatform.email.apiKey': 'API Key'
