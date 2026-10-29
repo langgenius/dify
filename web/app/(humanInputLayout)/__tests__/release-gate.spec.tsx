@@ -21,7 +21,7 @@ vi.mock('../form-v2/[token]/form', () => ({
     return <div>Public V2 form</div>
   },
 }))
-vi.mock('@/features/console-human-input-form/form', () => ({
+vi.mock('@/features/human-input/console/form', () => ({
   default: () => {
     config.consoleForm()
     return <div>Console V2 form</div>

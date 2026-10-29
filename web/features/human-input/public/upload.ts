@@ -1,22 +1,9 @@
 import type { HumanInputV2FormTransport } from './types'
+import type { FileUploadStrategy } from '@/app/components/base/file-uploader/upload-context'
 
-type UploadCallbacks = {
-  onProgressCallback: (progress: number) => void
-  onSuccessCallback: (response: {
-    created_at: number
-    created_by: string
-    extension: string
-    id: string
-    name: string
-    mime_type: string
-    preview_url: string | null
-    size: number
-    source_url: string
-  }) => void
-  onErrorCallback: (error?: unknown) => void
-}
+type UploadCallbacks = Omit<Parameters<FileUploadStrategy['uploadLocal']>[0], 'file'>
 
-export const uploadHumanInputV2LocalFile = async ({
+const uploadHumanInputV2LocalFile = async ({
   transport,
   formToken,
   file,
@@ -48,7 +35,7 @@ export const uploadHumanInputV2LocalFile = async ({
   }
 }
 
-export const uploadHumanInputV2RemoteFile = async ({
+const uploadHumanInputV2RemoteFile = async ({
   transport,
   formToken,
   url,
@@ -66,3 +53,13 @@ export const uploadHumanInputV2RemoteFile = async ({
     url: uploadedFile.url,
   }
 }
+
+export const createHumanInputV2UploadStrategy = (
+  formToken: string,
+  transport: HumanInputV2FormTransport,
+): FileUploadStrategy => ({
+  uploadLocal: (params) => {
+    void uploadHumanInputV2LocalFile({ transport, formToken, ...params })
+  },
+  uploadRemote: (url) => uploadHumanInputV2RemoteFile({ transport, formToken, url }),
+})

@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 import type { FileEntity } from '../types'
+import type { FileUploadStrategy } from '../upload-context'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { ORPCError } from '@orpc/client'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
-import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -29,10 +29,6 @@ vi.mock('../utils', async (importOriginal) => ({
   fileUpload: vi.fn(),
 }))
 vi.mock('@/service/common', () => ({ uploadPublicRemoteFileInfo: vi.fn() }))
-vi.mock('@/service/share', () => ({
-  uploadHumanInputFormLocalFile: vi.fn(),
-  uploadHumanInputFormRemoteFileInfo: vi.fn(),
-}))
 
 const config: FileUpload = {
   enabled: true,
@@ -71,7 +67,11 @@ function setup({
 }: {
   files?: FileEntity[]
   fileConfig?: FileUpload
-  uploadUrls?: { localUploadUrl?: string; trialAppId?: string }
+  uploadUrls?: {
+    localUploadUrl?: string
+    trialAppId?: string
+    uploadStrategy?: FileUploadStrategy
+  }
   checkEnabled?: boolean
 } = {}) {
   const onChange = vi.fn()
@@ -106,7 +106,6 @@ beforeEach(() => {
   navigation.pathname = '/chat'
   vi.spyOn(toast, 'error').mockReturnValue('toast-id')
   vi.mocked(uploadPublicRemoteFileInfo).mockResolvedValue(uploadResponse)
-  vi.mocked(uploadHumanInputFormRemoteFileInfo).mockResolvedValue(uploadResponse)
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -295,25 +294,81 @@ it('uses resource-specific local and remote upload endpoints', async () => {
   expect(result.current.files.find((file) => file.isRemote)?.uploadedId).toBe('uploaded-file')
 })
 
-it('routes human-input form uploads and retries through the form token', async () => {
-  navigation.params = { token: 'form-token' }
-  navigation.pathname = '/form/form-token'
-  const { result } = setup({ files: [entity('retry')] })
-  act(() => result.current.handleReUploadFile('retry'))
-  expect(uploadHumanInputFormLocalFile).toHaveBeenCalledWith(
-    expect.objectContaining({ formToken: 'form-token', file: expect.any(File) }),
+it('uses the injected local strategy for initial uploads, retry and paste across route changes', async () => {
+  const uploadLocal = vi.fn<FileUploadStrategy['uploadLocal']>()
+  const uploadRemote = vi.fn<FileUploadStrategy['uploadRemote']>()
+  navigation.params = { token: 'public-token' }
+  const { result, rerender } = setup({
+    uploadUrls: {
+      localUploadUrl: '/trial-apps/trial-1/files/upload',
+      trialAppId: 'trial-1',
+      uploadStrategy: { uploadLocal, uploadRemote },
+    },
+  })
+  const firstFile = new File(['data'], 'a.txt', { type: 'text/plain' })
+  act(() => result.current.handleLocalFileUpload(firstFile))
+  await waitFor(() => expect(uploadLocal).toHaveBeenCalledTimes(1))
+  const first = uploadLocal.mock.calls[0]![0]
+  expect(first.file).toBe(firstFile)
+  act(() => first.onProgressCallback(40))
+  expect(result.current.files[0]?.progress).toBe(40)
+  act(() => first.onErrorCallback(new Error('retryable upload failure')))
+  expect(result.current.files[0]?.progress).toBe(-1)
+
+  navigation.params = { token: 'different-token' }
+  navigation.pathname = '/another-page/different-token'
+  rerender()
+  act(() => result.current.handleReUploadFile(result.current.files[0]!.id))
+  expect(uploadLocal).toHaveBeenCalledTimes(2)
+  const retry = uploadLocal.mock.calls[1]![0]
+  expect(retry.file).toBe(firstFile)
+  act(() => retry.onSuccessCallback(uploadResponse))
+  expect(result.current.files[0]).toMatchObject({
+    progress: 100,
+    uploadedId: uploadResponse.id,
+  })
+
+  const pastedFile = new File(['pasted'], 'pasted.txt', { type: 'text/plain' })
+  render(
+    createElement('textarea', {
+      'aria-label': 'Message',
+      onPaste: result.current.handleClipboardPasteFile,
+    }),
   )
-  act(() =>
-    result.current.handleLocalFileUpload(new File(['data'], 'a.txt', { type: 'text/plain' })),
-  )
-  await waitFor(() => expect(uploadHumanInputFormLocalFile).toHaveBeenCalledTimes(2))
-  await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
-  expect(uploadHumanInputFormRemoteFileInfo).toHaveBeenCalledWith(
-    'form-token',
-    'https://example.com/report.pdf',
-  )
+  fireEvent.paste(screen.getByRole('textbox', { name: 'Message' }), {
+    clipboardData: { files: [pastedFile], getData: () => '' },
+  })
+  await waitFor(() => expect(uploadLocal).toHaveBeenCalledTimes(3))
+  const pasted = uploadLocal.mock.calls[2]![0]
+  expect(pasted.file).toBe(pastedFile)
+  act(() => pasted.onSuccessCallback({ ...uploadResponse, id: 'pasted-file' }))
+  expect(result.current.files).toHaveLength(2)
+  expect(result.current.files[1]).toMatchObject({ progress: 100, uploadedId: 'pasted-file' })
   expect(fileUpload).not.toHaveBeenCalled()
+  expect(uploadRemote).not.toHaveBeenCalled()
+})
+
+it('prioritizes the injected remote strategy over trial and public upload fallbacks', async () => {
+  const uploadLocal = vi.fn<FileUploadStrategy['uploadLocal']>()
+  const uploadRemote = vi.fn<FileUploadStrategy['uploadRemote']>().mockResolvedValue(uploadResponse)
+  navigation.params = { token: 'public-token' }
+  const { result } = setup({
+    uploadUrls: {
+      localUploadUrl: '/trial-apps/trial-1/files/upload',
+      trialAppId: 'trial-1',
+      uploadStrategy: { uploadLocal, uploadRemote },
+    },
+  })
+  await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
+  expect(uploadRemote).toHaveBeenCalledExactlyOnceWith('https://example.com/report.pdf')
+  expect(result.current.files[0]).toMatchObject({
+    progress: 100,
+    uploadedId: uploadResponse.id,
+    url: uploadResponse.url,
+  })
+  expect(uploadLocal).not.toHaveBeenCalled()
   expect(uploadPublicRemoteFileInfo).not.toHaveBeenCalled()
+  expect(request).not.toHaveBeenCalled()
 })
 
 it('keeps public chat tokens on the normal upload transport', async () => {
@@ -326,7 +381,6 @@ it('keeps public chat tokens on the normal upload transport', async () => {
   await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined))
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
   expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf')
-  expect(uploadHumanInputFormLocalFile).not.toHaveBeenCalled()
 })
 
 it.each(['unsupported', 'oversized', 'failed'] as const)(

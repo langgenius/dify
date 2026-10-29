@@ -1,5 +1,5 @@
 import type { HumanInputV2Challenge, HumanInputV2ErrorCategory } from './types'
-import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
+import type { HumanInputFormDefinition } from '@/features/human-input/form/types'
 
 type HumanInputV2SessionPhase =
   | 'loading-form'

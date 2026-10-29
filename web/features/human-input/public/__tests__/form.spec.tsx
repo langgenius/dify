@@ -1,6 +1,7 @@
 import type { HumanInputV2FormTransport } from '../types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useFileUploadContext } from '@/app/components/base/file-uploader/upload-context'
 import HumanInputV2Form from '../form'
 import { createMockHumanInputV2FormTransport, HUMAN_INPUT_V2_MOCK_OTP } from '../mock-transport'
 
@@ -8,8 +9,8 @@ const mockPresentation = vi.hoisted(() => ({
   lastDefinition: undefined as unknown,
 }))
 
-vi.mock('@/features/human-input-form/loaded-form-content', () => ({
-  default: ({
+vi.mock('@/features/human-input/form/loaded-form-content', () => ({
+  default: function MockLoadedFormContent({
     definition,
     isSubmitting,
     actionsDisabled,
@@ -21,11 +22,31 @@ vi.mock('@/features/human-input-form/loaded-form-content', () => ({
     actionsDisabled: boolean
     verificationContent: React.ReactNode
     onSubmit: (inputs: Record<string, unknown>, action: string) => void
-  }) => {
+  }) {
+    const { uploadStrategy } = useFileUploadContext()
     mockPresentation.lastDefinition = definition
     return (
       <div>
         {verificationContent}
+        <button
+          type="button"
+          onClick={() =>
+            uploadStrategy?.uploadLocal({
+              file: new File(['review'], 'review.txt', { type: 'text/plain' }),
+              onProgressCallback: vi.fn(),
+              onSuccessCallback: vi.fn(),
+              onErrorCallback: vi.fn(),
+            })
+          }
+        >
+          Upload local attachment
+        </button>
+        <button
+          type="button"
+          onClick={() => uploadStrategy?.uploadRemote('https://example.com/review.txt')}
+        >
+          Upload linked attachment
+        </button>
         <button
           type="button"
           disabled={isSubmitting || actionsDisabled}
@@ -45,7 +66,7 @@ vi.mock('@/features/human-input-form/loaded-form-content', () => ({
   },
 }))
 
-vi.mock('@/features/human-input-form/form-status-card', () => ({
+vi.mock('@/features/human-input/form/form-status-card', () => ({
   default: ({
     title,
     subtitle,
@@ -197,5 +218,20 @@ describe('HumanInputV2Form', () => {
     await screen.findByLabelText('share.humanInputV2.otpLabel')
 
     expect(mockPresentation.lastDefinition).not.toHaveProperty('branding')
+  })
+
+  it('scopes attachment uploads to the displayed token and injected transport after navigation', async () => {
+    const user = userEvent.setup()
+    const transport = createMockHumanInputV2FormTransport()
+    const uploadLocalFile = vi.spyOn(transport, 'uploadLocalFile')
+    const uploadRemoteFile = vi.spyOn(transport, 'uploadRemoteFile')
+    const { rerender } = render(<HumanInputV2Form token="first-form" transport={transport} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Upload local attachment' }))
+    expect(uploadLocalFile).toHaveBeenCalledWith('first-form', expect.any(File))
+
+    rerender(<HumanInputV2Form token="second-form" transport={transport} />)
+    await user.click(await screen.findByRole('button', { name: 'Upload linked attachment' }))
+    expect(uploadRemoteFile).toHaveBeenCalledWith('second-form', 'https://example.com/review.txt')
   })
 })

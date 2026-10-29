@@ -1,6 +1,10 @@
-# Human Input Form
+# Shared Human Input Form
 
-Version-neutral domain and presentation primitives for public Human Input forms.
+Version-neutral form definitions and presentation within the
+[Human Input feature]. The [public] and
+[Console] session owners, legacy public route, and workflow
+preview reuse these modules; authentication and request lifetimes stay with their
+respective owners.
 
 ## Internal Modules
 
@@ -19,3 +23,7 @@ Version-neutral domain and presentation primitives for public Human Input forms.
 | `app/components/base/chat/chat/answer/human-input-content` | Reuses Human Input field rendering and value processing. |
 | `app/components/workflow/nodes/human-input`                | Reuses form-input and action domain types.               |
 | `models/share`                                             | Reuses public application branding types.                |
+
+[Console]: ../console/README.md
+[Human Input feature]: ../README.md
+[public]: ../public/README.md

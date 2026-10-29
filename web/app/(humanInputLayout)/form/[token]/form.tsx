@@ -3,11 +3,16 @@ import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import {
+  FileUploadContext,
+  useFileUploadContext,
+} from '@/app/components/base/file-uploader/upload-context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ENABLE_HITL_IM } from '@/config'
-import FormStatusCard from '@/features/human-input-form/form-status-card'
-import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
-import { normalizeLegacyHumanInputForm } from '@/features/human-input-form/normalize-legacy-definition'
+import FormStatusCard from '@/features/human-input/form/form-status-card'
+import LoadedFormContent from '@/features/human-input/form/loaded-form-content'
+import { normalizeLegacyHumanInputForm } from '@/features/human-input/form/normalize-legacy-definition'
+import { createLegacyFormUploadStrategy } from '@/features/human-input/public/legacy-upload'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm } from '@/service/use-share'
@@ -18,6 +23,14 @@ const FormContent = () => {
   const { t } = useTranslation(['common', 'share'])
 
   const { token } = useParams<{ token: string }>()
+  const inheritedUploadContext = useFileUploadContext()
+  const uploadContext = React.useMemo(
+    () => ({
+      ...inheritedUploadContext,
+      uploadStrategy: createLegacyFormUploadStrategy(token),
+    }),
+    [inheritedUploadContext, token],
+  )
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
   const { isSubmitting, submit, success } = useFormSubmit(token)
@@ -102,28 +115,28 @@ const FormContent = () => {
     )
   }
 
-  if (!ENABLE_HITL_IM) {
-    return (
-      <LegacyLoadedFormContent
-        key={token}
-        formData={formData}
-        isSubmitting={isSubmitting}
-        removeWebappBrand={removeWebappBrand}
-        replaceWebappLogo={replaceWebappLogo}
-        onSubmit={(inputs, action, formInputs) =>
-          submit(getProcessedHumanInputFormInputs(formInputs, inputs) || {}, action)
-        }
-      />
-    )
-  }
-
   return (
-    <LoadedFormContent
-      key={token}
-      definition={normalizeLegacyHumanInputForm(formData)}
-      isSubmitting={isSubmitting}
-      onSubmit={submit}
-    />
+    <FileUploadContext value={uploadContext}>
+      {!ENABLE_HITL_IM ? (
+        <LegacyLoadedFormContent
+          key={token}
+          formData={formData}
+          isSubmitting={isSubmitting}
+          removeWebappBrand={removeWebappBrand}
+          replaceWebappLogo={replaceWebappLogo}
+          onSubmit={(inputs, action, formInputs) =>
+            submit(getProcessedHumanInputFormInputs(formInputs, inputs) || {}, action)
+          }
+        />
+      ) : (
+        <LoadedFormContent
+          key={token}
+          definition={normalizeLegacyHumanInputForm(formData)}
+          isSubmitting={isSubmitting}
+          onSubmit={submit}
+        />
+      )}
+    </FileUploadContext>
   )
 }
 

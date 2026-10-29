@@ -1,6 +1,6 @@
 'use client'
 import * as React from 'react'
-import HumanInputV2Form from '@/features/human-input-v2-form/form'
+import HumanInputV2Form from '@/features/human-input/public/form'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 

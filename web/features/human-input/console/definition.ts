@@ -1,5 +1,5 @@
 import type { ConsoleHumanInputV2FormDefinitionResponse } from '@dify/contracts/api/console/form/types.gen'
-import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
+import type { HumanInputFormDefinition } from '@/features/human-input/form/types'
 import { zConsoleHumanInputV2FormDefinitionResponse } from '@dify/contracts/api/console/form/zod.gen'
 import { normalizeHumanInputFormInput } from '@/app/components/workflow/nodes/human-input/shared/types'
 
