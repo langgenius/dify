@@ -3,9 +3,11 @@
 Deployment contract: the CAS writer must not run alongside the pre-CAS
 GET/SETEX writer. Old approve and deny operations can overwrite a terminal
 state from this implementation because they do not participate in the same
-transition protocol. Drain API workers running the old writer before deploying
-this version. The JSON representation remains reader-compatible so pending
-device codes can survive that restart.
+transition protocol. Approved states now carry an approval record instead of a
+minted token. Older workers cannot parse it, and an older poller deletes the
+state before it fails to parse it, so the login is lost. Drain API workers running an older version before
+deploying this one. This reader still accepts states written by older workers,
+so pending device codes and already-minted approvals survive that restart.
 """
 
 from __future__ import annotations
@@ -14,13 +16,19 @@ import json
 import logging
 import secrets
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 
+from constants.oauth_bearer import SubjectType
 from services.oauth_device_contracts import (
     DEVICE_FLOW_TTL_SECONDS,
+    AccountApprovalRecord,
     ApprovalTransitionConfirmation,
+    DeviceApprovalRecord,
+    DeviceFlowStateView,
     DeviceFlowStatus,
+    ExternalApprovalRecord,
     InvalidTransitionError,
     PollPayload,
     SlowDownDecision,
@@ -28,6 +36,19 @@ from services.oauth_device_contracts import (
 )
 
 logger = logging.getLogger(__name__)
+
+REDIS_TTL_NO_EXPIRY = -1
+REDIS_TTL_MISSING = -2
+
+
+def _remaining_lifetime(device_code: str, ttl: int) -> int | None:
+    """Seconds a device code has left; None when the key is gone or, wrongly, has no expiry."""
+    if ttl == REDIS_TTL_MISSING:
+        return None
+    if ttl == REDIS_TTL_NO_EXPIRY:
+        logger.error("device_code %s has no expiry; treating as invalid", device_code)
+        return None
+    return ttl
 
 
 # ============================================================================
@@ -40,18 +61,20 @@ _USER_CODE_KEY_PREFIX = "user_code:"
 DEVICE_CODE_KEY_FMT = _DEVICE_CODE_KEY_PREFIX + "{code}"
 USER_CODE_KEY_FMT = _USER_CODE_KEY_PREFIX + "{code}"
 
-# Atomic GET → status-check → DEL(device key). Two concurrent pollers must
-# not both observe APPROVED — only the winner gets the plaintext token,
-# the loser sees nil and the caller maps that to expired_token. The user-code
-# mapping is cleaned up separately so Redis Cluster only sees one script key.
+# Atomic GET → status-check → TTL → DEL(device key). Two concurrent pollers
+# must not both observe APPROVED — only the winner claims the approval, the
+# loser sees nil and the caller maps that to expired_token. The TTL lets the
+# winner put the state back if minting fails. The user-code mapping is cleaned
+# up separately so Redis Cluster only sees one script key.
 _CONSUME_ON_POLL_LUA = """
 local raw = redis.call('GET', KEYS[1])
 if not raw then return nil end
 local ok, decoded = pcall(cjson.decode, raw)
 if not ok then return nil end
 if decoded.status == 'pending' then return nil end
+local ttl = redis.call('TTL', KEYS[1])
 redis.call('DEL', KEYS[1])
-return raw
+return {raw, ttl}
 """
 
 # The transition ID makes an approved write idempotent and lets callers
@@ -74,16 +97,17 @@ end
 decoded.status = target
 decoded.token_id = transition_marker
 decoded.poll_payload = nil
+decoded.approval = nil
 if target == 'approved' then
-    local payload_ok = pcall(cjson.decode, ARGV[3])
-    if not payload_ok then return -2 end
+    local approval_ok = pcall(cjson.decode, ARGV[3])
+    if not approval_ok then return -2 end
 end
 
 -- cjson loses the distinction between [] and {} when decoding empty tables.
--- Preserve the validated payload JSON verbatim while encoding the state fields.
+-- Preserve the validated approval JSON verbatim while encoding the state fields.
 local encoded = cjson.encode(decoded)
 if target == 'approved' then
-    encoded = string.sub(encoded, 1, -2) .. ',"poll_payload":' .. ARGV[3] .. '}'
+    encoded = string.sub(encoded, 1, -2) .. ',"approval":' .. ARGV[3] .. '}'
 end
 
 local ttl = redis.call('TTL', KEYS[1])
@@ -100,7 +124,7 @@ end
 return 0
 """
 
-APPROVED_TTL_SECONDS_MIN = 60  # plaintext-token lifetime floor
+APPROVED_TTL_SECONDS_MIN = 60  # approved-state lifetime floor
 
 USER_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXY3456789"  # ambiguous chars dropped
 USER_CODE_SEGMENT_LEN = 4
@@ -109,9 +133,46 @@ _TRANSITION_TOKEN_PREFIX = "transition:"
 _LEGACY_APPROVAL_FIELDS = ("subject_email", "account_id", "subject_issuer", "minted_token", "transition_id")
 
 
+def _parse_account_approval(data: dict[str, object]) -> AccountApprovalRecord:
+    account_id = data["account_id"]
+    if account_id is None:
+        raise ValueError("account approval has no account_id")
+    workspace_id = data["workspace_id"]
+    if workspace_id is None:
+        raise ValueError("account approval has no workspace_id")
+    return AccountApprovalRecord(
+        account_id=str(account_id),
+        workspace_id=str(workspace_id),
+        subject_email=str(data["subject_email"]),
+        subject_issuer=str(data["subject_issuer"]),
+    )
+
+
+def _parse_external_approval(data: dict[str, object]) -> ExternalApprovalRecord:
+    return ExternalApprovalRecord(
+        subject_email=str(data["subject_email"]),
+        subject_issuer=str(data["subject_issuer"]),
+    )
+
+
+_APPROVAL_PARSERS: dict[SubjectType, Callable[[dict[str, object]], DeviceApprovalRecord]] = {
+    SubjectType.ACCOUNT: _parse_account_approval,
+    SubjectType.EXTERNAL_SSO: _parse_external_approval,
+}
+
+
+def _parse_approval(data: dict[str, object]) -> DeviceApprovalRecord:
+    """Raises KeyError or ValueError for a record this version cannot honour."""
+    subject_type = SubjectType(str(data["subject_type"]))
+    parser = _APPROVAL_PARSERS.get(subject_type)
+    if parser is None:
+        raise ValueError(f"device flow cannot approve subject type {subject_type}")
+    return parser(data)
+
+
 @dataclass
 class DeviceFlowState:
-    """Ephemeral device state; approved payload is consumed exactly once."""
+    """Ephemeral device state; an approval is claimed by exactly one poll."""
 
     user_code: str
     client_id: str
@@ -121,7 +182,9 @@ class DeviceFlowState:
     created_at: str = ""
     created_ip: str = ""
     last_poll_at: str = ""
+    # Approved states written before approval records carry the minted payload here.
     poll_payload: PollPayload | None = field(default=None)
+    approval: DeviceApprovalRecord | None = None
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -135,6 +198,8 @@ class DeviceFlowState:
             data.pop(field_name, None)
         if "status" in data:
             data["status"] = DeviceFlowStatus(data["status"])
+        if data.get("approval") is not None:
+            data["approval"] = _parse_approval(data["approval"])
         return cls(**data)
 
 
@@ -212,19 +277,12 @@ class DeviceFlowRedis:
             logger.exception("device_flow: corrupt state for %s", device_code)
             return None
 
-    def approve(
-        self,
-        device_code: str,
-        transition_id: str,
-        token_id: str,
-        poll_payload: PollPayload,
-    ) -> None:
+    def approve(self, device_code: str, transition_id: str, approval: DeviceApprovalRecord) -> None:
         self._transition(
             device_code=device_code,
             target=DeviceFlowStatus.APPROVED,
             transition_id=transition_id,
-            token_id=token_id,
-            poll_payload=poll_payload,
+            approval=approval,
             ttl_floor=APPROVED_TTL_SECONDS_MIN,
         )
 
@@ -233,37 +291,31 @@ class DeviceFlowRedis:
             device_code=device_code,
             target=DeviceFlowStatus.DENIED,
             transition_id=transition_id,
-            token_id="",
-            poll_payload=None,
+            approval=None,
             ttl_floor=1,
         )
 
-    def confirm_approval(
-        self,
-        device_code: str,
-        transition_id: str,
-        token_id: str,
-    ) -> ApprovalTransitionConfirmation:
+    def confirm_approval(self, device_code: str, transition_id: str) -> ApprovalTransitionConfirmation:
         state = self._load_state(device_code)
         if state is None:
             return ApprovalTransitionConfirmation.UNKNOWN
-        if state.status is DeviceFlowStatus.APPROVED and state.token_id == self._transition_marker(
-            transition_id, token_id
-        ):
+        if state.status is DeviceFlowStatus.APPROVED and state.token_id == self._transition_marker(transition_id):
             return ApprovalTransitionConfirmation.PUBLISHED
         return ApprovalTransitionConfirmation.NOT_PUBLISHED
 
-    def consume_on_poll(self, device_code: str) -> DeviceFlowState | None:
+    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowState, int | None] | None:
         """Race-safe via Lua EVAL: GET + status-check + DEL execute in a
         single Redis transaction so only one of N concurrent pollers
         observes the APPROVED state. Losers get None, mapped to
-        expired_token by the caller.
+        expired_token by the caller. The winner also gets the seconds the
+        state had left, for ``restore``.
         """
-        raw = self._consume_on_poll_script(
+        consumed = self._consume_on_poll_script(
             keys=[DEVICE_CODE_KEY_FMT.format(code=device_code)],
         )
-        if raw is None:
+        if consumed is None:
             return None
+        raw, ttl = consumed
         text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
         try:
             state = DeviceFlowState.from_json(text_)
@@ -274,7 +326,20 @@ class DeviceFlowRedis:
             self._redis.delete(USER_CODE_KEY_FMT.format(code=state.user_code))
         except Exception:
             logger.exception("device_flow: failed to clean consumed user-code mapping")
-        return state
+        return state, _remaining_lifetime(device_code, int(ttl))
+
+    def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
+        """Put a consumed state back for the time it had left. Never overwrites a state that exists again."""
+        restored = self._redis.set(
+            DEVICE_CODE_KEY_FMT.format(code=device_code), state.to_json(), nx=True, ex=ttl_seconds
+        )
+        if not restored:
+            return False
+        self._redis.set(USER_CODE_KEY_FMT.format(code=state.user_code), device_code, nx=True, ex=ttl_seconds)
+        return True
+
+    def remaining_seconds(self, device_code: str) -> int | None:
+        return _remaining_lifetime(device_code, int(self._redis.ttl(DEVICE_CODE_KEY_FMT.format(code=device_code))))
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         now = time.time()
@@ -307,8 +372,7 @@ class DeviceFlowRedis:
         device_code: str,
         target: DeviceFlowStatus,
         transition_id: str,
-        token_id: str,
-        poll_payload: PollPayload | None,
+        approval: DeviceApprovalRecord | None,
         ttl_floor: int,
     ) -> None:
         result = int(
@@ -316,8 +380,8 @@ class DeviceFlowRedis:
                 keys=[DEVICE_CODE_KEY_FMT.format(code=device_code)],
                 args=[
                     target.value,
-                    self._transition_marker(transition_id, token_id),
-                    json.dumps(poll_payload) if poll_payload is not None else "",
+                    self._transition_marker(transition_id),
+                    json.dumps(asdict(approval)) if approval is not None else "",
                     ttl_floor,
                 ],
             )
@@ -332,5 +396,5 @@ class DeviceFlowRedis:
         return f"oauth_device:approval_guard:{guard_id}"
 
     @staticmethod
-    def _transition_marker(transition_id: str, token_id: str) -> str:
-        return f"{_TRANSITION_TOKEN_PREFIX}{transition_id}:{token_id}"
+    def _transition_marker(transition_id: str) -> str:
+        return f"{_TRANSITION_TOKEN_PREFIX}{transition_id}"

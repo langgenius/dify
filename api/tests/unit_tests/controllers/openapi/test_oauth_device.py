@@ -27,7 +27,6 @@ from services.oauth_device_application_service import OAuthDeviceApplicationServ
 from services.oauth_device_contracts import (
     AccessDeniedError,
     AlreadyResolvedError,
-    ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
     AuthorizationPendingError,
@@ -328,7 +327,6 @@ class TestOauthDeviceHttpCases:
             ("token", "poll", AccessDeniedError(), 400, "access_denied"),
             ("approve", "approve", ExpiredOrUnknownError(), 404, "expired_or_unknown"),
             ("approve", "approve", AlreadyResolvedError(), 409, "already_resolved"),
-            ("approve", "approve", ApprovalInProgressError(), 409, "approve_in_progress"),
             ("approve", "approve", ApprovalOutcomeUnknownError(), 503, "approval_outcome_unknown"),
             ("deny", "deny", DeviceStateLostError(), 409, "state_lost"),
         ],
@@ -548,7 +546,6 @@ class TestOauthDeviceHttpCases:
             ("approve-external", "approve_external", ExternalUserCodeMismatchError(), 400, "user_code_mismatch"),
             ("approve-external", "approve_external", ExternalUserCodeNotFoundError(), 404, "user_code_not_pending"),
             ("approve-external", "approve_external", AlreadyResolvedError(), 409, "user_code_not_pending"),
-            ("approve-external", "approve_external", ApprovalInProgressError(), 409, "approve_in_progress"),
             ("approve-external", "approve_external", ApprovalOutcomeUnknownError(), 503, "approval_outcome_unknown"),
             (
                 "approve-external",

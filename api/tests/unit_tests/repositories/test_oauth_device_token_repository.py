@@ -120,61 +120,6 @@ def test_issue_rotates_matching_live_token_and_invalidates_old_cache(
     assert redis.deleted == [TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(first.token))]
 
 
-def test_rollback_rotation_removes_new_token_and_restores_previous_session(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory)
-    issue_token = partial(
-        issuer.issue_account_token,
-        account=_account(),
-        workspace_id="workspace-1",
-        client_id="difyctl",
-        device_label="Laptop",
-    )
-    first = issue_token()
-    second = issue_token()
-
-    assert issuer.rollback_token(second) is True
-
-    sqlite_session.expire_all()
-    first_record = sqlite_session.get(OAuthAccessToken, first.token_id)
-    assert first_record is not None
-    assert first_record.revoked_at is None
-    assert sqlite_session.get(OAuthAccessToken, second.token_id) is None
-    assert redis.deleted == [
-        TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(first.token)),
-        TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(second.token)),
-        TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(first.token)),
-    ]
-
-
-def test_rollback_does_not_restore_predecessor_after_later_rotation(
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory)
-    issue_token = partial(
-        issuer.issue_account_token,
-        account=_account(),
-        workspace_id="workspace-1",
-        client_id="difyctl",
-        device_label="Laptop",
-    )
-    first = issue_token()
-    second = issue_token()
-    third = issue_token()
-
-    assert issuer.rollback_token(second) is False
-
-    sqlite_session.expire_all()
-    records = list(sqlite_session.scalars(select(OAuthAccessToken)).all())
-    assert [record.id for record in records if record.revoked_at is None] == [third.token_id]
-    first_record = sqlite_session.get(OAuthAccessToken, first.token_id)
-    assert first_record is not None
-    assert first_record.revoked_at is not None
-
-
 def test_list_account_sessions_pages_only_live_owned_tokens(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

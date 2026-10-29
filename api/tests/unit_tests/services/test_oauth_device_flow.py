@@ -2,13 +2,33 @@ import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
-from services.oauth_device_contracts import ApprovalTransitionConfirmation, DeviceFlowStatus, PollPayload
+from services.oauth_device_contracts import (
+    AccountApprovalRecord,
+    ApprovalTransitionConfirmation,
+    DeviceFlowStatus,
+)
 from services.oauth_device_flow import DeviceFlowRedis, DeviceFlowState
+
+_CONSUME_RETURN = "return {raw, ttl}"
+_APPROVAL = AccountApprovalRecord(
+    account_id="account-1",
+    workspace_id="workspace-1",
+    subject_email="ada@example.com",
+    subject_issuer="dify:account",
+)
+_APPROVAL_JSON = {
+    "subject_type": "account",
+    "account_id": "account-1",
+    "workspace_id": "workspace-1",
+    "subject_email": "ada@example.com",
+    "subject_issuer": "dify:account",
+}
 
 
 @dataclass
 class _Redis:
     response: str
+    ttl_seconds: int = 900
     delete_error: Exception | None = None
     deleted: list[str] = field(default_factory=list)
     script_sources: list[str] = field(default_factory=list)
@@ -26,69 +46,65 @@ class _Redis:
     def get(self, _name: str) -> str:
         return self.response
 
-    def register_script(self, script: str) -> Callable[..., str | int]:
+    def ttl(self, _name: str) -> int:
+        return self.ttl_seconds
+
+    def register_script(self, script: str) -> Callable[..., object]:
         self.script_sources.append(script)
 
-        def execute(*, keys: Sequence[str], args: Sequence[object] = ()) -> str | int:
+        def execute(*, keys: Sequence[str], args: Sequence[object] = ()) -> object:
             self.script_calls.append((script, tuple(keys), tuple(args or ())))
-            if "return raw" in script:
-                return self.response
+            if _CONSUME_RETURN in script:
+                return [self.response, self.ttl_seconds]
             return 1
 
         return execute
 
 
-def test_consume_on_poll_uses_one_cluster_safe_script_key() -> None:
-    state = DeviceFlowState(
+def _approved_state() -> DeviceFlowState:
+    return DeviceFlowState(
         user_code="ABCD-EFGH",
         client_id="difyctl",
         device_label="CLI",
         status=DeviceFlowStatus.APPROVED,
+        token_id="transition:approve-1",
+        approval=_APPROVAL,
     )
-    redis = _Redis(response=state.to_json())
+
+
+def test_consume_on_poll_uses_one_cluster_safe_script_key() -> None:
+    redis = _Redis(response=_approved_state().to_json(), ttl_seconds=312)
     store = DeviceFlowRedis(redis)
 
     result = store.consume_on_poll("device-1")
 
     assert result is not None
-    assert result.user_code == "ABCD-EFGH"
-    consume_script = next(source for source in redis.script_sources if "return raw" in source)
+    state, ttl = result
+    assert state.user_code == "ABCD-EFGH"
+    assert ttl == 312
+    consume_script = next(source for source in redis.script_sources if _CONSUME_RETURN in source)
     assert "KEYS[2]" not in consume_script
+    assert consume_script.index("'TTL'") < consume_script.index("'DEL'")
     assert [(keys, args) for source, keys, args in redis.script_calls if source == consume_script] == [
         (("device_code:device-1",), ())
     ]
     assert redis.deleted == ["user_code:ABCD-EFGH"]
 
 
-def test_user_code_cleanup_failure_does_not_lose_consumed_token() -> None:
-    state = DeviceFlowState(
-        user_code="ABCD-EFGH",
-        client_id="difyctl",
-        device_label="CLI",
-        status=DeviceFlowStatus.APPROVED,
-    )
-    redis = _Redis(response=state.to_json(), delete_error=ConnectionError("redis unavailable"))
+def test_user_code_cleanup_failure_does_not_lose_consumed_state() -> None:
+    redis = _Redis(response=_approved_state().to_json(), delete_error=ConnectionError("redis unavailable"))
 
     result = DeviceFlowRedis(redis).consume_on_poll("device-1")
 
     assert result is not None
-    assert result.user_code == "ABCD-EFGH"
+    assert result[0].user_code == "ABCD-EFGH"
 
 
 def test_approve_and_deny_share_atomic_pending_transition_script() -> None:
     redis = _Redis(response="")
     store = DeviceFlowRedis(redis)
-    poll_payload: PollPayload = {
-        "token": "secret-token",
-        "expires_at": "2030-01-01T00:00:00+00:00",
-        "subject_type": "account",
-        "account": {"id": "account-1"},
-        "workspaces": [],
-        "default_workspace_id": None,
-        "token_id": "token-1",
-    }
 
-    store.approve("device-1", "approve-1", "token-1", poll_payload)
+    store.approve("device-1", "approve-1", _APPROVAL)
     store.deny("device-2", "deny-1")
 
     transition_script = next(source for source in redis.script_sources if "decoded.status ~= 'pending'" in source)
@@ -96,22 +112,34 @@ def test_approve_and_deny_share_atomic_pending_transition_script() -> None:
     assert "redis.call('SETEX'" in transition_script
     assert "decoded.transition_id" not in transition_script
     assert [args[0] for _, args in transition_calls] == ["approved", "denied"]
-    assert transition_calls[0][1][1] == "transition:approve-1:token-1"
+    assert [args[1] for _, args in transition_calls] == ["transition:approve-1", "transition:deny-1"]
     assert [keys for keys, _ in transition_calls] == [("device_code:device-1",), ("device_code:device-2",)]
 
 
-def test_approval_confirmation_reads_marker_from_existing_token_id_field() -> None:
-    state = DeviceFlowState(
-        user_code="ABCD-EFGH",
-        client_id="difyctl",
-        device_label="CLI",
-        status=DeviceFlowStatus.APPROVED,
-        token_id="transition:approve-1:token-1",
-    )
-    store = DeviceFlowRedis(_Redis(response=state.to_json()))
+def test_approved_state_carries_approval_and_no_plaintext() -> None:
+    redis = _Redis(response="")
 
-    assert store.confirm_approval("device-1", "approve-1", "token-1") is ApprovalTransitionConfirmation.PUBLISHED
-    assert store.confirm_approval("device-1", "approve-2", "token-1") is ApprovalTransitionConfirmation.NOT_PUBLISHED
+    DeviceFlowRedis(redis).approve("device-1", "approve-1", _APPROVAL)
+
+    transition_script = next(source for source in redis.script_sources if "decoded.status ~= 'pending'" in source)
+    assert """',"approval":' .. ARGV[3]""" in transition_script
+    assert 'poll_payload":' not in transition_script
+    _keys, args = next((keys, args) for source, keys, args in redis.script_calls if source == transition_script)
+    assert json.loads(str(args[2])) == _APPROVAL_JSON
+    assert "token" not in json.loads(str(args[2]))
+
+    approved = _approved_state()
+    serialized = approved.to_json()
+    assert "dfoa_" not in serialized
+    assert json.loads(serialized)["approval"] == _APPROVAL_JSON
+    assert DeviceFlowState.from_json(serialized).approval == _APPROVAL
+
+
+def test_confirm_approval_marker_has_no_token_id() -> None:
+    store = DeviceFlowRedis(_Redis(response=_approved_state().to_json()))
+
+    assert store.confirm_approval("device-1", "approve-1") is ApprovalTransitionConfirmation.PUBLISHED
+    assert store.confirm_approval("device-1", "approve-2") is ApprovalTransitionConfirmation.NOT_PUBLISHED
 
 
 def test_approval_guard_release_compares_owner_before_delete() -> None:
@@ -126,41 +154,16 @@ def test_approval_guard_release_compares_owner_before_delete() -> None:
     assert redis.script_calls[-1][1:] == (("oauth_device:approval_guard:rotation-1",), ("owner-1",))
 
 
-def test_approved_state_stores_plaintext_token_only_in_poll_payload() -> None:
-    poll_payload: PollPayload = {
-        "token": "secret-token",
-        "expires_at": "2030-01-01T00:00:00+00:00",
-        "subject_type": "account",
-        "account": {"id": "account-1"},
-        "workspaces": [],
-        "default_workspace_id": None,
-        "token_id": "token-1",
-    }
-    serialized = DeviceFlowState(
-        user_code="ABCD-EFGH",
-        client_id="difyctl",
-        device_label="CLI",
-        status=DeviceFlowStatus.APPROVED,
-        token_id="transition:approve-1:token-1",
-        poll_payload=poll_payload,
-    ).to_json()
-    data = json.loads(serialized)
-
-    assert data["poll_payload"]["token"] == "secret-token"
-    assert serialized.count("secret-token") == 1
-    assert {"subject_email", "account_id", "subject_issuer", "minted_token", "transition_id"}.isdisjoint(data)
-
-
 def test_transition_marker_does_not_add_a_top_level_state_field() -> None:
     serialized = DeviceFlowState(
         user_code="ABCD-EFGH",
         client_id="difyctl",
         device_label="CLI",
         status=DeviceFlowStatus.APPROVED,
-        token_id="transition:approve-1:token-1",
-        poll_payload=None,
+        token_id="transition:approve-1",
+        approval=_APPROVAL,
     ).to_json()
-    old_schema_fields = {
+    state_fields = {
         "user_code",
         "client_id",
         "device_label",
@@ -170,9 +173,10 @@ def test_transition_marker_does_not_add_a_top_level_state_field() -> None:
         "created_ip",
         "last_poll_at",
         "poll_payload",
+        "approval",
     }
 
-    assert set(json.loads(serialized)) <= old_schema_fields
+    assert set(json.loads(serialized)) <= state_fields
 
 
 def test_state_reader_tolerates_legacy_approval_fields() -> None:

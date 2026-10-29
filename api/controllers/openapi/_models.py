@@ -236,7 +236,6 @@ class DeviceFlowErrorResponse(BaseModel):
         "access_denied",
         "expired_or_unknown",
         "already_resolved",
-        "approve_in_progress",
         "approval_outcome_unknown",
         "state_lost",
     ]
