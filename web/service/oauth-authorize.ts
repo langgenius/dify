@@ -40,11 +40,19 @@ function sendAuthorize(path: string, init: RequestInit): Promise<Response> {
   return fetch(`${AUTHORIZE_BASE}${path}`, init)
 }
 
-async function fetchAuthorizeClient(
-  clientId: string,
-  redirectUri: string,
-): Promise<OAuthAuthorizeClientResponse> {
+type AuthorizeClientLookup = {
+  clientId: string
+  redirectUri: string
+  scope: string | null
+}
+
+async function fetchAuthorizeClient({
+  clientId,
+  redirectUri,
+  scope,
+}: AuthorizeClientLookup): Promise<OAuthAuthorizeClientResponse> {
   const query = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri })
+  if (scope !== null) query.set('scope', scope)
   const res = await sendAuthorize(`/client?${query.toString()}`, { method: 'GET' })
   if (!res.ok) await failFromResponse(res)
   return res.json()
@@ -79,14 +87,15 @@ export function denyAuthorize(
   return postDecision('deny', body)
 }
 
-export function authorizeClientQueryOptions(
-  clientId: string,
-  redirectUri: string,
-  enabled: boolean,
-) {
+export function authorizeClientQueryOptions({
+  clientId,
+  redirectUri,
+  scope,
+  enabled,
+}: AuthorizeClientLookup & { enabled: boolean }) {
   return queryOptions({
-    queryKey: ['oauth-authorize-client', clientId, redirectUri],
-    queryFn: () => fetchAuthorizeClient(clientId, redirectUri),
+    queryKey: ['oauth-authorize-client', clientId, redirectUri, scope],
+    queryFn: () => fetchAuthorizeClient({ clientId, redirectUri, scope }),
     enabled,
     retry: false,
     staleTime: Infinity,

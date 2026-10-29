@@ -3,6 +3,7 @@
 import type {
   OAuthAuthorizeClientResponse,
   OAuthAuthorizeRequest,
+  OAuthScope,
 } from '@dify/contracts/api/openapi/types.gen'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -20,6 +21,8 @@ import { approveAuthorize, denyAuthorize } from '@/service/oauth-authorize'
 import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { buildReturnUrl } from '../use-silent-authorize'
+
+const WRITE_SCOPE: OAuthScope = 'write'
 
 type OpenApiConsentProps = {
   client: OAuthAuthorizeClientResponse
@@ -125,6 +128,11 @@ export function OpenApiConsent({ client, searchParams }: OpenApiConsentProps) {
       </div>
 
       <div className="flex flex-col gap-2 rounded-xl bg-background-section-burn-inverted p-3 body-sm-regular text-text-secondary">
+        <div>
+          {client.scopes.includes(WRITE_SCOPE)
+            ? t(($) => $['openapi.access.readWrite'], { ns: 'oauth' })
+            : t(($) => $['openapi.access.readOnly'], { ns: 'oauth' })}
+        </div>
         <div>{t(($) => $['openapi.redirectsTo'], { ns: 'oauth', host: client.redirect_host })}</div>
         <div className="text-text-warning">
           {t(($) => $['openapi.unverified'], { ns: 'oauth' })}

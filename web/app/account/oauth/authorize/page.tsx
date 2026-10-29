@@ -315,7 +315,12 @@ export default function OAuthAuthorize() {
   // Every OpenAPI client sends PKCE; a request without it is a creators-platform one.
   const isOpenApiCandidate = Boolean(clientId && searchParams.get('code_challenge'))
   const { data: client, error } = useQuery(
-    authorizeClientQueryOptions(clientId, redirectUri, isOpenApiCandidate),
+    authorizeClientQueryOptions({
+      clientId,
+      redirectUri,
+      scope: searchParams.get('scope'),
+      enabled: isOpenApiCandidate,
+    }),
   )
   const isLookupPending = isOpenApiCandidate && !client && !error
 

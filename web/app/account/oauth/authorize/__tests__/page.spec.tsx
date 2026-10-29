@@ -402,6 +402,7 @@ describe('OAuthAuthorize OpenAPI consent', () => {
     logo_uri: null,
     redirect_host: '127.0.0.1',
     localhost_only: true,
+    scopes: ['read', 'write'],
   }
   const fetchMock = vi.fn()
 
@@ -452,6 +453,27 @@ describe('OAuthAuthorize OpenAPI consent', () => {
     expect(findRequest('/oauth/provider')).toBeUndefined()
     const lookupUrl = new URL(String(fetchMock.mock.calls[0]![0]), 'https://dify.test')
     expect(lookupUrl.searchParams.get('redirect_uri')).toBe(openApiParams.redirect_uri)
+  })
+
+  it.each([
+    [['read', 'write'], 'oauth.openapi.access.readWrite', 'oauth.openapi.access.readOnly'],
+    [['read'], 'oauth.openapi.access.readOnly', 'oauth.openapi.access.readWrite'],
+  ])('says what a login granting %j can do', async (scopes, shown, hidden) => {
+    stubFetch(200, { ...clientView, scopes })
+    renderPage()
+
+    expect(await screen.findByText(shown)).toBeInTheDocument()
+    expect(screen.queryByText(hidden)).not.toBeInTheDocument()
+  })
+
+  it('asks the lookup about the requested scope', async () => {
+    mocks.searchParams = new URLSearchParams({ ...openApiParams, scope: 'read offline_access' })
+    stubFetch(200, { ...clientView, scopes: ['read'] })
+    renderPage()
+
+    await screen.findByText('Local CLI')
+    const lookupUrl = new URL(String(fetchMock.mock.calls[0]![0]), 'https://dify.test')
+    expect(lookupUrl.searchParams.get('scope')).toBe('read offline_access')
   })
 
   it.each([
