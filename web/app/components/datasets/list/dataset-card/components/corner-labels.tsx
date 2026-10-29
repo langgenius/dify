@@ -1,11 +1,11 @@
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DatasetCardItem } from '../types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
 import { isDatasetAvailable } from '../availability'
 
 type CornerLabelsProps = {
-  dataset: DatasetDetailWithPartialMembersResponse
+  dataset: DatasetCardItem
 }
 
 const CornerLabels = ({ dataset }: CornerLabelsProps) => {

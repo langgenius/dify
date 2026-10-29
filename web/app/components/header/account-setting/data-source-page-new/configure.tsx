@@ -66,7 +66,7 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
           }
         />
         <PopoverContent
-          placement="bottom-end"
+          align="end"
           sideOffset={4}
           alignOffset={-4}
           className="border-none bg-transparent shadow-none"
@@ -75,9 +75,9 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
             {!!canOAuth && oAuthTrigger}
             {!!canApiKey && !!canOAuth && (
               <div className="flex h-4 items-center p-2 system-2xs-medium-uppercase text-text-quaternary">
-                <div className="mr-2 h-px grow bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
+                <div className="me-2 h-px grow bg-linear-to-l from-[rgba(16,24,40,0.08)] rtl:bg-linear-to-r" />
                 OR
-                <div className="ml-2 h-px grow bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
+                <div className="ms-2 h-px grow bg-linear-to-r from-[rgba(16,24,40,0.08)] rtl:bg-linear-to-l" />
               </div>
             )}
             {!!canApiKey && (

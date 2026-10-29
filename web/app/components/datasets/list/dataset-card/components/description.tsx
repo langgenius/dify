@@ -1,10 +1,10 @@
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DatasetCardItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { isDatasetAvailable } from '../availability'
 
 type DescriptionProps = {
-  dataset: DatasetDetailWithPartialMembersResponse
+  dataset: DatasetCardItem
 }
 
 const Description = ({ dataset }: DescriptionProps) => (
