@@ -2,9 +2,13 @@
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from typing import Literal, Never
 
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session as SqlSession
+from sqlalchemy.orm import sessionmaker
 
 from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse, DifyBuilderSubmitActionPayload
 from core.dify_builder.contract import SessionView
@@ -239,23 +243,31 @@ def test_resume_action_preserves_request_and_finishes_on_existing_transport(acti
     ],
 )
 def test_native_command_projects_private_disclosure_only_after_execution(
-    action_case: ActionCase, mocker, kind, payload
-):
+    action_case: ActionCase, mocker: MockerFixture, kind: str, payload: dict[str, object]
+) -> None:
     """The command owner already validates authority; the view must still be fresh."""
     from core.dify_builder.models import Action
 
     svc, actor, sid, repo, commands, _ = action_case
     session, _ = repo.get_session(sid)
-    events = []
+    events: list[str] = []
     original_current, original_execute = commands.current, commands.execute
 
-    def current(**values):
+    def current(*, actor: Actor, session_id: str, test_input_id: str) -> NativeTestPublicReceipt | None:
         events.append("disclosure")
-        return original_current(**values)
+        return original_current(actor=actor, session_id=session_id, test_input_id=test_input_id)
 
-    def execute(**values):
+    def execute(
+        *, actor: Actor, session_id: str, test_input_id: str, command: NativeCommand, idempotency_key: str
+    ) -> NativeTestPublicReceipt:
         events.append("command")
-        return original_execute(**values)
+        return original_execute(
+            actor=actor,
+            session_id=session_id,
+            test_input_id=test_input_id,
+            command=command,
+            idempotency_key=idempotency_key,
+        )
 
     mocker.patch.object(commands, "current", side_effect=current)
     mocker.patch.object(commands, "execute", side_effect=execute)
@@ -272,18 +284,36 @@ def test_native_command_projects_private_disclosure_only_after_execution(
 
 
 @pytest.mark.parametrize("method", ["decide", "resume", "cancel"])
-def test_native_command_keeps_owner_authorization_after_metadata_check(action_case: ActionCase, mocker, method):
-    from types import SimpleNamespace
-
+def test_native_command_keeps_owner_authorization_after_metadata_check(
+    action_case: ActionCase,
+    sqlite_session_factory: sessionmaker[SqlSession],
+    mocker: MockerFixture,
+    method: Literal["decide", "resume", "cancel"],
+) -> None:
     from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
     from services.dify_builder.test_actions import BuilderTestActions
 
     _, actor, sid, _, _, _ = action_case
-    command_owner = SimpleNamespace(**{name: mocker.Mock() for name in ("decide", "resume", "cancel")})
-    selected = getattr(command_owner, method)
-    selected.side_effect = BuilderExecutionPolicyError("execution_permission_denied")
-    factory = mocker.Mock(return_value=command_owner)
-    actions = BuilderTestActions(None, factory)
+
+    def unexpected_profile() -> Never:
+        pytest.fail("the patched command must enforce its own authorization")
+
+    command_owner = ProfiledNativeTestCommands(
+        sessions=sqlite_session_factory,
+        actor=actor,
+        confirmed_factory=unexpected_profile,
+        legacy_factory=unexpected_profile,
+    )
+    selected = mocker.patch.object(
+        command_owner, method, side_effect=BuilderExecutionPolicyError("execution_permission_denied")
+    )
+
+    def factory(*, actor: Actor) -> ProfiledNativeTestCommands:
+        assert actor == command_owner.actor
+        return command_owner
+
+    actions = BuilderTestActions(sqlite_session_factory, factory)
     mocker.patch.object(actions, "_current_id", return_value="request-1")
     with pytest.raises(BuilderExecutionPolicyError, match="execution_permission_denied"):
         actions.execute(
@@ -296,19 +326,25 @@ def test_native_command_keeps_owner_authorization_after_metadata_check(action_ca
     selected.assert_called_once_with(actor=actor, session_id=sid, request_id="request-1", idempotency_key="command-1")
 
 
-def test_native_metadata_read_does_not_construct_private_command_owner(action_case: ActionCase, mocker):
+def test_native_metadata_read_does_not_construct_private_command_owner(
+    action_case: ActionCase, sqlite_session_factory: sessionmaker[SqlSession], mocker: MockerFixture
+) -> None:
     from services.dify_builder.test_actions import BuilderTestActions
 
     _, actor, sid, _, _, _ = action_case
-    factory = mocker.Mock(side_effect=AssertionError("metadata read must not compose private disclosure"))
-    actions = BuilderTestActions(None, factory)
+
+    def factory(**_owners: Actor) -> Never:
+        pytest.fail("metadata read must not compose private disclosure")
+
+    actions = BuilderTestActions(sqlite_session_factory, factory)
     selected = mocker.patch.object(actions, "_current_id", return_value="request-1")
     assert actions.current_request_id(actor=actor, session_id=sid, test_input_id="input-1") == "request-1"
     selected.assert_called_once_with(actor=actor, session_id=sid, test_input_id="input-1")
-    factory.assert_not_called()
 
 
-def test_native_metadata_read_selects_only_current_owned_input(sqlite_session_factory, mocker):
+def test_native_metadata_read_selects_only_current_owned_input(
+    sqlite_session_factory: sessionmaker[SqlSession],
+) -> None:
     from datetime import datetime, timedelta
 
     from core.dify_builder.errors import ConflictError
@@ -335,11 +371,13 @@ def test_native_metadata_read_selects_only_current_owned_input(sqlite_session_fa
                     created_at=at + timedelta(seconds=index),
                 )
             )
-    factory = mocker.Mock(side_effect=AssertionError("metadata read must not fetch private objects"))
+
+    def factory(**_owners: Actor) -> Never:
+        pytest.fail("metadata read must not fetch private objects")
+
     actions = BuilderTestActions(sqlite_session_factory, factory)
     assert actions.current_request_id(actor=actor, session_id=sid, test_input_id=input_id) == ids[1]
     assert actions.current_request_id(actor=actor, session_id=sid, test_input_id="") is None
-    factory.assert_not_called()
     with pytest.raises(ConflictError, match="test request is no longer current"):
         actions.execute(
             actor=actor,
@@ -348,7 +386,6 @@ def test_native_metadata_read_selects_only_current_owned_input(sqlite_session_fa
             command=NativeCommand("resume", ids[0], {"expected_generation": 0}),
             idempotency_key="stale-command",
         )
-    factory.assert_not_called()
 
 
 def test_old_request_cannot_control_current_test(action_case: ActionCase) -> None:
