@@ -167,6 +167,7 @@ export const zAgentWebApp = z.object({
  */
 export const zAppDescribeInfo = z.object({
   description: z.string().nullish(),
+  draft_hash: z.string().nullish(),
   id: z.string(),
   is_agent: z.boolean().optional().default(false),
   mode: z.string(),
@@ -271,6 +272,42 @@ export const zAppListRow = z.object({
   updated_at: z.string().nullish(),
   workspace_id: z.string().nullish(),
   workspace_name: z.string().nullish(),
+})
+
+/**
+ * AppPackageExportQuery
+ *
+ * Query parameters for GET /apps/<app_id>/package.
+ */
+export const zAppPackageExportQuery = z.object({
+  include_secret: z.boolean().optional().default(false),
+  preserve_agent_bindings: z.boolean().optional().default(true),
+  workflow_id: z.uuid().nullish(),
+})
+
+/**
+ * AppPackageImportPayload
+ *
+ * Request body for POST /workspaces/<workspace_id>/apps/packages.
+ */
+export const zAppPackageImportPayload = z.object({
+  app_id: z.uuid().nullish(),
+  description: z.string().nullish(),
+  draft_hash: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  name: z.string().nullish(),
+  package: z.union([
+    z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+    z.record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    ),
+  ]),
 })
 
 /**
@@ -1421,6 +1458,7 @@ export const zNodeTypeListResponse = z.object({
 export const zOpenApiErrorCode = z.enum([
   'agent_not_published',
   'app_mode_mismatch',
+  'app_package_invalid',
   'app_unavailable',
   'bad_gateway',
   'bad_request',
@@ -2937,6 +2975,21 @@ export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath = z.object({
  */
 export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse = zFormSubmitResponse
 
+export const zGetAppsByAppIdPackagePath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdPackageQuery = z.object({
+  include_secret: z.boolean().optional().default(false),
+  preserve_agent_bindings: z.boolean().optional().default(true),
+  workflow_id: z.uuid().optional(),
+})
+
+/**
+ * App package
+ */
+export const zGetAppsByAppIdPackageResponse = zBinaryFileResponse
+
 export const zGetAppsByAppIdReleaseCheckPath = z.object({
   app_id: z.string(),
 })
@@ -3419,6 +3472,17 @@ export const zPostWorkspacesByWorkspaceIdAppsImportsCheckPath = z.object({
  * Check result
  */
 export const zPostWorkspacesByWorkspaceIdAppsImportsCheckResponse = zDslCheckResponse
+
+export const zPostWorkspacesByWorkspaceIdAppsPackagesBody = zAppPackageImportPayload
+
+export const zPostWorkspacesByWorkspaceIdAppsPackagesPath = z.object({
+  workspace_id: z.string(),
+})
+
+/**
+ * Import completed
+ */
+export const zPostWorkspacesByWorkspaceIdAppsPackagesResponse = zAppDslImportResponse
 
 export const zPostWorkspacesByWorkspaceIdAppsWorkflowBody = zCreateAppPayload
 
