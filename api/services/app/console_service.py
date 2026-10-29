@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager, closing
 from dataclasses import replace
 from typing import BinaryIO, Literal, Protocol
@@ -134,7 +134,9 @@ class AppTransfers(Protocol):
 
     def read_import_yaml(self, source: BinaryIO) -> str | None: ...
 
-    def read_app_package(self, source: BinaryIO) -> AppImportPackage | None: ...
+    def read_app_package(
+        self, source: BinaryIO, *, accept_roster_references: bool = False
+    ) -> AppImportPackage | None: ...
 
     def import_dsl(
         self,
@@ -234,9 +236,25 @@ class ConsoleAppService:
         """The role of an agent app's backing agent; None for other apps."""
         return self._apps.agent_role(context, app_id)
 
-    def import_app(self, context: RequestContext, params: AppImportParams, *, source: BinaryIO | None = None) -> Import:
+    def import_app(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        source: BinaryIO | None = None,
+        preserve_agent_bindings: bool = False,
+        prepare_dsl: Callable[[str], str] | None = None,
+    ) -> Import:
+        """Import an App from params or from an uploaded package.
+
+        ``preserve_agent_bindings`` and ``prepare_dsl`` apply to an App package passed as ``source``:
+        the first keeps its roster Agent links, the second rewrites or refuses the root App's YAML
+        before anything is created.
+        """
         if source is not None:
-            return self._import_package(context, params, source)
+            return self._import_package(
+                context, params, source, preserve_agent_bindings=preserve_agent_bindings, prepare_dsl=prepare_dsl
+            )
         if params.mode == "template":
             if (
                 params.template_id is None
@@ -270,16 +288,28 @@ class ConsoleAppService:
                 params = params.model_copy(update={"mode": "yaml-content", "yaml_content": content, "yaml_url": None})
         return self._import_dsl(context, params)
 
-    def _import_package(self, context: RequestContext, params: AppImportParams, source: BinaryIO) -> Import:
-        package = self._transfers.read_app_package(source)
+    def _import_package(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        source: BinaryIO,
+        *,
+        preserve_agent_bindings: bool = False,
+        prepare_dsl: Callable[[str], str] | None = None,
+    ) -> Import:
+        package = self._transfers.read_app_package(source, accept_roster_references=preserve_agent_bindings)
         if package is not None:
             with closing(package):
+                dsl = prepare_dsl(package.dsl) if prepare_dsl is not None else package.dsl
                 if package.workflow_tools:
-                    return self._import_with_workflow_tools(context, params, package)
+                    return self._import_with_workflow_tools(
+                        context, params, package, dsl=dsl, preserve_agent_bindings=preserve_agent_bindings
+                    )
                 return self._import_dsl(
                     context,
-                    params.model_copy(update={"mode": "yaml-content", "yaml_content": package.dsl, "yaml_url": None}),
+                    params.model_copy(update={"mode": "yaml-content", "yaml_content": dsl, "yaml_url": None}),
                     package=package,
+                    preserve_agent_bindings=preserve_agent_bindings,
                 )
         self._access.require_import(context, "agent")
         if params.app_id:
@@ -288,9 +318,17 @@ class ConsoleAppService:
         return self._import_agent_result(result)
 
     def _import_with_workflow_tools(
-        self, context: RequestContext, params: AppImportParams, package: AppImportPackage
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        package: AppImportPackage,
+        *,
+        dsl: str,
+        preserve_agent_bindings: bool,
     ) -> Import:
         """Create the workflows a package calls as Workflow Tools, then import the App that calls them.
+
+        ``dsl`` is the root App's YAML; ``preserve_agent_bindings`` applies to the root App only.
 
         Workflow Tools already in the workspace are reused. New tools get their ids up front, so a DSL can
         reference a tool that is created after it and workflows that call each other need no order. Apps
@@ -341,11 +379,12 @@ class ConsoleAppService:
                 params.model_copy(
                     update={
                         "mode": "yaml-content",
-                        "yaml_content": retarget_workflow_tool_dsl(package.dsl, targets),
+                        "yaml_content": retarget_workflow_tool_dsl(dsl, targets),
                         "yaml_url": None,
                     }
                 ),
                 package=package,
+                preserve_agent_bindings=preserve_agent_bindings,
             )
         except Exception:
             self._discard_imported_apps(context, created_app_ids)
@@ -375,10 +414,17 @@ class ConsoleAppService:
         )
 
     def _import_dsl(
-        self, context: RequestContext, params: AppImportParams, *, package: AppImportPackage | None = None
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import:
         self._access.require_import(context, "dsl")
-        result = self._transfers.import_dsl(context, params, package=package)
+        result = self._transfers.import_dsl(
+            context, params, package=package, preserve_agent_bindings=preserve_agent_bindings
+        )
         self._set_import_permissions(context, result, created=result.app_created)
         self._initialize_import_access(result, created=result.app_created)
         return result
