@@ -130,7 +130,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_EXECUTION_API_KEY: str = Field(
         description="API key for accessing the code execution service",
-        default="dify-sandbox",
+        default="",
     )
 
     CODE_EXECUTION_CONNECT_TIMEOUT: float | None = Field(
