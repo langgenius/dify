@@ -13,6 +13,7 @@ import {
 } from '@/app/components/workflow/hooks/use-workflow-history'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { ENABLE_HITL_IM } from '@/config'
 import { HumanInputMigrationContext } from './context'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from './executor'
 import HumanInputMigrationBanner from './migration-banner'
@@ -70,7 +71,10 @@ const syncDraftOnce = async (
   if (failed || (!saved && result == null)) throw new Error('human-input-migration-sync-failed')
 }
 
-const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationProviderProps) => {
+const ActiveHumanInputMigrationProvider = ({
+  children,
+  canEdit,
+}: HumanInputMigrationProviderProps) => {
   const { t } = useTranslation(['workflow'])
   const nodes = useNodes() as Node[]
   const store = useStoreApi()
@@ -214,6 +218,11 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
       />
     </HumanInputMigrationContext>
   )
+}
+
+const HumanInputMigrationProvider = (props: HumanInputMigrationProviderProps) => {
+  if (!ENABLE_HITL_IM) return props.children
+  return <ActiveHumanInputMigrationProvider {...props} />
 }
 
 export default HumanInputMigrationProvider

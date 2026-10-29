@@ -4,6 +4,15 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../human-input/shared/types'
 import humanInputV2Default from '../default'
 
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
+
 const createPayload = (overrides: Partial<HumanInputV2NodeType> = {}): HumanInputV2NodeType =>
   ({
     title: 'Human Input v2',
@@ -14,6 +23,10 @@ const createPayload = (overrides: Partial<HumanInputV2NodeType> = {}): HumanInpu
   }) as HumanInputV2NodeType
 
 describe('Human Input v2 default', () => {
+  beforeEach(() => {
+    mockHitlIm.enabled = true
+  })
+
   it('uses the complete frontend wire shape', () => {
     expect(humanInputV2Default.metaData.type).toBe(BlockEnum.HumanInputV2)
     expect(humanInputV2Default.defaultValue).toEqual({
@@ -178,4 +191,26 @@ describe('Human Input v2 default', () => {
       ).errorMessage,
     ).toBe('nodes.humanInputV2.error.recipientDuplicate')
   })
+})
+
+it('rejects a stored v2 configuration when disabled without converting or clearing it', () => {
+  mockHitlIm.enabled = false
+  const payload = createPayload({
+    recipients_spec: [{ type: 'contact', contact_id: 'stored-contact' }],
+    message_template: { subject: 'Review', body: 'Please review {{#url#}}' },
+    user_actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
+  })
+  const original = structuredClone(payload)
+
+  expect(
+    humanInputV2Default.checkValid(
+      payload,
+      withSelectorKey((key: string) => key, 'workflow'),
+    ),
+  ).toEqual({
+    isValid: false,
+    errorMessage: 'nodes.humanInputV2.disabled',
+  })
+  expect(payload).toEqual(original)
+  expect(payload).not.toHaveProperty('delivery_methods')
 })

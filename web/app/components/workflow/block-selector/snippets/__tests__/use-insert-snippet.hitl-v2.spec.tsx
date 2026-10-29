@@ -10,6 +10,14 @@ import { InputVarType } from '../../../types'
 import { useInsertSnippet } from '../use-insert-snippet'
 
 const mockRequest = vi.hoisted(() => vi.fn())
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockToastError = vi.fn()
@@ -85,6 +93,7 @@ describe('useInsertSnippet', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    releaseGate.enabled = true
     queryClient = createTestQueryClient()
     mockEdges = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
     mockGetNodes.mockReturnValue([
@@ -101,6 +110,48 @@ describe('useInsertSnippet', () => {
   })
 
   describe('Insert Flow', () => {
+    it.each([undefined, '2'])(
+      'allows only legacy snippet approvals (version %s) when the release gate is off',
+      async (version) => {
+        releaseGate.enabled = false
+        const data = {
+          ...HumanInputDefault.defaultValue,
+          type: 'human-input',
+          title: 'Approval',
+          ...(version ? { version } : {}),
+        }
+        mockGetNodes.mockReturnValue([
+          {
+            id: 'existing-legacy',
+            type: 'custom',
+            position: { x: 0, y: 0 },
+            data: version
+              ? { type: 'code', title: 'Existing code' }
+              : { ...HumanInputDefault.defaultValue, type: 'human-input' },
+          },
+        ])
+        seedPublishedWorkflow(queryClient, {
+          graph: {
+            nodes: [{ id: 'snippet-approval', type: 'custom', position: { x: 10, y: 20 }, data }],
+            edges: [],
+          },
+        })
+        const { result } = renderUseInsertSnippet()
+
+        await act(async () => result.current.handleInsertSnippet('snippet-1'))
+
+        if (version) {
+          expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.humanInputV2.disabled')
+          expect(mockSetNodes).not.toHaveBeenCalled()
+          expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+        } else {
+          expect(mockSetNodes).toHaveBeenCalledTimes(1)
+          expect(mockSetNodes.mock.lastCall![0]).toHaveLength(2)
+          expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+        }
+      },
+    )
+
     it('keeps legacy-only snippets usable when existing legacy fields cannot migrate', async () => {
       const data = {
         ...HumanInputDefault.defaultValue,

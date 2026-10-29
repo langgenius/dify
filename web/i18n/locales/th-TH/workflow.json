@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "ไม่สามารถบันทึกเวิร์กโฟลว์ที่ย้ายแล้วได้ โปรดตรวจสอบแบบร่างปัจจุบันแล้วลองอีกครั้ง",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "เปิดใช้งานอย่างน้อยหนึ่งช่องทางไว้",
+  "nodes.humanInputV2.disabled": "ไม่สามารถใช้งาน Human Input v2 ได้ขณะที่ปิดใช้งาน HITL IM",
   "nodes.humanInputV2.error.requestURLDuplicate": "เนื้อหาข้อความมี URL คำขอได้เพียงหนึ่งรายการเท่านั้น",
   "nodes.humanInputV2.error.requestURLRequired": "โปรดแทรก URL คำขอในเนื้อหาข้อความ",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "ผู้ติดต่อทั้งหมดในพื้นที่ทำงาน",

@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Taşınan iş akışı kaydedilemedi. Mevcut taslağı inceleyip tekrar deneyin.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "En az bir kanalı açık tutun",
+  "nodes.humanInputV2.disabled": "HITL IM devre dışıyken Human Input v2 kullanılamaz.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Mesaj gövdesi yalnızca bir istek URL’si içerebilir.",
   "nodes.humanInputV2.error.requestURLRequired": "Mesaj gövdesine bir istek URL’si ekleyin.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Çalışma alanındaki tüm kişiler",

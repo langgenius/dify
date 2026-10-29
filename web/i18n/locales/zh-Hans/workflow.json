@@ -418,6 +418,7 @@
   "nodes.humanInputV2.debug.title": "调试模式",
   "nodes.humanInputV2.debug.toggle": "启用调试模式",
   "nodes.humanInputV2.debug.unsupported": "不支持导入的渠道：{{channels}}。请在运行工作流前移除或更新它们。",
+  "nodes.humanInputV2.disabled": "HITL IM 已关闭，Human Input v2 暂不可用。",
   "nodes.humanInputV2.error.bodyRequired": "消息正文不能为空",
   "nodes.humanInputV2.error.debugChannelRequired": "请至少选择一个调试模式渠道",
   "nodes.humanInputV2.error.recipientDuplicate": "请移除重复的收件人",

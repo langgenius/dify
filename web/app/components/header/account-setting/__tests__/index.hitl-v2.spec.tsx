@@ -16,6 +16,7 @@ import AccountSetting from '../index'
 
 const mockConfig = vi.hoisted(() => ({
   ENABLE_FEATURE_PREVIEW: true,
+  ENABLE_HITL_IM: true,
   getFeatures: vi.fn<() => Promise<GetFeaturesResponse>>(),
 }))
 let canReplaceLogo = true
@@ -30,6 +31,9 @@ vi.mock('@/config', async (importOriginal) => {
     ...actual,
     get ENABLE_FEATURE_PREVIEW() {
       return mockConfig.ENABLE_FEATURE_PREVIEW
+    },
+    get ENABLE_HITL_IM() {
+      return mockConfig.ENABLE_HITL_IM
     },
   }
 })
@@ -267,6 +271,7 @@ describe('AccountSetting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockConfig.ENABLE_FEATURE_PREVIEW = true
+    mockConfig.ENABLE_HITL_IM = true
     mockConfig.getFeatures.mockImplementation(() => new Promise(() => {}))
     canReplaceLogo = true
     mockConsoleState.current = baseConsoleState
@@ -328,14 +333,25 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide the IM platform entry when feature preview is disabled', () => {
-      mockConfig.ENABLE_FEATURE_PREVIEW = false
+    it('hides the IM platform entry and rejects deep links when HITL IM is not released', () => {
+      mockConfig.ENABLE_HITL_IM = false
 
-      renderAccountSetting()
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
 
       expect(
         screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
       ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
+    })
+
+    it('keeps released IM channels available when unrelated feature previews are disabled', () => {
+      mockConfig.ENABLE_FEATURE_PREVIEW = false
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
+
+      expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
+      expect(screen.getByTestId('contacts-im-platform-page')).toBeInTheDocument()
     })
 
     it('rejects centrally managed workspace channels deep links', () => {

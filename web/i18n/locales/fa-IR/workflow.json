@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "گردش کار منتقل‌شده ذخیره نشد. پیش‌نویس فعلی را بررسی کنید و دوباره تلاش کنید.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "حداقل یک کانال را روشن نگه دارید",
+  "nodes.humanInputV2.disabled": "هنگامی که HITL IM غیرفعال است، Human Input v2 در دسترس نیست.",
   "nodes.humanInputV2.error.requestURLDuplicate": "متن پیام فقط می‌تواند شامل یک نشانی درخواست باشد.",
   "nodes.humanInputV2.error.requestURLRequired": "یک نشانی درخواست در متن پیام درج کنید.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "همه مخاطبان فضای کاری",

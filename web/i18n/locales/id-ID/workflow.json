@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Alur kerja yang dimigrasikan tidak dapat disimpan. Periksa draf saat ini dan coba lagi.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Biarkan setidaknya satu saluran tetap aktif",
+  "nodes.humanInputV2.disabled": "Human Input v2 tidak tersedia saat HITL IM dinonaktifkan.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Isi pesan hanya boleh memuat satu URL permintaan.",
   "nodes.humanInputV2.error.requestURLRequired": "Sisipkan URL permintaan di isi pesan.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Semua kontak ruang kerja",

@@ -7,6 +7,15 @@ import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { HumanInputV2Panel } from '../panel'
 
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
+
 const mockUseConfig = vi.hoisted(() => vi.fn())
 const mockSharedPanel = vi.hoisted(() => vi.fn())
 
@@ -93,6 +102,7 @@ const config = {
 
 describe('Human Input v2 panel composition', () => {
   beforeEach(() => {
+    mockHitlIm.enabled = true
     vi.clearAllMocks()
     mockUseConfig.mockReturnValue(config)
   })
@@ -129,4 +139,33 @@ describe('Human Input v2 panel composition', () => {
       expect.objectContaining({ id: 'human-input-v2', config }),
     )
   })
+})
+
+it('keeps a stored v2 panel unavailable without mounting editable recipient or template flows while disabled', () => {
+  mockHitlIm.enabled = false
+  const stored = {
+    ...data,
+    recipients_spec: [
+      { type: 'contact', contact_id: 'stored-contact' },
+    ] as HumanInputV2NodeType['recipients_spec'],
+    message_template: { subject: 'Stored subject', body: 'Stored {{#url#}}' },
+  }
+  const original = structuredClone(stored)
+  render(
+    <HumanInputV2Panel
+      id="human-input-v2"
+      data={stored}
+      panelProps={{} as NodePanelProps<HumanInputV2NodeType>['panelProps']}
+    />,
+  )
+
+  expect(screen.getByRole('status')).toHaveTextContent('workflow.nodes.humanInputV2.disabled')
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  expect(screen.queryByText('recipients-section')).not.toBeInTheDocument()
+  expect(screen.queryByText('message-template-section')).not.toBeInTheDocument()
+  expect(screen.queryByText('debug-mode-section')).not.toBeInTheDocument()
+  expect(config.handleRecipientsChange).not.toHaveBeenCalled()
+  expect(config.handleMessageTemplateChange).not.toHaveBeenCalled()
+  expect(config.handleDebugModeChange).not.toHaveBeenCalled()
+  expect(stored).toEqual(original)
 })

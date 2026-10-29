@@ -5,6 +5,7 @@ import { RiMailSendFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { ENABLE_HITL_IM } from '@/config'
 import { isLegacyHumanInputNodeData } from '../human-input-v2/migration/policy'
 import HumanInputNodeBranches from './shared/node-branches'
 import { DeliveryMethodType } from './types'
@@ -19,7 +20,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
 
   return (
     <>
-      {isLegacyHumanInputNodeData(data) && (
+      {ENABLE_HITL_IM && isLegacyHumanInputNodeData(data) && (
         <div className="px-2.5 pb-1">
           <Badge
             text={t(($) => $['nodes.humanInputMigration.oldVersion'], { ns: 'workflow' })}

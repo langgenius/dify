@@ -4,6 +4,7 @@ import type { NodeDefault } from '@/app/components/workflow/types'
 import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { ENABLE_HITL_IM } from '@/config'
 import {
   buildHumanInputOutputVars,
   getHumanInputSharedValidationError,
@@ -35,7 +36,9 @@ const nodeDefault: NodeDefault<HumanInputV2NodeType> = {
   },
   checkValid(payload, t: TFunction<['workflow']>) {
     let errorMessage = ''
-    if (payload.version !== '2')
+    if (!ENABLE_HITL_IM)
+      errorMessage = t(($) => $['nodes.humanInputV2.disabled'], { ns: 'workflow' })
+    else if (payload.version !== '2')
       errorMessage = t(($) => $['nodes.humanInputV2.error.version'], { ns: 'workflow' })
     else if (!payload.recipients_spec.length)
       errorMessage = t(($) => $['nodes.humanInputV2.error.recipientRequired'], { ns: 'workflow' })

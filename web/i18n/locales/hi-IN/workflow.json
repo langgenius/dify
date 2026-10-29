@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "माइग्रेट किए गए वर्कफ़्लो को सहेजा नहीं जा सका। वर्तमान ड्राफ़्ट की जाँच करें और फिर से कोशिश करें।",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "कम से कम एक चैनल चालू रखें",
+  "nodes.humanInputV2.disabled": "HITL IM अक्षम होने पर Human Input v2 उपलब्ध नहीं है।",
   "nodes.humanInputV2.error.requestURLDuplicate": "संदेश के मुख्य भाग में केवल एक अनुरोध URL हो सकता है।",
   "nodes.humanInputV2.error.requestURLRequired": "संदेश के मुख्य भाग में अनुरोध URL डालें।",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "कार्यस्थान के सभी संपर्क",

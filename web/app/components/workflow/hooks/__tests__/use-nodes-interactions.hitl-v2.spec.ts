@@ -34,6 +34,11 @@ const runtimeState = vi.hoisted(() => ({
   workflowReadOnly: false,
 }))
 
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_HITL_IM: true,
+}))
+
 let currentNodes: Node[] = []
 let currentEdges: Edge[] = []
 

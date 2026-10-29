@@ -1,30 +1,31 @@
-let featurePreviewEnabled = false
+const flags = vi.hoisted(() => ({ hitlIm: false, preview: true }))
 
 vi.mock('@/config', () => ({
+  get ENABLE_HITL_IM() {
+    return flags.hitlIm
+  },
   get ENABLE_FEATURE_PREVIEW() {
-    return featurePreviewEnabled
+    return flags.preview
   },
 }))
 
-describe('Contacts IM platform feature flag', () => {
-  beforeEach(() => {
-    featurePreviewEnabled = false
-  })
-
-  it('uses the existing feature-preview product gate for workspace-managed bindings', async () => {
-    const { isContactsImPlatformEnabled } = await import('../feature-flag')
-
-    expect(isContactsImPlatformEnabled(false)).toBe(false)
-
-    featurePreviewEnabled = true
-
-    expect(isContactsImPlatformEnabled(false)).toBe(true)
-  })
-
-  it('keeps the workspace entry hidden when bindings are centrally managed', async () => {
-    featurePreviewEnabled = true
-    const { isContactsImPlatformEnabled } = await import('../feature-flag')
-
-    expect(isContactsImPlatformEnabled(true)).toBe(false)
-  })
+describe('Contacts IM platform release gate', () => {
+  it.each([
+    [false, false, false],
+    [false, false, true],
+    [false, true, false],
+    [false, true, true],
+    [true, false, false],
+    [true, false, true],
+    [true, true, false],
+    [true, true, true],
+  ])(
+    'gates workspace channels for enabled=%s, centrallyManaged=%s, preview=%s',
+    async (hitlIm, managed, preview) => {
+      flags.hitlIm = hitlIm
+      flags.preview = preview
+      const { isContactsImPlatformEnabled } = await import('../feature-flag')
+      expect(isContactsImPlatformEnabled(managed)).toBe(hitlIm && !managed)
+    },
+  )
 })

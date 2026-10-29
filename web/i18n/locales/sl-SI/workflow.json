@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Preseljenega delovnega toka ni bilo mogoče shraniti. Preglejte trenutni osnutek in poskusite znova.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Ohranite vklopljen vsaj en kanal",
+  "nodes.humanInputV2.disabled": "Human Input v2 ni na voljo, ko je HITL IM onemogočen.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Besedilo sporočila lahko vsebuje samo en URL zahteve.",
   "nodes.humanInputV2.error.requestURLRequired": "V besedilo sporočila vstavite URL zahteve.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Vsi stiki v delovnem prostoru",

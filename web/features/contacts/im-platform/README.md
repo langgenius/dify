@@ -5,10 +5,17 @@ Organization-scoped IM platform binding and directory-sync UI for the Contacts d
 ## Mount Points
 
 - CE / SaaS workspace management mounts this feature from `app/components/header/account-setting`.
-- Enterprise-plan workspaces do not expose this binding entry. The Account Settings shell checks `ProviderContext.plan.type` before mounting the feature.
+- Centrally managed deployments do not expose this workspace binding entry. The Account Settings shell checks `im_centrally_managed` from `/features` before mounting the feature.
 - `features/agent-v2/roster` is intentionally outside this feature boundary and must not import or mount Contacts IM platform UI.
 
-The entry requires both a non-enterprise workspace plan and the existing `NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW` product gate. Setting the flag to `false`, or changing the workspace to the enterprise plan, removes the entry without deleting saved frontend code or affecting Contacts data.
+The entry requires the dedicated `NEXT_PUBLIC_ENABLE_HITL_IM` release gate to be
+`true` and `im_centrally_managed` to be `false`. The release gate defaults to
+`false`, independently of `NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW`. Disabled or
+unavailable entries also reject the IM platform settings deep link. Changing the
+release gate requires restarting Web and reloading the page. Turning it off also
+restores legacy V1 editing/form entry points and disables V2 editors, migration,
+and approval entry points. Saved V2 data and channel credentials are preserved;
+V2 tokens are never sent through legacy V1 transports.
 
 ## Internal Modules
 
@@ -23,7 +30,7 @@ The entry requires both a non-enterprise workspace plan and the existing `NEXT_P
 - `sync-section.tsx` owns manual-trigger eligibility, active-run recovery, and summary presentation.
 - `sync-details-dialog.tsx` owns the URL-addressable, filtered, paginated, read-only result view.
 - `sync-run-url-state.ts` keeps the selected run in the `sync_run_id` query parameter.
-- `account-setting-page.tsx` is the non-enterprise workspace-settings composition root.
+- `account-setting-page.tsx` is the workspace-managed settings composition root.
 
 ## External Modules
 

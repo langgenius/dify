@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Không thể lưu quy trình đã di chuyển. Hãy kiểm tra bản nháp hiện tại và thử lại.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Giữ ít nhất một kênh được bật",
+  "nodes.humanInputV2.disabled": "Human Input v2 không khả dụng khi HITL IM bị tắt.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Nội dung tin nhắn chỉ được chứa một URL yêu cầu.",
   "nodes.humanInputV2.error.requestURLRequired": "Chèn URL yêu cầu vào nội dung tin nhắn.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Tất cả liên hệ trong không gian làm việc",

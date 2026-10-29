@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "No se pudo guardar el flujo de trabajo migrado. Revisa el borrador actual e inténtalo de nuevo.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Mantén al menos un canal activado",
+  "nodes.humanInputV2.disabled": "Human Input v2 no está disponible mientras HITL IM esté desactivado.",
   "nodes.humanInputV2.error.requestURLDuplicate": "El cuerpo del mensaje solo puede contener una URL de solicitud.",
   "nodes.humanInputV2.error.requestURLRequired": "Inserte una URL de solicitud en el cuerpo del mensaje.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Todos los contactos del espacio de trabajo",

@@ -6182,6 +6182,7 @@ export default interface Resources {
     'nodes.humanInputV2.debug.title': 'Debug Mode'
     'nodes.humanInputV2.debug.toggle': 'Enable Debug Mode'
     'nodes.humanInputV2.debug.unsupported': 'Unsupported imported channels: {{channels}}. Remove or update them before running this workflow.'
+    'nodes.humanInputV2.disabled': 'Human Input v2 is unavailable while HITL IM is disabled.'
     'nodes.humanInputV2.error.bodyRequired': 'Message body is required'
     'nodes.humanInputV2.error.debugChannelRequired': 'Select at least one Debug Mode channel'
     'nodes.humanInputV2.error.recipientDuplicate': 'Remove duplicate recipients'

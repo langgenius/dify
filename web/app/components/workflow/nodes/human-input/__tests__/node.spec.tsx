@@ -4,6 +4,15 @@ import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import Node from '../node'
 import { DeliveryMethodType, UserActionButtonType } from '../types'
 
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
+
 vi.mock('../../_base/components/node-handle', () => ({
   NodeSourceHandle: (props: { handleId: string }) => <div>{`handle:${props.handleId}`}</div>,
 }))
@@ -54,6 +63,10 @@ const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNode
 })
 
 describe('human-input/node', () => {
+  beforeEach(() => {
+    mockHitlIm.enabled = true
+  })
+
   it('renders delivery methods, user action handles, and the timeout handle', () => {
     render(<Node id="human-input-node" data={createData()} />)
 
@@ -101,4 +114,17 @@ describe('human-input/node', () => {
     expect(screen.getByText('workflow.nodes.humanInput.timeout.title')).toBeInTheDocument()
     expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
   })
+})
+
+it('restores the original delivery card without a legacy badge while disabled', () => {
+  mockHitlIm.enabled = false
+  render(<Node id="human-input-node" data={createData()} />)
+
+  expect(screen.getByText('webapp')).toBeInTheDocument()
+  expect(screen.getByText('email')).toBeInTheDocument()
+  expect(screen.getByText('handle:approve')).toBeInTheDocument()
+  expect(screen.getByText('handle:__timeout')).toBeInTheDocument()
+  expect(
+    screen.queryByText('workflow.nodes.humanInputMigration.oldVersion'),
+  ).not.toBeInTheDocument()
 })

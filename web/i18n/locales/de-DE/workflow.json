@@ -368,6 +368,7 @@
   "nodes.humanInputMigration.error.sync": "Der migrierte Workflow konnte nicht gespeichert werden. Prüfen Sie den aktuellen Entwurf und versuchen Sie es erneut.",
   "nodes.humanInputV2.debug.channel.lark": "Lark",
   "nodes.humanInputV2.debug.keepOneChannel": "Mindestens einen Kanal aktiviert lassen",
+  "nodes.humanInputV2.disabled": "Human Input v2 ist nicht verfügbar, solange HITL IM deaktiviert ist.",
   "nodes.humanInputV2.error.requestURLDuplicate": "Der Nachrichtentext darf nur eine Anfrage-URL enthalten.",
   "nodes.humanInputV2.error.requestURLRequired": "Fügen Sie eine Anfrage-URL in den Nachrichtentext ein.",
   "nodes.humanInputV2.recipients.allWorkspaceContacts": "Alle Kontakte im Arbeitsbereich",

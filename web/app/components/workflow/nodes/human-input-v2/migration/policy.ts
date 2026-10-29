@@ -2,6 +2,7 @@ import type { HumanInputNodeType } from '../../human-input/types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
 import { zLegacyFormInputType } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { ENABLE_HITL_IM } from '@/config'
 
 export const HumanInputVersionKind = {
   NotHumanInput: 'not-human-input',
@@ -48,6 +49,19 @@ export const getHumanInputCreationPolicy = (
   canEdit: boolean,
 ): HumanInputCreationPolicy => {
   const hasLegacyHumanInput = nodes.some((node) => isLegacyHumanInputNodeData(node.data))
+  if (!ENABLE_HITL_IM) {
+    return {
+      hasLegacyHumanInput,
+      canAddHumanInputV2: false,
+      canAddLegacyHumanInput:
+        canEdit &&
+        nodes.every((node) => {
+          const kind = classifyHumanInputVersion(node.data)
+          return kind !== HumanInputVersionKind.V2 && kind !== HumanInputVersionKind.LegacyBlocked
+        }),
+      candidateCount: 1,
+    }
+  }
   const canContinueLegacy =
     nodes.some((node) => getUnsupportedLegacyHumanInputFields(node.data).length > 0) &&
     nodes.every((node) => {
@@ -80,6 +94,7 @@ export const canInsertHumanInput = (
   if (data?.version !== undefined && data.version !== '1' && data.version !== '2') return false
   const policy = getHumanInputCreationPolicy(nodes, true)
   if (nodeType === BlockEnum.HumanInputV2 || data?.version === '2') return policy.canAddHumanInputV2
+  if (!ENABLE_HITL_IM) return policy.canAddLegacyHumanInput
   return (
     !nodes.some((node) => classifyHumanInputVersion(node.data) === HumanInputVersionKind.V2) &&
     (!policy.hasLegacyHumanInput || policy.canAddLegacyHumanInput)
