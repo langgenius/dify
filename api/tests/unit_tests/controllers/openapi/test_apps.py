@@ -107,6 +107,53 @@ def test_describe_passes_admitted_scope_and_projects_response(
     assert result.input_schema is None
 
 
+@pytest.mark.parametrize(
+    ("mode", "expected"),
+    [(AppMode.WORKFLOW, "token"), (AppMode.ADVANCED_CHAT, "token"), (AppMode.CHAT, None)],
+)
+def test_describe_returns_the_draft_hash_of_a_graph_app(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    expected: str | None,
+) -> None:
+    summary = AppSummary("app-id", "workspace-id", "App", "", mode, "normal", None, None)
+    monkeypatch.setattr(app_query_services.apps.discovery, "describe", lambda *_: AppDescription(summary, True, None))
+    monkeypatch.setattr("controllers.openapi.apps.current_draft_token", lambda *_: "token")
+    context = AppRequestContext(tenant_id="workspace-id", app_id="app-id")
+    with app.test_request_context():
+        result = cast(Endpoint[AppDescribeResponse], AppDescribeApi().get).__handler__(
+            AppDescribeApi(),
+            context,
+            "app-id",
+            query=_app_discovery_AppDescribeQuery.model_validate({"fields": "info"}),
+        )
+    assert result.info is not None
+    assert result.info.draft_hash == expected
+
+
+def test_describe_skips_the_draft_read_without_info(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    summary = AppSummary("app-id", "workspace-id", "App", "", AppMode.WORKFLOW, "normal", None, None)
+    monkeypatch.setattr(app_query_services.apps.discovery, "describe", lambda *_: AppDescription(summary, True, None))
+
+    def forbidden(*_args: object) -> str:
+        raise AssertionError("draft read without info")
+
+    monkeypatch.setattr("controllers.openapi.apps.current_draft_token", forbidden)
+    context = AppRequestContext(tenant_id="workspace-id", app_id="app-id")
+    with app.test_request_context():
+        result = cast(Endpoint[AppDescribeResponse], AppDescribeApi().get).__handler__(
+            AppDescribeApi(),
+            context,
+            "app-id",
+            query=_app_discovery_AppDescribeQuery.model_validate({"fields": "parameters"}),
+        )
+    assert result.info is None
+
+
 @pytest.mark.parametrize("api", [AppDescribeApi(), PermittedExternalAppDescribeApi()])
 def test_describe_translates_disappearing_app_to_404(
     app: Flask,

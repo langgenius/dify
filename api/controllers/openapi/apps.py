@@ -49,6 +49,9 @@ from machinery.context import AppRequestContext, RequestContext
 from models.model import AppMode
 from services.app.query_service import AppDiscoveryQuery
 from services.errors.app import AppDiscoveryNotFoundError
+from services.workflow.graph_diff import current_draft_token
+
+_GRAPH_MODES: Final = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
 
 _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
     AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
@@ -112,7 +115,11 @@ class AppDescribeApi(Resource):
             result = application_services().apps.discovery.describe(ctx, query.fields)
         except AppDiscoveryNotFoundError as exc:
             raise NotFound(str(exc)) from exc
-        response = build_app_describe_response(result, query.fields)
+        draft_hash = None
+        if query.fields is None or "info" in query.fields:
+            if result.app.mode in _GRAPH_MODES:
+                draft_hash = current_draft_token(ctx.tenant_id, result.app.id)
+        response = build_app_describe_response(result, query.fields, draft_hash=draft_hash)
         response.hints = settings_hints(result.app.id, result.app.mode)
         return response
 
