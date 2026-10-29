@@ -11,7 +11,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, StrictStr, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, ValidationError
 
 from graphon.entities import WorkflowNodeExecution
 
@@ -95,6 +95,8 @@ class WorkflowTraceInfo(BaseTraceInfo):
     end_time: datetime
     """When the run finished; only finished runs are traced."""
     node_executions: Sequence[WorkflowNodeExecution]
+    workflow_tool_parents: Mapping[str, str] = Field(default_factory=dict)
+    """Child execution row ID to its admitted caller row ID; empty outside workflow tools."""
     conversation_id: str | None
     message_started_at: datetime | None
     """Creation time of the chatflow message this run answers."""

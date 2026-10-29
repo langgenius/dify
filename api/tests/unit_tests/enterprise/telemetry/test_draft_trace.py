@@ -24,6 +24,7 @@ from models.workflow import (
     WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
 )
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.records import DraftNodeExecutionTrace
 
@@ -527,7 +528,13 @@ class TestDraftTraceTokenDataFlow:
         (event,) = pipeline.events
         assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-flow", "app-flow", "user-1")
         trace_info = TraceRecordRepository(
-            sqlite_session_factory, files_url="https://files.example.com", enterprise_details=False
+            sqlite_session_factory,
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sqlite_session_factory),
+            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                sqlite_session_factory
+            ),
+            files_url="https://files.example.com",
+            enterprise_details=False,
         ).assemble(event)
 
         # These are the fields enterprise_trace._emit_node_execution_trace reads

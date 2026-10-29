@@ -5,6 +5,7 @@ This module provides a concrete implementation of the service repository protoco
 using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 """
 
+import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, cast, override
@@ -15,7 +16,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_storage import storage
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from models.model import UploadFile
+from models.workflow import (
+    ExecutionOffLoadType,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
     WorkflowNodeExecutionSnapshot,
@@ -53,10 +60,35 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         self._session_maker = session_maker
 
     @override
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return self._load_full_payload(execution, ExecutionOffLoadType.INPUTS, execution.inputs_dict)
+
+    @override
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return self._load_full_payload(execution, ExecutionOffLoadType.OUTPUTS, execution.outputs_dict)
+
+    @override
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
         """Load Process Data from external storage when the execution was offloaded."""
+        return self._load_full_payload(execution, ExecutionOffLoadType.PROCESS_DATA, execution.process_data_dict)
+
+    def _load_full_payload(
+        self,
+        execution: WorkflowNodeExecutionModel,
+        type_: ExecutionOffLoadType,
+        inline: Mapping[str, Any] | None,
+    ) -> Mapping[str, Any] | None:
+        offload = next((item for item in execution.offload_data if item.type_ == type_), None)
+        if offload is None:
+            return inline
         with self._session_maker() as session:
-            return execution.load_full_process_data(session, storage)
+            key = session.scalar(
+                select(UploadFile.key).where(
+                    UploadFile.id == offload.file_id, UploadFile.tenant_id == execution.tenant_id
+                )
+            )
+        assert key is not None, f"UploadFile with id {offload.file_id} should exist in the execution's tenant"
+        return json.loads(storage.load(key))
 
     @override
     def get_node_last_execution(

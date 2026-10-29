@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from controllers.inner_api import bp
 from extensions.ext_application_services import ApplicationServices
 from models.application_trace import ApplicationTraceBatch
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings
@@ -53,7 +54,13 @@ def bind_collector(
         runs=collection.repository,
         run_query=collection.repository,
         sources=collection.repository,
-        records=TraceRecordRepository(collection.sessions, files_url="https://files.test", enterprise_details=False),
+        records=TraceRecordRepository(
+            collection.sessions,
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(collection.sessions),
+            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(collection.sessions),
+            files_url="https://files.test",
+            enterprise_details=False,
+        ),
         builder=CanonicalTraceBuilder(),
         providers=InstalledTraceProviders(),
         codec=ProviderConfigCodec(WorkspaceBoundCipher()),

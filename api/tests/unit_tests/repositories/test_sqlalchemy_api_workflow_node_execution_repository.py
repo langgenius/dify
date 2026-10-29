@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
+from extensions.ext_storage import storage
+from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.enums import CreatorUserRole
+from models.model import UploadFile
 from models.workflow import (
     ExecutionOffLoadType,
     WorkflowNodeExecutionModel,
@@ -24,6 +27,69 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
+
+
+@pytest.mark.parametrize("foreign_tenant", [False, True])
+@pytest.mark.parametrize("payload_type", list(ExecutionOffLoadType))
+def test_full_payloads_load_owned_files_after_closing_the_database_session(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    payload_type: ExecutionOffLoadType,
+    foreign_tenant: bool,
+) -> None:
+    file = UploadFile(
+        tenant_id="other-tenant" if foreign_tenant else "tenant",
+        storage_type=StorageType.LOCAL,
+        key="full-payload.json",
+        name="payload.json",
+        size=21,
+        extension="json",
+        mime_type="application/json",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account",
+        created_at=datetime(2026, 1, 1),
+        used=True,
+    )
+    file_id = file.id
+    with sqlite_session_factory.begin() as session:
+        session.add(file)
+    execution = WorkflowNodeExecutionModel(
+        tenant_id="tenant", inputs='{"truncated":true}', outputs='{"truncated":true}', process_data='{"truncated":true}'
+    )
+    execution.offload_data = []
+    repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
+    load = {
+        ExecutionOffLoadType.INPUTS: repository.load_full_inputs,
+        ExecutionOffLoadType.OUTPUTS: repository.load_full_outputs,
+        ExecutionOffLoadType.PROCESS_DATA: repository.load_full_process_data,
+    }[payload_type]
+    assert load(execution) == {"truncated": True}
+    execution.offload_data.append(
+        WorkflowNodeExecutionOffload(
+            tenant_id="tenant", app_id="app", node_execution_id="execution", type_=payload_type, file_id=file_id
+        )
+    )
+    readers: list[Session] = []
+
+    def track_reader(session: Session, *_args: object) -> None:
+        readers.append(session)
+
+    def load_storage(key: str) -> bytes:
+        assert key == "full-payload.json"
+        assert readers
+        assert all(not session.in_transaction() for session in readers)
+        return b'{"complete":"payload"}'
+
+    monkeypatch.setattr(storage, "load", load_storage)
+    event.listen(sqlite_session_factory, "after_begin", track_reader)
+    try:
+        if foreign_tenant:
+            with pytest.raises(AssertionError, match="execution's tenant"):
+                load(execution)
+        else:
+            assert load(execution) == {"complete": "payload"}
+    finally:
+        event.remove(sqlite_session_factory, "after_begin", track_reader)
 
 
 @pytest.mark.parametrize("logstore", [False, True])

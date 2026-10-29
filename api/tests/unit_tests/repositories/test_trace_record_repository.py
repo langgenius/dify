@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -9,20 +10,47 @@ from dify_trace_sdk.events import (
     TraceCorrelation,
     TraceEvent,
     TracePayload,
+    WorkflowRunCompleted,
 )
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
+from extensions.logstore.aliyun_logstore import AliyunLogStore
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    EndUserType,
+    InvokeFrom,
+    WorkflowRunTriggeredFrom,
+)
 from models.model import App, AppMode, Conversation, EndUser, Message
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, TracingStoreUnavailableError
-from services.tracing.records import MessageTraceInfo, ModerationTraceInfo, ToolTraceInfo, TraceMessage
+from services.tracing.records import (
+    MessageTraceInfo,
+    ModerationTraceInfo,
+    ToolTraceInfo,
+    TraceMessage,
+    WorkflowTraceInfo,
+)
+from tests.helpers.unit.config_override import apply_config_overrides
 
 TENANT_ID = "tenant-1"
 APP_ID = "app-1"
 MESSAGE_ID = "message-1"
 CREATED_AT = datetime(2026, 1, 1, 8, 0, 0)
+WORKFLOW_APP_ID = "workflow-app"
+OUTER_RUN_ID = "outer-workflow-run"
+TOOL_NODE_ID = "outer-tool-node"
 
 
 @pytest.fixture
@@ -91,8 +119,77 @@ def records(sqlite_session: Session) -> None:
     sqlite_session.commit()
 
 
+def _workflow_run(run_id: str, app_id: str) -> WorkflowRun:
+    run = WorkflowRun(
+        id=run_id,
+        app_id=app_id,
+        tenant_id=TENANT_ID,
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        outputs="{}",
+        status=WorkflowExecutionStatus.RUNNING,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        finished_at=None,
+        elapsed_time=0,
+        total_tokens=0,
+        total_steps=0,
+    )
+    run.created_at = CREATED_AT + timedelta(seconds=1)
+    return run
+
+
+@pytest.fixture
+def outer_runs(sqlite_session: Session) -> None:
+    """A workflow run with an owned Tool that can admit persisted child frames."""
+    workflow_app = App(
+        id=WORKFLOW_APP_ID,
+        tenant_id=TENANT_ID,
+        name="Workflow app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=False,
+        enable_api=False,
+    )
+    tool_node = WorkflowNodeExecutionModel(
+        id=TOOL_NODE_ID,
+        node_execution_id=TOOL_NODE_ID,
+        tenant_id=TENANT_ID,
+        app_id=WORKFLOW_APP_ID,
+        workflow_id="workflow-1",
+        workflow_run_id=OUTER_RUN_ID,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        index=1,
+        node_id="tool",
+        node_type="tool",
+        title="Nested workflow",
+        inputs="{}",
+        outputs="{}",
+        process_data="{}",
+        status=WorkflowNodeExecutionStatus.RUNNING,
+        elapsed_time=0,
+        execution_metadata="{}",
+        finished_at=None,
+        created_by="account-1",
+        created_by_role=CreatorUserRole.ACCOUNT,
+    )
+    tool_node.created_at = CREATED_AT + timedelta(seconds=2)
+    sqlite_session.add_all([workflow_app, _workflow_run(OUTER_RUN_ID, WORKFLOW_APP_ID), tool_node])
+    sqlite_session.commit()
+
+
 def _assembler(sessions: sessionmaker[Session]) -> TraceRecordRepository:
-    return TraceRecordRepository(sessions, files_url="https://files.example.com", enterprise_details=False)
+    return TraceRecordRepository(
+        sessions,
+        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        files_url="https://files.example.com",
+        enterprise_details=False,
+    )
 
 
 def _event(payload: TracePayload, *, tenant_id: str = TENANT_ID) -> TraceEvent:
@@ -235,3 +332,102 @@ def test_an_unreachable_database_is_reported_as_unavailable() -> None:
 
     with pytest.raises(TracingStoreUnavailableError):
         _assembler(sessions).assemble(_event(MessageCompleted(message_id=MESSAGE_ID, conversation_id="conversation-1")))
+
+
+@pytest.mark.usefixtures("records", "outer_runs")
+@pytest.mark.parametrize("logstore", [False, True])
+def test_workflow_trace_loads_only_descendants_of_its_owned_tools(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    logstore: bool,
+) -> None:
+    if logstore:
+        # Run the LogStore adapter's real queries against the same owner-scoped records.
+        sqlite_session.execute(
+            text(
+                "CREATE VIEW workflow_node_execution AS SELECT *, 1 AS log_version, 1 AS __time__ "
+                "FROM workflow_node_executions"
+            )
+        )
+        monkeypatch.setattr(AliyunLogStore, "_instance", None)
+        monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+        monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "localhost")
+        monkeypatch.setattr(AliyunLogStore, "_check_endpoint_connectivity", lambda *_args: None)
+        store = AliyunLogStore()
+
+        def execute_sql(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
+            with sqlite_session_factory() as session:
+                return [dict(row) for row in session.execute(text(sql)).mappings()]
+
+        monkeypatch.setattr(store, "execute_sql", execute_sql)
+        apply_config_overrides(
+            monkeypatch,
+            API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
+                "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
+                "LogstoreAPIWorkflowNodeExecutionRepository"
+            ),
+        )
+    run = sqlite_session.get(WorkflowRun, OUTER_RUN_ID)
+    tool = sqlite_session.get(WorkflowNodeExecutionModel, TOOL_NODE_ID)
+    assert run is not None
+    assert tool is not None
+    run.status = WorkflowExecutionStatus.SUCCEEDED
+    run.finished_at = CREATED_AT + timedelta(seconds=10)
+    run.total_tokens = 12
+    tool.node_execution_id = "caller-engine-id"
+    tool.status = WorkflowNodeExecutionStatus.SUCCEEDED
+    tool.finished_at = run.finished_at
+    rows: list[tuple[str, str, str, str, dict[str, str]]] = [
+        ("child-tool", "tool", "caller-engine-id", "workflow-1", {}),
+        ("grandchild", "llm", "child-tool-engine", "child-workflow", {}),
+        ("foreign-tenant", "llm", "caller-engine-id", "workflow-1", {"tenant_id": "other-tenant"}),
+        ("foreign-run", "llm", "caller-engine-id", "workflow-1", {"workflow_run_id": "other-run"}),
+        ("foreign-caller", "llm", "caller-engine-id", "other-workflow", {}),
+        ("orphan", "llm", "unrelated-tool", "workflow-1", {}),
+        ("wrong-origin", "llm", "caller-engine-id", "workflow-1", {"triggered_from": "workflow-run"}),
+        ("paused", "llm", "caller-engine-id", "workflow-1", {"status": "paused"}),
+    ]
+    for index, (row_id, node_type, caller, caller_workflow, overrides) in enumerate(rows):
+        row = WorkflowNodeExecutionModel(
+            id=row_id,
+            node_execution_id=f"{row_id}-engine",
+            tenant_id=overrides.get("tenant_id", TENANT_ID),
+            app_id="child-app",
+            workflow_id="child-workflow",
+            workflow_run_id=overrides.get("workflow_run_id", run.id),
+            triggered_from=WorkflowNodeExecutionTriggeredFrom(overrides.get("triggered_from", "workflow-tool")),
+            triggered_from_node_execution_id=caller,
+            triggered_from_workflow_id=caller_workflow,
+            index=index,
+            node_id="same-node",
+            node_type=node_type,
+            title=row_id,
+            status=WorkflowNodeExecutionStatus(overrides.get("status", "succeeded")),
+            inputs='{"query":"hello"}',
+            outputs=json.dumps({"usage": {"prompt_tokens": 5, "completion_tokens": 7}}) if node_type == "llm" else "{}",
+            process_data='{"workflow_tool_invocation_id":"invocation-1"}',
+            execution_metadata='{"future_metadata_key":"ignored","total_tokens":12}',
+            finished_at=run.finished_at,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
+        )
+        row.created_at = CREATED_AT + timedelta(seconds=3)
+        sqlite_session.add(row)
+    sqlite_session.commit()
+    event = _event(WorkflowRunCompleted(workflow_run_id=run.id, conversation_id=None, total_tokens=None)).model_copy(
+        update={"app_id": WORKFLOW_APP_ID}
+    )
+
+    record = _assembler(sqlite_session_factory).assemble(event)
+
+    assert isinstance(record, WorkflowTraceInfo)
+    assert {node.id for node in record.node_executions} == {TOOL_NODE_ID, "child-tool", "grandchild"}
+    assert record.workflow_tool_parents == {"child-tool": TOOL_NODE_ID, "grandchild": "child-tool"}
+    assert (record.prompt_tokens, record.completion_tokens, record.total_tokens) == (5, 7, 12)
+    grandchild = next(node for node in record.node_executions if node.id == "grandchild")
+    assert grandchild.inputs == {"query": "hello"}
+    assert grandchild.process_data == {"workflow_tool_invocation_id": "invocation-1"}
+    for owner in ({"app_id": APP_ID}, {"tenant_id": "other-tenant"}):
+        with pytest.raises(SourceNotReadyError):
+            _assembler(sqlite_session_factory).assemble(event.model_copy(update=owner))

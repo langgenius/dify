@@ -1,9 +1,8 @@
 """Deterministically reconstruct the span hierarchy of one workflow run.
 
-Parents come from graph predecessors and from iteration/loop containers;
+Parents come from graph predecessors, workflow tools, and iteration/loop containers;
 each iteration or loop round gets a synthetic wrapper. Ambiguous repeated node
-IDs and cyclic predecessor data are dropped rather than guessed, so those spans
-fall back to the workflow root.
+IDs within an invocation and cyclic predecessor data are dropped rather than guessed.
 """
 
 import re
@@ -55,18 +54,29 @@ def finished_at(execution: WorkflowNodeExecution) -> datetime:
     return execution.finished_at or execution.created_at + timedelta(seconds=execution.elapsed_time or 0)
 
 
-def _unique_execution_by_node_id(executions: Sequence[WorkflowNodeExecution]) -> dict[str, str]:
-    result: dict[str, str] = {}
-    ambiguous: set[str] = set()
+type _NodeKey = tuple[str, str | None, str | None, str]
+
+
+def _node_key(item: WorkflowNodeExecution, node_id: str, tool_parents: Mapping[str, str]) -> _NodeKey:
+    invocation = (item.process_data or {}).get("workflow_tool_invocation_id")
+    return item.workflow_id, tool_parents.get(item.id), invocation if isinstance(invocation, str) else None, node_id
+
+
+def _unique_execution_by_node_id(
+    executions: Sequence[WorkflowNodeExecution], tool_parents: Mapping[str, str]
+) -> dict[_NodeKey, str]:
+    result: dict[_NodeKey, str] = {}
+    ambiguous: set[_NodeKey] = set()
     for item in executions:
-        if item.node_id in ambiguous:
+        key = _node_key(item, item.node_id, tool_parents)
+        if key in ambiguous:
             continue
-        previous = result.get(item.node_id)
+        previous = result.get(key)
         if previous is None:
-            result[item.node_id] = item.id
+            result[key] = item.id
         elif previous != item.id:
-            result.pop(item.node_id, None)
-            ambiguous.add(item.node_id)
+            result.pop(key, None)
+            ambiguous.add(key)
     return result
 
 
@@ -97,22 +107,28 @@ def _remove_cycles(parent_by_execution_id: dict[str, str]) -> None:
         parent_by_execution_id.pop(execution, None)
 
 
-def build_workflow_hierarchy(executions: Sequence[WorkflowNodeExecution]) -> WorkflowHierarchy:
-    execution_by_node_id = _unique_execution_by_node_id(executions)
+def build_workflow_hierarchy(
+    executions: Sequence[WorkflowNodeExecution], tool_parents: Mapping[str, str]
+) -> WorkflowHierarchy:
+    execution_by_node_id = _unique_execution_by_node_id(executions, tool_parents)
     parent_by_execution_id: dict[str, str] = {}
 
     for item in executions:
         parent_execution_id = (
-            execution_by_node_id.get(item.predecessor_node_id) if item.predecessor_node_id is not None else None
+            execution_by_node_id.get(_node_key(item, item.predecessor_node_id, tool_parents))
+            if item.predecessor_node_id is not None
+            else None
         )
         if parent_execution_id is None:
             metadata = execution_metadata(item)
             for structured_key in ("iteration_id", "loop_id"):
                 container_node_id = metadata.get(structured_key)
                 if isinstance(container_node_id, str):
-                    parent_execution_id = execution_by_node_id.get(container_node_id)
+                    parent_execution_id = execution_by_node_id.get(_node_key(item, container_node_id, tool_parents))
                 if parent_execution_id is not None:
                     break
+        if parent_execution_id is None:
+            parent_execution_id = tool_parents.get(item.id)
         if parent_execution_id and parent_execution_id != item.id:
             parent_by_execution_id[item.id] = parent_execution_id
 
@@ -126,7 +142,7 @@ def build_workflow_hierarchy(executions: Sequence[WorkflowNodeExecution]) -> Wor
             index = _normalize_index(metadata.get(index_key))
             if not isinstance(container_node_id, str) or index is None:
                 continue
-            container_execution_id = execution_by_node_id.get(container_node_id)
+            container_execution_id = execution_by_node_id.get(_node_key(item, container_node_id, tool_parents))
             if container_execution_id is None or container_execution_id == item.id:
                 continue
             wrapper_key = WrapperKey(kind=kind, container_execution_id=container_execution_id, index=index)

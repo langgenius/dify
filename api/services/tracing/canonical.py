@@ -221,7 +221,7 @@ class CanonicalTraceBuilder:
 
     def _workflow(self, record: WorkflowTraceInfo) -> Trace:
         executions = record.node_executions
-        hierarchy = build_workflow_hierarchy(executions)
+        hierarchy = build_workflow_hierarchy(executions, record.workflow_tool_parents)
         workflow_start = record.start_time
         workflow_end = max(record.end_time, workflow_start)
         workflow_span_id = span_id_for(record.workflow_run_id)

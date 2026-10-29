@@ -162,6 +162,14 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         )
 
     @override
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return execution.inputs_dict
+
+    @override
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return execution.outputs_dict
+
+    @override
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
         """Return complete Process Data already stored inline by LogStore."""
         return execution.process_data_dict

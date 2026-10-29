@@ -43,6 +43,9 @@ class TraceRecordSource(Protocol):
     def assemble(self, event: TraceEvent) -> BaseTraceInfo:
         """Read the event's record through its tenant and app.
 
+        Workflow records include the admitted root's workflow-tool descendants,
+        scoped to the same tenant and run and linked by their persisted callers.
+
         Raises:
             SourceNotFoundError: The record does not exist for the event's tenant and app.
             SourceNotReadyError: The record is not persisted or not finished yet.
