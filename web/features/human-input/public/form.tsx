@@ -1,13 +1,18 @@
 'use client'
 import type { HumanInputV2ErrorCategory, HumanInputV2FormTransport } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  FileUploadContext,
+  useFileUploadContext,
+} from '@/app/components/base/file-uploader/upload-context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import FormStatusCard from '@/features/human-input-form/form-status-card'
-import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
+import FormStatusCard from '@/features/human-input/form/form-status-card'
+import LoadedFormContent from '@/features/human-input/form/loaded-form-content'
 import OtpVerification from './otp-verification'
-import { HumanInputV2FormTransportProvider } from './transport'
-import { useHumanInputV2FormTransport } from './transport-context'
+import { defaultHumanInputV2FormTransport } from './transport-selector'
+import { createHumanInputV2UploadStrategy } from './upload'
 import { useHumanInputV2FormSession } from './use-form-session'
 
 type HumanInputV2FormProps = {
@@ -31,8 +36,15 @@ const getBrandingOptions = (
 
 const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInputV2FormProps) => {
   const { t } = useTranslation(['share'])
-  const contextTransport = useHumanInputV2FormTransport()
-  const transport = injectedTransport ?? contextTransport
+  const transport = injectedTransport ?? defaultHumanInputV2FormTransport
+  const inheritedUploadContext = useFileUploadContext()
+  const uploadContext = useMemo(
+    () => ({
+      ...inheritedUploadContext,
+      uploadStrategy: createHumanInputV2UploadStrategy(token, transport),
+    }),
+    [inheritedUploadContext, token, transport],
+  )
   const session = useHumanInputV2FormSession({
     token,
     transport,
@@ -120,7 +132,7 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
   const verificationError = state.error ? errorCopy(state.error) : undefined
 
   return (
-    <HumanInputV2FormTransportProvider transport={transport}>
+    <FileUploadContext value={uploadContext}>
       <LoadedFormContent
         key={token}
         definition={state.definition}
@@ -141,7 +153,7 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
           />
         }
       />
-    </HumanInputV2FormTransportProvider>
+    </FileUploadContext>
   )
 }
 

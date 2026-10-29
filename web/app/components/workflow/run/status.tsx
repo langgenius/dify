@@ -8,7 +8,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { ENABLE_HITL_IM } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { resolveConsoleHumanInputFormURL } from '@/features/console-human-input-form/links'
+import { resolveConsoleHumanInputFormURL } from '@/features/human-input/console/links'
 import { consoleQuery } from '@/service/console'
 import { basePath } from '@/utils/var'
 

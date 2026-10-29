@@ -1,8 +1,9 @@
 # Console Human Input Form
 
+The authenticated session owner within the [Human Input feature].
 `/human-input/[formToken]` is the signed-in Console approval page.
 It reuses the Console authentication boundary and the existing form
-presentation. Login redirects preserve the form URL. The backend remains the
+presentation in [form]. Login redirects preserve the form URL. The backend remains the
 authority for workspace access and recipient eligibility.
 
 - `form.tsx` owns fetching, submission, expiry, and completion/error states.
@@ -17,6 +18,9 @@ Reads and submissions use the generated GET/POST contract for
 No generated contracts or backend code are modified here.
 
 Public `/form/[token]` and `/form-v2/[token]` pages keep their existing behavior.
-The route parameter is deliberately `formToken`: shared file
-upload code uses `params.token` to select public uploads, while this page must use
-authenticated Console uploads.
+This Console page retains its current authenticated upload path. Form-scoped
+Console upload authorization is a separate pending API contract (WTA-3537);
+module consolidation does not implement that authorization or add an endpoint.
+
+[Human Input feature]: ../README.md
+[form]: ../form/README.md

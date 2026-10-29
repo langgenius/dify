@@ -1,5 +1,5 @@
 import type { HumanInputV2FormTransport, HumanInputV2UploadedFile } from './types'
-import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
+import type { HumanInputFormDefinition } from '@/features/human-input/form/types'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'

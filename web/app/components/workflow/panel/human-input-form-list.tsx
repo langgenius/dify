@@ -8,7 +8,7 @@ import { UnsubmittedHumanInputContent } from '@/app/components/base/chat/chat/an
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import { ENABLE_HITL_IM } from '@/config'
-import { WorkflowHumanInputForm } from '@/features/human-input-form/loaded-form-content'
+import { WorkflowHumanInputForm } from '@/features/human-input/form/loaded-form-content'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]

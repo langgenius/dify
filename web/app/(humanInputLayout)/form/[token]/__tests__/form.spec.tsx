@@ -1,8 +1,9 @@
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { LegacyHumanInputFormData } from '@/features/human-input-form/types'
+import type { LegacyHumanInputFormData } from '@/features/human-input/form/types'
 import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useFileUploadContext } from '@/app/components/base/file-uploader/upload-context'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -17,25 +18,54 @@ vi.mock('@/config', async (importOriginal) => ({
   },
 }))
 
-const { mockGetForm, mockSubmitForm, uploadState } = vi.hoisted(() => ({
-  mockGetForm: vi.fn(),
-  mockSubmitForm: vi.fn(),
-  uploadState: { onChange: undefined as ((files: FileEntity[]) => void) | undefined },
-}))
+const { mockGetForm, mockSubmitForm, mockUploadLocal, mockUploadRemote, uploadState } = vi.hoisted(
+  () => ({
+    mockGetForm: vi.fn(),
+    mockSubmitForm: vi.fn(),
+    mockUploadLocal: vi.fn(),
+    mockUploadRemote: vi.fn(),
+    uploadState: { onChange: undefined as ((files: FileEntity[]) => void) | undefined },
+  }),
+)
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'token-123' }) }))
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   getHumanInputForm: mockGetForm,
   submitHumanInputForm: mockSubmitForm,
+  uploadHumanInputFormLocalFile: mockUploadLocal,
+  uploadHumanInputFormRemoteFileInfo: mockUploadRemote,
 }))
 
 // Retain the callback captured when upload starts, as the asynchronous uploader does.
 // Form parsing, text fields, validation and submission all remain real.
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({ onChange }: { onChange: (files: FileEntity[]) => void }) => {
+    const { uploadStrategy } = useFileUploadContext()
     if (!uploadState.onChange) uploadState.onChange = onChange
-    return <div aria-label="Attachment upload" />
+    return (
+      <div aria-label="Attachment upload">
+        <button
+          type="button"
+          onClick={() =>
+            uploadStrategy?.uploadLocal({
+              file: new File(['review'], 'review.pdf', { type: 'application/pdf' }),
+              onProgressCallback: vi.fn(),
+              onSuccessCallback: vi.fn(),
+              onErrorCallback: vi.fn(),
+            })
+          }
+        >
+          Upload local attachment
+        </button>
+        <button
+          type="button"
+          onClick={() => uploadStrategy?.uploadRemote('https://example.com/review.pdf')}
+        >
+          Upload linked attachment
+        </button>
+      </div>
+    )
   },
 }))
 
@@ -110,6 +140,8 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     mockSubmitForm.mockReset()
     mockGetForm.mockResolvedValue(formData)
     mockSubmitForm.mockResolvedValue({})
+    mockUploadLocal.mockReset().mockResolvedValue(undefined)
+    mockUploadRemote.mockReset().mockResolvedValue({ id: 'remote-file' })
     uploadState.onChange = undefined
   })
 
@@ -132,6 +164,25 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     expect(mockGetForm).toHaveBeenCalledExactlyOnceWith('token-123')
     expect(document.title).toBe('Review App - Dify')
     expect(screen.queryByLabelText('common.loading')).not.toBeInTheDocument()
+  })
+
+  it('keeps both attachment upload methods scoped to the legacy form token', async () => {
+    const user = userEvent.setup()
+    render(<FormContent />)
+
+    await user.click(await screen.findByRole('button', { name: 'Upload local attachment' }))
+    await user.click(screen.getByRole('button', { name: 'Upload linked attachment' }))
+
+    expect(mockUploadLocal).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        formToken: 'token-123',
+        file: expect.any(File),
+      }),
+    )
+    expect(mockUploadRemote).toHaveBeenCalledExactlyOnceWith(
+      'token-123',
+      'https://example.com/review.pdf',
+    )
   })
 
   it.each([

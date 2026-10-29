@@ -1,7 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { ConsoleHumanInputV2FormDefinitionResponse } from '@dify/contracts/api/console/form/types.gen'
 import type { UseQueryOptions } from '@tanstack/react-query'
-import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
+import type { HumanInputFormDefinition } from '@/features/human-input/form/types'
 import type { consoleClient, consoleQuery } from '@/service/console'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'

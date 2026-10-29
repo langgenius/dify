@@ -1,6 +1,6 @@
 import { CommonLayoutHydrationBoundary } from '@/app/(commonLayout)/hydration-boundary'
 import { ENABLE_HITL_IM } from '@/config'
-import ConsoleHumanInputForm from '@/features/console-human-input-form/form'
+import ConsoleHumanInputForm from '@/features/human-input/console/form'
 import { notFound } from '@/next/navigation'
 
 export default async function Page({ params }: { params: Promise<{ formToken: string }> }) {

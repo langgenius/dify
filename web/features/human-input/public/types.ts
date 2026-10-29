@@ -1,4 +1,4 @@
-import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
+import type { HumanInputFormDefinition } from '@/features/human-input/form/types'
 
 type HumanInputV2AccessResponse = {
   challengeToken: string

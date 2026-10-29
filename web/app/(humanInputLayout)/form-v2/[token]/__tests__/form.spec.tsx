@@ -11,7 +11,7 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: mockRoute.token }),
 }))
 
-vi.mock('@/features/human-input-v2-form/form', () => ({
+vi.mock('@/features/human-input/public/form', () => ({
   default: (props: { token: string }) => mockHumanInputV2Form(props),
 }))
 

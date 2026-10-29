@@ -19,16 +19,9 @@ import {
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
-import { classifyHumanInputFormRoute } from '@/features/human-input-form/route-classifier'
-import { useHumanInputV2FormTransport } from '@/features/human-input-v2-form/transport-context'
-import {
-  uploadHumanInputV2LocalFile,
-  uploadHumanInputV2RemoteFile,
-} from '@/features/human-input-v2-form/upload'
-import { useParams, usePathname } from '@/next/navigation'
+import { useParams } from '@/next/navigation'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
 import { consoleQuery } from '@/service/console'
-import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { isAbortError } from '@/utils/is-abort-error'
@@ -68,9 +61,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
-  const pathname = usePathname()
-  const humanInputV2Transport = useHumanInputV2FormTransport()
-  const { localUploadUrl, trialAppId } = useFileUploadContext()
+  const { localUploadUrl, trialAppId, uploadStrategy } = useFileUploadContext()
   const { mutateAsync: uploadConsoleRemoteFile } = useMutation(
     consoleQuery.remoteFiles.upload.post.mutationOptions(),
   )
@@ -80,9 +71,6 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
-  const formRoute = classifyHumanInputFormRoute(pathname)
-  const routeToken = typeof params.token === 'string' ? params.token : undefined
-  const formToken = formRoute.kind === 'non-form' ? undefined : (routeToken ?? formRoute.token)
 
   const checkSizeLimit = useCallback(
     (fileType: string, fileSize: number) => {
@@ -214,32 +202,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           },
         }
 
-        if (formRoute.kind === 'legacy') {
-          uploadHumanInputFormLocalFile({
-            formToken: formToken!,
-            ...uploadParams,
-          })
-        } else if (formRoute.kind === 'v2') {
-          void uploadHumanInputV2LocalFile({
-            transport: humanInputV2Transport,
-            formToken: formToken!,
-            ...uploadParams,
-          })
+        if (uploadStrategy) {
+          uploadStrategy.uploadLocal(uploadParams)
         } else {
           fileUpload(uploadParams, !!params.token, localUploadUrl)
         }
       }
     },
-    [
-      fileStore,
-      t,
-      handleUpdateFile,
-      formRoute.kind,
-      formToken,
-      humanInputV2Transport,
-      params.token,
-      localUploadUrl,
-    ],
+    [fileStore, t, handleUpdateFile, uploadStrategy, params.token, localUploadUrl],
   )
 
   const startProgressTimer = useCallback(
@@ -274,14 +244,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       startProgressTimer(uploadingFile.id)
 
       let remoteUpload
-      if (formRoute.kind === 'legacy')
-        remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
-      else if (formRoute.kind === 'v2')
-        remoteUpload = uploadHumanInputV2RemoteFile({
-          transport: humanInputV2Transport,
-          formToken: formToken!,
-          url,
-        })
+      if (uploadStrategy) remoteUpload = uploadStrategy.uploadRemote(url)
       else if (trialAppId)
         remoteUpload = uploadTrialRemoteFile({ params: { app_id: trialAppId }, body: { url } })
       else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url)
@@ -334,9 +297,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       fileConfig?.allowed_file_types,
       fileConfig.allowed_file_extensions,
       startProgressTimer,
-      formRoute.kind,
-      formToken,
-      humanInputV2Transport,
+      uploadStrategy,
       params.token,
       trialAppId,
       uploadConsoleRemoteFile,
@@ -422,17 +383,8 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             },
           }
 
-          if (formRoute.kind === 'legacy') {
-            uploadHumanInputFormLocalFile({
-              formToken: formToken!,
-              ...uploadParams,
-            })
-          } else if (formRoute.kind === 'v2') {
-            void uploadHumanInputV2LocalFile({
-              transport: humanInputV2Transport,
-              formToken: formToken!,
-              ...uploadParams,
-            })
+          if (uploadStrategy) {
+            uploadStrategy.uploadLocal(uploadParams)
           } else {
             fileUpload(uploadParams, !!params.token, localUploadUrl)
           }
@@ -454,9 +406,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       t,
       handleAddFile,
       handleUpdateFile,
-      formRoute.kind,
-      formToken,
-      humanInputV2Transport,
+      uploadStrategy,
       params.token,
       localUploadUrl,
       fileConfig?.allowed_file_types,
