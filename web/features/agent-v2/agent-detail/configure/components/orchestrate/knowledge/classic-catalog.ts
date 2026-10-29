@@ -5,6 +5,10 @@ import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/know
 import { DATASET_DEFAULT } from '@/config'
 import { consoleQuery } from '@/service/console'
 
+export type ClassicCatalogEntry =
+  | { kind: 'binding'; item: AgentKnowledgeRetrievalItem }
+  | { kind: 'dataset'; dataset: DatasetDetailWithPartialMembersResponse }
+
 export function useClassicKnowledgeCatalog({
   draft,
   initialBindings,
@@ -28,21 +32,41 @@ export function useClassicKnowledgeCatalog({
         .map((item) => [item.id, item]),
     ).values(),
   ]
-  const boundIds = new Set(
-    bindings.flatMap((item) =>
-      (item.selectedDatasets ?? item.datasetRefs ?? []).flatMap((dataset) =>
-        dataset.id ? [dataset.id] : [],
-      ),
-    ),
-  )
-  const datasets =
+  const datasetIdsOf = (item: AgentKnowledgeRetrievalItem) =>
+    (item.selectedDatasets ?? item.datasetRefs ?? []).flatMap((dataset) =>
+      dataset.id ? [dataset.id] : [],
+    )
+  const boundIds = new Set(bindings.flatMap(datasetIdsOf))
+  const catalog =
     query.data?.pages
       .flatMap((page) => page.data)
-      .filter(
-        (dataset) =>
-          !boundIds.has(dataset.id) &&
-          (dataset.indexing_technique || dataset.provider === 'external'),
-      ) ?? []
+      .filter((dataset) => dataset.indexing_technique || dataset.provider === 'external') ?? []
+  const datasets = catalog.filter((dataset) => !boundIds.has(dataset.id))
+  // Saved sets lead the list. A set created in this dialog takes the place of the dataset
+  // it came from, so ticking or unticking a row never moves it under the pointer.
+  const savedIds = new Set(initialBindings.map((item) => item.id))
+  const createdByDataset = new Map<string, AgentKnowledgeRetrievalItem>()
+  for (const item of bindings) {
+    const origin = datasetIdsOf(item)[0]
+    if (!savedIds.has(item.id) && origin) createdByDataset.set(origin, item)
+  }
+  const placed = new Set<string>()
+  const entries: ClassicCatalogEntry[] = [
+    ...bindings
+      .filter((item) => savedIds.has(item.id))
+      .map((item) => ({ kind: 'binding' as const, item })),
+    ...catalog.flatMap((dataset): ClassicCatalogEntry[] => {
+      const created = createdByDataset.get(dataset.id)
+      if (created && !placed.has(created.id)) {
+        placed.add(created.id)
+        return [{ kind: 'binding', item: created }]
+      }
+      return boundIds.has(dataset.id) ? [] : [{ kind: 'dataset', dataset }]
+    }),
+  ]
+  for (const item of bindings) {
+    if (!savedIds.has(item.id) && !placed.has(item.id)) entries.push({ kind: 'binding', item })
+  }
   const createBinding = (
     dataset: DatasetDetailWithPartialMembersResponse,
     current: AgentKnowledgeRetrievalItem[],
@@ -65,5 +89,5 @@ export function useClassicKnowledgeCatalog({
     }
   }
 
-  return { query, bindings, datasets, createBinding }
+  return { query, bindings, datasets, entries, createBinding }
 }
