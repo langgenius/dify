@@ -97,6 +97,8 @@ class TestActionPort(Protocol):
 
     def current(self, *, actor: Actor, session_id: str, test_input_id: str) -> NativeTestPublicReceipt | None: ...
 
+    def current_request_id(self, *, actor: Actor, session_id: str, test_input_id: str) -> str | None: ...
+
     def observation_initializing(self, *, actor: Actor, session_id: str, test_input_id: str) -> bool: ...
 
     def current_diagnostics(
@@ -155,6 +157,14 @@ class BuilderTestActions:
         if request_id is None:
             return None
         return self.command_factory(actor=actor).peek(actor=actor, session_id=session_id, request_id=request_id)
+
+    def current_request_id(self, *, actor: Actor, session_id: str, test_input_id: str) -> str | None:
+        """Select current command metadata without projecting protected disclosure.
+
+        This grants no native authority. ``execute`` repeats the selection before
+        invoking the command owner's current permission and mutation guards.
+        """
+        return self._current_id(actor=actor, session_id=session_id, test_input_id=test_input_id)
 
     def observation_initializing(self, *, actor: Actor, session_id: str, test_input_id: str) -> bool:
         """Defer SSE projection only before admission acknowledges its first context.

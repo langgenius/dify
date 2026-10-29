@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import re
 from collections.abc import Awaitable, Callable, Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from contextvars import ContextVar
 from dataclasses import dataclass
+from time import perf_counter
 from typing import override
 
 import httpx
@@ -24,6 +26,8 @@ from dify_agent.protocol.native_testing import (
     AgentRuntimeIdentity,
     AgentRunTransportSelection,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AgentRuntimeTransportError(RuntimeError):
@@ -221,14 +225,43 @@ class _RunBoundAPITransport(httpx.AsyncBaseTransport):
         outbound = httpx.Request(request.method, url, headers=headers, content=body, extensions=request.extensions)
         current_runtime_identity()  # Recheck after any awaited request-body read.
         lifetime = _binding.get()
-        if lifetime is not None and lifetime.validate_send is not None:
-            await lifetime.validate_send()
-            current_runtime_identity()  # Revoke detached calls during the awaited durable read too.
-        response = await self._transport.handle_async_request(outbound)
-        if 300 <= response.status_code < 400:
-            await response.aclose()
-            raise AgentRuntimeTransportError("agent_runtime_redirect_refused")
-        return response
+        started, validation_seconds, status, error_type = perf_counter(), 0.0, None, "none"
+        try:
+            if lifetime is not None and lifetime.validate_send is not None:
+                validation_started = perf_counter()
+                try:
+                    await lifetime.validate_send()
+                    current_runtime_identity()  # Revoke detached calls during the awaited durable read too.
+                finally:
+                    validation_seconds = perf_counter() - validation_started
+            response = await self._transport.handle_async_request(outbound)
+            status = response.status_code
+            if 300 <= status < 400:
+                await response.aclose()
+                raise AgentRuntimeTransportError("agent_runtime_redirect_refused")
+            return response
+        except BaseException as error:
+            error_type = type(error).__name__
+            raise
+        finally:
+            # Only the already allowlisted route shape is public diagnostic data.
+            route = url.path[len(_PREFIX) :]
+            if route not in _POST_ROUTES:
+                route = "config/skills/inspect" if "/skills/" in route else "config/" + route.rsplit("/", 1)[-1]
+            with suppress(Exception):  # A diagnostic sink cannot affect a send.
+                # Includes validation_seconds; response bodies/streams are consumed later.
+                if identity.execution_mode == "builder_test":
+                    logger.info(
+                        "Native API timing run_id=%s generation=%s phase=%s duration_seconds=%.6f "
+                        "validation_seconds=%.6f http_status=%s error_type=%s",
+                        identity.run_id,
+                        identity.agent_generation,
+                        route,
+                        perf_counter() - started,
+                        validation_seconds,
+                        status,
+                        error_type,
+                    )
 
     @override
     async def aclose(self) -> None:
