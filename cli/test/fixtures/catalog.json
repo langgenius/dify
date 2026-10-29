@@ -1935,6 +1935,64 @@
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}:publish",
       "summary": "Publish the draft as a new version"
+    },
+    "export.console_app.package": {
+      "bind": {
+        "app_id": "path",
+        "include_secret": "query",
+        "preserve_agent_bindings": "query",
+        "workflow_id": "query"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "include_secret": {},
+          "preserve_agent_bindings": {},
+          "workflow_id": {}
+        },
+        "required": ["app_id"]
+      },
+      "internal": false,
+      "kind": "file",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/package",
+      "summary": "Download an app as a .ifpkg package: its draft, or one published version"
+    },
+    "import.console_app.package": {
+      "bind": {
+        "app_id": "body",
+        "description": "body",
+        "draft_hash": "body",
+        "icon": "body",
+        "icon_background": "body",
+        "icon_type": "body",
+        "name": "body",
+        "package": "file",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {},
+          "description": {},
+          "draft_hash": {},
+          "icon": {},
+          "icon_background": {},
+          "icon_type": {},
+          "name": {},
+          "package": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id", "package"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages",
+      "summary": "Import an app from a .ifpkg package or an unpacked package folder"
     }
   }
 }

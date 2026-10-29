@@ -624,6 +624,24 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/package
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| include_secret | query | Include secret values in plaintext in the exported DSL | No | boolean |
+| preserve_agent_bindings | query | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged. false: every Agent is packaged, as the console does, for moving the App to another workspace | No | boolean, <br>**Default:** true |
+| workflow_id | query | Export a specific workflow version instead of the current draft | No | string (uuid) |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App package | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/release:check
 #### Parameters
 
@@ -1430,6 +1448,29 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Check result | **application/json**: [DslCheckResponse](#dslcheckresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/apps/packages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [AppPackageImportPayload](#apppackageimportpayload)<br>**multipart/form-data**: [AppPackageImportPayload](#apppackageimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Import completed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
+| 202 | Import pending confirmation | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
+| 400 | Import failed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2332,6 +2373,7 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
+| draft_hash | string | Hash of the draft; pass it to an import as draft_hash to refuse overwriting newer edits. Workflow and advanced-chat apps only | No |
 | id | string |  | Yes |
 | is_agent | boolean | True for agent-chat and advanced-chat apps | No |
 | mode | string |  | Yes |
@@ -2470,6 +2512,31 @@ mode is a closed enum of listable app types.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppMode | string |  |  |
+
+#### AppPackageExportQuery
+
+Query parameters for GET /apps/<app_id>/package.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_secret | boolean | Include secret values in plaintext in the exported DSL | No |
+| preserve_agent_bindings | boolean, <br>**Default:** true | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged. false: every Agent is packaged, as the console does, for moving the App to another workspace | No |
+| workflow_id | string | Export a specific workflow version instead of the current draft | No |
+
+#### AppPackageImportPayload
+
+Request body for POST /workspaces/<workspace_id>/apps/packages.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Existing app ID to overwrite (workflow/advanced-chat apps only) | No |
+| description | string | Override the app description from the DSL | No |
+| draft_hash | string | draft_hash from the export or restore this import is based on. The import fails if the draft's graph, features, environment variables or conversation variables changed since. Requires app_id | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| name | string | Override the app name from the DSL | No |
+| package | string<br>object | A .ifpkg file, or an unpacked package folder (one part per file) | Yes |
 
 #### AppSettingsInfo
 
