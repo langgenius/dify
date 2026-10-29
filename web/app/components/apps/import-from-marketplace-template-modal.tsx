@@ -14,7 +14,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
-import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/assets'
+import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/api'
 import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,

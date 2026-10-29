@@ -1,5 +1,4 @@
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { env } from '@/env'
 
 type MarketplaceUrlParams = Record<string, string | undefined>
@@ -43,7 +42,7 @@ const buildUrl = (origin: string, path: string, params?: MarketplaceUrlParams, s
 }
 
 const page = (path: string, params?: MarketplaceUrlParams, source?: string) =>
-  buildUrl(MARKETPLACE_URL_PREFIX, path, params, source)
+  buildUrl(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX ?? '', path, params, source)
 
 export const getPluginDetailPath = (plugin: MarketplacePluginRef) => {
   const org = encodeURIComponent(plugin.org)
@@ -85,7 +84,7 @@ export const rewriteMarketplaceOriginToCreators = (origin: string): string | nul
 export const getCreatorCenterUrl = (pageOrigin?: string): string => {
   return (
     rewriteMarketplaceOriginToCreators(pageOrigin ?? '') ||
-    rewriteMarketplaceOriginToCreators(MARKETPLACE_URL_PREFIX) ||
+    rewriteMarketplaceOriginToCreators(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX ?? '') ||
     PUBLIC_CREATOR_CENTER_URL
   )
 }

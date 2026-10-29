@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Icon from '@/app/components/plugins/card/base/card-icon'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 
 const MAX_DISPLAY_COUNT = 14
 type Props = Readonly<{

@@ -4,7 +4,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import {
   getMarketplacePluginIconUrl,
   getMarketplaceTemplateIconUrl,
-} from '@/features/marketplace/assets'
+} from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
 import { getFormattedPlugin, getPluginIconInMarketplace } from '../utils'
 import { adaptCreations, toPublisherSortQuery } from './model'

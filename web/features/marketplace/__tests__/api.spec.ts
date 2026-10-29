@@ -4,12 +4,18 @@ import {
   getMarketplacePluginIconUrl,
   getMarketplaceTemplateIconUrl,
   resolveMarketplaceAssetUrl,
-} from '../assets'
+} from '../api'
 
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1/',
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1/',
+    },
+  }
+})
 
 describe('marketplace asset urls', () => {
   it('joins API paths without duplicate slashes', () => {

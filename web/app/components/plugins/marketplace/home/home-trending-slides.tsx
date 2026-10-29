@@ -19,7 +19,7 @@ import Partner from '@/app/components/plugins/base/badges/partner'
 import Verified from '@/app/components/plugins/base/badges/verified'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { resolveMarketplaceAssetUrl } from '@/features/marketplace/assets'
+import { resolveMarketplaceAssetUrl } from '@/features/marketplace/api'
 import {
   getPluginDetailPath,
   getTemplateDetailPath,

@@ -3,10 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
+    },
+  }
+})
 
 // Mock marketplace client
 const mockCollectionPlugins = vi.fn()

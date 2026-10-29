@@ -22,7 +22,7 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -34,10 +34,9 @@ import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types
 import { checkGitHubPluginUpdate } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
 import { useModalContext } from '@/context/modal-context'
-import { useMarketplace } from '@/features/marketplace/client'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { marketplaceQuery } from '@/service/marketplace'
 import { normalizeInstalledPluginDetail, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
 
@@ -88,11 +87,11 @@ function ProviderCardActions(props: Props) {
     props.detail?.latest_unique_identifier ?? props.summary?.latestUniqueIdentifier
   const isFromMarketplace = source === PluginSource.marketplace
   const isFromGitHub = source === PluginSource.github
-  const canChangeVersion = canUpdatePlugin && isFromMarketplace
   const hasNewVersion = isFromMarketplace && !!latestVersion && latestVersion !== version
   const category = props.detail?.declaration.category ?? PluginCategoryEnum.model
   const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
   const marketplace = useMarketplace()
+  const canChangeVersion = canUpdatePlugin && isFromMarketplace && marketplace !== null
   const policy = autoUpgradeSettings.data?.auto_upgrade
   const autoUpgradeEnabled =
     marketplace !== null &&
@@ -117,18 +116,9 @@ function ProviderCardActions(props: Props) {
         response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined,
     }),
   )
-  const versionsQuery = useQuery(
-    marketplaceQuery.pluginVersions.queryOptions({
-      input:
-        organization && pluginName
-          ? {
-              params: { organization, pluginName },
-              query: { page: 1, page_size: 100 },
-            }
-          : skipToken,
-      enabled: versionMenuRequested && canChangeVersion,
-      retry: false,
-    }),
+  const versionsQuery = useMarketplacePluginVersions(
+    pluginID,
+    versionMenuRequested && canChangeVersion,
   )
   const detail = props.detail ?? detailQuery.data
   const loadingVersions =

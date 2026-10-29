@@ -30,10 +30,16 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_URL_PREFIX: 'https://marketplace.example',
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.example',
+    },
+  }
+})
 
 const createQueryClient = () =>
   new QueryClient({

@@ -116,6 +116,41 @@ const webRestrictedImports = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+// Console code reaches Marketplace links and data only through @/features/marketplace/client,
+// whose hooks are off while the deployment disables Marketplace.
+const marketplaceRestrictedImportPaths = [
+  {
+    name: '@/service/marketplace',
+    message:
+      'Read Marketplace data through the @/features/marketplace/client hooks, which stay off when Marketplace is disabled.',
+  },
+  {
+    name: '@/features/marketplace/links',
+    importNames: ['marketplaceLinks'],
+    message:
+      'Get Marketplace links from useMarketplace(); marketplaceLinks skips the enable_marketplace check.',
+  },
+  {
+    name: '@/features/marketplace/api',
+    importNames: ['MARKETPLACE_API_PREFIX'],
+    message:
+      'Only the Marketplace transport uses the raw API prefix. Build URLs with the @/features/marketplace/api helpers.',
+  },
+]
+const marketplaceRestrictedProperties = [
+  {
+    property: 'enable_marketplace',
+    message:
+      'Read Marketplace availability through useMarketplace() from @/features/marketplace/client.',
+  },
+]
+const marketplaceOwnerFiles = [
+  'web/features/marketplace/**',
+  'web/app/components/plugins/marketplace/**',
+  'web/app/components/plugins/plugin-page/nav-operations.tsx',
+  'web/app/components/workflow/block-selector/marketplace-plugin/**',
+]
+
 const serviceRestrictedImports = [
   'error',
   {
@@ -1739,6 +1774,7 @@ export const lintConfig = {
           'error',
           {
             ...webRestrictedImports[1],
+            paths: [...webRestrictedImports[1].paths, ...marketplaceRestrictedImportPaths],
             patterns: [...webRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
@@ -1755,7 +1791,11 @@ export const lintConfig = {
       ],
       rules: {
         'no-restricted-globals': [...storageRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...storageRestrictedProperties,
+          ...rawHttpProperties,
+          ...marketplaceRestrictedProperties,
+        ],
       },
     },
     {
@@ -1769,6 +1809,20 @@ export const lintConfig = {
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      files: marketplaceOwnerFiles,
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...webRestrictedImports[1],
+            patterns: [...webRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
+        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
       },
     },
   ],

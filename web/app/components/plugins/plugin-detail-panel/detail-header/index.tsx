@@ -14,7 +14,7 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -27,11 +27,10 @@ import { selectToolCollections } from '@/app/components/tools/utils/query-select
 import { API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useMarketplace } from '@/features/marketplace/client'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTheme from '@/hooks/use-theme'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { marketplaceQuery } from '@/service/marketplace'
 import { isEarlierThanVersion } from '@/utils/semver'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
@@ -127,16 +126,10 @@ const DetailHeader = ({
       onUpdate,
     })
 
-  const [organization, pluginName] = plugin_id.split('/')
-  const versionsQuery = useQuery(
-    marketplaceQuery.pluginVersions.queryOptions({
-      input:
-        organization && pluginName
-          ? { params: { organization, pluginName }, query: { page: 1, page_size: 100 } }
-          : skipToken,
-      enabled: versionPicker.isShow && canUpdatePlugin && isFromMarketplace && !isReadmeView,
-      retry: false,
-    }),
+  const canChangeVersion = canUpdatePlugin && isFromMarketplace && !!marketplace && !isReadmeView
+  const versionsQuery = useMarketplacePluginVersions(
+    plugin_id,
+    versionPicker.isShow && canChangeVersion,
   )
   const loadingVersions =
     versionPicker.isShow && (versionsQuery.isPending || autoUpgradeSettings.isPending)
@@ -220,14 +213,7 @@ const DetailHeader = ({
 
             {/* Version Picker */}
             <Menu
-              open={
-                !!version &&
-                versionPicker.isShow &&
-                canUpdatePlugin &&
-                isFromMarketplace &&
-                !isReadmeView &&
-                !loadingVersions
-              }
+              open={!!version && versionPicker.isShow && canChangeVersion && !loadingVersions}
               onOpenChange={versionPicker.setIsShow}
             >
               {!!version && (
@@ -236,7 +222,7 @@ const DetailHeader = ({
                     <Button
                       variant="ghost"
                       size="small"
-                      disabled={!canUpdatePlugin || !isFromMarketplace || isReadmeView}
+                      disabled={!canChangeVersion}
                       loading={loadingVersions}
                       className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-xs-medium text-text-tertiary"
                     >
@@ -244,12 +230,9 @@ const DetailHeader = ({
                         <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                       )}
                       <span>{isFromGitHub ? (meta?.version ?? version) : version}</span>
-                      {canUpdatePlugin &&
-                        isFromMarketplace &&
-                        !isReadmeView &&
-                        !loadingVersions && (
-                          <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
-                        )}
+                      {canChangeVersion && !loadingVersions && (
+                        <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
+                      )}
                     </Button>
                   }
                 />

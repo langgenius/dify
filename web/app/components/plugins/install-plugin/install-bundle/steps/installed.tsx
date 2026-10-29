@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import useGetIcon from '../../base/use-get-icon'
 import Version from '../../base/version'
 

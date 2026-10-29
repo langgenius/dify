@@ -23,10 +23,16 @@ vi.mock(
   }),
 )
 
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
+    },
+  }
+})
 
 const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
   type: 'trigger',

@@ -1,6 +1,6 @@
 import type { Plugin } from './types'
 import { API_PREFIX } from '@/config'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 
 const hasUrlProtocol = (value: string) => /^[a-z][a-z\d+.-]*:/i.test(value)
 

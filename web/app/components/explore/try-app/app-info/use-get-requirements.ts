@@ -6,7 +6,7 @@ import type { AgentTool } from '@/types/app'
 import { useQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
 
 type Params = {

@@ -5,7 +5,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import * as React from 'react'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useGetLanguage } from '@/context/i18n'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { renderI18nObject } from '@/i18n/metadata'
 
 type Props = Readonly<{

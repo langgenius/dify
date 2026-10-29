@@ -29,7 +29,7 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useMarketplace } from '@/features/marketplace/client'
+import { useMarketplace, useMarketplacePluginSearch } from '@/features/marketplace/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
@@ -42,7 +42,7 @@ import { slashCommandRegistry } from './actions/commands/catalog'
 import { createSlashAction } from './actions/commands/slash'
 import { useCommandContext } from './actions/commands/use-command-context'
 import { knowledgeSearchQueryOptions } from './actions/knowledge'
-import { pluginSearchQueryOptions } from './actions/plugin'
+import { parsePluginSearchResults } from './actions/plugin'
 import { skillSearchQueryOptions } from './actions/skill'
 import { isCommandOption, useCommandOptions } from './command-options'
 import { EmptyState } from './components/empty-state'
@@ -221,12 +221,10 @@ export function GotoAnything() {
       placeholderData: keepPreviousData,
     }),
   )
-  const pluginSearchQuery = useQuery(
-    pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale, {
-      enabled: pluginSearchEnabled,
-      placeholderData: keepPreviousData,
-    }),
-  )
+  const pluginSearchQuery = useMarketplacePluginSearch(debouncedSearchTerm, {
+    enabled: pluginSearchEnabled,
+    select: (plugins) => parsePluginSearchResults(plugins, defaultLocale),
+  })
   const skillSearchQuery = useQuery(
     skillSearchQueryOptions(debouncedSearchTerm, {
       enabled: skillSearchEnabled,

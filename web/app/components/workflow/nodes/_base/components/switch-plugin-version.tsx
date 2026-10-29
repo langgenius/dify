@@ -34,11 +34,10 @@ import Card from '@/app/components/plugins/card'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
-import { useMarketplace } from '@/features/marketplace/client'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { marketplaceQuery } from '@/service/marketplace'
 import {
   normalizeInstalledPluginDetail,
   useUpdatePackageFromMarketPlace,
@@ -82,17 +81,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { formatDate } = useTimestamp()
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
 
-  const [organization, pluginName] = pluginId?.split('/') ?? []
-  const versionsQuery = useQuery(
-    marketplaceQuery.pluginVersions.queryOptions({
-      input:
-        organization && pluginName
-          ? { params: { organization, pluginName }, query: { page: 1, page_size: 100 } }
-          : skipToken,
-      enabled: requestedOpen && canUpdatePlugin,
-      retry: false,
-    }),
-  )
+  const canSwitchVersion = canUpdatePlugin && marketplace !== null
+  const versionsQuery = useMarketplacePluginVersions(pluginId, requestedOpen && canSwitchVersion)
   const loadingVersions = requestedOpen && versionsQuery.isPending
 
   return (
@@ -116,7 +106,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         </DialogContent>
       </Dialog>
       <Menu
-        open={requestedOpen && !!pluginDetail && canUpdatePlugin && !loadingVersions}
+        open={requestedOpen && !!pluginDetail && canSwitchVersion && !loadingVersions}
         onOpenChange={setRequestedOpen}
       >
         {pluginDetail && canUpdatePlugin && (
@@ -129,6 +119,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                     <Button
                       variant="ghost"
                       size="small"
+                      disabled={!canSwitchVersion}
+                      focusableWhenDisabled
                       loading={loadingVersions}
                       className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium-uppercase text-text-tertiary"
                     >
@@ -137,7 +129,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                         {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}{' '}
                       </span>
                       <span>{pluginDetail.version}</span>
-                      {!loadingVersions && (
+                      {canSwitchVersion && !loadingVersions && (
                         <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
                       )}
                     </Button>

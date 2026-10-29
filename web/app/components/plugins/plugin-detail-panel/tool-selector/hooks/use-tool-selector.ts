@@ -14,7 +14,7 @@ import {
   getStructureValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { matchesProviderReference } from '@/utils/provider-reference'

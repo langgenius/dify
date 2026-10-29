@@ -9,7 +9,7 @@ import Partner from '@/app/components/plugins/base/badges/partner'
 import {
   getMarketplacePluginIconUrl,
   getMarketplaceTemplateIconUrl,
-} from '@/features/marketplace/assets'
+} from '@/features/marketplace/api'
 import { useRouter } from '@/next/navigation'
 import { formatNumberAbbreviated } from '@/utils/format'
 import { useMarketplaceDetailNavigation } from '../use-detail-navigation'

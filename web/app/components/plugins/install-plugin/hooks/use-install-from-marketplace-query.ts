@@ -3,7 +3,7 @@
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { useEffect, useState } from 'react'
 import { parseMarketplacePluginId } from '@/app/components/plugins/plugin-routes'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import {
   fetchBundleInfoFromMarketPlace,

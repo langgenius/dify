@@ -6,7 +6,7 @@ import type {
 import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 

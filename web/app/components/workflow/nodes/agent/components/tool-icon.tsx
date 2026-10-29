@@ -7,7 +7,7 @@ import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
-import { getMarketplacePluginIconUrl } from '@/features/marketplace/assets'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
 import { matchesProviderReference } from '@/utils/provider-reference'
 
