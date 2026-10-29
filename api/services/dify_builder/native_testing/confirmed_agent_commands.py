@@ -1585,10 +1585,13 @@ class ProfiledNativeTestCommands:
                     from services.dify_builder.native_testing.confirmed_agent_completion import (
                         _request,
                         cancelled_parent_proof,
+                        ordinary_stop_proof,
                         stop_control_facts,
                     )
 
-                    with self.sessions() as session:
+                    # Read the saved proof under cancellation's C04 request lock
+                    # before the Run lock, so another observer cannot stale it.
+                    with service.loader.locked(ref=ref, settlement=True) as (session, _, _):
                         request = _request(session, actor=actor, ref=ref)
                         candidate = (
                             cancelled_parent_proof(
@@ -1600,11 +1603,14 @@ class ProfiledNativeTestCommands:
                         stop_candidate = (
                             stop_control_facts(session, request=request, ref=ref) if request is not None else None
                         )
-                    if (candidate is not None and candidate[1].get("needs_observation")) or (
-                        stop_candidate is not None and stop_candidate[0].status == "paused"
-                    ):
+                        stop_pending = stop_candidate is not None and (
+                            stop_candidate[0].status == "paused"
+                            or ordinary_stop_proof(session, request=request, ref=ref, allow_claimed=True)
+                        )
+                    if (candidate is not None and candidate[1].get("needs_observation")) or stop_pending:
                         # Every local effect is settled and authority revoked;
-                        # only terminal observation or the ordinary stop is pending.
+                        # only terminal observation or stop settlement is pending,
+                        # including a stop committed before post-commit I/O failed.
                         # An unavailable observation must not expire this exact
                         # source to unknown before the next normal worker pass.
                         return 0
