@@ -60,6 +60,7 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
     definitions = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=harness.base.sessions),
         plugin_readme=plugin_readme,
+        plugin_asset=lambda *_args: b"",
         builtin_icon_url_prefix="",
         connection_revisions=PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository),
     )

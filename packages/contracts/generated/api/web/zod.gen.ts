@@ -93,6 +93,13 @@ export const zAudioToTextResponse = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * BooleanResultResponse
  */
 export const zBooleanResultResponse = z.object({
@@ -2539,6 +2546,18 @@ export const zPostConnectionsBody = zEndUserConnectionCreatePayload
  * API-key connection created
  */
 export const zPostConnectionsResponse = zEndUserConnectionResponse
+
+export const zGetConnectionsAssetQuery = z.object({
+  file_name: z.string().min(1),
+  plugin_unique_identifier: z.string().min(1),
+})
+
+/**
+ * Plugin asset
+ */
+export const zGetConnectionsAssetResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetConnectionsConfigurationQuery = z.object({
   conversation_id: z.uuid().optional(),
