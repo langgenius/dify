@@ -883,6 +883,18 @@ def test_package_import_rejections(
     assert mentions in str(body)
 
 
+def test_package_import_permission_denial_maps_to_forbidden(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _recorded_package_import(monkeypatch, app_query_services, NoPermissionError("denied"))
+
+    with pytest.raises(ForbiddenError, match="denied") as exc_info:
+        _import_package(app, AppPackageImportPayload(package=_part(b"ifpkg-bytes")))
+
+    assert isinstance(exc_info.value.__cause__, NoPermissionError)
+    assert exc_info.value.code == 403
+
+
 def test_package_import_refuses_a_path_sent_twice(
     app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
 ) -> None:

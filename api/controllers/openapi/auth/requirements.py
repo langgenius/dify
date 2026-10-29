@@ -344,14 +344,17 @@ def _role_gate(roles: Roles) -> tuple[Requirement, ...]:
 
 
 def workspace_write_guards(
-    permission: RBACPermission, *, roles: Roles, extra: tuple[Requirement, ...] = ()
+    permission: RBACPermission | None, *, roles: Roles, extra: tuple[Requirement, ...] = ()
 ) -> tuple[Requirement, ...]:
-    """Guards for an account-only write to the workspace."""
+    """Guards for an account-only write to the workspace.
+
+    `permission=None` leaves the RBAC decision to the service, for ops whose permission depends on the content.
+    """
     return (
         CheckSubject(allowed=(AccountSubject,)),
         CheckScope(Scope.WORKSPACE_WRITE),
         CheckWorkspaceMember(),
-        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        *((CheckRBACPermission(RBACCheck(permission, Workspace())),) if permission is not None else ()),
         *_role_gate(roles),
         *extra,
     )

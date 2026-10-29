@@ -531,6 +531,53 @@ def test_package_import_keeps_todays_flags_by_default() -> None:
     assert transfers.calls == [("read", False), ("import", _ROOT_DSL, False)]
 
 
+@dataclass
+class DenyingAccess(ImportAccess):
+    @override
+    def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
+        super().require_import(context, kind)
+        raise NoPermissionError("denied")
+
+
+@dataclass
+class RosterPackageTransfers(PackageTransfers):
+    @override
+    def read_app_package(self, source: BinaryIO, *, accept_roster_references: bool = False) -> AppImportPackage | None:
+        del source
+        self.calls.append(("read", accept_roster_references))
+        return None
+
+
+@pytest.mark.parametrize(
+    ("transfers", "kind", "written"),
+    [
+        (PackageTransfers(package=FakeAppPackage(dsl=_ROOT_DSL)), "dsl", ["read"]),
+        (
+            PackageTransfers(package=FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL])),
+            "dsl",
+            ["read"],
+        ),
+        (RosterPackageTransfers(), "agent", ["read"]),
+    ],
+)
+def test_package_import_is_denied_by_its_content_before_any_write(
+    transfers: PackageTransfers, kind: str, written: list[str]
+) -> None:
+    access = DenyingAccess()
+    service = ConsoleAppService(
+        apps=cast(ConsoleApps, Apps()),
+        access=access,
+        transfers=transfers,
+        creators=Creators(),
+        tracing=Tracing(),
+        lifecycle=Lifecycle(),
+    )
+    with pytest.raises(NoPermissionError, match="denied"):
+        service.import_app(CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"))
+    assert access.calls == [("require_import", kind)]
+    assert [call[0] for call in transfers.calls] == written
+
+
 def test_package_import_passes_the_roster_flags_to_the_root_only() -> None:
     service, transfers = _package_import(FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL]))
     service.import_app(
