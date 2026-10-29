@@ -18,15 +18,8 @@ from configs import dify_config
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._archive import FolderRejections, build_folder_archive
-from controllers.openapi._contract import (
-    CapRequestBody,
-    Example,
-    Kind,
-    endpoint,
-    multipart_header_allowance,
-    op_of,
-)
+from controllers.openapi._archive import FolderRejections, FolderUpload
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     DraftChanged,
     ErrorDetail,
@@ -55,7 +48,7 @@ from controllers.openapi._models import (
     SkillVersionListResponse,
     SkillVersionRow,
 )
-from controllers.openapi._upload import UploadParts, file_fields
+from controllers.openapi._upload import UploadParts
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     WORKSPACE_READ_GUARDS,
@@ -64,7 +57,6 @@ from controllers.openapi.auth.requirements import (
     Requirement,
     workspace_write_guards,
 )
-from libs.archive_writer import ArchiveLimits
 from machinery.context import RequestContext
 from services.skill_management_service import (
     SkillErrorDetail,
@@ -115,7 +107,12 @@ _NO_HINTS: Final[Mapping[type[OpenApiError], HintsFor]] = MappingProxyType({})
 
 _IMPORT_FILENAME: Final = "skill.zip"
 
-_SKILL_FOLDER: Final = FolderRejections("skill folder", SkillPackageInvalid, SkillPackageTooLarge)
+_SKILL_UPLOAD: Final = FolderUpload(
+    payload=SkillImportPayload,
+    max_entries=lambda: dify_config.SKILL_PACKAGE_MAX_ENTRIES,
+    max_bytes=max_skill_archive_bytes,
+    rejections=FolderRejections("skill folder", SkillPackageInvalid, SkillPackageTooLarge),
+)
 
 _READ_GUARDS: Final = (
     CheckSkillEnabled(),
@@ -177,20 +174,8 @@ def _name_conflict_hints(error: SkillManagementServiceError, *, workspace_id: st
     return []
 
 
-def _skill_upload_parts() -> int:
-    plain_fields = len(SkillImportPayload.model_fields) - len(file_fields(SkillImportPayload))
-    return dify_config.SKILL_PACKAGE_MAX_ENTRIES + plain_fields
-
-
-_UPLOAD_CAP: Final = CapRequestBody(
-    max_bytes=lambda: max_skill_archive_bytes() + multipart_header_allowance(_skill_upload_parts()),
-    max_parts=_skill_upload_parts,
-)
-
-
 def _archive_of(folder: UploadParts) -> bytes:
-    limits = ArchiveLimits(max_entries=dify_config.SKILL_PACKAGE_MAX_ENTRIES, max_bytes=max_skill_archive_bytes())
-    result = build_folder_archive(folder, limits=limits, rejections=_SKILL_FOLDER)
+    result = _SKILL_UPLOAD.archive(folder)
     try:
         return result.file.read()
     finally:
@@ -364,7 +349,7 @@ class SkillImportApi(Resource):
                 },
             ),
         ),
-        requirements=(*_edit_guards(RBACPermission.SKILL_EDIT), _UPLOAD_CAP),
+        requirements=(*_edit_guards(RBACPermission.SKILL_EDIT), _SKILL_UPLOAD.cap()),
         body=SkillImportPayload,
         returns=(
             (HTTPStatus.CREATED, SkillImportResponse, "Created"),

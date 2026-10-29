@@ -45,13 +45,13 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._upload import UploadPart, UploadParts
 from controllers.openapi.app_dsl import (
+    _PACKAGE_UPLOAD,
     AppDslCheckApi,
     AppDslExportApi,
     AppDslImportApi,
     AppDslImportConfirmApi,
     AppPackageExportApi,
     AppPackageImportApi,
-    _package_upload_parts,
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from libs.external_api import ExternalApi
@@ -1002,9 +1002,9 @@ def test_package_import_maps_service_refusals(
 
 
 def test_package_upload_cap_counts_entries_and_fields(config_overrides: Callable[..., None]) -> None:
-    assert _package_upload_parts() == dify_config.AGENT_PACKAGE_MAX_ENTRIES + 7
+    assert _PACKAGE_UPLOAD.parts() == dify_config.AGENT_PACKAGE_MAX_ENTRIES + 7
     config_overrides(AGENT_PACKAGE_MAX_ENTRIES=3)
-    assert _package_upload_parts() == 10
+    assert _PACKAGE_UPLOAD.parts() == 10
 
 
 _TOOL_PROVIDER_ID = "8b1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
