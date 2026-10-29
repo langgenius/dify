@@ -144,8 +144,8 @@
             }
           ],
           "message_template": {
-            "subject": "",
-            "body": ""
+            "subject": "Human input required",
+            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}"
           },
           "debug_mode": {
             "enabled": false,
@@ -227,8 +227,8 @@
             }
           ],
           "message_template": {
-            "subject": "",
-            "body": ""
+            "subject": "Human input required",
+            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}"
           },
           "debug_mode": {
             "enabled": false,

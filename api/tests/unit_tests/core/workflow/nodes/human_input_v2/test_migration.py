@@ -111,7 +111,10 @@ def test_complete_canonical_v1_shared_fields_convert_to_typed_v2() -> None:
         "default_value": [{"key": "reason", "type": "string", "value": "fallback"}],
         "retry_config": {"retry_enabled": True, "max_retries": 2, "retry_interval": 1000},
         "recipients_spec": [{"type": "initiator"}],
-        "message_template": {"subject": "", "body": ""},
+        "message_template": {
+            "subject": "Human input required",
+            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}",
+        },
         "debug_mode": {"enabled": False, "channels": []},
         "form_content": "Decision: {{#$output.reason#}}",
         "inputs": [
@@ -463,6 +466,55 @@ def test_conflicting_email_templates_block_after_recipient_preflight() -> None:
     ]
 
 
+@pytest.mark.parametrize(
+    ("subject", "body", "enabled", "conflicting", "expected_blocker"),
+    [
+        (" ", "Open {{#url#}}", True, False, "invalid-email-configuration"),
+        ("Review", " ", True, False, "invalid-email-configuration"),
+        ("Review", "Open {{#url#}}", False, False, "configured-disabled-method"),
+        ("Review", "Open {{#url#}}", True, True, "conflicting-email-templates"),
+    ],
+)
+def test_webapp_default_does_not_mask_email_blockers(
+    subject: str, body: str, enabled: bool, conflicting: bool, expected_blocker: str
+) -> None:
+    legacy = HumanInputNodeDataFull.model_validate(
+        {
+            "delivery_methods": [
+                {"type": "webapp"},
+                {
+                    "type": "email",
+                    "enabled": enabled,
+                    "config": {
+                        "subject": subject,
+                        "body": body,
+                        "recipients": {"items": [{"type": "external", "email": "approver@example.com"}]},
+                    },
+                },
+            ]
+            + (
+                [
+                    {
+                        "type": "email",
+                        "config": {
+                            "subject": "Conflicting subject",
+                            "body": "Open {{#url#}}",
+                            "recipients": {"items": [{"type": "external", "email": "second@example.com"}]},
+                        },
+                    }
+                ]
+                if conflicting
+                else []
+            ),
+        }
+    )
+
+    conversion = convert_legacy_human_input_node_data(legacy, MemberEmailSnapshot())
+
+    assert conversion.node_data is None
+    assert [blocker.code for blocker in conversion.blockers] == [expected_blocker]
+
+
 def test_shared_fields_input_immutability_and_repeated_conversion_are_preserved() -> None:
     legacy_node_data = HumanInputNodeDataFull.model_validate(
         {
@@ -489,7 +541,10 @@ def test_shared_fields_input_immutability_and_repeated_conversion_are_preserved(
         "type": "human-input",
         "version": "2",
         "recipients_spec": [{"type": "initiator"}],
-        "message_template": {"subject": "", "body": ""},
+        "message_template": {
+            "subject": "Human input required",
+            "body": "Please complete the form to continue the workflow.\n\n{{#url#}}",
+        },
         "debug_mode": {"enabled": False, "channels": []},
     }
 

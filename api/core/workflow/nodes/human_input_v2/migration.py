@@ -144,8 +144,6 @@ def convert_legacy_human_input_node_data(
     email_debug_enabled = False
     email_template: tuple[str, str] | None = None
     conflicting_template: tuple[str, int] | None = None
-    subject = ""
-    body = ""
     for method_index, method in enumerate(legacy_node_data.delivery_methods):
         method_id = str(method.id)
         if not method.enabled:
@@ -186,7 +184,6 @@ def convert_legacy_human_input_node_data(
             )
         else:
             if email_template is None:
-                subject, body = current_template
                 email_template = current_template
             elif current_template != email_template and conflicting_template is None:
                 conflicting_template = method_id, method_index
@@ -243,6 +240,13 @@ def convert_legacy_human_input_node_data(
         blockers.append(NodeMigrationBlocker(MigrationBlockerCode.MISSING_RECIPIENTS))
     if blockers:
         return NodeMigrationConversion(node_data=None, blockers=tuple(blockers))
+
+    if email_template is None:
+        # Runtime requires a Request URL even for initiator-only forms.
+        subject = "Human input required"
+        body = "Please complete the form to continue the workflow.\n\n{{#url#}}"
+    else:
+        subject, body = email_template
 
     node_data = HumanInputNodeData(
         type=HUMAN_INPUT_NODE_TYPE,
