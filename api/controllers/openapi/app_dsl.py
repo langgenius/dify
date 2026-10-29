@@ -17,16 +17,8 @@ from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._archive import FolderRejections, build_folder_archive
-from controllers.openapi._contract import (
-    CapRequestBody,
-    Effect,
-    Example,
-    Kind,
-    endpoint,
-    multipart_header_allowance,
-    op_of,
-)
+from controllers.openapi._archive import FolderRejections, FolderUpload
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     AppPackageInvalid,
     AppPackageTooLarge,
@@ -49,7 +41,7 @@ from controllers.openapi._models import (
     DslIssueRow,
     Hint,
 )
-from controllers.openapi._upload import UploadPart, UploadParts, file_fields
+from controllers.openapi._upload import UploadPart, UploadParts
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     account_app_guards,
@@ -58,7 +50,6 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
-from libs.archive_writer import ArchiveLimits
 from machinery.context import AppRequestContext, RequestContext
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.app.console_service import ConsoleAppNotFoundError
@@ -89,17 +80,11 @@ _PACKAGE_READ_GUARDS: Final = account_app_guards(
     agent_permission=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
 )
 _DSL_WRITE_GUARDS: Final = workspace_write_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, roles=EDITOR_ROLES)
-_PACKAGE_FOLDER: Final = FolderRejections("package folder", AppPackageInvalid, AppPackageTooLarge)
-
-
-def _package_upload_parts() -> int:
-    plain_fields = len(AppPackageImportPayload.model_fields) - len(file_fields(AppPackageImportPayload))
-    return dify_config.AGENT_PACKAGE_MAX_ENTRIES + plain_fields
-
-
-_PACKAGE_UPLOAD_CAP: Final = CapRequestBody(
-    max_bytes=lambda: dify_config.AGENT_PACKAGE_MAX_BYTES + multipart_header_allowance(_package_upload_parts()),
-    max_parts=_package_upload_parts,
+_PACKAGE_UPLOAD: Final = FolderUpload(
+    payload=AppPackageImportPayload,
+    max_entries=lambda: dify_config.AGENT_PACKAGE_MAX_ENTRIES,
+    max_bytes=lambda: dify_config.AGENT_PACKAGE_MAX_BYTES,
+    rejections=FolderRejections("package folder", AppPackageInvalid, AppPackageTooLarge),
 )
 
 
@@ -135,10 +120,7 @@ def _package_source(package: UploadPart | UploadParts) -> Generator[BinaryIO]:
     if isinstance(package, FileStorage):
         yield cast(BinaryIO, package.stream)
         return
-    limits = ArchiveLimits(
-        max_entries=dify_config.AGENT_PACKAGE_MAX_ENTRIES, max_bytes=dify_config.AGENT_PACKAGE_MAX_BYTES
-    )
-    archive = build_folder_archive(package, limits=limits, rejections=_PACKAGE_FOLDER)
+    archive = _PACKAGE_UPLOAD.archive(package)
     try:
         yield archive.file
     finally:
@@ -260,7 +242,7 @@ class AppPackageImportApi(Resource):
                 input={"package": "./app/", "app_id": "<app_id>", "draft_hash": "<draft_hash>"},
             ),
         ),
-        requirements=(*_DSL_WRITE_GUARDS, _PACKAGE_UPLOAD_CAP),
+        requirements=(*_DSL_WRITE_GUARDS, _PACKAGE_UPLOAD.cap()),
         body=AppPackageImportPayload,
         returns=(
             (HTTPStatus.OK, AppDslImportResponse, "Import completed"),

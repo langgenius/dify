@@ -48,7 +48,7 @@ from controllers.openapi._upload import UploadParts
 from controllers.openapi.auth.pipelines import Pipeline
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.skills import (
-    _UPLOAD_CAP,
+    _SKILL_UPLOAD,
     ServiceRejection,
     SkillDescribeApi,
     SkillExportApi,
@@ -59,7 +59,6 @@ from controllers.openapi.skills import (
     _draft_hash,
     _expected_updated_at,
     _rejection,
-    _skill_upload_parts,
 )
 from machinery.context import RequestContext
 from services.skill_management_service import (
@@ -409,9 +408,9 @@ def test_import_folder_over_a_limit_is_413_naming_the_limit(
 def test_import_part_cap_counts_files_and_fields(
     app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    assert _skill_upload_parts() == dify_config.SKILL_PACKAGE_MAX_ENTRIES + 2
+    assert _SKILL_UPLOAD.parts() == dify_config.SKILL_PACKAGE_MAX_ENTRIES + 2
     monkeypatch.setattr(dify_config, "SKILL_PACKAGE_MAX_ENTRIES", 2)
-    assert _skill_upload_parts() == 4
+    assert _SKILL_UPLOAD.parts() == 4
 
     @accepts(body=SkillImportPayload)
     def handler(*, body: SkillImportPayload) -> int:
@@ -426,10 +425,10 @@ def test_import_part_cap_counts_files_and_fields(
         return app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data")
 
     with post("SKILL.md", "a.txt"):
-        _UPLOAD_CAP.run(account_subject(), make_ctx(sqlite_session), sqlite_session)
+        _SKILL_UPLOAD.cap().run(account_subject(), make_ctx(sqlite_session), sqlite_session)
         assert handler() == 2
     with post("SKILL.md", "a.txt", "b.txt"):
-        _UPLOAD_CAP.run(account_subject(), make_ctx(sqlite_session), sqlite_session)
+        _SKILL_UPLOAD.cap().run(account_subject(), make_ctx(sqlite_session), sqlite_session)
         with pytest.raises(RequestOverRouteLimits, match="at most 4 parts"):
             handler()
 
