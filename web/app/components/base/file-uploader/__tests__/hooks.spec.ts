@@ -14,7 +14,7 @@ import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-confi
 import { getFileSizeLimit, useFile } from '../hooks'
 import { createFileStore, FileContext, useStore } from '../store'
 import { FileUploadContext } from '../upload-context'
-import { fileUpload } from '../utils'
+import { fileUpload, getProcessedFiles } from '../utils'
 
 const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
 vi.mock('@/service/base', () => ({ request }))
@@ -256,6 +256,112 @@ it('rejects unsupported extensions and accepts explicitly allowed custom files',
   await waitFor(() => expect(fileUpload).toHaveBeenCalledTimes(1))
   expect(accepted.result.current.files[0]?.supportFileType).toBe('custom')
 })
+
+describe.each(['local', 'remote'] as const)('%s file type serialization', (method) => {
+  it.each([
+    ['report.pdf', 'application/pdf', ['document', 'custom'], 'document'],
+    [
+      'report.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ['document', 'custom'],
+      'document',
+    ],
+    ['notes.md', 'text/markdown', ['document', 'custom'], 'document'],
+    ['payload.xyz', '', ['document', 'custom'], 'custom'],
+    ['report.pdf', 'application/pdf', ['custom'], 'custom'],
+  ] as const)(
+    'serializes %s with MIME %s and allowed types %j as %s',
+    async (name, mimeType, allowedFileTypes, expectedType) => {
+      const url = `https://example.com/${name}`
+      const { result } = setup({
+        fileConfig: {
+          ...config,
+          allowed_file_types: [...allowedFileTypes],
+          allowed_file_extensions: [`.${name.split('.').at(-1)}`],
+        },
+      })
+      const response = { ...uploadResponse, name, mime_type: mimeType, url }
+
+      if (method === 'local') {
+        act(() =>
+          result.current.handleLocalFileUpload(new File(['data'], name, { type: mimeType })),
+        )
+        await waitFor(() => expect(fileUpload).toHaveBeenCalledTimes(1))
+        act(() => vi.mocked(fileUpload).mock.calls[0]![0].onSuccessCallback(response))
+      } else {
+        request.mockResolvedValueOnce(Response.json(response))
+        await act(async () => result.current.handleLoadFileFromLink(url))
+        await waitFor(() => expect(result.current.files[0]?.progress).toBe(100))
+      }
+
+      expect(getProcessedFiles(result.current.files)).toEqual([
+        {
+          type: expectedType,
+          transfer_method: method === 'local' ? 'local_file' : 'remote_url',
+          url: method === 'local' ? '' : url,
+          upload_file_id: 'uploaded-file',
+        },
+      ])
+    },
+  )
+
+  it('does not widen an explicit extension whitelist when document and custom are allowed', async () => {
+    const { result } = setup({
+      fileConfig: {
+        ...config,
+        allowed_file_types: ['document', 'custom'],
+        allowed_file_extensions: ['.xyz'],
+      },
+    })
+    if (method === 'local') {
+      act(() =>
+        result.current.handleLocalFileUpload(
+          new File(['data'], 'report.pdf', { type: 'application/pdf' }),
+        ),
+      )
+      expect(fileUpload).not.toHaveBeenCalled()
+    } else {
+      await act(async () =>
+        result.current.handleLoadFileFromLink('https://example.com/report.pdf'),
+      )
+      await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    }
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('fileExtensionNotSupport'))
+    expect(result.current.files).toEqual([])
+    expect(getProcessedFiles(result.current.files)).toEqual([])
+  })
+})
+
+it.each(['local', 'remote'] as const)(
+  'preserves explicit custom file types in human-input %s uploads',
+  async (method) => {
+    navigation.params = { token: 'form-token' }
+    navigation.pathname = '/form/form-token'
+    const { result } = setup({
+      fileConfig: { ...config, allowed_file_types: ['custom'], allowed_file_extensions: ['.pdf'] },
+    })
+    if (method === 'local') {
+      act(() =>
+        result.current.handleLocalFileUpload(
+          new File(['data'], 'report.pdf', { type: 'application/pdf' }),
+        ),
+      )
+      await waitFor(() => expect(uploadHumanInputFormLocalFile).toHaveBeenCalledTimes(1))
+      act(() =>
+        vi.mocked(uploadHumanInputFormLocalFile).mock.calls[0]![0].onSuccessCallback(uploadResponse),
+      )
+    } else {
+      await act(async () =>
+        result.current.handleLoadFileFromLink('https://example.com/report.pdf'),
+      )
+      await waitFor(() => expect(result.current.files[0]?.progress).toBe(100))
+    }
+    expect(getProcessedFiles(result.current.files)).toEqual([
+      expect.objectContaining({ type: 'custom', upload_file_id: 'uploaded-file' }),
+    ])
+    expect(fileUpload).not.toHaveBeenCalled()
+  },
+)
 
 it('respects disabled uploads when the caller enables the check', () => {
   const { result } = setup({ fileConfig: { ...config, enabled: false }, checkEnabled: true })

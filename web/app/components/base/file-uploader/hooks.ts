@@ -274,6 +274,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               res.name,
               res.mime_type ?? '',
               allowedFileTypes?.includes(SupportUploadFileTypes.custom),
+              allowedFileTypes?.includes(SupportUploadFileTypes.document),
             ),
             uploadedId: res.id,
             url: res.url ?? url,
@@ -355,6 +356,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         file.name,
         file.type,
         allowedFileTypes?.includes(SupportUploadFileTypes.custom),
+        allowedFileTypes?.includes(SupportUploadFileTypes.document),
       )
       if (!checkSizeLimit(fileType, file.size)) return
 
@@ -376,6 +378,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               file.name,
               file.type,
               allowedFileTypes?.includes(SupportUploadFileTypes.custom),
+              allowedFileTypes?.includes(SupportUploadFileTypes.document),
             ),
             originalFile: file,
             base64Url: isImage ? (reader.result as string) : '',
