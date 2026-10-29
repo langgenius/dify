@@ -1,11 +1,24 @@
-"""Unit tests for queue/wrapper behaviors in duplicate document indexing tasks (non-database logic)."""
+"""Unit tests for duplicate document indexing tasks.
+
+Queue/wrapper behaviors use mocks; summary cleanup and regeneration run against SQLite.
+"""
 
 import json
 import uuid
+from collections.abc import Iterator, Sequence
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
+from sqlalchemy import Connection, Engine, select
+from sqlalchemy.orm import Session
 
+import tasks.duplicate_document_indexing_task as task_module
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SummaryStatus
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
 from tasks.duplicate_document_indexing_task import (
     _duplicate_document_indexing_task,
     _duplicate_document_indexing_task_with_tenant_queue,
@@ -13,6 +26,7 @@ from tasks.duplicate_document_indexing_task import (
     normal_duplicate_document_indexing_task,
     priority_duplicate_document_indexing_task,
 )
+from tasks.generate_summary_index_task import generate_summary_index_task
 
 
 @pytest.fixture
@@ -254,3 +268,155 @@ class TestPriorityDuplicateDocumentIndexingTask:
         mock_wrapper_func.assert_called_once_with(
             tenant_id, dataset_id, document_ids, priority_duplicate_document_indexing_task
         )
+
+
+@pytest.fixture
+def summary_harness(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[MagicMock, MagicMock]]:
+    """Run the core task on SQLite with the real paragraph processor and mocked external indexes."""
+    engine = sqlite_session.get_bind()
+    monkeypatch.setattr(
+        task_module.session_factory,
+        "create_session",
+        lambda: Session(engine, expire_on_commit=False),
+    )
+    build_service = create_autospec(build_document_indexing_service)
+    monkeypatch.setattr(task_module, "build_document_indexing_service", build_service)
+    with (
+        patch("core.rag.index_processor.processor.paragraph_index_processor.Vector", autospec=True),
+        patch("services.knowledge.summaries.adapters._delete_summary_vectors", autospec=True) as delete_vectors,
+    ):
+        yield build_service.return_value, delete_vectors
+
+
+def _persist_document_with_summary(
+    session: Session,
+    *,
+    dataset: Dataset | None = None,
+    summary_enabled: bool = True,
+    need_summary: bool = True,
+) -> tuple[Dataset, Document, DocumentSegmentSummary]:
+    created_by = str(uuid.uuid4())
+    if dataset is None:
+        dataset = Dataset(
+            tenant_id=str(uuid.uuid4()),
+            name="Duplicate dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=created_by,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            summary_index_setting={"enable": summary_enabled},
+        )
+        session.add(dataset)
+        session.flush()
+    document = Document(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name=f"{uuid.uuid4()}.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=created_by,
+        indexing_status=IndexingStatus.WAITING,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        need_summary=need_summary,
+    )
+    session.add(document)
+    session.flush()
+    segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        position=1,
+        content="segment",
+        word_count=1,
+        tokens=1,
+        created_by=created_by,
+        index_node_id=f"node-{document.id}",
+    )
+    session.add(segment)
+    session.flush()
+    summary = DocumentSegmentSummary(
+        dataset_id=dataset.id,
+        document_id=document.id,
+        chunk_id=segment.id,
+        summary_content="old summary",
+        summary_index_node_id=f"summary-node-{document.id}",
+        status=SummaryStatus.COMPLETED,
+    )
+    session.add(summary)
+    session.commit()
+    return dataset, document, summary
+
+
+def _complete_indexing(refs: Sequence[DocumentRef], *, bind: Engine | Connection) -> None:
+    with Session(bind) as writer, writer.begin():
+        for ref in refs:
+            document = writer.get(Document, ref.document_id)
+            assert document is not None
+            document.indexing_status = IndexingStatus.COMPLETED
+
+
+class TestDuplicateDocumentIndexingSummaries:
+    """Duplicate uploads must replace old summary index data instead of leaving it behind."""
+
+    def test_deletes_old_summaries_and_queues_regeneration(
+        self, sqlite_session: Session, summary_harness: tuple[MagicMock, MagicMock]
+    ) -> None:
+        indexing_service, delete_vectors = summary_harness
+        dataset, document, summary = _persist_document_with_summary(sqlite_session)
+        _, _, other_summary = _persist_document_with_summary(sqlite_session, dataset=dataset)
+        dataset_id, document_id = dataset.id, document.id
+        summary_id, other_summary_id = summary.id, other_summary.id
+        indexing_service.run.side_effect = lambda refs: _complete_indexing(refs, bind=sqlite_session.get_bind())
+
+        with patch.object(generate_summary_index_task, "delay") as delay:
+            _duplicate_document_indexing_task(dataset_id, [document_id])
+
+        sqlite_session.expire_all()
+        remaining = set(sqlite_session.scalars(select(DocumentSegmentSummary.id)).all())
+        assert summary_id not in remaining
+        assert other_summary_id in remaining
+        delete_vectors.assert_called_once()
+        assert delete_vectors.call_args.args[1] == [f"summary-node-{document_id}"]
+        delay.assert_called_once_with(dataset_id, document_id, None)
+
+    @pytest.mark.parametrize(
+        ("summary_enabled", "need_summary"),
+        [(False, True), (True, False)],
+    )
+    def test_skips_regeneration_when_summary_is_not_requested(
+        self,
+        sqlite_session: Session,
+        summary_harness: tuple[MagicMock, MagicMock],
+        summary_enabled: bool,
+        need_summary: bool,
+    ) -> None:
+        indexing_service, _ = summary_harness
+        dataset, document, _ = _persist_document_with_summary(
+            sqlite_session, summary_enabled=summary_enabled, need_summary=need_summary
+        )
+        indexing_service.run.side_effect = lambda refs: _complete_indexing(refs, bind=sqlite_session.get_bind())
+
+        with patch.object(generate_summary_index_task, "delay") as delay:
+            _duplicate_document_indexing_task(dataset.id, [document.id])
+
+        delay.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "error",
+        [RuntimeError("indexing failed"), DocumentIsPausedError("paused")],
+    )
+    def test_skips_regeneration_when_indexing_does_not_finish(
+        self,
+        sqlite_session: Session,
+        summary_harness: tuple[MagicMock, MagicMock],
+        error: Exception,
+    ) -> None:
+        indexing_service, _ = summary_harness
+        dataset, document, _ = _persist_document_with_summary(sqlite_session)
+        indexing_service.run.side_effect = error
+
+        with patch.object(generate_summary_index_task, "delay") as delay:
+            _duplicate_document_indexing_task(dataset.id, [document.id])
+
+        delay.assert_not_called()
