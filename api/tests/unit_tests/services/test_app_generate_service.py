@@ -2,8 +2,8 @@ import json
 import threading
 import uuid
 from collections import defaultdict, deque
-from collections.abc import Callable
-from contextlib import contextmanager
+from collections.abc import Callable, Generator
+from datetime import timedelta
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -15,6 +15,9 @@ import services.app_generate_service as ags_module
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.features.rate_limiting import rate_limit as rate_limit_module
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
+from core.errors.error import AppInvokeQuotaExceededError
 from enums import DeploymentEdition, QuotaType
 from models.account import Account
 from models.enums import AppStatus
@@ -133,10 +136,35 @@ def _make_workflow(
     )
 
 
-@contextmanager
-def _noop_rate_limit_context(rate_limit, request_id):
-    """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
-    yield
+class _RateLimitRedis:
+    def __init__(self) -> None:
+        self.values: dict[str, bytes] = {}
+        self.hashes: dict[str, dict[str, bytes]] = {}
+
+    def exists(self, key: str) -> bool:
+        return key in self.values or key in self.hashes
+
+    def setex(self, key: str, ttl: timedelta, value: int) -> None:
+        self.values[key] = str(value).encode()
+
+    def get(self, key: str) -> bytes:
+        return self.values[key]
+
+    def expire(self, key: str, ttl: timedelta) -> None:
+        pass
+
+    def hgetall(self, key: str) -> dict[str, bytes]:
+        return self.hashes.get(key, {})
+
+    def hlen(self, key: str) -> int:
+        return len(self.hashes.get(key, {}))
+
+    def hset(self, key: str, field: str, value: str) -> None:
+        self.hashes.setdefault(key, {})[field] = value.encode()
+
+    def hdel(self, key: str, *fields: str) -> None:
+        for field in fields:
+            self.hashes.get(key, {}).pop(field, None)
 
 
 # ---------------------------------------------------------------------------
@@ -304,11 +332,6 @@ class TestAppGenerateServiceCases:
         def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
             mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-            # Prevent AppExecutionParams.new from touching real models via isinstance
-            mocker.patch(
-                "services.app_generate_service.rate_limit_context",
-                _noop_rate_limit_context,
-            )
 
         # -- COMPLETION ---------------------------------------------------------
         def test_completion_mode(self, mocker: MockerFixture):
@@ -636,6 +659,73 @@ class TestAppGenerateServiceCases:
                     session=self.session,
                 )
 
+    class TestStreamingRateLimit(_RealSessionTest):
+        @pytest.mark.parametrize("app_mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+        @pytest.mark.parametrize("termination", ["finish", "error", "close"])
+        def test_single_slot_is_held_until_stream_ends(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            config_overrides: Callable[..., None],
+            app_mode: AppMode,
+            termination: str,
+        ) -> None:
+            config_overrides(
+                DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+                APP_MAX_ACTIVE_REQUESTS=0,
+                APP_DEFAULT_ACTIVE_REQUESTS=0,
+                PUBSUB_REDIS_CHANNEL_TYPE="streams",
+            )
+            redis = _RateLimitRedis()
+            monkeypatch.setattr(rate_limit_module, "redis_client", redis)
+            monkeypatch.setattr(RateLimit, "_instance_dict", {})
+            workflow = _make_workflow()
+            monkeypatch.setattr(AppGenerateService, "_get_workflow", lambda *_args, **_kwargs: workflow)
+
+            def retrieve_events(*_args: object, **_kwargs: object) -> Generator[str]:
+                yield "ping"
+                if termination == "error":
+                    raise RuntimeError("stream failed")
+
+            monkeypatch.setattr(MessageBasedAppGenerator, "retrieve_events", retrieve_events)
+            app = _make_app(app_mode, max_active_requests=1)
+
+            def generate() -> RateLimitGenerator:
+                response = AppGenerateService.generate(
+                    app_model=app,
+                    user=_make_user(),
+                    args={"inputs": {}, "query": "hi"},
+                    invoke_from=InvokeFrom.DEBUGGER,
+                    streaming=True,
+                    session=self.session,
+                )
+                assert isinstance(response, RateLimitGenerator)
+                return response
+
+            first = generate()
+            active_key = first.rate_limit.active_requests_key
+            assert set(redis.hgetall(active_key)) == {first.request_id}
+
+            with pytest.raises(AppInvokeQuotaExceededError, match="maximum concurrent requests allowed"):
+                generate()
+            assert set(redis.hgetall(active_key)) == {first.request_id}
+
+            assert next(first) == "event: ping\n\n"
+            if termination == "finish":
+                assert list(first) == []
+            elif termination == "error":
+                with pytest.raises(RuntimeError, match="stream failed"):
+                    next(first)
+            else:
+                first.close()
+                first.close()
+            assert redis.hlen(active_key) == 0
+
+            following = generate()
+            assert following.request_id != first.request_id
+            assert set(redis.hgetall(active_key)) == {following.request_id}
+            following.close()
+            assert redis.hlen(active_key) == 0
+
     # ---------------------------------------------------------------------------
     # generate – billing / quota
     # ---------------------------------------------------------------------------
@@ -643,10 +733,6 @@ class TestAppGenerateServiceCases:
         @pytest.fixture(autouse=True)
         def _common(self, mocker: MockerFixture):
             mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-            mocker.patch(
-                "services.app_generate_service.rate_limit_context",
-                _noop_rate_limit_context,
-            )
 
         def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
