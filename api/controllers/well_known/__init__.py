@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 from services.oauth_metadata import (
     AUTHORIZATION_SERVER_PATH,
     PROTECTED_RESOURCE_PATH,
+    PROTECTED_RESOURCE_ROOT_PATH,
     authorization_server_metadata,
     protected_resource_metadata,
 )
@@ -34,6 +35,8 @@ def authorization_server() -> ResponseReturnValue:
     return _serve(authorization_server_metadata)
 
 
+# Also at the root: ChatGPT looks there when a 401 carries no resource_metadata pointer.
+@bp.route(PROTECTED_RESOURCE_ROOT_PATH, methods=["GET"])
 @bp.route(PROTECTED_RESOURCE_PATH, methods=["GET"])
 def protected_resource() -> ResponseReturnValue:
     return _serve(protected_resource_metadata)

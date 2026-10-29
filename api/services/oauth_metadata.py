@@ -8,11 +8,11 @@ from services.oauth_client_metadata import CODE_RESPONSE_TYPE, DEFAULT_GRANT_TYP
 from services.oauth_pkce import PkceMethod
 from services.oauth_resource import OPENAPI_PATH, openapi_issuer_url
 from services.oauth_token_adapters import authorization_code_enabled, cimd_enabled, dcr_enabled
-from services.oauth_token_contracts import GrantType
 
 WELL_KNOWN_PREFIX: Final = "/.well-known"
 AUTHORIZATION_SERVER_PATH: Final = f"{WELL_KNOWN_PREFIX}/oauth-authorization-server{OPENAPI_PATH}"
-PROTECTED_RESOURCE_PATH: Final = f"{WELL_KNOWN_PREFIX}/oauth-protected-resource{OPENAPI_PATH}"
+PROTECTED_RESOURCE_ROOT_PATH: Final = f"{WELL_KNOWN_PREFIX}/oauth-protected-resource"
+PROTECTED_RESOURCE_PATH: Final = f"{PROTECTED_RESOURCE_ROOT_PATH}{OPENAPI_PATH}"
 AUTHORIZE_PAGE_PATH: Final = "/account/oauth/authorize"
 BEARER_METHODS: Final = ("header",)
 
@@ -26,16 +26,14 @@ def authorization_server_metadata(request_origin: str) -> dict[str, Any]:
     issuer = openapi_issuer_url(request_origin)
     auth_methods = [method.value for method in TokenEndpointAuthMethod]
     browser_flow = authorization_code_enabled()
-    grants = [GrantType.DEVICE_CODE]
-    if browser_flow:
-        grants = [*DEFAULT_GRANT_TYPES, *grants]
+    # The device grant is difyctl's alone and stays unlisted: VS Code tries it whenever it is advertised.
+    grants = DEFAULT_GRANT_TYPES if browser_flow else ()
 
     # RFC 8414 requires response_types_supported even without an authorization endpoint.
     document: dict[str, Any] = {
         "issuer": issuer,
         "token_endpoint": f"{issuer}/oauth/token",
         "revocation_endpoint": f"{issuer}/oauth/revoke",
-        "device_authorization_endpoint": f"{issuer}/oauth/device/code",
         "grant_types_supported": [grant.value for grant in grants],
         "response_types_supported": [],
         "code_challenge_methods_supported": [method.value for method in PkceMethod],

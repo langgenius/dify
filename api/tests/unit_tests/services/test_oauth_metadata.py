@@ -30,13 +30,8 @@ def test_authorization_server_document_full() -> None:
         "authorization_endpoint": "https://req.example.com/account/oauth/authorize",
         "token_endpoint": "https://req.example.com/openapi/v1/oauth/token",
         "revocation_endpoint": "https://req.example.com/openapi/v1/oauth/revoke",
-        "device_authorization_endpoint": "https://req.example.com/openapi/v1/oauth/device/code",
         "registration_endpoint": "https://req.example.com/openapi/v1/oauth/register",
-        "grant_types_supported": [
-            "authorization_code",
-            "refresh_token",
-            "urn:ietf:params:oauth:grant-type:device_code",
-        ],
+        "grant_types_supported": ["authorization_code", "refresh_token"],
         "response_types_supported": ["code"],
         "code_challenge_methods_supported": ["S256"],
         "token_endpoint_auth_methods_supported": ["none"],
@@ -69,7 +64,7 @@ def test_authorization_code_off_gives_the_reduced_document(config_overrides: Con
     doc = authorization_server_metadata(ORIGIN)
     assert "authorization_endpoint" not in doc
     assert "registration_endpoint" not in doc
-    assert doc["grant_types_supported"] == ["urn:ietf:params:oauth:grant-type:device_code"]
+    assert doc["grant_types_supported"] == []
     assert doc["client_id_metadata_document_supported"] is False
     assert doc["response_types_supported"] == []
 
