@@ -1173,6 +1173,8 @@ class Conversation(TypeBase):
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON, default_factory=dict)
     app_model_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    # A saved revision also distinguishes an explicitly empty configuration from an uninitialized one.
+    connection_configuration_revision: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     override_model_configs: Mapped[str | None] = mapped_column(LongText, default=None)
     model_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
@@ -2158,6 +2160,8 @@ class EndUser(UserMixin, TypeBase):
     )
     # Internal identity link; never include it in public DTOs or Passport claims.
     account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    # App defaults are authorized when explicitly saved, independently of execution.
+    connection_configuration_revision: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     @property
     @override

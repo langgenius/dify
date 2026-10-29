@@ -178,12 +178,12 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
 
 
 class AppConnection(DefaultFieldsDCMixin, TypeBase):
-    """One Tool node selection from an App user's last Run; not a permission grant.
+    """One explicitly saved Tool node choice for an App-scoped EndUser.
 
     Replace the whole set under a stable owner lock, including for an empty set.
-    All rows in a replacement share source_run_id. The Run integration owns update
-    timing and ordering; row timestamps do not define the latest Run. Empty defaults
-    have no rows. Run references never cascade into historical execution records.
+    EndUser.connection_configuration_revision records authorization and initialization
+    independently of selection rows. source_run_id preserves legacy provenance only;
+    execution never updates defaults. Run references never cascade into historical execution records.
     workflow_id and node_id identify the published graph version where this choice
     was saved. Changed authorization requirements require reconfirmation; republishing the
     same requirements preserves the choice. Callers validate Workflow ownership and node authentication requirements
@@ -213,7 +213,7 @@ class AppConnection(DefaultFieldsDCMixin, TypeBase):
     end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     connection_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    source_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    source_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
 
 class SessionConnection(DefaultFieldsDCMixin, TypeBase):
@@ -225,8 +225,9 @@ class SessionConnection(DefaultFieldsDCMixin, TypeBase):
     through the business Session, even when no selection rows exist. Retained
     references after identity migration do not transfer credential ownership. Like
     App defaults, workflow_id records the published graph version of the saved choice.
-    A version mismatch requires reconfirmation and validation against the execution
-    graph before replacing the saved version and choice.
+    Conversation.connection_configuration_revision records the accepted contract,
+    including explicitly empty configurations. Incompatible contract changes require
+    explicit reconfirmation before the choices can be restored for execution.
     """
 
     __tablename__ = "session_connections"

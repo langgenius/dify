@@ -73,11 +73,27 @@ class PluginConnectionRevisions:
         canonical = self._snapshots.save_revision(current)
         if revision == canonical:
             return canonical
+        if self._compatible(tenant_id, previous, current):
+            return canonical
+        raise ConnectionRevisionChangedError(current_revision=canonical)
+
+    def requires_reauthorization(
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str | None
+    ) -> bool:
+        current, _ = self._snapshot(tenant_id, app_id, graph)
+        if not current.requirements:
+            return False
+        previous = self._snapshots.get_revision(tenant_id, app_id, revision) if revision is not None else None
+        return previous is None or not self._compatible(tenant_id, previous, current)
+
+    def _compatible(
+        self, tenant_id: str, previous: ConnectionContractSnapshot, current: ConnectionContractSnapshot
+    ) -> bool:
         old_providers = {item.provider: item for item in previous.providers}
         new_providers = {item.provider: item for item in current.providers}
         # Compare normalized requirements independently of plugin artifacts.
         requirements_unchanged = previous.requirements == current.requirements
-        if (
+        return (
             requirements_unchanged
             and old_providers.keys() == new_providers.keys()
             and all(
@@ -88,9 +104,7 @@ class PluginConnectionRevisions:
                 )
                 for provider, item in new_providers.items()
             )
-        ):
-            return canonical
-        raise ConnectionRevisionChangedError(current_revision=canonical)
+        )
 
 
 class PluginConnectionProviderRevisions:

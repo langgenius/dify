@@ -19,22 +19,41 @@ from services.end_user_connection_oauth_adapters import (
     RedisOAuthRefreshSingleFlight,
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
-from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions
+from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions, PluginConnectionRevisions
 from services.end_user_connection_runtime_adapters import get_tool_runtime
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
+from services.end_user_connections.selections import ConnectionSelectionService
 
 __all__ = [
     "build_end_user_connection_oauth",
     "build_end_user_connection_preflight",
     "build_end_user_connection_runtime",
+    "build_end_user_connection_selections",
     "build_end_user_connections",
     "get_tool_runtime",
     "initialize_conversation_connections",
 ]
+
+
+def build_end_user_connection_selections(*, database_client: sessionmaker[Session]) -> ConnectionSelectionService:
+    repository = EndUserConnectionRepository(session_factory=database_client)
+    providers = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+    return ConnectionSelectionService(
+        store=repository,
+        revisions=PluginConnectionRevisions(providers=providers, snapshots=repository),
+        requirements=PublishedPreflightRequirements(
+            workflows=repository,
+            snapshots=repository,
+            providers=providers,
+            oauth=PluginConnectionOAuthGateway(
+                clients=repository, providers=providers, handler=OAuthHandler(), auth=PluginCredentialAuthClient()
+            ),
+        ),
+    )
 
 
 def build_end_user_connections(*, database_client: sessionmaker[Session]) -> ConnectionService:

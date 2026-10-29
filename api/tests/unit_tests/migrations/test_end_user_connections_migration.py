@@ -20,6 +20,8 @@ from models.end_user_connection import (
 from tests.helpers.end_user_connection_contract import ConnectionPersistenceTests, new_app_selection, new_connection
 
 FEATURE_MIGRATION = "2026_10_26_1300-f3a6b9c2d108_add_connection_revision_contracts.py"
+CONFIGURATION_MIGRATION = "2026_10_29_1200-a91d5e7c3b20_save_connection_authorizations.py"
+CONFIGURATION_OWNERS = {"end_users", "conversations"}
 TABLE_NAMES = {
     "end_user_connections",
     "app_connections",
@@ -58,6 +60,9 @@ def connection_session() -> Iterator[Session]:
         connection.exec_driver_sql("PRAGMA foreign_keys=ON")
         load_migration(connection).upgrade()
         load_migration(connection, FEATURE_MIGRATION).upgrade()
+        for name in CONFIGURATION_OWNERS:
+            sa.Table(name, sa.MetaData(), sa.Column("id", sa.String(36), primary_key=True)).create(connection)
+        load_migration(connection, CONFIGURATION_MIGRATION).upgrade()
         connection.commit()
         with Session(connection) as session:
             yield session
@@ -79,7 +84,9 @@ def test_migration_schema_matches_models(connection_session: Session) -> None:
     ):
         model.metadata.tables[model.__tablename__].to_metadata(metadata)
     connection = connection_session.connection()
-    assert set(sa.inspect(connection).get_table_names()) == TABLE_NAMES
+    for name in CONFIGURATION_OWNERS:
+        sa.Table(name, metadata, autoload_with=connection)
+    assert set(sa.inspect(connection).get_table_names()) == TABLE_NAMES | CONFIGURATION_OWNERS
     context = MigrationContext.configure(connection, opts={"compare_type": True, "compare_server_default": True})
     assert compare_metadata(context, metadata) == []
 
@@ -149,4 +156,42 @@ def test_revision_migration_preserves_legacy_connection_data() -> None:
         assert {key: after[key] for key in before} == before
         migration.downgrade()
         assert connection.execute(sa.select(table)).mappings().one() == before
+    engine.dispose()
+
+
+def test_configuration_migration_preserves_legacy_defaults_and_supports_saves_without_runs() -> None:
+    engine = sa.create_engine("sqlite://")
+    with engine.begin() as connection:
+        load_migration(connection).upgrade()
+        load_migration(connection, FEATURE_MIGRATION).upgrade()
+        for name in CONFIGURATION_OWNERS:
+            table = sa.Table(name, sa.MetaData(), sa.Column("id", sa.String(36), primary_key=True))
+            table.create(connection)
+            connection.execute(sa.insert(table).values(id="owner"))
+        credential = new_connection()
+        legacy = new_app_selection(credential)
+        credentials = sa.Table("end_user_connections", sa.MetaData(), autoload_with=connection)
+        defaults = sa.Table("app_connections", sa.MetaData(), autoload_with=connection)
+        for table, record in ((credentials, credential), (defaults, legacy)):
+            connection.execute(
+                sa.insert(table).values({column.name: getattr(record, column.name) for column in table.columns})
+            )
+        migration = load_migration(connection, CONFIGURATION_MIGRATION)
+        migration.upgrade()
+        for name in CONFIGURATION_OWNERS:
+            owner = sa.Table(name, sa.MetaData(), autoload_with=connection)
+            assert connection.execute(sa.select(owner)).mappings().one()["connection_configuration_revision"] is None
+        defaults = sa.Table("app_connections", sa.MetaData(), autoload_with=connection)
+        assert defaults.c.source_run_id.nullable
+        assert connection.execute(sa.select(defaults.c.source_run_id)).scalar_one() == legacy.source_run_id
+        saved = new_app_selection(credential)
+        saved.node_id = "new-selection"
+        saved.source_run_id = None
+        connection.execute(
+            sa.insert(defaults).values({column.name: getattr(saved, column.name) for column in defaults.columns})
+        )
+        migration.downgrade()
+        assert connection.execute(sa.select(defaults.c.id)).scalars().all() == [legacy.id]
+        for name in CONFIGURATION_OWNERS:
+            assert {column["name"] for column in sa.inspect(connection).get_columns(name)} == {"id"}
     engine.dispose()

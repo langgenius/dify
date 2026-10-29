@@ -105,6 +105,14 @@ class ConnectionRevisions(Protocol):
     ) -> tuple[str, tuple[ConnectionProviderMetadata, ...]]: ...
 
 
+class ConnectionSelectionRevisions(Protocol):
+    def requires_reauthorization(
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str | None
+    ) -> bool: ...
+
+    def require(self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str) -> str: ...
+
+
 class ConnectionProviderRevisions(Protocol):
     def resolve(
         self, context: WebConnectionContext, provider: str, *, oauth_client_source: OAuthClientSource | None = None
