@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -12,6 +12,7 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
+import { createDeferred } from '@/test/deferred'
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
@@ -251,4 +252,56 @@ describe('FormInputItem selections', () => {
       field: { type: VarKindType.constant, value: '{"enabled":true}' },
     })
   })
+})
+
+it('refreshes dependency options and discards an older response after sibling values change', async () => {
+  const first = createDeferred<{ options: FormOption[] }>()
+  const second = createDeferred<{ options: FormOption[] }>()
+  mockDynamicOptions.mockReturnValueOnce(first.promise).mockReturnValue(second.promise)
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  const common: Omit<Props, 'value'> = {
+    readOnly: false,
+    nodeId: 'node-1',
+    schema: createSchema({ type: FormTypeEnum.dynamicSelect, reset_on_change: ['source'] }),
+    currentTool: tool,
+    currentProvider: provider,
+    providerType: PluginCategoryEnum.tool,
+    onChange: vi.fn(),
+  }
+  const { rerender } = renderWorkflowFlowComponent(
+    <FormInputItem
+      {...common}
+      value={{
+        source: { type: VarKindType.constant, value: 'first' },
+        field: { type: VarKindType.constant, value: '' },
+      }}
+    />,
+    { queryClient, nodes: [], edges: [] },
+  )
+  await waitFor(() => expect(mockDynamicOptions).toHaveBeenCalledTimes(1))
+  rerender(
+    <FormInputItem
+      {...common}
+      value={{
+        source: { type: VarKindType.constant, value: 'second' },
+        field: { type: VarKindType.constant, value: '' },
+      }}
+    />,
+  )
+  await waitFor(() => expect(mockDynamicOptions).toHaveBeenCalledTimes(2))
+  await act(async () => second.resolve({ options: [createOption('new-option')] }))
+  await waitFor(() => expect(screen.getByRole('combobox')).toBeEnabled())
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('combobox'))
+  expect(await screen.findByRole('option', { name: 'new-option' })).toBeInTheDocument()
+  await act(async () => first.resolve({ options: [createOption('old-option')] }))
+  expect(screen.queryByRole('option', { name: 'old-option' })).not.toBeInTheDocument()
+  expect(screen.getByRole('option', { name: 'new-option' })).toBeInTheDocument()
 })
