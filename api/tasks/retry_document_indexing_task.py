@@ -11,6 +11,7 @@ from core.db.session_factory import get_session_maker, session_factory
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from enums import DeploymentEdition
 from extensions.application_services.data_sources import build_data_source_credentials
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
@@ -21,7 +22,6 @@ from services.feature_service import FeatureService
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                                 document,
                                 user,
                                 generator=PipelineGenerator(
-                                    execution_driver=WorkflowRunAgg.run,
+                                    execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
                                     documents=SQLAlchemyDocumentRepository(
                                         session_factory=session_factory.get_session_maker()
                                     ),

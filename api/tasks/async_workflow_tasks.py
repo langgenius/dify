@@ -21,8 +21,9 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
-from core.db.session_factory import session_factory
+from core.db.session_factory import get_session_maker, session_factory
 from core.repositories import DifyCoreRepositoryFactory
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.ext_database import db
 from graphon.runtime import RuntimeState
 from models.account import Account
@@ -40,7 +41,6 @@ from services.workflow.entities import (
     WorkflowTaskData,
 )
 from services.workflow_execution_identity import build_workflow_execution_identity
-from services.workflow_run_agg import WorkflowRunAgg
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
@@ -149,13 +149,14 @@ def _execute_workflow_common(
             user = _get_user(session, trigger_log)
 
             # Execute workflow using WorkflowAppGenerator
-            generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+            generator = WorkflowAppGenerator(
+                execution_driver=build_workflow_run_driver(database_client=get_session_maker())
+            )
 
             # Adapt trigger inputs and files for the generator.
             args = _build_generator_args(trigger_data)
 
             pause_config = PauseStateLayerConfig(
-                session_factory=session_factory.get_session_maker(),
                 state_owner_user_id=workflow.created_by,
             )
 
@@ -282,11 +283,10 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     )
 
     pause_config = PauseStateLayerConfig(
-        session_factory=session_factory,
         state_owner_user_id=workflow.created_by,
     )
 
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = WorkflowAppGenerator(execution_driver=build_workflow_run_driver(database_client=get_session_maker()))
     start_time = datetime.now(UTC)
     graph_engine_layers = []
     trigger_log = _query_trigger_log_info(session_factory, task_data.workflow_run_id)

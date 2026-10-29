@@ -1,6 +1,6 @@
 """Persist workflow execution events on behalf of the upper run orchestrator.
 
-The aggregate constructs this observer and supplies its repositories, indexes,
+The workflow run attempt constructs this observer and supplies its repositories, indexes,
 and history before the engine starts. Engine events remain storage-agnostic.
 """
 

@@ -15,7 +15,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db.session_factory import create_session
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
-from extensions.ext_database import db
 from models import Account, TenantAccountJoin
 from models.model import (
     App,
@@ -141,7 +140,6 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     raise ValueError("unexpected app type")
 
                 pause_config = PauseStateLayerConfig(
-                    session_factory=db.engine,
                     state_owner_user_id=workflow.created_by,
                 )
 
@@ -207,7 +205,6 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         invoke workflow app
         """
         pause_config = PauseStateLayerConfig(
-            session_factory=db.engine,
             state_owner_user_id=workflow.created_by,
         )
 

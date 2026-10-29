@@ -1,11 +1,12 @@
 """Tests for application-service dependency wiring."""
 
+import inspect
 import json
 import logging
 from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from typing import Never, cast
 from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
@@ -64,6 +65,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
+from repositories.workflow_run_task_repository import WorkflowRunTaskRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services import audio_provider_gateway, recommended_app_catalog_gateway
 from services.account import forgot_password_service as account_forgot_password_service
@@ -113,6 +115,7 @@ from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_variable_updater import ConversationVariableUpdater
 from services.data_source.auth.api_key_service import DataSourceApiKeyAuthService
 from services.data_source.binding_application_service import DataSourceBindingApplicationService
 from services.data_source.credential_gateway import ActorAwareDatasourceCredentialGateway
@@ -166,8 +169,10 @@ from services.web_authentication_service import WebAuthenticationService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_run_execution_service import WorkflowRunExecutionService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workflow_tool_source_service import WorkflowToolSourceService
 from tasks.delete_conversation_task import delete_conversation_related_data
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
@@ -446,6 +451,26 @@ def test_build_application_services_wires_api_based_extension_boundary(
     assert isinstance(services.api_based_extensions, APIBasedExtensionApplicationService)
     assert isinstance(services.api_based_extensions._secrets, WorkspaceTokenCipher)
     assert isinstance(services.api_based_extensions._probe, APIBasedExtensionPingProbe)
+
+
+def test_build_application_services_wires_one_traced_workflow_run_driver(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    run = inspect.unwrap(services.workflow_run_driver)
+    assert run is not services.workflow_run_driver
+    assert isinstance(run, MethodType)
+    assert isinstance(run.__self__, WorkflowRunExecutionService)
+    assert isinstance(run.__self__._tasks, WorkflowRunTaskRepository)
+    assert isinstance(run.__self__._tool_sources, WorkflowToolSourceService)
+    assert isinstance(run.__self__._conversation_variables, ConversationVariableUpdater)
+    assert services.knowledge.pipeline_generator._execution_driver is services.workflow_run_driver
 
 
 def test_build_application_services_reuses_file_service(

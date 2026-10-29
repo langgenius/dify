@@ -8,19 +8,23 @@ scope updates that matter to chat applications.
 """
 
 import logging
-from typing import override
+from typing import Protocol, override
 
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
 from graphon.engine.layer import Layer
 from graphon.engine_events import EngineEvent, NodeRunVariableUpdatedEvent
-from services.conversation_variable_updater import ConversationVariableUpdater
+from graphon.variables.variables import VariableBase
 
 logger = logging.getLogger(__name__)
 
 
+class ConversationVariableWriter(Protocol):
+    def update(self, conversation_id: str, variable: VariableBase) -> None: ...
+
+
 class ConversationVariablePersistenceLayer(Layer):
-    def __init__(self, conversation_variable_updater: ConversationVariableUpdater) -> None:
+    def __init__(self, conversation_variable_updater: ConversationVariableWriter) -> None:
         super().__init__()
         self._conversation_variable_updater = conversation_variable_updater
 

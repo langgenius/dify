@@ -63,7 +63,8 @@ def test_materialized_tool_sources_keep_the_published_version_and_tenant(
 def test_serialized_tool_snapshot_preserves_definitions_without_current_providers(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
+    from services.entities.workflow_tool_source_entities import WorkflowToolSnapshot
+    from services.workflow_tool_source_service import WorkflowToolSourceService
 
     _save_source(sqlite_session_factory)
     variables = [
@@ -144,11 +145,8 @@ def test_saved_provider_aliases_keep_distinct_definitions_for_the_same_source(
 ) -> None:
     from core.tools.entities.common_entities import I18nObject
     from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
-    from services.workflow_tool_source_service import (
-        WorkflowToolDefinition,
-        WorkflowToolSnapshot,
-        WorkflowToolSourceService,
-    )
+    from services.entities.workflow_tool_source_entities import WorkflowToolDefinition, WorkflowToolSnapshot
+    from services.workflow_tool_source_service import WorkflowToolSourceService
 
     _save_source(sqlite_session_factory)
     snapshot = WorkflowToolSnapshot(

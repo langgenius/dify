@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.app.apps.workflow_app_runner import WorkflowRunDriver
 from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
@@ -40,6 +41,7 @@ from extensions.application_services.knowledge import (
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
+from extensions.application_services.workflow_run import build_workflow_run_driver
 from extensions.application_services.workspace import (
     WorkspaceServices,
     build_workspace_membership_services,
@@ -359,6 +361,7 @@ class ApplicationServices:
     trial_apps: TrialAppServices
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
+    workflow_run_driver: WorkflowRunDriver
     workspaces: WorkspaceServices
     workflow_app_logs: WorkflowAppLogQueryService
     workflow_comments: WorkflowCommentService
@@ -529,6 +532,7 @@ def build_application_services(
         tracing_configs=tracing_configs,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
+    workflow_run_driver = build_workflow_run_driver(database_client=database_client)
     knowledge = build_knowledge_services(
         database_client=database_client,
         dataset_access=dataset_dependencies.access,
@@ -540,6 +544,7 @@ def build_application_services(
         redis=redis,
         tags=tags,
         rbac_members=rbac.members,
+        workflow_run_driver=workflow_run_driver,
     )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
@@ -827,6 +832,7 @@ def build_application_services(
             workflow_runs=workflow_run_repository,
             node_executions=workflow_node_execution_repository,
         ),
+        workflow_run_driver=workflow_run_driver,
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),

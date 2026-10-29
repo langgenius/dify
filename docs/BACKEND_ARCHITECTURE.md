@@ -4,7 +4,7 @@ The backend uses a ports-and-adapters architecture, with application services or
 
 Most existing services are application services: they coordinate use cases, persistence, and other capabilities. Migrated slices primarily work with plain records, so business rules still collect in application services and repositories. The dedicated `api/domain/` package described below is a target for new or extracted domain code; it does not exist yet.
 
-Class names do not establish architectural roles. For example, [`WorkflowRunAgg`](../api/services/workflow_run_agg.py) coordinates execution, persistence, and publication and depends on concrete repositories and runtime infrastructure. It is an application orchestration component with legacy coupling, not a pure DDD aggregate. Extract its business behavior before moving anything into the domain package; moving or renaming the whole class would not establish the boundary.
+Class names do not establish architectural roles. For example, [`WorkflowRunExecutionService`](../api/services/workflow_run_execution_service.py), formerly `WorkflowRunAgg`, coordinates execution, persistence, and publication and still drives the legacy execution kernel directly. It is an application orchestration component with legacy coupling, not a pure DDD aggregate. Extract its business behavior before moving anything into the domain package; moving or renaming the whole class would not establish the boundary.
 
 ## Layers
 
