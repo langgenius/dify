@@ -55,7 +55,7 @@ from services.dify_builder.native_testing.repository import (
     native_observation_transaction,
     utc_now,
 )
-from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, native_payload_read_scope
 
 
 class NativeLaunchPort(Protocol):
@@ -342,6 +342,7 @@ class NativeTestApiService:
                 for record in request.observations
             ]
 
+    @native_payload_read_scope()
     def get(self, *, actor: Actor, session_id: str, request_id: str) -> NativeTestPublicReceipt:
         request = self._request(actor=actor, session_id=session_id, request_id=request_id)
         with self.sessions() as session:
@@ -515,6 +516,7 @@ class NativeTestApiService:
             evidence_refs=(native_run.id,) if native_run else (),
         )
 
+    @native_payload_read_scope()
     def decide(
         self,
         *,
@@ -569,6 +571,7 @@ class NativeTestApiService:
             pending_guard=guard,
         )
 
+    @native_payload_read_scope()
     def resume(
         self, *, actor: Actor, session_id: str, request_id: str, expected_generation: int, idempotency_key: str
     ) -> NativeTestPublicReceipt:
@@ -578,6 +581,7 @@ class NativeTestApiService:
         )
         return self.get(actor=actor, session_id=session_id, request_id=request_id)
 
+    @native_payload_read_scope()
     def cancel(
         self, *, actor: Actor, session_id: str, request_id: str, idempotency_key: str
     ) -> NativeTestPublicReceipt:

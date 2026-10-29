@@ -7,8 +7,10 @@ All key-provider and object-storage work happens outside SQL transactions.
 
 import json
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
-from dataclasses import dataclass
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Literal
 from uuid import UUID, uuid4
@@ -175,6 +177,43 @@ class ObjectReceipt:
         )
 
 
+_PAYLOAD_READ_MAX_ENTRIES = 64
+_PAYLOAD_READ_MAX_BYTES = 8 * 1024 * 1024
+
+
+@dataclass
+class _PayloadReads:
+    encrypted: dict[tuple[ObjectReceipt, int | None], bytes] = field(default_factory=dict)
+    byte_count: int = 0
+    active: bool = True
+
+
+_payload_reads: ContextVar[_PayloadReads | None] = ContextVar("native_payload_reads", default=None)
+
+
+@contextmanager
+def native_payload_read_scope() -> Generator[None]:
+    """Reuse exact encrypted objects only during one synchronous native command.
+
+    Current owner/permission/resource checks and every decrypt/decode still run.
+    Nested owner calls share the outer scope; its finally clears even inherited
+    references. No plaintext, authority, expiry or cross-command reuse is stored.
+    """
+    inherited = _payload_reads.get()
+    if inherited is not None and inherited.active:
+        yield
+        return
+    reads = _PayloadReads()
+    token = _payload_reads.set(reads)
+    try:
+        yield
+    finally:
+        reads.active = False
+        reads.encrypted.clear()
+        reads.byte_count = 0
+        _payload_reads.reset(token)
+
+
 @dataclass
 class _AgentPreparation:
     parent: AgentParentNodeRef
@@ -275,7 +314,14 @@ class NativeExecutionStateStore:
     def _read_object(row: NativePayloadObject | ObjectReceipt, *, max_bytes: int | None = None) -> JsonValue:
         started, error_type = perf_counter(), "none"
         try:
-            stored = storage.load(row.storage_key)
+            receipt = row if isinstance(row, ObjectReceipt) else ObjectReceipt.from_payload_object(row)
+            reads = _payload_reads.get()
+            if reads is not None and not reads.active:
+                reads = None
+            key = receipt, max_bytes
+            stored = reads.encrypted.get(key) if reads is not None else None
+            if stored is None:
+                stored = storage.load(row.storage_key)
             if max_bytes is not None and len(stored) > max_bytes:
                 raise BuilderExecutionPolicyError("native_agent_config_unavailable")
             raw = encrypter.decrypt_token(row.tenant_id, stored.decode("ascii"))
@@ -291,6 +337,15 @@ class NativeExecutionStateStore:
             )
             if canonical_digest(value) != row.value_digest:
                 raise BuilderExecutionPolicyError("native_payload_invalid")
+            if (
+                reads is not None
+                and reads.active
+                and key not in reads.encrypted
+                and len(reads.encrypted) < _PAYLOAD_READ_MAX_ENTRIES
+                and len(stored) <= _PAYLOAD_READ_MAX_BYTES - reads.byte_count
+            ):
+                reads.encrypted[key] = stored
+                reads.byte_count += len(stored)
             return value
         except BuilderExecutionPolicyError as error:
             error_type = type(error).__name__
