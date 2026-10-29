@@ -63,6 +63,17 @@ class AppMetaResponse(BaseModel):
     )
 
 
+class ConnectionReadmeQuery(BaseModel):
+    plugin_unique_identifier: str = Field(
+        min_length=1, description="Exact plugin artifact from connection_requirements"
+    )
+    language: str = Field(default="en-US", min_length=1, description="README language, as in the Console plugin API")
+
+
+class ConnectionReadmeResponse(ResponseModel):
+    readme: str
+
+
 class WebAppParametersResponse(Parameters, ResponseModel):
     account_login_url: str | None = Field(description="Account-origin sign-in page for the existing Web App login flow")
     allow_anonymous_end_user_auth: bool = Field(
@@ -93,6 +104,7 @@ register_response_schema_models(
     AppMetaResponse,
     AccessModeResponse,
     BooleanResultResponse,
+    ConnectionReadmeResponse,
 )
 
 
@@ -133,6 +145,25 @@ class AppParameterApi(WebApiResource):
                 else None,
             },
         )
+
+
+@web_ns.route("/connections/readme")
+class ConnectionReadmeApi(WebApiResource):
+    @error_responses(AgentNotPublishedError, AppUnavailableError)
+    @web_ns.doc(params=query_params_from_model(ConnectionReadmeQuery))
+    @web_ns.doc(description="Read plugin documentation for a published personal Connection requirement.")
+    @web_ns.response(200, "Plugin README", web_ns.models[ConnectionReadmeResponse.__name__])
+    def get(self, app_model: App, end_user: EndUser):
+        query = ConnectionReadmeQuery.model_validate(request.args.to_dict(flat=True))
+        try:
+            readme = application_services().app_definitions.get_web_plugin_readme(
+                app_model.id, app_model.tenant_id, query.plugin_unique_identifier, query.language
+            )
+        except AppDefinitionNotPublishedError:
+            raise AgentNotPublishedError() from None
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        return dump_response(ConnectionReadmeResponse, {"readme": readme})
 
 
 @web_ns.route("/meta")

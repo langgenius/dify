@@ -42,6 +42,7 @@ def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     return (
         AppDefinitionQueryService(
             definitions=definitions,
+            plugin_readme=lambda *_args: "# Plugin documentation",
             connection_revisions=revisions,
             builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
         ),
@@ -62,6 +63,7 @@ def persisted_app_service(sqlite_session_factory: sessionmaker[Session]) -> AppD
         )
     return AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
+        plugin_readme=lambda *_args: "",
         connection_revisions=UnusedConnectionRevisions(),
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
     )
@@ -90,6 +92,7 @@ def test_service_api_orphaned_key_does_not_require_database(
 ) -> None:
     service = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=unbound_session_factory),
+        plugin_readme=lambda *_args: "",
         connection_revisions=UnusedConnectionRevisions(),
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
     )

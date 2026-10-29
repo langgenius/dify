@@ -276,6 +276,10 @@ export type ConnectionPreflightStatus = {
   status: NodeConnectionStatus | null
 }
 
+export type ConnectionReadmeResponse = {
+  readme: string
+}
+
 export type ConnectionReauthorizationRequiredError = ErrorResponse & {
   code: 'connection_reauthorization_required'
   status: 409
@@ -2014,6 +2018,30 @@ export type PostConnectionsPreflightResponses = {
 
 export type PostConnectionsPreflightResponse =
   PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
+
+export type GetConnectionsReadmeData = {
+  body?: never
+  path?: never
+  query: {
+    language?: string
+    plugin_unique_identifier: string
+  }
+  url: '/connections/readme'
+}
+
+export type GetConnectionsReadmeErrors = {
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsReadmeError = GetConnectionsReadmeErrors[keyof GetConnectionsReadmeErrors]
+
+export type GetConnectionsReadmeResponses = {
+  200: ConnectionReadmeResponse
+}
+
+export type GetConnectionsReadmeResponse =
+  GetConnectionsReadmeResponses[keyof GetConnectionsReadmeResponses]
 
 export type DeleteConnectionsByConnectionIdData = {
   body?: never

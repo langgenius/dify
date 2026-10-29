@@ -249,6 +249,13 @@ export const zConnectionCredentialStatus = z.enum(['connected', 'invalid', 'reco
 export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
 
 /**
+ * ConnectionReadmeResponse
+ */
+export const zConnectionReadmeResponse = z.object({
+  readme: z.string(),
+})
+
+/**
  * ConnectionRevisionChangeDetails
  */
 export const zConnectionRevisionChangeDetails = z.object({
@@ -2632,6 +2639,16 @@ export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
  * Connection statuses and preflight readiness
  */
 export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
+
+export const zGetConnectionsReadmeQuery = z.object({
+  language: z.string().min(1).optional().default('en-US'),
+  plugin_unique_identifier: z.string().min(1),
+})
+
+/**
+ * Plugin README
+ */
+export const zGetConnectionsReadmeResponse = zConnectionReadmeResponse
 
 export const zDeleteConnectionsByConnectionIdPath = z.object({
   connection_id: z.uuid(),
