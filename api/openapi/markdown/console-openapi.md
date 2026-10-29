@@ -28,26 +28,6 @@ Get account avatar url
 | 200 | Success | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### ~~[POST] /account/avatar~~
-
-***DEPRECATED***
-
-Deprecated. Use PATCH /account/profile instead.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AccountAvatarPayload](#accountavatarpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /account/change-email
 #### Request Body
 
@@ -222,66 +202,6 @@ Deprecated. Use PATCH /account/profile instead.
 | 200 | Success | **application/json**: [AccountIntegrateListResponse](#accountintegratelistresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### ~~[POST] /account/interface-language~~
-
-***DEPRECATED***
-
-Deprecated. Use PATCH /account/profile instead.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AccountInterfaceLanguagePayload](#accountinterfacelanguagepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### ~~[POST] /account/interface-theme~~
-
-***DEPRECATED***
-
-Deprecated. Use PATCH /account/profile instead.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AccountInterfaceThemePayload](#accountinterfacethemepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### ~~[POST] /account/name~~
-
-***DEPRECATED***
-
-Deprecated. Use PATCH /account/profile instead.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AccountNamePayload](#accountnamepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /account/password
 #### Request Body
 
@@ -312,26 +232,6 @@ Deprecated. Use PATCH /account/profile instead.
 | Required | Schema |
 | -------- | ------ |
 |  Yes | **application/json**: [AccountProfilePatchPayload](#accountprofilepatchpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### ~~[POST] /account/timezone~~
-
-***DEPRECATED***
-
-Deprecated. Use PATCH /account/profile instead.
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AccountTimezonePayload](#accounttimezonepayload)<br> |
 
 #### Responses
 
@@ -18334,12 +18234,6 @@ The account has been initialized. Please refresh the page.
 | ---- | ---- | ----------- | -------- |
 | AccountAlreadyInitedError |  | The account has been initialized. Please refresh the page. |  |
 
-#### AccountAvatarPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar | string |  | Yes |
-
 #### AccountAvatarQuery
 
 | Name | Type | Description | Required |
@@ -18399,24 +18293,6 @@ This email account has been deleted within the past 30 days and is temporarily u
 | link | string |  | No |
 | provider | string |  | Yes |
 
-#### AccountInterfaceLanguagePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| interface_language | string |  | Yes |
-
-#### AccountInterfaceThemePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | Yes |
-
-#### AccountNamePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
-
 #### AccountNotFoundError
 
 Account not found.
@@ -18467,12 +18343,6 @@ Account not link tenant.
 | last_login_ip | string |  | No |
 | name | string |  | Yes |
 | timezone | string |  | No |
-
-#### AccountTimezonePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| timezone | string |  | Yes |
 
 #### AccountWithRoleListResponse
 
