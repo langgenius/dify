@@ -256,6 +256,15 @@ export type AgentConfigFileUploadResponse = {
   file: AgentConfigFileItemResponse
 }
 
+export type AgentConfigFilesUploadPayload = {
+  upload_file_ids: Array<string>
+}
+
+export type AgentConfigFilesUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  files: Array<AgentConfigFileItemResponse>
+}
+
 export type AgentConfigDeleteResponse = {
   removed_names?: Array<string>
   result: 'success'
@@ -349,6 +358,11 @@ export type AnnotationSettingResponse = {
 
 export type AnnotationSettingUpdatePayload = {
   score_threshold: number
+}
+
+export type BadRequestError = ErrorResponse & {
+  code: 'bad_request'
+  status: 400
 }
 
 export type AnnotationList = {
@@ -634,6 +648,11 @@ export type AppMessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
 export type AppIconPayload = {
   icon?: string | null
   icon_background?: string | null
@@ -665,6 +684,7 @@ export type MessageDetailResponse = {
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
+  retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
 }
@@ -1559,6 +1579,7 @@ export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
   id: string
+  knowledge_space_ids?: Array<string>
   last_used_at?: number | null
   token: string
   type: string
@@ -1951,6 +1972,7 @@ export type MessageDetail = {
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
+  retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
 }
@@ -2022,6 +2044,36 @@ export type MessageFile = {
   type: string
   upload_file_id?: string | null
   url?: string | null
+}
+
+export type RetrievalSourceMetadata = {
+  content?: string | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: unknown
+  } | null
+  document_asset_id?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
+  files?: Array<{
+    [key: string]: unknown
+  }> | null
+  hit_count?: number | null
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  page?: number | null
+  position?: number | null
+  retriever_from?: string | null
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  title?: string | null
+  word_count?: number | null
 }
 
 export type AppAgentModePayload = {
@@ -3071,6 +3123,22 @@ export type HumanInputFormSubmissionData = {
 
 export type ExecutionContentType = 'human_input'
 
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
+
 export type AppConfigJsonValue =
   | string
   | number
@@ -3420,6 +3488,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -3577,9 +3646,11 @@ export type AgentComposerDifyToolCandidateResponse = {
 }
 
 export type AgentComposerKnowledgeSetCandidateResponse = {
+  control_space_id?: string | null
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
+  missing?: boolean
   missing_dataset_ids?: Array<string>
   name: string
 }
@@ -4094,6 +4165,14 @@ export type AgentKnowledgeSetConfig = {
   name: string
   query: AgentKnowledgeQueryConfig
   retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
 }
 
 export type AgentMemoryArtifactConfig = {
@@ -5172,6 +5251,35 @@ export type PostAppsByAppIdAgentConfigFilesResponses = {
 export type PostAppsByAppIdAgentConfigFilesResponse =
   PostAppsByAppIdAgentConfigFilesResponses[keyof PostAppsByAppIdAgentConfigFilesResponses]
 
+export type PostAppsByAppIdAgentConfigFilesBatchData = {
+  body: AgentConfigFilesUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    node_id?: string
+    version_id?: string
+  }
+  url: '/apps/{app_id}/agent/config/files/batch'
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchErrors = {
+  400: AgentNotBoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchError =
+  PostAppsByAppIdAgentConfigFilesBatchErrors[keyof PostAppsByAppIdAgentConfigFilesBatchErrors]
+
+export type PostAppsByAppIdAgentConfigFilesBatchResponses = {
+  201: AgentConfigFilesUploadResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchResponse =
+  PostAppsByAppIdAgentConfigFilesBatchResponses[keyof PostAppsByAppIdAgentConfigFilesBatchResponses]
+
 export type DeleteAppsByAppIdAgentConfigFilesByNameData = {
   body?: never
   path: {
@@ -5570,7 +5678,10 @@ export type PostAppsByAppIdAnnotationReplyByActionData = {
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionErrors = {
+  400: ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5596,7 +5707,9 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
+  400: ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5671,6 +5784,7 @@ export type DeleteAppsByAppIdAnnotationsData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsErrors = {
+  400: BadRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5748,8 +5862,10 @@ export type PostAppsByAppIdAnnotationsBatchImportData = {
 export type PostAppsByAppIdAnnotationsBatchImportErrors = {
   400: NoFileUploadedError | TooManyFilesError | ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
   413: ErrorResponse
   429: ErrorResponse
+  500: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5775,6 +5891,8 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
   403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
   default: ErrorResponse
 }
 
@@ -6075,6 +6193,7 @@ export type GetAppsByAppIdChatMessagesData = {
 }
 
 export type GetAppsByAppIdChatMessagesErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -6109,7 +6228,7 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -6407,6 +6526,8 @@ export type PostAppsByAppIdFeedbacksData = {
 }
 
 export type PostAppsByAppIdFeedbacksErrors = {
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
+  403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -6455,6 +6576,7 @@ export type GetAppsByAppIdMessagesByMessageIdData = {
 }
 
 export type GetAppsByAppIdMessagesByMessageIdErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }

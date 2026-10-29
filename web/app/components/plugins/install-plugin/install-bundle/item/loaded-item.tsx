@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Plugin, VersionProps } from '../../../types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import * as React from 'react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import Card from '../../../card'
 import useGetIcon from '../../base/use-get-icon'
 import Version from '../../base/version'
@@ -44,7 +44,7 @@ const LoadedItem: FC<Props> = ({
         payload={{
           ...payload,
           icon: isFromMarketPlace
-            ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon`
+            ? getMarketplacePluginIconUrl(`${payload.org}/${payload.name}`)
             : getIconUrl(payload.icon),
         }}
         titleLeft={payload.version ? <Version {...versionInfo} /> : null}

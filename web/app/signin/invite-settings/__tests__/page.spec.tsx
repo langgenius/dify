@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
+import { setLocaleOnClient } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -130,6 +131,7 @@ describe('Invitation activation', () => {
         },
       })
       expect(mocks.profile).toHaveBeenCalled()
+      expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
   )
 
@@ -143,6 +145,7 @@ describe('Invitation activation', () => {
       await user.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
       expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({ body: { token: 'invite-token' } })
+      expect(setLocaleOnClient).not.toHaveBeenCalled()
     },
   )
 

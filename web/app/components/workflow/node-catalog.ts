@@ -15,6 +15,7 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 
 const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
@@ -32,6 +33,7 @@ export const useWorkflowNodeCatalog = () => {
   // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
   // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
   const shouldUseAgentV2 = agentV2Enabled && (!isChatflow || isAgentV2InChatflowEnabled())
+  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
 
   const startNodeMetaData = useMemo(
     () => ({
@@ -45,8 +47,12 @@ export const useWorkflowNodeCatalog = () => {
   )
 
   const mergedNodesMetaData = useMemo(() => {
+    const commonNodes = WORKFLOW_COMMON_NODES.filter(
+      (node) => knowledgeFsEnabled || node.metaData.type !== BlockEnum.KnowledgeRetrievalV2,
+    )
+
     return [
-      ...WORKFLOW_COMMON_NODES,
+      ...commonNodes,
       startNodeMetaData,
       ...(isChatflow
         ? [AnswerDefault]
@@ -58,7 +64,7 @@ export const useWorkflowNodeCatalog = () => {
             TriggerPluginDefault,
           ]),
     ]
-  }, [isChatflow, startNodeMetaData])
+  }, [isChatflow, knowledgeFsEnabled, startNodeMetaData])
 
   const nodesMetaData = useMemo(
     () =>

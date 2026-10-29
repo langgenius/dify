@@ -12,8 +12,11 @@ from services.tracing import service as service_module
 from services.tracing.provider_dispatch import TraceExportResult
 from services.tracing.service import ApplicationTracingService
 from tasks.application_trace_task import export_application_trace, reconcile_application_traces
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.services.tracing.test_application_trace_collection import batch_for, ingest, seed, terminal
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.services.tracing.test_service import _application_trace_collection_batch_for as batch_for
+from tests.unit_tests.services.tracing.test_service import _application_trace_collection_ingest as ingest
+from tests.unit_tests.services.tracing.test_service import _application_trace_collection_seed as seed
+from tests.unit_tests.services.tracing.test_service import _application_trace_collection_terminal as terminal
 
 
 def test_worker_task_exports_once_and_replayed_task_observes_checkpoint(

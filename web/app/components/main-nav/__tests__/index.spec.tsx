@@ -19,10 +19,10 @@ import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-di
 import { GotoAnything } from '@/app/components/goto-anything'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
+  stepByStepTourChecklistMinimizedAtom,
   stepByStepTourSessionAtom,
   stepByStepTourSkipRecoveryVisibleAtom,
 } from '@/app/components/step-by-step-tour/state'
-import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -89,7 +89,6 @@ vi.mock('react-i18next', async () => {
       'onboarding.stepByStepTour.duration': 'A quick tour — about 5 minutes',
       'onboarding.stepByStepTour.skip': 'Skip tour',
       'onboarding.stepByStepTour.minimize': 'Minimize tour',
-      'onboarding.stepByStepTour.restore': 'Open step-by-step tour',
       'onboarding.stepByStepTour.learnMore': 'Learn more',
       'onboarding.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
       'onboarding.stepByStepTour.skipRecovery.message':
@@ -784,14 +783,15 @@ describe('MainNav', () => {
 
   it('closes the help menu and opens Step-by-step Tour when enabling it', async () => {
     const user = userEvent.setup()
-    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+    const store = createStore()
+    store.set(stepByStepTourChecklistMinimizedAtom, true)
     mockStepByStepTour.setState({
       first_workspace_id: null,
       manually_enabled_workspace_ids: [],
       manually_disabled_workspace_ids: [],
     })
 
-    renderMainNav({ enable_learn_app: true })
+    renderMainNav({ enable_learn_app: true }, { store })
 
     await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
     const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
@@ -805,7 +805,7 @@ describe('MainNav', () => {
       expect(mockStepByStepTour.patchState.mock.lastCall?.[0]).toEqual({
         body: { action: 'enable_current_workspace' },
       })
-      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
+      expect(store.get(stepByStepTourChecklistMinimizedAtom)).toBe(false)
     })
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
     await waitFor(() => {

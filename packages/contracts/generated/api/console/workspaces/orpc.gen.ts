@@ -215,16 +215,19 @@ import {
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponse,
+  zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyQuery,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponse,
   zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse,
   zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse,
+  zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyQuery,
   zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse,
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse,
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse,
+  zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyQuery,
   zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse,
   zGetWorkspacesCurrentSkillsBySkillIdExportPath,
   zGetWorkspacesCurrentSkillsBySkillIdExportResponse,
@@ -448,6 +451,7 @@ import {
   zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse,
   zPostWorkspacesCurrentSkillsFilesUploadBody,
   zPostWorkspacesCurrentSkillsFilesUploadResponse,
+  zPostWorkspacesCurrentSkillsImportBody,
   zPostWorkspacesCurrentSkillsImportResponse,
   zPostWorkspacesCurrentSkillsResponse,
   zPostWorkspacesCurrentToolProviderApiAddBody,
@@ -3557,6 +3561,11 @@ export const get72 = oc
     path: '/workspaces/current/rbac/workspace/agents/access-policy',
     tags: ['console'],
   })
+  .input(
+    z
+      .object({ query: zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyQuery.optional() })
+      .optional(),
+  )
   .output(zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponse)
 
 export const accessPolicy4 = {
@@ -3644,6 +3653,11 @@ export const get75 = oc
     path: '/workspaces/current/rbac/workspace/apps/access-policy',
     tags: ['console'],
   })
+  .input(
+    z
+      .object({ query: zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyQuery.optional() })
+      .optional(),
+  )
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse)
 
 export const accessPolicy5 = {
@@ -3731,6 +3745,11 @@ export const get78 = oc
     path: '/workspaces/current/rbac/workspace/datasets/access-policy',
     tags: ['console'],
   })
+  .input(
+    z
+      .object({ query: zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyQuery.optional() })
+      .optional(),
+  )
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse)
 
 export const accessPolicy6 = {
@@ -3798,6 +3817,7 @@ export const post50 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCurrentSkillsImportBody }))
   .output(zPostWorkspacesCurrentSkillsImportResponse)
   .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 

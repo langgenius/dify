@@ -604,13 +604,6 @@ export const zTextToSpeechRequest = z.object({
 })
 
 /**
- * AudioBinaryResponse
- */
-export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
-
-/**
  * ProviderNotSupportTextToSpeechError
  *
  * Provider does not support text to speech.
@@ -1557,6 +1550,23 @@ export const zAgentSoulHumanConfig = z.object({
 })
 
 /**
+ * AgentKnowledgeSpaceConfig
+ *
+ * One read-only Agent Knowledge Base binding, addressed by stable ID or CLI alias.
+ *
+ * The control-space ID is Dify-owned, never the execution-plane space ID.
+ * ``is_missing`` preserves unresolved DSL references for editing; it never
+ * authorizes execution. Names/descriptions are author guidance, not authority.
+ */
+export const zAgentKnowledgeSpaceConfig = z.object({
+  control_space_id: z.string().length(36),
+  description: z.string().max(2000).nullish(),
+  id: z.string().min(1).max(255),
+  is_missing: z.boolean().optional().default(false),
+  name: z.string().min(1).max(120),
+})
+
+/**
  * AgentMemoryArtifactConfig
  */
 export const zAgentMemoryArtifactConfig = z.object({
@@ -2087,16 +2097,15 @@ export const zAgentKnowledgeSetConfig = z.object({
 /**
  * AgentSoulKnowledgeConfig
  *
- * Top-level Agent v2 knowledge config.
+ * Agent Knowledge Base and Classic Knowledge Base bindings for an Agent.
  *
- * Agent v2 models knowledge as explicit sets instead of one flat
- * ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
- * list means no knowledge layer should be emitted at runtime, while set-name
- * uniqueness stays case-insensitive because runtime selection addresses sets
- * by name.
+ * ``spaces`` use the KnowledgeFS layer and ``sets`` use the Classic Knowledge
+ * Base layer. Both may be configured together; empty knowledge adds no runtime
+ * capability.
  */
 export const zAgentSoulKnowledgeConfig = z.object({
   sets: z.array(zAgentKnowledgeSetConfig).optional(),
+  spaces: z.array(zAgentKnowledgeSpaceConfig).max(10).optional(),
 })
 
 /**
@@ -2447,7 +2456,9 @@ export const zPostTrialAppsByAppIdTextToAudioPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdTextToAudioResponse = zAudioBinaryResponse
+export const zPostTrialAppsByAppIdTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetTrialAppsByAppIdWorkflowsPath = z.object({
   app_id: z.uuid(),

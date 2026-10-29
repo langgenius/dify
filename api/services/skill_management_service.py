@@ -56,6 +56,7 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
 from libs.datetime_utils import naive_utc_now
+from libs.helper import escape_like_pattern
 from models.account import Account
 from models.agent import (
     Agent,
@@ -738,9 +739,11 @@ class SkillManagementService:
         with self._session_scope() as session:
             stmt = select(Skill).where(Skill.tenant_id == tenant_id).order_by(Skill.updated_at.desc())
             if keyword:
-                like = f"%{keyword.strip()}%"
+                like = f"%{escape_like_pattern(keyword.strip())}%"
                 stmt = stmt.where(
-                    (Skill.name.ilike(like)) | (Skill.display_name.ilike(like)) | (Skill.description.ilike(like))
+                    (Skill.name.ilike(like, escape="\\"))
+                    | (Skill.display_name.ilike(like, escape="\\"))
+                    | (Skill.description.ilike(like, escape="\\"))
                 )
             requested_tags = self._normalize_tags(tags or [])
             if requested_tags:
@@ -4794,7 +4797,14 @@ class SkillManagementService:
                 text_parts.append(source[index + 1])
             index += 2
 
-        text = re.sub(r"[ \t]+\n", "\n", "".join(text_parts))
+        raw_text = "".join(text_parts)
+        text = re.sub(
+            r"([\uD800-\uDBFF])([\uDC00-\uDFFF])",
+            lambda m: chr(0x10000 + ((ord(m.group(1)) - 0xD800) << 10) + (ord(m.group(2)) - 0xDC00)),
+            raw_text,
+        )
+        text = re.sub(r"[\uD800-\uDFFF]", "\ufffd", text)
+        text = re.sub(r"[ \t]+\n", "\n", text)
         text = re.sub(r"\n{3,}", "\n\n", text).strip()
         if len(text) > max_chars:
             return f"{text[:max_chars]}\n[TRUNCATED]"

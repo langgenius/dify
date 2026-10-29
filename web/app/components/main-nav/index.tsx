@@ -13,6 +13,7 @@ import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useMarketplace } from '@/features/marketplace/client'
 import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -32,6 +33,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const marketplaceEnabled = useMarketplace() !== null
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.meta.currentEnv,
@@ -53,7 +55,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
           agentV2Enabled,
           canViewSkills,
           isCurrentWorkspaceDatasetOperator,
-          marketplaceEnabled: systemFeatures.enable_marketplace,
+          marketplaceEnabled,
           skillEnabled: enableSkill === true,
         }),
       ).map((route) => ({
@@ -68,7 +70,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
       canViewSkills,
       enableSkill,
       isCurrentWorkspaceDatasetOperator,
-      systemFeatures.enable_marketplace,
+      marketplaceEnabled,
       t,
     ],
   )
@@ -101,12 +103,12 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
   return (
     <aside
       className={cn(
-        'relative flex h-full w-62 shrink-0 flex-col overflow-hidden bg-background-body p-1 transition-all',
+        'relative flex h-full w-60 shrink-0 flex-col overflow-hidden bg-background-body transition-all',
         className,
       )}
     >
       <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
+        <div className="flex items-center justify-between ps-4 pe-2 pt-3 pb-2">
           {renderLogo()}
           <MainNavSearchButton initialPlatform={initialPlatform} />
         </div>
@@ -124,7 +126,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
                   size="xs"
                   variant="dimm"
                   text={t(($) => $['menus.status'], { ns: 'navigation' })}
-                  className="ml-auto shrink-0"
+                  className="ms-auto shrink-0"
                 />
               )}
             </MainNavLink>
@@ -144,9 +146,9 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
       <div className="isolate w-60 shrink-0">
         <StepByStepTourMount
           recoveryAnchorRef={systemFeatures.branding.enabled ? undefined : helpMenuTriggerRef}
-          className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible"
+          className="relative z-1 ms-2.5 -mb-1 h-8 w-45.75 overflow-visible"
         />
-        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
           <div className="flex min-w-0 items-center gap-1 overflow-hidden">
             <AccountSection />
           </div>

@@ -613,8 +613,6 @@ export type TextToAudioPayload = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
 export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
   code: 'provider_not_support_text_to_speech'
   status: 400
@@ -783,14 +781,18 @@ export type RetrieverResource = {
   doc_metadata?: {
     [key: string]: JsonValueType
   } | null
+  document_asset_id?: string | null
   document_id?: string | null
   document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
   files?: Array<{
     [key: string]: JsonValueType
   }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
   message_id?: string
   page?: number | null
   position: number
@@ -830,6 +832,22 @@ export type HumanInputFormSubmissionData = {
 }
 
 export type ExecutionContentType = 'human_input'
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
@@ -1365,7 +1383,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404:
     | ConversationNotFoundError
@@ -1397,7 +1415,7 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
-  400: MessageFeedbackRatingRequiredError | ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
@@ -1655,7 +1673,7 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioError =
   PostInstalledAppsByInstalledAppIdTextToAudioErrors[keyof PostInstalledAppsByInstalledAppIdTextToAudioErrors]
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: Blob | File
 }
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponse =
