@@ -61,7 +61,10 @@ describe('Webapp connection data', () => {
         requirement({ node_id: 'source-two', node_ids: ['source-two'] }),
       ],
       connections: [first, second],
-      configuration: { connections: { 'source-one': first, 'source-two': second } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-one': first, 'source-two': second },
+      },
       allConnectionsLoaded: true,
     })
 
@@ -147,7 +150,7 @@ describe('Webapp connection data', () => {
     const data = getConnectionData({
       requirements: [requirement()],
       connections: [connection()],
-      configuration: { connections: { 'source-one': selected } },
+      configuration: { reauthorization_required: false, connections: { 'source-one': selected } },
       allConnectionsLoaded: false,
     })
 
@@ -162,7 +165,10 @@ describe('Webapp connection data', () => {
     const data = getConnectionData({
       requirements: [requirement()],
       connections: [connection()],
-      configuration: { connections: { 'source-one': connection({ id: 'removed-account' }) } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-one': connection({ id: 'removed-account' }) },
+      },
       allConnectionsLoaded: true,
     })
 
@@ -172,8 +178,8 @@ describe('Webapp connection data', () => {
 
   const missingConfigurations: (ConnectionConfigurationResponse | undefined)[] = [
     undefined,
-    { connections: {} },
-    { connections: { 'source-one': null } },
+    { reauthorization_required: false, connections: {} },
+    { reauthorization_required: false, connections: { 'source-one': null } },
   ]
 
   it.each(missingConfigurations)(
@@ -195,7 +201,10 @@ describe('Webapp connection data', () => {
     const data = getConnectionData({
       requirements: [requirement({ node_ids: ['source-one', 'reuse-one'] })],
       connections: [connection()],
-      configuration: { connections: { 'reuse-one': connection() } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'reuse-one': connection() },
+      },
       allConnectionsLoaded: true,
     })
 
@@ -211,7 +220,10 @@ describe('Webapp connection data', () => {
       const data = getConnectionData({
         requirements: [requirement({ allowed_credential_types: ['oauth2'] })],
         connections: [],
-        configuration: { connections: { 'source-one': configured } },
+        configuration: {
+          reauthorization_required: false,
+          connections: { 'source-one': configured },
+        },
         allConnectionsLoaded: false,
       })
 
@@ -224,7 +236,10 @@ describe('Webapp connection data', () => {
     const data = getConnectionData({
       requirements: [requirement()],
       connections: [connection({ credential_status: 'reconnect_required' })],
-      configuration: { connections: { 'source-one': connection() } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-one': connection() },
+      },
       allConnectionsLoaded: false,
     })
 
@@ -238,7 +253,10 @@ describe('Webapp connection data', () => {
     const data = getConnectionData({
       requirements: [requirement({ allowed_credential_types: ['oauth2'] })],
       connections: [connection({ credential_type: 'api-key' })],
-      configuration: { connections: { 'source-one': connection() } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-one': connection() },
+      },
       allConnectionsLoaded: false,
     })
 
@@ -255,7 +273,10 @@ describe('Webapp connection data', () => {
         requirement({ node_id: 'source-two', node_ids: ['source-two'] }),
       ],
       connections: [first, second],
-      configuration: { connections: { 'source-one': first, 'source-two': first } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-one': first, 'source-two': first },
+      },
       selectionOverrides: { 'source-one': 'connection-two', 'source-two': null },
       allConnectionsLoaded: true,
     })
@@ -293,7 +314,10 @@ describe('Webapp connection data', () => {
       const data = getConnectionData({
         requirements: [requirement({ allowed_credential_types: ['oauth2'] })],
         connections,
-        configuration: { connections: { 'source-one': connection({ id: 'saved-account' }) } },
+        configuration: {
+          reauthorization_required: false,
+          connections: { 'source-one': connection({ id: 'saved-account' }) },
+        },
         selectionOverrides: { 'source-one': 'connection-one' },
         allConnectionsLoaded: true,
       })

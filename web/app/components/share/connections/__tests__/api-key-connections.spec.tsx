@@ -25,6 +25,49 @@ const moreActions = (account: string) =>
   `share.connections.accounts.moreActions:${JSON.stringify({ account })}`
 
 describe('API Key connection management', () => {
+  it('replaces a valid key from its menu without changing the selected connection', async () => {
+    const user = userEvent.setup()
+    const onReplace = vi.fn()
+    const onConnectionChange = vi.fn()
+    render(
+      <RequiredServices
+        services={[service]}
+        onConnect={vi.fn()}
+        onReplace={onReplace}
+        onConnectionChange={onConnectionChange}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Google Search' })
+    await user.click(trigger)
+    const popover = await screen.findByRole('dialog', { name: popoverName })
+    await user.click(within(popover).getByRole('button', { name: moreActions('Backup key') }))
+    const menu = await screen.findByRole('menu')
+    await user.click(
+      within(menu).getByRole('menuitem', { name: 'share.connections.apiKeys.replaceTitle' }),
+    )
+    const replacement = await screen.findByRole('dialog', {
+      name: 'share.connections.apiKeys.replaceTitle',
+    })
+    await waitFor(() => expect(popover).not.toBeInTheDocument())
+    expect(
+      within(replacement).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+    ).toHaveValue('Backup key')
+    await user.type(
+      within(replacement).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'replacement-secret',
+    )
+    await user.click(within(replacement).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(onReplace).toHaveBeenCalledExactlyOnceWith('google-search', 'backup-key', {
+      name: 'Backup key',
+      credentials: { api_key: 'replacement-secret' },
+    })
+    await waitFor(() => expect(replacement).not.toBeInTheDocument())
+    expect(trigger).toHaveTextContent('Personal key')
+    expect(onConnectionChange).not.toHaveBeenCalled()
+  })
+
   it('saves a replacement for the exact invalid key and clears its warning after selecting a valid backup', async () => {
     const user = userEvent.setup()
     const onConnectionChange = vi.fn()
@@ -245,7 +288,11 @@ describe('API Key connection management', () => {
     for (const action of within(popover).getAllByRole('button')) expect(action).toBeDisabled()
     await user.click(replace)
     rerender(<ConfigureConnections {...props} />)
-    await user.click(replace)
+    await user.click(within(popover).getByRole('button', { name: moreActions('Backup key') }))
+    const menu = await screen.findByRole('menu')
+    await user.click(
+      within(menu).getByRole('menuitem', { name: 'share.connections.apiKeys.replaceTitle' }),
+    )
     const replacement = await screen.findByRole('dialog', {
       name: 'share.connections.apiKeys.replaceTitle',
     })

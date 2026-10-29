@@ -1,4 +1,5 @@
 import type {
+  ConnectionConfigurationPayload,
   ConnectionConfigurationResponse,
   EndUserConnectionListResponse,
   EndUserConnectionPreflightPayload,
@@ -154,13 +155,17 @@ type Backend = {
   configuration: ConnectionConfigurationResponse
   connectionRevision: string
   list?: (request: Request) => EndUserConnectionListResponse
+  saveSelection?: (request: Request) => Response | Promise<Response>
   write: (request: Request) => Response | Promise<Response>
 }
 
 function installBackend(overrides: Partial<Backend> = {}) {
   const backend: Backend = {
     records: [existing, backup],
-    configuration: { connections: { 'source-a': existing, 'source-b': existing } },
+    configuration: {
+      reauthorization_required: false,
+      connections: { 'source-a': existing, 'source-b': existing },
+    },
     connectionRevision,
     write: () => {
       throw new Error('Unexpected connection write.')
@@ -190,6 +195,20 @@ function installBackend(overrides: Partial<Backend> = {}) {
     }
     // These assertions record connection management requests; Preflight has its own suite.
     requests.push(request)
+    if (request.method === 'PUT' && url.pathname.endsWith('/connections/configuration')) {
+      if (backend.saveSelection) return backend.saveSelection(request)
+      const payload = (await request.clone().json()) as ConnectionConfigurationPayload
+      backend.configuration = {
+        reauthorization_required: false,
+        connections: Object.fromEntries(
+          Object.entries(payload.connections).map(([nodeId, id]) => [
+            nodeId,
+            backend.records.find((item) => item.id === id) ?? null,
+          ]),
+        ),
+      }
+      return Response.json(backend.configuration)
+    }
     if (request.method !== 'GET') return backend.write(request)
     if (url.pathname.endsWith('/parameters'))
       return Response.json(parameters(backend.connectionRevision))
@@ -229,6 +248,7 @@ function Consumer() {
       <output aria-label="Available connections">
         {JSON.stringify(state.services.flatMap((service) => service.availableConnections))}
       </output>
+      <output aria-label="Can run">{String(state.canRun)}</output>
       <output aria-label="Mutation pending">{String(state.isMutating)}</output>
       <output aria-label="Action result">{result}</output>
       <button
@@ -258,10 +278,16 @@ function Consumer() {
       >
         Reconnect OAuth
       </button>
+      <button type="button" onClick={() => state.onConnectionChange('reuse-a', createdId)}>
+        Choose created connection
+      </button>
+      <button type="button" onClick={() => state.onConnectionChange('reuse-a', null)}>
+        Clear source connection
+      </button>
       <button type="button" onClick={state.retry}>
         Reload connections
       </button>
-      <button type="button" onClick={() => state.onConnectionChange('source-a', backupId)}>
+      <button type="button" onClick={() => state.onConnectionChange('reuse-a', backupId)}>
         Choose backup connection
       </button>
     </>
@@ -291,6 +317,7 @@ function available() {
 type Scope = {
   address: WebAppAddress
   conversationId?: string
+  selectionSession?: number
   probeParameters?: boolean
   entry?: ReadyEntry
 }
@@ -301,7 +328,11 @@ describe('Webapp connection actions', () => {
     <QueryClientProvider client={queryClient}>
       <WebAppEntryContext value={scope.entry ?? entry()}>
         {scope.probeParameters && <ParameterProbe currentAddress={scope.address} />}
-        <WebAppConnectionsProvider address={scope.address} conversationId={scope.conversationId}>
+        <WebAppConnectionsProvider
+          address={scope.address}
+          conversationId={scope.conversationId}
+          selectionSession={scope.selectionSession}
+        >
           <Consumer />
         </WebAppConnectionsProvider>
       </WebAppEntryContext>
@@ -353,9 +384,177 @@ describe('Webapp connection actions', () => {
       node_id: 'source-a',
     })
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1)
+    expect(
+      await requests
+        .find((item) => item.method === 'PUT')!
+        .clone()
+        .json(),
+    ).toEqual({
+      connection_revision: connectionRevision,
+      conversation_id: conversationId,
+      connections: { 'source-a': createdId, 'source-b': existingId },
+    })
     expect(selections()).toEqual({ 'source-a': createdId, 'source-b': existingId })
     expect(available()).toContainEqual(expect.objectContaining({ id: createdId, name: draft.name }))
   })
+
+  it('persists a manual choice with all independent sources and the active conversation before enabling runs', async () => {
+    const user = userEvent.setup()
+    const pending = deferred<Response>()
+    const { requests } = installBackend({ saveSelection: () => pending.promise })
+    render(tree())
+    await ready()
+    await waitFor(() => expect(screen.getByLabelText('Can run')).toHaveTextContent('true'))
+
+    await user.click(screen.getByRole('button', { name: 'Choose backup connection' }))
+    await waitFor(() => expect(requests.filter((item) => item.method === 'PUT')).toHaveLength(1))
+    expect(
+      await requests
+        .find((item) => item.method === 'PUT')!
+        .clone()
+        .json(),
+    ).toEqual({
+      connection_revision: connectionRevision,
+      conversation_id: conversationId,
+      connections: { 'source-a': backupId, 'source-b': existingId },
+    })
+    expect(selections()).toEqual({ 'source-a': existingId, 'source-b': existingId })
+    expect(screen.getByLabelText('Mutation pending')).toHaveTextContent('true')
+    expect(screen.getByLabelText('Can run')).toHaveTextContent('false')
+    await user.click(screen.getByRole('button', { name: 'Clear source connection' }))
+    expect(requests.filter((item) => item.method === 'PUT')).toHaveLength(1)
+
+    await act(async () =>
+      pending.resolve(
+        Response.json({
+          reauthorization_required: false,
+          connections: { 'source-a': backup, 'source-b': existing },
+        } satisfies ConnectionConfigurationResponse),
+      ),
+    )
+    await waitFor(() => expect(selections()['source-a']).toBe(backupId))
+    await waitFor(() => expect(screen.getByLabelText('Can run')).toHaveTextContent('true'))
+  })
+
+  it('saves partial app defaults without a conversation and uses the authoritative returned selection', async () => {
+    const user = userEvent.setup()
+    const { requests } = installBackend({
+      saveSelection: () =>
+        Response.json({
+          reauthorization_required: false,
+          connections: { 'source-a': null, 'source-b': backup },
+        } satisfies ConnectionConfigurationResponse),
+    })
+    render(tree({ address }))
+    await ready()
+    await user.click(screen.getByRole('button', { name: 'Clear source connection' }))
+    await waitFor(() => expect(selections()).toEqual({ 'source-a': null, 'source-b': backupId }))
+    expect(
+      await requests
+        .find((item) => item.method === 'PUT')!
+        .clone()
+        .json(),
+    ).toEqual({
+      connection_revision: connectionRevision,
+      connections: { 'source-a': null, 'source-b': existingId },
+    })
+    expect(screen.getByLabelText('Can run')).toHaveTextContent('false')
+  })
+
+  it('preserves the old selection and reports an error when saving a manual choice fails', async () => {
+    const user = userEvent.setup()
+    installBackend({
+      saveSelection: () => Response.json({ message: 'Save failed' }, { status: 500 }),
+    })
+    render(tree())
+    await ready()
+    await user.click(screen.getByRole('button', { name: 'Choose backup connection' }))
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed'),
+    )
+    expect(selections()).toEqual({ 'source-a': existingId, 'source-b': existingId })
+    expect(screen.getByLabelText('Mutation pending')).toHaveTextContent('false')
+  })
+
+  it.each(['conversation', 'selectionSession'] as const)(
+    'serializes selection writes after changing %s and refreshes the new session after the old write commits',
+    async (changedScope) => {
+      const user = userEvent.setup()
+      const previousSave = deferred<Response>()
+      const { backend, requests } = installBackend({ saveSelection: () => previousSave.promise })
+      const scope: Scope =
+        changedScope === 'conversation'
+          ? { address, conversationId }
+          : { address, selectionSession: 0 }
+      const view = render(tree(scope))
+      await ready()
+      await user.click(screen.getByRole('button', { name: 'Choose backup connection' }))
+      await waitFor(() => expect(requests.filter((item) => item.method === 'PUT')).toHaveLength(1))
+
+      const nextScope =
+        changedScope === 'conversation'
+          ? { address, conversationId: createdId }
+          : { address, selectionSession: 1 }
+      view.rerender(tree(nextScope))
+      await ready()
+      expect(screen.getByLabelText('Mutation pending')).toHaveTextContent('true')
+      expect(screen.getByLabelText('Can run')).toHaveTextContent('false')
+      await user.click(screen.getByRole('button', { name: 'Clear source connection' }))
+      expect(requests.filter((item) => item.method === 'PUT')).toHaveLength(1)
+      const configurationReads = () =>
+        requests.filter(
+          (item) =>
+            item.method === 'GET' &&
+            new URL(item.url).pathname.endsWith('/connections/configuration'),
+        )
+      const readsBeforeCommit = configurationReads().length
+
+      backend.configuration = {
+        reauthorization_required: false,
+        connections:
+          changedScope === 'conversation'
+            ? { 'source-a': existing, 'source-b': backup }
+            : { 'source-a': backup, 'source-b': existing },
+      }
+      await act(async () =>
+        previousSave.resolve(
+          Response.json({
+            reauthorization_required: false,
+            connections: { 'source-a': backup, 'source-b': existing },
+          } satisfies ConnectionConfigurationResponse),
+        ),
+      )
+      await waitFor(() =>
+        expect(screen.getByLabelText('Mutation pending')).toHaveTextContent('false'),
+      )
+      expect(configurationReads().length).toBeGreaterThan(readsBeforeCommit)
+      expect(selections()).toEqual(
+        changedScope === 'conversation'
+          ? { 'source-a': existingId, 'source-b': backupId }
+          : { 'source-a': backupId, 'source-b': existingId },
+      )
+      expect(toast.error).not.toHaveBeenCalled()
+
+      backend.saveSelection = undefined
+      await user.click(screen.getByRole('button', { name: 'Clear source connection' }))
+      await waitFor(() => expect(selections()['source-a']).toBeNull())
+      expect(requests.filter((item) => item.method === 'PUT')).toHaveLength(2)
+      expect(
+        await requests
+          .filter((item) => item.method === 'PUT')
+          .at(-1)!
+          .clone()
+          .json(),
+      ).toEqual({
+        connection_revision: connectionRevision,
+        ...(changedScope === 'conversation' ? { conversation_id: createdId } : {}),
+        connections: {
+          'source-a': null,
+          'source-b': changedScope === 'conversation' ? backupId : existingId,
+        },
+      })
+    },
+  )
 
   it('updates an API key only after PATCH succeeds and preserves the selected connection ID', async () => {
     const user = userEvent.setup()
@@ -363,7 +562,7 @@ describe('Webapp connection actions', () => {
     const request = deferred<Response>()
     const { backend, requests } = installBackend({
       records: [original, backup],
-      configuration: { connections: { 'source-a': original } },
+      configuration: { reauthorization_required: false, connections: { 'source-a': original } },
     })
     let submitted: unknown
     backend.write = async (writeRequest) => {
@@ -449,7 +648,10 @@ describe('Webapp connection actions', () => {
     expect(selections()).toEqual({ 'source-a': existingId, 'source-b': existingId })
     expect(available().some((item) => item.id === existingId)).toBe(true)
     backend.records = [backup]
-    backend.configuration = { connections: { 'source-a': null, 'source-b': null } }
+    backend.configuration = {
+      reauthorization_required: false,
+      connections: { 'source-a': null, 'source-b': null },
+    }
     await act(async () => {
       request.resolve(new Response(null, { status: 204 }))
     })
@@ -465,7 +667,10 @@ describe('Webapp connection actions', () => {
     const oauth = connection({ credential_type: 'oauth2', account_label: 'reader@example.com' })
     const { requests } = installBackend({
       records: [oauth, backup],
-      configuration: { connections: { 'source-a': oauth, 'source-b': backup } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-a': oauth, 'source-b': backup },
+      },
     })
     const source = entry()
     source.parameters = {
@@ -623,6 +828,50 @@ describe('Webapp connection actions', () => {
     }
   }
 
+  it.each(['API key', 'OAuth'] as const)(
+    'keeps a created %s available when selection saving fails and retries selection without creating again',
+    async (method) => {
+      const user = userEvent.setup()
+      const isOAuth = method === 'OAuth'
+      const original = connection({ credential_type: isOAuth ? 'oauth2' : 'api-key' })
+      const newConnection = connection({ ...created, credential_type: original.credential_type })
+      const { backend, requests } = installBackend({
+        records: [original],
+        configuration: {
+          reauthorization_required: false,
+          connections: { 'source-a': original, 'source-b': original },
+        },
+        saveSelection: () => Response.json({ message: 'Save failed' }, { status: 500 }),
+      })
+      backend.write = () => {
+        backend.records = [original, newConnection]
+        return isOAuth
+          ? Response.json({ authorization_url: 'https://github.example/authorize' })
+          : Response.json(newConnection, { status: 201 })
+      }
+      const popup = isOAuth ? openAuthorizationPopup() : null
+      render(tree({ address, conversationId, entry: isOAuth ? oauthEntry() : entry() }))
+      await ready()
+      await user.click(
+        screen.getByRole('button', { name: isOAuth ? 'Connect OAuth' : 'Add connection' }),
+      )
+      if (popup) {
+        await waitFor(() => expect(popup.child.location.replace).toHaveBeenCalledOnce())
+        await act(async () => popup.complete(createdId))
+      }
+      await waitFor(() => expect(screen.getByLabelText('Action result')).toHaveTextContent('saved'))
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed')
+      expect(selections()).toEqual({ 'source-a': existingId, 'source-b': existingId })
+      expect(available()).toContainEqual(expect.objectContaining({ id: createdId }))
+
+      backend.saveSelection = undefined
+      await user.click(screen.getByRole('button', { name: 'Choose created connection' }))
+      await waitFor(() => expect(selections()['source-a']).toBe(createdId))
+      expect(requests.filter((item) => item.method === 'POST')).toHaveLength(1)
+      expect(requests.filter((item) => item.method === 'PUT')).toHaveLength(2)
+    },
+  )
+
   it('selects the OAuth callback connection only for the source that initiated authorization', async () => {
     const user = userEvent.setup()
     const oauthExisting = connection({
@@ -641,7 +890,10 @@ describe('Webapp connection actions', () => {
     })
     const { backend, requests } = installBackend({
       records: [oauthBackup, oauthExisting],
-      configuration: { connections: { 'source-a': oauthExisting, 'source-b': oauthBackup } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-a': oauthExisting, 'source-b': oauthBackup },
+      },
     })
     let submitted: unknown
     backend.write = async (request) => {
@@ -662,7 +914,6 @@ describe('Webapp connection actions', () => {
     expect(submitted).toEqual({
       connection_revision: connectionRevision,
       node_id: 'source-a',
-      name: 'Research repositories',
     })
     expect(
       requests
@@ -685,6 +936,16 @@ describe('Webapp connection actions', () => {
           new URL(request.url).pathname.endsWith(`/connections/${createdId}`),
       ),
     ).toBe(true)
+    expect(
+      await requests
+        .find((item) => item.method === 'PUT')!
+        .clone()
+        .json(),
+    ).toEqual({
+      connection_revision: connectionRevision,
+      conversation_id: conversationId,
+      connections: { 'source-a': createdId, 'source-b': backupId },
+    })
     expect(selections()).toEqual({ 'source-a': createdId, 'source-b': backupId })
     expect(available()).toContainEqual(
       expect.objectContaining({ id: createdId, name: 'new@example.com' }),
@@ -706,7 +967,10 @@ describe('Webapp connection actions', () => {
     })
     const { backend, requests } = installBackend({
       records: [oauthExisting, unrelated],
-      configuration: { connections: { 'source-a': oauthExisting, 'source-b': oauthExisting } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-a': oauthExisting, 'source-b': oauthExisting },
+      },
     })
     backend.write = () => Response.json({ authorization_url: 'https://github.example/authorize' })
     const popup = openAuthorizationPopup()
@@ -747,7 +1011,7 @@ describe('Webapp connection actions', () => {
     })
     const { backend, requests } = installBackend({
       records: [expired],
-      configuration: { connections: { 'source-a': expired } },
+      configuration: { reauthorization_required: false, connections: { 'source-a': expired } },
     })
     let submitted: unknown
     backend.write = async (request) => {
@@ -802,7 +1066,10 @@ describe('Webapp connection actions', () => {
       })
       const { backend, requests } = installBackend({
         records: [oauthExisting],
-        configuration: { connections: { 'source-a': oauthExisting, 'source-b': oauthExisting } },
+        configuration: {
+          reauthorization_required: false,
+          connections: { 'source-a': oauthExisting, 'source-b': oauthExisting },
+        },
       })
       backend.write = () =>
         Response.json(
@@ -836,7 +1103,10 @@ describe('Webapp connection actions', () => {
     })
     const { backend } = installBackend({
       records: [oauthExisting],
-      configuration: { connections: { 'source-a': oauthExisting, 'source-b': oauthExisting } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-a': oauthExisting, 'source-b': oauthExisting },
+      },
     })
     backend.write = () => Response.json({ authorization_url: 'https://github.example/authorize' })
     const popup = openAuthorizationPopup()
@@ -867,7 +1137,10 @@ describe('Webapp connection actions', () => {
     })
     const { backend } = installBackend({
       records: [oauthExisting, oauthBackup],
-      configuration: { connections: { 'source-a': oauthExisting, 'source-b': oauthExisting } },
+      configuration: {
+        reauthorization_required: false,
+        connections: { 'source-a': oauthExisting, 'source-b': oauthExisting },
+      },
     })
     backend.write = () => Response.json({ authorization_url: 'https://github.example/authorize' })
     const popup = openAuthorizationPopup()
@@ -876,7 +1149,10 @@ describe('Webapp connection actions', () => {
     await ready()
     await user.click(screen.getByRole('button', { name: 'Connect OAuth' }))
     await waitFor(() => expect(popup.child.location.replace).toHaveBeenCalledOnce())
-    backend.configuration = { connections: { 'source-a': oauthBackup, 'source-b': oauthBackup } }
+    backend.configuration = {
+      reauthorization_required: false,
+      connections: { 'source-a': oauthBackup, 'source-b': oauthBackup },
+    }
 
     act(() => {
       setWebAppAccessToken('account-b', 'end_user')
@@ -906,7 +1182,10 @@ describe('Webapp connection actions', () => {
       await ready()
       await user.click(screen.getByRole('button', { name: 'Add connection' }))
       await waitFor(() => expect(requests.some((request) => request.method === 'POST')).toBe(true))
-      backend.configuration = { connections: { 'source-a': backup, 'source-b': backup } }
+      backend.configuration = {
+        reauthorization_required: false,
+        connections: { 'source-a': backup, 'source-b': backup },
+      }
       const nextScope = { ...originalScope }
       if (changedScope === 'App') {
         nextScope.address = { kind: 'default', code: 'another-app' }

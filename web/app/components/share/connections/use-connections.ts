@@ -6,7 +6,7 @@ import type useConnectionPreflight from './use-connection-preflight'
 import { createContext, use } from 'react'
 
 export type ConnectionsState = ReturnType<typeof getConnectionData> &
-  ReturnType<typeof useConnectionActions> &
+  Omit<ReturnType<typeof useConnectionActions>, 'onSelect'> &
   ReturnType<typeof useConnectionPreflight> & {
     status: 'inactive' | 'sign-in-required' | 'loading' | 'error' | 'ready'
     error: Error | null

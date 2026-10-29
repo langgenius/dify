@@ -58,19 +58,22 @@ function AccountActions({
   disabled,
   returnFocus,
   onReconnect,
+  onRequestReplace,
   onRequestRemove,
-}: Omit<ConnectionActions, 'onRemove'> & {
+}: Pick<ConnectionActions, 'onReconnect'> & {
   connection: Connection
   serviceId: string
   disabled?: boolean
   returnFocus: RefObject<HTMLButtonElement | null>
+  onRequestReplace?: () => void
   onRequestRemove?: () => void
 }) {
   const { t } = useTranslation(['share'])
   const transferringFocusRef = useRef(false)
   const canReconnect =
     !!onReconnect && connection.method !== 'api-key' && connection.status !== 'expired'
-  if (!onRequestRemove && !canReconnect) return null
+  const canReplace = !!onRequestReplace && connection.method === 'api-key'
+  if (!onRequestRemove && !canReconnect && !canReplace) return null
 
   return (
     <Menu
@@ -81,7 +84,7 @@ function AccountActions({
       <MenuTrigger
         render={
           <IconButton
-            size="md"
+            size="lg"
             disabled={disabled}
             aria-label={t(($) => $['connections.accounts.moreActions'], {
               ns: 'share',
@@ -97,6 +100,17 @@ function AccountActions({
         align="end"
         finalFocus={() => (transferringFocusRef.current ? false : returnFocus.current)}
       >
+        {canReplace && (
+          <MenuItem
+            disabled={disabled}
+            onClick={() => {
+              transferringFocusRef.current = true
+              onRequestReplace()
+            }}
+          >
+            {t(($) => $['connections.apiKeys.replaceTitle'], { ns: 'share' })}
+          </MenuItem>
+        )}
         {canReconnect && (
           <MenuItem
             disabled={disabled}
@@ -163,6 +177,17 @@ export default function ServiceConnectionSelector({
   const selectedStatus = getServiceConnectionStatus(service, selectedConnection)
   const isApiKey = selectedConnection?.method === 'api-key'
   const hasWarning = Boolean(selectedConnection && selectedStatus !== 'connected')
+  const requestReplacement = (connection: Connection) => {
+    if (disabled || !onReplace) return
+    skipReturnFocusRef.current = true
+    setOpen(false)
+    if (onRequestReplace) {
+      onRequestReplace(service.id, connection.id)
+      return
+    }
+    setEditor({ mode: 'replace', connection })
+    setEditorOpen(true)
+  }
 
   return (
     <>
@@ -250,7 +275,7 @@ export default function ServiceConnectionSelector({
                   aria-label={connection.name}
                   className={cn(
                     'flex items-center gap-1.5 rounded-lg px-1 py-0.5 hover:bg-state-base-hover',
-                    unavailable ? 'min-h-13' : 'min-h-11',
+                    unavailable ? 'min-h-13' : 'min-h-9',
                   )}
                 >
                   {unavailable ? (
@@ -282,16 +307,7 @@ export default function ServiceConnectionSelector({
                           render={<Button size="small" variant="secondary-accent" />}
                           disabled={disabled || !onReplace}
                           aria-describedby={accountLabelId}
-                          onClick={() => {
-                            if (disabled || !onReplace) return
-                            skipReturnFocusRef.current = true
-                            if (onRequestReplace) {
-                              onRequestReplace(service.id, connection.id)
-                              return
-                            }
-                            setEditor({ mode: 'replace', connection })
-                            setEditorOpen(true)
-                          }}
+                          onClick={() => requestReplacement(connection)}
                         >
                           {t(($) => $['connections.apiKeys.replace'], { ns: 'share' })}
                         </PopoverClose>
@@ -319,7 +335,7 @@ export default function ServiceConnectionSelector({
                         <Button
                           variant="ghost"
                           disabled={disabled}
-                          className="min-h-10 min-w-0 flex-1 justify-start px-0 system-sm-regular"
+                          className="h-8 min-w-0 flex-1 justify-start px-0 system-sm-regular"
                         />
                       }
                       aria-pressed={selected}
@@ -335,6 +351,7 @@ export default function ServiceConnectionSelector({
                     disabled={disabled}
                     returnFocus={triggerRef}
                     onReconnect={onReconnect}
+                    onRequestReplace={onReplace ? () => requestReplacement(connection) : undefined}
                     onRequestRemove={
                       onRemove
                         ? () => {
