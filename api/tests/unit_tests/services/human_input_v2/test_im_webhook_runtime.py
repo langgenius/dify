@@ -1,4 +1,4 @@
-"""HTTP-to-worker behavior for authenticated Slack card approvals."""
+"""HTTP-to-worker behavior for authenticated IM card approvals."""
 
 import hashlib
 import hmac
@@ -6,7 +6,7 @@ import json
 import time
 from functools import partial
 from pathlib import Path
-from unittest.mock import create_autospec
+from unittest.mock import AsyncMock, create_autospec
 from urllib.parse import urlencode
 from uuid import uuid4
 
@@ -31,6 +31,7 @@ from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import (
     HumanInputAuditEvent,
     HumanInputContactIdentity,
+    HumanInputDelivery,
     HumanInputForm,
     HumanInputIMBinding,
     HumanInputIMBindingWorkspaceOverride,
@@ -298,6 +299,105 @@ def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(
     with context.sessions() as session:
         assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
     assert resumed == [context.execution.workflow_run_id]
+
+
+@pytest.mark.parametrize("matching_actor", [True, False], ids=["recipient", "another-user"])
+def test_teams_callback_authorizes_the_directory_object_id(
+    context: Context,
+    approval: tuple[str, IMChannelId],
+    callback_app: tuple[DifyApp, list[str]],
+    monkeypatch: pytest.MonkeyPatch,
+    matching_actor: bool,
+) -> None:
+    from botframework.connector.auth import ClaimsIdentity, JwtTokenValidation
+
+    from core.human_input_v2.im_integration.adapters.credentials import MSTeamsCredentials
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    form_id, channel_id = approval
+    app, published = callback_app
+    directory_user_id = "11111111-2222-4333-8444-abcdefabcdef"
+    provider_tenant_id = "11111111-1111-4111-8111-111111111111"
+    credentials = MSTeamsCredentials(
+        provider=IMProvider.MS_TEAMS,
+        tenant_id=provider_tenant_id,
+        client_id="22222222-2222-4222-8222-222222222222",
+        client_secret="test-only-secret",
+    )
+    cipher = TenantBoundCredentialCipher(KeyProviderManager().provider, str(context.execution.tenant_id))
+    with context.sessions.begin() as session:
+        channel = session.get_one(HumanInputIMChannel, channel_id)
+        channel.provider = IMProvider.MS_TEAMS
+        channel.provider_tenant_id = provider_tenant_id
+        channel.encrypted_credentials = IMCredentialCodec(cipher).seal(credentials)
+        identity = session.scalars(
+            sa.select(HumanInputIMIdentity).where(HumanInputIMIdentity.channel_id == channel_id)
+        ).one()
+        identity.provider_user_id = directory_user_id
+        delivery = session.scalars(sa.select(HumanInputDelivery).where(HumanInputDelivery.form_id == form_id)).one()
+        target = delivery.target_snapshot
+        assert isinstance(target, IMUserTargetSnapshot)
+        delivery.target_snapshot = IMUserTargetSnapshot(
+            im_provider=IMProvider.MS_TEAMS,
+            im_tenant_id=provider_tenant_id,
+            im_provider_user_id=directory_user_id,
+            im_binding_id=target.im_binding_id,
+            message_type="card",
+        )
+    monkeypatch.setattr(
+        JwtTokenValidation,
+        "authenticate_request",
+        AsyncMock(return_value=ClaimsIdentity({"aud": credentials.client_id}, True)),
+    )
+    resumed: list[str] = []
+    monkeypatch.setattr(
+        resume_app_execution,
+        "apply_async",
+        lambda *, kwargs: resumed.append(kwargs["payload"]["workflow_run_id"]),
+    )
+    callback = {
+        "type": "message",
+        "id": "teams-card-submission",
+        "serviceUrl": "https://smba.trafficmanager.net/teams/",
+        "channelId": "msteams",
+        "conversation": {"tenantId": provider_tenant_id},
+        "channelData": {"tenant": {"id": provider_tenant_id}},
+        "from": {
+            "id": "29:test-only-bot-framework-user",
+            "aadObjectId": directory_user_id.upper() if matching_actor else "33333333-3333-4333-8333-333333333333",
+        },
+        "value": {
+            "__dify.human_input": {"version": 1, "action_id": "approve", "correlation_token": _TOKEN},
+            "note": "Approved from Teams",
+            "decision": "选项 α",
+        },
+    }
+
+    response = app.test_client().post(
+        _PATH,
+        json=callback,
+        headers={"Authorization": "Bearer test-only-token"},
+    )
+    assert response.status_code == 200
+    with app.app_context():
+        process_im_message_inbox_record.run(published[0])
+
+    with context.sessions() as session:
+        form = session.get_one(HumanInputForm, form_id)
+        assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert isinstance(audit.payload, IMCallbackVerificationEvent)
+        assert audit.payload.succeeded is matching_actor
+        if matching_actor:
+            assert form.status == HumanInputFormStatus.SUBMITTED
+            assert form.selected_action_id == "approve"
+            assert form.raw_submission_inputs is not None
+            assert json.loads(form.raw_submission_inputs) == {"note": "Approved from Teams", "decision": "选项 α"}
+        else:
+            assert form.status == HumanInputFormStatus.WAITING
+            assert form.submitted_at is None
+            assert audit.payload.reason == "Callback user does not match the delivery target user."
+    assert resumed == ([context.execution.workflow_run_id] if matching_actor else [])
 
 
 @pytest.mark.parametrize(("secret", "age"), [("wrong-signing-secret", 0), (_SIGNING_SECRET, 600)])

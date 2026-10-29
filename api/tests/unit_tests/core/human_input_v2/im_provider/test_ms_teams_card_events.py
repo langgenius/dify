@@ -189,13 +189,45 @@ def test_sanitized_submit_fixture_decodes_exact_unicode_round_trip(activity_type
     result = ms_teams.MSTeamsIMProviderAdapter.card_event_decoder().decode(_event(callback, event_type=activity_type))
 
     assert result == IMCardEvent(
-        provider_user_id=ProviderUserId("test-only-teams-user"),
+        provider_user_id=ProviderUserId("11111111-2222-4333-8444-abcdefabcdef"),
         action_id="approve-✅",
         inputs={"comment-🧪": "Ready 🚀", "decision": "ship"},
         correlation_token=CorrelationToken("correlation-🔐"),
     )
     assert isinstance(result, IMCardEvent)
     assert "__dify.human_input" not in result.inputs
+
+
+@pytest.mark.parametrize("activity_type", ["message", "invoke"])
+def test_card_actor_uses_the_directory_object_id(activity_type: str) -> None:
+    callback = _callback_fixture()
+    callback["type"] = activity_type
+    callback["from"] = {
+        "id": "29:test-only-bot-framework-user",
+        "aadObjectId": "11111111-2222-4333-8444-ABCDEFABCDEF",
+    }
+
+    result = ms_teams.MSTeamsIMProviderAdapter.card_event_decoder().decode(_event(callback, event_type=activity_type))
+
+    assert isinstance(result, IMCardEvent)
+    assert result.provider_user_id == ProviderUserId("11111111-2222-4333-8444-abcdefabcdef")
+
+
+@pytest.mark.parametrize("aad_object_id", [..., None, "", " ", "invalid-guid", "29:teams-user", True, 7, [], {}])
+def test_card_actor_requires_a_valid_directory_object_id(aad_object_id: object) -> None:
+    callback = _callback_fixture()
+    actor: dict[str, object] = {"id": "29:test-only-bot-framework-user"}
+    if aad_object_id is not ...:
+        actor["aadObjectId"] = aad_object_id
+    callback["from"] = actor
+
+    with pytest.raises(
+        ms_teams.IMCardEventDecodingError, match=r"^Microsoft Teams card event schema is invalid\.$"
+    ) as raised:
+        ms_teams.MSTeamsIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+    assert raised.value.__cause__ is None
+    assert raised.value.__context__ is None
 
 
 @pytest.mark.parametrize(
@@ -288,7 +320,7 @@ def test_applicable_callback_without_object_marker_is_unrecognized(
 def test_recognized_callback_rejects_internal_actor_field_name() -> None:
     callback = _callback_fixture()
     callback.pop("from")
-    callback["actor"] = {"id": "fabricated-user"}
+    callback["actor"] = {"id": "fabricated-user", "aadObjectId": "11111111-2222-4333-8444-abcdefabcdef"}
 
     with pytest.raises(
         ms_teams.IMCardEventDecodingError,
@@ -301,7 +333,7 @@ def test_recognized_callback_rejects_internal_actor_field_name() -> None:
     assert raised.value.__context__ is None
 
 
-@pytest.mark.parametrize("invalid_actor", [None, "actor", {}, {"id": ""}, {"id": " "}, {"id": True}])
+@pytest.mark.parametrize("invalid_actor", [None, "actor", {}])
 def test_recognized_callback_rejects_missing_or_invalid_actor(invalid_actor: object) -> None:
     callback = _callback_fixture()
     if invalid_actor is None:
@@ -367,7 +399,11 @@ def test_recognized_callback_rejects_invalid_metadata(invalid_metadata: object) 
 
 def test_decoding_error_does_not_retain_callback_secrets_or_validation_exceptions() -> None:
     callback = _callback_fixture()
-    callback["from"] = {"id": "secret-actor", "name": "secret-profile"}
+    callback["from"] = {
+        "id": "secret-actor",
+        "aadObjectId": "11111111-2222-4333-8444-abcdefabcdef",
+        "name": "secret-profile",
+    }
     callback_value = callback["value"]
     assert isinstance(callback_value, dict)
     callback_value["__dify.human_input"] = {
@@ -398,7 +434,6 @@ def test_sanitized_callback_fixture_contains_no_live_identity_or_credential_fact
     normalized_fixture = fixture_text.casefold()
 
     for forbidden_marker in (
-        "aadobjectid",
         "authorization",
         "bearer ",
         "client_secret",
@@ -445,7 +480,10 @@ def test_one_decoder_handles_independent_callbacks_concurrently() -> None:
 
     def decode_callback(index: int) -> IMCardEvent:
         callback = deepcopy(_callback_fixture())
-        callback["from"] = {"id": f"test-only-user-{index}"}
+        callback["from"] = {
+            "id": f"29:test-only-user-{index}",
+            "aadObjectId": f"00000000-0000-4000-8000-{index:012x}",
+        }
         callback_value = callback["value"]
         assert isinstance(callback_value, dict)
         callback_value["__dify.human_input"] = {
@@ -462,6 +500,9 @@ def test_one_decoder_handles_independent_callbacks_concurrently() -> None:
         results = tuple(executor.map(decode_callback, range(32)))
 
     assert [result.action_id for result in results] == [f"action-{index}" for index in range(32)]
+    assert [str(result.provider_user_id) for result in results] == [
+        f"00000000-0000-4000-8000-{index:012x}" for index in range(32)
+    ]
     assert [result.inputs["sequence"] for result in results] == list(range(32))
     assert [str(result.correlation_token) for result in results] == [f"correlation-{index}" for index in range(32)]
 

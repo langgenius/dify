@@ -5,7 +5,8 @@
   "serviceUrl": "https://smba.trafficmanager.net/teams/",
   "channelId": "msteams",
   "from": {
-    "id": "test-only-teams-user",
+    "id": "29:test-only-teams-user",
+    "aadObjectId": "11111111-2222-4333-8444-abcdefabcdef",
     "name": "Sanitized User"
   },
   "conversation": {

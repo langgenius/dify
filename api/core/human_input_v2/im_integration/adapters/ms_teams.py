@@ -323,14 +323,8 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
         )
 
     class _CallbackActor(_CallbackModel):
-        id: str = Field(min_length=1)
-
-        @field_validator("id")
-        @classmethod
-        def _require_non_blank_identifier(cls, value: str) -> str:
-            if not value.strip():
-                raise ValueError("Microsoft Teams card actor identifier is empty.")
-            return value
+        # Graph directory users use the Entra object ID, not the Bot Framework ID.
+        aad_object_id: UUID = Field(alias="aadObjectId", strict=False)
 
     class _ButtonMetadata(BaseModel):
         model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
@@ -386,7 +380,7 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
         inputs = dict(submission.value)
         inputs.pop(self._METADATA_MEMBER)
         return IMCardEvent(
-            provider_user_id=ProviderUserId(submission.actor.id),
+            provider_user_id=ProviderUserId(str(submission.actor.aad_object_id)),
             action_id=metadata.action_id,
             inputs=inputs,
             correlation_token=CorrelationToken(metadata.correlation_token),

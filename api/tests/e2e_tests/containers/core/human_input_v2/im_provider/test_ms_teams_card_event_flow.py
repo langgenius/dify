@@ -72,14 +72,17 @@ def test_ms_teams_sender_metadata_and_callback_decoder_round_trip() -> None:
     }
     callback = {
         "type": "message",
-        "from": {"id": "integration-teams-user"},
+        "from": {
+            "id": "29:integration-teams-user",
+            "aadObjectId": "11111111-2222-4333-8444-abcdefabcdef",
+        },
         "value": callback_value,
     }
 
     decoded = MSTeamsIMProviderAdapter.card_event_decoder().decode(_event(callback))
 
     assert decoded == IMCardEvent(
-        provider_user_id=ProviderUserId("integration-teams-user"),
+        provider_user_id=ProviderUserId("11111111-2222-4333-8444-abcdefabcdef"),
         action_id="approve-✅",
         inputs={"review_comment": "Reviewed exactly ✅", "risk_level": "high"},
         correlation_token=correlation_token,
@@ -98,7 +101,10 @@ def test_ms_teams_codec_rejects_collision_and_malformed_recognized_callback() ->
 
     malformed_callback = {
         "type": "invoke",
-        "from": {"id": "integration-teams-user"},
+        "from": {
+            "id": "29:integration-teams-user",
+            "aadObjectId": "11111111-2222-4333-8444-abcdefabcdef",
+        },
         "value": {
             "__dify.human_input": {
                 "version": 1,
@@ -137,7 +143,10 @@ def test_ms_teams_codec_routes_foreign_and_invalid_transport_events() -> None:
 
     mismatched_type_callback = {
         "type": "invoke",
-        "from": {"id": "integration-teams-user"},
+        "from": {
+            "id": "29:integration-teams-user",
+            "aadObjectId": "11111111-2222-4333-8444-abcdefabcdef",
+        },
         "value": {
             "__dify.human_input": {
                 "version": 1,
