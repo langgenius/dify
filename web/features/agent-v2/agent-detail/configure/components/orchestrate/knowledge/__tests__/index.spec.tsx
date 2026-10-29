@@ -1174,6 +1174,42 @@ describe('shared knowledge binding dialog', () => {
       'More docs',
     ])
   })
+
+  it('keeps Classic options in place while they are ticked and unticked', async () => {
+    const user = userEvent.setup()
+    getDatasets.mockResolvedValue(
+      datasetPage([
+        createDatasetFixture({ id: 'dataset-1', name: 'Alpha' }),
+        createDatasetFixture({ id: 'dataset-2', name: 'Beta' }),
+        createDatasetFixture({ id: 'dataset-3', name: 'Gamma' }),
+      ]),
+    )
+    setupClassic({
+      id: 'saved-set',
+      name: 'Saved search',
+      description: '',
+      selectedDatasets: [createDatasetFixture({ id: 'dataset-saved', name: 'Saved docs' })],
+      queryMode: 'agent',
+    })
+    const dialog = await open(user)
+    await within(dialog).findByRole('option', { name: optionName('Gamma') })
+    const initialOrder = ['Saved search', 'Alpha', 'Beta', 'Gamma']
+    const optionNames = () =>
+      within(dialog)
+        .getAllByRole('option')
+        .map((option) => initialOrder.find((name) => option.textContent?.startsWith(name)))
+    expect(optionNames()).toEqual(initialOrder)
+
+    await user.click(within(dialog).getByRole('option', { name: optionName('Gamma') }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Beta') }))
+    expect(optionNames()).toEqual(initialOrder)
+    await user.click(within(dialog).getByRole('option', { name: optionName('Gamma') }))
+    await user.click(within(dialog).getByRole('option', { name: optionName('Saved search') }))
+    expect(optionNames()).toEqual(initialOrder)
+
+    await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+    expect(snapshot().knowledge.sets.map((item: { name: string }) => item.name)).toEqual(['Beta'])
+  })
 })
 
 describe('KnowledgeFS composer interaction', () => {

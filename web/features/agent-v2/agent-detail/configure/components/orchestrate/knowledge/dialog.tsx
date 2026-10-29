@@ -271,22 +271,23 @@ function AgentKnowledgeRetrievalForm({
       ),
     ),
   ]
-  const classicOptions: KnowledgeOption[] = [
-    ...classic.bindings.map((item) => ({
-      value: bindingValue(item.id),
-      name: item.name || item.id,
-      description: item.description,
-      unavailable: false,
-      disabled: false,
-    })),
-    ...classic.datasets.map((dataset) => ({
-      value: datasetValue(dataset.id),
-      name: dataset.name,
-      description: dataset.description,
-      unavailable: false,
-      disabled: !dataset.embedding_available,
-    })),
-  ]
+  const classicOptions: KnowledgeOption[] = classic.entries.map((entry) =>
+    entry.kind === 'binding'
+      ? {
+          value: bindingValue(entry.item.id),
+          name: entry.item.name || entry.item.id,
+          description: entry.item.description,
+          unavailable: false,
+          disabled: false,
+        }
+      : {
+          value: datasetValue(entry.dataset.id),
+          name: entry.dataset.name,
+          description: entry.dataset.description,
+          unavailable: false,
+          disabled: !entry.dataset.embedding_available,
+        },
+  )
   // Unavailable bindings stay listed as selected options, so deselecting one is how it is removed.
   const spaceOptions = new Map<string, KnowledgeOption>()
   for (const space of spaces) {
