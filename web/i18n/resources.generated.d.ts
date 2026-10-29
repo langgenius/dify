@@ -4995,7 +4995,6 @@ export default interface Resources {
     'connections.apiKeys.title': '{{provider}} API keys'
     'connections.apiKeys.validationError': 'Invalid API key. Check the key and try again.'
     'connections.apiKeys.warning': 'API key invalid. Replace it or choose another key.'
-    'connections.configure.manage': 'Manage connection'
     'connections.configure.runningDescription': 'Connections can be changed after this response finishes.'
     'connections.configure.title': 'Connections'
     'connections.required.inputPlaceholder': 'Sign in and connect services to get started'

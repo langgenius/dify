@@ -38,7 +38,6 @@
   "connections.apiKeys.title": "{{provider}} API anahtarları",
   "connections.apiKeys.validationError": "API anahtarı geçersiz. Anahtarı kontrol edip tekrar deneyin.",
   "connections.apiKeys.warning": "API anahtarı geçersiz. Anahtarı değiştirin veya başka bir anahtar seçin.",
-  "connections.configure.manage": "Bağlantıyı yönet",
   "connections.configure.runningDescription": "Bu yanıt tamamlandıktan sonra bağlantılar değiştirilebilir.",
   "connections.configure.title": "Bağlantılar",
   "connections.required.inputPlaceholder": "Başlamak için oturum açın ve hizmetleri bağlayın",

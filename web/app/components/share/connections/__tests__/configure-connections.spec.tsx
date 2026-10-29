@@ -107,7 +107,7 @@ describe('ConfigureConnections', () => {
     }
     render(<SharedConnections />)
     const configure = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
-    const manage = screen.getByRole('button', { name: 'share.connections.configure.manage' })
+    const manage = screen.getByRole('button', { name: 'Manage connection' })
     await user.click(manage)
     const managedDialog = await screen.findByRole('dialog', {
       name: 'share.connections.configure.title',
