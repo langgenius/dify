@@ -89,19 +89,24 @@ def pipeline_for_subject(subject: Subject) -> Pipeline:
 
 
 class _RequiresCurrentCatalog(Requirement):
-    """The client names the catalog it built the request from, and a request
-    built from any other catalog - or from none - is refused before a handler
-    runs, so a tampered or stale local copy can never pick the route. Fixed on
-    every pipeline rather than declared per route, so no endpoint can leave it
-    out; `_catalog` and `_version` are unguarded and stay reachable to recover.
+    """A client that names the catalog it built the request from (difyctl) is
+    refused before a handler runs when that catalog is not the current one, so
+    a tampered or stale local copy can never pick the route. A client that
+    names none (an MCP or other OAuth client) builds from the published routes
+    and is not checked. Fixed on every pipeline rather than declared per route,
+    so no endpoint can leave it out; `_catalog` and `_version` are unguarded
+    and stay reachable to recover.
     """
 
     rank = Rank.FIRST
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        sent = request.headers.get(CATALOG_HEADER)
+        if sent is None:
+            return
         _, fingerprint = current_catalog()
-        if request.headers.get(CATALOG_HEADER) != fingerprint:
+        if sent != fingerprint:
             raise CatalogStale()
 
 

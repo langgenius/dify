@@ -356,18 +356,24 @@ def test_every_pipeline_checks_the_catalog_before_anything_else() -> None:
     assert _RequiresCurrentCatalog.rank is Rank.FIRST
 
 
-@pytest.mark.parametrize("sent", [None, "not-the-current-catalog"], ids=["missing", "stale"])
+@pytest.mark.parametrize("sent", ["not-the-current-catalog", ""], ids=["stale", "empty"])
 def test_a_request_built_from_another_catalog_is_refused(
     app: Flask,
     sqlite_session: Session,
-    sent: str | None,
+    sent: str,
 ) -> None:
     subject = account_subject()
-    headers: dict[str, str] = {} if sent is None else {CATALOG_HEADER: sent}
 
-    with app.test_request_context("/openapi/v1/account", headers=headers):
+    with app.test_request_context("/openapi/v1/account", headers={CATALOG_HEADER: sent}):
         with pytest.raises(CatalogStale):
             _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+
+
+def test_a_request_that_names_no_catalog_passes(app: Flask, sqlite_session: Session) -> None:
+    subject = account_subject()
+
+    with app.test_request_context("/openapi/v1/account"):
+        _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
 
 def test_a_request_built_from_the_current_catalog_passes(app: Flask, sqlite_session: Session) -> None:
@@ -384,7 +390,7 @@ def test_the_scope_check_runs_after_the_catalog_check_and_before_the_early_band(
     subject = account_subject(oauth_scopes=frozenset({OAuthScope.READ}))
     ctx = make_ctx(sqlite_session, subject)
 
-    with app.test_request_context("/openapi/v1/account", method="POST"):
+    with app.test_request_context("/openapi/v1/account", method="POST", headers={CATALOG_HEADER: "stale"}):
         with pytest.raises(CatalogStale):
             _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(_AtEarly(log, "early"),))
     with app.test_request_context("/openapi/v1/account", method="POST", headers=_current_catalog(app)):
