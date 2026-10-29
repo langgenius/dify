@@ -25,6 +25,7 @@ from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, RecipientId, TenantId
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import (
     Contact,
@@ -33,6 +34,7 @@ from core.workflow.nodes.human_input_v2.entities import (
     Initiator,
     OnetimeEmail,
 )
+from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, convert_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
 from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
@@ -181,6 +183,45 @@ def _node(*recipients: Contact | DynamicEmail | Initiator | OnetimeEmail) -> Hum
             "user_actions": [{"id": "approve", "title": "Approve"}],
         }
     )
+
+
+@pytest.mark.parametrize("with_empty_disabled_email", [False, True])
+def test_migrated_webapp_node_creates_waiting_form_with_initiator(
+    context: Context, with_empty_disabled_email: bool
+) -> None:
+    legacy = HumanInputNodeDataFull.model_validate(
+        {
+            "title": "Migrated approval",
+            "delivery_methods": [{"type": "webapp"}]
+            + (
+                [
+                    {
+                        "type": "email",
+                        "enabled": False,
+                        "config": {"recipients": {"items": []}, "subject": "", "body": ""},
+                    }
+                ]
+                if with_empty_disabled_email
+                else []
+            ),
+            "form_content": "Please approve",
+            "user_actions": [{"id": "approve", "title": "Approve"}],
+        }
+    )
+    conversion = convert_legacy_human_input_node_data(legacy, MemberEmailSnapshot())
+    assert conversion.blockers == ()
+    assert conversion.node_data is not None
+    assert conversion.node_data.recipients_spec == [Initiator()]
+
+    created = context.prepare(conversion.node_data)
+
+    assert isinstance(created, CreatedForm)
+    assert created.form.status == HumanInputFormStatus.WAITING
+    assert created.form.resolved_form.legacy_form_content == "Please approve"
+    assert created.message_template.subject == "Human input required"
+    assert created.message_template.body == "Please complete the form to continue the workflow.\n\n{{#url#}}"
+    assert len(created.recipients) == 1
+    assert created.recipients[0].subject == ContactRecipientSubject(_CONTACT)
 
 
 @pytest.mark.usefixtures("providers")

@@ -1,62 +1,58 @@
 """Transport compatibility and preflight parsing for HITL v1 node migration."""
 
 from collections.abc import Mapping
-from typing import Annotated, Literal
+from typing import override
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, JsonValue, TypeAdapter, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    JsonValue,
+    RootModel,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import CoreSchema
+from pydantic_core import CoreSchema, PydanticCustomError
 
+from core.workflow.human_input_adapter import (
+    EmailDeliveryMethod,
+    WebAppDeliveryMethod,
+    adapt_human_input_node_data_for_graph,
+)
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input_v2.migration import (
-    LegacyDefaultValue,
-    LegacyDeliveryChannelConfig,
     LegacyDeliveryParseIssue,
-    LegacyEmailDeliveryMethod,
-    LegacyFormInput,
-    LegacyHumanInputNodeData,
     LegacyNodeDataPreflight,
-    LegacyTimeoutUnit,
-    LegacyUserAction,
-    LegacyWebAppDeliveryMethod,
     MigrationBlockerCode,
 )
-from graphon.entities.base_node_data import RetryConfig
-from graphon.enums import ErrorStrategy
+from graphon.entities.base_node_data import DefaultValue
+from graphon.entities.exc import DefaultValueTypeError
 
 
-class _CanonicalDeliveryMethodJsonSchema:
-    """Document canonical methods without narrowing compatibility validation."""
+class LegacyHITLv1NodeData(RootModel[LegacyNodeDataPreflight]):
+    """Refine historical wire aliases into the formal V1 model at HTTP ingress.
+
+    Only delivery/default preflight is migration-specific. All authoring fields
+    and constraints come from the same model that executes V1 workflows.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def parse_v1(cls, value: object) -> LegacyNodeDataPreflight:
+        return _parse_node_data(value)
 
     @classmethod
+    @override
     def __get_pydantic_json_schema__(
         cls,
         _core_schema: CoreSchema,
         handler: GetJsonSchemaHandler,
     ) -> JsonSchemaValue:
-        return handler(TypeAdapter(LegacyDeliveryChannelConfig).core_schema)
-
-
-_TransportDeliveryMethodValue = Annotated[JsonValue, _CanonicalDeliveryMethodJsonSchema]
-
-
-class LegacyHITLv1NodeData(BaseModel):
-    """HTTP compatibility DTO; raw delivery JSON stops at preflight."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    title: str
-    desc: str | None = None
-    version: Literal["1"] = "1"
-    error_strategy: ErrorStrategy | None = None
-    default_value: JsonValue = None
-    retry_config: RetryConfig = Field(default_factory=RetryConfig)
-    delivery_methods: list[_TransportDeliveryMethodValue] = Field(default_factory=list)
-    form_content: str = ""
-    inputs: list[LegacyFormInput] = Field(default_factory=list)
-    user_actions: list[LegacyUserAction] = Field(default_factory=list)
-    timeout: int = 36
-    timeout_unit: LegacyTimeoutUnit = LegacyTimeoutUnit.HOUR
+        return handler(TypeAdapter(HumanInputNodeDataFull).core_schema)
 
 
 class _TransportDeliveryMethod(BaseModel):
@@ -127,13 +123,13 @@ def _transport_method_value(method: _TransportDeliveryMethod) -> dict[str, JsonV
 
 def _parse_default_values(
     raw_default_values: JsonValue,
-) -> tuple[list[LegacyDefaultValue] | None, tuple[LegacyDeliveryParseIssue, ...]]:
+) -> tuple[list[DefaultValue] | None, tuple[LegacyDeliveryParseIssue, ...]]:
     if raw_default_values is None:
         return None, ()
     if isinstance(raw_default_values, list):
         try:
-            return [LegacyDefaultValue.model_validate(raw_default) for raw_default in raw_default_values], ()
-        except ValidationError:
+            return [DefaultValue.model_validate(raw_default) for raw_default in raw_default_values], ()
+        except (ValidationError, DefaultValueTypeError):
             pass
     return (
         None,
@@ -147,43 +143,9 @@ def _parse_default_values(
 
 
 def _normalize_email_compatibility_aliases(method: _TransportDeliveryMethod) -> dict[str, JsonValue]:
-    method_value = _transport_method_value(method)
-    config = method_value.get("config")
-    if not isinstance(config, Mapping):
-        return method_value
-
-    normalized_config = dict(config)
-    recipients = normalized_config.get("recipients")
-    if not isinstance(recipients, Mapping):
-        method_value["config"] = normalized_config
-        return method_value
-
-    normalized_recipients = dict(recipients)
-    compatibility_whole_workspace = normalized_recipients.pop("include_bound_group", None)
-    if "whole_workspace" not in normalized_recipients and compatibility_whole_workspace is not None:
-        normalized_recipients["whole_workspace"] = compatibility_whole_workspace
-
-    items = normalized_recipients.get("items")
-    if isinstance(items, list):
-        normalized_items: list[JsonValue] = []
-        for recipient in items:
-            if not isinstance(recipient, Mapping):
-                normalized_items.append(recipient)
-                continue
-            normalized_recipient = dict(recipient)
-            compatibility_member_id = normalized_recipient.pop("reference_id", None)
-            if (
-                normalized_recipient.get("type") == "member"
-                and "user_id" not in normalized_recipient
-                and compatibility_member_id is not None
-            ):
-                normalized_recipient["user_id"] = compatibility_member_id
-            normalized_items.append(normalized_recipient)
-        normalized_recipients["items"] = normalized_items
-
-    normalized_config["recipients"] = normalized_recipients
-    method_value["config"] = normalized_config
-    return method_value
+    # Reuse the runtime's historical user_id/whole_workspace normalization.
+    normalized = adapt_human_input_node_data_for_graph({"delivery_methods": [_transport_method_value(method)]})
+    return TypeAdapter(list[dict[str, JsonValue]]).validate_python(normalized["delivery_methods"])[0]
 
 
 def _email_configuration_error_field(method: _TransportDeliveryMethod) -> str:
@@ -201,7 +163,7 @@ def _parse_method(
     raw_method: JsonValue,
     method_position: int,
 ) -> tuple[
-    LegacyEmailDeliveryMethod | LegacyWebAppDeliveryMethod | None,
+    EmailDeliveryMethod | WebAppDeliveryMethod | None,
     tuple[LegacyDeliveryParseIssue, ...],
     tuple[int, ...],
 ]:
@@ -219,7 +181,7 @@ def _parse_method(
             (),
         )
 
-    if "id" not in transport_method.model_fields_set or transport_method.id is None:
+    if "id" in transport_method.model_fields_set and transport_method.id is None:
         return (
             None,
             (
@@ -232,21 +194,22 @@ def _parse_method(
             (),
         )
 
-    try:
-        UUID(transport_method.id)
-    except ValueError:
-        return (
-            None,
-            (
-                LegacyDeliveryParseIssue(
-                    code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
-                    method_position=method_position,
-                    method_id=transport_method.id,
-                    value=transport_method.type,
+    if transport_method.id is not None:
+        try:
+            UUID(transport_method.id)
+        except ValueError:
+            return (
+                None,
+                (
+                    LegacyDeliveryParseIssue(
+                        code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
+                        method_position=method_position,
+                        method_id=transport_method.id,
+                        value=transport_method.type,
+                    ),
                 ),
-            ),
-            (),
-        )
+                (),
+            )
 
     if transport_method.type not in {"email", "webapp"}:
         return (
@@ -280,7 +243,7 @@ def _parse_method(
 
     if transport_method.type == "webapp":
         try:
-            return LegacyWebAppDeliveryMethod.model_validate(_transport_method_value(transport_method)), (), ()
+            return WebAppDeliveryMethod.model_validate(_transport_method_value(transport_method)), (), ()
         except ValidationError:
             return (
                 None,
@@ -367,7 +330,7 @@ def _parse_method(
                 )
                 continue
         elif recipient_type == "member":
-            if not isinstance(raw_recipient.get("user_id"), str):
+            if not isinstance(raw_recipient.get("reference_id"), str):
                 issues.append(
                     LegacyDeliveryParseIssue(
                         code=MigrationBlockerCode.UNRESOLVED_MEMBER,
@@ -403,7 +366,7 @@ def _parse_method(
     }
     try:
         return (
-            LegacyEmailDeliveryMethod.model_validate(normalized_method_value),
+            EmailDeliveryMethod.model_validate(normalized_method_value),
             tuple(issues),
             tuple(valid_item_positions),
         )
@@ -419,17 +382,17 @@ def _parse_method(
         return None, tuple(issues), ()
 
 
-def preflight_legacy_human_input_node_data(
-    transport_node_data: LegacyHITLv1NodeData,
-) -> LegacyNodeDataPreflight:
-    """Normalize transport aliases and classify non-canonical delivery input."""
-
-    default_value, default_value_issues = _parse_default_values(transport_node_data.default_value)
-    delivery_methods: list[LegacyEmailDeliveryMethod | LegacyWebAppDeliveryMethod] = []
+def _parse_node_data(raw_node_data: object) -> LegacyNodeDataPreflight:
+    node_value = TypeAdapter(dict[str, JsonValue]).validate_python(raw_node_data)
+    if node_value.get("version", "1") != "1":
+        raise PydanticCustomError("unsupported_version", 'version must be "1"')
+    default_value, default_value_issues = _parse_default_values(node_value.get("default_value"))
+    raw_methods = TypeAdapter(list[JsonValue]).validate_python(node_value.get("delivery_methods", []))
+    delivery_methods: list[EmailDeliveryMethod | WebAppDeliveryMethod] = []
     method_positions: list[int] = []
     recipient_positions: list[tuple[int, ...]] = []
     issues = list(default_value_issues)
-    for method_position, raw_method in enumerate(transport_node_data.delivery_methods):
+    for method_position, raw_method in enumerate(raw_methods):
         method, method_issues, method_recipient_positions = _parse_method(raw_method, method_position)
         if method is not None:
             delivery_methods.append(method)
@@ -437,19 +400,22 @@ def preflight_legacy_human_input_node_data(
             recipient_positions.append(method_recipient_positions)
         issues.extend(method_issues)
 
-    canonical_node_data = LegacyHumanInputNodeData(
-        title=transport_node_data.title,
-        desc=transport_node_data.desc,
-        version=transport_node_data.version,
-        error_strategy=transport_node_data.error_strategy,
-        default_value=default_value,
-        retry_config=transport_node_data.retry_config,
-        delivery_methods=delivery_methods,
-        form_content=transport_node_data.form_content,
-        inputs=transport_node_data.inputs,
-        user_actions=transport_node_data.user_actions,
-        timeout=transport_node_data.timeout,
-        timeout_unit=transport_node_data.timeout_unit,
+    # text_input predates the shared paragraph model. Normalize only this alias;
+    # the formal discriminated union owns every current input and field constraint.
+    raw_inputs = node_value.get("inputs")
+    if isinstance(raw_inputs, list):
+        node_value["inputs"] = [
+            {**input_value, "type": "paragraph"}
+            if isinstance(input_value, dict) and input_value.get("type") == "text_input"
+            else input_value
+            for input_value in raw_inputs
+        ]
+    canonical_node_data = HumanInputNodeDataFull.model_validate(
+        {
+            **node_value,
+            "default_value": default_value,
+            "delivery_methods": delivery_methods,
+        }
     )
     return LegacyNodeDataPreflight(
         node_data=canonical_node_data,
@@ -457,3 +423,9 @@ def preflight_legacy_human_input_node_data(
         recipient_positions=tuple(recipient_positions),
         issues=tuple(issues),
     )
+
+
+def preflight_legacy_human_input_node_data(
+    transport_node_data: LegacyHITLv1NodeData,
+) -> LegacyNodeDataPreflight:
+    return transport_node_data.root

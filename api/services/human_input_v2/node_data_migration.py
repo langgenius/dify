@@ -7,12 +7,11 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from core.human_input_v2.shared import TenantId
+from core.workflow.human_input_adapter import EmailDeliveryMethod, MemberRecipient
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
-    LegacyEmailDeliveryMethod,
-    LegacyHumanInputNodeData,
-    LegacyMemberRecipient,
     LegacyNodeDataPreflight,
     MemberEmailSnapshot,
     MigrationBlockerCode,
@@ -28,7 +27,7 @@ class WorkspaceMemberEmailLookup(Protocol):
 
 
 type NodeDataConverter = Callable[
-    [LegacyHumanInputNodeData, MemberEmailSnapshot],
+    [HumanInputNodeDataFull, MemberEmailSnapshot],
     NodeMigrationConversion,
 ]
 
@@ -36,7 +35,7 @@ type NodeDataConverter = Callable[
 @dataclass(frozen=True, slots=True)
 class MigrationNode:
     node_id: str
-    node_data: LegacyHumanInputNodeData
+    node_data: HumanInputNodeDataFull
     method_positions: tuple[int, ...] = ()
     recipient_positions: tuple[tuple[int, ...], ...] = ()
     preflight_issues: tuple[LegacyDeliveryParseIssue, ...] = ()
@@ -124,7 +123,7 @@ class HumanInputNodeDataMigrationService:
     ) -> tuple[NodeDataMigrationBlocker, ...]:
         method_positions = node.method_positions or tuple(range(len(node.node_data.delivery_methods)))
         recipient_positions = node.recipient_positions or tuple(
-            tuple(range(len(method.config.recipients.items))) if isinstance(method, LegacyEmailDeliveryMethod) else ()
+            tuple(range(len(method.config.recipients.items))) if isinstance(method, EmailDeliveryMethod) else ()
             for method in node.node_data.delivery_methods
         )
         positioned_blockers: list[_PositionedMigrationBlocker] = []
@@ -189,11 +188,11 @@ class HumanInputNodeDataMigrationService:
         seen_member_ids: set[str] = set()
         for node in nodes:
             for method in node.node_data.delivery_methods:
-                if not method.enabled or not isinstance(method, LegacyEmailDeliveryMethod):
+                if not method.enabled or not isinstance(method, EmailDeliveryMethod):
                     continue
                 for source in method.config.recipients.items:
-                    if not isinstance(source, LegacyMemberRecipient) or source.user_id in seen_member_ids:
+                    if not isinstance(source, MemberRecipient) or source.reference_id in seen_member_ids:
                         continue
-                    member_ids.append(source.user_id)
-                    seen_member_ids.add(source.user_id)
+                    member_ids.append(source.reference_id)
+                    seen_member_ids.add(source.reference_id)
         return tuple(member_ids)

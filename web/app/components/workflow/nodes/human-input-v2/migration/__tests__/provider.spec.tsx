@@ -144,7 +144,7 @@ describe('Human Input migration provider', () => {
           type: 'human-input',
           version: '2',
           form_content: '',
-          inputs: [],
+          inputs: 'inputs' in node.data ? node.data.inputs : [],
           user_actions: [],
           timeout: 3,
           timeout_unit: 'day',
@@ -286,14 +286,11 @@ describe('Human Input migration provider', () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
 
-  it('shows the unsupported field and preserves the legacy draft when migration is unavailable', async () => {
-    runtime.nodes = [
-      createLegacyNode(false, 'legacy-human-input', [
-        createDefaultFormInputByType(InputVarType.select, 'decision'),
-      ]),
-    ]
+  it('migrates a supported select field and enables insertion without an unsupported-field alert', async () => {
+    const input = createDefaultFormInputByType(InputVarType.select, 'decision')
+    runtime.nodes = [createLegacyNode(false, 'legacy-human-input', [input])]
     const user = userEvent.setup()
-    renderProvider()
+    const view = renderProvider()
     await user.click(
       screen.getByRole('button', {
         name: 'workflow.nodes.humanInputMigration.action.migrateNow',
@@ -305,13 +302,16 @@ describe('Human Input migration provider', () => {
       }),
     )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Approval')
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'workflow.nodes.humanInputMigration.blocker.unsupportedInputType',
+    await waitFor(() =>
+      expect(runtime.nodes[0]?.data).toMatchObject({ version: '2', inputs: [input] }),
     )
-    expect(mocks.postMigration).not.toHaveBeenCalled()
-    expect(mocks.setNodes).not.toHaveBeenCalled()
-    expect(mocks.doSync).not.toHaveBeenCalled()
+    view.rerender(
+      <HumanInputMigrationProvider canEdit>
+        <PolicyProbe />
+      </HumanInputMigrationProvider>,
+    )
+    expect(await screen.findByText('insertion-enabled')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('locks duplicate confirmation while pending', async () => {

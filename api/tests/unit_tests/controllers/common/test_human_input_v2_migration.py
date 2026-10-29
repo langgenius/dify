@@ -2,14 +2,9 @@ from importlib.util import find_spec
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
 
 from controllers.common import human_input_v2_migration as migration_boundary
-from core.workflow.nodes.human_input_v2.migration import (
-    LegacyEmailDeliveryMethod,
-    LegacyMemberRecipient,
-    LegacyWebAppDeliveryMethod,
-)
+from core.workflow.human_input_adapter import EmailDeliveryMethod, MemberRecipient, WebAppDeliveryMethod
 
 _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
@@ -23,9 +18,9 @@ def test_migration_transport_exposes_typed_preflight_api() -> None:
     assert {"LegacyHITLv1NodeData", "preflight_legacy_human_input_node_data"} <= set(dir(migration_boundary))
 
 
-def test_migration_transport_requires_historical_node_title() -> None:
-    with pytest.raises(ValidationError):
-        migration_boundary.LegacyHITLv1NodeData.model_validate({"delivery_methods": []})
+def test_migration_transport_accepts_formal_v1_title_default() -> None:
+    transport = migration_boundary.LegacyHITLv1NodeData.model_validate({"delivery_methods": []})
+    assert migration_boundary.preflight_legacy_human_input_node_data(transport).node_data.title == ""
 
 
 def test_preflight_preserves_valid_persisted_delivery_method_id() -> None:
@@ -42,11 +37,11 @@ def test_preflight_preserves_valid_persisted_delivery_method_id() -> None:
     assert preflight.method_positions == (0,)
     assert preflight.recipient_positions == ((),)
     method = preflight.node_data.delivery_methods[0]
-    assert isinstance(method, LegacyWebAppDeliveryMethod)
+    assert isinstance(method, WebAppDeliveryMethod)
     assert method.id == UUID(_WEBAPP_METHOD_ID)
 
 
-def test_preflight_rejects_omitted_null_and_invalid_delivery_ids_before_canonical_construction() -> None:
+def test_preflight_applies_omitted_ids_and_rejects_null_or_invalid_delivery_ids() -> None:
     transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
         {
             "title": "Approval",
@@ -64,13 +59,12 @@ def test_preflight_rejects_omitted_null_and_invalid_delivery_ids_before_canonica
 
     preflight = migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
 
-    assert preflight.method_positions == (6,)
-    assert len(preflight.node_data.delivery_methods) == 1
+    assert preflight.method_positions == (0, 6)
+    assert len(preflight.node_data.delivery_methods) == 2
+    assert isinstance(preflight.node_data.delivery_methods[0].id, UUID)
     assert [(issue.code, issue.method_position, issue.method_id, issue.value) for issue in preflight.issues] == [
-        ("unsupported-delivery-method", 0, None, "webapp"),
         ("unsupported-delivery-method", 1, None, "webapp"),
         ("unsupported-delivery-method", 2, "invalid-webapp-id", "webapp"),
-        ("unsupported-delivery-method", 3, None, "email"),
         ("unsupported-delivery-method", 4, None, "email"),
         ("unsupported-delivery-method", 5, "invalid-email-id", "email"),
     ]
@@ -106,7 +100,7 @@ def test_preflight_ignores_disabled_email_with_only_default_empty_configuration(
     assert preflight.issues == ()
     assert preflight.method_positions == (1,)
     assert len(preflight.node_data.delivery_methods) == 1
-    assert isinstance(preflight.node_data.delivery_methods[0], LegacyWebAppDeliveryMethod)
+    assert isinstance(preflight.node_data.delivery_methods[0], WebAppDeliveryMethod)
 
 
 @pytest.mark.parametrize(
@@ -241,13 +235,13 @@ def test_preflight_normalizes_compatibility_aliases_before_constructing_canonica
     assert preflight.issues == ()
     assert preflight.method_positions == (0,)
     method = preflight.node_data.delivery_methods[0]
-    assert isinstance(method, LegacyEmailDeliveryMethod)
+    assert isinstance(method, EmailDeliveryMethod)
     assert isinstance(method.id, UUID)
-    assert method.config.recipients.whole_workspace is True
-    assert isinstance(method.config.recipients.items[0], LegacyMemberRecipient)
-    assert method.config.recipients.items[0].user_id == "member-1"
-    assert "reference_id" not in method.model_dump_json()
-    assert "include_bound_group" not in method.model_dump_json()
+    assert method.config.recipients.include_bound_group is True
+    assert isinstance(method.config.recipients.items[0], MemberRecipient)
+    assert method.config.recipients.items[0].reference_id == "member-1"
+    assert "user_id" not in method.model_dump_json()
+    assert "whole_workspace" not in method.model_dump_json()
 
 
 def test_preflight_returns_ordered_typed_issues_without_constructing_invalid_methods() -> None:
@@ -284,7 +278,7 @@ def test_preflight_returns_ordered_typed_issues_without_constructing_invalid_met
 
     assert preflight.method_positions == (3,)
     assert len(preflight.node_data.delivery_methods) == 1
-    assert isinstance(preflight.node_data.delivery_methods[0], LegacyWebAppDeliveryMethod)
+    assert isinstance(preflight.node_data.delivery_methods[0], WebAppDeliveryMethod)
     assert [(issue.code, issue.method_position, issue.method_id, issue.value) for issue in preflight.issues] == [
         ("unsupported-delivery-method", 0, "33333333-3333-4333-8333-333333333333", "im"),
         ("unsupported-delivery-method", 1, "44444444-4444-4444-8444-444444444444", "future-channel"),
@@ -326,7 +320,28 @@ def test_preflight_types_malformed_recipients_without_discarding_valid_recipient
     assert [issue.recipient_position for issue in preflight.issues] == [0, 1]
     assert preflight.recipient_positions == ((2,),)
     method = preflight.node_data.delivery_methods[0]
-    assert isinstance(method, LegacyEmailDeliveryMethod)
+    assert isinstance(method, EmailDeliveryMethod)
     assert [recipient.model_dump(mode="json") for recipient in method.config.recipients.items] == [
         {"type": "external", "email": "approver@example.com"}
+    ]
+
+
+@pytest.mark.parametrize("input_type", ["text_input", "paragraph"])
+@pytest.mark.parametrize("default_type", ["constant", "variable"])
+def test_historical_paragraph_alias_preserves_both_default_sources(input_type: str, default_type: str) -> None:
+    from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, convert_legacy_human_input_node_data
+
+    default = {"type": default_type, "selector": ["start", "reason"], "value": "  Previous value  "}
+    transport = migration_boundary.LegacyHITLv1NodeData.model_validate(
+        {
+            "title": "Historical paragraph",
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
+            "inputs": [{"type": input_type, "output_variable_name": "reason", "default": default}],
+        }
+    )
+    preflight = migration_boundary.preflight_legacy_human_input_node_data(transport)
+    converted = convert_legacy_human_input_node_data(preflight.node_data, MemberEmailSnapshot())
+    assert converted.node_data is not None
+    assert converted.node_data.model_dump(mode="json")["inputs"] == [
+        {"type": "paragraph", "output_variable_name": "reason", "default": default}
     ]

@@ -1,6 +1,6 @@
 import type { HumanInputNodeType } from '../../human-input/types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
-import { zLegacyFormInputType } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { zFormInputConfig } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { ENABLE_HITL_IM } from '@/config'
 
@@ -37,10 +37,14 @@ export const isLegacyHumanInputNodeData = (data: CommonNodeType): boolean => {
   )
 }
 
+const isSupportedLegacyInputType = (type: unknown) =>
+  type === 'text_input' ||
+  zFormInputConfig.options.some((schema) => schema.shape.type.safeParse(type).success)
+
 export const getUnsupportedLegacyHumanInputFields = (data: CommonNodeType) => {
   if (classifyHumanInputVersion(data) !== HumanInputVersionKind.LegacyEligible) return []
   return ((data as HumanInputNodeType).inputs ?? []).filter(
-    (input) => !zLegacyFormInputType.safeParse(input.type).success,
+    (input) => !isSupportedLegacyInputType(input.type),
   )
 }
 

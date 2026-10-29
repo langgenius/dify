@@ -104,24 +104,27 @@ describe('Human Input migration policy', () => {
     },
   )
 
-  it.each([InputVarType.select, InputVarType.singleFile, InputVarType.multiFiles])(
-    'keeps legacy insertion available when %s fields cannot migrate',
-    (type) => {
-      const legacy = {
-        data: {
-          ...data(),
-          inputs: [createDefaultFormInputByType(type, 'decision')],
-        },
-      }
+  it.each([
+    InputVarType.paragraph,
+    InputVarType.select,
+    InputVarType.singleFile,
+    InputVarType.multiFiles,
+  ])('keeps supported %s fields on the migration path when the release gate is on', (type) => {
+    const legacy = {
+      data: {
+        ...data(),
+        inputs: [createDefaultFormInputByType(type, 'decision')],
+      },
+    }
 
-      expect(canInsertHumanInput([legacy], BlockEnum.HumanInput)).toBe(true)
-      expect(canInsertHumanInput([legacy], BlockEnum.HumanInputV2)).toBe(false)
-      expect(canInsertHumanInput([legacy, node('2')], BlockEnum.HumanInput)).toBe(false)
-      expect(canInsertHumanInput([node()], BlockEnum.HumanInput)).toBe(false)
-    },
-  )
+    expect(canInsertHumanInput([legacy], BlockEnum.HumanInput)).toBe(false)
+    expect(canInsertHumanInput([legacy], BlockEnum.HumanInputV2)).toBe(false)
+    expect(canInsertHumanInput([legacy, node('2')], BlockEnum.HumanInput)).toBe(false)
+    expect(canInsertHumanInput([node()], BlockEnum.HumanInput)).toBe(false)
+  })
 
-  it('rejects mixed-version batches while allowing legacy-only batches in the compatibility workflow', () => {
+  it('rejects mixed-version batches while allowing legacy-only batches when the release gate is off', () => {
+    releaseGate.enabled = false
     const legacy = {
       data: { ...data(), inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')] },
     }
