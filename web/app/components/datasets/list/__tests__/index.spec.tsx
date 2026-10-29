@@ -84,6 +84,7 @@ function setup(
         'dataset.tag.manage',
       ],
       systemFeatures: { rbac_enabled: true },
+      features: {},
       ...options,
     },
   )

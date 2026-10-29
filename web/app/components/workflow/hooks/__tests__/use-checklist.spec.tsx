@@ -49,7 +49,7 @@ vi.mock('@/service/base', async (importOriginal) => ({
 }))
 
 function createChecklistQueryClient(builtInTools: ToolProviderListResponse = []) {
-  const { queryClient } = createConsoleQueryWrapper()
+  const { queryClient } = createConsoleQueryWrapper({ features: {} })
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, { builtInTools, customTools: [], workflowTools: [], mcpTools: [] })
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])

@@ -34,7 +34,6 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
