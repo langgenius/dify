@@ -498,6 +498,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Workflow inline prompt',
+        files: [{ id: 'stale.md', name: 'stale.md', icon: 'markdown', fileId: 'stale-upload' }],
       })
     })
 
@@ -531,6 +532,25 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
           schema_version: 1,
         }),
       }),
+    )
+    expect(mockComposerMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
+      'body.agent_soul.config_files',
+    )
+  })
+
+  it('preserves explicit file replacement when applying a complete Agent configuration', async () => {
+    const { result } = renderWorkflowHook(
+      () => useWorkflowInlineAgentConfigureSync({ nodeId: 'node-1', enabled: true }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    )
+
+    await act(async () => {
+      await result.current.saveAgentSoulConfig({ schema_version: 1, config_files: [] })
+    })
+
+    expect(mockComposerMutationFn.mock.calls[0]?.[0]).toHaveProperty(
+      'body.agent_soul.config_files',
+      [],
     )
   })
 

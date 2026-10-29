@@ -254,10 +254,9 @@ it.each([
   { strategy: 'latest', mode: 'partial', listed: false, warning: false },
   { strategy: 'latest', mode: 'exclude', listed: true, warning: false },
   { strategy: 'latest', mode: 'exclude', listed: false, warning: true },
-  { strategy: 'latest', mode: 'all', listed: false, warning: false, marketplace: false },
 ] as const)(
   'warns before downgrading only when this plugin is eligible for automatic updates: %j',
-  async ({ strategy, mode, listed, warning, ...options }) => {
+  async ({ strategy, mode, listed, warning }) => {
     api.autoUpgrade.mockResolvedValue({
       category: 'model',
       auto_upgrade: {
@@ -268,10 +267,7 @@ it.each([
         exclude_plugins: listed ? [detail.plugin_id] : ['other-plugin'],
       },
     })
-    const { user } = setup(
-      { detail: { ...detail, source: PluginSource.marketplace } },
-      'marketplace' in options ? options.marketplace : true,
-    )
+    const { user } = setup({ detail: { ...detail, source: PluginSource.marketplace } })
     await user.click(screen.getByRole('button', { name: '1.0.0' }))
     await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
     const dialog = await screen.findByRole(warning ? 'alertdialog' : 'dialog', {
@@ -296,6 +292,12 @@ it.each([
     expect(api.marketplaceUpgrade).not.toHaveBeenCalled()
   },
 )
+
+it('does not offer version switching when Marketplace is disabled', () => {
+  setup({ detail: { ...detail, source: PluginSource.marketplace } }, false)
+
+  expect(screen.getByRole('button', { name: '1.0.0' })).toBeDisabled()
+})
 
 it('uses the newly selected target after cancelling a downgrade', async () => {
   api.autoUpgrade.mockResolvedValue({

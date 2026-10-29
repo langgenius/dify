@@ -12,7 +12,6 @@ from flask import current_app
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy, get_credit_usage_app_type
 from core.llm_generator.llm_generator import _normalize_completion_params
-from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.model_context import use_credit_usage_metadata, with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
@@ -22,6 +21,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 from libs.datetime_utils import measure_time
+from services.message_suggested_questions_parser import SuggestedQuestionsAfterAnswerOutputParser
 from services.tracing.scopes import UNCORRELATED, TraceScopes
 
 if TYPE_CHECKING:

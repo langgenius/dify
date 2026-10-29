@@ -19,10 +19,10 @@ import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import useTheme from '@/hooks/use-theme'
 import { usePluginManifestInfo } from '@/service/use-plugins'
 import { Theme } from '@/types/app'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
@@ -295,7 +295,7 @@ export const AgentProviderToolItem = memo(
     const configuredIcon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
     const icon =
       configuredIcon ??
-      (pluginManifest && tool.pluginId ? getIconFromMarketPlace(tool.pluginId) : undefined)
+      (pluginManifest && tool.pluginId ? getMarketplacePluginIconUrl(tool.pluginId) : undefined)
     const installInfo = tool.pluginUniqueIdentifier ?? pluginManifest?.latest_package_identifier
     const installIdentifiers = [tool.pluginId, tool.id].filter((identifier): identifier is string =>
       Boolean(identifier),
