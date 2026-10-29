@@ -1,4 +1,5 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { CurrentWorkspaceSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
@@ -12,6 +13,7 @@ import { useContactsFeatureContext } from '../composition-context'
 
 const service = vi.hoisted(() => ({
   getFeatures: vi.fn<() => Promise<GetFeaturesResponse>>(),
+  getWorkspace: vi.fn<() => Promise<CurrentWorkspaceSummaryResponse>>(),
 }))
 
 vi.mock('@/service/console', async () => {
@@ -23,13 +25,7 @@ vi.mock('@/service/console', async () => {
       workspaces: {
         current: {
           summary: {
-            get: async () => ({
-              id: 'workspace-1',
-              name: 'Workspace',
-              plan: null,
-              role: 'owner',
-              credits: null,
-            }),
+            get: () => service.getWorkspace(),
           },
         },
       },
@@ -45,6 +41,7 @@ function CapabilityProbe() {
   const context = useContactsFeatureContext()
   return (
     <>
+      <output aria-label="Workspace">{context.workspaceId}</output>
       <output aria-label="Contacts management capability">
         {context.imCentrallyManaged === undefined
           ? 'Loading capabilities'
@@ -64,7 +61,7 @@ function CapabilityProbe() {
   )
 }
 
-function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE') {
+function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE', hydrateWorkspace = true) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
@@ -74,13 +71,14 @@ function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE') {
       deployment_edition: deploymentEdition,
     }),
   )
-  queryClient.setQueryData(consoleQuery.workspaces.current.summary.get.queryKey(), {
-    id: 'workspace-1',
-    name: 'Workspace',
-    plan: null,
-    role: 'owner',
-    credits: null,
-  })
+  if (hydrateWorkspace)
+    queryClient.setQueryData(consoleQuery.workspaces.current.summary.get.queryKey(), {
+      id: 'workspace-1',
+      name: 'Workspace',
+      plan: null,
+      role: 'owner',
+      credits: null,
+    })
   const store = createStore()
   store.set(queryClientAtom, queryClient)
 
@@ -89,6 +87,7 @@ function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE') {
       <Provider store={store}>
         <ContactsManagementRuntimeProvider>
           <p>Home content</p>
+          <input aria-label="Unsaved draft" defaultValue="" />
           <CapabilityProbe />
         </ContactsManagementRuntimeProvider>
       </Provider>
@@ -99,6 +98,37 @@ function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE') {
 describe('ContactsManagementRuntimeProvider capability', () => {
   beforeEach(() => {
     service.getFeatures.mockReset()
+    service.getWorkspace.mockResolvedValue({
+      id: 'workspace-1',
+      name: 'Workspace',
+      plan: null,
+      role: 'owner',
+      credits: null,
+    })
+  })
+
+  it('preserves an unsaved draft when the client resolves an unhydrated workspace', async () => {
+    const user = userEvent.setup()
+    let resolveWorkspace!: (value: CurrentWorkspaceSummaryResponse) => void
+    service.getWorkspace.mockReturnValue(
+      new Promise((resolve) => {
+        resolveWorkspace = resolve
+      }),
+    )
+    service.getFeatures.mockResolvedValue(zGetFeaturesResponse.parse({}))
+    renderRuntime('COMMUNITY', false)
+    await user.type(screen.getByRole('textbox', { name: 'Unsaved draft' }), 'Keep my edits')
+    await act(async () =>
+      resolveWorkspace({
+        id: 'workspace-1',
+        name: 'Workspace',
+        plan: null,
+        role: 'owner',
+        credits: null,
+      }),
+    )
+    await waitFor(() => expect(screen.getByLabelText('Workspace')).toHaveTextContent('workspace-1'))
+    expect(screen.getByRole('textbox', { name: 'Unsaved draft' })).toHaveValue('Keep my edits')
   })
 
   it.each([

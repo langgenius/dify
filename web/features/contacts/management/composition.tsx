@@ -69,7 +69,7 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
   const repository = useMemo(() => createContactsApiRepository(undefined, context), [context])
 
   return (
-    <ContactsManagementProvider key={workspaceId} context={context} repository={repository}>
+    <ContactsManagementProvider context={context} repository={repository}>
       {children}
     </ContactsManagementProvider>
   )

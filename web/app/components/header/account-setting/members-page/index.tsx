@@ -35,6 +35,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { ContactsManagementRuntimeProvider } from '@/features/contacts/management/composition'
 import { useOptionalContactsManagement } from '@/features/contacts/management/composition-context'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { useRemoveContactMember } from '@/features/contacts/management/hooks'
@@ -50,7 +51,7 @@ import { InviteModal } from './invite-modal'
 import MemberDetailsContent from './member-details-content'
 import MemberRow from './member-row'
 
-const MembersPage = () => {
+const MembersPageContent = () => {
   const { t } = useTranslation([
     'billing',
     'common',
@@ -479,4 +480,12 @@ const MembersPage = () => {
   )
 }
 
-export default MembersPage
+export default function MembersPage() {
+  const { context, repository } = useOptionalContactsManagement()
+  if (!isContactsManagementEnabled() || (context && repository)) return <MembersPageContent />
+  return (
+    <ContactsManagementRuntimeProvider>
+      <MembersPageContent />
+    </ContactsManagementRuntimeProvider>
+  )
+}
