@@ -1363,7 +1363,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
-    "app_dsl.package_import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "app_dsl.package_import": {**_ACCOUNT_MEMBER_WITH_ROLE, Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION},
     "app_dsl.check": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_create.workflow": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "node_types.list": dict(_ANY_BEARER),
@@ -1473,6 +1473,13 @@ _REQ_DSL_WORKSPACE = (
     CheckWorkspaceMember(),
     CheckRBACPermission(RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())),
     CheckWorkspaceRole(_EDITOR_UP),
+)
+_REQ_DSL_PACKAGE_IMPORT = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckWorkspaceRole(_EDITOR_UP),
+    CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
 )
 _REQ_DSL_APP = (
     CheckSubject(allowed=_ACCOUNT),
@@ -1691,7 +1698,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "app_dsl.import": _REQ_DSL_WORKSPACE,
-    "app_dsl.package_import": (*_REQ_DSL_WORKSPACE, CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0)),
+    "app_dsl.package_import": _REQ_DSL_PACKAGE_IMPORT,
     "app_dsl.check": _REQ_DSL_WORKSPACE,
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
     "app_dsl.export": _REQ_DSL_APP,
