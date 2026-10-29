@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.oauth_bearer import OAuthScope
 from libs.oauth_bearer import sha256_hex
 from repositories.oauth_refresh_token_repository import insert_refresh_token, new_refresh_token
 from services.oauth_device_contracts import GrantKey, RefreshTokenWrite
@@ -18,6 +19,7 @@ def seed_refresh_token(
     workspace_id: str | None,
     lifetime: timedelta,
     family_id: str | None = None,
+    scopes: frozenset[OAuthScope] | None = None,
 ) -> str:
     token = new_refresh_token()
     write = RefreshTokenWrite(
@@ -28,5 +30,5 @@ def seed_refresh_token(
         presented=None,
     )
     with factory() as session, session.begin():
-        insert_refresh_token(session, grant=grant, account_id=account_id, write=write)
+        insert_refresh_token(session, grant=grant, account_id=account_id, write=write, scopes=scopes)
     return token

@@ -1,13 +1,14 @@
 """Single-use OAuth authorization codes stored in Redis."""
 
 import hashlib
-import json
 import secrets
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Protocol
 
 from pydantic import TypeAdapter, ValidationError
+
+from constants.oauth_bearer import OAuthScope
 
 _KEY = "openapi_oauth:authorization_code:{digest}"
 _CODE_BYTES = 32
@@ -19,7 +20,7 @@ class AuthorizationCodeRecord:
     redirect_uri: str
     code_challenge: str
     resource: str
-    scope: str | None
+    scopes: frozenset[OAuthScope]
     account_id: str
     workspace_id: str
 
@@ -43,7 +44,7 @@ class RedisAuthorizationCodeRepository:
 
     def save(self, record: AuthorizationCodeRecord, ttl: timedelta) -> str:
         code = secrets.token_urlsafe(_CODE_BYTES)
-        self._redis.setex(_key(code), ttl, json.dumps(asdict(record)))
+        self._redis.setex(_key(code), ttl, _RECORD_ADAPTER.dump_json(record).decode())
         return code
 
     def consume(self, code: str) -> AuthorizationCodeRecord | None:

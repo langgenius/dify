@@ -1423,17 +1423,7 @@ export const zNodeTypeListResponse = z.object({
 export const zOAuthAuthorizeClientQuery = z.object({
   client_id: z.string(),
   redirect_uri: z.string(),
-})
-
-/**
- * OAuthAuthorizeClientResponse
- */
-export const zOAuthAuthorizeClientResponse = z.object({
-  client_id: z.string(),
-  display_name: z.string(),
-  localhost_only: z.boolean(),
-  logo_uri: z.string().nullish(),
-  redirect_host: z.string(),
+  scope: z.string().nullish(),
 })
 
 /**
@@ -1463,6 +1453,26 @@ export const zOAuthAuthorizeRequest = z.object({
   resource: z.string().nullish(),
   scope: z.string().nullish(),
   state: z.string().nullish(),
+})
+
+/**
+ * OAuthScope
+ *
+ * OAuth scopes of a browser login (RFC 6749 §3.3). ``read`` runs the ops that only
+ * read; ``write`` also runs the ones that change or delete, and implies ``read``.
+ */
+export const zOAuthScope = z.enum(['read', 'write'])
+
+/**
+ * OAuthAuthorizeClientResponse
+ */
+export const zOAuthAuthorizeClientResponse = z.object({
+  client_id: z.string(),
+  display_name: z.string(),
+  localhost_only: z.boolean(),
+  logo_uri: z.string().nullish(),
+  redirect_host: z.string(),
+  scopes: z.array(zOAuthScope),
 })
 
 /**
@@ -1497,6 +1507,7 @@ export const zOpenApiErrorCode = z.enum([
   'filename_not_exists',
   'forbidden',
   'form_not_found',
+  'insufficient_scope',
   'internal_server_error',
   'invalid_param',
   'knowledge_fs_access_denied',
@@ -2523,6 +2534,7 @@ export const zOAuthTokenResponse = z.object({
   default_workspace_id: z.string().nullish(),
   expires_in: z.int(),
   refresh_token: z.string().nullish(),
+  scope: z.string().nullish(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
   subject_type: zSubjectType,
@@ -3280,6 +3292,7 @@ export const zPostOauthAuthorizeApproveResponse = zOAuthAuthorizeRedirectRespons
 export const zGetOauthAuthorizeClientQuery = z.object({
   client_id: z.string(),
   redirect_uri: z.string(),
+  scope: z.string().optional(),
 })
 
 /**

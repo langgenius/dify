@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 import services.oauth_token_grants as token_grants_module
+from constants.oauth_bearer import OAuthScope
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import OAuthAccessTokenResolver, sha256_hex
 from machinery.context import AccountRequestContext, RequestContext
@@ -99,6 +100,7 @@ class _Overrides(TypedDict, total=False, closed=True):
     code_verifier: str | None
     redirect_uri: str | None
     resource: str | None
+    scope: str | None
 
 
 def _device_request(**overrides: Unpack[_Overrides]) -> TokenRequest:
@@ -264,6 +266,7 @@ class _World:
         redirect_uri: str = WEB_REDIRECT,
         context: RequestContext = AUTH_CONTEXT,
         issuer: str = ISSUER,
+        scope: str | None = None,
     ) -> str:
         request = AuthorizeRequest(
             client_id=client_id,
@@ -271,14 +274,14 @@ class _World:
             code_challenge=CHALLENGE,
             code_challenge_method="S256",
             resource=None,
-            scope=None,
+            scope=scope,
             state="st",
         )
         url = self.authorize.approve(context, request, issuer=issuer)
         return parse_qs(urlsplit(url).query)["code"][0]
 
-    def login(self, *, context: RequestContext = AUTH_CONTEXT) -> TokenGrantResult:
-        return self.service.exchange(_code_request(self.approve(context=context)))
+    def login(self, *, context: RequestContext = AUTH_CONTEXT, scope: str | None = None) -> TokenGrantResult:
+        return self.service.exchange(_code_request(self.approve(context=context, scope=scope)))
 
     def code_error(self, request: TokenRequest) -> TokenEndpointError:
         with pytest.raises(TokenEndpointError) as caught:
@@ -704,3 +707,69 @@ class TestSessionPathsKnowRefreshGrants:
         assert world.refresh_row(moved.refresh_token) is None
         assert world.access_row(taker).revoked_at is None
         assert world.refresh_row(taker.refresh_token) is not None
+
+
+READ_ONLY = frozenset({OAuthScope.READ})
+READ_WRITE = frozenset(OAuthScope)
+
+
+@pytest.mark.usefixtures("issuer_from_origin")
+class TestBrowserLoginScopes:
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("scope", "granted"),
+        [
+            pytest.param(None, READ_WRITE, id="absent"),
+            pytest.param("read offline_access", READ_ONLY, id="read"),
+            pytest.param("write", READ_WRITE, id="write"),
+        ],
+    )
+    def test_code_grant_mints_with_the_scopes_bound_to_the_code(
+        world: _World, scope: str | None, granted: frozenset[OAuthScope]
+    ) -> None:
+        login = world.login(scope=scope)
+
+        assert login.scopes == granted
+        assert world.access_row(login).scope == granted
+        row = world.refresh_row(login.refresh_token)
+        assert row is not None
+        assert row.scope == granted
+
+    @staticmethod
+    def test_refresh_keeps_the_granted_scopes(world: _World) -> None:
+        login = world.login(scope="read")
+
+        rotated = world.refresh(login.refresh_token)
+
+        assert rotated.scopes == READ_ONLY
+        assert world.access_row(rotated).scope == READ_ONLY
+        row = world.refresh_row(rotated.refresh_token)
+        assert row is not None
+        assert row.scope == READ_ONLY
+
+    @staticmethod
+    def test_refresh_may_narrow_and_the_new_refresh_token_keeps_the_narrowed_scopes(world: _World) -> None:
+        login = world.login()
+
+        narrowed = world.refresh(login.refresh_token, scope="read")
+        latest = world.refresh(narrowed.refresh_token)
+
+        assert (narrowed.scopes, latest.scopes) == (READ_ONLY, READ_ONLY)
+        assert world.refresh_error(latest.refresh_token, scope="read write").code is TokenErrorCode.INVALID_SCOPE
+
+    @staticmethod
+    @pytest.mark.parametrize("scope", ["write", "read write", "", "read admin"])
+    def test_refresh_refuses_to_widen_or_name_an_unknown_scope(world: _World, scope: str) -> None:
+        login = world.login(scope="read")
+
+        assert world.refresh_error(login.refresh_token, scope=scope).code is TokenErrorCode.INVALID_SCOPE
+        row = world.refresh_row(login.refresh_token)
+        assert row is not None
+        assert row.rotated_at is None
+
+    @staticmethod
+    def test_a_refresh_token_from_before_scopes_refreshes_with_every_scope(world: _World) -> None:
+        login = world.login()
+        world.set_refresh(login.refresh_token, scope=None)
+
+        assert world.refresh(login.refresh_token).scopes == READ_WRITE

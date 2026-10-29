@@ -4,6 +4,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
+from constants.oauth_bearer import OAuthScope
 from machinery.context import RequestContext
 from repositories.oauth_authorization_code_repository import AuthorizationCodeRecord, RedisAuthorizationCodeRepository
 from services.oauth_authorize_service import (
@@ -88,7 +89,7 @@ def test_unverified_client_or_redirect_is_refused_without_a_redirect_or_code(
 ) -> None:
     request = replace(REQUEST, **overrides)
     calls = [
-        lambda: service.describe_client(request.client_id, request.redirect_uri),
+        lambda: service.describe_client(request.client_id, request.redirect_uri, request.scope),
         lambda: service.approve(CONTEXT, request, issuer=ISSUER),
         lambda: service.deny(request, issuer=ISSUER),
     ]
@@ -103,7 +104,7 @@ def test_unverified_client_or_redirect_is_refused_without_a_redirect_or_code(
 def test_approve_binds_the_code_and_redirects_with_code_state_and_iss(
     service: OAuthAuthorizeService, codes: RedisAuthorizationCodeRepository, redis: DictRedis
 ) -> None:
-    url = service.approve(CONTEXT, replace(REQUEST, scope="apps:run"), issuer=ISSUER)
+    url = service.approve(CONTEXT, replace(REQUEST, scope="read"), issuer=ISSUER)
 
     assert url.startswith(WEB_REDIRECT + "?")
     query = _query(url)
@@ -114,7 +115,7 @@ def test_approve_binds_the_code_and_redirects_with_code_state_and_iss(
         redirect_uri=WEB_REDIRECT,
         code_challenge=CHALLENGE,
         resource=ISSUER,
-        scope="apps:run",
+        scopes=frozenset({OAuthScope.READ}),
         account_id=ACCOUNT_ID,
         workspace_id=WORKSPACE_ID,
     )
@@ -137,6 +138,7 @@ def test_approve_returns_to_the_requested_loopback_port(
         pytest.param({"code_challenge_method": "plain"}, "invalid_request"),
         pytest.param({"code_challenge": "short"}, "invalid_request", id="short-challenge"),
         pytest.param({"resource": "https://other.example/openapi/v1"}, "invalid_target"),
+        pytest.param({"scope": "read admin"}, "invalid_scope", id="unknown-scope"),
     ],
 )
 def test_approve_reports_a_bad_request_to_the_verified_redirect_without_saving_a_code(
@@ -160,3 +162,46 @@ def test_deny_redirects_with_access_denied_and_needs_no_valid_challenge(
     assert (query["error"], query["state"], query["iss"]) == (["access_denied"], ["xyz"], [ISSUER])
     assert "code" not in query
     assert redis.data == {}
+
+
+@pytest.mark.parametrize(
+    ("scope", "granted"),
+    [
+        pytest.param(None, frozenset(OAuthScope), id="absent"),
+        pytest.param("read", frozenset({OAuthScope.READ}), id="read"),
+        pytest.param("read write", frozenset(OAuthScope), id="read-write"),
+        pytest.param("write", frozenset(OAuthScope), id="write-implies-read"),
+    ],
+)
+def test_approve_binds_the_granted_scopes_to_the_code(
+    service: OAuthAuthorizeService,
+    codes: RedisAuthorizationCodeRepository,
+    scope: str | None,
+    granted: frozenset[OAuthScope],
+) -> None:
+    url = service.approve(CONTEXT, replace(REQUEST, scope=scope), issuer=ISSUER)
+
+    record = codes.consume(_query(url)["code"][0])
+    assert record is not None
+    assert record.scopes == granted
+
+
+@pytest.mark.parametrize(
+    ("scope", "shown"),
+    [
+        pytest.param(None, (OAuthScope.READ, OAuthScope.WRITE), id="absent"),
+        pytest.param("read offline_access", (OAuthScope.READ,), id="read"),
+        pytest.param("write read", (OAuthScope.READ, OAuthScope.WRITE), id="stable-order"),
+    ],
+)
+def test_describe_client_shows_the_scopes_approve_would_grant(
+    service: OAuthAuthorizeService, scope: str | None, shown: tuple[OAuthScope, ...]
+) -> None:
+    assert service.describe_client(WEB_ID, WEB_REDIRECT, scope).scopes == shown
+
+
+def test_describe_client_refuses_an_unknown_scope_as_a_bad_request(service: OAuthAuthorizeService) -> None:
+    with pytest.raises(AuthorizeRequestError) as caught:
+        service.describe_client(WEB_ID, WEB_REDIRECT, "read admin")
+
+    assert caught.value.code is AuthorizeErrorCode.INVALID_REQUEST

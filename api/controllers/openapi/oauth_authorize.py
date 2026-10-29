@@ -72,7 +72,9 @@ class OAuthAuthorizeClientApi(Resource):
     def get(self):
         try:
             query = _validated(OAuthAuthorizeClientQuery, request.args.to_dict(flat=True))
-            view = application_services().oauth_authorize.describe_client(query.client_id, query.redirect_uri)
+            view = application_services().oauth_authorize.describe_client(
+                query.client_id, query.redirect_uri, query.scope
+            )
         except AuthorizeRequestError as error:
             return _error(error)
         return dump_response(OAuthAuthorizeClientResponse, view), HTTPStatus.OK

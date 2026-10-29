@@ -48,6 +48,7 @@ class AdmittedWorld:
     app_id: str
     member_id: str
     headers: dict[str, str]
+    auth: AuthContext
 
 
 @pytest.fixture
@@ -122,6 +123,7 @@ def admitted_bearer(
         app_id=app_id,
         member_id=str(uuid.uuid4()),
         headers={"Authorization": "Bearer dfoa_admitted", CATALOG_HEADER: catalog_for(openapi_app)[1]},
+        auth=token,
     )
 
 

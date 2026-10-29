@@ -8,6 +8,7 @@ from http import HTTPStatus
 from flask import request
 from flask_restx import Resource
 
+from constants.oauth_bearer import OAuthScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import OAuthTokenErrorResponse, OAuthTokenResponse
 from controllers.openapi._oauth_input import (
@@ -60,6 +61,8 @@ def _token_response(result: TokenGrantResult) -> dict[str, object]:
     }
     if result.refresh_token is not None:
         body["refresh_token"] = result.refresh_token
+    if result.scopes is not None:
+        body["scope"] = OAuthScope.serialize(result.scopes)
     return dump_response(OAuthTokenResponse, body, exclude_unset=True)
 
 

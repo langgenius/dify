@@ -8,6 +8,7 @@ from enum import StrEnum
 from http import HTTPStatus
 from typing import Protocol
 
+from constants.oauth_bearer import OAuthScope
 from services.oauth_device_contracts import PollPayload
 
 
@@ -67,6 +68,8 @@ class TokenRequest:
 class TokenGrantResult:
     payload: PollPayload
     refresh_token: str | None = None
+    # A browser login's granted scopes; None for the device grant, which is unrestricted.
+    scopes: frozenset[OAuthScope] | None = None
 
 
 class OAuthTokenSettings(Protocol):

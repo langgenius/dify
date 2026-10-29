@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -9,7 +10,7 @@ import pytest
 from redis import Redis
 from sqlalchemy.orm import sessionmaker
 
-from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, Scope, SubjectType, TokenType
+from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, OAuthScope, Scope, SubjectType, TokenType
 from libs.oauth_bearer import (
     BearerAuthenticator,
     InvalidBearerError,
@@ -23,7 +24,7 @@ from libs.oauth_bearer import (
 """The bearer catalog: which subject each token type serves and what it may do."""
 
 
-def _row(account_id: uuid.UUID | None) -> ResolvedRow:
+def _row(account_id: uuid.UUID | None, oauth_scopes: frozenset[OAuthScope] | None = None) -> ResolvedRow:
     return ResolvedRow(
         subject_email="who@example.com",
         subject_issuer="issuer",
@@ -31,6 +32,7 @@ def _row(account_id: uuid.UUID | None) -> ResolvedRow:
         client_id="client",
         token_id=uuid.uuid4(),
         expires_at=datetime.now(UTC),
+        oauth_scopes=oauth_scopes,
     )
 
 
@@ -118,6 +120,12 @@ class _FakeRedis:
 class _FakeTokenRow:
     expires_at: datetime
     id: uuid.UUID = field(default_factory=uuid.uuid4)
+    account_id: uuid.UUID = field(default_factory=uuid.uuid4)
+    prefix: str = TokenType.OAUTH_ACCOUNT.prefix
+    subject_email: str = "who@example.com"
+    subject_issuer: str = "dify:account"
+    client_id: str = "client"
+    scope: frozenset[OAuthScope] | None = None
 
 
 @dataclass
@@ -154,3 +162,44 @@ def test_cached_row_past_expiry_is_rejected(monkeypatch: pytest.MonkeyPatch) -> 
         auth.authenticate("dfoa_stale")
 
     assert redis.store[TOKEN_CACHE_KEY_FMT.format(hash=token_hash)] == "invalid"
+
+
+@pytest.mark.parametrize(
+    "oauth_scopes",
+    [None, frozenset({OAuthScope.READ}), frozenset(OAuthScope)],
+    ids=["unrestricted", "read", "read-write"],
+)
+def test_cache_round_trips_the_oauth_scopes(oauth_scopes: frozenset[OAuthScope] | None) -> None:
+    row = _row(uuid.uuid4(), oauth_scopes)
+
+    assert ResolvedRow.from_cache(row.to_cache()) == row
+
+
+def test_cache_entry_from_before_scopes_reads_as_unrestricted() -> None:
+    entry = _row(uuid.uuid4(), frozenset({OAuthScope.READ})).to_cache()
+    del entry["oauth_scopes"]
+
+    assert ResolvedRow.from_cache(entry).oauth_scopes is None
+
+
+def test_cache_entry_naming_an_unknown_scope_is_a_miss() -> None:
+    redis = _FakeRedis()
+    oauth = OAuthAccessTokenResolver(sessionmaker(), redis)
+    token_hash = sha256_hex("dfoa_odd")
+    entry = _row(uuid.uuid4()).to_cache() | {"oauth_scopes": ["admin"]}
+    redis.store[TOKEN_CACHE_KEY_FMT.format(hash=token_hash)] = json.dumps(entry)
+
+    assert oauth.cache_get(token_hash) is None
+
+
+def test_resolver_carries_the_rows_scopes_through_the_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("libs.oauth_bearer.enforce_bearer_rate_limit", lambda _h: None)
+    db_row = _FakeTokenRow(expires_at=datetime.now(UTC) + timedelta(hours=1), scope=frozenset({OAuthScope.READ}))
+    oauth = OAuthAccessTokenResolver(lambda: _FakeSession(db_row), _FakeRedis())
+    auth = _authenticator_with(oauth.for_token_type(TokenType.OAUTH_ACCOUNT))
+
+    from_row = auth.authenticate("dfoa_read")
+    db_row.scope = None
+    from_cache = auth.authenticate("dfoa_read")
+
+    assert from_row.oauth_scopes == from_cache.oauth_scopes == frozenset({OAuthScope.READ})

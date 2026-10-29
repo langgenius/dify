@@ -127,7 +127,21 @@ class TestAuthorizeClientLookupCases:
             "logo_uri": "https://nango-qwenwork.cn/logo.png",
             "redirect_host": "nango-qwenwork.cn",
             "localhost_only": False,
+            "scopes": ["read", "write"],
         }
+
+    @staticmethod
+    def test_lookup_shows_the_requested_scopes(world: _World) -> None:
+        response = _lookup(world, scope="offline_access read")
+
+        assert response.get_json()["scopes"] == ["read"]
+
+    @staticmethod
+    def test_lookup_refuses_an_unknown_scope_as_an_invalid_request(world: _World) -> None:
+        response = _lookup(world, scope="read admin")
+
+        assert response.status_code == 400
+        assert response.get_json() == {"error": "invalid_request"}
 
 
 class TestAuthorizeDecisionCases:
@@ -153,6 +167,7 @@ class TestAuthorizeDecisionCases:
         ("action", "overrides", "error"),
         [
             ("approve", {"code_challenge_method": "plain"}, "invalid_request"),
+            ("approve", {"scope": "read admin"}, "invalid_scope"),
             ("deny", {}, "access_denied"),
         ],
     )

@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import ColumnElement, Row, and_, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.oauth_bearer import OAuthScope
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import invalidate_oauth_token_cache
 from libs.uuid_utils import uuidv7
@@ -195,6 +196,7 @@ def _write_refresh(
         ),
         account_id=token.account_id,
         write=refresh,
+        scopes=token.scopes,
     )
 
 
@@ -307,6 +309,7 @@ class _TokenRowValues:
     revoked_at: datetime | None
     last_used_at: datetime | None
     created_at: datetime
+    scope: frozenset[OAuthScope] | None
 
     @classmethod
     def of(cls, record: OpenAPIOAuthAccessToken) -> _TokenRowValues:
@@ -319,6 +322,7 @@ class _TokenRowValues:
             revoked_at=record.revoked_at,
             last_used_at=record.last_used_at,
             created_at=record.created_at,
+            scope=record.scope,
         )
 
     def apply_to(self, record: OpenAPIOAuthAccessToken) -> None:
@@ -330,6 +334,7 @@ class _TokenRowValues:
         record.revoked_at = self.revoked_at
         record.last_used_at = self.last_used_at
         record.created_at = self.created_at
+        record.scope = self.scope
 
 
 class SQLAlchemyOAuthDeviceTokenRepository:
@@ -375,6 +380,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                     prefix=token.prefix,
                     token_hash=token.token_hash,
                     expires_at=token.expires_at,
+                    scope=token.scopes,
                 )
                 session.add(record)
             else:
@@ -388,6 +394,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                     revoked_at=None,
                     last_used_at=None,
                     created_at=now,
+                    scope=token.scopes,
                 ).apply_to(record)
             session.flush()
             token_id = record.id

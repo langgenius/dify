@@ -9,7 +9,7 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 
-from constants.oauth_bearer import TokenType
+from constants.oauth_bearer import OAuthScope, TokenType
 from libs.oauth_bearer import sha256_hex
 from machinery.context import RequestContext
 from services.entities.account_entities import AccountSnapshot
@@ -205,8 +205,9 @@ class FakeTokens:
         device_label: str,
         lifetime: timedelta | None = None,
         refresh: RefreshTokenIssue | None = None,
+        scopes: frozenset[OAuthScope] | None = None,
     ) -> IssuedOAuthToken:
-        _ = (account, workspace_id, client_id, device_label, lifetime, refresh)
+        _ = (account, workspace_id, client_id, device_label, lifetime, refresh, scopes)
         self.account_issues += 1
         return self.account_token
 

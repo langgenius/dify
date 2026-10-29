@@ -10,7 +10,7 @@ from typing import Annotated, Any, Final, Literal, Protocol, Self
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from constants.languages import supported_language
-from constants.oauth_bearer import SubjectType
+from constants.oauth_bearer import OAuthScope, SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
@@ -179,6 +179,8 @@ class OAuthTokenResponse(BaseModel):
     token_type: str
     expires_in: int
     refresh_token: str | None = None
+    # Space-separated (RFC 6749 §5.1); browser logins only.
+    scope: str | None = None
     subject_type: SubjectType
     account: AccountPayload | None = None
     workspaces: list[WorkspacePayload] = []
@@ -198,6 +200,7 @@ class OAuthAuthorizeClientResponse(BaseModel):
     logo_uri: str | None = None
     redirect_host: str
     localhost_only: bool
+    scopes: list[OAuthScope]
 
 
 class OAuthAuthorizeRedirectResponse(BaseModel):
@@ -513,6 +516,7 @@ class DeviceMutateRequest(BaseModel):
 class OAuthAuthorizeClientQuery(BaseModel):
     client_id: str
     redirect_uri: str
+    scope: str | None = None
 
 
 class OAuthAuthorizeRequest(BaseModel):

@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from functools import partial
 
@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
+from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, OAuthScope
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthAccessToken
@@ -206,6 +206,49 @@ def test_relogin_reuses_the_row_under_a_new_token_id(
     assert second.replaced_token_id == first.token_id
     sqlite_session.expire_all()
     assert sqlite_session.get(OpenAPIOAuthAccessToken, first.token_id) is None
+
+
+@pytest.mark.parametrize(
+    ("first_scopes", "second_scopes"),
+    [
+        pytest.param(frozenset(OAuthScope), frozenset({OAuthScope.READ}), id="narrowed"),
+        pytest.param(frozenset({OAuthScope.READ}), None, id="device-relogin-clears"),
+        pytest.param(None, frozenset({OAuthScope.READ}), id="browser-login-sets"),
+    ],
+)
+def test_a_reused_row_takes_the_new_logins_scopes(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    first_scopes: frozenset[OAuthScope] | None,
+    second_scopes: frozenset[OAuthScope] | None,
+) -> None:
+    _issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
+    first = repository.rotate_token(replace(_write("hash-1"), scopes=first_scopes))
+
+    second = repository.rotate_token(replace(_write("hash-2"), scopes=second_scopes))
+
+    assert second.replaced_token_id == first.token_id
+    sqlite_session.expire_all()
+    record = sqlite_session.get(OpenAPIOAuthAccessToken, second.token_id)
+    assert record is not None
+    assert record.scope == second_scopes
+
+
+def test_rollback_puts_a_reused_rows_scopes_back(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _issuer, repository, redis, _ttl_policy = _repository(sqlite_session_factory)
+    first = repository.rotate_token(replace(_write("hash-1"), scopes=frozenset({OAuthScope.READ})))
+    redis.before_next_delete = _fail_cache_delete
+
+    with pytest.raises(_CacheDeleteError):
+        repository.rotate_token(_write("hash-2"))
+
+    sqlite_session.expire_all()
+    record = sqlite_session.get(OpenAPIOAuthAccessToken, first.token_id)
+    assert record is not None
+    assert record.scope == frozenset({OAuthScope.READ})
 
 
 def test_login_after_logout_on_the_same_device_succeeds(

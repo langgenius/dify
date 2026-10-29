@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import ColumnElement, Row, and_, delete, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.oauth_bearer import OAuthScope
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthRefreshToken
 from services.oauth_device_contracts import (
@@ -35,6 +36,8 @@ class RefreshTokenRecord:
     workspace_id: str | None
     expires_at: datetime
     rotated_at: datetime | None
+    # None: a login from before scopes, with the token type's full access.
+    scopes: frozenset[OAuthScope] | None
 
     @property
     def grant_key(self) -> GrantKey:
@@ -86,7 +89,14 @@ def new_refresh_token() -> str:
     return f"{REFRESH_TOKEN_PREFIX}{secrets.token_urlsafe(_REFRESH_TOKEN_BYTES)}"
 
 
-def insert_refresh_token(session: Session, *, grant: GrantKey, account_id: str, write: RefreshTokenWrite) -> None:
+def insert_refresh_token(
+    session: Session,
+    *,
+    grant: GrantKey,
+    account_id: str,
+    write: RefreshTokenWrite,
+    scopes: frozenset[OAuthScope] | None,
+) -> None:
     session.add(
         OpenAPIOAuthRefreshToken(
             family_id=write.family_id,
@@ -98,6 +108,7 @@ def insert_refresh_token(session: Session, *, grant: GrantKey, account_id: str, 
             device_label=grant.device_label,
             expires_at=write.expires_at,
             workspace_id=write.workspace_id,
+            scope=scopes,
         )
     )
 
@@ -219,4 +230,5 @@ class SQLAlchemyOAuthRefreshTokenRepository:
                 workspace_id=row.workspace_id,
                 expires_at=row.expires_at,
                 rotated_at=row.rotated_at,
+                scopes=row.scope,
             )

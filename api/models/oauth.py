@@ -1,10 +1,12 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, override
 
 import sqlalchemy as sa
-from sqlalchemy import func
+from sqlalchemy import VARCHAR, TypeDecorator, func
+from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
 
+from constants.oauth_bearer import OAuthScope
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
@@ -91,6 +93,21 @@ class DatasourceOauthTenantParamConfig(TypeBase):
     )
 
 
+class OAuthScopeSet(TypeDecorator[frozenset[OAuthScope] | None]):
+    """A browser login's granted scopes, space-separated. NULL means the token type's full access."""
+
+    impl = VARCHAR(255)
+    cache_ok = True
+
+    @override
+    def process_bind_param(self, value: frozenset[OAuthScope] | None, dialect: Dialect) -> str | None:
+        return None if value is None else OAuthScope.serialize(value)
+
+    @override
+    def process_result_value(self, value: str | None, dialect: Dialect) -> frozenset[OAuthScope] | None:
+        return None if value is None else OAuthScope.parse(value)
+
+
 class OpenAPIOAuthAccessToken(TypeBase):
     """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account,
     subject_issuer = "dify:account" sentinel); account_id NULL +
@@ -122,6 +139,7 @@ class OpenAPIOAuthAccessToken(TypeBase):
     token_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+    scope: Mapped[frozenset[OAuthScope] | None] = mapped_column(OAuthScopeSet, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
@@ -183,6 +201,7 @@ class OpenAPIOAuthRefreshToken(TypeBase):
     expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     workspace_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     rotated_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+    scope: Mapped[frozenset[OAuthScope] | None] = mapped_column(OAuthScopeSet, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False

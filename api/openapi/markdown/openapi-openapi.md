@@ -1232,6 +1232,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ---------- | ----------- | -------- | ------ |
 | client_id | query |  | Yes | string |
 | redirect_uri | query |  | Yes | string |
+| scope | query |  | No | string |
 
 #### Responses
 
@@ -3413,6 +3414,7 @@ Enum class for model type.
 | ---- | ---- | ----------- | -------- |
 | client_id | string |  | Yes |
 | redirect_uri | string |  | Yes |
+| scope | string |  | No |
 
 #### OAuthAuthorizeClientResponse
 
@@ -3423,6 +3425,7 @@ Enum class for model type.
 | localhost_only | boolean |  | Yes |
 | logo_uri | string |  | No |
 | redirect_host | string |  | Yes |
+| scopes | [ [OAuthScope](#oauthscope) ] |  | Yes |
 
 #### OAuthAuthorizeErrorResponse
 
@@ -3483,6 +3486,15 @@ RFC 7591 client metadata; unknown fields are ignored.
 | response_types | [ string ] |  | Yes |
 | token_endpoint_auth_method | [TokenEndpointAuthMethod](#tokenendpointauthmethod) |  | Yes |
 
+#### OAuthScope
+
+OAuth scopes of a browser login (RFC 6749 §3.3). ``read`` runs the ops that only
+read; ``write`` also runs the ones that change or delete, and implies ``read``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OAuthScope | string | OAuth scopes of a browser login (RFC 6749 §3.3). ``read`` runs the ops that only read; ``write`` also runs the ones that change or delete, and implies ``read``. |  |
+
 #### OAuthTokenErrorResponse
 
 | Name | Type | Description | Required |
@@ -3498,6 +3510,7 @@ RFC 7591 client metadata; unknown fields are ignored.
 | default_workspace_id | string |  | No |
 | expires_in | integer |  | Yes |
 | refresh_token | string |  | No |
+| scope | string |  | No |
 | subject_email | string |  | No |
 | subject_issuer | string |  | No |
 | subject_type | [SubjectType](#subjecttype) |  | Yes |

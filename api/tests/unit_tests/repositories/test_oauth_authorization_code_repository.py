@@ -2,6 +2,7 @@ import hashlib
 from dataclasses import dataclass, field
 from datetime import timedelta
 
+from constants.oauth_bearer import OAuthScope
 from repositories.oauth_authorization_code_repository import (
     AuthorizationCodeRecord,
     RedisAuthorizationCodeRepository,
@@ -12,7 +13,7 @@ RECORD = AuthorizationCodeRecord(
     redirect_uri="http://127.0.0.1:5/cb",
     code_challenge="c" * 43,
     resource="https://dify.example.com/openapi/v1",
-    scope="apps:run",
+    scopes=frozenset({OAuthScope.READ}),
     account_id="acc-1",
     workspace_id="ws-1",
 )

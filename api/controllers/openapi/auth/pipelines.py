@@ -16,6 +16,7 @@ from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
+    OAUTH_SCOPE_CHECKS,
     Rank,
     Requirement,
     ResolveCaller,
@@ -53,8 +54,13 @@ class Pipeline:
         """Endpoint-declared requirements are merged ahead of the fixed ones,
         so a stable sort leaves them first at equal rank — which is what keeps
         `CheckSubject` ahead of `_RequiresEnterprise`.
+
+        Every op also gets the OAuth scope check for its effect, which only the
+        spec and the request method know. It sorts last at `Rank.FIRST`: after
+        the catalog check, before the workspace and permission checks.
         """
-        for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
+        scope_check = OAUTH_SCOPE_CHECKS[spec.catalog.effect_for(request.method).oauth_scope]
+        for requirement in sorted((*spec.requirements, *self.fixed, scope_check), key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
         with mounted(subject, auth, ctx):
             # Bind handler arguments while the admission Session is still open.

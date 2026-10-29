@@ -10,7 +10,7 @@ from hashlib import sha256
 from typing import Protocol
 from urllib.parse import quote
 
-from constants.oauth_bearer import SubjectType
+from constants.oauth_bearer import OAuthScope, SubjectType
 from machinery.context import RequestContext
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_contracts import (
@@ -119,6 +119,7 @@ class OAuthDeviceTokenIssuer(Protocol):
         device_label: str,
         lifetime: timedelta | None = None,
         refresh: RefreshTokenIssue | None = None,
+        scopes: frozenset[OAuthScope] | None = None,
     ) -> IssuedOAuthToken: ...
 
     def issue_external_token(

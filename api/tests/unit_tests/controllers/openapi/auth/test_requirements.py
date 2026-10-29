@@ -2375,6 +2375,7 @@ class TestAuthMatrixCases:
                 client_id="difyctl",
                 token_id=token_id,
                 expires_at=None,
+                oauth_scopes=None,
             )
             row = OpenAPIOAuthAccessToken(
                 token_hash=sha256_hex(raw),

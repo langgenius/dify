@@ -1046,6 +1046,7 @@ export type NodeTypeRow = {
 export type OAuthAuthorizeClientQuery = {
   client_id: string
   redirect_uri: string
+  scope?: string | null
 }
 
 export type OAuthAuthorizeClientResponse = {
@@ -1054,6 +1055,7 @@ export type OAuthAuthorizeClientResponse = {
   localhost_only: boolean
   logo_uri?: string | null
   redirect_host: string
+  scopes: Array<OAuthScope>
 }
 
 export type OAuthAuthorizeErrorResponse = {
@@ -1099,6 +1101,8 @@ export type OAuthRegisterResponse = {
   token_endpoint_auth_method: TokenEndpointAuthMethod
 }
 
+export type OAuthScope = 'read' | 'write'
+
 export type OAuthTokenErrorResponse = {
   error: string
 }
@@ -1109,6 +1113,7 @@ export type OAuthTokenResponse = {
   default_workspace_id?: string | null
   expires_in: number
   refresh_token?: string | null
+  scope?: string | null
   subject_email?: string | null
   subject_issuer?: string | null
   subject_type: SubjectType
@@ -1139,6 +1144,7 @@ export type OpenApiErrorCode =
   | 'filename_not_exists'
   | 'forbidden'
   | 'form_not_found'
+  | 'insufficient_scope'
   | 'internal_server_error'
   | 'invalid_param'
   | 'knowledge_fs_access_denied'
@@ -3487,6 +3493,7 @@ export type GetOauthAuthorizeClientData = {
   query: {
     client_id: string
     redirect_uri: string
+    scope?: string
   }
   url: '/oauth/authorize/client'
 }

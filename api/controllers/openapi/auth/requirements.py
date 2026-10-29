@@ -18,11 +18,12 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from constants.oauth_bearer import Scope
+from constants.oauth_bearer import OAuthScope, Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace, enforce_rbac_checks
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi._errors import (
     AppModeMismatch,
+    InsufficientScope,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     PluginInstallForbidden,
@@ -136,6 +137,29 @@ class CheckScope(Requirement):
         if Scope.FULL in subject.scopes or self.scope in subject.scopes:
             return
         raise Forbidden("insufficient_scope")
+
+
+class CheckOAuthScope(Requirement):
+    """A browser login's token runs only the ops its granted OAuth scopes cover;
+    a token without granted scopes keeps its token type's full access.
+    """
+
+    rank = Rank.FIRST
+
+    def __init__(self, required: OAuthScope) -> None:
+        self.required = required
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        granted = subject.auth.oauth_scopes
+        if granted is None:
+            return
+        if self.required in granted:
+            return
+        raise InsufficientScope(self.required)
+
+
+OAUTH_SCOPE_CHECKS: Final = {scope: CheckOAuthScope(scope) for scope in OAuthScope}
 
 
 class CheckWorkspaceInvitationQuota(Requirement):

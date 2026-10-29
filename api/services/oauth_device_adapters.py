@@ -10,7 +10,7 @@ from typing import Protocol, override
 from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
-from constants.oauth_bearer import TokenType
+from constants.oauth_bearer import OAuthScope, TokenType
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
 from libs.device_flow_security import (
@@ -116,6 +116,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         device_label: str,
         lifetime: timedelta | None = None,
         refresh: RefreshTokenIssue | None = None,
+        scopes: frozenset[OAuthScope] | None = None,
     ) -> IssuedOAuthToken:
         return self._issue_token(
             token_type=TokenType.OAUTH_ACCOUNT,
@@ -127,6 +128,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             workspace_id=workspace_id,
             lifetime=lifetime,
             refresh=refresh,
+            scopes=scopes,
         )
 
     @override
@@ -150,6 +152,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             workspace_id=None,
             lifetime=None,
             refresh=None,
+            scopes=None,
         )
 
     def _issue_token(
@@ -164,6 +167,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         workspace_id: str | None,
         lifetime: timedelta | None,
         refresh: RefreshTokenIssue | None,
+        scopes: frozenset[OAuthScope] | None,
     ) -> IssuedOAuthToken:
         plaintext = token_type.prefix + secrets.token_urlsafe(_OAUTH_TOKEN_BODY_BYTES)
         now = datetime.now(UTC)
@@ -185,6 +189,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
                 token_hash=sha256_hex(plaintext),
                 expires_at=expires_at,
                 refresh=refresh_write,
+                scopes=scopes,
             )
         )
         return IssuedOAuthToken(

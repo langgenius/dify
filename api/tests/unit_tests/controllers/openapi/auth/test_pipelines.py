@@ -11,8 +11,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, Unauthorized
 
+from constants.oauth_bearer import OAuthScope
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import CatalogStale, ServiceApiDisabled
+from controllers.openapi._errors import CatalogStale, InsufficientScope, ServiceApiDisabled
 from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
@@ -110,17 +111,18 @@ def _run(
     )
 
 
-def test_requirements_run_in_rank_order(sqlite_session: Session) -> None:
+def test_requirements_run_in_rank_order(app: Flask, sqlite_session: Session) -> None:
     log: list[str] = []
     subject = sso_subject()
     requirements = (_Recorded(log, "normal"), _AtEarly(log, "early"), _AtFirst(log, "first"))
 
-    _run(_NoFixed(), subject, make_ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
+    with app.test_request_context():
+        _run(_NoFixed(), subject, make_ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
 
     assert log == ["first", "early", "normal"]
 
 
-def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
+def test_equal_ranks_keep_declared_order(app: Flask, sqlite_session: Session) -> None:
     """Endpoint-declared before pipeline-fixed at equal rank — the property
     that keeps `CheckSubject` ahead of `_RequiresEnterprise`, and the reason the sort
     has to stay stable.
@@ -133,13 +135,15 @@ def test_equal_ranks_keep_declared_order(sqlite_session: Session) -> None:
     subject = sso_subject()
     requirements = (_Recorded(log, "spec-a"), _Recorded(log, "spec-b"))
 
-    _run(_FixedRecorders(), subject, make_ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
+    with app.test_request_context():
+        _run(_FixedRecorders(), subject, make_ctx(sqlite_session, subject), sqlite_session, requirements=requirements)
 
     assert log == ["spec-a", "spec-b", "fixed-a", "fixed-b"]
 
 
 @pytest.mark.parametrize("view_raises", [False, True])
 def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
+    app: Flask,
     sqlite_session: Session,
     view_raises: bool,
 ) -> None:
@@ -152,11 +156,12 @@ def test_auth_ctx_is_published_for_the_view_and_reset_after_it(
             raise RuntimeError("boom")
 
     ctx = make_ctx(sqlite_session, subject)
-    if view_raises:
-        with pytest.raises(RuntimeError):
+    with app.test_request_context():
+        if view_raises:
+            with pytest.raises(RuntimeError):
+                _run(_NoFixed(), subject, ctx, sqlite_session, call=call)
+        else:
             _run(_NoFixed(), subject, ctx, sqlite_session, call=call)
-    else:
-        _run(_NoFixed(), subject, ctx, sqlite_session, call=call)
 
     assert seen == [subject.auth]
     assert try_get_auth_ctx() is None
@@ -370,3 +375,20 @@ def test_a_request_built_from_the_current_catalog_passes(app: Flask, sqlite_sess
 
     with app.test_request_context("/openapi/v1/account", headers=_current_catalog(app)):
         _RequiresCurrentCatalog().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+
+
+def test_the_scope_check_runs_after_the_catalog_check_and_before_the_early_band(
+    app: Flask, sqlite_session: Session
+) -> None:
+    log: list[str] = []
+    subject = account_subject(oauth_scopes=frozenset({OAuthScope.READ}))
+    ctx = make_ctx(sqlite_session, subject)
+
+    with app.test_request_context("/openapi/v1/account", method="POST"):
+        with pytest.raises(CatalogStale):
+            _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(_AtEarly(log, "early"),))
+    with app.test_request_context("/openapi/v1/account", method="POST", headers=_current_catalog(app)):
+        with pytest.raises(InsufficientScope):
+            _run(AccountPipeline(), subject, ctx, sqlite_session, requirements=(_AtEarly(log, "early"),))
+
+    assert log == []

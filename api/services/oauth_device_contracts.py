@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal, NotRequired, Protocol, TypedDict
 
-from constants.oauth_bearer import SubjectType
+from constants.oauth_bearer import OAuthScope, SubjectType
 
 DEVICE_FLOW_TTL_SECONDS = 15 * 60
 DEFAULT_POLL_INTERVAL_SECONDS = 5
@@ -186,6 +186,8 @@ class OAuthDeviceTokenWrite:
     token_hash: str
     expires_at: datetime
     refresh: RefreshTokenWrite | None = None
+    # A browser login's granted scopes, shared by its refresh token. None: the token type's full access.
+    scopes: frozenset[OAuthScope] | None = None
 
 
 @dataclass(frozen=True, slots=True)

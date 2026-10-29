@@ -38,6 +38,7 @@ def test_authorization_server_document_full() -> None:
         "revocation_endpoint_auth_methods_supported": ["none"],
         "client_id_metadata_document_supported": True,
         "authorization_response_iss_parameter_supported": True,
+        "scopes_supported": ["read", "write"],
     }
 
 
@@ -74,4 +75,5 @@ def test_protected_resource_document() -> None:
         "resource": "https://req.example.com/openapi/v1",
         "authorization_servers": ["https://req.example.com/openapi/v1"],
         "bearer_methods_supported": ["header"],
+        "scopes_supported": ["read", "write"],
     }

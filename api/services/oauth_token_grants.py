@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import NoReturn, Protocol
 
+from constants.oauth_bearer import OAuthScope
 from models.account import AccountStatus
 from repositories.oauth_authorization_code_repository import AuthorizationCodeRecord, RedisAuthorizationCodeRepository
 from repositories.oauth_refresh_token_repository import RefreshTokenRecord, SQLAlchemyOAuthRefreshTokenRepository
@@ -116,6 +117,7 @@ class _BrowserLoginMinter:
         client_id: str,
         device_label: str,
         refresh: RefreshTokenIssue | None,
+        scopes: frozenset[OAuthScope],
     ) -> TokenGrantResult:
         workspaces = tuple(self.workspaces.list_for_device_flow(account.id))
         mint = self.tokens.issue_account_token(
@@ -125,10 +127,12 @@ class _BrowserLoginMinter:
             device_label=device_label,
             lifetime=self.settings.auth_code_access_token_lifetime,
             refresh=refresh,
+            scopes=scopes,
         )
         return TokenGrantResult(
             payload=build_account_poll_payload(account, workspace_id, workspaces, mint),
             refresh_token=mint.refresh_token,
+            scopes=scopes,
         )
 
 
@@ -182,6 +186,7 @@ class AuthorizationCodeGrantHandler:
             client_id=client.storage_client_id,
             device_label=default_device_label(client.display_name),
             refresh=refresh,
+            scopes=record.scopes,
         )
 
     def _redeem(self, client: ResolvedClient, request: TokenRequest) -> AuthorizationCodeRecord:
@@ -261,6 +266,7 @@ class RefreshTokenGrantHandler:
             self._end_dead_grant(record)
         if record.workspace_id is None:
             self._end_dead_grant(record)
+        scopes = _refreshed_scopes(record, request.scope)
 
         presented = PresentedRefreshToken(id=record.id, family_id=record.family_id)
         try:
@@ -270,6 +276,7 @@ class RefreshTokenGrantHandler:
                 client_id=record.client_id,
                 device_label=record.device_label,
                 refresh=RefreshTokenIssue(expires_at=record.expires_at, presented=presented),
+                scopes=scopes,
             )
         except RefreshTokenReusedError:
             self._revoke.revoke_grant(record.grant_key, account_id=record.account_id)
@@ -290,6 +297,23 @@ class RefreshTokenGrantHandler:
         if record.client_id != client.storage_client_id:
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
         return record
+
+
+def _refreshed_scopes(record: RefreshTokenRecord, requested: str | None) -> frozenset[OAuthScope]:
+    """RFC 6749 §6: a refresh keeps the grant's scopes, or narrows them to the ones it asks for.
+
+    A login from before scopes holds every scope.
+    """
+    granted = frozenset(OAuthScope) if record.scopes is None else record.scopes
+    if requested is None:
+        return granted
+    try:
+        scopes = OAuthScope.parse(requested)
+    except ValueError:
+        raise TokenEndpointError(TokenErrorCode.INVALID_SCOPE) from None
+    if not scopes <= granted:
+        raise TokenEndpointError(TokenErrorCode.INVALID_SCOPE)
+    return scopes
 
 
 def build_grant_handlers(

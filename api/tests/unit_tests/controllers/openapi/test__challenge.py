@@ -9,6 +9,7 @@ from controllers.openapi._challenge import attach_resource_metadata_challenge
 ORIGIN = "http://dify.test"
 API_ORIGIN = "https://api.dify.test"
 METADATA = f"{API_ORIGIN}/.well-known/oauth-protected-resource/openapi/v1"
+PARAMS = f'resource_metadata="{METADATA}", scope="read write"'
 ConfigOverrides = Callable[..., None]
 
 
@@ -50,8 +51,8 @@ def _challenge(client: FlaskClient, path: str, method: str = "GET") -> str | Non
 
 
 def test_401_challenges_gain_the_resource_metadata(client: FlaskClient) -> None:
-    assert _challenge(client, "/bare") == f'Bearer resource_metadata="{METADATA}"'
-    assert _challenge(client, "/realm") == f'Bearer realm="api", resource_metadata="{METADATA}"'
+    assert _challenge(client, "/bare") == f"Bearer {PARAMS}"
+    assert _challenge(client, "/realm") == f'Bearer realm="api", {PARAMS}'
 
 
 def test_oauth_endpoints_are_left_alone(client: FlaskClient) -> None:
@@ -71,4 +72,4 @@ def test_real_blueprint_401_carries_the_challenge(openapi_app: Flask, config_ove
     config_overrides(CONSOLE_API_URL=API_ORIGIN, ENABLE_OAUTH_BEARER=True)
     response = openapi_app.test_client().get("/openapi/v1/account", base_url=ORIGIN)
     assert response.status_code == 401
-    assert response.headers["WWW-Authenticate"].endswith(f'resource_metadata="{METADATA}"')
+    assert response.headers["WWW-Authenticate"].endswith(PARAMS)

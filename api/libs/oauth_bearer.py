@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import ServiceUnavailable
 
 from configs import dify_config
-from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, Scope, SubjectType, TokenType
+from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, OAuthScope, Scope, SubjectType, TokenType
 from libs.rate_limit import enforce_bearer_rate_limit
 from models import OpenAPIOAuthAccessToken
 
@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 class AuthContext:
     """Per-request identity published via :data:`_auth_ctx_var`. Subject and
     scopes derive from the token type, never from the row, so a corrupt row
-    cannot elevate scope.
+    cannot elevate scope. The row's `oauth_scopes` can only narrow them; None
+    leaves the token type's full access.
     """
 
     token_type: TokenType
@@ -44,6 +45,7 @@ class AuthContext:
     client_id: str | None
     token_id: uuid.UUID
     expires_at: datetime | None
+    oauth_scopes: frozenset[OAuthScope] | None = None
 
     @property
     def subject_type(self) -> SubjectType:
@@ -81,6 +83,7 @@ class ResolvedRow:
     client_id: str | None
     token_id: uuid.UUID
     expires_at: datetime | None
+    oauth_scopes: frozenset[OAuthScope] | None
 
     def to_cache(self) -> dict:
         return {
@@ -90,6 +93,7 @@ class ResolvedRow:
             "client_id": self.client_id,
             "token_id": str(self.token_id),
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "oauth_scopes": OAuthScope.ordered(self.oauth_scopes) if self.oauth_scopes is not None else None,
         }
 
     @classmethod
@@ -101,7 +105,15 @@ class ResolvedRow:
             client_id=data.get("client_id"),
             token_id=uuid.UUID(data["token_id"]),
             expires_at=datetime.fromisoformat(data["expires_at"]) if data["expires_at"] else None,
+            # Only entries cached before scopes existed lack the key, and those tokens are unrestricted.
+            oauth_scopes=_cached_oauth_scopes(data.get("oauth_scopes")),
         )
+
+
+def _cached_oauth_scopes(names: list[str] | None) -> frozenset[OAuthScope] | None:
+    if names is None:
+        return None
+    return frozenset(OAuthScope(name) for name in names)
 
 
 class Resolver(Protocol):
@@ -148,6 +160,7 @@ class BearerAuthenticator:
             client_id=row.client_id,
             token_id=row.token_id,
             expires_at=row.expires_at,
+            oauth_scopes=row.oauth_scopes,
         )
 
 
@@ -281,6 +294,7 @@ class _TokenTypeResolver:
             client_id=row.client_id,
             token_id=uuid.UUID(str(row.id)),
             expires_at=row.expires_at,
+            oauth_scopes=row.scope,
         )
         self._parent.cache_set_positive(token_hash, resolved)
         return resolved

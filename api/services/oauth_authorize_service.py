@@ -12,6 +12,7 @@ from enum import StrEnum
 from typing import Final
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
+from constants.oauth_bearer import OAuthScope
 from machinery.context import RequestContext
 from repositories.oauth_authorization_code_repository import AuthorizationCodeRecord, RedisAuthorizationCodeRepository
 from services.oauth_clients import OAuthClientRegistry, ResolvedClient
@@ -36,6 +37,7 @@ class RedirectErrorCode(StrEnum):
     INVALID_REQUEST = "invalid_request"
     ACCESS_DENIED = "access_denied"
     INVALID_TARGET = "invalid_target"
+    INVALID_SCOPE = "invalid_scope"
 
 
 class AuthorizeRequestError(Exception):
@@ -58,6 +60,7 @@ class ConsentClientView:
     logo_uri: str | None
     redirect_host: str
     localhost_only: bool
+    scopes: tuple[OAuthScope, ...]
 
 
 @dataclass(frozen=True)
@@ -97,14 +100,20 @@ class OAuthAuthorizeService:
         self._clients = clients
         self._codes = codes
 
-    def describe_client(self, client_id: str, redirect_uri: str) -> ConsentClientView:
+    def describe_client(self, client_id: str, redirect_uri: str, scope: str | None) -> ConsentClientView:
+        """The page shows what approve would grant, so a scope approve would refuse is a bad request here."""
         client = self._verified_client(client_id, redirect_uri)
+        try:
+            scopes = OAuthScope.parse(scope)
+        except ValueError:
+            raise AuthorizeRequestError(AuthorizeErrorCode.INVALID_REQUEST) from None
         return ConsentClientView(
             client_id=client.client_id,
             display_name=client.display_name,
             logo_uri=client.logo_uri,
             redirect_host=redirect_host(redirect_uri),
             localhost_only=is_loopback_only(client.redirect_uris),
+            scopes=OAuthScope.ordered(scopes),
         )
 
     def approve(self, context: RequestContext, request: AuthorizeRequest, *, issuer: str) -> str:
@@ -115,6 +124,10 @@ class OAuthAuthorizeService:
             resource = resolve_resource(request.resource, issuer=issuer)
         except InvalidResourceError:
             return self._client_error(request, issuer=issuer, error=RedirectErrorCode.INVALID_TARGET)
+        try:
+            scopes = OAuthScope.parse(request.scope)
+        except ValueError:
+            return self._client_error(request, issuer=issuer, error=RedirectErrorCode.INVALID_SCOPE)
 
         code = self._codes.save(
             AuthorizationCodeRecord(
@@ -122,7 +135,7 @@ class OAuthAuthorizeService:
                 redirect_uri=request.redirect_uri,
                 code_challenge=request.code_challenge,
                 resource=resource,
-                scope=request.scope,
+                scopes=scopes,
                 account_id=context.account_id,
                 workspace_id=context.active_workspace_id,
             ),

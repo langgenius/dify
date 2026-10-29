@@ -3,6 +3,7 @@
 from typing import Any, Final
 
 from configs import dify_config
+from constants.oauth_bearer import OAuthScope
 from enums.oauth_client import TokenEndpointAuthMethod
 from services.oauth_client_metadata import CODE_RESPONSE_TYPE, DEFAULT_GRANT_TYPES
 from services.oauth_pkce import PkceMethod
@@ -15,6 +16,7 @@ PROTECTED_RESOURCE_ROOT_PATH: Final = f"{WELL_KNOWN_PREFIX}/oauth-protected-reso
 PROTECTED_RESOURCE_PATH: Final = f"{PROTECTED_RESOURCE_ROOT_PATH}{OPENAPI_PATH}"
 AUTHORIZE_PAGE_PATH: Final = "/account/oauth/authorize"
 BEARER_METHODS: Final = ("header",)
+SCOPES_SUPPORTED: Final = tuple(OAuthScope)
 
 
 def protected_resource_metadata_url(request_origin: str) -> str:
@@ -40,6 +42,7 @@ def authorization_server_metadata(request_origin: str) -> dict[str, Any]:
         "token_endpoint_auth_methods_supported": auth_methods,
         "revocation_endpoint_auth_methods_supported": auth_methods,
         "client_id_metadata_document_supported": cimd_enabled(),
+        "scopes_supported": list(SCOPES_SUPPORTED),
     }
     if browser_flow:
         web_origin = (dify_config.CONSOLE_WEB_URL or request_origin).rstrip("/")
@@ -57,4 +60,5 @@ def protected_resource_metadata(request_origin: str) -> dict[str, Any]:
         "resource": issuer,
         "authorization_servers": [issuer],
         "bearer_methods_supported": list(BEARER_METHODS),
+        "scopes_supported": list(SCOPES_SUPPORTED),
     }

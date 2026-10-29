@@ -44,6 +44,7 @@ def upgrade():
         sa.Column("workspace_id", models.types.StringUUID(), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("rotated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("scope", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

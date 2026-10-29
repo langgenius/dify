@@ -5,6 +5,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
+from constants.oauth_bearer import OAuthScope
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._oauth_input import oauth_feature_required
 from services.oauth_token_contracts import (
@@ -38,7 +39,7 @@ class _Services:
     oauth_token: OAuthTokenService
 
 
-def _result(*, refresh_token: str | None = None) -> TokenGrantResult:
+def _result(*, refresh_token: str | None = None, scopes: frozenset[OAuthScope] | None = None) -> TokenGrantResult:
     expires_at = (datetime.now(UTC) + timedelta(seconds=3600)).isoformat()
     return TokenGrantResult(
         payload={
@@ -51,6 +52,7 @@ def _result(*, refresh_token: str | None = None) -> TokenGrantResult:
             "token_id": "t1",
         },
         refresh_token=refresh_token,
+        scopes=scopes,
     )
 
 
@@ -83,6 +85,23 @@ def test_success_maps_to_token_response(app: Flask) -> None:
     assert "scope" not in body
     assert "token" not in body
     assert "expires_at" not in body
+
+
+@pytest.mark.parametrize(
+    ("scopes", "scope"),
+    [
+        pytest.param(frozenset({OAuthScope.READ}), "read", id="read"),
+        pytest.param(frozenset({OAuthScope.WRITE, OAuthScope.READ}), "read write", id="read-write"),
+    ],
+)
+def test_browser_login_response_names_its_scopes_space_separated(
+    app: Flask, scopes: frozenset[OAuthScope], scope: str
+) -> None:
+    _install(app, _Handler(result=_result(refresh_token="rt", scopes=scopes)))
+
+    response = app.test_client().post(_PATH, data={"grant_type": GrantType.DEVICE_CODE})
+
+    assert response.get_json()["scope"] == scope
 
 
 def test_token_endpoint_accepts_form_and_json(app: Flask) -> None:
