@@ -362,7 +362,7 @@ export type EndUserConnectionCreatePayload = {
   credentials: {
     [key: string]: JsonValue
   }
-  name: string
+  name?: string | null
   node_id: string
 }
 

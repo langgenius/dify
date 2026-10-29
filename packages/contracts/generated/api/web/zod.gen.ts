@@ -973,7 +973,7 @@ export const zJsonValue = z.unknown()
 export const zEndUserConnectionCreatePayload = z.object({
   connection_revision: z.uuid(),
   credentials: z.record(z.string(), zJsonValue),
-  name: z.string().min(1).max(100),
+  name: z.string().max(100).nullish(),
   node_id: z.string().min(1).max(255),
 })
 

@@ -54,8 +54,19 @@ def test_create_input_keeps_credentials_out_of_repr_and_validation_messages() ->
     assert "secret-sentinel" not in str(exc.value)
 
 
-@pytest.mark.parametrize("name", ["", "n" * 101])
-def test_create_name_respects_storage_limits(name: str) -> None:
+def test_create_name_can_be_omitted() -> None:
+    payload = create_payload()
+    del payload["name"]
+    assert CreateApiKeyConnectionInput.model_validate(payload).name is None
+
+
+@pytest.mark.parametrize("name", [None, ""])
+def test_create_name_can_be_empty(name: str | None) -> None:
+    assert CreateApiKeyConnectionInput.model_validate({**create_payload(), "name": name}).name == name
+
+
+@pytest.mark.parametrize("name", ["n" * 101, 42])
+def test_create_name_respects_storage_limits(name: object) -> None:
     with pytest.raises(ValidationError):
         CreateApiKeyConnectionInput.model_validate({**create_payload(), "name": name})
 

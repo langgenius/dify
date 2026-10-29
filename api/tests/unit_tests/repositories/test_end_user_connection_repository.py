@@ -1,16 +1,80 @@
-"""Persisted authorization revisions are immutable, deduplicated, and Web App scoped."""
+"""Connection persistence preserves owner scope and immutable authorization revisions."""
 
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from uuid import UUID, uuid4
 
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.end_user_connections import ConnectionCredentialType, OAuthClientSource
 from models.end_user_connection import EndUserConnectionRevision
+from models.model import EndUser
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connections.errors import ConnectionRevisionChangedError
-from services.end_user_connections.revision import ConnectionContractSnapshot, ProviderContractSnapshot
+from services.end_user_connections.revision import (
+    ConnectionContractSnapshot,
+    ConnectionRevisionAcceptance,
+    ProviderContractSnapshot,
+)
+from tests.helpers.end_user_api_key import make_harness
+from tests.helpers.end_user_connection_contract import new_connection
+
+
+@pytest.mark.parametrize("anonymous", [False, True])
+def test_api_key_names_increment_within_tenant_owner_provider_and_type(
+    sqlite_session_factory: sessionmaker[Session], anonymous: bool
+) -> None:
+    harness = make_harness(sqlite_session_factory)
+    context = harness.context
+    if anonymous:
+        with sqlite_session_factory.begin() as session:
+            user = session.get(EndUser, context.end_user_id)
+            assert user is not None
+            user.account_id = None
+        context = replace(context, account_id=None)
+    owner = context.owner
+    seed = replace(
+        new_connection(),
+        tenant_id=context.tenant_id,
+        account_id=owner.account_id,
+        end_user_id=owner.end_user_id,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                replace(seed, name="API KEY 1"),
+                replace(seed, name="API KEY 3"),
+                replace(seed, name="Custom name"),
+                replace(seed, name="API KEY x"),
+                replace(seed, name="API KEY 90", tenant_id=str(uuid4())),
+                replace(
+                    seed,
+                    name="API KEY 91",
+                    account_id=None if anonymous else str(uuid4()),
+                    end_user_id=str(uuid4()) if anonymous else None,
+                ),
+                replace(seed, name="API KEY 92", provider="vendor/mail/mail"),
+                replace(
+                    seed,
+                    name="API KEY 93",
+                    credential_type=ConnectionCredentialType.OAUTH2,
+                    oauth_client_source=OAuthClientSource.WORKSPACE,
+                ),
+            ]
+        )
+    acceptance = ConnectionRevisionAcceptance(harness.connection_revision, None)
+    for name, expected in [(None, "API KEY 4"), ("", "API KEY 5"), ("Personal key", "Personal key")]:
+        created = harness.repository.create_api_key(
+            context,
+            workflow_id=harness.workflow_id,
+            provider=seed.provider,
+            name=name,
+            encrypted_credentials="encrypted-secret",
+            revision_acceptance=acceptance,
+        )
+        assert created.name == expected
 
 
 @pytest.fixture

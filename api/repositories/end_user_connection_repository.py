@@ -17,6 +17,8 @@ from constants.end_user_connections import (
 )
 from context.connection_execution import ConnectionExecutionContext
 from core.app.public_runtime import published_app_filter
+from core.helper.name_generator import generate_incremental_name
+from core.plugin.entities.plugin_daemon import CredentialType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import (
@@ -690,7 +692,7 @@ class EndUserConnectionRepository:
         *,
         workflow_id: str,
         provider: str,
-        name: str,
+        name: str | None,
         encrypted_credentials: str,
         revision_acceptance: ConnectionRevisionAcceptance,
     ) -> ConnectionSummary:
@@ -698,6 +700,16 @@ class EndUserConnectionRepository:
             app = self._require_context(session, context, lock=True)
             self._require_workflow_scope(session, context, app, workflow_id, None)
             owner = context.owner
+            if not name:
+                names = session.scalars(
+                    sa.select(EndUserConnection.name).where(
+                        EndUserConnection.tenant_id == context.tenant_id,
+                        *self._owner(owner),
+                        EndUserConnection.provider == provider,
+                        EndUserConnection.credential_type == ConnectionCredentialType.API_KEY,
+                    )
+                ).all()
+                name = generate_incremental_name(names, CredentialType.API_KEY.get_name())
             row = EndUserConnection(
                 tenant_id=context.tenant_id,
                 account_id=owner.account_id,
