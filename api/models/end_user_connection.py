@@ -178,12 +178,11 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
 
 
 class AppConnection(DefaultFieldsDCMixin, TypeBase):
-    """One Tool node selection from an App user's last Run; not a permission grant.
+    """One explicitly saved Tool node choice for an App-scoped EndUser.
 
     Replace the whole set under a stable owner lock, including for an empty set.
-    All rows in a replacement share source_run_id. The Run integration owns update
-    timing and ordering; row timestamps do not define the latest Run. Empty defaults
-    have no rows. Run references never cascade into historical execution records.
+    Authorization is recorded separately for the App-scoped EndUser, shared by all
+    Conversations. Execution never updates defaults; saved choices do not reference Runs.
     workflow_id and node_id identify the published graph version where this choice
     was saved. Changed authorization requirements require reconfirmation; republishing the
     same requirements preserves the choice. Callers validate Workflow ownership and node authentication requirements
@@ -213,7 +212,6 @@ class AppConnection(DefaultFieldsDCMixin, TypeBase):
     end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     connection_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    source_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
 class SessionConnection(DefaultFieldsDCMixin, TypeBase):
@@ -225,8 +223,9 @@ class SessionConnection(DefaultFieldsDCMixin, TypeBase):
     through the business Session, even when no selection rows exist. Retained
     references after identity migration do not transfer credential ownership. Like
     App defaults, workflow_id records the published graph version of the saved choice.
-    A version mismatch requires reconfirmation and validation against the execution
-    graph before replacing the saved version and choice.
+    These rows only store choices. Authorization is shared by the App-scoped EndUser;
+    confirming a changed contract in one Conversation authorizes the other Conversations.
+    An empty set remains empty instead of inheriting App defaults.
     """
 
     __tablename__ = "session_connections"

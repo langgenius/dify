@@ -16,6 +16,7 @@ from controllers.common.end_user_connections import (
     ConnectionCredentialsHTTPError,
     ConnectionLoginRequiredError,
     ConnectionNotFoundHTTPError,
+    ConnectionReauthorizationHTTPError,
     ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
 )
@@ -44,6 +45,7 @@ from services.end_user_connections.contracts import (
 )
 from services.end_user_connections.errors import ConnectionError
 from services.end_user_connections.revision import ConnectionRevision
+from services.end_user_connections.selections import SaveConnectionConfigurationInput
 from services.errors.conversation import ConversationNotExistsError
 
 
@@ -52,8 +54,8 @@ class ConnectionConfigurationQuery(ConnectionInput):
         default=None,
         strict=False,
         description=(
-            "Chatflow Conversation to read. If omitted or the Conversation has no saved choices, "
-            "return the current App user's last choices for form initialization."
+            "Existing Chatflow Conversation whose choices to read, including an empty set. "
+            "Omit for App defaults when initializing a new conversation or plain Workflow."
         ),
     )
 
@@ -75,17 +77,29 @@ class ConnectionConfigurationResponse(ResponseModel):
             "Inaccessible Connection references are returned as null."
         )
     )
+    reauthorization_required: bool = Field(
+        description=(
+            "Whether this App user must renew authorization for the current requirements; not credential readiness."
+        )
+    )
 
 
+class ConnectionConfigurationPayload(SaveConnectionConfigurationInput):
+    pass
+
+
+register_schema_models(web_ns, ConnectionConfigurationPayload)
 register_response_schema_models(web_ns, ConnectionConfigurationResponse)
 
 
 @web_ns.route("/connections/configuration")
 class ConnectionConfigurationApi(WebApiResource):
     @web_ns.doc(params=query_params_from_model(ConnectionConfigurationQuery))
-    @web_ns.doc(description="Read saved App or Conversation choices without validating or refreshing credentials.")
+    @web_ns.doc(
+        description="Read saved choices and whether authorization must be renewed, without checking credentials."
+    )
     @web_ns.response(200, "Saved Connection configuration", web_ns.models[ConnectionConfigurationResponse.__name__])
-    @error_responses(ConnectionConfigurationHTTPError)
+    @error_responses(ConnectionConfigurationHTTPError, ConnectionCheckUnavailableHTTPError)
     def get(self, app_model: App, end_user: EndUser):
         try:
             context = connection_context_from_web_passport(app=app_model, end_user=end_user)
@@ -95,6 +109,31 @@ class ConnectionConfigurationApi(WebApiResource):
             )
         except ValidationError:
             raise ValueError("Invalid connection configuration query.") from None
+        except ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.") from None
+        except ConnectionError as error:
+            _raise_error(error)
+        return dump_response(ConnectionConfigurationResponse, result)
+
+    @web_ns.expect(web_ns.models[ConnectionConfigurationPayload.__name__])
+    @web_ns.doc(description="Replace saved choices and explicitly approve their authorization contract atomically.")
+    @web_ns.response(200, "Connection configuration saved", web_ns.models[ConnectionConfigurationResponse.__name__])
+    @error_responses(
+        ConnectionLoginRequiredError,
+        ConnectionConfigurationHTTPError,
+        ConnectionNotFoundHTTPError,
+        ConnectionConflictHTTPError,
+        ConnectionRevisionChangedHTTPError,
+        ConnectionReauthorizationHTTPError,
+        ConnectionCheckUnavailableHTTPError,
+    )
+    def put(self, app_model: App, end_user: EndUser):
+        try:
+            context = connection_context_from_web_passport(app=app_model, end_user=end_user)
+            payload = ConnectionConfigurationPayload.model_validate(web_ns.payload or {})
+            result = application_services().connection_selections.save(context, payload)
+        except ValidationError:
+            raise ValueError("Invalid connection configuration payload.") from None
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.") from None
         except ConnectionError as error:

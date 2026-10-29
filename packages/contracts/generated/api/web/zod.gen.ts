@@ -93,6 +93,13 @@ export const zAudioToTextResponse = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * BooleanResultResponse
  */
 export const zBooleanResultResponse = z.object({
@@ -229,6 +236,15 @@ export const zConnectionClaimResponse = z.object({
 })
 
 /**
+ * ConnectionConfigurationPayload
+ */
+export const zConnectionConfigurationPayload = z.object({
+  connection_revision: z.uuid(),
+  connections: z.record(z.string(), z.uuid().nullable()),
+  conversation_id: z.uuid().nullish(),
+})
+
+/**
  * ConnectionCredentialStatus
  *
  * Last known credential lifecycle state, not readiness for a particular node.
@@ -242,6 +258,13 @@ export const zConnectionCredentialStatus = z.enum(['connected', 'invalid', 'reco
  * ConnectionCredentialType
  */
 export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
+
+/**
+ * ConnectionReadmeResponse
+ */
+export const zConnectionReadmeResponse = z.object({
+  readme: z.string(),
+})
 
 /**
  * ConnectionRevisionChangeDetails
@@ -338,7 +361,7 @@ export const zEndUserConnectionListQuery = z.object({
  */
 export const zEndUserConnectionOAuthPayload = z.object({
   connection_revision: z.uuid(),
-  name: z.string().min(1).max(100),
+  name: z.string().max(100).nullish(),
   node_id: z.string().min(1).max(255),
 })
 
@@ -386,6 +409,7 @@ export const zEndUserConnectionResponse = z.object({
  */
 export const zConnectionConfigurationResponse = z.object({
   connections: z.record(z.string(), zEndUserConnectionResponse.nullable()),
+  reauthorization_required: z.boolean(),
 })
 
 /**
@@ -989,7 +1013,7 @@ export const zJsonValue = z.unknown()
 export const zEndUserConnectionCreatePayload = z.object({
   connection_revision: z.uuid(),
   credentials: z.record(z.string(), zJsonValue),
-  name: z.string().min(1).max(100),
+  name: z.string().max(100).nullish(),
   node_id: z.string().min(1).max(255),
 })
 
@@ -2551,6 +2575,18 @@ export const zPostConnectionsBody = zEndUserConnectionCreatePayload
  */
 export const zPostConnectionsResponse = zEndUserConnectionResponse
 
+export const zGetConnectionsAssetQuery = z.object({
+  file_name: z.string().min(1),
+  plugin_unique_identifier: z.string().min(1),
+})
+
+/**
+ * Plugin asset
+ */
+export const zGetConnectionsAssetResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
 export const zGetConnectionsConfigurationQuery = z.object({
   conversation_id: z.uuid().optional(),
 })
@@ -2559,6 +2595,13 @@ export const zGetConnectionsConfigurationQuery = z.object({
  * Saved Connection configuration
  */
 export const zGetConnectionsConfigurationResponse = zConnectionConfigurationResponse
+
+export const zPutConnectionsConfigurationBody = zConnectionConfigurationPayload
+
+/**
+ * Connection configuration saved
+ */
+export const zPutConnectionsConfigurationResponse = zConnectionConfigurationResponse
 
 export const zGetConnectionsCredentialSchemaQuery = z.object({
   connection_revision: z.uuid(),
@@ -2583,6 +2626,16 @@ export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
  * Connection statuses and preflight readiness
  */
 export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
+
+export const zGetConnectionsReadmeQuery = z.object({
+  language: z.string().min(1).optional().default('en-US'),
+  plugin_unique_identifier: z.string().min(1),
+})
+
+/**
+ * Plugin README
+ */
+export const zGetConnectionsReadmeResponse = zConnectionReadmeResponse
 
 export const zDeleteConnectionsByConnectionIdPath = z.object({
   connection_id: z.uuid(),

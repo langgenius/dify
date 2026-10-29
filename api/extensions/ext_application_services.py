@@ -19,6 +19,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
+from core.plugin.plugin_service import PluginService
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -36,6 +37,7 @@ from extensions.application_services.end_user_connections import (
     build_end_user_connection_oauth,
     build_end_user_connection_preflight,
     build_end_user_connection_runtime,
+    build_end_user_connection_selections,
     build_end_user_connections,
 )
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
@@ -146,6 +148,7 @@ from services.end_user_connections.preflight import ConnectionPreflightService
 from services.end_user_connections.runtime import ConnectionRuntimeService
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.rbac_service import RBACService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -234,6 +237,12 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workflow_test_credential_adapters import (
+    BuilderTestAccessGateway,
+    DraftTestCredentialPlanner,
+    WorkspaceTestCredentialGateway,
+)
+from services.workflow_test_credentials import WorkflowTestCredentialService
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -289,6 +298,7 @@ class ApplicationServices:
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
+    workflow_test_credentials: WorkflowTestCredentialService
     accounts: AccountServices
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
@@ -437,6 +447,8 @@ def build_application_services(
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
+        plugin_readme=PluginService.fetch_plugin_readme,
+        plugin_asset=PluginService.extract_asset,
         connection_revisions=PluginConnectionRevisions(
             providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
             snapshots=EndUserConnectionRepository(session_factory=database_client),
@@ -606,6 +618,25 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
+        workflow_test_credentials=WorkflowTestCredentialService(
+            drafts=AppDefinitionQueryRepository(session_factory=database_client),
+            access=BuilderTestAccessGateway(
+                memberships=AppDefinitionQueryRepository(session_factory=database_client),
+                rbac_enabled=dify_config.RBAC_ENABLED,
+                can_run=lambda scope: RBACService.CheckAccess.check(
+                    scope.tenant_id,
+                    scope.account_id,
+                    scene="app_test_and_run",
+                    resource_type="app",
+                    resource_id=scope.app_id,
+                ),
+            ),
+            planner=DraftTestCredentialPlanner(),
+            credentials=WorkspaceTestCredentialGateway(
+                queries=CredentialQueryRepository(session_factory=database_client),
+                auth=PluginCredentialAuthClient(),
+            ),
+        ),
         agent_apps=build_agent_app_services(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
@@ -801,9 +832,7 @@ def build_application_services(
             console_web_url=dify_config.CONSOLE_WEB_URL,
             now=lambda: datetime.now(UTC),
         ),
-        connection_selections=ConnectionSelectionService(
-            store=EndUserConnectionRepository(session_factory=database_client)
-        ),
+        connection_selections=build_end_user_connection_selections(database_client=database_client),
         end_user_connection_execution=ConnectionExecutionService(preflight=end_user_connection_preflight),
         end_user_connection_runtime=build_end_user_connection_runtime(
             database_client=database_client, connections=end_user_connections

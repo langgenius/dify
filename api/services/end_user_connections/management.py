@@ -66,10 +66,12 @@ class ConnectionStore(Protocol):
         *,
         workflow_id: str,
         provider: str,
-        name: str,
+        name: str | None,
         encrypted_credentials: str,
         revision_acceptance: ConnectionRevisionAcceptance,
-    ) -> ConnectionSummary: ...
+    ) -> ConnectionSummary:
+        """Generate an omitted or empty name within the locked owner/Provider scope."""
+        ...
 
     def update(
         self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges

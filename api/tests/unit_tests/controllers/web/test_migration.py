@@ -18,7 +18,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType
-from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
 from controllers.console import bp as console_bp
 from controllers.console import wraps as console_wraps
 from controllers.console.auth import login as console_login
@@ -41,7 +40,7 @@ from repositories.web_passport_repository import WebPassportRepository
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConflictError
 from services.end_user_connections.management import ConnectionService
-from services.end_user_connections.selections import ConnectionSelectionService
+from services.end_user_connections.selections import ConnectionSelectionService, SaveConnectionConfigurationInput
 from services.entities.passport_entities import WebPassportRequest
 from services.web_identity_service import WebIdentityService
 from services.web_login_handoff import WebLoginHandoffService
@@ -50,6 +49,7 @@ from services.web_migration_service import WebMigrationService
 from services.web_passport_gateways import DeploymentWebPassportAuthGateway, PassportTokenGateway
 from services.web_passport_service import WebAppAuthType, WebPassportService
 from tests.helpers.end_user_api_key import PROVIDER
+from tests.helpers.end_user_conversation import make_selection_service
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
 
@@ -152,7 +152,7 @@ def harness(
         access_token_expire_minutes=60,
     )
     services = MigrationServices(
-        connection_selections=ConnectionSelectionService(store=oauth.base.repository),
+        connection_selections=make_selection_service(oauth),
         web_identity=identity,
         web_passport=passports,
         end_user_connections=oauth.base.service,
@@ -193,25 +193,17 @@ def harness(
 
 def save_choices(
     harness: ClaimHarness, identity: WebConnectionContext, connection_id: str, conversation_id: str | None = None
-) -> str:
-    run_id = str(uuid4())
-    harness.oauth.base.repository.save_run_selections(
-        ConnectionExecutionContext(
-            tenant_id=identity.tenant_id,
-            app_id=identity.app_id,
-            end_user_id=identity.end_user_id,
-            account_id=identity.account_id,
-            workflow_id=harness.oauth.base.workflow_id,
-            connection_revision=harness.oauth.base.connection_revision,
-            selections=(
-                ExecutionConnectionSelection(node_id="tool-1", provider=PROVIDER, connection_id=connection_id),
-            ),
+) -> None:
+    harness.services.connection_selections.save(
+        identity,
+        SaveConnectionConfigurationInput.model_validate(
+            {
+                "connection_revision": harness.oauth.base.connection_revision,
+                "conversation_id": conversation_id,
+                "connections": {"tool-1": connection_id},
+            }
         ),
-        run_id,
-        conversation_id,
-        update_conversation=conversation_id is not None,
     )
-    return run_id
 
 
 @pytest.mark.parametrize("credential_type", ["api-key", "oauth2"])
@@ -221,7 +213,8 @@ def test_claim_preserves_credentials_ids_and_independent_choices(
 ) -> None:
     base = harness.oauth.base
     existing = base.service.create_api_key(harness.account, base.command())
-    account_run = save_choices(harness, harness.account, existing.id) if account_defaults else None
+    if account_defaults:
+        save_choices(harness, harness.account, existing.id)
     first = (
         harness.oauth.finish(harness.oauth.start())
         if credential_type == "oauth2"
@@ -247,7 +240,7 @@ def test_claim_preserves_credentials_ids_and_independent_choices(
         session.flush()
         ids = [row.id for row in conversations]
     save_choices(harness, base.context, first.id, ids[0])
-    guest_run = save_choices(harness, base.context, second.id, ids[1])
+    save_choices(harness, base.context, second.id, ids[1])
     with base.sessions() as session:
         before = {
             row.id: (
@@ -307,7 +300,6 @@ def test_claim_preserves_credentials_ids_and_independent_choices(
         assert len(defaults) == 1
         assert defaults[0].end_user_id == harness.account.end_user_id
         assert defaults[0].connection_id == (existing.id if account_defaults else second.id)
-        assert defaults[0].source_run_id == (account_run if account_defaults else guest_run)
     assert base.service.get_connection(harness.account, first.id).id == first.id
     assert harness.claim().get_json()["data"][0]["claimed_connections"] == 0
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=True)
@@ -1723,3 +1715,19 @@ def test_late_tool_files_follow_migrated_conversation_owner(
         mimetype="text/plain",
     )
     assert foreign.user_id == unrelated_id
+
+
+def test_claim_transfers_choices_without_transferring_app_authorization(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    save_choices(harness, base.context, selected.id)
+    response = harness.claim()
+    assert response.status_code == 200
+    assert response.get_json()["data"][0]["claimed_connections"] == 1
+    saved = base.repository.configuration(harness.account, None)
+    assert saved[0].connection_id == selected.id
+    assert base.repository.configuration(base.context, None) == ()
+    service = harness.services.connection_selections
+    assert service.get(harness.account, None).reauthorization_required
+    save_choices(harness, harness.account, selected.id)
+    assert not service.get(harness.account, None).reauthorization_required

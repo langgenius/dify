@@ -17,6 +17,8 @@ from constants.end_user_connections import (
     OAuthClientSource,
 )
 from context.connection_execution import ConnectionExecutionContext
+from core.helper.name_generator import generate_incremental_name
+from core.plugin.entities.plugin_daemon import CredentialType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import (
@@ -55,7 +57,6 @@ from services.end_user_connections.oauth import (
     StoredOAuthClientConfiguration,
 )
 from services.end_user_connections.revision import (
-    AuthorizationRequirementSnapshot,
     ConnectionContractSnapshot,
     ConnectionRevisionAcceptance,
     OAuthClientContractSnapshot,
@@ -115,7 +116,7 @@ class EndUserConnectionRepository:
     ) -> None:
         """Continue a validated execution's consent without consulting a newer publication."""
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             self._record_revision_acceptance(session, context, acceptance)
 
     @staticmethod
@@ -230,8 +231,27 @@ class EndUserConnectionRepository:
             else EndUserConnection.end_user_id.is_(None),
         )
 
+    @classmethod
+    def _generate_connection_name(
+        cls,
+        session: Session,
+        context: WebConnectionContext,
+        provider: str,
+        credential_type: ConnectionCredentialType,
+    ) -> str:
+        """Generate under the caller's owner lock so concurrent creations see prior names."""
+        names = session.scalars(
+            sa.select(EndUserConnection.name).where(
+                EndUserConnection.tenant_id == context.tenant_id,
+                *cls._owner(context.owner),
+                EndUserConnection.provider == provider,
+                EndUserConnection.credential_type == credential_type,
+            )
+        ).all()
+        return generate_incremental_name(names, CredentialType(credential_type.value).get_name())
+
     @staticmethod
-    def _require_context(session: Session, context: WebConnectionContext, *, lock: bool) -> App:
+    def _require_context(session: Session, context: WebConnectionContext, *, lock: bool, shared: bool = False) -> App:
         stmt = (
             sa.select(App)
             .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
@@ -256,12 +276,14 @@ class EndUserConnectionRepository:
                     tenant_id=context.tenant_id,
                     app_id=context.app_id,
                     end_user_id=context.end_user_id,
-                    exclusive=False,
+                    exclusive=not shared,
                 )
             except EndUserBusyError as error:
                 raise ConnectionConflictError() from error
             if actor is None or actor.account_id != context.account_id:
                 raise ConnectionIdentityError()
+            if not shared:
+                stmt = stmt.with_for_update()
         elif lock:
             stmt = stmt.with_for_update()
         app = session.scalar(stmt)
@@ -273,7 +295,7 @@ class EndUserConnectionRepository:
                 Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
             )
             if lock:
-                account = account.with_for_update(read=coordinated)
+                account = account.with_for_update(read=coordinated and shared)
             if session.scalar(account) is None:
                 raise ConnectionIdentityError()
         return app
@@ -389,12 +411,6 @@ class EndUserConnectionRepository:
                 raise ConnectionConfigurationError()
             return workflow_id, graph
 
-    def workflow_requirements(
-        self, context: WebConnectionContext, workflow_id: str
-    ) -> tuple[AuthorizationRequirementSnapshot, ...]:
-        _, graph = self.preflight_graph(context, workflow_id, None)
-        return get_tool_authorization_requirements(graph)
-
     def complete_preflight(
         self,
         context: WebConnectionContext,
@@ -405,7 +421,7 @@ class EndUserConnectionRepository:
     ) -> None:
         """Revalidate final identity and persist validated-contract acceptance atomically."""
         with self._sessions.begin() as session:
-            app = self._require_context(session, context, lock=revision_acceptance is not None)
+            app = self._require_context(session, context, lock=revision_acceptance is not None, shared=True)
             self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
             if revision_acceptance is not None:
                 self._record_revision_acceptance(session, context, revision_acceptance)
@@ -475,31 +491,6 @@ class EndUserConnectionRepository:
             SessionConnection.session_id == conversation_id,
         )
 
-    def conversation_selections(
-        self, context: WebConnectionContext, conversation_id: str
-    ) -> tuple[SavedConnectionSelection, ...]:
-        with self._sessions() as session:
-            app = self._require_context(session, context, lock=False)
-            self._require_conversation(session, context, app, conversation_id, lock=False)
-            rows = session.scalars(
-                sa.select(SessionConnection)
-                .where(*self._conversation_selection_scope(context, conversation_id))
-                .order_by(SessionConnection.node_id)
-            )
-            return tuple(
-                SavedConnectionSelection(row.workflow_id, row.node_id, row.provider, row.connection_id) for row in rows
-            )
-
-    def app_selections(self, context: WebConnectionContext) -> tuple[SavedConnectionSelection, ...]:
-        with self._sessions() as session:
-            self._require_context(session, context, lock=False)
-            rows = session.scalars(
-                sa.select(AppConnection).where(*self._app_selection_scope(context)).order_by(AppConnection.node_id)
-            )
-            return tuple(
-                SavedConnectionSelection(row.workflow_id, row.node_id, row.provider, row.connection_id) for row in rows
-            )
-
     @staticmethod
     def _app_selection_scope(context: WebConnectionContext) -> tuple[sa.ColumnElement[bool], ...]:
         return (
@@ -508,21 +499,70 @@ class EndUserConnectionRepository:
             AppConnection.end_user_id == context.end_user_id,
         )
 
-    def save_run_selections(
+    def configuration(
+        self, context: WebConnectionContext, conversation_id: str | None
+    ) -> tuple[SavedConnectionSelection, ...]:
+        with self._sessions() as session:
+            app = self._require_context(session, context, lock=False)
+            if conversation_id is None:
+                rows = session.scalars(
+                    sa.select(AppConnection).where(*self._app_selection_scope(context)).order_by(AppConnection.node_id)
+                )
+            else:
+                self._require_conversation(session, context, app, conversation_id, lock=False)
+                rows = session.scalars(
+                    sa.select(SessionConnection)
+                    .where(*self._conversation_selection_scope(context, conversation_id))
+                    .order_by(SessionConnection.node_id)
+                )
+            return tuple(
+                SavedConnectionSelection(row.workflow_id, row.node_id, row.provider, row.connection_id) for row in rows
+            )
+
+    def accepted_contracts(self, context: WebConnectionContext) -> tuple[ConnectionContractSnapshot, ...]:
+        with self._sessions() as session:
+            self._require_context(session, context, lock=False)
+            payloads = session.scalars(
+                sa.select(EndUserConnectionRevision.snapshot)
+                .join(
+                    EndUserConnectionRevisionAcceptance,
+                    sa.and_(
+                        EndUserConnectionRevisionAcceptance.revision_id == EndUserConnectionRevision.id,
+                        EndUserConnectionRevisionAcceptance.tenant_id == EndUserConnectionRevision.tenant_id,
+                        EndUserConnectionRevisionAcceptance.app_id == EndUserConnectionRevision.app_id,
+                    ),
+                )
+                .where(
+                    EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
+                    EndUserConnectionRevisionAcceptance.app_id == context.app_id,
+                    EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
+                )
+            )
+            return tuple(ConnectionContractSnapshot.model_validate_json(payload) for payload in payloads)
+
+    def save_configuration(
         self,
-        execution: ConnectionExecutionContext,
-        workflow_run_id: str,
-        conversation_id: str | None,
+        context: WebConnectionContext,
         *,
-        update_conversation: bool,
+        workflow_id: str,
+        conversation_id: str | None,
+        selections: tuple[SavedConnectionSelection, ...],
+        records: Mapping[str, ConnectionAccessRecord],
+        acceptance: ConnectionRevisionAcceptance,
     ) -> None:
         with self._sessions.begin() as session:
-            # Only the whole default-set write is serialized; execution holds no App lock.
-            # Workers and resume paths never update App defaults again.
-            context, app, selections = self._execution_selections(session, execution, lock_defaults=True)
-            self._require_workflow_scope(session, context, app, execution.workflow_id, None)
+            app = self._require_context(session, context, lock=True)
+            workflow = self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
             if conversation_id is not None:
                 self._require_conversation(session, context, app, conversation_id, lock=True)
+            self._validate_configuration_contract(session, context, workflow, acceptance.revision_id)
+            current = self._access_records(session, context, frozenset(records), lock=True)
+            if current != records:
+                raise ConnectionConflictError()
+            for item in selections:
+                record = current.get(item.connection_id)
+                if record is None or record.provider != item.provider or item.workflow_id != workflow_id:
+                    raise ConnectionConflictError()
             session.execute(sa.delete(AppConnection).where(*self._app_selection_scope(context)))
             session.add_all(
                 AppConnection(
@@ -533,15 +573,48 @@ class EndUserConnectionRepository:
                     node_id=item.node_id,
                     provider=item.provider,
                     connection_id=item.connection_id,
-                    source_run_id=workflow_run_id,
                 )
                 for item in selections
             )
-            if update_conversation and conversation_id is not None:
+            if conversation_id is not None:
                 session.execute(
                     sa.delete(SessionConnection).where(*self._conversation_selection_scope(context, conversation_id))
                 )
                 self._insert_conversation_selections(session, context, conversation_id, selections)
+            self._record_revision_acceptance(session, context, acceptance)
+
+    @classmethod
+    def _validate_configuration_contract(
+        cls, session: Session, context: WebConnectionContext, workflow: Workflow, revision: str
+    ) -> None:
+        payload = session.scalar(
+            sa.select(EndUserConnectionRevision.snapshot).where(
+                EndUserConnectionRevision.id == revision,
+                EndUserConnectionRevision.tenant_id == context.tenant_id,
+                EndUserConnectionRevision.app_id == context.app_id,
+            )
+        )
+        if payload is None:
+            raise ConnectionRevisionChangedError()
+        snapshot = ConnectionContractSnapshot.model_validate_json(payload)
+        if snapshot.requirements != get_tool_authorization_requirements(workflow.graph_dict):
+            raise ConnectionRevisionChangedError()
+        # OAuth Client writers lock configuration before changing grants. Keep that lock order here.
+        for provider in snapshot.providers:
+            for expected in provider.oauth_clients:
+                try:
+                    client = cls._oauth_client_configuration(
+                        session, context.tenant_id, provider.provider, expected.source, lock=True
+                    )
+                except ConnectionReauthorizationRequiredError:
+                    if expected.configuration_id is not None or expected.fingerprint is not None:
+                        raise ConnectionRevisionChangedError() from None
+                else:
+                    if (
+                        client.configuration_id != expected.configuration_id
+                        or client.fingerprint != expected.fingerprint
+                    ):
+                        raise ConnectionRevisionChangedError()
 
     @classmethod
     def initialize_conversation_selections(
@@ -556,35 +629,17 @@ class EndUserConnectionRepository:
             or conversation.mode != AppMode.ADVANCED_CHAT
         ):
             raise ConnectionIdentityError()
-        context, _, selections = cls._execution_selections(session, execution, lock_defaults=False)
+        context, _, selections = cls._execution_selections(session, execution)
         cls._insert_conversation_selections(session, context, conversation.id, selections)
 
     @classmethod
     def _execution_selections(
-        cls, session: Session, execution: ConnectionExecutionContext, *, lock_defaults: bool
+        cls, session: Session, execution: ConnectionExecutionContext
     ) -> tuple[WebConnectionContext, App, tuple[SavedConnectionSelection, ...]]:
         context = WebConnectionContext(
             execution.tenant_id, execution.app_id, execution.end_user_id, execution.account_id
         )
-        app = cls._require_context(session, context, lock=True)
-        if lock_defaults and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
-            # Preserve the existing whole-set writer lock, after the nonblocking
-            # identity fence and before acquiring any selected-credential row locks.
-            app = session.scalar(
-                sa.select(App)
-                .where(
-                    App.id == context.app_id,
-                    App.tenant_id == context.tenant_id,
-                    App.status == AppStatus.NORMAL,
-                    App.enable_site.is_(True),
-                    App.mode.in_((AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)),
-                )
-                .with_for_update()
-                .execution_options(populate_existing=True)
-            )
-            if app is None:
-                raise ConnectionIdentityError()
-
+        app = cls._require_context(session, context, lock=True, shared=True)
         records = cls._access_records(
             session,
             context,
@@ -688,7 +743,7 @@ class EndUserConnectionRepository:
         *,
         workflow_id: str,
         provider: str,
-        name: str,
+        name: str | None,
         encrypted_credentials: str,
         revision_acceptance: ConnectionRevisionAcceptance,
     ) -> ConnectionSummary:
@@ -696,6 +751,8 @@ class EndUserConnectionRepository:
             app = self._require_context(session, context, lock=True)
             self._require_workflow_scope(session, context, app, workflow_id, None)
             owner = context.owner
+            if not name:
+                name = self._generate_connection_name(session, context, provider, ConnectionCredentialType.API_KEY)
             row = EndUserConnection(
                 tenant_id=context.tenant_id,
                 account_id=owner.account_id,
@@ -719,7 +776,7 @@ class EndUserConnectionRepository:
         self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
     ) -> StoredConnection:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             predicates = self._guard(context, guard)
             values: dict[str, Any] = {}
             if changes.name is not None:
@@ -754,7 +811,7 @@ class EndUserConnectionRepository:
 
     def delete(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             result = cast(
                 CursorResult, session.execute(sa.delete(EndUserConnection).where(*self._guard(context, guard)))
             )
@@ -819,7 +876,7 @@ class EndUserConnectionRepository:
         ciphertext: str | None,
     ) -> StoredConnection:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             provider = session.scalar(
                 sa.select(EndUserConnection.provider).where(
                     *self._guard(context, guard),
@@ -919,7 +976,7 @@ class EndUserConnectionRepository:
             ):
                 raise ConnectionReauthorizationRequiredError()
             if attempt.guard is None:
-                if attempt.target is None or attempt.name is None:
+                if attempt.target is None:
                     raise ConnectionConfigurationError()
                 if attempt.target_workflow_id is None:
                     raise ConnectionConfigurationError()
@@ -930,7 +987,10 @@ class EndUserConnectionRepository:
                     end_user_id=context.owner.end_user_id,
                     provider=attempt.provider,
                     credential_type=ConnectionCredentialType.OAUTH2,
-                    name=attempt.name,
+                    name=attempt.name
+                    or self._generate_connection_name(
+                        session, context, attempt.provider, ConnectionCredentialType.OAUTH2
+                    ),
                     encrypted_credentials=encrypted_credentials,
                     status=ConnectionCredentialStatus.CONNECTED,
                     oauth_client_source=client.source,

@@ -5,8 +5,8 @@ The target resolver reconstructs the currently published node/Provider/Client fr
 stored state. CRUD implementations must apply the ownership policy before decrypting
 or contacting a plugin. Controllers map domain failures to documented HTTP errors.
 
-Run entry points own saved selections derived from explicit execution inputs; no
-separate binding request is required before a Run. Builder tests use authorized
+Explicit configuration saves own saved selections and authorization acceptance.
+Run entry points check execution inputs without updating preferences. Builder tests use authorized
 workspace credential overrides through the Console entry point (SNP-970), outside
 this Web Passport and published-workflow contract.
 """
@@ -44,7 +44,9 @@ class ConnectionTargetInput(ConnectionContractInput):
 
 
 class CreateApiKeyConnectionInput(ConnectionTargetInput):
-    name: str = Field(min_length=1, max_length=100)
+    name: str | None = Field(
+        default=None, max_length=100, description="Omit or leave empty to generate an incremental API KEY name."
+    )
     # Provider-schema validation and remote checks precede persistence.
     credentials: dict[str, JsonValue] = Field(min_length=1, repr=False)
 
@@ -87,7 +89,9 @@ class ConnectionRevisionView(BaseModel):
 
 
 class StartConnectionOAuthInput(ConnectionTargetInput):
-    name: str = Field(min_length=1, max_length=100)
+    name: str | None = Field(
+        default=None, max_length=100, description="Omit or leave empty to generate an incremental AUTH name."
+    )
 
 
 class ListConnectionsInput(ConnectionInput):

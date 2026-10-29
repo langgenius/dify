@@ -45,6 +45,7 @@ def client(harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch) -> Itera
 
 
 @pytest.mark.parametrize("anonymous", [False, True])
+@pytest.mark.parametrize("name", [None, "", "Custom name"])
 @pytest.mark.parametrize("allow_anonymous", [False, True])
 def test_http_api_key_management_round_trip(
     client: FlaskClient,
@@ -52,13 +53,17 @@ def test_http_api_key_management_round_trip(
     config_overrides: Callable[..., None],
     anonymous: bool,
     allow_anonymous: bool,
+    name: str | None,
 ) -> None:
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous)
     if anonymous:
         with harness.sessions.begin() as session:
             session.execute(sa.update(EndUser).where(EndUser.id == harness.context.end_user_id).values(account_id=None))
         harness.context = replace(harness.context, account_id=None)
-    response = client.post("/api/connections", json=harness.command().model_dump(mode="json"))
+    payload = harness.command().model_dump(mode="json", exclude={"name"})
+    if name is not None:
+        payload["name"] = name
+    response = client.post("/api/connections", json=payload)
     if anonymous and not allow_anonymous:
         assert response.status_code == 401
         assert response.get_json()["code"] == "end_user_login_required"
@@ -66,6 +71,7 @@ def test_http_api_key_management_round_trip(
         return
     assert response.status_code == 201
     data = response.get_json()
+    assert data["name"] == (name or "API KEY 1")
     assert data["credential_status"] == "connected"
     assert isinstance(data["created_at"], int)
     assert "original-secret" not in response.get_data(as_text=True)
@@ -206,6 +212,9 @@ def test_patch_rejects_empty_or_null_changes(
 
 
 def test_public_schemas_match_patch_and_timestamp_semantics() -> None:
+    create = connections.EndUserConnectionCreatePayload.model_json_schema()
+    assert "name" not in create["required"]
+    assert create["properties"]["name"]["anyOf"] == [{"maxLength": 100, "type": "string"}, {"type": "null"}]
     payload = connections.EndUserConnectionUpdatePayload.model_json_schema()
     assert payload["minProperties"] == 1
     assert payload["properties"]["name"]["type"] == "string"

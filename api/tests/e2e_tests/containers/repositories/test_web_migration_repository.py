@@ -343,7 +343,6 @@ def test_two_guests_migrating_to_one_account_preserve_a_whole_default_set(
         session.flush()
         guest_ids = [guest.id for guest in guests]
     monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", True)
-    source_run_ids = [str(uuid4()), str(uuid4())]
     for index, guest_id in enumerate(guest_ids):
         identity = replace(harness.context, end_user_id=guest_id, account_id=None)
         connection = harness.service.create_api_key(identity, harness.command())
@@ -357,7 +356,6 @@ def test_two_guests_migrating_to_one_account_preserve_a_whole_default_set(
                     node_id=f"guest-{index}",
                     provider=PROVIDER,
                     connection_id=connection.id,
-                    source_run_id=source_run_ids[index],
                 )
             )
     repository = WebMigrationRepository(session_factory=sessions)
@@ -386,13 +384,13 @@ def test_two_guests_migrating_to_one_account_preserve_a_whole_default_set(
     assert any(result is not None and result.connections == 1 for result in results)
     with sessions() as session:
         initial_defaults = session.scalars(
-            sa.select(AppConnection.source_run_id).where(
+            sa.select(AppConnection.node_id).where(
                 AppConnection.app_id == harness.context.app_id,
                 AppConnection.end_user_id == harness.context.end_user_id,
             )
         ).all()
         assert len(initial_defaults) == 1
-        assert initial_defaults[0] in source_run_ids
+        assert initial_defaults[0] in {"guest-0", "guest-1"}
     for index, result in enumerate(results):
         if result is None:
             source = sources[index]
@@ -401,7 +399,7 @@ def test_two_guests_migrating_to_one_account_preserve_a_whole_default_set(
     with sessions() as session:
         assert (
             session.scalars(
-                sa.select(AppConnection.source_run_id).where(
+                sa.select(AppConnection.node_id).where(
                     AppConnection.app_id == harness.context.app_id,
                     AppConnection.end_user_id == harness.context.end_user_id,
                 )

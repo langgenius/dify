@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from typing import Any
-from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,9 +12,14 @@ from models.model import App, AppMode, Conversation, EndUser
 from models.workflow import Workflow
 from services.end_user_connection_execution_adapters import prepare_web_connection_execution
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.preflight import ConnectionPreflightService
-from services.end_user_connections.selections import ConnectionSelectionService
+from services.end_user_connections.selections import (
+    ConnectionConfiguration,
+    ConnectionSelectionService,
+    SaveConnectionConfigurationInput,
+)
 from tests.helpers.end_user_oauth import OAuthHarness
 
 
@@ -44,6 +48,18 @@ class ConversationHarness:
             session.flush()
             return row.id
 
+    def save(self, conversation_id: str | None, connections: dict[str, str | None]) -> ConnectionConfiguration:
+        return self.service.save(
+            self.oauth.base.context,
+            SaveConnectionConfigurationInput.model_validate(
+                {
+                    "connection_revision": self.oauth.base.connection_revision,
+                    "conversation_id": conversation_id,
+                    "connections": connections,
+                }
+            ),
+        )
+
     def run(
         self, conversation_id: str | None, connections: dict[str, str | None] | None = None
     ) -> ConnectionExecutionContext:
@@ -60,9 +76,7 @@ class ConversationHarness:
             args["conversation_id"] = conversation_id
         if connections is not None:
             args["connections"] = connections
-        result = prepare_web_connection_execution(
-            app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
-        )
+        result = prepare_web_connection_execution(app=app, user=user, workflow=workflow, args=args)
         assert result is not None
         return result
 
@@ -82,11 +96,22 @@ def make_conversation_harness(oauth: OAuthHarness) -> ConversationHarness:
     )
     return ConversationHarness(
         oauth=oauth,
-        service=ConnectionSelectionService(store=oauth.base.repository),
+        service=make_selection_service(oauth),
         execution=ConnectionExecutionService(
             preflight=ConnectionPreflightService(
                 connections=oauth.base.repository, checks=oauth.base.service, requirements=requirements
             )
         ),
         sessions=oauth.base.sessions,
+    )
+
+
+def make_selection_service(oauth: OAuthHarness) -> ConnectionSelectionService:
+    repository = oauth.base.repository
+    return ConnectionSelectionService(
+        store=repository,
+        requirements=PublishedPreflightRequirements(
+            workflows=repository, snapshots=repository, providers=oauth.providers, oauth=oauth.gateway
+        ),
+        revisions=PluginConnectionRevisions(providers=oauth.providers, snapshots=repository),
     )

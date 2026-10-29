@@ -100,6 +100,8 @@ export type AuthenticationFailedError = ErrorResponse & {
   status: 401
 }
 
+export type BinaryFileResponse = Blob | File
+
 export type BooleanResultResponse = {
   result: boolean
 }
@@ -222,10 +224,19 @@ export type ConnectionConfigurationInvalidError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionConfigurationPayload = {
+  connection_revision: string
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+}
+
 export type ConnectionConfigurationResponse = {
   connections: {
     [key: string]: EndUserConnectionResponse | null
   }
+  reauthorization_required: boolean
 }
 
 export type ConnectionConflictError = ErrorResponse & {
@@ -264,6 +275,10 @@ export type ConnectionPreflightStatus = {
   connection_id: string | null
   node_id: string
   status: NodeConnectionStatus | null
+}
+
+export type ConnectionReadmeResponse = {
+  readme: string
 }
 
 export type ConnectionReauthorizationRequiredError = ErrorResponse & {
@@ -371,7 +386,7 @@ export type EndUserConnectionCreatePayload = {
   credentials: {
     [key: string]: JsonValue
   }
-  name: string
+  name?: string | null
   node_id: string
 }
 
@@ -389,7 +404,7 @@ export type EndUserConnectionListResponse = {
 
 export type EndUserConnectionOAuthPayload = {
   connection_revision: string
-  name: string
+  name?: string | null
   node_id: string
 }
 
@@ -1861,6 +1876,30 @@ export type PostConnectionsResponses = {
 
 export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
 
+export type GetConnectionsAssetData = {
+  body?: never
+  path?: never
+  query: {
+    file_name: string
+    plugin_unique_identifier: string
+  }
+  url: '/connections/asset'
+}
+
+export type GetConnectionsAssetErrors = {
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsAssetError = GetConnectionsAssetErrors[keyof GetConnectionsAssetErrors]
+
+export type GetConnectionsAssetResponses = {
+  200: Blob | File
+}
+
+export type GetConnectionsAssetResponse =
+  GetConnectionsAssetResponses[keyof GetConnectionsAssetResponses]
+
 export type GetConnectionsConfigurationData = {
   body?: never
   path?: never
@@ -1872,6 +1911,7 @@ export type GetConnectionsConfigurationData = {
 
 export type GetConnectionsConfigurationErrors = {
   400: ConnectionConfigurationInvalidError | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1884,6 +1924,36 @@ export type GetConnectionsConfigurationResponses = {
 
 export type GetConnectionsConfigurationResponse =
   GetConnectionsConfigurationResponses[keyof GetConnectionsConfigurationResponses]
+
+export type PutConnectionsConfigurationData = {
+  body: ConnectionConfigurationPayload
+  path?: never
+  query?: never
+  url: '/connections/configuration'
+}
+
+export type PutConnectionsConfigurationErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | ConnectionRevisionChangedError
+    | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutConnectionsConfigurationError =
+  PutConnectionsConfigurationErrors[keyof PutConnectionsConfigurationErrors]
+
+export type PutConnectionsConfigurationResponses = {
+  200: ConnectionConfigurationResponse
+}
+
+export type PutConnectionsConfigurationResponse =
+  PutConnectionsConfigurationResponses[keyof PutConnectionsConfigurationResponses]
 
 export type GetConnectionsCredentialSchemaData = {
   body?: never
@@ -1966,6 +2036,30 @@ export type PostConnectionsPreflightResponses = {
 
 export type PostConnectionsPreflightResponse =
   PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
+
+export type GetConnectionsReadmeData = {
+  body?: never
+  path?: never
+  query: {
+    language?: string
+    plugin_unique_identifier: string
+  }
+  url: '/connections/readme'
+}
+
+export type GetConnectionsReadmeErrors = {
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsReadmeError = GetConnectionsReadmeErrors[keyof GetConnectionsReadmeErrors]
+
+export type GetConnectionsReadmeResponses = {
+  200: ConnectionReadmeResponse
+}
+
+export type GetConnectionsReadmeResponse =
+  GetConnectionsReadmeResponses[keyof GetConnectionsReadmeResponses]
 
 export type DeleteConnectionsByConnectionIdData = {
   body?: never

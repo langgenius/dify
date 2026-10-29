@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from importlib import import_module
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import jwt
 import pytest
+import sqlalchemy as sa
 from flask import Flask
+from flask.testing import FlaskClient
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Unauthorized
 
 from controllers.common.errors import InvalidArgumentError
+from controllers.web import app as app_controller
+from controllers.web import bp, wraps
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
 from controllers.web.error import (
     AgentNotPublishedError,
@@ -19,21 +27,27 @@ from controllers.web.error import (
     WebAppNotFoundError,
 )
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.plugin.impl.exc import PluginDaemonBadRequestError
 from enums import WebAppAccessMode
 from extensions.ext_application_services import ApplicationServices
 from libs.exception import BaseHTTPException
 from libs.passport import PassportService
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
+from models.workflow import Workflow
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
+    AppDefinitionQueryService,
     AppDefinitionUnavailableError,
 )
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
+from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 from tests.helpers.unit.config_override import config_overrides_context
 
 PASSPORT_SECRET = "test-secret-that-is-at-least-32-bytes"
@@ -545,3 +559,166 @@ class TestAppWebAuthPermission:
         with app.test_request_context(path, headers=headers):
             with pytest.raises(ValueError, match="appId"):
                 AppWebAuthPermission().get()
+
+
+@pytest.fixture
+def asset_harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:
+    return make_oauth_harness(sqlite_session_factory, monkeypatch)
+
+
+@pytest.fixture
+def asset_reader() -> MagicMock:
+    return MagicMock(return_value=b"\x89PNG\r\n\x1a\n\x00\xff")
+
+
+@pytest.fixture
+def asset_client(
+    asset_harness: OAuthHarness, asset_reader: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[FlaskClient]:
+    def identity() -> tuple[App, EndUser]:
+        with asset_harness.base.sessions() as session:
+            app = session.get(App, asset_harness.base.context.app_id)
+            user = session.get(EndUser, asset_harness.base.context.end_user_id)
+            assert app is not None
+            assert user is not None
+            return app, user
+
+    definitions = AppDefinitionQueryService(
+        definitions=AppDefinitionQueryRepository(session_factory=asset_harness.base.sessions),
+        plugin_readme=lambda *_args: "",
+        plugin_asset=asset_reader,
+        builtin_icon_url_prefix="",
+        connection_revisions=PluginConnectionRevisions(
+            providers=asset_harness.providers, snapshots=asset_harness.base.repository
+        ),
+    )
+    monkeypatch.setattr(wraps, "decode_jwt_token", identity)
+    monkeypatch.setattr(app_controller, "application_services", lambda: SimpleNamespace(app_definitions=definitions))
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(bp)
+    with app.test_client() as asset_client:
+        yield asset_client
+
+
+def test_asset_returns_package_bytes(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock
+) -> None:
+    identifier = asset_harness.providers.controller.plugin_unique_identifier
+    response = asset_client.get(
+        "/api/connections/asset", query_string={"plugin_unique_identifier": identifier, "file_name": "images/setup.png"}
+    )
+    assert response.status_code == 200
+    assert response.data == asset_reader.return_value
+    assert response.mimetype == "application/octet-stream"
+    assert response.headers["Cache-Control"] == "no-store"
+    asset_reader.assert_called_once_with(asset_harness.base.context.tenant_id, identifier, "images/setup.png")
+    assert asset_harness.base.auth.calls == []
+
+
+@pytest.mark.parametrize("identifier", ["vendor/other:1.0.0@" + "a" * 64, "vendor/calendar:0.0.1@" + "b" * 64])
+def test_asset_rejects_plugins_outside_current_requirements(
+    asset_client: FlaskClient, asset_reader: MagicMock, identifier: str
+) -> None:
+    response = asset_client.get(
+        "/api/connections/asset", query_string={"plugin_unique_identifier": identifier, "file_name": "setup.png"}
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "app_unavailable"
+    asset_reader.assert_not_called()
+
+
+def test_asset_rejects_removed_requirements(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock
+) -> None:
+    with asset_harness.base.sessions.begin() as session:
+        workflow = session.get(Workflow, asset_harness.base.workflow_id)
+        assert workflow is not None
+        workflow.graph = '{"nodes":[]}'
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": "x",
+        },
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "app_unavailable"
+    asset_reader.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "file_name", ["", "../secret", "images/../../secret", "/secret", "./setup.png", "a//b", "a/", "a\\b", "a\x00b"]
+)
+def test_asset_rejects_invalid_paths(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock, file_name: str
+) -> None:
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": file_name,
+        },
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "invalid_param"
+    asset_reader.assert_not_called()
+
+
+@pytest.mark.parametrize("query", [{}, {"plugin_unique_identifier": "plugin"}, {"file_name": "setup.png"}])
+def test_asset_requires_identifier_and_filename(
+    asset_client: FlaskClient, asset_reader: MagicMock, query: dict[str, str]
+) -> None:
+    response = asset_client.get("/api/connections/asset", query_string=query)
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "invalid_param"
+    asset_reader.assert_not_called()
+
+
+@pytest.mark.parametrize("error", [ValueError("asset missing"), PluginDaemonBadRequestError("asset missing")])
+def test_asset_maps_package_lookup_failure(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, asset_reader: MagicMock, error: Exception
+) -> None:
+    asset_reader.side_effect = error
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": "x",
+        },
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "app_unavailable"
+    assert "asset missing" not in response.get_data(as_text=True)
+
+
+def test_guest_can_read_assets_when_personal_connection_creation_requires_login(
+    asset_client: FlaskClient, asset_harness: OAuthHarness, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    with asset_harness.base.sessions.begin() as session:
+        session.execute(
+            sa.update(EndUser).where(EndUser.id == asset_harness.base.context.end_user_id).values(account_id=None)
+        )
+    response = asset_client.get(
+        "/api/connections/asset",
+        query_string={
+            "plugin_unique_identifier": asset_harness.providers.controller.plugin_unique_identifier,
+            "file_name": "x",
+        },
+    )
+    assert response.status_code == 200
+
+
+def test_asset_requires_web_passport(
+    asset_client: FlaskClient, asset_reader: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def reject_identity() -> tuple[App, EndUser]:
+        raise Unauthorized()
+
+    monkeypatch.setattr(wraps, "decode_jwt_token", reject_identity)
+    response = asset_client.get(
+        "/api/connections/asset", query_string={"plugin_unique_identifier": "plugin", "file_name": "x"}
+    )
+    assert response.status_code == 401
+    asset_reader.assert_not_called()

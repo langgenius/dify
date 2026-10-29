@@ -66,9 +66,10 @@ class ConnectionOAuthAttempt:
     provider: str
     client: ConnectionOAuthClient
     state_digest: str = field(repr=False)
-    # Creation captures a published target/name; reauthorization captures a CAS guard.
+    # Creation captures a published target; reauthorization captures a CAS guard.
     target: ConnectionTargetInput | None
     target_workflow_id: str | None
+    # None generates a name on creation and preserves the name on reauthorization.
     name: str | None
     guard: ConnectionMutationGuard | None
     connection_revision: str
@@ -266,7 +267,7 @@ class OAuthConnectionService:
             if connection_mutation_guard(context, record.access) != attempt.guard:
                 raise ConnectionConflictError()
         else:
-            if attempt.target is None or attempt.name is None:
+            if attempt.target is None:
                 raise ConnectionOAuthError()
             target = self._targets.resolve(context, attempt.target)
             if target.provider != attempt.provider or target.oauth_client_source != attempt.client.source:

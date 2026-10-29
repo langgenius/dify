@@ -117,25 +117,16 @@ def test_parallel_revision_acceptance_keeps_one_original_receipt(
 
 
 @pytest.mark.timeout(15)
-def test_execution_preparation_fails_fast_without_holding_an_app_lock_during_migration(
+def test_configuration_save_fails_fast_without_holding_an_app_lock_during_migration(
     db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from context.connection_execution import ConnectionExecutionContext
     from models.model import App
     from repositories.end_user_execution_lock import lock_end_user
 
     monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", True)
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     harness = make_harness(sessions)
-    execution = ConnectionExecutionContext(
-        tenant_id=harness.context.tenant_id,
-        app_id=harness.context.app_id,
-        end_user_id=harness.context.end_user_id,
-        account_id=harness.context.account_id,
-        workflow_id=harness.workflow_id,
-        connection_revision=harness.connection_revision,
-        selections=(),
-    )
+    acceptance = ConnectionRevisionAcceptance(revision_id=harness.connection_revision, source_revision_id=None)
     with sessions.begin() as migration:
         assert (
             lock_end_user(
@@ -148,8 +139,13 @@ def test_execution_preparation_fails_fast_without_holding_an_app_lock_during_mig
             is not None
         )
         with pytest.raises(ConnectionConflictError):
-            harness.repository.save_run_selections(
-                execution, "00000000-0000-0000-0000-000000000001", None, update_conversation=False
+            harness.repository.save_configuration(
+                harness.context,
+                workflow_id=harness.workflow_id,
+                conversation_id=None,
+                selections=(),
+                records={},
+                acceptance=acceptance,
             )
         with sessions.begin() as peer:
             assert (
