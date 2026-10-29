@@ -1727,12 +1727,12 @@ export const workflow = {
 /**
  * Run workflow
  *
- * Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Identity contention returns 409 end_user_busy; resources changed since preparation return 409 webapp_resources_changed. Refresh and retry.
+ * Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
  */
 export const post29 = oc
   .route({
     description:
-      'Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Identity contention returns 409 end_user_busy; resources changed since preparation return 409 webapp_resources_changed. Refresh and retry.',
+      'Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsRun',

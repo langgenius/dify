@@ -10,6 +10,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
+from configs import dify_config
 from constants.end_user_connections import (
     ConnectionCredentialStatus,
     ConnectionCredentialType,
@@ -30,6 +31,8 @@ from models.model import App, AppMode, Conversation, EndUser
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
+from repositories.end_user_execution_lock import lock_end_user
+from repositories.entities.web_execution import EndUserBusyError
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
@@ -120,14 +123,13 @@ class EndUserConnectionRepository:
         session: Session, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
     ) -> None:
         """Write under the caller's EndUser lock and transaction, preserving first provenance."""
-        existing = session.scalar(
-            sa.select(EndUserConnectionRevisionAcceptance.id).where(
-                EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
-                EndUserConnectionRevisionAcceptance.app_id == context.app_id,
-                EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
-                EndUserConnectionRevisionAcceptance.revision_id == acceptance.revision_id,
-            )
+        lookup = sa.select(EndUserConnectionRevisionAcceptance.id).where(
+            EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
+            EndUserConnectionRevisionAcceptance.app_id == context.app_id,
+            EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
+            EndUserConnectionRevisionAcceptance.revision_id == acceptance.revision_id,
         )
+        existing = session.scalar(lookup)
         if existing is not None:
             return
         revisions = {acceptance.revision_id}
@@ -144,17 +146,22 @@ class EndUserConnectionRepository:
         )
         if scoped != revisions:
             raise ConnectionRevisionChangedError()
-        session.add(
-            EndUserConnectionRevisionAcceptance(
-                tenant_id=context.tenant_id,
-                app_id=context.app_id,
-                end_user_id=context.end_user_id,
-                revision_id=acceptance.revision_id,
-                reason=acceptance.reason,
-                source_revision_id=acceptance.source_revision_id,
-            )
-        )
-        session.flush()
+        try:
+            with session.begin_nested():
+                session.add(
+                    EndUserConnectionRevisionAcceptance(
+                        tenant_id=context.tenant_id,
+                        app_id=context.app_id,
+                        end_user_id=context.end_user_id,
+                        revision_id=acceptance.revision_id,
+                        reason=acceptance.reason,
+                        source_revision_id=acceptance.source_revision_id,
+                    )
+                )
+                session.flush()
+        except IntegrityError:
+            if session.scalar(lookup.with_for_update(read=True)) is None:
+                raise
 
     @staticmethod
     def disconnect_oauth_client_connections(
@@ -241,7 +248,21 @@ class EndUserConnectionRepository:
                 else EndUser.account_id.is_(None),
             )
         )
-        if lock:
+        coordinated = lock and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+        if coordinated:
+            try:
+                actor = lock_end_user(
+                    session,
+                    tenant_id=context.tenant_id,
+                    app_id=context.app_id,
+                    end_user_id=context.end_user_id,
+                    exclusive=False,
+                )
+            except EndUserBusyError as error:
+                raise ConnectionConflictError() from error
+            if actor is None or actor.account_id != context.account_id:
+                raise ConnectionIdentityError()
+        elif lock:
             stmt = stmt.with_for_update()
         app = session.scalar(stmt)
         if app is None:
@@ -252,7 +273,7 @@ class EndUserConnectionRepository:
                 Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
             )
             if lock:
-                account = account.with_for_update()
+                account = account.with_for_update(read=coordinated)
             if session.scalar(account) is None:
                 raise ConnectionIdentityError()
         return app
@@ -404,7 +425,13 @@ class EndUserConnectionRepository:
 
     @classmethod
     def _access_records(
-        cls, session: Session, context: WebConnectionContext, connection_ids: frozenset[str], *, lock: bool
+        cls,
+        session: Session,
+        context: WebConnectionContext,
+        connection_ids: frozenset[str],
+        *,
+        lock: bool,
+        shared_lock: bool = False,
     ) -> Mapping[str, ConnectionAccessRecord]:
         if not connection_ids:
             return {}
@@ -434,7 +461,7 @@ class EndUserConnectionRepository:
             )
         )
         if lock:
-            query = query.with_for_update()
+            query = query.with_for_update(read=shared_lock)
         rows = session.scalars(query).all()
         return {row.id: cls._access(row) for row in rows}
 
@@ -490,9 +517,9 @@ class EndUserConnectionRepository:
         update_conversation: bool,
     ) -> None:
         with self._sessions.begin() as session:
-            # Acceptance order is serialized under the stable App/EndUser lock.
+            # Only the whole default-set write is serialized; execution holds no App lock.
             # Workers and resume paths never update App defaults again.
-            context, app, selections = self._execution_selections(session, execution)
+            context, app, selections = self._execution_selections(session, execution, lock_defaults=True)
             self._require_workflow_scope(session, context, app, execution.workflow_id, None)
             if conversation_id is not None:
                 self._require_conversation(session, context, app, conversation_id, lock=True)
@@ -529,22 +556,41 @@ class EndUserConnectionRepository:
             or conversation.mode != AppMode.ADVANCED_CHAT
         ):
             raise ConnectionIdentityError()
-        context, _, selections = cls._execution_selections(session, execution)
+        context, _, selections = cls._execution_selections(session, execution, lock_defaults=False)
         cls._insert_conversation_selections(session, context, conversation.id, selections)
 
     @classmethod
     def _execution_selections(
-        cls, session: Session, execution: ConnectionExecutionContext
+        cls, session: Session, execution: ConnectionExecutionContext, *, lock_defaults: bool
     ) -> tuple[WebConnectionContext, App, tuple[SavedConnectionSelection, ...]]:
         context = WebConnectionContext(
             execution.tenant_id, execution.app_id, execution.end_user_id, execution.account_id
         )
         app = cls._require_context(session, context, lock=True)
+        if lock_defaults and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
+            # Preserve the existing whole-set writer lock, after the nonblocking
+            # identity fence and before acquiring any selected-credential row locks.
+            app = session.scalar(
+                sa.select(App)
+                .where(
+                    App.id == context.app_id,
+                    App.tenant_id == context.tenant_id,
+                    App.status == AppStatus.NORMAL,
+                    App.enable_site.is_(True),
+                    App.mode.in_((AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)),
+                )
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            if app is None:
+                raise ConnectionIdentityError()
+
         records = cls._access_records(
             session,
             context,
             frozenset(item.connection_id for item in execution.selections if item.connection_id is not None),
             lock=True,
+            shared_lock=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
         )
         selections = []
         for item in execution.selections:
