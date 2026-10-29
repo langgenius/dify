@@ -1,7 +1,7 @@
 """Terminal C03 evidence closes the original Builder attempt, without another run."""
 
 import json
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -19,6 +19,7 @@ from clients.agent_backend import DifyAgentBackendRunClient
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Run, Session
 from core.dify_builder.state import PcState
+from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.dify_builder import (
     DifyBuilderExecutionRequest,
@@ -29,6 +30,7 @@ from models.dify_builder import (
 )
 from models.dify_builder_native_tests import NativeEffectOperation, NativeInvocationState, NativeTestScope
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
@@ -45,6 +47,7 @@ from runtime_contracts.builder.native.runtime_contracts import (
     NodeJournalState,
     ResolvedNativeTestContext,
 )
+from services.app_task_service import WorkflowStopOutcome
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import BuilderExecutionRecorder
 from services.dify_builder.native_testing.api_service import NativeTestApiService
@@ -3248,14 +3251,16 @@ def test_running_cancel_observes_native_cancelled_child_without_rewriting_failed
         owner.commands.api.lifecycle.cancel = NativeTestLifecycleService.cancel.__get__(owner.commands.api.lifecycle)
     with owner.factory.begin() as sql:
         for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
-            model.__table__.create(sql.connection(), checkfirst=True)
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
         native = sql.get(WorkflowRun, owner.native_id)
         root = sql.scalar(select(NativeInvocationState))
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
         assert native is not None
         assert root is not None
         assert request is not None
-        native.status, root.state, request.state = "running", "running", "running"
+        native.status, root.state, request.state = WorkflowExecutionStatus.RUNNING, "running", "running"
         source = sql.get(NativeDispatch, "source")
         if source is not None:
             source.state = "claimed"
@@ -3275,9 +3280,9 @@ def test_running_cancel_observes_native_cancelled_child_without_rewriting_failed
         assert native is not None
         assert node is not None
         assert operation is not None
-        native.status, native.error = "failed", "Agent backend run was cancelled."
+        native.status, native.error = WorkflowExecutionStatus.FAILED, "Agent backend run was cancelled."
         native.finished_at = datetime(2026, 1, 2)
-        node.status, node.error = "failed", native.error
+        node.status, node.error = WorkflowNodeExecutionStatus.FAILED, native.error
         node.agent_workspace_binding_id = "workspace-binding"
         node.process_data = json.dumps(
             {
@@ -3290,6 +3295,7 @@ def test_running_cancel_observes_native_cancelled_child_without_rewriting_failed
         from clients.agent_backend import AgentBackendRunCancelledInternalEvent
         from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 
+        assert node.process_data is not None
         produced = WorkflowAgentOutputAdapter().build_failure_result(
             event=AgentBackendRunCancelledInternalEvent(run_id="original-child", source_event_id="102-0"),
             inputs={},
@@ -3373,7 +3379,7 @@ def test_running_cancel_observes_native_cancelled_child_without_rewriting_failed
                 node_id="previous-agent",
                 node_type="agent",
                 title="previous-agent",
-                status="succeeded",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs="{}",
                 outputs="{}",
                 process_data="{}",
@@ -3543,7 +3549,9 @@ def test_revocation_before_child_terminal_consumption_observes_original_cancelle
     owner = declining
     with owner.factory.begin() as sql:
         for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
-            model.__table__.create(sql.connection(), checkfirst=True)
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
         native = sql.get(WorkflowRun, owner.native_id)
         root = sql.scalar(select(NativeInvocationState))
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
@@ -3552,7 +3560,12 @@ def test_revocation_before_child_terminal_consumption_observes_original_cancelle
         assert root is not None
         assert request is not None
         assert source is not None
-        native.status, root.state, request.state, source.state = "running", "running", "running", "claimed"
+        native.status, root.state, request.state, source.state = (
+            WorkflowExecutionStatus.RUNNING,
+            "running",
+            "running",
+            "claimed",
+        )
         if fault == "sweeper-sdk-unavailable":
             source.claim_expires_at = datetime(2020, 1, 1)
     owner.commands.cancel(
@@ -3563,7 +3576,8 @@ def test_revocation_before_child_terminal_consumption_observes_original_cancelle
         node = sql.scalar(select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent"))
         assert native is not None
         assert node is not None
-        native.status = node.status = "failed"
+        native.status = WorkflowExecutionStatus.FAILED
+        node.status = WorkflowNodeExecutionStatus.FAILED
         native.error = node.error = "Builder execution policy refused: native_invocation_mismatch"
         native.finished_at = datetime(2026, 1, 2)
         node.agent_workspace_binding_id = "workspace-binding"
@@ -3577,6 +3591,8 @@ def test_revocation_before_child_terminal_consumption_observes_original_cancelle
         )
         from services.workflow_runtime.agent_node import DifyAgentNode
 
+        assert node.process_data is not None
+        assert native.error is not None
         produced = DifyAgentNode._failure_event(
             inputs={},
             process_data=json.loads(node.process_data),
@@ -3608,8 +3624,10 @@ def test_revocation_before_child_terminal_consumption_observes_original_cancelle
     locked = owner.commands.loader.locked
 
     @contextmanager
-    def writer(**values: object):
-        with locked(**values) as rows:
+    def writer(
+        *, ref: NativeTestContextRef, settlement: bool = False
+    ) -> Generator[tuple[SqlSession, OwnedNativeTest, NativeTestScope]]:
+        with locked(ref=ref, settlement=settlement) as rows:
             owner.writer_depth += 1
             try:
                 yield rows
@@ -3636,6 +3654,7 @@ def test_revocation_before_child_terminal_consumption_observes_original_cancelle
                         select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.node_id == "agent")
                     )
                     assert node is not None
+                    assert node.process_data is not None
                     node.process_data = node.process_data.replace("original-child", "other-child")
                 else:
                     scope = sql.get(NativeTestScope, owner.request_id)
@@ -3744,7 +3763,9 @@ def test_cancel_before_queued_resume_claim_stops_original_pause(
     owner = declining
     with owner.factory.begin() as sql:
         for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
-            model.__table__.create(sql.connection(), checkfirst=True)
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
         root = sql.scalar(select(NativeInvocationState))
         scope = sql.get(NativeTestScope, owner.request_id)
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
@@ -3870,7 +3891,7 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
     fault: str | None,
     monkeypatch: pytest.MonkeyPatch,
     mocker: pytest_mock.MockerFixture,
-    config_overrides,
+    config_overrides: Callable[..., None],
 ) -> None:
     """Revocation rejects child restore; a real control pause still belongs to ordinary stop."""
     from libs.broadcast_channel.redis.pubsub_channel import Topic
@@ -3891,8 +3912,10 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
     from contextlib import contextmanager
 
     @contextmanager
-    def scoped_writer(**values: object):
-        with writer(**values) as rows:
+    def scoped_writer(
+        *, ref: NativeTestContextRef, settlement: bool = False
+    ) -> Generator[tuple[SqlSession, OwnedNativeTest, NativeTestScope]]:
+        with writer(ref=ref, settlement=settlement) as rows:
             owner.writer_depth += 1
             try:
                 yield rows
@@ -3936,12 +3959,14 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
     mocker.stop(WorkflowResumptionContext.loads)
     from services.dify_builder.native_testing import confirmed_agent_cancellation
 
-    confirmed_agent_cancellation.storage.load.return_value = current_pause.dumps().encode()
+    mocker.patch.object(confirmed_agent_cancellation.storage, "load", return_value=current_pause.dumps().encode())
     postcommit = fault is not None and fault.startswith("postcommit-")
     lease = datetime(2020, 1, 1) if fault == "expired-sdk-unavailable" or postcommit else datetime(2099, 1, 1)
     with owner.factory.begin() as sql:
         for model in (NativeEffectDispatchClaim, NativeEffectOutcome):
-            model.__table__.create(sql.connection(), checkfirst=True)
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
         root = sql.scalar(select(NativeInvocationState))
         scope = sql.get(NativeTestScope, owner.request_id)
         request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
@@ -4002,25 +4027,36 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
     reads = []
     stops = []
     actual_stop = task_module.AppTaskService.stop_workflow_run
+    completion = owner
 
-    def stop_owner(**values: object):
-        assert owner.writer_depth == 0
-        with owner.factory() as sql:
-            request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+    def stop_owner(
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+        app_mode: AppMode,
+        owner: tuple[CreatorUserRole, str] | None,
+        redis: RedisClientWrapper,
+    ) -> WorkflowStopOutcome:
+        assert completion.writer_depth == 0
+        with completion.factory() as sql:
+            request = sql.get(DifyBuilderExecutionRequest, completion.request_id)
             assert request is not None
             assert any(
                 record.get("confirmed_agent_stop_v1", {}).get("child_status") == child_terminal
                 for record in request.observations
             )
-        stops.append(values["run_id"])
+        stops.append(run_id)
         if fault == "saved-pause-drift":
             raise ConnectionError("temporary stop transport failure")
         if fault == "stop-running":
-            with owner.factory.begin() as sql:
-                native = sql.get(WorkflowRun, owner.native_id)
+            with completion.factory.begin() as sql:
+                native = sql.get(WorkflowRun, completion.native_id)
                 assert native is not None
-                native.status = "running"
-        return actual_stop(**values)
+                native.status = WorkflowExecutionStatus.RUNNING
+        return actual_stop(
+            tenant_id=tenant_id, app_id=app_id, run_id=run_id, app_mode=app_mode, owner=owner, redis=redis
+        )
 
     monkeypatch.setattr(task_module.AppTaskService, "stop_workflow_run", staticmethod(stop_owner))
 
@@ -4107,7 +4143,7 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
                         )
                     )
                 elif fault == "postcommit-missing-fence":
-                    native.stop_requested_at = None
+                    sql.execute(update(WorkflowRun).where(WorkflowRun.id == native.id).values(stop_requested_at=None))
                 elif fault == "postcommit-pause-remains":
                     sql.add(
                         WorkflowPause(
@@ -4158,16 +4194,20 @@ def test_cancel_control_repause_uses_real_workflow_stop_owner(
                     ConfirmedAgentCancellation(owner.commands).settle(ref=owner.ref)
 
             @contextmanager
-            def serialized_writer(**values: object):
+            def serialized_writer(
+                *, ref: NativeTestContextRef, settlement: bool = False
+            ) -> Generator[tuple[SqlSession, OwnedNativeTest, NativeTestScope]]:
                 # SQLite does not implement FOR UPDATE. Model the existing C04
                 # writer contract by admitting the competing writer only after
                 # this transaction closes; all stop/proof writes remain real.
-                with settlement_writer(**values) as rows:
+                with settlement_writer(ref=ref, settlement=settlement) as rows:
                     yield rows
                 while deferred_stops:
                     deferred_stops.pop(0)()
 
-            def interleaved_request(sql, *, actor, ref):
+            def interleaved_request(
+                sql: SqlSession, *, actor: Actor, ref: NativeTestContextRef
+            ) -> DifyBuilderExecutionRequest | None:
                 nonlocal interleaved
                 request = actual_request(sql, actor=actor, ref=ref)
                 if not interleaved:

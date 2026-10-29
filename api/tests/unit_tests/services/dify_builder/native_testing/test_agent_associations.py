@@ -24,6 +24,7 @@ from core.dify_builder.models import Actor
 from models.base import Base, TypeBase
 from models.dify_builder_native_tests import (
     NativeInvocationState,
+    NativePayloadObject,
     NativeTestInvocation,
     NativeTestScope,
 )
@@ -43,7 +44,7 @@ from runtime_contracts.builder.native.runtime_contracts import (
 )
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
-from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt
 from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import LoaderStandIn, SQLStandIn
 
 EXECUTION = "81d492fd-05ce-46a8-8c82-a35d4b343d48"
@@ -829,16 +830,18 @@ def v2_wait_state(c: AgentStateCase) -> tuple[AgentNodeAssociation, AgentWaitAss
 
 
 @pytest.mark.parametrize("read", ["checkpoint", "association"])
-def test_v2_association_validation_reads_selected_config_once(state_case: AgentStateCase, monkeypatch, read):
+def test_v2_association_validation_reads_selected_config_once(
+    state_case: AgentStateCase, monkeypatch: pytest.MonkeyPatch, read: str
+) -> None:
     c = state_case
     association, wait = v2_wait_state(c)
     checkpoint = c.store.commit_checkpoint(ref=c.ref, generation=0, payload=payload_for(c, wait))
     reads = []
     original = c.store._read_object
 
-    def record(row, **values):
+    def record(row: NativePayloadObject | ObjectReceipt, *, max_bytes: int | None = None) -> JsonValue:
         reads.append(row.id)
-        return original(row, **values)
+        return original(row, max_bytes=max_bytes)
 
     monkeypatch.setattr(c.store, "_read_object", record)
     if read == "checkpoint":
@@ -849,13 +852,13 @@ def test_v2_association_validation_reads_selected_config_once(state_case: AgentS
 
 
 @pytest.mark.parametrize("drift", ["workspace", "config-metadata"])
-def test_v2_single_config_read_keeps_sql_recheck_after_io(state_case: AgentStateCase, drift):
+def test_v2_single_config_read_keeps_sql_recheck_after_io(state_case: AgentStateCase, drift: str) -> None:
     from models.agent import AgentWorkspace
 
     c = state_case
     association, wait = v2_wait_state(c)
 
-    def change():
+    def change() -> None:
         if drift == "workspace":
             required_resource(c.loader, AgentWorkspace).owner_id = "foreign-run"
         else:
@@ -1443,7 +1446,9 @@ def test_nullable_normal_home_cannot_enter_isolated_workspace_owner(
     assert "save" not in c.events
 
 
-def test_protected_read_timing_failure_does_not_change_guard_result(state_case: AgentStateCase, mocker):
+def test_protected_read_timing_failure_does_not_change_guard_result(
+    state_case: AgentStateCase, mocker: pytest_mock.MockerFixture
+) -> None:
     from models.agent import AgentWorkspace
     from services.dify_builder.native_testing import state_store as module
 
