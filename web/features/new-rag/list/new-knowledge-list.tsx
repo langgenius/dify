@@ -25,6 +25,7 @@ import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
@@ -41,12 +42,7 @@ import { useKnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
 import { matchesKnowledgeUpgradeFilters } from '../upgrade/knowledge-upgrade-filters'
 import { KnowledgeSpaceCard } from './knowledge-space-card'
 import { KnowledgeViewSwitcher } from './knowledge-view-switcher'
-import {
-  KNOWLEDGE_SPACE_GRID_CLASS_NAME,
-  NewKnowledgeEmptyState,
-  NewKnowledgeLoadingState,
-  NewKnowledgePageState,
-} from './states'
+import { NewKnowledgeEmptyState, NewKnowledgeLoadingState, NewKnowledgePageState } from './states'
 
 const PAGE_SIZE = 30
 const UPGRADE_DATASET_BATCH_SIZE = 50
@@ -300,10 +296,7 @@ export function NewKnowledgeList({
             )}
             <ServiceApi
               apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
-              apiReferenceUrl={docLink(
-                // @ts-expect-error Agent Knowledge Base API guide not yet in the generated doc paths.
-                '/api-reference/guides/knowledge-base',
-              )}
+              apiReferenceUrl={docLink('/api-reference/guides/knowledge-base')}
             />
           </div>
         </div>
@@ -419,7 +412,7 @@ export function NewKnowledgeList({
               // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
               // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
               role="list"
-              className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
+              className={cn('gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
               aria-label={t(($) => $.knowledge, { ns: 'dataset' })}
             >
               {pendingUpgradeCards.map((upgrade) => (

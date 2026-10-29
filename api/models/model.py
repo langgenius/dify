@@ -1858,6 +1858,7 @@ class MessageFile(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_file_pkey"),
         sa.Index("message_file_message_idx", "message_id"),
+        sa.Index("message_file_upload_file_id_idx", "upload_file_id"),
         sa.Index("message_file_created_by_idx", "created_by"),
     )
 

@@ -1116,6 +1116,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
         queue_manager: WorkflowAppQueueManager,
     ) -> None:
         app_generate_entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
             app_config=WorkflowUIBasedAppConfig(
                 app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
             ),
@@ -1268,6 +1269,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
     @staticmethod
     def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: WorkflowAppQueueManager) -> None:
         app_generate_entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
             app_config=WorkflowUIBasedAppConfig(
                 app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
             ),
@@ -1426,6 +1428,7 @@ def _make_paused_workflow(
 def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Generator[EngineEvent]:
     """Resume through orchestration with actual repositories and the real Engine."""
     entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task",
         app_config=WorkflowUIBasedAppConfig(
             tenant_id="tenant",

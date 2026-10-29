@@ -14,7 +14,7 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     NodeExecutionSnapshot,
     QueueEvent,
@@ -320,6 +320,7 @@ def _workflow_response_converter_human_input_build_converter() -> WorkflowRespon
         workflow_execution_id="run-1",
     )
     app_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task-1",
         app_config=WorkflowUIBasedAppConfig(
             app_id="app-1", tenant_id="tenant-1", workflow_id="wf-1", app_mode=AppMode.WORKFLOW
@@ -439,6 +440,7 @@ def _workflow_response_converter_resumption_build_converter() -> WorkflowRespons
         workflow_execution_id="run-1",
     )
     app_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task-1",
         app_config=WorkflowUIBasedAppConfig(
             app_id="app-1", tenant_id="tenant-1", workflow_id="wf-1", app_mode=AppMode.WORKFLOW
@@ -626,6 +628,7 @@ class TestConverterTruncationCases:
         def create_generate_entity(self) -> WorkflowAppGenerateEntity:
             """Create a validated workflow invocation for response conversion."""
             return WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 app_config=WorkflowUIBasedAppConfig(
                     tenant_id="test-tenant-id", app_id="app", workflow_id="wf-id", app_mode=AppMode.WORKFLOW
                 ),
@@ -1010,6 +1013,7 @@ class TestConverterTruncationCases:
             )
 
             entity = WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 task_id="test_task_id",
                 app_id="test_app_id",
                 app_config=app_config,
@@ -1548,6 +1552,7 @@ def _workflow_pause_events_build_converter(
     *, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API
 ) -> WorkflowResponseConverter:
     application_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         workflow_execution_id="run-id",
         user_id="user",

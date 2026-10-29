@@ -14,7 +14,12 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.entities.task_entities import StreamEvent
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
@@ -149,6 +154,7 @@ def _build_resumption_context(
         workflow_id="workflow-1",
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=task_id,
         app_config=app_config,
         inputs={},
@@ -267,6 +273,7 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
         workflow_id="workflow-1",
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=task_id,
         app_config=app_config,
         inputs={},

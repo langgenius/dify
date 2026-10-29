@@ -1,7 +1,7 @@
 """Create the Human Input v2 schema.
 
 Revision ID: e8b4a1c6d920
-Revises: b9d3f7a5c102
+Revises: d7e9a1c3f502
 Create Date: 2026-10-26 16:46:14
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 from models.types import LongText, StringUUID
 
 revision = "e8b4a1c6d920"
-down_revision = "b9d3f7a5c102"
+down_revision = "d7e9a1c3f502"
 branch_labels = None
 depends_on = None
 

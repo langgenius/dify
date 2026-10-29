@@ -55,6 +55,7 @@ class WorkflowCase:
         pause: bool = True,
     ) -> tuple[PreparedWorkflowRun, WorkflowRunAgg]:
         entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.ACCOUNT,
             task_id=str(uuid4()),
             app_config=WorkflowUIBasedAppConfig(
                 tenant_id=self.workflow.tenant_id,

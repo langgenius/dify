@@ -12,7 +12,9 @@ from unittest.mock import patch
 import pytest
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.protocol import CreateRunRequest
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Select, event, select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from typing_extensions import TypedDict
 
 from clients.agent_backend import AgentBackendAgentAppRunInput, AgentBackendModelConfig, AgentBackendRunRequestBuilder
@@ -820,15 +822,13 @@ def test_upload_skill_for_console_maps_package_validation_failures(sqlite_sessio
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_apply_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session) -> None:
-    service = AgentConfigService()
+def test_prepare_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session) -> None:
+    service = _service(sqlite_session)
 
     with pytest.raises(AgentConfigServiceError, match="tool files") as exc_info:
-        service._apply_skill_updates(
-            sqlite_session,
+        service._prepare_skill_updates(
             tenant_id=TENANT,
             user_id=USER,
-            current=[],
             updates=[
                 ConfigPushSkillItem.model_validate(
                     {"name": "alpha", "file_ref": {"kind": "upload_file", "id": "upload-1"}}
@@ -847,12 +847,12 @@ def test_apply_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session)
     ],
 )
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_apply_skill_updates_maps_normalizer_failures(
+def test_prepare_skill_updates_maps_normalizer_failures(
     error_code: str,
     message: str,
     sqlite_session: Session,
 ) -> None:
-    service = AgentConfigService()
+    service = _service(sqlite_session)
     tool_file = ToolFile(
         user_id=USER,
         tenant_id=TENANT,
@@ -873,11 +873,9 @@ def test_apply_skill_updates_maps_normalizer_failures(
         ),
     ):
         with pytest.raises(AgentConfigServiceError, match=message) as exc_info:
-            service._apply_skill_updates(
-                sqlite_session,
+            service._prepare_skill_updates(
                 tenant_id=TENANT,
                 user_id=USER,
-                current=[],
                 updates=[
                     ConfigPushSkillItem.model_validate(
                         {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
@@ -1377,3 +1375,189 @@ def test_download_url_helpers_bind_shared_download_request_to_console_origin(
             )
             == "https://example.com/files/guide.txt?sign=2"
         )
+
+
+def _persist_upload(session: Session, *, file_id: str, name: str, tenant_id: str = TENANT) -> UploadFile:
+    upload = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"uploads/{file_id}",
+        name=name,
+        size=7,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=END_USER,
+        created_at=datetime(2025, 1, 1),
+        used=False,
+        hash=f"sha256:{file_id}",
+    )
+    upload.id = file_id
+    session.add(upload)
+    session.commit()
+    return upload
+
+
+@pytest.mark.parametrize("build_draft", [False, True])
+def test_push_files_for_console_merges_batch_atomically_with_last_same_name_winning(
+    sqlite_session: Session, build_draft: bool
+) -> None:
+    original = _soul(
+        prompt={"system_prompt": "Keep these instructions"},
+        config_note="Keep note",
+        env={"variables": [{"name": "TOKEN", "value": "keep"}]},
+        config_files=[AgentConfigFileRefConfig(name="keep.txt", file_kind="upload_file", file_id="kept")],
+    )
+    draft = _draft(
+        soul=original,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD if build_draft else AgentConfigDraftType.DRAFT,
+        account_id=USER if build_draft else None,
+    )
+    _persist_target(sqlite_session, draft)
+    _persist_upload(sqlite_session, file_id=UPLOAD_FILE, name="same.txt")
+    _persist_upload(sqlite_session, file_id=TOOL_FILE, name="new.txt")
+    _persist_upload(sqlite_session, file_id=SKILL_FILE, name="same.txt")
+
+    response = _service(sqlite_session).push_files_for_console(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        user_id=USER,
+        config_version_id=DRAFT,
+        config_version_kind=AgentConfigVersionKind.BUILD_DRAFT if build_draft else AgentConfigVersionKind.DRAFT,
+        upload_file_ids=[UPLOAD_FILE, TOOL_FILE, SKILL_FILE],
+    )
+
+    assert response == {
+        "files": [
+            {
+                "id": name,
+                "name": name,
+                "file_id": file_id,
+                "is_missing": False,
+                "size": 7,
+                "hash": f"sha256:{file_id}",
+                "mime_type": "text/plain",
+            }
+            for name, file_id in [("same.txt", SKILL_FILE), ("new.txt", TOOL_FILE)]
+        ],
+        "config_version": {"id": DRAFT, "kind": "build_draft" if build_draft else "draft", "writable": True},
+    }
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(AgentConfigDraft, DRAFT)
+    assert persisted is not None
+    expected = original.model_copy(deep=True)
+    expected.config_files += [
+        AgentConfigFileRefConfig(
+            name=name,
+            file_kind="upload_file",
+            file_id=file_id,
+            size=7,
+            hash=f"sha256:{file_id}",
+            mime_type="text/plain",
+        )
+        for name, file_id in [("same.txt", SKILL_FILE), ("new.txt", TOOL_FILE)]
+    ]
+    assert persisted.config_snapshot == expected
+
+
+@pytest.mark.parametrize("invalid_source", ["missing", "other_tenant", "invalid_name"])
+def test_push_files_for_console_does_not_commit_any_file_when_batch_validation_fails(
+    sqlite_session: Session, invalid_source: str
+) -> None:
+    original = _soul(config_note="Unchanged")
+    _persist_target(sqlite_session, _draft(soul=original))
+    _persist_upload(sqlite_session, file_id=UPLOAD_FILE, name="valid.txt")
+    if invalid_source != "missing":
+        _persist_upload(
+            sqlite_session,
+            file_id=TOOL_FILE,
+            name="../invalid.txt" if invalid_source == "invalid_name" else "foreign.txt",
+            tenant_id=OTHER_TENANT if invalid_source == "other_tenant" else TENANT,
+        )
+
+    with pytest.raises((AgentConfigServiceError, ValueError)):
+        _service(sqlite_session).push_files_for_console(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=DRAFT,
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            upload_file_ids=[UPLOAD_FILE, TOOL_FILE],
+        )
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(AgentConfigDraft, DRAFT)
+    assert persisted is not None
+    assert persisted.config_snapshot == original
+
+
+def test_push_files_for_console_rejects_published_snapshots_without_mutation(sqlite_session: Session) -> None:
+    _persist_target(sqlite_session, _snapshot())
+    _persist_upload(sqlite_session, file_id=UPLOAD_FILE, name="valid.txt")
+    with pytest.raises(AgentConfigServiceError, match="editable drafts"):
+        _service(sqlite_session).push_files_for_console(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=SNAPSHOT,
+            config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+            upload_file_ids=[UPLOAD_FILE],
+        )
+    sqlite_session.expire_all()
+    snapshot = sqlite_session.get(AgentConfigSnapshot, SNAPSHOT)
+    assert snapshot is not None
+    assert snapshot.config_snapshot.config_files == []
+
+
+@pytest.mark.parametrize("dirty_cached_draft", [False, True], ids=["cached", "dirty-cached"])
+def test_push_files_for_console_locks_parent_then_draft_and_refreshes_cached_snapshot(
+    sqlite_session: Session,
+    dirty_cached_draft: bool,
+) -> None:
+    _persist_target(sqlite_session, _draft())
+    _persist_upload(sqlite_session, file_id=UPLOAD_FILE, name="new.txt")
+    factory = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+    with factory() as binding_session:
+        cached = binding_session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.id == DRAFT))
+        assert cached is not None
+        if dirty_cached_draft:
+            pending_edit = cached.config_snapshot.model_copy(deep=True)
+            pending_edit.prompt.system_prompt = "Stale local prompt"
+            cached.config_snapshot = pending_edit
+        with factory() as concurrent_session:
+            concurrent = concurrent_session.get(AgentConfigDraft, DRAFT)
+            assert concurrent is not None
+            concurrent.config_snapshot = _soul(
+                config_note="Concurrent edit",
+                config_files=[AgentConfigFileRefConfig(name="keep.txt", file_kind="upload_file", file_id="kept")],
+            )
+            concurrent_session.commit()
+        assert cached.config_snapshot.config_note == ""
+        locked_queries: list[str] = []
+
+        def record_lock(state: ORMExecuteState) -> None:
+            if not isinstance(state.statement, Select):
+                return
+            sql = str(state.statement.compile(dialect=postgresql.dialect()))
+            if "FOR UPDATE" in sql:
+                locked_queries.append(sql)
+
+        event.listen(binding_session, "do_orm_execute", record_lock)
+        service = AgentConfigService(session_factory=lambda: binding_session)
+        service.push_files_for_console(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=DRAFT,
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            upload_file_ids=[UPLOAD_FILE],
+        )
+
+    assert len(locked_queries) == 2
+    assert "FROM agents" in locked_queries[0]
+    assert "FROM agent_config_drafts" in locked_queries[1]
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(AgentConfigDraft, DRAFT)
+    assert persisted is not None
+    assert persisted.config_snapshot.config_note == "Concurrent edit"
+    assert [ref.name for ref in persisted.config_snapshot.config_files] == ["keep.txt", "new.txt"]

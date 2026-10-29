@@ -80,7 +80,7 @@ export function AgentKnowledgeRetrieval() {
     setRetrievals(next)
     setIsDialogOpen(false)
     const added = next.find((item) => !retrievals.some((previous) => previous.id === item.id))
-    if (added) addOptionsRef.current?.onAdded?.(added)
+    if (added) addOptionsRef.current?.onAdded?.([added])
     addOptionsRef.current = undefined
   }
   useRegisterAgentOrchestrateAddAction('knowledge', addRetrieval)
