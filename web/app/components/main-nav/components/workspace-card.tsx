@@ -54,15 +54,15 @@ function WorkspaceCardSkeleton({
       aria-hidden="true"
       className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg shadow-xs"
     >
-      <div className="flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5">
-        <div className={cn(workspaceCardSkeletonClassName, 'h-6 w-6 shrink-0 rounded-lg')} />
+      <div className="flex w-full items-center gap-1.5 py-1.5 ps-1.5 pe-3">
+        <div className={cn(workspaceCardSkeletonClassName, 'size-6 shrink-0 rounded-lg')} />
         <div className="flex min-w-0 grow items-center">
           <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-32 max-w-full')} />
         </div>
-        <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-4 shrink-0')} />
+        <div className={cn(workspaceCardSkeletonClassName, 'size-4 shrink-0')} />
       </div>
       {showCloudBilling && (
-        <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
+        <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 ps-2 pe-2.5">
           <div className="flex min-w-0 flex-1 items-center px-1">
             <div className={cn(workspaceCardSkeletonClassName, 'h-4 w-24 max-w-full')} />
           </div>
@@ -119,13 +119,13 @@ function WorkspaceCardTrigger({
   const showStatus = status !== undefined && status !== null
 
   return (
-    <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs">
+    <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-start shadow-xs">
       <PopoverTrigger
         title={name}
         onMouseEnter={onPrefetchWorkspaces}
         onFocus={onPrefetchWorkspaces}
         className={cn(
-          'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:ring-inset',
+          'flex w-full items-center gap-1.5 py-1.5 ps-1.5 pe-3 text-start transition-colors hover:bg-state-base-hover focus-visible:ring-inset',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
           'data-popup-open:bg-linear-to-b data-popup-open:from-background-section-burn data-popup-open:to-background-section',
         )}
@@ -134,27 +134,24 @@ function WorkspaceCardTrigger({
           <WorkspaceAvatar name={name} size="sm" />
         </span>
         <div className="min-w-0 grow">
-          <div className="flex min-w-0 items-center gap-1 pr-0.5">
+          <div className="flex min-w-0 items-center gap-1 pe-0.5">
             <span className="max-w-30 min-w-0 shrink truncate system-sm-medium text-text-primary">
               {name}
             </span>
             {showStatus && <span className="flex shrink-0 items-center">{status}</span>}
           </div>
         </div>
-        <span
-          aria-hidden
-          className="i-ri-expand-up-down-line h-4 w-4 shrink-0 text-text-tertiary"
-        />
+        <span aria-hidden className="i-ri-expand-up-down-line size-4 shrink-0 text-text-tertiary" />
         <span className="sr-only">{openMenuLabel}</span>
       </PopoverTrigger>
       {showCloudBilling && (
-        <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
+        <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 ps-2 pe-2.5">
           {credits !== null && (
             <Link
               href={creditsHref}
-              className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+              className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-start text-text-tertiary transition-colors hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
             >
-              <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
+              <span className="i-custom-vender-main-nav-credits size-3 shrink-0" aria-hidden />
               <WorkspaceCreditsLabel
                 credits={formattedCredits}
                 unit={isUnlimited ? undefined : creditsUnit}
@@ -212,12 +209,12 @@ function WorkspaceMenuHeader({
         <button
           type="button"
           title={settingsLabel}
-          className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+          className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-start outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={onOpenSettings}
         >
           <WorkspaceMenuItemContent
             icon={
-              <span aria-hidden className="i-custom-vender-main-nav-workspace-settings h-4 w-4" />
+              <span aria-hidden className="i-custom-vender-main-nav-workspace-settings size-4" />
             }
             label={settingsLabel}
           />
@@ -226,11 +223,11 @@ function WorkspaceMenuHeader({
           <button
             type="button"
             title={inviteMembersLabel}
-            className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-start outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
             onClick={onInviteMembers}
           >
             <WorkspaceMenuItemContent
-              icon={<span aria-hidden className="i-ri-user-add-line h-4 w-4" />}
+              icon={<span aria-hidden className="i-ri-user-add-line size-4" />}
               label={inviteMembersLabel}
             />
           </button>
@@ -330,7 +327,7 @@ export function WorkspaceCard() {
           onPlanClick={() => setPricing('open')}
         />
         <PopoverContent
-          placement="bottom-start"
+          align="start"
           sideOffset={-workspaceMenuTriggerHeight}
           alignOffset={workspaceMenuAlignOffset}
           className="w-70 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"

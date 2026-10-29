@@ -231,6 +231,18 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * AppMoreLikeThisDisabledError
  *
  * The 'More like this' feature is disabled. Please refresh your page.
@@ -299,6 +311,42 @@ export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
   }),
 )
 
@@ -608,6 +656,27 @@ export const zHumanInputFormSubmitPayload = z.object({
 })
 
 /**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
+})
+
+/**
  * LicenseStatus
  */
 export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
@@ -662,6 +731,18 @@ export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })
+
+/**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * MessageFile
@@ -974,12 +1055,16 @@ export const zRetrieverResource = z.object({
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
   doc_metadata: z.record(z.string(), zJsonValueType).nullish(),
+  document_asset_id: z.uuid().nullish(),
   document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
+  document_revision: z.int().nullish(),
+  document_version: z.int().nullish(),
   files: z.array(z.record(z.string(), zJsonValueType)).nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
   message_id: z.uuid().optional(),
   page: z.int().nullish(),
   position: z.int(),
@@ -1666,6 +1751,7 @@ export const zWebAppAuthModel = z.object({
  * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
  */
 export const zSystemFeatureModel = z.object({
+  agent_tracing_api_collection_enabled: z.boolean(),
   branding: zBrandingModel.default({
     application_title: '',
     enabled: false,
@@ -1981,7 +2067,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 })
 
 /**
- * Conversation renamed successfully
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 

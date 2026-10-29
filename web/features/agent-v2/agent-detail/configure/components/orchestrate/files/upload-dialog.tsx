@@ -13,6 +13,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -297,7 +298,6 @@ export function AgentFileUploadDialog({
             onSuccess: (committedFile) => {
               toast.success(t(($) => $['agentDetail.configure.files.upload.success']))
               onUploaded(toAgentFileNode(committedFile.file))
-              setFile(undefined)
               onOpenChange(false)
             },
             onError: () => {
@@ -312,18 +312,18 @@ export function AgentFileUploadDialog({
     )
   }
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      uploadFileMutation.reset()
-      commitAgentFileMutation.reset()
-      commitWorkflowAgentFileMutation.reset()
-      setFile(undefined)
-    }
-    onOpenChange(nextOpen)
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && isUploading) details.cancel()
+        else onOpenChange(nextOpen)
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) setFile(undefined)
+      }}
+      disablePointerDismissal
+    >
       <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['agentDetail.configure.files.upload.title'])}</DialogTitle>
@@ -336,9 +336,9 @@ export function AgentFileUploadDialog({
           <AgentFileUploader file={file} onChange={setFile} />
         </DialogBody>
         <DialogFooter>
-          <Button type="button" onClick={() => handleOpenChange(false)} disabled={isUploading}>
+          <DialogClose render={<Button disabled={isUploading} />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             type="button"
             variant="primary"

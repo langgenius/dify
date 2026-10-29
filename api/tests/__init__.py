@@ -1,1 +1,1 @@
-"""Test suite root package (enables ``import tests.integration_tests...`` with ``pythonpath = .``)."""
+"""Test suite root package (enables ``import tests.e2e_tests.middleware...`` with ``pythonpath = .``)."""

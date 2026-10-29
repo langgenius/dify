@@ -13,7 +13,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -26,6 +26,7 @@ import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import ConversationList from '../list'
 
 const api = vi.hoisted(() => ({
+  externalTrace: vi.fn<typeof consoleClient.apps.byAppId.traceRuns.bySourceKind.bySourceId.get>(),
   messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
   feedback: vi.fn<typeof consoleClient.apps.byAppId.feedbacks.post>(),
   addAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
@@ -52,6 +53,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': (input) => api.externalTrace(input),
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatConversations.byConversationId.get': (input) => api.chatDetail(input),
       'apps.byAppId.completionConversations.byConversationId.get': (input) =>
@@ -61,8 +65,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.feedbacks.post': (input) => api.feedback(input),
       'apps.byAppId.annotations.post': (input) => api.addAnnotation(input),
-      'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
-      'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
       'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
     }),
   }
@@ -218,7 +220,7 @@ function renderConversationList({
   const rendered = renderWithConsoleQuery(
     <UrlState>
       <ConversationList appDetail={appDetail} logs={logs} onRefresh={onRefresh} />
-      <AppToastHost />
+      <AppToaster />
     </UrlState>,
     { queryClient: createClient() },
   )
@@ -227,6 +229,13 @@ function renderConversationList({
 
 beforeEach(() => {
   for (const mock of Object.values(api)) mock.mockReset()
+  api.externalTrace.mockReset().mockResolvedValue({
+    status: 'accepted',
+    source_kind: 'workflow',
+    source_id: 'run-1',
+    provider: 'langfuse',
+    trace_url: 'https://cloud.langfuse.com/trace/run-1',
+  })
   onRefresh.mockClear()
   api.chatDetail.mockImplementation(async ({ params }) =>
     createChatDetail({ id: params.conversation_id }),
@@ -399,10 +408,11 @@ it('adds, edits and removes an annotation from a conversation answer', async () 
   await user.click(await screen.findByRole('button', { name: 'appDebug.feature.annotation.edit' }))
   const editor = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
   await user.click(within(editor).getAllByRole('button', { name: 'common.operation.edit' })[1]!)
-  await user.type(
-    within(editor).getByRole('textbox', { name: 'appAnnotation.editModal.yourAnswer' }),
-    'Improved answer',
-  )
+  const answerInput = within(editor).getByRole('textbox', {
+    name: 'appAnnotation.editModal.yourAnswer',
+  })
+  await user.clear(answerInput)
+  await user.type(answerInput, 'Improved answer')
   await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
     expect(api.editAnnotation).toHaveBeenCalledExactlyOnceWith({
@@ -523,6 +533,13 @@ it('opens and closes the workflow run selected from an answer', async () => {
     'true',
   )
   await waitFor(() => expect(api.run).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1'))
+  expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
+    'href',
+    'https://cloud.langfuse.com/trace/run-1',
+  )
+  expect(api.externalTrace).toHaveBeenCalledWith({
+    params: { app_id: 'app-1', source_kind: 'workflow', source_id: 'run-1' },
+  })
   expect(api.tracing).toHaveBeenCalledWith({
     url: '/apps/app-1/workflow-runs/run-1/node-executions',
   })

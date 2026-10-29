@@ -14,7 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from controllers.common.app_access_error import register_app_access_error_metadata
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 APP_ID = "9d6e3fb3-94ce-48f9-a958-58ca80b1c02e"
 TRUSTED = "172.18.0.0/16,10.0.0.0/8,2400:cb00::/32"

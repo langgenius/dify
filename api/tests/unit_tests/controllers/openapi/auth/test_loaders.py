@@ -20,8 +20,7 @@ from controllers.openapi.auth.subjects import Subject
 from models import App
 from models.account import TenantAccountRole, TenantStatus
 from services.app_service import AppService
-
-from ._world import (
+from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
     APP_ID,
     OTHER_TENANT_ID,

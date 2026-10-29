@@ -1,7 +1,7 @@
 import { createToast, createToastManager } from '@langgenius/dify-ui/toast'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { AppToastHost } from '../host'
+import { AppToaster } from '../app-toaster'
 
 // Real CSS and pointer hit testing prove the hidden floating action can be discovered
 // and clicked without overflowing the card or starting swipe-to-dismiss.
@@ -16,7 +16,7 @@ it('reveals a contained copy action on hover at 360px and keeps the card open af
         <button type="button" style={{ position: 'fixed', bottom: 16, left: 16 }}>
           Outside notifications
         </button>
-        <AppToastHost manager={manager} timeout={0} />
+        <AppToaster manager={manager} timeout={0} />
       </>,
     )
     const outside = screen.getByRole('button', { name: 'Outside notifications' })
@@ -61,7 +61,7 @@ it('reveals the action for keyboard focus and supports reverse tabbing', async (
   const manager = createToastManager()
   const toast = createToast(manager)
   try {
-    const screen = await render(<AppToastHost manager={manager} timeout={0} />)
+    const screen = await render(<AppToaster manager={manager} timeout={0} />)
     toast.error('Keyboard error')
     const card = screen.getByRole('dialog', { name: 'Keyboard error' })
     const copy = screen.getByRole('button', { name: 'common.operation.copyErrorDetails' })

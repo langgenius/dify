@@ -23,7 +23,7 @@ import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
@@ -35,7 +35,7 @@ from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -102,6 +102,7 @@ def _persist_scope(
 def _build_app_generate_entity() -> RagPipelineGenerateEntity:
     app_config = PipelineConfig(app_id="pipe", workflow_id="wf", tenant_id="tenant", app_mode=AppMode.RAG_PIPELINE)
     return RagPipelineGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         stream=True,
         app_config=app_config,
