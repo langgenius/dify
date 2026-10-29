@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import NoReturn, Protocol
 
 from models.account import AccountStatus
@@ -169,7 +170,7 @@ class AuthorizationCodeGrantHandler:
         account = _active_account(self._accounts, record.account_id)
         # A client not registered for the refresh grant could never spend one.
         refresh = (
-            RefreshTokenIssue(lifetime=self._settings.refresh_token_lifetime)
+            RefreshTokenIssue(expires_at=datetime.now(UTC) + self._settings.refresh_token_lifetime)
             if GrantType.REFRESH_TOKEN in client.grant_types
             else None
         )
@@ -216,11 +217,13 @@ class AuthorizationCodeGrantHandler:
 
 
 class RefreshTokenGrantHandler:
-    """Rotates a refresh token, with a replay grace for a lost response or two refreshes racing.
+    """Rotates a refresh token; the new one keeps the login's fixed end.
 
-    The token is read without a lock to find its grant; ``rotate_token`` then
-    re-checks and spends it under the account lock, the same lock revocation
-    takes, so a revoked grant never comes back.
+    The previous token stays valid until its successor is first used, so a lost
+    response or two refreshes racing can retry; presenting any older one revokes
+    the grant. The token is read without a lock to find its grant;
+    ``rotate_token`` then re-checks and spends it under the account lock, the
+    same lock revocation takes, so a revoked grant never comes back.
     """
 
     def __init__(
@@ -259,18 +262,14 @@ class RefreshTokenGrantHandler:
         if record.workspace_id is None:
             self._end_dead_grant(record)
 
-        presented = PresentedRefreshToken(
-            id=record.id,
-            family_id=record.family_id,
-            reuse_grace=self._settings.refresh_reuse_grace,
-        )
+        presented = PresentedRefreshToken(id=record.id, family_id=record.family_id)
         try:
             return self._minter.mint(
                 account,
                 workspace_id=record.workspace_id,
                 client_id=record.client_id,
                 device_label=record.device_label,
-                refresh=RefreshTokenIssue(lifetime=self._settings.refresh_token_lifetime, presented=presented),
+                refresh=RefreshTokenIssue(expires_at=record.expires_at, presented=presented),
             )
         except RefreshTokenReusedError:
             self._revoke.revoke_grant(record.grant_key, account_id=record.account_id)

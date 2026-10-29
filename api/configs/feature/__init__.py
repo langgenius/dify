@@ -37,10 +37,6 @@ DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 30
 MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 1
 MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 365
 
-DEFAULT_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 30
-MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 0
-MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 1440
-
 DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 7
 MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 1
 MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 365
@@ -1238,9 +1234,9 @@ class AuthConfig(BaseSettings):
         )
 
     OAUTH_REFRESH_TOKEN_TTL_DAYS: int = Field(
-        description="Lifetime in days of refresh tokens issued by the authorization code flow; each refresh "
-        f"starts a new lifetime. Values outside {MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS}-{MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS} "
-        "are clamped; a non-integer falls back to the default.",
+        description="Days an authorization code flow login can keep refreshing, counted from the login; "
+        f"refreshing never extends it. Values outside {MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS}-"
+        f"{MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS} are clamped; a non-integer falls back to the default.",
         ge=MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS,
         le=MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS,
         default=DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS,
@@ -1255,27 +1251,6 @@ class AuthConfig(BaseSettings):
             default=DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS,
             minimum=MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS,
             maximum=MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS,
-        )
-
-    OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: int = Field(
-        description="Minutes a rotated refresh token may still be exchanged (a lost response, or two refreshes "
-        "racing); reuse after that revokes the login. 0 makes any reuse revoke it. Values outside "
-        f"{MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES}-{MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES} are clamped; "
-        "a non-integer falls back to the default.",
-        ge=MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
-        le=MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
-        default=DEFAULT_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
-    )
-
-    @field_validator("OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES", mode="before")
-    @classmethod
-    def _clamp_oauth_refresh_token_reuse_grace_minutes(cls, v: object) -> int:
-        return _clamp_int_setting(
-            "OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES",
-            v,
-            default=DEFAULT_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
-            minimum=MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
-            maximum=MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
         )
 
     OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: int = Field(

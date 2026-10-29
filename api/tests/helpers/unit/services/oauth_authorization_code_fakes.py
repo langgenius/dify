@@ -151,7 +151,6 @@ class FakeTokenSettings:
     auth_code_access_token_lifetime: timedelta = timedelta(hours=24)
     authorization_code_ttl: timedelta = timedelta(seconds=600)
     refresh_token_lifetime: timedelta = timedelta(days=30)
-    refresh_reuse_grace: timedelta = timedelta(minutes=30)
 
 
 def account_snapshot(account_id: str = ACCOUNT_ID, *, status: str = "active") -> AccountSnapshot:

@@ -550,8 +550,7 @@ class TestRefreshTokenGrantCases:
         assert old is not None
         assert new is not None
         assert (old.rotated_at is not None, new.rotated_at) == (True, None)
-        assert (new.family_id, new.device_label) == (old.family_id, old.device_label)
-        _assert_close(new.expires_at, datetime.now(UTC) + timedelta(days=30))
+        assert (new.family_id, new.device_label, new.expires_at) == (old.family_id, old.device_label, old.expires_at)
         assert world.usage.marked == [WEB_ID]
 
     @staticmethod
@@ -578,29 +577,41 @@ class TestRefreshTokenGrantCases:
         assert world.refresh_error(token).code is TokenErrorCode.INVALID_GRANT
 
     @staticmethod
-    def test_replay_within_the_grace_issues_one_more_refresh_and_leaves_the_family_alone(world: _World) -> None:
+    def test_replay_before_the_successor_is_used_replaces_the_successor(world: _World) -> None:
         login = world.login()
-        rotated = world.refresh(login.refresh_token)
+        lost = world.refresh(login.refresh_token)
 
         replayed = world.refresh(login.refresh_token)
 
-        assert replayed.refresh_token not in (None, login.refresh_token, rotated.refresh_token)
-        successor = world.refresh_row(rotated.refresh_token)
-        assert successor is not None
-        assert successor.rotated_at is None
-        assert len(world.refresh_rows()) == 3
+        assert replayed.refresh_token not in (None, login.refresh_token, lost.refresh_token)
+        assert world.refresh_error(lost.refresh_token).code is TokenErrorCode.INVALID_GRANT
         assert world.live_access_ids() == {replayed.payload["token_id"]}
+        assert world.refresh(replayed.refresh_token).payload["token"]
 
     @staticmethod
-    def test_reuse_after_the_grace_revokes_the_grant(world: _World) -> None:
+    def test_replaying_the_parent_after_the_successor_was_used_revokes_the_grant(world: _World) -> None:
         login = world.login()
         rotated = world.refresh(login.refresh_token)
-        world.set_refresh(login.refresh_token, rotated_at=datetime.now(UTC) - timedelta(minutes=31))
+        latest = world.refresh(rotated.refresh_token)
 
         assert world.refresh_error(login.refresh_token).code is TokenErrorCode.INVALID_GRANT
         assert world.live_access_ids() == set()
         assert world.refresh_rows() == []
-        assert world.refresh_error(rotated.refresh_token).code is TokenErrorCode.INVALID_GRANT
+        assert world.refresh_error(latest.refresh_token).code is TokenErrorCode.INVALID_GRANT
+
+    @staticmethod
+    def test_rotation_never_moves_the_login_expiry(world: _World) -> None:
+        login = world.login()
+        end = datetime.now(UTC) + timedelta(days=1)
+        world.set_refresh(login.refresh_token, expires_at=end)
+
+        rotated = world.refresh(login.refresh_token)
+        latest = world.refresh(rotated.refresh_token)
+
+        for result in (rotated, latest):
+            row = world.refresh_row(result.refresh_token)
+            assert row is not None
+            assert row.expires_at.replace(tzinfo=UTC) == end
 
     @staticmethod
     def test_expired_refresh_is_invalid_grant_and_issues_nothing(world: _World) -> None:

@@ -173,7 +173,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         refresh_write: RefreshTokenWrite | None = None
         if refresh is not None:
             refresh_token = new_refresh_token()
-            refresh_write = _refresh_write(refresh, refresh_token, workspace_id=workspace_id, now=now)
+            refresh_write = _refresh_write(refresh, refresh_token, workspace_id=workspace_id)
         rotation = self._tokens.rotate_token(
             OAuthDeviceTokenWrite(
                 subject_email=subject_email,
@@ -200,14 +200,13 @@ def _refresh_write(
     token: str,
     *,
     workspace_id: str | None,
-    now: datetime,
 ) -> RefreshTokenWrite:
     presented = refresh.presented
     return RefreshTokenWrite(
         token_hash=sha256_hex(token),
         family_id=str(uuid.uuid4()) if presented is None else presented.family_id,
         workspace_id=workspace_id,
-        expires_at=now + refresh.lifetime,
+        expires_at=refresh.expires_at,
         presented=presented,
     )
 

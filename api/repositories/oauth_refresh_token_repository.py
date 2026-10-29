@@ -3,13 +3,12 @@
 import secrets
 from collections.abc import Collection
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import ColumnElement, Row, and_, delete, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from libs.datetime_utils import ensure_naive_utc
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthRefreshToken
 from services.oauth_device_contracts import (
@@ -106,9 +105,17 @@ def insert_refresh_token(session: Session, *, grant: GrantKey, account_id: str, 
 def spend_refresh_token(session: Session, presented: PresentedRefreshToken, *, now: datetime) -> None:
     """Spend the presented token in the caller's transaction, which holds the account lock.
 
-    A fresh token is marked rotated. A rotated one passes only inside the replay
-    grace, and is left as it is. Raises ``RefreshTokenRejectedError`` when the
-    token is gone or expired, ``RefreshTokenReusedError`` past the grace.
+    A rotated token stays valid until its successor is first used, so a client
+    that lost a refresh response can retry without forking the login:
+
+    - The current token is marked rotated, and the family's older rotated
+      tokens go, except its parent, kept so reusing it is caught.
+    - The most recently rotated token may be presented again while its
+      successor is unused; that successor goes.
+
+    So a family holds at most three rows. Raises ``RefreshTokenRejectedError``
+    when the token is gone or expired, ``RefreshTokenReusedError`` for an older
+    rotated token.
     """
     row = session.execute(
         select(OpenAPIOAuthRefreshToken.rotated_at)
@@ -117,20 +124,25 @@ def spend_refresh_token(session: Session, presented: PresentedRefreshToken, *, n
     ).first()
     if row is None:
         raise RefreshTokenRejectedError
+    family = OpenAPIOAuthRefreshToken.family_id == presented.family_id
+    rotated = OpenAPIOAuthRefreshToken.rotated_at.is_not(None)
+    latest_rotated = session.scalar(
+        select(OpenAPIOAuthRefreshToken.id)
+        .where(family, rotated)
+        .order_by(OpenAPIOAuthRefreshToken.rotated_at.desc(), OpenAPIOAuthRefreshToken.id.desc())
+        .limit(1)
+    )
     if row.rotated_at is None:
+        session.execute(
+            delete(OpenAPIOAuthRefreshToken).where(family, rotated, OpenAPIOAuthRefreshToken.id != latest_rotated)
+        )
         session.execute(
             update(OpenAPIOAuthRefreshToken).where(OpenAPIOAuthRefreshToken.id == presented.id).values(rotated_at=now)
         )
         return
-    if not within_replay_grace(rotated_at=row.rotated_at, now=now, grace=presented.reuse_grace):
+    if latest_rotated != presented.id:
         raise RefreshTokenReusedError
-
-
-def within_replay_grace(*, rotated_at: datetime, now: datetime, grace: timedelta) -> bool:
-    """Whether a token rotated at ``rotated_at`` may still be replayed. Some databases return naive UTC times."""
-    if not grace:
-        return False
-    return ensure_naive_utc(now) - ensure_naive_utc(rotated_at) <= grace
+    session.execute(delete(OpenAPIOAuthRefreshToken).where(family, OpenAPIOAuthRefreshToken.rotated_at.is_(None)))
 
 
 def delete_refresh_grants(session: Session, grants: Collection[GrantKey], *, account_id: str) -> None:

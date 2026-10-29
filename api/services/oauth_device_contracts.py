@@ -2,7 +2,7 @@
 
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal, NotRequired, Protocol, TypedDict
 
@@ -153,14 +153,16 @@ class PresentedRefreshToken:
 
     id: str
     family_id: str
-    reuse_grace: timedelta
 
 
 @dataclass(frozen=True, slots=True)
 class RefreshTokenIssue:
-    """Asks for a refresh token with the access token: in a new family, or in the presented token's."""
+    """Asks for a refresh token with the access token: in a new family, or in the presented token's.
 
-    lifetime: timedelta
+    ``expires_at`` is the family's fixed end, set at login; rotation never moves it.
+    """
+
+    expires_at: datetime
     presented: PresentedRefreshToken | None = None
 
 
@@ -361,7 +363,7 @@ class RefreshTokenRejectedError(Exception):
 
 
 class RefreshTokenReusedError(RefreshTokenRejectedError):
-    """The presented refresh token was rotated longer ago than the replay grace allows."""
+    """The presented refresh token was rotated and its successor already used."""
 
 
 class StateNotFoundError(Exception):

@@ -6,8 +6,8 @@ rows have no hard-expire trigger — both get pruned here. A login can reuse a r
 between the SELECT and the DELETE, which is why ``delete_in_batches`` re-checks.
 Spec: docs/specs/v1.0/server/tokens.md §Hard-expire.
 
-A rotated refresh token stays until it expires: presenting it after the replay
-grace must still find it, so the reuse revokes its grant.
+A rotated refresh token that rotation keeps stays until it expires: presenting
+it after its successor was used must still find it, so the reuse revokes its grant.
 """
 
 from __future__ import annotations

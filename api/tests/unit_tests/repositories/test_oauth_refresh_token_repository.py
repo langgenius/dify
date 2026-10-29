@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.oauth_bearer import sha256_hex
@@ -66,7 +66,7 @@ def test_insert_stores_only_the_hash_and_find_returns_the_record(sqlite_session_
 
 
 def _spend(factory: sessionmaker[Session], record: RefreshTokenRecord) -> None:
-    presented = PresentedRefreshToken(id=record.id, family_id=record.family_id, reuse_grace=timedelta(minutes=30))
+    presented = PresentedRefreshToken(id=record.id, family_id=record.family_id)
     with factory() as session, session.begin():
         spend_refresh_token(session, presented, now=datetime.now(UTC))
 
@@ -77,23 +77,43 @@ def _found(repo: SQLAlchemyOAuthRefreshTokenRepository, token: str) -> RefreshTo
     return record
 
 
-def test_spend_rotates_a_fresh_token_replays_it_in_the_grace_and_calls_later_use_reuse(
+def _successor(factory: sessionmaker[Session], record: RefreshTokenRecord) -> RefreshTokenRecord:
+    token = seed_refresh_token(
+        factory,
+        grant=GRANT,
+        account_id=ACCOUNT_ID,
+        workspace_id=WORKSPACE_ID,
+        lifetime=LIFETIME,
+        family_id=record.family_id,
+    )
+    return _found(_repository(factory), token)
+
+
+def _ids(factory: sessionmaker[Session]) -> set[str]:
+    with factory() as session:
+        return set(session.scalars(select(OpenAPIOAuthRefreshToken.id)))
+
+
+def test_a_rotated_token_works_until_its_successor_is_used_and_a_family_keeps_three_rows(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    repo = _repository(sqlite_session_factory)
-    token = _issue(sqlite_session_factory)
-    record = _found(repo, token)
+    first = _found(_repository(sqlite_session_factory), _issue(sqlite_session_factory))
+    _spend(sqlite_session_factory, first)
+    unused = _successor(sqlite_session_factory, first)
 
-    _spend(sqlite_session_factory, record)
-    rotated_at = _found(repo, token).rotated_at
-    _spend(sqlite_session_factory, record)
+    _spend(sqlite_session_factory, first)
 
-    assert rotated_at is not None
-    assert _found(repo, token).rotated_at == rotated_at
-    with sqlite_session_factory() as session, session.begin():
-        session.execute(update(OpenAPIOAuthRefreshToken).values(rotated_at=datetime.now(UTC) - timedelta(minutes=31)))
+    assert _ids(sqlite_session_factory) == {first.id}
+    second = _successor(sqlite_session_factory, first)
+    _spend(sqlite_session_factory, second)
+    third = _successor(sqlite_session_factory, second)
+    assert unused.id not in _ids(sqlite_session_factory)
     with pytest.raises(RefreshTokenReusedError):
-        _spend(sqlite_session_factory, record)
+        _spend(sqlite_session_factory, first)
+
+    _spend(sqlite_session_factory, third)
+
+    assert _ids(sqlite_session_factory) == {second.id, third.id}
 
 
 def test_spend_rejects_an_expired_or_deleted_token(sqlite_session_factory: sessionmaker[Session]) -> None:
