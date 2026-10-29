@@ -28,7 +28,12 @@ from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.native.agent_contracts import AgentNodeAssociation
 from runtime_contracts.builder.native.contracts import CheckpointRef
 from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload, NativeWorkflowOutcome
-from services.dify_builder.native_testing.confirmed_agent_completion import _native_run_id, _request, _terminal_proof
+from services.dify_builder.native_testing.confirmed_agent_completion import (
+    _native_run_id,
+    _request,
+    _terminal_proof,
+    cancelled_parent_proof,
+)
 from services.dify_builder.native_testing.confirmed_agent_continuation import validate_parent_snapshot
 from services.dify_builder.native_testing.private_reads import validate_private_read
 from services.dify_builder.native_testing.state_store import (
@@ -219,6 +224,9 @@ class ConfirmedAgentCancellation:
             request = _request(sql, actor=self.commands.actor, ref=ref)
             if request is None or request.state != "sealed":
                 return False
+            outcome = _terminal_proof(sql, request=request, ref=ref)
+            if outcome is not None and outcome.reason_code == "native_cancelled":
+                return True
             states = sql.scalars(
                 select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
             ).all()
@@ -370,6 +378,8 @@ class ConfirmedAgentCancellation:
         return targets
 
     def settle(self, *, ref):
+        if self.settle_terminal(ref=ref):
+            return True
         with self.loader.session_factory() as sql:
             owned, scope = self.loader._load(sql, ref=ref, lock=False, settlement=True)
             request = _request(sql, actor=self.commands.actor, ref=ref)
@@ -436,4 +446,40 @@ class ConfirmedAgentCancellation:
                 output_result_ref=None,
             ).model_dump(mode="json")
             # cancellation/cleanup state and capacity remain with C02.
+            return True
+
+    def settle_terminal(self, *, ref):
+        """Seal the ordinary producer's consumed cancellation, using durable SQL.
+
+        Its failed Agent node retains the original create association and the
+        actual cancelled event. No live backend read or cleanup acknowledgement
+        is needed. Proof and source settlement share the existing scope lock.
+        """
+        with self.loader.locked(ref=ref, settlement=True) as (sql, owned, _):
+            request = _request(sql, actor=self.commands.actor, ref=ref)
+            if request is None:
+                return False
+            state = invocation_state(sql, ref, owned.tenant_id)
+            if state.outcome is not None:
+                outcome = _terminal_proof(sql, request=request, ref=ref)
+                return outcome is not None and outcome.reason_code == "native_cancelled"
+            proof = cancelled_parent_proof(sql, request=request, ref=ref, allow_claimed=True)
+            if proof is None:
+                return False
+            native, _, source = proof
+            if source is not None:
+                source.state = "completed"
+            state.pending_ids, state.wait_reason = [], None
+            state.outcome = NativeWorkflowOutcome(
+                status="stopped",
+                ref=ref,
+                native_run_id=native.id,
+                checkpoint_ref=None,
+                pending_operation_ids=(),
+                reason_code="native_cancelled",
+                wait_reason=None,
+                native_status="failed",
+                output_result_ref=None,
+            ).model_dump(mode="json")
+            request.state = "sealed"
             return True

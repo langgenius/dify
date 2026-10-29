@@ -127,6 +127,11 @@ class ActionCommands:
         assert session_id
         return self.receipt if test_input_id == "input-1" else None
 
+    def current_request_id(self, *, actor: Actor, session_id: str, test_input_id: str) -> str | None:
+        assert actor.account_id
+        assert session_id
+        return self.receipt.request_id if test_input_id == "input-1" else None
+
     def observation_initializing(self, *, actor: Actor, session_id: str, test_input_id: str) -> bool:
         assert actor.account_id
         assert session_id
@@ -221,6 +226,129 @@ def test_resume_action_preserves_request_and_finishes_on_existing_transport(acti
     assert commands.commands[0][0].request_id == "request-1"
     assert any('"event": "command_finished"' in frame for frame in frames)
     assert any('"test_execution"' in frame for frame in frames)
+
+
+@pytest.mark.parametrize(
+    ("kind", "payload"),
+    [
+        ("resume_test", {"request_id": "request-1", "expected_generation": 0}),
+        (
+            "confirm_test_operation",
+            {"request_id": "request-1", "pending_operation_id": "p1", "pending_version": 1, "scope_digest": "a" * 64},
+        ),
+    ],
+)
+def test_native_command_projects_private_disclosure_only_after_execution(
+    action_case: ActionCase, mocker, kind, payload
+):
+    """The command owner already validates authority; the view must still be fresh."""
+    from core.dify_builder.models import Action
+
+    svc, actor, sid, repo, commands, _ = action_case
+    session, _ = repo.get_session(sid)
+    events = []
+    original_current, original_execute = commands.current, commands.execute
+
+    def current(**values):
+        events.append("disclosure")
+        return original_current(**values)
+
+    def execute(**values):
+        events.append("command")
+        return original_execute(**values)
+
+    mocker.patch.object(commands, "current", side_effect=current)
+    mocker.patch.object(commands, "execute", side_effect=execute)
+    frames = list(
+        svc.submit_action_stream(
+            sid,
+            actor,
+            Action(kind=kind, payload=payload, base_version=session.version, base_app_revision="revision"),
+        )
+    )
+    assert events == ["command", "disclosure"]
+    assert len(commands.commands) == 1
+    assert any('"test_execution"' in frame for frame in frames)
+
+
+@pytest.mark.parametrize("method", ["decide", "resume", "cancel"])
+def test_native_command_keeps_owner_authorization_after_metadata_check(action_case: ActionCase, mocker, method):
+    from types import SimpleNamespace
+
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    _, actor, sid, _, _, _ = action_case
+    command_owner = SimpleNamespace(**{name: mocker.Mock() for name in ("decide", "resume", "cancel")})
+    selected = getattr(command_owner, method)
+    selected.side_effect = BuilderExecutionPolicyError("execution_permission_denied")
+    factory = mocker.Mock(return_value=command_owner)
+    actions = BuilderTestActions(None, factory)
+    mocker.patch.object(actions, "_current_id", return_value="request-1")
+    with pytest.raises(BuilderExecutionPolicyError, match="execution_permission_denied"):
+        actions.execute(
+            actor=actor,
+            session_id=sid,
+            test_input_id="input-1",
+            command=NativeCommand(method, "request-1", {}),
+            idempotency_key="command-1",
+        )
+    selected.assert_called_once_with(actor=actor, session_id=sid, request_id="request-1", idempotency_key="command-1")
+
+
+def test_native_metadata_read_does_not_construct_private_command_owner(action_case: ActionCase, mocker):
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    _, actor, sid, _, _, _ = action_case
+    factory = mocker.Mock(side_effect=AssertionError("metadata read must not compose private disclosure"))
+    actions = BuilderTestActions(None, factory)
+    selected = mocker.patch.object(actions, "_current_id", return_value="request-1")
+    assert actions.current_request_id(actor=actor, session_id=sid, test_input_id="input-1") == "request-1"
+    selected.assert_called_once_with(actor=actor, session_id=sid, test_input_id="input-1")
+    factory.assert_not_called()
+
+
+def test_native_metadata_read_selects_only_current_owned_input(sqlite_session_factory, mocker):
+    from datetime import datetime, timedelta
+
+    from core.dify_builder.errors import ConflictError
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    actor = Actor(account_id="33333333-3333-3333-3333-333333333333", tenant_id="11111111-1111-1111-1111-111111111111")
+    sid, input_id = "44444444-4444-4444-4444-444444444444", "55555555-5555-5555-5555-555555555555"
+    at = datetime(2026, 10, 28)
+    ids = [f"00000000-0000-0000-0000-{i:012d}" for i in range(1, 6)]
+    with sqlite_session_factory.begin() as sql:
+        for index, request_id in enumerate(ids):
+            sql.add(
+                DifyBuilderExecutionRequest(
+                    id=request_id,
+                    tenant_id=actor.tenant_id,
+                    actor_id=actor.account_id if index != 2 else "66666666-6666-6666-6666-666666666666",
+                    app_id="22222222-2222-2222-2222-222222222222",
+                    workflow_id="77777777-7777-7777-7777-777777777777",
+                    session_id=sid if index != 3 else "88888888-8888-8888-8888-888888888888",
+                    test_input_id=input_id if index != 4 else "99999999-9999-9999-9999-999999999999",
+                    context={"policy_version": "builder-native-test-v1"},
+                    context_digest="a" * 64,
+                    created_at=at + timedelta(seconds=index),
+                )
+            )
+    factory = mocker.Mock(side_effect=AssertionError("metadata read must not fetch private objects"))
+    actions = BuilderTestActions(sqlite_session_factory, factory)
+    assert actions.current_request_id(actor=actor, session_id=sid, test_input_id=input_id) == ids[1]
+    assert actions.current_request_id(actor=actor, session_id=sid, test_input_id="") is None
+    factory.assert_not_called()
+    with pytest.raises(ConflictError, match="test request is no longer current"):
+        actions.execute(
+            actor=actor,
+            session_id=sid,
+            test_input_id=input_id,
+            command=NativeCommand("resume", ids[0], {"expected_generation": 0}),
+            idempotency_key="stale-command",
+        )
+    factory.assert_not_called()
 
 
 def test_old_request_cannot_control_current_test(action_case: ActionCase) -> None:
