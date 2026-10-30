@@ -1,17 +1,22 @@
+import type { ComponentProps } from 'react'
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createRef } from 'react'
-import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
+import { createRef, useState } from 'react'
+import { useNodes } from 'reactflow'
+import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { InputVarType } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import ChatWrapper from '../chat-wrapper'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { useTestConnections } from '../../test-connections/use-test-connections'
+import ChatWrapperContent from '../chat-wrapper'
+import DebugAndPreview from '../index'
 
 const mockUseChat = vi.hoisted(() => vi.fn())
 
@@ -23,6 +28,12 @@ const EmitterProbe = () => {
 }
 
 const mockRequest = vi.hoisted(() => vi.fn())
+const mockCredentials = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: mockCredentials,
+}))
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
@@ -154,11 +165,141 @@ const createChatState = (overrides: Record<string, unknown> = {}) => ({
 
 const createChatWrapperRef = () => createRef<ChatWrapperRefType>()
 
+function ChatWrapper(props: Omit<ComponentProps<typeof ChatWrapperContent>, 'connections'>) {
+  const connections = useTestConnections()
+  return <ChatWrapperContent {...props} connections={connections} />
+}
+
+const createTestTool = (id = 'tool-1', overrides: Record<string, unknown> = {}) =>
+  createNode({
+    id,
+    data: {
+      type: BlockEnum.Tool,
+      title: `Tool ${id}`,
+      provider_id: 'test-provider',
+      provider_name: 'Test Provider',
+      provider_type: 'builtin',
+      tool_name: 'search',
+      tool_parameters: {},
+      tool_configurations: {},
+      credential_source: 'end_user',
+      end_user_auth: { allowed_credential_types: ['oauth2'] },
+      ...overrides,
+    },
+  })
+
+function TestGraph() {
+  const nodes = useNodes()
+  return <output aria-label="Test graph">{JSON.stringify(nodes)}</output>
+}
+
+const readTestGraph = () =>
+  JSON.parse(screen.getByLabelText('Test graph').textContent!) as ReturnType<typeof createNode>[]
+
+const preflightPath = [
+  'apps',
+  'byAppId',
+  'workflows',
+  'draft',
+  'testCredentials',
+  'preflight',
+  'post',
+]
+
+const readiness = (ready: boolean, status = 'connected') => ({
+  ready,
+  credentials: [
+    {
+      node_id: 'tool-1',
+      node_ids: ['tool-1'],
+      credential_id: 'oauth-1',
+      status,
+      check: null,
+    },
+  ],
+})
+
+const mockPreflight = (response: () => unknown) => {
+  mockRequest.mockImplementation(async (path: string[]) => {
+    if (path.includes('preflight')) return response()
+    if (path.includes('clientSchema'))
+      return {
+        schema: [],
+        client_params: {},
+        is_system_oauth_params_exists: true,
+        is_oauth_custom_client_enabled: false,
+        redirect_uri: 'https://example.com/callback',
+      }
+    return []
+  })
+}
+
+const setupConnections = ({
+  nodes = [createTestTool('tool-1', { test_credential_id: 'oauth-1' })],
+  sync = vi.fn(async () => ({ hash: 'draft-hash', updatedAt: 1 })),
+  panel = false,
+}: {
+  nodes?: ReturnType<typeof createNode>[]
+  sync?: () => Promise<{ hash: string; updatedAt: number } | null>
+  panel?: boolean
+} = {}) => {
+  const chatRef = createChatWrapperRef()
+  const { queryClient } = createConsoleQueryWrapper({
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  })
+  const content = (
+    <>
+      {panel ? (
+        <DebugAndPreview />
+      ) : (
+        <ChatWrapper
+          ref={chatRef}
+          showConversationVariableModal={false}
+          onConversationModalHide={vi.fn()}
+          showInputsFieldsPanel={false}
+          onHide={vi.fn()}
+        />
+      )}
+      <TestGraph />
+    </>
+  )
+  renderWorkflowFlowComponent(content, {
+    nodes,
+    edges: [],
+    hooksStoreProps: { doSyncWorkflowDraft: sync },
+    queryClient,
+    initialStoreState: { previewPanelWidth: 480, workflowCanvasWidth: 1000 },
+  })
+  return { sync, chatRef }
+}
+
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRequest.mockReset()
     mockRequest.mockResolvedValue({ data: [] })
+    mockCredentials.mockReset()
+    mockCredentials.mockResolvedValue({
+      credentials: [
+        {
+          id: 'oauth-1',
+          name: 'Personal OAuth',
+          provider: 'test-provider',
+          credential_type: 'oauth2',
+          is_default: true,
+        },
+        {
+          id: 'api-1',
+          name: 'Workspace API Key',
+          provider: 'test-provider',
+          credential_type: 'api-key',
+          is_default: false,
+        },
+      ],
+      supported_credential_types: ['oauth2', 'api-key'],
+      allow_custom_token: true,
+      is_oauth_custom_client_enabled: false,
+    })
     mockUseChat.mockReturnValue(createChatState())
   })
 
@@ -479,5 +620,275 @@ describe('ChatWrapper', () => {
 
     expect(screen.getByTestId('chat-shell')).toHaveAttribute('data-speech-target', 'consoleApp')
     expect(screen.getByTestId('chat-shell')).toHaveAttribute('data-speech-app-id', 'app-1')
+  })
+
+  it('keeps the existing empty preview when there are no App user connections', () => {
+    setupConnections({ nodes: [createStartNode()], panel: true })
+    expect(screen.getByText('workflow.common.previewPlaceholder')).toBeVisible()
+    expect(
+      screen.queryByRole('region', { name: 'share.connections.configure.title' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /share.connections.configure.title/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('treats an opening statement as not started and displays setup without a header entry', () => {
+    mockUseChat.mockReturnValue(
+      createChatState({
+        chatList: [{ id: 'opening', isAnswer: true, content: 'Welcome', isOpeningStatement: true }],
+      }),
+    )
+    mockPreflight(() => readiness(true))
+    setupConnections({ panel: true })
+    expect(screen.getByRole('region', { name: 'share.connections.configure.title' })).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /share.connections.configure.title/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.common.previewPlaceholder')).not.toBeInTheDocument()
+  })
+
+  it('moves Connections before Reset after chat starts and restores inline setup after Reset', async () => {
+    const user = userEvent.setup()
+    let updateChat!: (state: ReturnType<typeof createChatState>) => void
+    const handleRestart = vi.fn(() => updateChat(createChatState()))
+    const chatState = createChatState({ handleRestart })
+    const useChatState = () => {
+      const [state, setState] = useState(chatState)
+      updateChat = setState
+      return state
+    }
+    mockUseChat.mockImplementation(useChatState)
+    mockPreflight(() => readiness(true))
+    setupConnections({ panel: true })
+    expect(screen.getByRole('region', { name: 'share.connections.configure.title' })).toBeVisible()
+    act(() =>
+      updateChat(
+        createChatState({
+          ...chatState,
+          chatList: [{ id: 'question-1', isAnswer: false, content: 'Hello' }],
+        }),
+      ),
+    )
+    const configure = await screen.findByRole('button', {
+      name: 'share.connections.configure.title',
+    })
+    const reset = screen.getByRole('button', { name: 'common.operation.refresh' })
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.indexOf(configure)).toBeLessThan(buttons.indexOf(reset))
+    expect(
+      screen.queryByRole('region', { name: 'share.connections.configure.title' }),
+    ).not.toBeInTheDocument()
+    await user.click(configure)
+    const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
+    expect(await within(dialog).findByRole('button', { name: /Personal OAuth/ })).toBeVisible()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await user.click(reset)
+    expect(handleRestart).toHaveBeenCalledTimes(1)
+    expect(
+      await screen.findByRole('region', { name: 'share.connections.configure.title' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: /share.connections.configure.title/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('configures independent App user roots without merging providers or listing reused and workspace nodes', async () => {
+    const user = userEvent.setup()
+    mockPreflight(() => ({ ready: false, credentials: [] }))
+    const sync = vi.fn(async () => {
+      expect(readTestGraph().find((node) => node.id === 'tool-1')).toBeDefined()
+      return { hash: 'draft-hash', updatedAt: 1 }
+    })
+    setupConnections({
+      nodes: [
+        createTestTool(),
+        createTestTool('tool-2', { end_user_auth: { allowed_credential_types: ['api-key'] } }),
+        createTestTool('reuse', { credential_source: 'reuse_node', reuse_node_id: 'tool-1' }),
+        createTestTool('workspace', { credential_source: 'workspace' }),
+      ],
+      sync,
+    })
+
+    const setup = await screen.findByRole('region', { name: 'share.connections.configure.title' })
+    const rows = within(setup).getAllByRole('listitem', { name: 'Test Provider' })
+    expect(rows).toHaveLength(2)
+    expect(within(setup).queryByText('Tool reuse')).not.toBeInTheDocument()
+    expect(within(setup).queryByText('Tool workspace')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.common.previewPlaceholder')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /share.connections.configure.title/ }),
+    ).not.toBeInTheDocument()
+    expect(within(rows[0]!).queryByRole('status')).not.toBeInTheDocument()
+
+    const firstPicker = await within(rows[0]!).findByRole('button', {
+      name: /plugin.auth.appUser.testConnection/,
+    })
+    await waitFor(() => expect(firstPicker).toBeEnabled())
+    await user.click(firstPicker)
+    const picker = await screen.findByRole('dialog', { name: 'plugin.auth.authorization' })
+    expect(within(picker).queryByText('Workspace API Key')).not.toBeInTheDocument()
+    expect(within(picker).queryByText('plugin.auth.workspaceDefault')).not.toBeInTheDocument()
+    await user.click(within(picker).getByRole('button', { name: /^Personal OAuth/ }))
+    await waitFor(() => {
+      expect(readTestGraph().find((node) => node.id === 'tool-1')?.data).toMatchObject({
+        test_credential_id: 'oauth-1',
+        credential_source: 'end_user',
+      })
+      expect(sync).toHaveBeenCalled()
+    })
+    expect(readTestGraph().find((node) => node.id === 'tool-2')?.data).not.toHaveProperty(
+      'test_credential_id',
+    )
+    expect(mockRequest).toHaveBeenCalledWith(
+      preflightPath,
+      { params: { app_id: 'app-1' } },
+      expect.any(Object),
+    )
+  })
+
+  it('waits for draft synchronization and a ready preflight before sending without a connection payload', async () => {
+    const user = userEvent.setup()
+    const handleSend = vi.fn()
+    mockUseChat.mockReturnValue(createChatState({ handleSend }))
+    let finishSync!: (value: { hash: string; updatedAt: number }) => void
+    let finishPreflight!: (value: ReturnType<typeof readiness>) => void
+    const sync = vi.fn(
+      () =>
+        new Promise<{ hash: string; updatedAt: number }>((resolve) => {
+          finishSync = resolve
+        }),
+    )
+    mockPreflight(
+      () =>
+        new Promise<ReturnType<typeof readiness>>((resolve) => {
+          finishPreflight = resolve
+        }),
+    )
+    setupConnections({ sync })
+    await user.click(screen.getByRole('button', { name: 'send-chat' }))
+    expect(sync).toHaveBeenCalledTimes(1)
+    expect(
+      mockRequest.mock.calls.filter(([path]) => (path as string[]).includes('preflight')),
+    ).toHaveLength(0)
+    expect(handleSend).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'send-chat' })).toBeDisabled()
+    await act(async () => finishSync({ hash: 'draft-hash', updatedAt: 1 }))
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        preflightPath,
+        { params: { app_id: 'app-1' } },
+        expect.any(Object),
+      ),
+    )
+    expect(handleSend).not.toHaveBeenCalled()
+    await act(async () => finishPreflight(readiness(true)))
+    await waitFor(() =>
+      expect(handleSend).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ query: 'hello', conversation_id: 'conversation-1' }),
+        expect.any(Object),
+      ),
+    )
+    expect(handleSend.mock.calls[0]![0]).not.toHaveProperty('connections')
+  })
+
+  it('does not preflight or send when saving the draft fails, and allows retrying', async () => {
+    const user = userEvent.setup()
+    const handleSend = vi.fn()
+    mockUseChat.mockReturnValue(createChatState({ handleSend }))
+    mockPreflight(() => readiness(true))
+    const sync = vi
+      .fn<() => Promise<{ hash: string; updatedAt: number } | null>>()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ hash: 'draft-hash', updatedAt: 1 })
+    setupConnections({ sync })
+    await user.click(screen.getByRole('button', { name: 'send-chat' }))
+    const setup = screen.getByRole('region', { name: 'share.connections.configure.title' })
+    expect(await within(setup).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(
+      screen.queryByRole('dialog', { name: 'share.connections.configure.title' }),
+    ).not.toBeInTheDocument()
+    expect(
+      mockRequest.mock.calls.filter(([path]) => (path as string[]).includes('preflight')),
+    ).toHaveLength(0)
+    expect(handleSend).not.toHaveBeenCalled()
+    await user.click(within(setup).getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        preflightPath,
+        { params: { app_id: 'app-1' } },
+        expect.any(Object),
+      ),
+    )
+    await waitFor(() => expect(within(setup).queryByRole('alert')).not.toBeInTheDocument())
+    expect(handleSend).not.toHaveBeenCalled()
+  })
+
+  it('does not send an old message or reopen settings when restarted during preflight', async () => {
+    const user = userEvent.setup()
+    const chatState = createChatState()
+    mockUseChat.mockReturnValue(chatState)
+    let finishPreflight!: (value: ReturnType<typeof readiness>) => void
+    mockPreflight(
+      () =>
+        new Promise<ReturnType<typeof readiness>>((resolve) => {
+          finishPreflight = resolve
+        }),
+    )
+    const { chatRef } = setupConnections()
+    await user.click(screen.getByRole('button', { name: 'send-chat' }))
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        preflightPath,
+        { params: { app_id: 'app-1' } },
+        expect.any(Object),
+      ),
+    )
+    act(() => chatRef.current?.handleRestart())
+    expect(chatState.handleRestart).toHaveBeenCalledTimes(1)
+    await act(async () => finishPreflight(readiness(true)))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'send-chat' })).toBeEnabled())
+    expect(chatState.handleSend).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('dialog', { name: 'share.connections.configure.title' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each(['invalid', 'request-error'])(
+    'keeps the first chat unsent and reports %s preflight in the inline setup',
+    async (failure) => {
+      const user = userEvent.setup()
+      const handleSend = vi.fn()
+      mockUseChat.mockReturnValue(createChatState({ handleSend }))
+      mockPreflight(() => {
+        if (failure === 'request-error') throw new Error('Preflight unavailable')
+        return readiness(false, 'invalid')
+      })
+      setupConnections()
+      await user.click(screen.getByRole('button', { name: 'send-chat' }))
+      const setup = screen.getByRole('region', { name: 'share.connections.configure.title' })
+      expect(handleSend).not.toHaveBeenCalled()
+      expect(
+        screen.queryByRole('dialog', { name: 'share.connections.configure.title' }),
+      ).not.toBeInTheDocument()
+      if (failure === 'invalid')
+        expect(
+          await within(within(setup).getByRole('listitem', { name: 'Test Provider' })).findByRole(
+            'status',
+          ),
+        ).toHaveTextContent('plugin.auth.unavailable')
+      else
+        expect(await within(setup).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    },
+  )
+
+  it('keeps configuration selection disabled during an active response', async () => {
+    const user = userEvent.setup()
+    mockUseChat.mockReturnValue(createChatState({ isResponding: true }))
+    mockPreflight(() => readiness(true))
+    setupConnections({ panel: true })
+    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
+    const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
+    expect(await within(dialog).findByRole('button', { name: /Personal OAuth/ })).toBeDisabled()
   })
 })

@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../../nodes/start/types'
+import type { useTestConnections } from '../test-connections/use-test-connections'
 import type { ChatWrapperRefType } from './index'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
@@ -16,6 +17,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { useStore, useWorkflowStore } from '../../store'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
+import { TestConnectionSetup } from '../test-connections'
 import ConversationVariableModal from './conversation-variable-modal'
 import Empty from './empty'
 import { useChat } from './hooks'
@@ -26,7 +28,11 @@ type ChatWrapperProps = {
   onConversationModalHide: () => void
   showInputsFieldsPanel: boolean
   onHide: () => void
+  connections: ReturnType<typeof useTestConnections>
+  onChatStateChange?: (state: PreviewChatState) => void
 }
+
+export type PreviewChatState = { hasConversation: boolean; isResponding: boolean }
 
 const ChatWrapper = ({
   ref,
@@ -34,6 +40,8 @@ const ChatWrapper = ({
   onConversationModalHide,
   showInputsFieldsPanel,
   onHide,
+  connections: testConnections,
+  onChatStateChange,
 }: ChatWrapperProps & {
   ref: React.RefObject<ChatWrapperRefType | null>
 }) => {
@@ -49,6 +57,7 @@ const ChatWrapper = ({
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const inputs = useStore((s) => s.inputs)
   const setInputs = useStore((s) => s.setInputs)
+  const { beforeRun: checkTestConnections, cancelPendingCheck } = testConnections
 
   const initialInputs = useMemo(() => {
     const initInputs: Record<string, any> = {}
@@ -126,14 +135,22 @@ const ChatWrapper = ({
       }),
   )
 
+  const hasConversation = isResponding || chatList.some((item) => !item.isOpeningStatement)
+  const showConnectionSetup = !hasConversation && testConnections.nodes.length > 0
+  useEffect(() => {
+    onChatStateChange?.({ hasConversation, isResponding })
+  }, [hasConversation, isResponding, onChatStateChange])
+
   const handleRestartChat = useCallback(() => {
+    cancelPendingCheck()
     handleRestart()
     setMessageLogItem(undefined)
     setInputs(initialInputs)
-  }, [handleRestart, setInputs, initialInputs, setMessageLogItem])
+  }, [handleRestart, setInputs, initialInputs, setMessageLogItem, cancelPendingCheck])
 
   const doSend: OnSend = useCallback(
-    (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+    async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+      if (!(await checkTestConnections({ openOnFailure: hasConversation }))) return false
       handleSend(
         {
           query: message,
@@ -148,7 +165,15 @@ const ChatWrapper = ({
         },
       )
     },
-    [handleSend, workflowStore, conversationId, chatList, handleGetSuggestedQuestions],
+    [
+      handleSend,
+      workflowStore,
+      conversationId,
+      chatList,
+      handleGetSuggestedQuestions,
+      checkTestConnections,
+      hasConversation,
+    ],
   )
 
   const doRegenerate = useCallback(
@@ -216,53 +241,64 @@ const ChatWrapper = ({
   }, [isResponding, onHide])
 
   return (
-    <>
-      <Chat
-        config={
-          {
-            ...config,
-            supportCitationHitInfo: true,
-          } as any
-        }
-        speechToTextTarget={{ type: 'consoleApp', appId }}
-        chatList={chatList}
-        isResponding={isResponding}
-        chatContainerClassName="px-3"
-        chatContainerInnerClassName="pt-6 w-full max-w-full mx-auto"
-        chatFooterClassName="px-4 rounded-bl-2xl"
-        chatFooterInnerClassName="pb-0"
-        showFileUpload
-        showFeatureBar
-        onFeatureBarClick={setShowFeaturesPanel}
-        onSend={doSend}
-        inputs={inputs}
-        inputsForm={(startVariables || []) as any}
-        onRegenerate={doRegenerate}
-        onStopResponding={handleStop}
-        onHumanInputFormSubmit={doHumanInputFormSubmit}
-        getHumanInputNodeData={getHumanInputNodeData}
-        chatNode={
-          <>
-            {showInputsFieldsPanel && <UserInput />}
-            {!chatList.length && <Empty />}
-          </>
-        }
-        noSpacing
-        suggestedQuestions={suggestedQuestions}
-        onOpenLog={setMessageLogItem}
-        canOpenLog={(item) => !!item.workflow_run_id}
-        chatAnswerContainerInner="pr-2!"
-        switchSibling={doSwitchSibling}
-        inputDisabled={inputDisabled}
-        hideAvatar
-      />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1">
+        <Chat
+          config={
+            {
+              ...config,
+              supportCitationHitInfo: true,
+            } as any
+          }
+          speechToTextTarget={{ type: 'consoleApp', appId }}
+          chatList={showConnectionSetup ? [] : chatList}
+          isResponding={isResponding}
+          chatContainerClassName="px-3"
+          chatContainerInnerClassName="pt-6 w-full max-w-full mx-auto"
+          chatFooterClassName="px-4 rounded-bl-2xl"
+          chatFooterInnerClassName="pb-0"
+          showFileUpload
+          showFeatureBar
+          onFeatureBarClick={setShowFeaturesPanel}
+          onSend={doSend}
+          inputs={inputs}
+          inputsForm={(startVariables || []) as any}
+          onRegenerate={doRegenerate}
+          onStopResponding={handleStop}
+          onHumanInputFormSubmit={doHumanInputFormSubmit}
+          getHumanInputNodeData={getHumanInputNodeData}
+          chatNode={
+            showConnectionSetup ? (
+              <div className="flex min-h-full flex-col">
+                {showInputsFieldsPanel && <UserInput />}
+                <div className="flex flex-1 items-center justify-center p-4">
+                  <TestConnectionSetup connections={testConnections} isResponding={isResponding} />
+                </div>
+              </div>
+            ) : (
+              <>
+                {showInputsFieldsPanel && <UserInput />}
+                {!chatList.length && <Empty />}
+              </>
+            )
+          }
+          noSpacing
+          suggestedQuestions={suggestedQuestions}
+          onOpenLog={setMessageLogItem}
+          canOpenLog={(item) => !!item.workflow_run_id}
+          chatAnswerContainerInner="pr-2!"
+          switchSibling={doSwitchSibling}
+          inputDisabled={inputDisabled || testConnections.checking}
+          hideAvatar
+        />
+      </div>
       {showConversationVariableModal && (
         <ConversationVariableModal
           conversationID={conversationId}
           onHide={onConversationModalHide}
         />
       )}
-    </>
+    </div>
   )
 }
 

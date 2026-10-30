@@ -7,6 +7,7 @@ import type {
 import { validateAppUserAuth } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { BlockEnum } from '../../types'
 import { getAppUserAuthDraft, getToolAuthorizationTab } from './authorization-config'
+import { ToolCredentialSource } from './types'
 
 export type ToolAuthorizationResolution =
   | {
@@ -33,6 +34,12 @@ type ResolveToolAuthorizationParams = {
 const isToolNode = (
   node: Pick<Node, 'id' | 'data'>,
 ): node is Pick<Node<ToolNodeType>, 'id' | 'data'> => node.data.type === BlockEnum.Tool
+
+export const getTestCredentialNodes = (nodes: readonly Node[]) =>
+  nodes.filter(
+    (node): node is Node<ToolNodeType> =>
+      isToolNode(node) && node.data.credential_source === ToolCredentialSource.EndUser,
+  )
 
 export const resolveToolAuthorization = ({
   node,
