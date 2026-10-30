@@ -6849,9 +6849,6 @@
     "@tanstack/query/prefer-query-options": {
       "count": 2
     },
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "eslint-react/set-state-in-effect": {
       "count": 14
     }
