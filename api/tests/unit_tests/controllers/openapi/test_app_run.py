@@ -230,7 +230,7 @@ def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> Mock:
     return generate_mock
 
 
-def _ctx(mode: AppMode, session: Session | Mock | None = None) -> _SealableContext:
+def _ctx(mode: AppMode, session: Session | None = None) -> _SealableContext:
     app_model = _make_app()
     app_model.mode = mode
     return _SealableContext(
@@ -241,10 +241,14 @@ def _ctx(mode: AppMode, session: Session | Mock | None = None) -> _SealableConte
     )
 
 
-def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_run_reads_everything_off_the_context_before_streaming(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
-    session = Mock()
-    ctx = _ctx(AppMode.ADVANCED_CHAT, session)
+    commits: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
+    transaction = sqlite_session.begin()
+    ctx = _ctx(AppMode.ADVANCED_CHAT, sqlite_session)
     api = AdvancedChatRunApi()
     body = AdvancedChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/advanced-chat:run", method="POST"):
@@ -254,7 +258,8 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
 
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
-    session.commit.assert_not_called()
+    assert commits == []
+    assert sqlite_session.get_transaction() is transaction
 
 
 def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):

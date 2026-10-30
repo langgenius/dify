@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import (
@@ -137,16 +138,17 @@ def _tool_graph(tool_data: dict) -> dict:
     }
 
 
-def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
+def test_historical_agent_version_two_is_not_validated_as_dify_agent(unbound_session: Session) -> None:
     graph = {
         "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
         "edges": [],
     }
-    session = Mock()
+    executions: list[str] = []
+    event.listen(unbound_session, "do_orm_execute", lambda _state: executions.append("execute"))
 
-    WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=_workflow(graph))
+    WorkflowAgentNodeValidator.validate_published_workflow(session=unbound_session, workflow=_workflow(graph))
 
-    session.scalar.assert_not_called()
+    assert executions == []
 
 
 def _persist_validation_scope(
