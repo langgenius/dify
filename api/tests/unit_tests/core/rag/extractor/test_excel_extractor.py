@@ -276,7 +276,7 @@ class TestExcelExtractor:
         assert len(docs) == 1
         assert docs[0].page_content == '"note":"he said \\"hi\\"";"plain":"text"'
 
-    def test_extract_xls_preserves_stored_text_cells(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_xls_preserves_stored_text_cells(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Regression test: pandas applies numeric dtype inference when parsing legacy
         # .xls files, rewriting stored text cells such as "00123" or "1e3" into
         # 123 / 1000.0. The extractor must restore the original text via xlrd's
@@ -297,14 +297,14 @@ class TestExcelExtractor:
                 ["00456", "2e3", "03.40", 9.0, "second"],
             ]
 
-            def cell_type(self, row, col):
+            def cell_type(self, row: int, col: int) -> int:
                 return self._types[row][col]
 
-            def cell_value(self, row, col):
+            def cell_value(self, row: int, col: int) -> str | float:
                 return self._values[row][col]
 
         class FakeBook:
-            def sheet_by_name(self, name):
+            def sheet_by_name(self, name: str | int) -> FakeSheet:
                 assert name == "Sheet1"
                 return FakeSheet()
 
@@ -312,7 +312,7 @@ class TestExcelExtractor:
             sheet_names = ["Sheet1"]
             book = FakeBook()
 
-            def parse(self, sheet_name):
+            def parse(self, sheet_name: str | int) -> pd.DataFrame:
                 assert sheet_name == "Sheet1"
                 # Mirrors pandas' numeric dtype inference on a real legacy .xls.
                 return pd.DataFrame(
@@ -344,13 +344,49 @@ class TestExcelExtractor:
         )
         assert all(doc.metadata == {"source": "/tmp/sample.xls"} for doc in docs)
 
-    def test_extract_xls_without_xlrd_book_keeps_legacy_behavior(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_xls_stored_text_cells_with_numpy_integer_index(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # The row label from iterrows() may be a numpy integer rather than a plain int;
+        # the stored-text override must still apply.
+        import numpy as np
+        import xlrd
+
+        class FakeSheet:
+            nrows = 2
+            ncols = 1
+
+            def cell_type(self, row: int, col: int) -> int:
+                return xlrd.XL_CELL_TEXT
+
+            def cell_value(self, row: int, col: int) -> str:
+                return ["Code", "00123"][row]
+
+        class FakeBook:
+            def sheet_by_name(self, name: str | int) -> FakeSheet:
+                return FakeSheet()
+
+        class FakeExcelFile:
+            sheet_names = ["Sheet1"]
+            book = FakeBook()
+
+            def parse(self, sheet_name: str | int) -> pd.DataFrame:
+                return pd.DataFrame({"Code": [123]}, index=pd.Index([np.int64(0)], dtype=object))
+
+        monkeypatch.setattr(pd, "ExcelFile", lambda path, engine=None: FakeExcelFile())
+
+        df = FakeExcelFile().parse("Sheet1")
+        assert type(next(df.iterrows())[0]) is np.int64
+
+        docs = ExcelExtractor("/tmp/sample.xls").extract()
+
+        assert [doc.page_content for doc in docs] == ['"Code":"00123"']
+
+    def test_extract_xls_without_xlrd_book_keeps_legacy_behavior(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # A mocked ExcelFile without a .book attribute (no xlrd workbook) must not
         # change existing behavior.
         class FakeExcelFile:
             sheet_names = ["Sheet1"]
 
-            def parse(self, sheet_name):
+            def parse(self, sheet_name: str | int) -> pd.DataFrame:
                 return pd.DataFrame([{"A": "x", "B": 1}])
 
         assert not hasattr(FakeExcelFile(), "book")
@@ -362,7 +398,7 @@ class TestExcelExtractor:
         assert len(docs) == 1
         assert docs[0].page_content == '"A":"x";"B":"1"'
 
-    def test_extract_xls_preserves_numeric_looking_text(self):
+    def test_extract_xls_preserves_numeric_looking_text(self) -> None:
         # Real BIFF cells are needed here: a mocked DataFrame cannot expose pandas' type inference.
         # Fixture and tests contributed by PointerL; native-value expectations follow
         # this PR's stored-type approach (native values keep their baseline serialized
@@ -377,7 +413,7 @@ class TestExcelExtractor:
         ]
         assert all(doc.metadata == {"source": str(file_path)} for doc in docs)
 
-    def test_extract_xls_preserves_native_values_and_skips_empty_rows(self):
+    def test_extract_xls_preserves_native_values_and_skips_empty_rows(self) -> None:
         file_path = Path(__file__).resolve().parents[4] / "fixtures" / "rag" / "text_identifiers.xls"
 
         docs = ExcelExtractor(str(file_path)).extract()

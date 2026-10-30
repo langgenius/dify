@@ -10,7 +10,7 @@ import hashlib
 import logging
 import mimetypes
 import os
-from typing import TypedDict, override
+from typing import TypedDict, cast, override
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -147,7 +147,9 @@ class ExcelExtractor(BaseExtractor):
                 for row_idx, series_row in df.iterrows():
                     page_content = []
                     for col_pos, (k, v) in enumerate(series_row.items()):
-                        stored_text = stored_text_cells.get((row_idx, col_pos))
+                        # row_idx is typed Hashable but is an integer label here (plain int or numpy
+                        # integer); numpy integers hash/compare equal to int, so the lookup still matches.
+                        stored_text = stored_text_cells.get((cast(int, row_idx), col_pos))
                         if stored_text is not None:
                             value = stored_text
                         elif pd.notna(v):
@@ -167,7 +169,7 @@ class ExcelExtractor(BaseExtractor):
         return documents
 
     @staticmethod
-    def _xls_stored_text_cells(excel_file, sheet_name: str) -> dict[tuple[int, int], str]:
+    def _xls_stored_text_cells(excel_file: pd.ExcelFile, sheet_name: str | int) -> dict[tuple[int, int], str]:
         """Return {(data-row index, column position): stored text} for XL_CELL_TEXT cells.
 
         Row 0 of the xlrd sheet is the pandas header row, so pandas data-row index ``i``
