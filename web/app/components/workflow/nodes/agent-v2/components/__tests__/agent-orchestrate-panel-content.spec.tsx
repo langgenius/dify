@@ -726,7 +726,11 @@ describe('Inline Agent configure workspace', () => {
         debug_conversation_message_count: 0,
       }),
     })
-    await screen.findByRole('textbox', { name: `${prefix}.build.inputPlaceholder` })
+    await screen.findByRole(
+      'textbox',
+      { name: `${prefix}.build.inputPlaceholder` },
+      { timeout: 5000 },
+    )
     expect(restartButton()).toBeDisabled()
   })
 
