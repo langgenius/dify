@@ -124,6 +124,7 @@ from models.dify_builder import (
     DifyBuilderSession,
     DifyBuilderSessionCommit,
     DifyBuilderTestInput,
+    DifyBuilderWorkflowWriter,
 )
 from models.enums import PermissionEnum
 from models.model import App, AppMode, DifySetup
@@ -2513,7 +2514,19 @@ def _stranded(gmail: Gmail, deliveries: list[Delivery]) -> ConsentReceipt:
     """A reserved command whose delivery never ran and whose dispatch lease expired."""
     stranded = gmail.execute(gmail.confirmed())
     assert len(deliveries) == 1
-    session_lock.release(gmail.session_id, deliveries[0][3])
+    token = deliveries[0][3]
+    # This fixture models dispatch expiry, including its durable SQL owner.
+    # Redis loss alone deliberately leaves the workflow writer unavailable.
+    with gmail.factory.begin() as sql:
+        writer = sql.scalar(
+            select(DifyBuilderWorkflowWriter).where(
+                DifyBuilderWorkflowWriter.session_id == gmail.session_id,
+                DifyBuilderWorkflowWriter.token == token,
+            )
+        )
+        assert writer is not None
+        writer.expires_at = naive_utc_now() - timedelta(days=1)
+    session_lock.release(gmail.session_id, token)
     assert gmail.lease() is None
     gmail.make_stale()
     return stranded
@@ -3131,9 +3144,9 @@ def console(gmail: Gmail, monkeypatch: pytest.MonkeyPatch) -> Iterator[ConsoleHa
     original_acquire, original_exists = session_lock.acquire, session_lock.exists
     original_release = session_lock.release
 
-    def acquire(session_id: str) -> str | None:
+    def acquire(session_id: str, *, generation: int | None = None) -> str | None:
         gmail.boundary.mark("lease_acquire")
-        return original_acquire(session_id)
+        return original_acquire(session_id, generation=generation)
 
     def exists(session_id: str) -> bool:
         gmail.boundary.mark("lease_exists")

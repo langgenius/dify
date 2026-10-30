@@ -1214,7 +1214,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_build_cognition"] = {
     "test_analyze_goal_explains_a_field_it_leaves_blank": 1,
     "test_analyze_goal_keeps_a_necessary_unanswered_business_question": 1,
     "test_analyze_goal_keeps_the_answer_the_model_gave_a_goal_restating_field": 1,
-    "test_analyze_goal_leaves_a_deliberately_blanked_credential_blank": 1,
+    "test_analyze_goal_never_asks_for_a_credential_in_a_text_field": 1,
     "test_analyze_goal_reconciles_field_type_with_value": 1,
     "test_analyze_goal_requests_only_necessary_unanswered_business_requirements": 1,
     "test_analyze_goal_returns_fields_and_values": 1,
@@ -1307,6 +1307,18 @@ a4_expected["tests.unit_tests.services.dify_builder.test_build_cognition"] = {
     "test_topology_directive_does_not_restate_the_whitelist": 1,
     "test_topology_directive_keeps_the_workflow_rules": 1,
     "test_topology_directive_no_longer_steers_away_from_installed_tools": 1,
+    "test_analyze_goal_keeps_business_fields_but_removes_secret_requests": 1,
+    "test_analyze_goal_removes_nested_secret_values_without_losing_business_booleans": 1,
+    "test_analyze_goal_removes_a_secret_labeled_as_optional": 1,
+    "test_analyze_goal_rejects_secret_text_mislabeled_as_boolean": 1,
+    "test_analyze_goal_removes_secret_label_with_punctuation": 1,
+    "test_business_clarification_hides_only_marked_internal_defaults_but_keeps_them_for_planning": 1,
+    "test_business_clarification_keeps_required_unanswered_structured_questions": 4,
+    "test_business_clarification_preserves_explicit_required_technical_structure": 1,
+    "test_business_clarification_prompt_uses_scalar_controls_for_necessary_questions": 1,
+    "test_business_clarification_keeps_explicit_optional_json_editable_through_real_handlers": 1,
+    "test_business_clarification_protects_unmarked_or_editable_complex_defaults": 7,
+    "test_business_clarification_keeps_internal_marked_question_without_a_default": 1,
 }
 a4_expected["tests.unit_tests.services.dify_builder.test_build_nodes"] = {
     "test_build_nodes_corrects_list_schema_before_returning_complete_intents": 1,
@@ -2017,6 +2029,9 @@ a4_expected["tests.unit_tests.services.dify_builder.test_advance_task"] = {
     "test_advance_session_resolves_edit_handler_via_merged_registry": 1,
     "test_advance_builds_the_agent_for_the_acting_account": 1,
     "test_first_test_command_finished_contains_native_receipt_without_opt_in": 1,
+    "test_replaced_same_session_owner_cannot_persist_generic_failure": 1,
+    "test_replaced_between_advisory_check_and_sql_cas_cannot_commit": 1,
+    "test_replaced_owner_cannot_persist_early_setup_failure": 1,
 }
 # ENG-1293: action API and terminal projection regressions, exact inventory.
 a4_expected["tests.unit_tests.services.dify_builder.test_test_actions"] = {
@@ -2070,7 +2085,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_native_live_stream"].up
 a4_expected["tests.unit_tests.services.dify_builder.test_task_controls"] = {
     "test_stop_during_advance_preserves_checkpoint_and_fences_generation": 1,
     "test_stop_accepts_progress_but_old_stop_cannot_pause_resumed_generation": 1,
-    "test_resume_enqueue_failure_is_retryable_without_duplicate_command": 1,
+    "test_resume_unknown_enqueue_ack_is_not_replayed": 1,
     "test_stop_replay_returns_durable_original_projection_after_resume": 1,
     "test_blocked_provider_late_result_cannot_be_consumed": 1,
     "test_continuation_delivery_is_claimed_once_and_old_finally_keeps_new_owner": 1,
@@ -2090,6 +2105,7 @@ a4_expected["tests.unit_tests.services.dify_builder.test_task_controls"] = {
     "test_resume_response_receipt_cannot_invalidate_running_worker_cas": 1,
     "test_resume_opening_edit_goal_continues_cognition_without_resubmission": 2,
     "test_busy_edit_goal_is_not_persisted_without_dispatch_admission": 1,
+    "test_unknown_continuation_ack_still_accepts_its_exact_first_delivery": 1,
 }
 a4_expected["tests.unit_tests.services.dify_builder.test_stream_frames"] = {
     "test_stream_advance_frames_closes_subscription_when_never_iterated": 1,

@@ -1744,7 +1744,7 @@ def test_matching_execute_replay_returns_current_receipt_without_extra_enqueue(
     _installed_spy_56.assert_called_once()
     assert len(enqueued) == 1
     session_id, action, actor, token = enqueued[0]
-    assert (session_id, actor, token) == (_SESSION_ID, _ACTOR, "token-1")
+    assert (session_id, actor, token) == (_SESSION_ID, _ACTOR, "g0:token-1")
     assert action.kind == CONFIRMED_TOOL_ACTION
     assert action.command_id == _COMMAND_ID
     assert action.payload == {"consent_id": _CONSENT_ID}
@@ -1791,7 +1791,7 @@ def test_execute_refusal_releases_only_its_own_lease_and_never_enqueues(
         {"result": "refusal", "code": "conflict", "reason_code": "consent_scope_mismatch"},
         409,
     )
-    assert lease.released == ["token-1"]
+    assert lease.released == ["g0:token-1"]
     assert enqueued == []
 
 
