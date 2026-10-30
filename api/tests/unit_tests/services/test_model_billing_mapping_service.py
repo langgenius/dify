@@ -16,9 +16,19 @@ from core.entities.provider_entities import (
     RestrictModel,
     SystemConfiguration,
 )
+from core.hosting_configuration import HostingProvider, PaidHostingQuota, TrialHostingQuota
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
-from services.model_billing_mapping_service import hosted_migration_sources, mappings_for_revision
+from services.model_billing_mapping_service import (
+    additional_hosted_availability,
+    additional_model_is_authorized,
+    hosted_migration_sources,
+    mapping_has_required_operations,
+    mapping_supports_installed_plugin,
+    mappings_for_revision,
+    model_schema_digest,
+    provider_has_prepared_ownership,
+)
 
 
 def schema(model: str = "gpt-4o", model_type: ModelType = ModelType.LLM) -> AIModelEntity:
@@ -155,6 +165,219 @@ def test_cross_type_mapping_fails_closed() -> None:
     section(record, "target")["model_type"] = "text-embedding"
     with pytest.raises(ValueError, match="incompatible model type"):
         mappings_for_revision(json.dumps([record]), "old")
+
+
+@pytest.mark.parametrize("ownership", [None, "bad", [], {"langgenius/openai/openai": None}, {}])
+def test_only_a_missing_provider_key_is_new_ownership(ownership: object) -> None:
+    assert provider_has_prepared_ownership("openai", {"source_ownership": ownership}) == (ownership != {})
+    assert provider_has_prepared_ownership("openai", {})
+
+
+def test_additional_provider_has_typed_zero_quota_without_legacy_records() -> None:
+    source = schema("embedding-model", ModelType.TEXT_EMBEDDING)
+    hosting = HostingProvider(
+        enabled=True,
+        quota_unit=QuotaUnit.CREDITS,
+        quotas=[PaidHostingQuota(restrict_models=[RestrictModel(model=source.model, model_type=ModelType.LLM)])],
+    )
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=hosting,
+        installed_models=[source],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(source)]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == ProviderQuotaType.PAID
+    assert len(result.quotas) == 1
+    quota = result.quotas[0]
+    assert (quota.quota_limit, quota.quota_used, quota.is_valid) == (0, 0, False)
+    assert [(item.model_type, item.model) for item in quota.restrict_models] == [
+        (ModelType.TEXT_EMBEDDING, source.model)
+    ]
+    config = SystemConfiguration(
+        enabled=True, current_quota_type=result.current_quota_type, quota_configurations=result.quotas
+    )
+    rule = next(iter(mappings_for_revision(json.dumps([mapping(source)]), "old").values()))
+    assert additional_model_is_authorized(system=config, installed_models=[source], mapping=rule)
+    assert not additional_model_is_authorized(system=config, installed_models=[source, source], mapping=rule)
+    config.quota_configurations[0].restrict_models = []
+    assert not additional_model_is_authorized(system=config, installed_models=[source], mapping=rule)
+
+
+@pytest.mark.parametrize(
+    "invalid", ["revision", "pool", "digest", "mode", "ops", "hosting", "unit", "unlimited", "provider"]
+)
+def test_additional_provider_requires_exact_frozen_server_contract(invalid: str) -> None:
+    source = schema()
+    record = mapping()
+    hosting = HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()])
+    if invalid == "revision":
+        record["mapping_revision"] = "newer"
+    elif invalid == "pool":
+        record["pool_types"] = ["trial"]
+    elif invalid == "digest":
+        record["source_schema_digest"] = "sha256:" + "0" * 64
+    elif invalid == "mode":
+        section(record, "source")["mode"] = "completion"
+    elif invalid == "ops":
+        record["operations"] = ["model/schema", "llm/invoke"]
+    elif invalid == "hosting":
+        hosting.quotas[0].restrict_models = [RestrictModel(model="different", model_type=ModelType.LLM)]
+    elif invalid == "unit":
+        hosting.quota_unit = QuotaUnit.TOKENS
+    elif invalid == "unlimited":
+        hosting.quotas = [TrialHostingQuota(quota_limit=-1)]
+    elif invalid == "provider":
+        section(record, "source")["provider_id"] = "anthropic"
+    original_hosting = hosting.model_dump()
+    assert (
+        additional_hosted_availability(
+            provider="openai",
+            hosting=hosting,
+            installed_models=[source],
+            original_quotas=[],
+            raw_registry=json.dumps([record]),
+            revision="old",
+        )
+        is None
+    )
+    assert hosting.model_dump() == original_hosting
+
+
+def test_additional_provider_pool_intersection_never_uses_unrelated_new_revision() -> None:
+    old_source, new_source = schema(), schema("new-model")
+    hosting = HostingProvider(
+        enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota(), TrialHostingQuota()]
+    )
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=hosting,
+        installed_models=[old_source, new_source],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(pool_types=["paid"]), mapping(new_source, revision="new")]),
+        revision="old",
+    )
+    assert result is not None
+    assert len(result.quotas) == 1
+    assert result.quotas[0].quota_type == ProviderQuotaType.PAID
+    assert [entry.model for entry in result.quotas[0].restrict_models] == [old_source.model]
+
+
+@pytest.mark.parametrize("trial_only_hosting", [False, True])
+def test_trial_only_hosting_or_mapping_never_synthesizes_paid(trial_only_hosting: bool) -> None:
+    hosting = HostingProvider(
+        enabled=True,
+        quota_unit=QuotaUnit.CREDITS,
+        quotas=[TrialHostingQuota()] if trial_only_hosting else [PaidHostingQuota(), TrialHostingQuota()],
+    )
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=hosting,
+        installed_models=[schema()],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(pool_types=["paid", "trial"] if trial_only_hosting else ["trial"])]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == ProviderQuotaType.TRIAL
+    assert [quota.quota_type for quota in result.quotas] == [ProviderQuotaType.TRIAL]
+
+
+@pytest.mark.parametrize("explicit", ["placeholder", "non_llm", "deployment"])
+def test_additional_provider_reuses_preparation_ambiguity_rules(explicit: str) -> None:
+    llm, embedding = schema("shared-name"), schema("shared-name", ModelType.TEXT_EMBEDDING)
+    restricted = RestrictModel(model="shared-name", model_type=ModelType.LLM)
+    if explicit == "non_llm":
+        restricted.model_type = ModelType.TEXT_EMBEDDING
+    elif explicit == "deployment":
+        restricted.base_model_name = "base-model"
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=HostingProvider(
+            enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota(restrict_models=[restricted])]
+        ),
+        installed_models=[llm, embedding],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(llm), mapping(embedding)]),
+        revision="old",
+    )
+    if explicit == "placeholder":
+        assert result is None
+    else:
+        assert result is not None
+        assert result.quotas[0].restrict_models[0].model_type == restricted.model_type
+
+
+@pytest.mark.parametrize(("pool", "limit"), [(ProviderQuotaType.FREE, 200), (ProviderQuotaType.TRIAL, -1)])
+def test_additional_provider_preserves_independent_allowances_without_mutation(
+    pool: ProviderQuotaType, limit: int
+) -> None:
+    original = system(pool=pool, limit=limit).quota_configurations
+    original[0].quota_used = 25
+    snapshot = [quota.model_dump() for quota in original]
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()]),
+        installed_models=[schema()],
+        original_quotas=original,
+        raw_registry=json.dumps([mapping()]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == pool
+    assert result.quotas[0].model_dump() == snapshot[0]
+    assert [quota.model_dump() for quota in original] == snapshot
+
+
+def test_additional_provider_does_not_let_free_pool_displace_existing_valid_paid_pool() -> None:
+    original = [*system().quota_configurations, *system(pool=ProviderQuotaType.FREE).quota_configurations]
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()]),
+        installed_models=[schema()],
+        original_quotas=original,
+        raw_registry=json.dumps([mapping()]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == ProviderQuotaType.PAID
+    assert (
+        additional_hosted_availability(
+            provider="openai",
+            hosting=HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()]),
+            installed_models=[schema()],
+            original_quotas=original,
+            raw_registry="[]",
+            revision="old",
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("model_type", list(ModelType))
+def test_additional_mapping_requires_type_specific_daemon_operations(model_type: ModelType) -> None:
+    record = mapping(schema(model_type=model_type))
+    rule = next(iter(mappings_for_revision(json.dumps([record]), "old").values()))
+    assert mapping_has_required_operations(rule)
+    assert not mapping_has_required_operations(rule.model_copy(update={"operations": ["model/schema"]}))
+
+
+@pytest.mark.parametrize(
+    ("uid", "expected"),
+    [
+        ("langgenius/tokener:0.4.1-dev3@hash", True),
+        ("langgenius/tokener:0.1.1@hash", False),
+        ("evil/tokener:9.9.9@hash", False),
+        ("invalid", False),
+        ("langgenius/tokener:invalid@hash", False),
+    ],
+)
+def test_additional_mapping_checks_pinned_target_plugin(uid: str, expected: bool) -> None:
+    rule = next(iter(mappings_for_revision(json.dumps([mapping()]), "old").values()))
+    assert mapping_supports_installed_plugin(rule, uid) is expected
+    assert rule.source_schema_digest == model_schema_digest(schema())
 
 
 # Production allowlist inventory observed on 2026-10-27. This tests type
