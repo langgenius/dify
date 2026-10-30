@@ -1,0 +1,82 @@
+name: LTS CI
+
+on:
+  pull_request:
+    branches:
+      - "lts/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lts-ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check-changes:
+    name: Check Changed Files
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api-changed: ${{ steps.changes.outputs.api }}
+      web-changed: ${{ steps.changes.outputs.web }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - 'dev/pytest/**'
+              - '.github/workflows/lts-ci.yml'
+            web:
+              - 'web/**'
+              - '.github/workflows/lts-ci.yml'
+              - '.github/workflows/web-tests.yml'
+              - '.github/actions/setup-web/**'
+
+  web-tests:
+    name: Web Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.web-changed == 'true'
+    uses: ./.github/workflows/web-tests.yml
+    secrets: inherit
+
+  api-unit:
+    name: API Unit Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.api-changed == 'true'
+    runs-on: depot-ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run dify config tests
+        run: uv run --project api dev/pytest/pytest_config_tests.py
+
+      - name: Run Unit Tests
+        run: uv run --project api bash dev/pytest/pytest_unit_tests.sh
