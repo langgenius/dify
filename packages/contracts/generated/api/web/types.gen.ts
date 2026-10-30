@@ -1125,6 +1125,12 @@ export type VerificationTokenResponse = {
   token: string
 }
 
+export type WebAccountProfileResponse = {
+  avatar: string | null
+  readonly avatar_url: string | null
+  name: string
+}
+
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
@@ -1620,6 +1626,11 @@ export type HumanInputFormSubmitResponseWritable = {
   [key: string]: unknown
 }
 
+export type WebAccountProfileResponseWritable = {
+  avatar: string | null
+  name: string
+}
+
 export type WebMessageInfiniteScrollPaginationWritable = {
   data: Array<WebMessageListItemWritable>
   has_more: boolean
@@ -1650,6 +1661,25 @@ export type WebMessageListItemWritable = {
   status: string
   total_price?: string | null
 }
+
+export type GetAccountProfileData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/account/profile'
+}
+
+export type GetAccountProfileErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountProfileError = GetAccountProfileErrors[keyof GetAccountProfileErrors]
+
+export type GetAccountProfileResponses = {
+  200: WebAccountProfileResponse
+}
+
+export type GetAccountProfileResponse = GetAccountProfileResponses[keyof GetAccountProfileResponses]
 
 export type PostAudioToTextData = {
   body?: never
