@@ -175,7 +175,7 @@ def seed(sessions: sessionmaker[Session], name: str) -> Collection:
 
 
 def open_invocation(collection: Collection, *, node_execution_id: str | None, call_key: str) -> TraceInvocation:
-    with collection.repository.change(collection.run.id) as locked:
+    with collection.repository.change(collection.run.id, tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
         return locked.run.open_invocation(
             agent_id=identifier("agent"), node_execution_id=node_execution_id, attempt=0, call_key=call_key
@@ -209,9 +209,9 @@ def ingest(collection: Collection, batch: AgentTraceBatch) -> int:
 
 def store_batch(collection: Collection, batch: AgentTraceBatch) -> None:
     """Ingest ``batch`` into the collection's run inside one change of the run."""
-    with collection.repository.change(collection.run.id) as locked:
+    with collection.repository.change(collection.run.id, tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
-        locked.run.ingest(batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=naive_utc_now())
+        locked.run.ingest(batch, max_spans=100, max_bytes=1_000_000, now=naive_utc_now())
 
 
 def agent_turn(run: TraceRun, *, root_span_id: str) -> Trace:
@@ -236,7 +236,7 @@ def agent_turn(run: TraceRun, *, root_span_id: str) -> Trace:
 
 
 def capture_terminal(collection: Collection, trace: Trace) -> None:
-    with collection.repository.change(collection.run.id) as locked:
+    with collection.repository.change(collection.run.id, tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
         locked.run.capture_terminal(trace, now=naive_utc_now())
 
@@ -248,7 +248,7 @@ def terminal(collection: Collection) -> None:
 def claim(collection: Collection) -> str | None:
     """Lease the collection's run for one export attempt; the token fencing it, ``None`` when it cannot export."""
     token = str(uuid4())
-    with collection.repository.change(collection.run.id) as locked:
+    with collection.repository.change(collection.run.id, tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
         claimed = locked.run.claim_export(
             token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=30, now=naive_utc_now()
@@ -612,7 +612,7 @@ class TestApplicationTraceLogstoreCases:
         terminal(case)
         token = claim(case)
         assert token is not None
-        with case.repository.change(run.id) as locked:
+        with case.repository.change(run.id, tenant_id=run.tenant_id) as locked:
             assert locked is not None
             locked.run.export_accepted(
                 token,
@@ -827,9 +827,9 @@ class PurgedBeforeLock(ApplicationTraceRepository):
 
     @override
     @contextmanager
-    def change(self, run_id: str) -> Generator[LockedTraceRun | None]:
+    def change(self, run_id: str, *, tenant_id: str) -> Generator[LockedTraceRun | None]:
         self.purge(retention_days=0, limit=100)
-        with super().change(run_id) as locked:
+        with super().change(run_id, tenant_id=tenant_id) as locked:
             yield locked
 
 
@@ -1130,7 +1130,7 @@ def stored_fields(run: TraceRunAgg) -> dict[str, object]:
 
 
 def reloaded(collection: Collection) -> dict[str, object]:
-    with collection.repository.change(collection.run.id) as locked:
+    with collection.repository.change(collection.run.id, tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
         return stored_fields(locked.run)
 
@@ -1360,23 +1360,23 @@ class TestApplicationTraceRepositoryPersistenceCases:
         case = seed(sqlite_session_factory, "saved")
         now = naive_utc_now()
         batches: list[TraceBatch] = []
-        with case.repository.change(case.run.id) as locked:
+        with case.repository.change(case.run.id, tenant_id=case.run.tenant_id) as locked:
             assert locked is not None
             invocation = locked.run.open_invocation(
                 agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key="first"
             )
             partial = batch_for(case.run, invocation).model_copy(update={"final": False})
-            locked.run.ingest(partial.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=now)
+            locked.run.ingest(partial, max_spans=100, max_bytes=1_000_000, now=now)
             locked.run.capture_terminal(agent_turn(case.run, root_span_id="b" * 16), now=now)
             batches.extend(locked.run.new_batches)
             saved = stored_fields(locked.run)
         assert reloaded(case) == saved
 
-        with case.repository.change(case.run.id) as locked:
+        with case.repository.change(case.run.id, tenant_id=case.run.tenant_id) as locked:
             assert locked is not None
             # The final batch finalizes the invocation the previous change stored.
             final = batch_for(case.run, invocation)
-            locked.run.ingest(final.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=now)
+            locked.run.ingest(final, max_spans=100, max_bytes=1_000_000, now=now)
             token = str(uuid4())
             assert locked.run.claim_export(
                 token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=30, now=now
@@ -1385,14 +1385,14 @@ class TestApplicationTraceRepositoryPersistenceCases:
             saved = stored_fields(locked.run)
         assert reloaded(case) == saved
 
-        with case.repository.change(case.run.id) as locked:
+        with case.repository.change(case.run.id, tenant_id=case.run.tenant_id) as locked:
             assert locked is not None
             locked.run.export_deferred(token, max_attempts=8, now=now)
             saved = stored_fields(locked.run)
         assert reloaded(case) == saved
 
         later = now + timedelta(minutes=1)
-        with case.repository.change(case.run.id) as locked:
+        with case.repository.change(case.run.id, tenant_id=case.run.tenant_id) as locked:
             assert locked is not None
             token = str(uuid4())
             assert locked.run.claim_export(
@@ -1417,15 +1417,13 @@ class TestApplicationTraceRepositoryPersistenceCases:
         before = reloaded(case)
 
         def change_then_break_a_rule() -> None:
-            with case.repository.change(case.run.id) as locked:
+            with case.repository.change(case.run.id, tenant_id=case.run.tenant_id) as locked:
                 assert locked is not None
                 invocation = locked.run.open_invocation(
                     agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key="first"
                 )
                 batch = batch_for(case.run, invocation)
-                locked.run.ingest(
-                    batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=naive_utc_now()
-                )
+                locked.run.ingest(batch, max_spans=100, max_bytes=1_000_000, now=naive_utc_now())
                 locked.run.capture_terminal(
                     agent_turn(case.run, root_span_id=case.run.root_span_id), now=naive_utc_now()
                 )
@@ -1464,7 +1462,7 @@ class TestApplicationTraceRepositoryPersistenceCases:
         case = seed(sqlite_session_factory, "owner")
 
         def owner_exists() -> bool:
-            with case.repository.change(case.run.id) as locked:
+            with case.repository.change(case.run.id, tenant_id=case.run.tenant_id) as locked:
                 assert locked is not None
                 return locked.owner_exists
 
@@ -1479,9 +1477,19 @@ class TestApplicationTraceRepositoryPersistenceCases:
         assert owner_exists() is False
 
     @staticmethod
+    def test_change_yields_nothing_for_another_tenant(sqlite_session_factory: sessionmaker[Session]) -> None:
+        case = seed(sqlite_session_factory, "scoped-change")
+        before = reloaded(case)
+
+        with case.repository.change(case.run.id, tenant_id=identifier("other-tenant")) as locked:
+            assert locked is None
+
+        assert reloaded(case) == before
+
+    @staticmethod
     def test_change_yields_nothing_for_a_missing_run(sqlite_session_factory: sessionmaker[Session]) -> None:
         case = seed(sqlite_session_factory, "missing")
-        with case.repository.change(identifier("missing-run")) as locked:
+        with case.repository.change(identifier("missing-run"), tenant_id=case.run.tenant_id) as locked:
             assert locked is None
 
     @staticmethod
@@ -1546,14 +1554,14 @@ class TestApplicationTraceRepositoryPersistenceCases:
         case = seed(sqlite_session_factory, "collected")
         now = naive_utc_now()
         agent_id = identifier("agent")
-        with case.repository.change(case.run.id) as locked:
+        with case.repository.change(case.run.id, tenant_id=case.run.tenant_id) as locked:
             assert locked is not None
             retried = locked.run.open_invocation(agent_id=agent_id, node_execution_id=None, attempt=1, call_key="r")
             first = locked.run.open_invocation(agent_id=agent_id, node_execution_id=None, attempt=0, call_key="a")
             second = locked.run.open_invocation(agent_id=agent_id, node_execution_id=None, attempt=0, call_key="b")
             for invocation in (first, second, retried):
                 batch = batch_for(case.run, invocation)
-                locked.run.ingest(batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=now)
+                locked.run.ingest(batch, max_spans=100, max_bytes=1_000_000, now=now)
             invocations, batches = dict(locked.run.invocations), list(locked.run.new_batches)
         # Creation and arrival times that contradict attempt, identifier and storage order.
         earlier, later = sorted([first, second], key=lambda invocation: invocation.id, reverse=True)

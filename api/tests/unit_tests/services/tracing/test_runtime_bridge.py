@@ -326,16 +326,20 @@ def trace_event(run: TraceRun, payload: TracePayload) -> TraceEvent:
 
 def capture(traces: ApplicationTraceRepository, run_id: str, trace: Trace) -> None:
     """Keep a business terminal in its run without scheduling the run's export."""
-    with traces.change(run_id) as locked:
+    run = traces.get(run_id)
+    assert run is not None
+    with traces.change(run_id, tenant_id=run.tenant_id) as locked:
         assert locked is not None
         locked.run.capture_terminal(trace, now=naive_utc_now())
 
 
 def ingest(traces: ApplicationTraceRepository, batch: AgentTraceBatch, *, max_spans: int, max_bytes: int) -> None:
     """Store a runtime batch in its run without scheduling the run's export."""
-    with traces.change(str(batch.run_id)) as locked:
+    run = traces.get(str(batch.run_id))
+    assert run is not None
+    with traces.change(run.id, tenant_id=run.tenant_id) as locked:
         assert locked is not None
-        locked.run.ingest(batch.model_dump(mode="json"), max_spans=max_spans, max_bytes=max_bytes, now=naive_utc_now())
+        locked.run.ingest(batch, max_spans=max_spans, max_bytes=max_bytes, now=naive_utc_now())
 
 
 def terminal(collection: Collection) -> None:
@@ -776,7 +780,7 @@ class TestApplicationTraceHandoffCases:
                 )
                 node_record.created_at = row.created_at
                 session.add(node_record)
-        with case.collection.repository.change(managed.id) as locked:
+        with case.collection.repository.change(managed.id, tenant_id=managed.tenant_id) as locked:
             assert locked is not None
             invocation = locked.run.open_invocation(
                 agent_id=identifier("agent"), node_execution_id=agent_node_id, attempt=0, call_key="agent:0"

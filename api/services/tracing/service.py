@@ -265,7 +265,7 @@ class ApplicationTracingService(TraceCollector):
         )
         if run is None or not run.capture_agent:
             return None
-        with _collection_errors(), self._runs.change(run.id) as locked:
+        with _collection_errors(), self._runs.change(run.id, tenant_id=tenant_id) as locked:
             if locked is None:
                 raise TraceCollectionConflictError("tracing_run_not_collecting")
             invocation = locked.run.open_invocation(
@@ -289,13 +289,16 @@ class ApplicationTracingService(TraceCollector):
             TraceCollectionLimitError: The batch exceeds the run's limits.
         """
         run_id = str(batch.run_id)
-        with _collection_errors(), self._runs.change(run_id) as locked:
+        run = self._run_query.get(run_id)
+        if run is None:
+            raise TraceCollectionNotFoundError("tracing_run_not_found")
+        with _collection_errors(), self._runs.change(run_id, tenant_id=run.tenant_id) as locked:
             if locked is None:
                 raise TraceCollectionNotFoundError("tracing_run_not_found")
             if not locked.owner_exists:
                 raise TraceCollectionNotFoundError("tracing_owner_not_found")
             accepted = locked.run.ingest(
-                batch.model_dump(mode="json"),
+                batch,
                 max_spans=self._settings.max_spans,
                 max_bytes=self._settings.max_bytes,
                 now=naive_utc_now(),
@@ -377,9 +380,9 @@ class ApplicationTracingService(TraceCollector):
         except Exception:
             logger.warning("Application trace is persisted; scheduling deferred: run_id=%s", run_id)
 
-    def _change(self, run_id: str, change: Callable[[TraceRunAgg], object]) -> None:
+    def _change(self, run: TraceRun | TraceRunAgg, change: Callable[[TraceRunAgg], object]) -> None:
         """Apply ``change`` to a run that may have been purged since it was read."""
-        with self._runs.change(run_id) as locked:
+        with self._runs.change(run.id, tenant_id=run.tenant_id) as locked:
             if locked is not None:
                 change(locked.run)
 
@@ -512,7 +515,7 @@ class ApplicationTracingService(TraceCollector):
         trace = self._builder.build(info)
         if trace is None:
             raise TraceCollectionError("tracing_terminal_not_supported")
-        self._change(run.id, lambda current: current.capture_terminal(trace, now=naive_utc_now()))
+        self._change(run, lambda current: current.capture_terminal(trace, now=naive_utc_now()))
         self._schedule(run.id)
         return True
 
@@ -521,11 +524,11 @@ class ApplicationTracingService(TraceCollector):
             return
         node = self._sources.node_execution(tenant_id=run.tenant_id, app_id=run.app_id, node_execution_id=run.source_id)
         if node is not None:
-            self._change(run.id, lambda current: current.settle_preview(node, now=naive_utc_now()))
+            self._change(run, lambda current: current.settle_preview(node, now=naive_utc_now()))
 
-    def _claim(self, run_id: str) -> tuple[TraceRunAgg, str] | None:
+    def _claim(self, run: TraceRunAgg) -> tuple[TraceRunAgg, str] | None:
         token = str(uuidv7())
-        with self._runs.change(run_id) as locked:
+        with self._runs.change(run.id, tenant_id=run.tenant_id) as locked:
             if locked is None or not locked.run.claim_export(
                 token=token,
                 owner_exists=locked.owner_exists,
@@ -536,25 +539,26 @@ class ApplicationTracingService(TraceCollector):
                 return None
             return locked.run, token
 
-    def _renew_export_lease(self, run_id: str, token: str) -> bool:
-        with self._runs.change(run_id) as locked:
+    def _renew_export_lease(self, run: TraceRunAgg, token: str) -> bool:
+        with self._runs.change(run.id, tenant_id=run.tenant_id) as locked:
             return locked is not None and locked.run.renew_export_lease(token, now=naive_utc_now())
 
     @contextmanager
-    def _export_lease_heartbeat(self, run_id: str, token: str) -> Generator[None]:
+    def _export_lease_heartbeat(self, run: TraceRunAgg, token: str) -> Generator[None]:
         """Keep slow exporters leased without holding a transaction across vendor I/O.
 
         A lost database connection is not proof that the exporter stopped. The
         attempt continues; the token-checked completion can reconcile a late ACK
         after lease expiry unless a manual retry has already replaced its token.
         """
+        run_id = run.id
         stopped = threading.Event()
         interval = self._settings.export_lease_seconds / 3
 
         def heartbeat() -> None:
             while not stopped.wait(interval):
                 try:
-                    if not self._renew_export_lease(run_id, token):
+                    if not self._renew_export_lease(run, token):
                         return
                 except Exception as error:
                     logger.warning(
@@ -598,11 +602,11 @@ class ApplicationTracingService(TraceCollector):
         if run is None:
             return
         self._settle_preview(run)
-        claim = self._claim(run_id)
+        claim = self._claim(run)
         if claim is None:
             return
         run, token = claim
-        with self._export_lease_heartbeat(run_id, token):
+        with self._export_lease_heartbeat(run, token):
             try:
                 try:
                     trace = run.exported_trace(self._run_query.batches(run.id))
@@ -613,20 +617,20 @@ class ApplicationTracingService(TraceCollector):
                 provider = self._frozen_provider(run.provider)
                 result = provider.send(self._codec.decode(run.tenant_id, type(provider), run.provider_config), trace)
             except ExportOutcomeUnknownError:
-                self._change(run_id, lambda current: current.export_uncertain(token, now=naive_utc_now()))
+                self._change(run, lambda current: current.export_uncertain(token, now=naive_utc_now()))
             except ExportRetryableError:
                 self._change(
-                    run_id,
+                    run,
                     lambda current: current.export_deferred(
                         token, max_attempts=self._settings.max_export_attempts, now=naive_utc_now()
                     ),
                 )
             except (TraceCollectionError, TraceRunError) as error:
-                self._export_failed(run_id, token, error.code)
+                self._export_failed(run, token, error.code)
             except ProviderConfigUnreadableError:
-                self._export_failed(run_id, token, "tracing_config_unreadable")
+                self._export_failed(run, token, "tracing_config_unreadable")
             except ExportRejectedError:
-                self._export_failed(run_id, token, "provider_export_rejected")
+                self._export_failed(run, token, "provider_export_rejected")
             except Exception as error:
                 logger.warning(
                     "Application trace export failed: run_id=%s provider=%s error_type=%s",
@@ -634,10 +638,10 @@ class ApplicationTracingService(TraceCollector):
                     run.provider,
                     type(error).__name__,
                 )
-                self._export_failed(run_id, token, "provider_export_rejected")
+                self._export_failed(run, token, "provider_export_rejected")
             else:
                 self._change(
-                    run_id,
+                    run,
                     lambda current: current.export_accepted(
                         token,
                         provider_trace_id=result.trace_id,
@@ -647,8 +651,8 @@ class ApplicationTracingService(TraceCollector):
                     ),
                 )
 
-    def _export_failed(self, run_id: str, token: str, error_code: str) -> None:
-        self._change(run_id, lambda current: current.export_failed(token, error_code, now=naive_utc_now()))
+    def _export_failed(self, run: TraceRunAgg, token: str, error_code: str) -> None:
+        self._change(run, lambda current: current.export_failed(token, error_code, now=naive_utc_now()))
 
     def _frozen_provider(self, provider_id: str) -> TraceProvider[Any]:
         try:
@@ -794,7 +798,7 @@ class ApplicationTracingService(TraceCollector):
         if run is None:
             raise TraceCollectionNotFoundError("tracing_run_not_found")
         self._status_for_run(run, source_kind, source_id, node_execution_id)
-        with _collection_errors(), self._runs.change(run.id) as locked:
+        with _collection_errors(), self._runs.change(run.id, tenant_id=tenant_id) as locked:
             if locked is None:
                 raise TraceCollectionNotFoundError("tracing_run_not_found")
             locked.run.release_for_retry(

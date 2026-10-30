@@ -41,7 +41,10 @@ from models.model import Conversation, EndUser, Message, MessageFile
 from models.provider import Provider, ProviderCredential, ProviderModel, ProviderModelCredential, ProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.api_workflow_node_execution_repository import (
+    DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionPayloads,
+)
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.tracing_store_errors import tracing_store_errors
 from services.tracing.delivery import TraceRecordSource
@@ -381,7 +384,7 @@ class TraceRecordRepository(TraceRecordSource):
 
     def _node_executions(self, run: WorkflowRun) -> tuple[Sequence[WorkflowNodeExecution], Mapping[str, str]]:
         repository = self._node_executions_repository
-        executions: list[WorkflowNodeExecution] = []
+        rows: list[WorkflowNodeExecutionModel] = []
         tool_parents: dict[str, str] = {}
         seen: set[str] = set()
         with tracing_store_errors():
@@ -395,7 +398,7 @@ class TraceRecordRepository(TraceRecordSource):
                 if row.id in seen or row.status == WorkflowNodeExecutionStatus.PAUSED:
                     continue
                 seen.add(row.id)
-                executions.append(self._node_execution(row, repository))
+                rows.append(row)
                 if parent_id is not None:
                     tool_parents[row.id] = parent_id
                 if row.node_type == BuiltinNodeTypes.TOOL:
@@ -406,11 +409,12 @@ class TraceRecordRepository(TraceRecordSource):
                             run.tenant_id, run.id, row.node_execution_id or row.id
                         )
                     )
-        return executions, tool_parents
+            payloads = repository.load_full_payloads(rows)
+        return [self._node_execution(row, payloads[row.id]) for row in rows], tool_parents
 
     @staticmethod
     def _node_execution(
-        row: WorkflowNodeExecutionModel, repository: DifyAPIWorkflowNodeExecutionRepository
+        row: WorkflowNodeExecutionModel, payloads: WorkflowNodeExecutionPayloads
     ) -> WorkflowNodeExecution:
         return WorkflowNodeExecution(
             id=row.id,
@@ -422,9 +426,9 @@ class TraceRecordRepository(TraceRecordSource):
             node_id=row.node_id,
             node_type=row.node_type,
             title=row.title,
-            inputs=repository.load_full_inputs(row),
-            process_data=repository.load_full_process_data(row),
-            outputs=repository.load_full_outputs(row),
+            inputs=payloads.inputs,
+            process_data=payloads.process_data,
+            outputs=payloads.outputs,
             status=WorkflowNodeExecutionStatus(row.status),
             error=row.error,
             elapsed_time=row.elapsed_time,

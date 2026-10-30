@@ -448,9 +448,13 @@ class ApplicationTraceRepository(TraceRunRepository, TraceRunQuery, TraceSourceQ
 
     @override
     @contextmanager
-    def change(self, run_id: str) -> Generator[LockedTraceRun | None]:
+    def change(self, run_id: str, *, tenant_id: str) -> Generator[LockedTraceRun | None]:
         with self._write() as session:
-            row = session.scalar(select(ApplicationTraceRun).where(ApplicationTraceRun.id == run_id).with_for_update())
+            row = session.scalar(
+                select(ApplicationTraceRun)
+                .where(ApplicationTraceRun.id == run_id, ApplicationTraceRun.tenant_id == tenant_id)
+                .with_for_update()
+            )
             if row is None:
                 yield None
                 return

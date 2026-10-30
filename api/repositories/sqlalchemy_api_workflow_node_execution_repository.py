@@ -8,9 +8,10 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from itertools import batched
 from typing import Any, cast, override
 
-from sqlalchemy import String, asc, delete, desc, func, or_, select
+from sqlalchemy import String, asc, delete, desc, func, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -25,6 +26,7 @@ from models.workflow import (
 )
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionPayloads,
     WorkflowNodeExecutionSnapshot,
     WorkflowNodeExecutionSnapshotRow,
 )
@@ -81,14 +83,43 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         offload = next((item for item in execution.offload_data if item.type_ == type_), None)
         if offload is None:
             return inline
+        reference = (execution.tenant_id, offload.file_id)
+        return self._load_offloaded_payloads({reference})[reference]
+
+    def _load_offloaded_payloads(
+        self, references: set[tuple[str, str]]
+    ) -> dict[tuple[str, str], Mapping[str, Any] | None]:
+        if not references:
+            return {}
+        keys: dict[tuple[str, str], str] = {}
         with self._session_maker() as session:
-            key = session.scalar(
-                select(UploadFile.key).where(
-                    UploadFile.id == offload.file_id, UploadFile.tenant_id == execution.tenant_id
+            for batch in batched(references, 1000, strict=False):
+                rows = session.execute(
+                    select(UploadFile.tenant_id, UploadFile.id, UploadFile.key).where(
+                        tuple_(UploadFile.tenant_id, UploadFile.id).in_(batch)
+                    )
                 )
+                keys.update(((tenant_id, file_id), key) for tenant_id, file_id, key in rows)
+        for tenant_id, file_id in references:
+            assert (tenant_id, file_id) in keys, f"UploadFile with id {file_id} should exist in the execution's tenant"
+        return {reference: json.loads(storage.load(keys[reference])) for reference in references}
+
+    @override
+    def load_full_payloads(
+        self, executions: Sequence[WorkflowNodeExecutionModel]
+    ) -> Mapping[str, WorkflowNodeExecutionPayloads]:
+        loaded = self._load_offloaded_payloads(
+            {(execution.tenant_id, offload.file_id) for execution in executions for offload in execution.offload_data}
+        )
+        result: dict[str, WorkflowNodeExecutionPayloads] = {}
+        for execution in executions:
+            full = {offload.type_: loaded[execution.tenant_id, offload.file_id] for offload in execution.offload_data}
+            result[execution.id] = WorkflowNodeExecutionPayloads(
+                inputs=full.get(ExecutionOffLoadType.INPUTS, execution.inputs_dict),
+                process_data=full.get(ExecutionOffLoadType.PROCESS_DATA, execution.process_data_dict),
+                outputs=full.get(ExecutionOffLoadType.OUTPUTS, execution.outputs_dict),
             )
-        assert key is not None, f"UploadFile with id {offload.file_id} should exist in the execution's tenant"
-        return json.loads(storage.load(key))
+        return result
 
     @override
     def get_node_last_execution(

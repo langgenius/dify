@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
@@ -58,8 +57,8 @@ def batch(
     batch_id: UUID | None = None,
     name: str = "Agent execution",
     status: str = "ok",
-) -> dict[str, object]:
-    """The JSON form of a runtime batch, as the service hands it to the run."""
+) -> AgentTraceBatch:
+    """The validated runtime batch, as the service hands it to the run."""
     return AgentTraceBatch(
         run_id=UUID(run.id),
         invocation_id=UUID(opened.id),
@@ -79,10 +78,10 @@ def batch(
                 events=[AgentTraceEvent(name="token", timestamp_ns=1_500_000_000)],
             )
         ],
-    ).model_dump(mode="json")
+    )
 
 
-def ingest(run: TraceRunAgg, payload: Mapping[str, object], *, now: datetime = NOW) -> int:
+def ingest(run: TraceRunAgg, payload: AgentTraceBatch, *, now: datetime = NOW) -> int:
     return run.ingest(payload, max_spans=100, max_bytes=1_000_000, now=now)
 
 
@@ -277,7 +276,7 @@ class TestIngestion:
         assert ingest(run, payload) == 1
 
         (stored,) = run.new_batches
-        assert (stored.id, stored.invocation_id, stored.final) == (payload["batch_id"], opened.id, True)
+        assert (stored.id, stored.invocation_id, stored.final) == (str(payload.batch_id), opened.id, True)
         assert run.receipts[stored.id].payload_hash == stored.payload_hash
         assert run.span_count == 1
         assert run.payload_bytes > 0
@@ -304,7 +303,7 @@ class TestIngestion:
         other = invocation(run, "second")
         payload = batch(run, opened, final=False)
         ingest(run, payload)
-        batch_id = UUID(str(payload["batch_id"]))
+        batch_id = payload.batch_id
 
         with pytest.raises(TraceRunConflictError, match="tracing_batch_conflict"):
             ingest(run, batch(run, opened, final=False, batch_id=batch_id, name="changed"))
@@ -361,7 +360,7 @@ class TestIngestion:
         )
 
         with pytest.raises(TraceRunConflictError, match="tracing_trace_id_mismatch"):
-            ingest(run, foreign.model_dump(mode="json"))
+            ingest(run, foreign)
         assert run.new_batches == []
 
     @staticmethod
@@ -655,7 +654,7 @@ def report(run: TraceRunAgg, opened: TraceInvocation, spans: list[AgentTraceSpan
     payload = AgentTraceBatch(
         run_id=UUID(run.id), invocation_id=UUID(opened.id), batch_id=uuid4(), final=True, spans=spans
     )
-    ingest(run, payload.model_dump(mode="json"))
+    ingest(run, payload)
 
 
 class TestExportedTrace:

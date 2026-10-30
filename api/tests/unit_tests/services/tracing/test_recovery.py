@@ -106,7 +106,7 @@ class Collection:
     run: TraceRun
 
     def invocation(self, name: str) -> TraceInvocation:
-        with self.repository.change(self.run.id) as locked:
+        with self.repository.change(self.run.id, tenant_id=self.run.tenant_id) as locked:
             assert locked is not None
             return locked.run.open_invocation(
                 agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key=name
@@ -309,15 +309,15 @@ def batch_for(run: TraceRun, invocation: TraceInvocation, *, final: bool, span_i
 
 def ingest(collection: Collection, batch: AgentTraceBatch) -> None:
     """Store a runtime batch in its run without scheduling the run's export."""
-    with collection.repository.change(str(batch.run_id)) as locked:
+    with collection.repository.change(str(batch.run_id), tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
-        locked.run.ingest(batch.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=naive_utc_now())
+        locked.run.ingest(batch, max_spans=100, max_bytes=1_000_000, now=naive_utc_now())
 
 
 def claim(collection: Collection, run_id: str) -> str | None:
     """Claim the run for an export attempt; ``None`` when it may not export now."""
     token = str(uuid4())
-    with collection.repository.change(run_id) as locked:
+    with collection.repository.change(run_id, tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
         claimed = locked.run.claim_export(
             token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=30, now=naive_utc_now()

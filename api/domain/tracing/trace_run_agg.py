@@ -15,6 +15,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID, uuid5
 
+from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceSpan
 from dify_trace_sdk.ids import span_id_for
 from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
 
@@ -328,11 +329,10 @@ class TraceRunAgg:
         self.invocations[identifier] = invocation
         return invocation
 
-    def ingest(self, payload: Mapping[str, Any], *, max_spans: int, max_bytes: int, now: datetime) -> int:
+    def ingest(self, batch: AgentTraceBatch, *, max_spans: int, max_bytes: int, now: datetime) -> int:
         """Append a runtime batch and return its span count; a final batch finalizes its invocation.
 
-        ``payload`` is the batch's validated JSON form. A batch ID replays only
-        with the same payload, even after the run closed.
+        A batch ID replays only with the same validated payload, even after the run closed.
 
         Raises:
             TraceRunNotFoundError: The batch's invocation is not one of this run's.
@@ -341,13 +341,13 @@ class TraceRunAgg:
         """
         # Hash the original validated payload. Sanitization cannot turn two
         # conflicting producer payloads into a falsely successful replay.
-        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        canonical = json.dumps(batch.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode()
         digest = hashlib.sha256(canonical).hexdigest()
-        invocation = self.invocations.get(str(payload["invocation_id"]))
+        invocation = self.invocations.get(str(batch.invocation_id))
         if invocation is None:
             raise TraceRunNotFoundError("tracing_invocation_not_found")
-        batch_id = str(payload["batch_id"])
-        spans: Sequence[Mapping[str, Any]] = payload["spans"]
+        batch_id = str(batch.batch_id)
+        spans = batch.spans
         previous = self.receipts.get(batch_id)
         if previous is not None:
             if previous.invocation_id != invocation.id or previous.payload_hash != digest:
@@ -355,11 +355,11 @@ class TraceRunAgg:
             return len(spans)
         if self.state in _CLOSED_STATES or invocation.finalized:
             raise TraceRunConflictError("tracing_collection_closed")
-        if any(span["trace_id"] != self.trace_id for span in spans):
+        if any(span.trace_id != self.trace_id for span in spans):
             raise TraceRunConflictError("tracing_trace_id_mismatch")
         if self.span_count + len(spans) > max_spans or self.payload_bytes + len(canonical) > max_bytes:
             raise TraceRunLimitError("tracing_payload_limit")
-        final = payload["final"] is True
+        final = batch.final
         self.new_batches.append(
             TraceBatch(
                 id=batch_id,
@@ -377,12 +377,12 @@ class TraceRunAgg:
             self.invocations[invocation.id] = replace(invocation, finalized=True, finalized_at=now)
         return len(spans)
 
-    def _stored_span(self, span: Mapping[str, Any]) -> dict[str, Any]:
-        stored = dict(span)
-        stored["attributes"] = safe_attributes(span["attributes"], capture_content=self.capture_content)
+    def _stored_span(self, span: AgentTraceSpan) -> dict[str, Any]:
+        stored = span.model_dump(mode="json")
+        stored["attributes"] = safe_attributes(span.attributes, capture_content=self.capture_content)
         if not self.capture_content:
             stored["events"] = []
-            stored["status_message"] = "Agent operation failed" if span["status"] == "error" else None
+            stored["status_message"] = "Agent operation failed" if span.status == "error" else None
         return stored
 
     def capture_terminal(self, trace: Trace, *, now: datetime) -> None:

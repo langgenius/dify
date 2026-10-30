@@ -120,6 +120,6 @@ def recover_terminal(
         logger.warning("Application trace recovery failed: run_id=%s error_type=%s", run.id, type(error).__name__)
         return False
     finally:
-        with runs.change(run.id) as locked:
+        with runs.change(run.id, tenant_id=run.tenant_id) as locked:
             if locked is not None:
                 locked.run.recovery_checked(error_code, now=naive_utc_now())

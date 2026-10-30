@@ -86,7 +86,7 @@ class _ApplicationTraceCollectionCollection:
     @contextmanager
     def change(self) -> Generator[TraceRunAgg]:
         """The run under its row lock, in its own transaction; it is saved when the block exits without an error."""
-        with self.repository.change(self.run.id) as locked:
+        with self.repository.change(self.run.id, tenant_id=self.run.tenant_id) as locked:
             assert locked is not None
             yield locked.run
 
@@ -445,7 +445,7 @@ def _claim_at(
 ) -> tuple[TraceRunAgg, str] | None:
     """Lease the run for one export attempt; returns the claimed run and the token that fences the attempt."""
     token = str(uuid4())
-    with collection.repository.change(collection.run.id) as locked:
+    with collection.repository.change(collection.run.id, tenant_id=collection.run.tenant_id) as locked:
         assert locked is not None
         claimed = locked.run.claim_export(
             token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=lease_seconds, now=now
@@ -1926,9 +1926,9 @@ class _RenewalRecordingRepository(ApplicationTraceRepository):
 
     @override
     @contextmanager
-    def change(self, run_id: str) -> Generator[LockedTraceRun | None]:
+    def change(self, run_id: str, *, tenant_id: str) -> Generator[LockedTraceRun | None]:
         renewal = False
-        with super().change(run_id) as locked:
+        with super().change(run_id, tenant_id=tenant_id) as locked:
             lease = _export_lease(locked)
             yield locked
             renewal = lease is not None and _export_lease(locked) == lease
@@ -1945,8 +1945,8 @@ class _UnavailableCompletionRepository(ApplicationTraceRepository):
 
     @override
     @contextmanager
-    def change(self, run_id: str) -> Generator[LockedTraceRun | None]:
-        with super().change(run_id) as locked:
+    def change(self, run_id: str, *, tenant_id: str) -> Generator[LockedTraceRun | None]:
+        with super().change(run_id, tenant_id=tenant_id) as locked:
             lease = _export_lease(locked)
             yield locked
             if lease is not None and _export_lease(locked) is None:

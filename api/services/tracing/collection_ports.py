@@ -41,10 +41,10 @@ class TraceRunRepository(Protocol):
         """Read a run without its lock, to decide what to change; ``None`` when it does not exist."""
         ...
 
-    def change(self, run_id: str) -> AbstractContextManager[LockedTraceRun | None]:
+    def change(self, run_id: str, *, tenant_id: str) -> AbstractContextManager[LockedTraceRun | None]:
         """Load a run under its row lock and save it when the block exits without an error.
 
-        ``None`` when the run does not exist. The lock is held until the block
+        ``None`` when the run does not exist in the supplied tenant. The lock is held until the block
         exits, so the block only changes the run. A new batch whose ID another
         run already stores raises TraceCollectionConflictError.
         """

@@ -22,6 +22,7 @@ from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionPayloads,
     WorkflowNodeExecutionSnapshot,
 )
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
@@ -173,6 +174,19 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
         """Return complete Process Data already stored inline by LogStore."""
         return execution.process_data_dict
+
+    @override
+    def load_full_payloads(
+        self, executions: Sequence[WorkflowNodeExecutionModel]
+    ) -> Mapping[str, WorkflowNodeExecutionPayloads]:
+        return {
+            execution.id: WorkflowNodeExecutionPayloads(
+                inputs=execution.inputs_dict,
+                process_data=execution.process_data_dict,
+                outputs=execution.outputs_dict,
+            )
+            for execution in executions
+        }
 
     @override
     def get_node_last_execution(

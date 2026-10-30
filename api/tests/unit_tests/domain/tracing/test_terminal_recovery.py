@@ -55,7 +55,7 @@ def with_invocation(run: TraceRunAgg, *, finalized_at: datetime | None) -> Trace
                 )
             ],
         )
-        run.ingest(payload.model_dump(mode="json"), max_spans=100, max_bytes=1_000_000, now=finalized_at)
+        run.ingest(payload, max_spans=100, max_bytes=1_000_000, now=finalized_at)
     return run
 
 
