@@ -97,6 +97,7 @@ Notes:
 
 - App endpoints use an app API token; knowledge base and workspace endpoints use a dataset API token.
 - Chat/completion require a stable `user` identifier in the request payload.
+- Object-form chat and completion requests may omit `inputs` for apps without custom variables; the SDK sends an empty object for the required API field.
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
 - `stream.toText()` rejects with `APIError` when Dify sends an `error` event, even if the HTTP status is 200. Iterating the stream directly still yields these events for custom handling.
 

@@ -41,7 +41,8 @@ export class ChatClient extends DifyClient {
     let shouldStream = stream
 
     if (query === undefined && 'user' in (inputOrRequest as ChatMessageRequest)) {
-      payload = inputOrRequest as ChatMessageRequest
+      const request = inputOrRequest as ChatMessageRequest
+      payload = { ...request, inputs: request.inputs ?? {} }
       shouldStream = payload.response_mode === 'streaming'
     } else {
       ensureNonEmptyString(query, 'query')
