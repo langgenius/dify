@@ -7,19 +7,254 @@ import pytest
 import pytest_mock
 from sqlalchemy import Table, select, update
 
-from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Run
+from core.dify_builder.models import Actor, ChecklistError, DifyBuilderContext, EntryMode, NodeOutput, Run
 from core.dify_builder.state import PcState
-from models.dify_builder import DifyBuilderSessionCommit
+from models.dify_builder import DifyBuilderConversationItem, DifyBuilderSessionCommit, DifyBuilderTestInput
 from services.dify_builder import code_risk_assessment, dify_port
+from services.dify_builder import service as service_module
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
 from services.dify_builder.code_risk_assessment import assess_code, code_facts
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
-from services.dify_builder.serde import context_to_dict
+from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.serde import context_from_dict, context_to_dict
+from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.services.dify_builder.test_code_risk_assessment import graph
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase, _run
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import harness as _full_run_harness
+from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
 harness = _full_run_harness
+
+
+def fix_context(h: FullRunCase, monkeypatch: pytest.MonkeyPatch, source: str) -> DifyBuilderContext:
+    """Use the actual Fix setup and persisted context, without dispatching a worker."""
+    for model in (DifyBuilderConversationItem, DifyBuilderSessionCommit):
+        table = model.__table__
+        assert isinstance(table, Table)
+        table.create(h.factory.kw["bind"], checkfirst=True)
+    model_config: dict[str, object] = {"provider": "openai", "name": "chosen", "mode": "chat", "completion_params": {}}
+    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant, _config: model_config)
+    repo = SqlDifyBuilderRepository(h.factory)
+    service = DifyBuilderService(repo=repo, session_lock=FakeSessionLock(), enqueue_fn=lambda *_: None)
+    actor = Actor(account_id=h.ids["account"], tenant_id=h.ids["tenant"])
+    session_id, _ = service._prepare_fix_session(
+        h.ids["app"],
+        actor,
+        failed_run_id="original-native-failure" if source != "checklist" else None,
+        checklist_errors=[ChecklistError(node_id="code", node_type="code", messages=["Invalid Code"])]
+        if source == "checklist"
+        else None,
+        model_config=model_config,
+    )
+    h.ids["session"] = session_id
+    with h.factory.begin() as sql:
+        saved = sql.get(DifyBuilderTestInput, h.ids["input"])
+        assert saved is not None
+        saved.session_id = session_id
+    _, fc = repo.get_session(session_id)
+    assert fc.goal_text == ""
+    assert fc.model_config == model_config
+    if source != "checklist":
+        original = repo.get_run(fc.failed_run_id)
+        assert (original.dify_run_id, original.status, original.immutable) == (
+            "original-native-failure",
+            "failed",
+            True,
+        )
+    if source == "legacy_run":
+        fc.source = ""
+    return fc
+
+
+@pytest.mark.parametrize("source", ["run", "checklist", "legacy_run"])
+@pytest.mark.parametrize("classification", ["pure", "side_effect"])
+def test_fix_preparation_assesses_without_business_goal_and_keeps_native_confirmation(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, source: str, classification: str
+) -> None:
+    fc = fix_context(harness, monkeypatch, source)
+    harness.draft.graph = json.dumps(graph("return value" if classification == "pure" else "send(value)"))
+    harness.finished.per_node = [NodeOutput(node_id="start"), NodeOutput(node_id="code")]
+    calls: list[dict[str, object]] = []
+
+    def reason(facts: dict[str, object]) -> dict[str, str]:
+        calls.append(facts)
+        return {"classification": classification, "risk_notice": "Source behavior assessed for repair validation"}
+
+    monkeypatch.setattr(code_risk_assessment, "builder_code_reasoner", lambda **_: reason)
+    port = WorkflowServiceDifyPort()
+    actor = Actor(account_id=harness.ids["account"], tenant_id=harness.ids["tenant"])
+    fc.code_risk_assessments = port.prepare_code_risks(
+        harness.ids["app"], actor, session_id=harness.ids["session"], inputs={"value": 1}, context=fc
+    )
+    assert fc.code_risk_assessments["code"]["status"] == "assessed"
+    assert len(calls) == 1
+    assert calls[0]["goal"]
+    assert fc.goal_text == ""
+    assert fc.business_acceptance_contract == {}
+    disclosure = port.disclose_effects(harness.ids["app"], actor, inputs={"value": 1}, code_risk_context=fc)
+    assert disclosure.mocked_node_ids({}) == (frozenset({"code"}) if classification == "side_effect" else frozenset())
+    save_context(harness, fc)
+    result = _run(harness, disclosure.confirmation(["code"]) if classification == "side_effect" else {}, {"value": 1})
+    assert result.execution_refusal is None
+    assert harness.generate.call_args.kwargs["builder_mocked_node_ids"] == frozenset()
+    assert harness.generate.call_args.kwargs["args"] == {"inputs": {"value": 1}}
+    assert result.verification is not None
+    assert result.verification.execution_evidence is not None
+    assert result.verification.execution_evidence.simulated_node_ids == ()
+    fc.code_risk_assessments = {}
+    save_context(harness, fc)
+    recovered = _run(harness, {}, {"value": 1})
+    assert recovered.dify_run_id == result.dify_run_id == "native-1"
+    assert harness.generate.call_count == 1
+    assert len(calls) == 1
+    if source != "checklist":
+        original = SqlDifyBuilderRepository(harness.factory).get_run(fc.failed_run_id)
+        assert (original.dify_run_id, original.status, original.immutable) == (
+            "original-native-failure",
+            "failed",
+            True,
+        )
+
+
+@pytest.mark.parametrize("source", ["run", "checklist"])
+@pytest.mark.parametrize("failure", ["missing_model", "model_unavailable", "invalid_assessment", "unknown"])
+def test_fix_risk_failure_keeps_code_simulated(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, source: str, failure: str
+) -> None:
+    fc = fix_context(harness, monkeypatch, source)
+    harness.draft.graph = json.dumps(graph())
+    harness.finished.per_node = [NodeOutput(node_id="start"), NodeOutput(node_id="code")]
+    calls: list[object] = []
+
+    def reason(facts: dict[str, object]) -> dict[str, str]:
+        calls.append(facts)
+        if failure == "model_unavailable":
+            raise ValueError("Provider unavailable")
+        return {
+            "classification": "invalid" if failure == "invalid_assessment" else "unknown",
+            "risk_notice": "Uncertain",
+        }
+
+    monkeypatch.setattr(code_risk_assessment, "builder_code_reasoner", lambda **_: reason)
+    if failure == "missing_model":
+        fc.model_config = {}
+    actor = Actor(account_id=harness.ids["account"], tenant_id=harness.ids["tenant"])
+    port = WorkflowServiceDifyPort()
+    fc.code_risk_assessments = port.prepare_code_risks(
+        harness.ids["app"], actor, session_id=harness.ids["session"], inputs={"value": 1}, context=fc
+    )
+    risk = fc.code_risk_assessments["code"]
+    assert risk["classification"] == "unknown"
+    assert risk["status"] == ("assessed" if failure == "unknown" else "unavailable")
+    assert len(calls) == (0 if failure == "missing_model" else 1)
+    save_context(harness, fc)
+    result = _run(harness, {}, {"value": 1})
+    assert harness.generate.call_args.kwargs["builder_mocked_node_ids"] == frozenset({"code"})
+    assert result.verification is not None
+    assert result.verification.execution_evidence is not None
+    assert result.verification.execution_evidence.simulated_node_ids == ("code",)
+
+
+@pytest.mark.parametrize(
+    ("source", "has_run", "has_checklist"),
+    [
+        ("", False, False),
+        ("run", False, False),
+        ("checklist", False, False),
+        ("unrelated", True, True),
+        ("run", False, True),
+        ("checklist", True, False),
+        ("", False, True),
+    ],
+)
+def test_empty_nonfix_context_cannot_acquire_code_assessment(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, source: str, has_run: bool, has_checklist: bool
+) -> None:
+    harness.draft.graph = json.dumps(graph())
+    fc = DifyBuilderContext(
+        source=source,
+        model_config={"name": "chosen"},
+        failed_run_id="old-failed-run" if has_run else "",
+        checklist_errors=[ChecklistError(node_id="code")] if has_checklist else [],
+    )
+
+    def unexpected_reason(**_: object) -> None:
+        pytest.fail("No task context may reach the model")
+
+    monkeypatch.setattr(code_risk_assessment, "builder_code_reasoner", unexpected_reason)
+    risks = WorkflowServiceDifyPort().prepare_code_risks(
+        harness.ids["app"],
+        Actor(account_id=harness.ids["account"], tenant_id=harness.ids["tenant"]),
+        session_id=harness.ids["session"],
+        inputs={"value": 1},
+        context=fc,
+    )
+    assert (risks["code"]["status"], risks["code"]["classification"]) == ("unavailable", "unknown")
+
+
+@pytest.mark.parametrize(
+    "raw_context",
+    [
+        {"source": [], "failed_run_id": "old-run"},
+        {"source": {}, "failed_run_id": "old-run"},
+        {"source": "run", "failed_run_id": {"id": "old-run"}},
+        {"source": "run", "failed_run_id": ["old-run"]},
+        {"source": "run", "failed_run_id": True},
+        {"source": "run", "failed_run_id": "   "},
+    ],
+)
+def test_malformed_persisted_fix_context_remains_unavailable(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, raw_context: dict[str, object]
+) -> None:
+    fc = context_from_dict({**raw_context, "model_config": {"name": "chosen"}})
+    harness.draft.graph = json.dumps(graph())
+    calls: list[object] = []
+
+    def reason(facts: dict[str, object]) -> dict[str, str]:
+        calls.append(facts)
+        return {"classification": "pure", "risk_notice": "Only parses input"}
+
+    monkeypatch.setattr(code_risk_assessment, "builder_code_reasoner", lambda **_: reason)
+    risks = WorkflowServiceDifyPort().prepare_code_risks(
+        harness.ids["app"],
+        Actor(account_id=harness.ids["account"], tenant_id=harness.ids["tenant"]),
+        session_id=harness.ids["session"],
+        inputs={"value": 1},
+        context=fc,
+    )
+    assert (risks["code"]["status"], risks["code"]["classification"]) == ("unavailable", "unknown")
+    assert calls == []
+
+
+@pytest.mark.parametrize("source", ["run", "checklist"])
+@pytest.mark.parametrize("change", ["graph", "input", "task"])
+def test_fix_risk_snapshot_cannot_authorize_changed_execution(
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, source: str, change: str
+) -> None:
+    fc = fix_context(harness, monkeypatch, source)
+    harness.draft.graph = json.dumps(graph())
+    monkeypatch.setattr(
+        code_risk_assessment,
+        "builder_code_reasoner",
+        lambda **_: lambda _: {"classification": "pure", "risk_notice": "Only parses the supplied value"},
+    )
+    fc.code_risk_assessments = WorkflowServiceDifyPort().prepare_code_risks(
+        harness.ids["app"],
+        Actor(account_id=harness.ids["account"], tenant_id=harness.ids["tenant"]),
+        session_id=harness.ids["session"],
+        inputs={"value": 1},
+        context=fc,
+    )
+    assert fc.code_risk_assessments["code"]["status"] == "assessed"
+    if change == "graph":
+        harness.draft.graph = json.dumps(graph("send(value)"))
+    elif change == "task":
+        fc.goal_text = "Delete remote resources"
+    save_context(harness, fc)
+    result = _run(harness, {}, {"value": True} if change == "input" else {"value": 1})
+    assert result.execution_refusal is not None
+    assert result.execution_refusal.reason_code == "code_risk_assessment_stale"
+    harness.generate.assert_not_called()
 
 
 def context(h: FullRunCase, classification: str = "pure") -> DifyBuilderContext:

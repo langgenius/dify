@@ -762,6 +762,7 @@ class WorkflowServiceDifyPort:
         """Reason once outside DB sessions; revalidate facts before exposing the snapshot."""
         from services.dify_builder.code_risk_assessment import (
             assess_code,
+            assessment_goal,
             builder_code_reasoner,
             code_facts,
             unavailable,
@@ -785,7 +786,7 @@ class WorkflowServiceDifyPort:
                 return code_facts(
                     dict(draft.graph_dict),
                     inputs=inputs,
-                    goal_text=context.goal_text,
+                    goal_text=assessment_goal(context),
                     model_config=context.model_config,
                     scope_binding=_code_scope_binding(draft),
                     reply_language=context.reply_language,
@@ -798,7 +799,7 @@ class WorkflowServiceDifyPort:
             saved = prior.get(node_id)
             if saved is not None and saved["facts_digest"] == facts.digest:
                 results[node_id] = saved
-            elif not context.goal_text or not context.model_config:
+            elif not assessment_goal(context) or not context.model_config:
                 results[node_id] = unavailable(facts).model_dump(mode="json")
             else:
                 results[node_id] = assess_code(
@@ -838,13 +839,13 @@ class WorkflowServiceDifyPort:
             workflow = _load_draft_workflow_or_raise(app, session=session)
             graph = dict(workflow.graph_dict)
             names, bindings = _tool_account_metadata(session, app.tenant_id, graph)
-            from services.dify_builder.code_risk_assessment import code_facts
+            from services.dify_builder.code_risk_assessment import assessment_goal, code_facts
 
             context = code_risk_context or DifyBuilderContext()
             facts = code_facts(
                 graph,
                 inputs=inputs or {},
-                goal_text=context.goal_text,
+                goal_text=assessment_goal(context),
                 model_config=context.model_config,
                 scope_binding=_code_scope_binding(workflow),
                 reply_language=context.reply_language,
@@ -1691,7 +1692,7 @@ class WorkflowServiceDifyPort:
     @staticmethod
     def _saved_code_risks(session, *, owner, graph, inputs, draft):
         """Reload server-only assessment at worker boundaries; never call reasoning."""
-        from services.dify_builder.code_risk_assessment import code_facts, validated_assessments
+        from services.dify_builder.code_risk_assessment import assessment_goal, code_facts, validated_assessments
         from services.dify_builder.serde import context_from_dict
 
         if not any(node.get("data", {}).get("type") == "code" for node in graph.get("nodes", [])):
@@ -1711,7 +1712,7 @@ class WorkflowServiceDifyPort:
         facts = code_facts(
             graph,
             inputs=inputs,
-            goal_text=context.goal_text,
+            goal_text=assessment_goal(context),
             model_config=context.model_config,
             scope_binding=_code_scope_binding(draft),
             reply_language=context.reply_language,
