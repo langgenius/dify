@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
+from contextlib import suppress
 from enum import StrEnum
+from functools import partial
 
 from flask import request
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.openapi._errors import require_uuid
 from controllers.openapi.auth.context import Caller, Context, RouteContractError
 from extensions.ext_application_services import application_services
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
@@ -84,24 +88,31 @@ def _path_param(ctx: Context, name: str) -> str:
         ) from caught_error
 
 
-def _canonical_uuid(raw: str, not_found: str) -> str:
-    try:
-        # Canonical dashed form, so a bare-hex path parameter names the same row.
-        return str(uuid.UUID(raw))
-    except ValueError as caught_error:
-        raise NotFound(not_found) from caught_error
+_APP_NOT_FOUND = partial(NotFound, "app not found")
+_AGENT_NOT_FOUND = partial(NotFound, "agent not found")
+
+
+def canonical_view_args(view_args: Mapping[str, str]) -> dict[str, str]:
+    """The path parameters with a bare-hex Agent id in its stored dashed form, so every
+    reader of the request sees one spelling. An id that is no UUID is left for
+    `_fetch_agent_app` to refuse once the caller is known to belong here.
+    """
+    canonical = dict(view_args)
+    if PathParam.AGENT_ID not in canonical:
+        return canonical
+    with suppress(NotFound):
+        canonical[PathParam.AGENT_ID] = require_uuid(canonical[PathParam.AGENT_ID], not_found=_AGENT_NOT_FOUND)
+    return canonical
 
 
 def _fetch_app(ctx: Context) -> App:
-    if route_has_app(ctx):
-        return _fetch_app_by_id(ctx)
     if PathParam.AGENT_ID in ctx.view_args:
         return _fetch_agent_app(ctx)
     return _fetch_app_by_id(ctx)
 
 
 def _fetch_app_by_id(ctx: Context) -> App:
-    app_id = _canonical_uuid(_path_param(ctx, PathParam.APP_ID), "app not found")
+    app_id = require_uuid(_path_param(ctx, PathParam.APP_ID), not_found=_APP_NOT_FOUND)
     app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
         raise NotFound("app not found")
@@ -109,7 +120,7 @@ def _fetch_app_by_id(ctx: Context) -> App:
 
 
 def _fetch_agent_app(ctx: Context) -> App:
-    agent_id = _canonical_uuid(_path_param(ctx, PathParam.AGENT_ID), "agent not found")
+    agent_id = require_uuid(_path_param(ctx, PathParam.AGENT_ID), not_found=_AGENT_NOT_FOUND)
     workspace = load_workspace(ctx)
     try:
         return AgentRosterService(ctx.session).get_agent_app_model(tenant_id=str(workspace.id), agent_id=agent_id)

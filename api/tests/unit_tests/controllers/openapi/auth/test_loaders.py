@@ -11,6 +11,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context, RouteContractError
 from controllers.openapi.auth.loaders import (
+    canonical_view_args,
     load_app,
     load_end_user,
     load_workspace,
@@ -112,6 +113,26 @@ class TestLoadApp:
             load_workspace(ctx)
 
 
+class TestCanonicalViewArgs:
+    @pytest.mark.parametrize(
+        ("agent_id", "expected"),
+        [
+            (AGENT_ID, AGENT_ID),
+            (AGENT_ID.replace("-", ""), AGENT_ID),
+            (AGENT_ID.upper(), AGENT_ID),
+            ("not-a-uuid", "not-a-uuid"),
+        ],
+        ids=["dashed", "undashed", "upper-case", "malformed-is-left-for-the-loader"],
+    )
+    def test_spells_an_agent_id_the_way_it_is_stored(self, agent_id: str, expected: str) -> None:
+        view_args = {"workspace_id": TENANT_ID, "agent_id": agent_id}
+
+        assert canonical_view_args(view_args) == {"workspace_id": TENANT_ID, "agent_id": expected}
+
+    def test_leaves_a_route_without_an_agent_alone(self) -> None:
+        assert canonical_view_args({"app_id": APP_ID.replace("-", "")}) == {"app_id": APP_ID.replace("-", "")}
+
+
 class TestLoadAppFromAgent:
     def test_load_app_resolves_a_roster_agent_to_its_app(self, sqlite_session: Session) -> None:
         persist(
@@ -143,6 +164,13 @@ class TestLoadAppFromAgent:
 
         with pytest.raises(NotFound, match="agent not found"):
             load_app(ctx)
+
+    def test_load_app_names_an_undashed_agent_id_like_the_dashed_one(self, sqlite_session: Session) -> None:
+        persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), make_agent())
+        view_args = {"workspace_id": TENANT_ID, "agent_id": AGENT_ID.replace("-", "")}
+        ctx = Context(_subject(), sqlite_session, view_args)
+
+        assert load_app(ctx).id == AGENT_APP_ID
 
     def test_load_app_keeps_app_id_routes(self, sqlite_session: Session) -> None:
         persist(sqlite_session, make_app())
