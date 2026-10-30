@@ -317,7 +317,13 @@ class TestExcelExtractor:
                 # Mirrors pandas' numeric dtype inference on a real legacy .xls.
                 return pd.DataFrame(
                     [
-                        {"Code": 123, "ScientificText": 1000.0, "DecimalText": 1.2, "Quantity": 7, "Note": 'he said "hi"'},
+                        {
+                            "Code": 123,
+                            "ScientificText": 1000.0,
+                            "DecimalText": 1.2,
+                            "Quantity": 7,
+                            "Note": 'he said "hi"',
+                        },
                         {"Code": 456, "ScientificText": 2000.0, "DecimalText": 3.4, "Quantity": 9, "Note": "second"},
                     ]
                 )
