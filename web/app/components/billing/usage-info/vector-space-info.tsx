@@ -5,14 +5,10 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import UsageInfo from '../usage-info'
-import { getPlanVectorSpaceLimitMB } from '../utils'
 
 type Props = Readonly<{
   className?: string
 }>
-
-// Storage threshold in MB - usage below this shows as "< 50 MB"
-const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB('sandbox')
 
 const VectorSpaceInfo: FC<Props> = ({ className }) => {
   const { t } = useTranslation(['billing'])
@@ -36,7 +32,7 @@ const VectorSpaceInfo: FC<Props> = ({ className }) => {
       unit="MB"
       unitPosition="inline"
       storageMode
-      storageThreshold={STORAGE_THRESHOLD_MB}
+      storageThreshold={50}
       storageTooltip={t(($) => $['usagePage.storageThresholdTooltip'], { ns: 'billing' }) as string}
       isSandboxPlan={plan === 'sandbox'}
       usageUnknown={vectorSpace.usage_unknown}
