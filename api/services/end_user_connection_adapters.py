@@ -25,7 +25,11 @@ from core.tools.tool_manager import ToolManager
 from models.provider_ids import ToolProviderID
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import ConnectionTargetInput
-from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
+from services.end_user_connections.entities import (
+    ConnectionManagementContext,
+    ToolConnectionTarget,
+    WebConnectionContext,
+)
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -168,7 +172,7 @@ class PluginApiKeyCredentialGateway:
 
     def check(
         self,
-        context: WebConnectionContext,
+        context: ConnectionManagementContext,
         provider: str,
         credentials: Mapping[str, Any],
         *,
@@ -181,7 +185,7 @@ class PluginApiKeyCredentialGateway:
         try:
             return self._auth.check_provider_credentials(
                 tenant_id=context.tenant_id,
-                user_id=context.end_user_id,
+                user_id=context.actor_id,
                 provider=canonical,
                 credentials=credentials,
                 credential_type=CredentialType.API_KEY,

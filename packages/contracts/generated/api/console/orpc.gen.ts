@@ -45,6 +45,7 @@ export const contractLoaders = {
     import('./knowledge-fs/orpc.gen.ts').then(({ knowledgeFs }) => ({ knowledgeFs })),
   login: () => import('./login/orpc.gen.ts').then(({ login }) => ({ login })),
   logout: () => import('./logout/orpc.gen.ts').then(({ logout }) => ({ logout })),
+  me: () => import('./me/orpc.gen.ts').then(({ me }) => ({ me })),
   notification: () =>
     import('./notification/orpc.gen.ts').then(({ notification }) => ({ notification })),
   notion: () => import('./notion/orpc.gen.ts').then(({ notion }) => ({ notion })),

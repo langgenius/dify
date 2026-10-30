@@ -120,7 +120,7 @@ class AppGenerateService:
         :param streaming: streaming
         :return:
         """
-        return cls._run_with_guardrails(
+        result = cls._run_with_guardrails(
             app_model=app_model,
             streaming=streaming,
             action=lambda rate_limit, request_id: cls._dispatch_generate(
@@ -135,6 +135,22 @@ class AppGenerateService:
                 request_id=request_id,
             ),
         )
+        if invoke_from == InvokeFrom.WEB_APP and isinstance(user, EndUser) and user.account_id is not None:
+            from extensions.ext_application_services import application_services
+            from libs.datetime_utils import naive_utc_now
+            from services.consumer_service import ConsumerIdentity
+
+            try:
+                application_services().consumer.record_usage(
+                    ConsumerIdentity(user.account_id),
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    used_at=naive_utc_now(),
+                )
+            except Exception:
+                # A preference write must not turn an accepted execution into a failed request.
+                logger.warning("Failed to record personal App usage for App %s", app_model.id)
+        return result
 
     @classmethod
     def _run_with_guardrails(

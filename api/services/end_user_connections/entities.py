@@ -44,6 +44,38 @@ class WebConnectionContext:
             return ConnectionOwner(account_id=self.account_id, end_user_id=None)
         return ConnectionOwner(account_id=None, end_user_id=self.end_user_id)
 
+    @property
+    def actor_id(self) -> str:
+        return self.end_user_id
+
+
+@dataclass(frozen=True, slots=True)
+class AccountConnectionContext:
+    """An owned Connection resolved from an authenticated Account, without an App.
+
+    Repositories revalidate the Account and the exact tenant/Connection/owner chain
+    after asynchronous boundaries. This context never authorizes node execution.
+    """
+
+    tenant_id: str
+    account_id: str
+    connection_id: str
+
+    def __post_init__(self) -> None:
+        if not self.tenant_id or not self.account_id or not self.connection_id:
+            raise ValueError("Incomplete account connection identity.")
+
+    @property
+    def owner(self) -> ConnectionOwner:
+        return ConnectionOwner(account_id=self.account_id, end_user_id=None)
+
+    @property
+    def actor_id(self) -> str:
+        return self.account_id
+
+
+type ConnectionManagementContext = WebConnectionContext | AccountConnectionContext
+
 
 @dataclass(frozen=True, slots=True)
 class ConnectionOAuthClient:

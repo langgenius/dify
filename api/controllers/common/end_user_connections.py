@@ -1,11 +1,13 @@
 """HTTP failures shared by personal Connection management and the OAuth callback."""
 
-from typing import NoReturn
+from typing import Any, NoReturn
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import Unauthorized
 
 from libs.exception import BaseHTTPException
+from services.end_user_connections.contracts import UpdateConnectionInput
 from services.end_user_connections.errors import (
     ConnectionAccountRequiredError,
     ConnectionCheckUnavailableError,
@@ -22,6 +24,34 @@ from services.end_user_connections.errors import (
     ConnectionSecretUnavailableError,
 )
 from services.end_user_connections.revision import ConnectionRevision
+
+
+def _omit_schema_default(schema: dict[str, Any]) -> None:
+    schema.pop("default", None)
+
+
+class ConnectionUpdatePayload(UpdateConnectionInput):
+    model_config = ConfigDict(
+        json_schema_extra={"minProperties": 1, "dependentRequired": {"credentials": ["connection_revision"]}}
+    )
+
+    connection_revision: ConnectionRevision | SkipJsonSchema[None] = Field(
+        default=None,
+        json_schema_extra=_omit_schema_default,
+        description="Provider revision required when replacing credentials.",
+    )
+    name: str | SkipJsonSchema[None] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        json_schema_extra=_omit_schema_default,
+    )
+    credentials: dict[str, JsonValue] | SkipJsonSchema[None] = Field(
+        default=None,
+        min_length=1,
+        repr=False,
+        json_schema_extra=_omit_schema_default,
+    )
 
 
 class ConnectionLoginRequiredError(BaseHTTPException):

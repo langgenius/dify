@@ -31,7 +31,8 @@ class ConnectionInput(BaseModel):
 class ConnectionContractInput(ConnectionInput):
     connection_revision: ConnectionRevision = Field(
         description=(
-            "Opaque revision issued for the current Web App. Use App parameters for tool-node operations "
+            "Opaque revision issued for the current Web App or owned-Connection management context. "
+            "Use App parameters for tool-node operations "
             "or the owned Connection revision endpoint for Provider management."
         ),
     )

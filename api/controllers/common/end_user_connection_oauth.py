@@ -6,6 +6,7 @@ from werkzeug import Response
 from configs import dify_config
 from controllers.common.end_user_connections import raise_connection_error
 from extensions.ext_application_services import application_services
+from services.end_user_connections.entities import AccountConnectionContext
 from services.end_user_connections.errors import ConnectionError
 
 
@@ -34,7 +35,12 @@ def complete_end_user_connection_oauth(provider: str, context_id: str) -> Respon
         connection = service.complete_oauth(attempt, query_string=request.query_string)
     except ConnectionError as error:
         raise_connection_error(error)
-    response = redirect(f"{dify_config.APP_WEB_URL}/oauth-callback?connection_id={connection.id}")
+    origin = (
+        dify_config.CONSOLE_WEB_URL
+        if isinstance(attempt.context, AccountConnectionContext)
+        else dify_config.APP_WEB_URL
+    )
+    response = redirect(f"{origin}/oauth-callback?connection_id={connection.id}")
     response.delete_cookie("context_id", httponly=True, samesite="Lax", secure=request.is_secure)
     response.headers["Cache-Control"] = "no-store"
     response.headers["Referrer-Policy"] = "no-referrer"

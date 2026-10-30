@@ -2,9 +2,14 @@
 
 from collections.abc import Mapping
 from typing import Any, Protocol
+from uuid import NAMESPACE_URL, uuid5
 
 from constants.end_user_connections import OAuthClientSource
-from services.end_user_connections.entities import WebConnectionContext
+from services.end_user_connections.entities import (
+    AccountConnectionContext,
+    ConnectionManagementContext,
+    WebConnectionContext,
+)
 from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.revision import (
     ConnectionContractSnapshot,
@@ -125,7 +130,7 @@ class PluginConnectionProviderRevisions:
         )
 
     def _current(
-        self, context: WebConnectionContext, provider: str, sources: set[OAuthClientSource]
+        self, context: ConnectionManagementContext, provider: str, sources: set[OAuthClientSource]
     ) -> ProviderContractSnapshot:
         return ProviderContractSnapshot(
             provider=provider,
@@ -136,10 +141,36 @@ class PluginConnectionProviderRevisions:
         )
 
     def resolve(
-        self, context: WebConnectionContext, provider: str, *, oauth_client_source: OAuthClientSource | None = None
+        self,
+        context: ConnectionManagementContext,
+        provider: str,
+        *,
+        oauth_client_source: OAuthClientSource | None = None,
     ) -> str:
         sources = {oauth_client_source} if oauth_client_source is not None else set()
-        return self._snapshots.save_revision(self._snapshot(context, self._current(context, provider, sources)))
+        current = self._current(context, provider, sources)
+        if isinstance(context, AccountConnectionContext):
+            return self._account_revision(context, current)
+        return self._snapshots.save_revision(self._snapshot(context, current))
+
+    @staticmethod
+    def _account_revision(context: AccountConnectionContext, snapshot: ProviderContractSnapshot) -> str:
+        # Management approves only the current Provider, never an App's consent.
+        # Content addressing needs no synthetic App or retained acceptance row.
+        return str(
+            uuid5(
+                NAMESPACE_URL,
+                ":".join(
+                    (
+                        "account-connection",
+                        context.account_id,
+                        context.tenant_id,
+                        context.connection_id,
+                        snapshot.model_dump_json(),
+                    )
+                ),
+            )
+        )
 
     def _reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
         snapshot = self._snapshots.get_revision(context.tenant_id, context.app_id, revision)
@@ -151,8 +182,10 @@ class PluginConnectionProviderRevisions:
         return references[0]
 
     def acceptance(
-        self, context: WebConnectionContext, provider: str, revision: str, admitted: ProviderContractSnapshot
+        self, context: ConnectionManagementContext, provider: str, revision: str, admitted: ProviderContractSnapshot
     ) -> ConnectionRevisionAcceptance:
+        if isinstance(context, AccountConnectionContext):
+            return ConnectionRevisionAcceptance(revision, None)
         previous = self._reference(context, provider, revision)
         if admitted.provider != provider:
             raise ConnectionRevisionChangedError()
@@ -163,12 +196,19 @@ class PluginConnectionProviderRevisions:
 
     def require(
         self,
-        context: WebConnectionContext,
+        context: ConnectionManagementContext,
         provider: str,
         revision: str,
         *,
         oauth_client_source: OAuthClientSource | None = None,
     ) -> ProviderContractSnapshot:
+        if isinstance(context, AccountConnectionContext):
+            sources = {oauth_client_source} if oauth_client_source is not None else set()
+            current = self._current(context, provider, sources)
+            canonical = self._account_revision(context, current)
+            if revision != canonical:
+                raise ConnectionRevisionChangedError(current_revision=canonical)
+            return current
         previous = self._reference(context, provider, revision)
         sources = {client.source for client in previous.oauth_clients}
         # A plugin-only API-key revision cannot approve an OAuth Client.

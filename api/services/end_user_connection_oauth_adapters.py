@@ -37,7 +37,11 @@ from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.provider_ids import ToolProviderID
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_labels import mask_account_label
-from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
+from services.end_user_connections.entities import (
+    ConnectionManagementContext,
+    ConnectionMutationGuard,
+    ConnectionOAuthClient,
+)
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -79,7 +83,7 @@ class RedisConnectionOAuthAttempts:
     def save(self, attempt: ConnectionOAuthAttempt) -> str:
         provider = ToolProviderID(attempt.provider)
         context_id = OAuthProxyService.create_proxy_context(
-            user_id=attempt.context.end_user_id,
+            user_id=attempt.context.actor_id,
             tenant_id=attempt.context.tenant_id,
             plugin_id=provider.plugin_id,
             provider=provider.provider_name,
@@ -111,7 +115,7 @@ class RedisConnectionOAuthAttempts:
             attempt = self._adapter.validate_python(stored["attempt"])
             provider = ToolProviderID(attempt.provider)
             if (
-                stored["user_id"] != attempt.context.end_user_id
+                stored["user_id"] != attempt.context.actor_id
                 or stored["tenant_id"] != attempt.context.tenant_id
                 or stored["plugin_id"] != provider.plugin_id
                 or stored["provider"] != provider.provider_name
@@ -225,12 +229,14 @@ class PluginConnectionOAuthGateway:
         # Keep the callback registered by existing workspace/platform OAuth Clients.
         return f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
 
-    def authorization_url(self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient) -> str:
+    def authorization_url(
+        self, context: ConnectionManagementContext, provider: str, client: ResolvedOAuthClient
+    ) -> str:
         identity = ToolProviderID(provider)
         try:
             return self._handler.get_authorization_url(
                 tenant_id=context.tenant_id,
-                user_id=context.end_user_id,
+                user_id=context.actor_id,
                 plugin_id=identity.plugin_id,
                 provider=identity.provider_name,
                 redirect_uri=self.redirect_uri(provider),
@@ -241,7 +247,7 @@ class PluginConnectionOAuthGateway:
             raise ConnectionOAuthError() from None
 
     def exchange(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, query_string: bytes
+        self, context: ConnectionManagementContext, provider: str, client: ResolvedOAuthClient, query_string: bytes
     ) -> ConnectionOAuthGrant:
         identity = ToolProviderID(provider)
         try:
@@ -253,7 +259,7 @@ class PluginConnectionOAuthGateway:
                 callback = Request(builder.get_environ())
                 result = self._handler.get_credentials(
                     tenant_id=context.tenant_id,
-                    user_id=context.end_user_id,
+                    user_id=context.actor_id,
                     plugin_id=identity.plugin_id,
                     provider=identity.provider_name,
                     redirect_uri=self.redirect_uri(provider),
@@ -287,14 +293,18 @@ class PluginConnectionOAuthGateway:
         )
 
     def refresh(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
+        self,
+        context: ConnectionManagementContext,
+        provider: str,
+        client: ResolvedOAuthClient,
+        credentials: Mapping[str, Any],
     ) -> ConnectionOAuthGrant | CredentialCheckResult:
         identity = ToolProviderID(provider)
         try:
             with use_plugin_daemon_request_timeout(10):
                 result = self._handler.refresh_credentials(
                     tenant_id=context.tenant_id,
-                    user_id=context.end_user_id,
+                    user_id=context.actor_id,
                     plugin_id=identity.plugin_id,
                     provider=identity.provider_name,
                     redirect_uri=self.redirect_uri(provider),
@@ -328,12 +338,16 @@ class PluginConnectionOAuthGateway:
             )
 
     def check(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
+        self,
+        context: ConnectionManagementContext,
+        provider: str,
+        client: ResolvedOAuthClient,
+        credentials: Mapping[str, Any],
     ) -> CredentialCheckResult:
         try:
             return self._auth.check_provider_credentials(
                 tenant_id=context.tenant_id,
-                user_id=context.end_user_id,
+                user_id=context.actor_id,
                 provider=provider,
                 credentials=credentials,
                 credential_type=CredentialType.OAUTH2,
@@ -352,12 +366,16 @@ class PluginConnectionOAuthGateway:
             )
 
     def revoke(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
+        self,
+        context: ConnectionManagementContext,
+        provider: str,
+        client: ResolvedOAuthClient,
+        credentials: Mapping[str, Any],
     ) -> OAuthRevokeResult:
         try:
             return self._auth.revoke_credentials(
                 tenant_id=context.tenant_id,
-                user_id=context.end_user_id,
+                user_id=context.actor_id,
                 provider=provider,
                 system_credentials=client.parameters,
                 plugin_unique_identifier=self._artifact(client),

@@ -222,7 +222,7 @@ Read API-key form fields for an authorized published tool node; no credential va
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| connection_revision | query | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes | string (uuid) |
+| connection_revision | query | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes | string (uuid) |
 | node_id | query |  | Yes | string |
 
 #### Responses
@@ -1627,7 +1627,7 @@ The connection is not compatible with this tool configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 | connections | object | Complete choices keyed by independent authorization node ID. Missing/null nodes are unselected; an empty map clears the configuration. Saving explicitly approves the submitted authorization contract. | Yes |
 | conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
 
@@ -1838,7 +1838,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 | credentials | object |  | Yes |
 | name | string | Omit or leave empty to generate an incremental API KEY name. | No |
 | node_id | string |  | Yes |
@@ -1863,7 +1863,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 | name | string | Omit or leave empty to generate an incremental AUTH name. | No |
 | node_id | string |  | Yes |
 
@@ -1877,7 +1877,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 | connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
 | conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
 
@@ -1893,7 +1893,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App or owned-Connection management context. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
 
 #### EndUserConnectionResponse
 

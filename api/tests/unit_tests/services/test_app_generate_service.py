@@ -8,8 +8,9 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+import sqlalchemy as sa
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_generate_service as ags_module
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
@@ -17,8 +18,9 @@ from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
 from models.account import Account
+from models.consumer import AccountAppUsage
 from models.enums import AppStatus
-from models.model import App, AppMode
+from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
@@ -27,6 +29,7 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
+from tests.helpers.consumer import make_consumer_harness
 from tests.helpers.unit.config_override import apply_config_overrides
 
 """
@@ -1299,3 +1302,63 @@ class TestAppGenerateServiceStreamingIntegrationCases:
         # Verify publish happened and consumer received in order
         assert published_order == ["workflow_started", "workflow_finished"]
         assert [m.get("event") for m in received] == ["workflow_started", "workflow_finished"]
+
+
+@pytest.mark.parametrize("rejected", [False, True])
+@pytest.mark.parametrize("guest", [False, True])
+def test_personal_usage_tracks_only_accepted_account_web_runs(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    rejected: bool,
+    guest: bool,
+) -> None:
+    from types import SimpleNamespace
+
+    from extensions import ext_application_services
+    from services.workflow_service import WorkflowService
+
+    harness = make_consumer_harness(sqlite_session_factory, monkeypatch)
+    base = harness.oauth.base
+    workflows = WorkflowService(session_maker=base.sessions)
+    monkeypatch.setattr(ags_module, "WorkflowService", lambda: workflows)
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        APP_DEFAULT_ACTIVE_REQUESTS=0,
+        APP_MAX_ACTIVE_REQUESTS=0,
+        PUBSUB_REDIS_CHANNEL_TYPE="streams",
+    )
+    monkeypatch.setattr(
+        ext_application_services, "application_services", lambda: SimpleNamespace(consumer=harness.service)
+    )
+    monkeypatch.setattr(
+        MessageBasedAppGenerator,
+        "retrieve_events",
+        classmethod(lambda _cls, *_args, **_kwargs: iter(())),
+    )
+    with base.sessions.begin() as session:
+        workflow = session.get(Workflow, base.workflow_id)
+        assert workflow is not None
+        workflow.graph = json.dumps({"nodes": [], "edges": []})
+        app = session.get(App, base.context.app_id)
+        assert app is not None
+        if rejected:
+            app.workflow_id = None
+        if guest:
+            user = session.get(EndUser, base.context.end_user_id)
+            assert user is not None
+            user.account_id = None
+    with base.sessions() as session:
+        app = session.get(App, base.context.app_id)
+        user = session.get(EndUser, base.context.end_user_id)
+        assert app is not None
+        assert user is not None
+        if rejected:
+            with pytest.raises(ValueError, match="not published"):
+                AppGenerateService.generate(app, user, {"inputs": {}}, InvokeFrom.WEB_APP, session=session)
+        else:
+            response = AppGenerateService.generate(app, user, {"inputs": {}}, InvokeFrom.WEB_APP, session=session)
+            assert list(response) == []
+    with base.sessions() as session:
+        count = session.scalar(sa.select(sa.func.count()).select_from(AccountAppUsage))
+        assert count == (1 if not rejected and not guest else 0)
