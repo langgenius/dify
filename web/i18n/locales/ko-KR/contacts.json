@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "선택한 연락처가 이 워크스페이스에서 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+  "directory.removalTitle": "연락처를 삭제하시겠습니까?",
+  "imPlatform.bindingDialog.clearSavedCredential": "저장된 값 지우기",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "저장하면 이 저장된 값이 지워집니다.",
+  "imPlatform.bindingDialog.replacementRequired": "이 인증 정보는 다른 IM 테넌트에 속하므로 바로 저장할 수 없습니다. 테넌트를 전환하려면 현재 IM 채널을 교체해야 하며, 이 과정에서 모든 자동 및 수동 IM 바인딩이 삭제됩니다. 교체 후 연락처를 다시 동기화하세요.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "설정은 저장되었지만 세부 정보를 불러올 수 없습니다. 이 대화 상자를 닫았다가 다시 여세요.",
+  "imPlatform.bindingDialog.undoClearCredential": "지우기 취소"
+}

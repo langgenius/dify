@@ -1,20 +1,15 @@
+import type { BillingQuota } from '@/app/components/billing/quota'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
-import { getResetInDaysFromDate } from '@/app/components/billing/utils'
+import { getTriggerEventsQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 
-type TriggerEventsLimitModalContent = {
-  usage: number
-  total: number
-  resetInDays?: number
-}
-
 type UseTriggerEventsLimitModalResult = {
-  triggerEventsLimitModal: TriggerEventsLimitModalContent | null
+  triggerEventsLimitModal: BillingQuota | null
   dismissTriggerEventsLimitModal: () => void
 }
 
@@ -26,31 +21,31 @@ export const useTriggerEventsLimitModal = (): UseTriggerEventsLimitModalResult =
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { data: quota } = useQuery(
+  const { data: triggerEvents } = useQuery(
     consoleQuery.features.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD',
       select: ({ billing, trigger_event }) => ({
         plan: billing.subscription.plan,
-        ...trigger_event,
+        quota: getTriggerEventsQuota(trigger_event, billing.subscription.plan),
       }),
     }),
   )
   const [dismissedCycles, setDismissedCycles] = useState<Record<string, boolean>>({})
-  const resetInDays = quota ? getResetInDaysFromDate(quota.reset_date) : null
+  const resetInDays = triggerEvents?.quota.resetInDays
   const cycleTag =
-    resetInDays !== null
+    resetInDays !== undefined
       ? dayjs().startOf('day').add(resetInDays, 'day').format('YYYY-MM-DD')
-      : quota?.plan === 'sandbox'
+      : triggerEvents?.plan === 'sandbox'
         ? dayjs().endOf('month').format('YYYY-MM-DD')
         : 'none'
   const storageKey =
     deploymentEdition === 'CLOUD' &&
     currentWorkspaceId &&
-    quota &&
-    quota.plan !== 'team' &&
-    quota.limit >= 0 &&
-    quota.usage >= quota.limit
-      ? `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${quota.plan}-${quota.limit}-${cycleTag}`
+    triggerEvents &&
+    triggerEvents.plan !== 'team' &&
+    triggerEvents.quota.limit !== 'unlimited' &&
+    triggerEvents.quota.usage >= triggerEvents.quota.limit
+      ? `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${triggerEvents.plan}-${triggerEvents.quota.limit}-${cycleTag}`
       : null
   const dismissed = storageKey ? dismissedCycles[storageKey] : undefined
 
@@ -79,13 +74,7 @@ export const useTriggerEventsLimitModal = (): UseTriggerEventsLimitModalResult =
 
   return {
     triggerEventsLimitModal:
-      storageKey && dismissed === false && quota
-        ? {
-            usage: quota.usage,
-            total: quota.limit,
-            resetInDays: quota.plan === 'professional' ? (resetInDays ?? undefined) : undefined,
-          }
-        : null,
+      storageKey && dismissed === false && triggerEvents ? triggerEvents.quota : null,
     dismissTriggerEventsLimitModal,
   }
 }

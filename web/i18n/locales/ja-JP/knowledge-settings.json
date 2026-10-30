@@ -16,6 +16,8 @@
   "settings.membersRequired": "チームメンバーを1人以上選択してください。",
   "settings.nameRequired": "Agent ナレッジベース名は必須です。",
   "settings.pageDescription": "基本情報、API アクセス、検索設定を管理します。",
+  "settings.reasoningChangeConfirm": "変更を確定",
+  "settings.reasoningChangeWarning": "システム推論モデルを変更すると、インデックス作成済みのドキュメントが再処理され、検索インデックスが更新されます。処理には時間がかかり、モデルの利用料金が追加で発生します。",
   "settings.reloadLatest": "最新の設定を再読み込み",
   "settings.rerankModelRequired": "再ランキングモデルを選択してください。",
   "settings.retrievalDepth": "検索の深度",

@@ -1,4 +1,5 @@
 import type { InputValueTypes } from '../../types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { fileUpload } from '@/app/components/base/file-uploader/utils'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
@@ -7,9 +8,24 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { Resolution, TransferMethod } from '@/types/app'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { buildResultRequestData, validateResultRequest } from '../../result/result-request'
 import RunOnce from '../index'
+
+const createFileEntity = (overrides: Partial<FileEntity> = {}): FileEntity => ({
+  id: 'default-file',
+  name: 'default.txt',
+  size: 128,
+  type: 'text/plain',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: 'document',
+  uploadedId: 'default-upload',
+  ...overrides,
+})
 
 vi.mock('@/hooks/use-breakpoints', () => {
   const MediaType = {
@@ -35,30 +51,21 @@ vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => (
 }))
 
 beforeEach(() => {
-  upload.mockImplementation(({ onSuccessCallback }) =>
+  upload.mockImplementation(({ file, onSuccessCallback }) => {
     onSuccessCallback({
-      id: 'upload-1',
-      name: 'example.txt',
-      size: 7,
-      mime_type: 'text/plain',
+      id: `upload-${file.name}`,
+      name: file.name,
+      size: file.size,
+      mime_type: file.type,
       extension: 'txt',
       created_at: 1,
-      created_by: 'account-1',
+      created_by: 'user-1',
       preview_url: null,
       source_url: '',
-    }),
-  )
+    })
+  })
 })
 
-const uploadedFile = expect.objectContaining({
-  name: 'example.txt',
-  size: 7,
-  type: 'text/plain',
-  progress: 100,
-  transferMethod: TransferMethod.local_file,
-  supportFileType: 'document',
-  uploadedId: 'upload-1',
-})
 const getInputs = () =>
   JSON.parse(screen.getByRole('status', { name: 'Input values' }).textContent!)
 
@@ -126,9 +133,11 @@ const setup = (
 ) => {
   const onInputsChange = vi.fn()
   const onSend = vi.fn()
+  const onValidation = vi.fn()
   const onVisionFilesChange = vi.fn()
 
   const Wrapper = () => {
+    const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
     const [inputs, setInputs] = useState<Record<string, InputValueTypes>>({})
     const inputsRef = useRef<Record<string, InputValueTypes>>({})
     return (
@@ -144,7 +153,25 @@ const setup = (
             setInputs(updated)
             onInputsChange(updated)
           }}
-          onSend={() => onSend(inputsRef.current)}
+          onSend={() => {
+            const validation = validateResultRequest({
+              completionFiles: [],
+              inputs,
+              isCallBatchAPI: false,
+              promptConfig: overrides.promptConfig || basePromptConfig,
+              t,
+            })
+            onValidation(validation)
+            if (!validation.canSend) return
+            onSend(
+              buildResultRequestData({
+                completionFiles: [],
+                inputs,
+                promptConfig: overrides.promptConfig || basePromptConfig,
+                visionConfig: overrides.visionConfig || baseVisionConfig,
+              }),
+            )
+          }}
           visionConfig={overrides.visionConfig || baseVisionConfig}
           onVisionFilesChange={onVisionFilesChange}
           runControl={overrides.runControl ?? null}
@@ -158,6 +185,7 @@ const setup = (
     ...utils,
     onInputsChange,
     onSend,
+    onValidation,
     onVisionFilesChange,
   }
 }
@@ -235,10 +263,12 @@ describe('RunOnce', () => {
     })
     await user.click(screen.getByRole('button', { name: 'share.generation.run' }))
     expect(onSend).toHaveBeenCalledExactlyOnceWith({
-      textInput: 'default text',
-      paragraphInput: 'paragraph default',
-      numberInput: 42,
-      checkboxInput: false,
+      inputs: {
+        textInput: 'default text',
+        paragraphInput: 'paragraph default',
+        numberInput: 42,
+        checkboxInput: false,
+      },
     })
   })
 
@@ -307,63 +337,143 @@ describe('RunOnce', () => {
   })
 
   describe('file input types', () => {
-    it('should render file uploader for single file input', async () => {
-      const user = userEvent.setup()
-      const promptConfig: PromptConfig = {
-        prompt_template: 'template',
-        prompt_variables: [
-          createPromptVariable({
-            key: 'fileInput',
-            name: 'File Input',
-            type: 'file',
-          }),
-        ],
-      }
-      const { onInputsChange } = setup({
-        promptConfig,
-        visionConfig: { ...baseVisionConfig, enabled: false },
-      })
-      await waitFor(() => {
-        expect(onInputsChange).toHaveBeenCalledWith({
-          fileInput: undefined,
+    it.each([
+      { type: 'file', required: true },
+      { type: 'file', required: false },
+      { type: 'file-list', required: true },
+      { type: 'file-list', required: false },
+    ])(
+      'should submit, clear and replace the configured $type default (required: $required)',
+      async ({ type, required }) => {
+        const user = userEvent.setup()
+        const file = createFileEntity()
+        const remoteFile = createFileEntity({
+          id: 'remote-file',
+          name: 'remote.txt',
+          transferMethod: TransferMethod.remote_url,
+          uploadedId: undefined,
+          url: 'https://example.com/remote.txt',
         })
-      })
-      await user.upload(
-        document.querySelector<HTMLInputElement>('input[type="file"]')!,
-        new File(['example'], 'example.txt', { type: 'text/plain' }),
-      )
-      expect(await screen.findByText('example.txt')).toBeInTheDocument()
-      await waitFor(() => expect(getInputs()).toEqual({ fileInput: uploadedFile }))
-    })
+        const promptConfig: PromptConfig = {
+          prompt_template: '',
+          prompt_variables: userInputsFormToPromptVariables([
+            {
+              [type]: {
+                variable: 'attachment',
+                label: 'Attachment',
+                required,
+                default: type === 'file' ? file : [file, remoteFile],
+                allowed_file_types: ['document'],
+                allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+                max_length: 2,
+              },
+            },
+          ]),
+        }
+        const { onSend, onValidation } = setup({
+          promptConfig,
+          visionConfig: { ...baseVisionConfig, enabled: false },
+        })
+        const uploadButton = await screen.findByRole('button', {
+          name: 'common.fileUploader.uploadFromComputer',
+        })
+        const runButton = screen.getByRole('button', { name: 'share.generation.run' })
+        const assertEmptySubmission = async () => {
+          onSend.mockClear()
+          await user.click(runButton)
+          if (required) {
+            expect(onValidation).toHaveBeenLastCalledWith(
+              expect.objectContaining({ canSend: false }),
+            )
+            expect(onSend).not.toHaveBeenCalled()
+          } else {
+            expect(onSend).toHaveBeenLastCalledWith({
+              inputs: { attachment: type === 'file' ? '' : [] },
+            })
+          }
+        }
 
-    it('should render file uploader for file-list input', async () => {
-      const user = userEvent.setup()
-      const promptConfig: PromptConfig = {
-        prompt_template: 'template',
-        prompt_variables: [
-          createPromptVariable({
-            key: 'fileListInput',
-            name: 'File List Input',
-            type: 'file-list',
-          }),
-        ],
-      }
-      const { onInputsChange } = setup({
-        promptConfig,
-        visionConfig: { ...baseVisionConfig, enabled: false },
-      })
-      await waitFor(() => {
-        expect(onInputsChange).toHaveBeenCalledWith({
-          fileListInput: [],
+        expect(screen.getByText('default.txt')).toBeInTheDocument()
+        expect(uploadButton).toBeDisabled()
+        await user.click(runButton)
+        const expectedFile = {
+          type: 'document',
+          transfer_method: TransferMethod.local_file,
+          upload_file_id: 'default-upload',
+          url: '',
+        }
+        const expectedRemoteFile = {
+          type: 'document',
+          transfer_method: TransferMethod.remote_url,
+          upload_file_id: '',
+          url: 'https://example.com/remote.txt',
+        }
+        expect(onSend).toHaveBeenLastCalledWith({
+          inputs: {
+            attachment: type === 'file' ? expectedFile : [expectedFile, expectedRemoteFile],
+          },
         })
-      })
-      await user.upload(
-        document.querySelector<HTMLInputElement>('input[type="file"]')!,
-        new File(['example'], 'example.txt', { type: 'text/plain' }),
-      )
-      expect(await screen.findByText('example.txt')).toBeInTheDocument()
-      await waitFor(() => expect(getInputs()).toEqual({ fileListInput: [uploadedFile] }))
-    })
+
+        await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+        expect(screen.queryByText('default.txt')).not.toBeInTheDocument()
+        expect(screen.queryByText('remote.txt')).not.toBeInTheDocument()
+        expect(uploadButton).toBeEnabled()
+        await assertEmptySubmission()
+
+        const replacementFile = new File(['replacement'], 'replacement.txt', { type: 'text/plain' })
+        const remainingFile = new File(['remaining'], 'remaining.txt', { type: 'text/plain' })
+        await user.upload(
+          uploadButton.querySelector('input')!,
+          type === 'file' ? replacementFile : [replacementFile, remainingFile],
+        )
+        await waitFor(() => {
+          const uploaded = expect.objectContaining({
+            uploadedId: 'upload-replacement.txt',
+            progress: 100,
+          })
+          const remaining = expect.objectContaining({
+            uploadedId: 'upload-remaining.txt',
+            progress: 100,
+          })
+          expect(getInputs()).toEqual({
+            attachment: type === 'file' ? uploaded : [uploaded, remaining],
+          })
+        })
+        expect(screen.getByText('replacement.txt')).toBeInTheDocument()
+        await user.click(runButton)
+        const expectedReplacementFile = {
+          ...expectedFile,
+          upload_file_id: 'upload-replacement.txt',
+        }
+        const expectedRemainingFile = { ...expectedFile, upload_file_id: 'upload-remaining.txt' }
+        expect(onSend).toHaveBeenLastCalledWith({
+          inputs: {
+            attachment:
+              type === 'file'
+                ? expectedReplacementFile
+                : [expectedReplacementFile, expectedRemainingFile],
+          },
+        })
+
+        await user.click(
+          screen.getByRole('button', { name: 'common.operation.remove replacement.txt' }),
+        )
+        expect(screen.queryByText('replacement.txt')).not.toBeInTheDocument()
+        if (type === 'file-list') {
+          expect(screen.getByText('remaining.txt')).toBeInTheDocument()
+          await user.click(runButton)
+          expect(onSend).toHaveBeenLastCalledWith({
+            inputs: { attachment: [expectedRemainingFile] },
+          })
+          await user.click(
+            screen.getByRole('button', { name: 'common.operation.remove remaining.txt' }),
+          )
+          expect(screen.queryByText('remaining.txt')).not.toBeInTheDocument()
+        }
+        expect(uploadButton).toBeEnabled()
+        await assertEmptySubmission()
+      },
+    )
   })
 
   describe('json_object input type', () => {

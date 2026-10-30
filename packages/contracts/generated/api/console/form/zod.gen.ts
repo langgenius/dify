@@ -3,11 +3,6 @@
 import * as z from 'zod'
 
 /**
- * ConsoleHumanInputFormDefinitionResponse
- */
-export const zConsoleHumanInputFormDefinitionResponse = z.record(z.string(), z.unknown())
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -22,6 +17,56 @@ export const zErrorResponse = z.object({
   params: z.string().optional(),
   status: z.int(),
 })
+
+/**
+ * AlreadySubmittedError
+ */
+export const zAlreadySubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('already_submitted'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ExpiredError
+ */
+export const zExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('expired'),
+    status: z.literal(410),
+  }),
+)
+
+/**
+ * ConsoleHumanInputV2SubmitResponse
+ */
+export const zConsoleHumanInputV2SubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * InvalidInputError
+ */
+export const zInvalidInputError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_input'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * WorkflowNotActiveError
+ */
+export const zWorkflowNotActiveError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_not_active'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * ConsoleHumanInputFormDefinitionResponse
+ */
+export const zConsoleHumanInputFormDefinitionResponse = z.record(z.string(), z.unknown())
 
 /**
  * HumanInputFormSubmittedError
@@ -63,12 +108,165 @@ export const zHumanInputFormExpiredError = zErrorResponse.and(
 export const zJsonValue = z.unknown()
 
 /**
+ * ConsoleHumanInputV2SubmitPayload
+ */
+export const zConsoleHumanInputV2SubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
   inputs: z.record(z.string(), zJsonValue),
 })
+
+/**
+ * ButtonStyle
+ *
+ * Button styles for user actions.
+ */
+export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
+ * UserAction
+ *
+ * Resolved action values required for presentation and submission validation.
+ */
+export const zUserAction = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
+
+/**
+ * MarkdownFragment
+ *
+ * One source-ordered Markdown fragment in a resolved form.
+ */
+export const zMarkdownFragment = z.object({
+  text: z.string(),
+  type: z.literal('markdown_fragment').optional().default('markdown_fragment'),
+})
+
+/**
+ * ParagraphInput
+ *
+ * Resolved multiline text input.
+ */
+export const zParagraphInput = z.object({
+  default_value: z.string().nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph_input').optional().default('paragraph_input'),
+})
+
+/**
+ * SelectInput
+ *
+ * Resolved single-choice input with immutable concrete options.
+ */
+export const zSelectInput = z.object({
+  default_value: z.string().nullable(),
+  options: z.array(z.string()),
+  output_variable_name: z.string(),
+  type: z.literal('select_input').optional().default('select_input'),
+})
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileInput
+ *
+ * Resolved single-file input constraints.
+ */
+export const zFileInput = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file_input').optional().default('file_input'),
+})
+
+/**
+ * FileListInput
+ *
+ * Resolved multi-file input constraints and effective number limit.
+ */
+export const zFileListInput = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file_list_input').optional().default('file_list_input'),
+})
+
+export const zFormPart = z.discriminatedUnion('type', [
+  zMarkdownFragment,
+  zParagraphInput,
+  zSelectInput,
+  zFileInput,
+  zFileListInput,
+])
+
+/**
+ * ResolvedForm
+ *
+ * Immutable authoritative presentation snapshot for one v2 form.
+ */
+export const zResolvedForm = z.object({
+  actions: z.array(zUserAction),
+  legacy_form_content: z.string(),
+  parts: z.array(zFormPart),
+  title: z.string(),
+})
+
+/**
+ * ConsoleHumanInputV2FormDefinitionResponse
+ *
+ * Frozen form definition and effective expiration in UTC epoch seconds.
+ */
+export const zConsoleHumanInputV2FormDefinitionResponse = z.object({
+  expiration_time: z.int(),
+  resolved_form: zResolvedForm,
+})
+
+export const zGetFormHumanInputV2ByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Form retrieved
+ */
+export const zGetFormHumanInputV2ByFormTokenResponse = zConsoleHumanInputV2FormDefinitionResponse
+
+export const zPostFormHumanInputV2ByFormTokenBody = zConsoleHumanInputV2SubmitPayload
+
+export const zPostFormHumanInputV2ByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Approval accepted
+ */
+export const zPostFormHumanInputV2ByFormTokenResponse = zConsoleHumanInputV2SubmitResponse
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),

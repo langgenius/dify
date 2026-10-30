@@ -8,7 +8,7 @@ import type {
   ConversationVariable,
   EnvironmentVariable,
 } from '@/app/components/workflow/types'
-import type { FetchWorkflowDraftResponse, VarInInspect } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
 import { consoleClient } from '@/service/console'
 import { get } from './base'
 
@@ -171,7 +171,14 @@ export const submitHumanInputForm = (
     inputs: Record<string, unknown>
     action: string
   },
+  formVersion?: HumanInputFormData['form_version'],
 ) => {
+  if (formVersion === '2') {
+    return consoleClient.form.humanInput.v2.byFormToken.post({
+      params: { form_token: token },
+      body: data,
+    })
+  }
   return consoleClient.form.humanInput.byFormToken.post({
     params: { form_token: token },
     body: data,

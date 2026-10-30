@@ -6,6 +6,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import Link from '@/next/link'
 import { newKnowledgeCreatePathWithStartMode } from '../routes'
 
@@ -22,22 +23,19 @@ const LOADING_CARD_IDS = [
 
 const EMPTY_GHOST_CARD_IDS = Array.from({ length: 16 }, (_, index) => `empty-ghost-card-${index}`)
 
-export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
-  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,296px),1fr))] gap-3'
-
 export function NewKnowledgeLoadingState() {
   const { t } = useTranslation(['common'])
 
   return (
     <div
-      className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
+      className={cn('gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
       role="status"
       aria-label={t(($) => $.loading, { ns: 'common' })}
     >
       {LOADING_CARD_IDS.map((id) => (
         <div
           key={id}
-          className="h-41.5 rounded-xl border border-components-card-border bg-components-card-bg p-4 shadow-xs"
+          className="h-41.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
         >
           <SkeletonContainer className="h-full">
             <div className="flex gap-3">
@@ -184,9 +182,11 @@ function ButtonOrLink({
 function EmptyGhostGrid() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-x-8 inset-y-2 grid grid-cols-4 gap-3">
+      <div
+        className={cn('absolute inset-x-8 inset-y-2 gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
+      >
         {EMPTY_GHOST_CARD_IDS.map((id) => (
-          <div key={id} className="h-52.25 rounded-xl bg-background-default-lighter opacity-75" />
+          <div key={id} className="h-41.5 rounded-xl bg-background-default-lighter opacity-75" />
         ))}
       </div>
       <div className="absolute inset-0 bg-linear-to-b from-background-body-transparent to-background-body" />
