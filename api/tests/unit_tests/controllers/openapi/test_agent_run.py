@@ -309,3 +309,19 @@ def test_an_undashed_agent_id_is_hinted_dashed_when_the_run_needs_the_draft(
 
     [hint] = response.get_json()["hints"]
     assert (hint["op"], hint["input"]["agent_id"]) == ("test.agent", AGENT_ID)
+
+
+@pytest.mark.parametrize("op", ["run", "test"])
+def test_a_malformed_agent_id_is_not_found_and_runs_nothing(
+    admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch, op: str
+) -> None:
+    stub = _stub_generate(monkeypatch)
+
+    response = admitted_bearer.client.post(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/agents/not-a-uuid:{op}",
+        json={"query": "hi"},
+        headers=admitted_bearer.headers,
+    )
+
+    assert (response.status_code, response.get_json()["message"]) == (404, "agent not found")
+    assert stub.calls == []
