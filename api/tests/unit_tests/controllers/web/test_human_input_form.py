@@ -394,9 +394,8 @@ def test_get_form_rejects_internal_tokens(
         lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
     )
 
-    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(NotFoundError):
-            HumanInputFormApi().get("token-1")
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"), pytest.raises(NotFoundError):
+        HumanInputFormApi().get("token-1")
     service_mock.ensure_form_active.assert_not_called()
     service_mock.resolve_form_inputs.assert_not_called()
 

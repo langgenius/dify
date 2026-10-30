@@ -111,9 +111,12 @@ def test_run_lock_lasts_until_the_callers_transaction_ends(
         )
         assert run is not None
         assert run.id == run_id
-        with sessions() as competing_session:
-            with pytest.raises(sa_exc.OperationalError, match="could not obtain lock"), competing_session.begin():
-                competing_session.scalar(lock_statement)
+        with (
+            sessions() as competing_session,
+            pytest.raises(sa_exc.OperationalError, match="could not obtain lock"),
+            competing_session.begin(),
+        ):
+            competing_session.scalar(lock_statement)
 
     with sessions() as session, session.begin():
         run = session.scalar(lock_statement)
