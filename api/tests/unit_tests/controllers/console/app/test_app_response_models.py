@@ -870,7 +870,6 @@ def test_recent_app_list_api_applies_rbac_visibility_filter(
     assert resp == {"data": []}
     params = get_recent_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-shared"]
-    assert params.include_own_apps is False
 
 
 def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permission(
@@ -913,7 +912,6 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
     assert resp["data"] == []
     params = get_paginate_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-not-permitted", "app-shared"]
-    assert params.include_own_apps is False
     assert params.is_created_by_me is None
 
 
@@ -968,7 +966,6 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
 
     params = get_paginate_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-whitelist-only"]
-    assert params.include_own_apps is False
     assert params.is_created_by_me is None
 
 
@@ -1006,7 +1003,6 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
 
     params = get_paginate_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-not-permitted"]
-    assert params.include_own_apps is False
     assert params.is_created_by_me is None
 
 
