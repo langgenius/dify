@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "اقدامات بیشتر برای {{account}}",
   "connections.accounts.reconnect": "اتصال مجدد",
   "connections.accounts.reconnectRequired": "اتصال مجدد لازم است",
-  "connections.accounts.remove": "حذف",
+  "connections.accounts.remove": "حذف حساب",
   "connections.accounts.title": "حساب‌های {{provider}}",
   "connections.apiKeys.invalid": "کلید API نامعتبر",
   "connections.apiKeys.newKeyPlaceholder": "یک کلید API جدید وارد کنید",

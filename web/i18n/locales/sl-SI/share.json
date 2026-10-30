@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Več dejanj za {{account}}",
   "connections.accounts.reconnect": "Ponovno poveži",
   "connections.accounts.reconnectRequired": "Potrebna je ponovna povezava",
-  "connections.accounts.remove": "Odstrani",
+  "connections.accounts.remove": "Odstrani račun",
   "connections.accounts.title": "Računi {{provider}}",
   "connections.apiKeys.invalid": "Neveljaven ključ API",
   "connections.apiKeys.newKeyPlaceholder": "Vnesite nov ključ API",

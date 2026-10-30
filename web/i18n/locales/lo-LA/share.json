@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "ການດຳເນີນການເພີ່ມເຕີມສຳລັບ {{account}}",
   "connections.accounts.reconnect": "ເຊື່ອມຕໍ່ໃໝ່",
   "connections.accounts.reconnectRequired": "ຕ້ອງເຊື່ອມຕໍ່ໃໝ່",
-  "connections.accounts.remove": "ເອົາອອກ",
+  "connections.accounts.remove": "ເອົາບັນຊີອອກ",
   "connections.accounts.title": "ບັນຊີ {{provider}}",
   "connections.apiKeys.invalid": "ຄີ API ບໍ່ຖືກຕ້ອງ",
   "connections.apiKeys.newKeyPlaceholder": "ປ້ອນຄີ API ໃໝ່",

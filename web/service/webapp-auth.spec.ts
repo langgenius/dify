@@ -207,37 +207,65 @@ describe('Webapp credentials', () => {
     startWebAppAccountSession()
     setWebAppPassport(ordinary, 'ordinary-passport')
     setWebAppPassport(environment, 'environment-passport')
-    const fetch = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(Response.json({ result: 'success' }))
+    const revision = getWebAppAuthSessionSnapshot()
+    const response = createDeferred<Response>()
+    const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(response.promise)
 
-    await webAppLogout(ordinary)
+    const logout = webAppLogout(ordinary)
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
 
     const [input, options] = fetch.mock.calls[0]!
     const request = new Request(input, options)
     expect(request.headers.has('Authorization')).toBe(false)
     expect(request.credentials).toBe('include')
+    expect(getWebAppLoginMode()).toBe('end_user')
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('ordinary-passport')
+    expect(getAuthenticatedWebAppPassport(environment)).toBe('environment-passport')
+    expect(getWebAppAuthSessionSnapshot()).toBe(revision)
+
+    response.resolve(Response.json({ result: 'success' }))
+    await logout
+
     expect(getWebAppLoginMode()).toBe('console')
     expect(getWebAppAccessToken()).toBe('')
     expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
     expect(getAuthenticatedWebAppPassport(environment)).toBe('')
     expect(getWebAppPassport(ordinary)).toBe('anonymous-ordinary')
     expect(getWebAppPassport(environment)).toBe('anonymous-environment')
+    expect(getWebAppAuthSessionSnapshot()).not.toBe(revision)
   })
 
-  it('clears local credentials and preserves a logout failure for its owner', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    setWebAppPassport(ordinary, 'anonymous-passport', 'anonymous')
-    setWebAppAccessToken('account-proof', 'end_user')
-    setWebAppPassport(ordinary, 'ordinary-passport')
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'))
+  it.each(['network', 'HTTP'] as const)(
+    'preserves account credentials and reports a failed logout after a %s failure',
+    async (failure) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const otherApp = { kind: 'default', code: 'another-app' } as const
+      const scopes = [ordinary, environment, otherApp]
+      setWebAppAccessToken('account-proof', 'end_user')
+      for (const address of scopes) {
+        setWebAppPassport(address, `anonymous-${address.kind}-${address.code}`, 'anonymous')
+        setWebAppPassport(address, `account-${address.kind}-${address.code}`, 'authenticated')
+      }
+      const revision = getWebAppAuthSessionSnapshot()
+      const fetch = vi.spyOn(globalThis, 'fetch')
+      if (failure === 'network') fetch.mockRejectedValue(new TypeError('Failed to fetch'))
+      else fetch.mockResolvedValue(Response.json({ message: 'Logout failed' }, { status: 500 }))
 
-    await expect(webAppLogout(ordinary)).rejects.toThrow()
+      await expect(webAppLogout(ordinary)).rejects.toThrow()
 
-    expect(getWebAppAccessToken()).toBe('')
-    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
-    expect(getWebAppPassport(ordinary)).toBe('anonymous-passport')
-  })
+      expect(getWebAppAccessToken()).toBe('account-proof')
+      expect(getWebAppLoginMode()).toBe('end_user')
+      for (const address of scopes) {
+        expect(getAuthenticatedWebAppPassport(address)).toBe(
+          `account-${address.kind}-${address.code}`,
+        )
+        expect(getAnonymousWebAppPassport(address)).toBe(
+          `anonymous-${address.kind}-${address.code}`,
+        )
+      }
+      expect(getWebAppAuthSessionSnapshot()).toBe(revision)
+    },
+  )
 
   it.each(['success', 'failure'] as const)(
     'keeps another tab’s newer account when the old logout finishes with $0',

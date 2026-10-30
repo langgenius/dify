@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "{{account}} için daha fazla işlem",
   "connections.accounts.reconnect": "Yeniden bağlan",
   "connections.accounts.reconnectRequired": "Yeniden bağlanmanız gerekiyor",
-  "connections.accounts.remove": "Kaldır",
+  "connections.accounts.remove": "Hesabı kaldır",
   "connections.accounts.title": "{{provider}} hesapları",
   "connections.apiKeys.invalid": "Geçersiz API anahtarı",
   "connections.apiKeys.newKeyPlaceholder": "Yeni bir API anahtarı girin",

@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Mais ações para {{account}}",
   "connections.accounts.reconnect": "Reconectar",
   "connections.accounts.reconnectRequired": "É necessário reconectar",
-  "connections.accounts.remove": "Remover",
+  "connections.accounts.remove": "Remover conta",
   "connections.accounts.title": "Contas do {{provider}}",
   "connections.apiKeys.invalid": "Chave de API inválida",
   "connections.apiKeys.newKeyPlaceholder": "Insira uma nova chave de API",

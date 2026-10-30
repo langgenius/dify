@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "{{account}} के लिए अधिक कार्रवाइयाँ",
   "connections.accounts.reconnect": "दोबारा कनेक्ट करें",
   "connections.accounts.reconnectRequired": "दोबारा कनेक्ट करना आवश्यक है",
-  "connections.accounts.remove": "हटाएँ",
+  "connections.accounts.remove": "खाता हटाएँ",
   "connections.accounts.title": "{{provider}} खाते",
   "connections.apiKeys.invalid": "अमान्य API कुंजी",
   "connections.apiKeys.newKeyPlaceholder": "नई API कुंजी दर्ज करें",

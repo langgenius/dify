@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "{{account}} 的更多操作",
   "connections.accounts.reconnect": "重新連接",
   "connections.accounts.reconnectRequired": "需要重新連接",
-  "connections.accounts.remove": "移除",
+  "connections.accounts.remove": "移除帳號",
   "connections.accounts.title": "{{provider}} 帳號",
   "connections.apiKeys.invalid": "API Key 無效",
   "connections.apiKeys.newKeyPlaceholder": "輸入新的 API Key",

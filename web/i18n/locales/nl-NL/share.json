@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Meer acties voor {{account}}",
   "connections.accounts.reconnect": "Opnieuw verbinden",
   "connections.accounts.reconnectRequired": "Opnieuw verbinden vereist",
-  "connections.accounts.remove": "Verwijderen",
+  "connections.accounts.remove": "Account verwijderen",
   "connections.accounts.title": "{{provider}}-accounts",
   "connections.apiKeys.invalid": "Ongeldige API-sleutel",
   "connections.apiKeys.newKeyPlaceholder": "Voer een nieuwe API-sleutel in",
