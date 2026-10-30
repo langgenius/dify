@@ -767,6 +767,13 @@ class TestWorkflowPackageServiceCases:
                 ["node-1"],
                 id="roster-only",
             ),
+            pytest.param(
+                lambda _session, _storage: _roster_archive(
+                    {"binding_type": "roster_agent", "agent_id": "a", "package_ref": None}
+                ).getvalue(),
+                ["node-1"],
+                id="null-package-ref",
+            ),
         ],
     )
     def test_reader_refuses_roster_references_unless_accepted(
@@ -778,6 +785,13 @@ class TestWorkflowPackageServiceCases:
         with pytest.raises(RosterReferenceNotAcceptedError) as exc_info:
             AppPackageService().read_package(io.BytesIO(package(sqlite_session, storage)))
         assert exc_info.value.node_ids == node_ids
+
+    @staticmethod
+    def test_reader_accepts_a_null_package_ref_as_a_roster_reference() -> None:
+        content = _roster_archive({"binding_type": "roster_agent", "agent_id": "a", "package_ref": None})
+        prepared = AppPackageService().read_package(content, accept_roster_references=True)
+        assert prepared is not None
+        prepared.close()
 
     @staticmethod
     def test_unresolvable_roster_reference_fails_the_import(sqlite_session: Session, storage: _MemoryStorage) -> None:

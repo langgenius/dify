@@ -630,7 +630,7 @@ Upload a file to use as an input variable when running the app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | include_secret | query | Include secret values in plaintext in the exported DSL. Ignored for Agent Apps, which export the Agent's current state | No | boolean |
-| preserve_agent_bindings | query | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged; they keep their links to workspace skills, which the importing workspace must have. false: every Agent is packaged with a copy of each workspace skill, as the console does, for moving the App to another workspace. Ignored for Agent Apps, which export the Agent's current state | No | boolean, <br>**Default:** true |
+| preserve_agent_bindings | query | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged; they keep their links to workspace skills. An import with true links them, so the importing workspace must have them; an import with false copies them. false: every Agent is packaged with a copy of each workspace skill, as the console does, for moving the App to another workspace. Ignored for Agent Apps, which export the Agent's current state | No | boolean, <br>**Default:** true |
 | workflow_id | query | Export a specific workflow version instead of the current draft. Ignored for Agent Apps, which export the Agent's current state | No | string (uuid) |
 | app_id | path |  | Yes | string |
 
@@ -2520,7 +2520,7 @@ Query parameters for GET /apps/<app_id>/package.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | include_secret | boolean | Include secret values in plaintext in the exported DSL. Ignored for Agent Apps, which export the Agent's current state | No |
-| preserve_agent_bindings | boolean, <br>**Default:** true | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged; they keep their links to workspace skills, which the importing workspace must have. false: every Agent is packaged with a copy of each workspace skill, as the console does, for moving the App to another workspace. Ignored for Agent Apps, which export the Agent's current state | No |
+| preserve_agent_bindings | boolean, <br>**Default:** true | true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) and only inline Agents are packaged; they keep their links to workspace skills. An import with true links them, so the importing workspace must have them; an import with false copies them. false: every Agent is packaged with a copy of each workspace skill, as the console does, for moving the App to another workspace. Ignored for Agent Apps, which export the Agent's current state | No |
 | workflow_id | string | Export a specific workflow version instead of the current draft. Ignored for Agent Apps, which export the Agent's current state | No |
 
 #### AppPackageImportPayload
@@ -2537,7 +2537,7 @@ Request body for POST /workspaces/<workspace_id>/apps/packages.
 | icon_type | string |  | No |
 | name | string | Override the app name from the DSL | No |
 | package | string<br>object | A .ifpkg file, or an unpacked package folder (one part per file) | Yes |
-| preserve_agent_bindings | boolean | true: keep the package's links to roster Agents and workspace skills, for a package exported for editing and uploaded back to the same workspace. false: import every packaged Agent and skill as a copy, for a full export; a package that links roster Agents is refused. | No |
+| preserve_agent_bindings | boolean | true: keep the package's links to roster Agents and workspace skills, for a package exported for editing and uploaded back to the same workspace. false: import every packaged Agent and skill as a copy, for a full export; a package that links roster Agents is refused. Agent App packages always import their skills as copies; true is ignored for them. | No |
 
 #### AppSettingsInfo
 

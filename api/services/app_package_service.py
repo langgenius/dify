@@ -368,7 +368,7 @@ class AppPackageService(RosterAgentPackageReader):
                 binding = node_data["agent_binding"]
                 binding_type = WorkflowAgentBindingType(binding["binding_type"])
                 if accept_roster_references:
-                    if cls._is_roster_reference(binding_type, binding):
+                    if cls._is_roster_reference(binding):
                         cls._validate_roster_reference(binding, node_data)
                         continue
                     if binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
@@ -389,7 +389,7 @@ class AppPackageService(RosterAgentPackageReader):
 
     @classmethod
     def _refuse_roster_references(cls, data: Mapping[str, Any]) -> None:
-        """Refuse links to roster Agents before the import that was not asked to keep them drops them."""
+        """Refuse roster Agent links when the import was not asked to keep them."""
         workflow = data.get("workflow")
         if not isinstance(workflow, Mapping):
             return
@@ -399,24 +399,18 @@ class AppPackageService(RosterAgentPackageReader):
         node_ids = [
             node_id
             for node_id, node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph)
-            if cls._links_roster_agent(node_data.get("agent_binding"))
+            if cls._is_roster_reference(node_data.get("agent_binding"))
         ]
         if node_ids:
             raise RosterReferenceNotAcceptedError(node_ids)
 
     @staticmethod
-    def _links_roster_agent(binding: object) -> bool:
+    def _is_roster_reference(binding: object) -> bool:
         if not isinstance(binding, Mapping):
             return False
         if binding.get("binding_type") != WorkflowAgentBindingType.ROSTER_AGENT:
             return False
-        return AGENT_PACKAGE_REF_KEY not in binding
-
-    @staticmethod
-    def _is_roster_reference(binding_type: WorkflowAgentBindingType, binding: Mapping[str, Any]) -> bool:
-        if binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
-            return False
-        return AGENT_PACKAGE_REF_KEY not in binding
+        return binding.get(AGENT_PACKAGE_REF_KEY) is None
 
     @staticmethod
     def _validate_roster_reference(binding: Mapping[str, Any], node_data: Mapping[str, Any]) -> None:
