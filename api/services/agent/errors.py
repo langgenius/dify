@@ -71,6 +71,16 @@ class WorkspaceSkillNotFoundError(InvalidRosterAgentPackageError):
         super().__init__(f"Workspace Skills are not in this workspace: {', '.join(self.names)}.")
 
 
+class RosterReferenceNotAcceptedError(InvalidRosterAgentPackageError):
+    """A package links Agent nodes to roster Agents, and the import was not asked to keep such links."""
+
+    error_code = "roster_reference_not_accepted"
+
+    def __init__(self, node_ids: Sequence[str]) -> None:
+        self.node_ids = list(node_ids)
+        super().__init__(f"App package links these Agent nodes to roster Agents: {', '.join(self.node_ids)}.")
+
+
 class RosterAgentPackageTooLargeError(BaseHTTPException):
     error_code = "roster_agent_package_too_large"
     description = "The Roster Agent package exceeds the size limit."

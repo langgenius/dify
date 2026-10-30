@@ -63,7 +63,11 @@ from models.skill import AgentSkillBinding, Skill
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
-from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
+from services.agent.errors import (
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
+)
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app.export_service import AppExportService
@@ -791,8 +795,31 @@ def test_package_import_reads_a_file_part_as_the_package(
     )
 
     [call] = calls
-    assert (status, call.content, call.preserve_agent_bindings) == (200, b"ifpkg-bytes", True)
+    assert (status, call.content) == (200, b"ifpkg-bytes")
     assert (call.params.mode, call.params.name, call.params.app_id) == (ImportMode.YAML_CONTENT, "Renamed", None)
+
+
+@pytest.mark.parametrize(
+    ("fields", "preserve_agent_bindings"),
+    [
+        pytest.param({}, False, id="default"),
+        pytest.param({"preserve_agent_bindings": False}, False, id="false"),
+        pytest.param({"preserve_agent_bindings": True}, True, id="true"),
+    ],
+)
+def test_package_import_passes_whether_to_keep_links(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    fields: dict[str, object],
+    preserve_agent_bindings: bool,
+) -> None:
+    calls = _recorded_package_import(monkeypatch, app_query_services)
+
+    _import_package(app, AppPackageImportPayload.model_validate({"package": _part(b"x"), **fields}))
+
+    [call] = calls
+    assert call.preserve_agent_bindings is preserve_agent_bindings
 
 
 def test_package_import_builds_a_folder_into_the_package(
@@ -809,11 +836,7 @@ def test_package_import_builds_a_folder_into_the_package(
     [call] = calls
     with zipfile.ZipFile(BytesIO(call.content)) as archive:
         assert archive.namelist() == ["agents/a_000001/soul.yaml", "app.yaml", "manifest.yaml"]
-    assert (call.params.app_id, call.params.draft_hash, call.preserve_agent_bindings) == (
-        _OVERWRITTEN_APP_ID,
-        "exported",
-        True,
-    )
+    assert (call.params.app_id, call.params.draft_hash) == (_OVERWRITTEN_APP_ID, "exported")
     assert call.source.closed
 
 
@@ -849,6 +872,16 @@ def test_package_import_builds_a_folder_into_the_package(
             OpenApiErrorCode.APP_PACKAGE_INVALID,
             "member hash mismatch",
             id="reader-refuses",
+        ),
+        pytest.param(
+            {"app.yaml": b"a"},
+            1,
+            RosterReferenceNotAcceptedError(["node-3"]),
+            AppPackageInvalid,
+            400,
+            OpenApiErrorCode.APP_PACKAGE_INVALID,
+            "import it with preserve_agent_bindings=true",
+            id="roster-references-without-the-flag",
         ),
         pytest.param(
             {"app.yaml": b"a"},
@@ -1022,9 +1055,9 @@ def test_package_import_maps_service_refusals(
 
 
 def test_package_upload_cap_counts_entries_and_fields(config_overrides: Callable[..., None]) -> None:
-    assert _PACKAGE_UPLOAD.parts() == dify_config.AGENT_PACKAGE_MAX_ENTRIES + 7
+    assert _PACKAGE_UPLOAD.parts() == dify_config.AGENT_PACKAGE_MAX_ENTRIES + 8
     config_overrides(AGENT_PACKAGE_MAX_ENTRIES=3)
-    assert _PACKAGE_UPLOAD.parts() == 10
+    assert _PACKAGE_UPLOAD.parts() == 11
 
 
 _TOOL_PROVIDER_ID = "8b1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
@@ -1128,7 +1161,9 @@ def test_package_import_round_trips_an_unpacked_export_onto_its_app(
     exported, folder = _export_folder(source)
 
     response, status = _import_package(
-        app, AppPackageImportPayload(package=folder, app_id=source.id, draft_hash=draft_hash), context=context
+        app,
+        AppPackageImportPayload(package=folder, app_id=source.id, draft_hash=draft_hash, preserve_agent_bindings=True),
+        context=context,
     )
 
     assert {"w_000001.ifpkg", "s_000003.zip"} <= folder.keys()
@@ -1177,7 +1212,11 @@ def test_package_import_refuses_links_to_missing_skills_before_any_write(
     apps = sqlite_session.scalar(select(func.count()).select_from(App))
 
     with pytest.raises(AppPackageInvalid) as exc_info:
-        _import_package(app, AppPackageImportPayload(package=folder, app_id=source.id), context=context)
+        _import_package(
+            app,
+            AppPackageImportPayload(package=folder, app_id=source.id, preserve_agent_bindings=True),
+            context=context,
+        )
 
     assert storage.saved == []
     assert sqlite_session.scalar(select(func.count()).select_from(App)) == apps
@@ -1187,7 +1226,7 @@ def test_package_import_refuses_links_to_missing_skills_before_any_write(
     assert (body["status"], body["code"]) == (400, OpenApiErrorCode.APP_PACKAGE_INVALID)
     assert body["hint"] == (
         "Import each missing skill into the Skill Hub first, "
-        "or export the app with preserve_agent_bindings=false to bundle a copy."
+        "or import with preserve_agent_bindings=false to use the package's copy of each skill."
     )
     assert body["details"] == [
         {

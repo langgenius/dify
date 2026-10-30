@@ -30,6 +30,7 @@ from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AGENT_PACKAGE_RE
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
     WorkspaceSkillNotFoundError,
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
@@ -337,6 +338,8 @@ class AppPackageService(RosterAgentPackageReader):
         cls, data: dict[str, Any], manifest: AppPackageManifest, *, accept_roster_references: bool
     ) -> dict[str, AgentPackage]:
         agent_modes = {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
+        if not accept_roster_references:
+            cls._refuse_roster_references(data)
         if not manifest.agent_resources:
             if not accept_roster_references:
                 return {}
@@ -370,6 +373,31 @@ class AppPackageService(RosterAgentPackageReader):
             return agents
         except (KeyError, TypeError, AttributeError, ValueError) as exc:
             raise InvalidRosterAgentPackageError("App package Agent references are invalid") from exc
+
+    @classmethod
+    def _refuse_roster_references(cls, data: Mapping[str, Any]) -> None:
+        """Refuse links to roster Agents before the import that was not asked to keep them drops them."""
+        workflow = data.get("workflow")
+        if not isinstance(workflow, Mapping):
+            return
+        graph = workflow.get("graph")
+        if not isinstance(graph, Mapping):
+            return
+        node_ids = [
+            node_id
+            for node_id, node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph)
+            if cls._links_roster_agent(node_data.get("agent_binding"))
+        ]
+        if node_ids:
+            raise RosterReferenceNotAcceptedError(node_ids)
+
+    @staticmethod
+    def _links_roster_agent(binding: object) -> bool:
+        if not isinstance(binding, Mapping):
+            return False
+        if binding.get("binding_type") != WorkflowAgentBindingType.ROSTER_AGENT:
+            return False
+        return AGENT_PACKAGE_REF_KEY not in binding
 
     @staticmethod
     def _is_roster_reference(binding_type: WorkflowAgentBindingType, binding: Mapping[str, Any]) -> bool:
