@@ -39,6 +39,7 @@ from services.model_billing_mapping_service import (
     hosted_migration_sources,
     mapping_supports_installed_plugin,
     mappings_for_revision,
+    migration_policy_allows_empty_sources,
     model_schema_digest,
     partition_hosted_migration_sources,
     provider_has_prepared_ownership,
@@ -489,8 +490,14 @@ def embedding_dimensions_contract(schema: AIModelEntity) -> str:
     )
 
 
-def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
-    """Export a non-secret source inventory before preparing a target plugin."""
+def migration_inventory(
+    tenant_id: str, mapping_version: str, *, eligibility_policy_version: str | None = None
+) -> dict[str, Any]:
+    """Export the source inventory using the admitted/persisted migration policy.
+
+    Omitted policy preserves strict historical behavior. The free-legacy policy
+    may freeze a genuinely empty inventory, not missing source schema evidence.
+    """
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 
@@ -590,7 +597,11 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
             if model_type == ModelType.TEXT_EMBEDDING:
                 item["embedding_dimensions"] = embedding_dimensions_contract(source_schema)
             inventory.append(item)
-    if not inventory and not retired_inventory:
+    if (
+        not inventory
+        and not retired_inventory
+        and not migration_policy_allows_empty_sources(eligibility_policy_version)
+    ):
         raise ModelRouteUnmapped
     inventory.sort(key=itemgetter("provider", "model_type", "model"))
     retired_inventory.sort(key=itemgetter("provider", "model_type", "model"))
@@ -607,13 +618,19 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
     return result
 
 
-def validate_migration_readiness(tenant_id: str, mapping_version: str) -> dict[str, Any]:
-    """Check our installed adapters/registry; never invoke a billable model."""
+def validate_migration_readiness(
+    tenant_id: str, mapping_version: str, *, eligibility_policy_version: str | None = None
+) -> dict[str, Any]:
+    """Check adapters/registry under the persisted policy; never invoke a model.
+
+    Omitted policy remains strict for historical paid callers. Even an admitted
+    empty free inventory must validate the daemon and managed credential pin.
+    """
     from packaging.version import Version
 
     from core.plugin.impl.model import PluginModelClient
 
-    inventory = migration_inventory(tenant_id, mapping_version)
+    inventory = migration_inventory(tenant_id, mapping_version, eligibility_policy_version=eligibility_policy_version)
     registry = model_mappings(mapping_version)
     client = PluginModelClient()
     capabilities = client._request_with_plugin_daemon_response(

@@ -67,8 +67,9 @@ class InventoryProviderManager(ProviderManager):
 
 
 @pytest.mark.parametrize("case", ["mixed", "retired_only", "unlisted_missing", "old_revision"])
+@pytest.mark.parametrize("eligibility_policy_version", [None, "free-legacy-v1"])
 def test_retirement_inventory_contract_with_real_source_configuration(
-    monkeypatch: pytest.MonkeyPatch, case: str
+    monkeypatch: pytest.MonkeyPatch, case: str, eligibility_policy_version: str | None
 ) -> None:
     from core.model_invocation_routing import migration_inventory
     from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
@@ -143,10 +144,14 @@ def test_retirement_inventory_contract_with_real_source_configuration(
     )
     if case == "unlisted_missing":
         with pytest.raises(ModelRouteUnmapped):
-            migration_inventory(provider.tenant_id, "new")
+            migration_inventory(provider.tenant_id, "new", eligibility_policy_version=eligibility_policy_version)
         assert lookups == ["unlisted"]
     else:
-        result = migration_inventory(provider.tenant_id, "old" if case == "old_revision" else "new")
+        result = migration_inventory(
+            provider.tenant_id,
+            "old" if case == "old_revision" else "new",
+            eligibility_policy_version=eligibility_policy_version,
+        )
         assert lookups == []
         if case == "old_revision":
             assert result["inventory_hash"] == canonical_hash(result["models"])
@@ -164,6 +169,63 @@ def test_retirement_inventory_contract_with_real_source_configuration(
             ]
             assert result["inventory_hash"] != canonical_hash(result["models"])
     assert provider.model_dump() == before
+
+
+@pytest.mark.parametrize("eligibility_policy_version", [None, "", "paid-legacy-v1", "free-legacy-v2", "free-legacy-v1"])
+@pytest.mark.parametrize("byok_only", [False, True])
+def test_empty_inventory_requires_exact_free_policy(
+    monkeypatch: pytest.MonkeyPatch, eligibility_policy_version: str | None, byok_only: bool
+) -> None:
+    from core.model_invocation_routing import migration_inventory
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
+
+    configurations = ProviderConfigurations(tenant_id="empty-source-tenant")
+    if byok_only:
+        configurations.configurations["langgenius/openai/openai"] = ProviderConfiguration(
+            tenant_id=configurations.tenant_id,
+            provider=ProviderEntity(
+                provider="langgenius/openai/openai",
+                label=I18nObject(en_US="OpenAI"),
+                supported_model_types=[ModelType.LLM],
+                configurate_methods=[],
+                models=[schema()],
+            ),
+            preferred_provider_type=ProviderType.CUSTOM,
+            using_provider_type=ProviderType.CUSTOM,
+            system_configuration=SystemConfiguration(enabled=False),
+            custom_configuration=CustomConfiguration(provider=None),
+            model_settings=[],
+        )
+    manager = InventoryProviderManager(configurations)
+
+    def discover(*, tenant_id: str) -> ProviderManager:
+        assert tenant_id == configurations.tenant_id
+        return manager
+
+    monkeypatch.setattr("core.plugin.impl.model_runtime_factory.create_plugin_provider_manager", discover)
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([mapping(schema(), revision="free-fixture-v1")]),
+        TOKENER_LEGACY_RETIRED_MODELS_JSON="[]",
+    )
+    before = configurations.model_dump()
+    if eligibility_policy_version == "free-legacy-v1":
+        result = migration_inventory(
+            configurations.tenant_id, "free-fixture-v1", eligibility_policy_version=eligibility_policy_version
+        )
+        assert result == {
+            "inventory_hash": canonical_hash([]),
+            "model_mapping_version": "free-fixture-v1",
+            "model_count": 0,
+            "models": [],
+            "source_ownership": {},
+        }
+    else:
+        with pytest.raises(ModelRouteUnmapped):
+            migration_inventory(
+                configurations.tenant_id, "free-fixture-v1", eligibility_policy_version=eligibility_policy_version
+            )
+    assert configurations.model_dump() == before
 
 
 def credential_pin() -> dict[str, str]:
@@ -625,18 +687,22 @@ def test_routed_schema_keeps_logical_model_identity(mocker: MockerFixture) -> No
 
 @pytest.mark.parametrize("pin_source", ["preparation", "provisioned_binding"])
 @pytest.mark.parametrize("edited", [False, True])
+@pytest.mark.parametrize("empty_sources", [False, True])
 def test_readiness_uses_redirect_and_pins_installed_version(
-    mocker: MockerFixture, pin_source: str, edited: bool
+    mocker: MockerFixture, pin_source: str, edited: bool, empty_sources: bool
 ) -> None:
     from core.model_invocation_routing import validate_migration_readiness
     from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
     inventory: dict[str, object] = {
-        "models": [{"provider": plan().logical_provider, "model_type": "llm", "model": "gpt-4o"}],
+        "models": []
+        if empty_sources
+        else [{"provider": plan().logical_provider, "model_type": "llm", "model": "gpt-4o"}],
         "inventory_hash": "fixture",
         "source_ownership": {},
     }
-    mocker.patch("core.model_invocation_routing.migration_inventory", return_value=inventory)
+    inventory_call = mocker.patch("core.model_invocation_routing.migration_inventory", return_value=inventory)
+    eligibility_policy_version = "free-legacy-v1" if empty_sources else None
     rule = SimpleNamespace(
         operations=list(plan().operations),
         source=SimpleNamespace(mode="chat"),
@@ -666,13 +732,23 @@ def test_readiness_uses_redirect_and_pins_installed_version(
     mocker.patch("core.plugin.impl.model.PluginModelClient", return_value=client)
     if edited:
         with pytest.raises(ModelRouteUnavailable):
-            validate_migration_readiness(plan().tenant_id, "fixture-v1")
+            validate_migration_readiness(
+                plan().tenant_id, "fixture-v1", eligibility_policy_version=eligibility_policy_version
+            )
         registry.assert_called_once_with("fixture-v1")
         client.get_model_schema.assert_not_called()
         return
-    readiness = validate_migration_readiness(plan().tenant_id, "fixture-v1")
+    readiness = validate_migration_readiness(
+        plan().tenant_id, "fixture-v1", eligibility_policy_version=eligibility_policy_version
+    )
+    inventory_call.assert_called_once_with(
+        plan().tenant_id, "fixture-v1", eligibility_policy_version=eligibility_policy_version
+    )
     registry.assert_called_once_with("fixture-v1")
     assert readiness["credential_fingerprint"] == plan().expected_credential_fingerprint
+    if empty_sources:
+        client.get_model_schema.assert_not_called()
+        return
     args = client.get_model_schema.call_args.args
     assert args[2:6] == ("langgenius/openai", "openai", "llm", "gpt-4o")
     assert isinstance(args[6], RoutedModelCredentials)

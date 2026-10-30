@@ -1,6 +1,8 @@
 import json
 from collections.abc import Sequence
+from contextlib import nullcontext
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -16,6 +18,47 @@ from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationSta
 from services.entities.model_billing_migration import PrepareMigrationPayload, canonical_hash
 from services.model_billing_migration_service import ModelBillingMigrationService
 from tasks import prepare_tokener_migration_task as module
+
+
+@pytest.mark.parametrize("policy", ["paid-legacy-v1", "free-legacy-v1", "unknown-policy"])
+def test_prepare_worker_passes_only_persisted_eligibility_policy(monkeypatch: pytest.MonkeyPatch, policy: str) -> None:
+    from core import model_invocation_routing
+
+    tenant_id, migration_id = str(uuid4()), str(uuid4())
+    state = {
+        "operations": {str(uuid4()): {"action": "prepare"}},
+        "eligibility_policy_version": policy,
+        "model_mapping_version": "mapping-v1",
+        "inventory_hash": canonical_hash([]),
+    }
+    session = MagicMock()
+    session.get.side_effect = [
+        SimpleNamespace(migration_id=migration_id, phase="preparing", state=state),
+        SimpleNamespace(name="Empty source fixture"),
+    ]
+    monkeypatch.setattr(module.session_factory, "create_session", lambda: nullcontext(session))
+    monkeypatch.setattr(module, "_begin_attempt", MagicMock(return_value=object()))
+    monkeypatch.setattr(module, "_ensure_plugin_installed", MagicMock())
+    monkeypatch.setattr(module, "_find_bound_credential", MagicMock(return_value="managed-credential"))
+    monkeypatch.setattr(module, "_update_integration", MagicMock())
+    readiness = MagicMock(
+        return_value={
+            "inventory_hash": canonical_hash([]),
+            "source_ownership": {},
+            "credential_fingerprint": "sha256:" + "1" * 64,
+        }
+    )
+    monkeypatch.setattr(model_invocation_routing, "validate_migration_readiness", readiness)
+    complete = MagicMock()
+    monkeypatch.setattr(ModelBillingMigrationService, "complete_preparation", complete)
+    module._run_preparation(tenant_id, migration_id)
+    readiness.assert_called_once_with(tenant_id, "mapping-v1", eligibility_policy_version=policy)
+    complete.assert_called_once_with(
+        tenant_id,
+        migration_id,
+        source_ownership={},
+        expected_credential_fingerprint="sha256:" + "1" * 64,
+    )
 
 
 def add_migration_records(session: Session, tenant_id: str) -> str:

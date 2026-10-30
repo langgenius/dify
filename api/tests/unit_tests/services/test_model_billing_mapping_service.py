@@ -26,11 +26,18 @@ from services.model_billing_mapping_service import (
     mapping_has_required_operations,
     mapping_supports_installed_plugin,
     mappings_for_revision,
+    migration_policy_allows_empty_sources,
     model_schema_digest,
     partition_hosted_migration_sources,
     provider_has_prepared_ownership,
     retirement_policy_for_revision,
 )
+
+
+@pytest.mark.parametrize("policy", [None, "", "paid-legacy-v1", "free-legacy-v2", " free-legacy-v1", "free-legacy-v1 "])
+def test_only_exact_free_policy_allows_an_empty_inventory(policy: str | None) -> None:
+    assert migration_policy_allows_empty_sources(policy) is False
+    assert migration_policy_allows_empty_sources("free-legacy-v1") is True
 
 
 def schema(model: str = "gpt-4o", model_type: ModelType = ModelType.LLM) -> AIModelEntity:

@@ -239,7 +239,11 @@ def _run_preparation(tenant_id: str, migration_id: str) -> None:
     )
     from core.model_invocation_routing import validate_migration_readiness
 
-    readiness = validate_migration_readiness(tenant_id, state["model_mapping_version"])
+    readiness = validate_migration_readiness(
+        tenant_id,
+        state["model_mapping_version"],
+        eligibility_policy_version=state["eligibility_policy_version"],
+    )
     if readiness["inventory_hash"] != state["inventory_hash"]:
         raise PreparationStepError("migration_inventory_changed")
     ModelBillingMigrationService.complete_preparation(

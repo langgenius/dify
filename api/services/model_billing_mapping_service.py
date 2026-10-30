@@ -32,6 +32,16 @@ type MappingIdentity = tuple[str, ModelType, str]
 type SchemaLookup = Callable[[ModelType, str, dict[str, Any]], AIModelEntity | None]
 
 
+def migration_policy_allows_empty_sources(eligibility_policy_version: str | None) -> bool:
+    """Only the persisted legacy-free policy can migrate without hosted sources.
+
+    None is the historical caller contract and remains strict, as do paid and
+    unknown policies. This does not authorize missing schemas or mappings for
+    any source that is present, and never grants permission to spend a quota.
+    """
+    return eligibility_policy_version == "free-legacy-v1"
+
+
 def model_schema_digest(schema: AIModelEntity) -> str:
     """Hash the same complete source contract during preparation and late admission."""
     return (
