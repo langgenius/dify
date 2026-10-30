@@ -597,6 +597,28 @@ describe('Inline Agent configure workspace', () => {
     )
   })
 
+  it('reports a failed composer save once and keeps the build draft for retry', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    api.saveComposer.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'Could not save the Agent configuration',
+      }),
+    )
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Could not save the Agent configuration'),
+    )
+    expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: `${prefix}.buildDraft.title` })).toBeVisible()
+    expect(applyButton()).toBeEnabled()
+  })
+
   it('keeps the build draft available for retry when applying it cannot clear the server draft', async () => {
     const user = userEvent.setup()
     const errorToast = vi.spyOn(toast, 'error')

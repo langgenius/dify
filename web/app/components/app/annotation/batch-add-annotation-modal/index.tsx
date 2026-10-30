@@ -93,7 +93,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
     const formData = new FormData()
     formData.append('file', csv)
     try {
-      const res = await annotationBatchImport(appId, formData)
+      const res = await annotationBatchImport(appId, formData, { silent: true })
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
     } catch (e: any) {
