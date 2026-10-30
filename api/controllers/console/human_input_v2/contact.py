@@ -395,7 +395,6 @@ def _raise_contact_error(error: ContactError) -> Never:
     if error.code is ContactErrorCode.CONFLICT:
         abort(HTTPStatus.CONFLICT, str(error))
     abort(HTTPStatus.UNPROCESSABLE_ENTITY, str(error))
-    raise AssertionError("unreachable")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/contacts")
