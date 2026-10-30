@@ -313,7 +313,7 @@ export const zConversationCursorNotFoundError = zErrorResponse.and(
 /**
  * ConversationNotFoundError
  *
- * The conversation was not found for this account and app.
+ * The conversation was not found for this user and app.
  */
 export const zConversationNotFoundError = zErrorResponse.and(
   z.object({

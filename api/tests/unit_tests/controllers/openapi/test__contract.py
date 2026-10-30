@@ -4,17 +4,25 @@ Exercises the decorators in isolation (not through a real controller): a plain
 view function decorated with @accepts/@returns, driven inside a request context.
 """
 
+from collections.abc import Callable
 from functools import wraps
+from io import BytesIO
 from typing import Any, cast
 
 import pytest
+from flask import Flask, request
+from flask.ctx import RequestContext
 from pydantic import BaseModel, ConfigDict, Field
-from werkzeug.exceptions import UnprocessableEntity
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import RequestEntityTooLarge, UnprocessableEntity
 
 from controllers.common.schema import register_response_schema_model, register_schema_model
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import accepts, paginated, returns
+from controllers.openapi._contract import CapRequestBody, accepts, paginated, returns
+from controllers.openapi._errors import RequestOverRouteLimits
 from controllers.openapi._models import Hint, PaginationEnvelope
+from controllers.openapi._upload import UploadPart
+from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_ctx
 
 
 class ContractQuery(BaseModel):
@@ -30,6 +38,10 @@ class ContractBody(BaseModel):
     name: str
 
 
+class ContractUploadBody(BaseModel):
+    package: UploadPart
+
+
 class ContractResp(BaseModel):
     value: int
 
@@ -39,9 +51,11 @@ def _register_contract_test_models():
     # Register for @accepts(body=)/@returns name lookups; drop on teardown so these
     # test-only models don't leak into the shared openapi_ns / generated spec.
     register_schema_model(openapi_ns, ContractBody)
+    register_schema_model(openapi_ns, ContractUploadBody)
     register_response_schema_model(openapi_ns, ContractResp)
     yield
     openapi_ns.models.pop(ContractBody.__name__, None)
+    openapi_ns.models.pop(ContractUploadBody.__name__, None)
     openapi_ns.models.pop(ContractResp.__name__, None)
 
 
@@ -212,3 +226,55 @@ def test_accepts_returns_emit_apidoc_through_guard_stack():
     assert "page" in apidoc.get("params", {})  # from @accepts(query=)
     assert apidoc.get("expect")  # from @accepts(body=), via @openapi_ns.expect
     assert "200" in apidoc.get("responses", {})  # from @returns (flask_restx keys by str code)
+
+
+_MIB = 1024 * 1024
+
+
+def _post(app: Flask, size: int, **extra: str) -> RequestContext:
+    data = {"package": (BytesIO(b"x" * size), "a.yaml"), **extra}
+    return app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data")
+
+
+@pytest.fixture
+def view() -> Callable[[], str]:
+    @accepts(body=ContractUploadBody)
+    def handler(*, body: ContractUploadBody) -> str:
+        return "ok"
+
+    return handler
+
+
+@pytest.mark.parametrize(
+    ("size", "extra", "accepted"),
+    [
+        (1, {"note": '"y"'}, True),
+        (2 * _MIB, {}, False),
+        (1, {"note": '"y"', "other": '"z"'}, False),
+    ],
+)
+def test_a_capped_route_sets_its_own_limits_and_names_them(
+    app: Flask,
+    sqlite_session: Session,
+    view: Callable[[], str],
+    size: int,
+    extra: dict[str, str],
+    accepted: bool,
+) -> None:
+    app.config["MAX_FORM_PARTS"] = 1
+    cap = CapRequestBody(max_bytes=lambda: _MIB, max_parts=lambda: 2)
+    with _post(app, size, **extra):
+        cap.run(account_subject(), make_ctx(sqlite_session), sqlite_session)
+        assert "form" not in request.__dict__
+        if accepted:
+            assert view() == "ok"
+            return
+        with pytest.raises(RequestOverRouteLimits, match="at most 2 parts and 1 MiB$"):
+            view()
+
+
+def test_an_uncapped_route_keeps_the_generic_413(app: Flask, view: Callable[[], str]) -> None:
+    app.config["MAX_FORM_PARTS"] = 1
+    with _post(app, 1, extra="y"), pytest.raises(RequestEntityTooLarge) as exc:
+        view()
+    assert not isinstance(exc.value, RequestOverRouteLimits)

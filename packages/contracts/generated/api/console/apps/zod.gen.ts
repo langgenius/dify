@@ -555,6 +555,18 @@ export const zUnsupportedAudioTypeError = zErrorResponse.and(
 )
 
 /**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({

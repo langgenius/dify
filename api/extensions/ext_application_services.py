@@ -588,7 +588,10 @@ def build_application_services(
     conversation_commands = ConversationCommandService(
         conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
     )
-    conversation_queries = ConversationQueryService(conversations=conversations, restore_inputs=restore_input_files)
+    message_files = MessageFileResolver()
+    conversation_queries = ConversationQueryService(
+        conversations=conversations, restore_inputs=restore_input_files, files=message_files
+    )
     conversation_variables = ConversationVariableRepository(session_factory=database_client)
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
@@ -750,7 +753,7 @@ def build_application_services(
         message_feedbacks=MessageFeedbackService(repository=messages),
         message_queries=MessageQueryService(
             messages=messages,
-            files=MessageFileResolver(),
+            files=message_files,
             extra_contents=ExecutionExtraContentReader(
                 repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client)
             ),

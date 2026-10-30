@@ -202,6 +202,14 @@ const zUnsupportedAudioTypeError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConversationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zAppSuggestedQuestionsAfterAnswerDisabledError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -637,9 +645,15 @@ export const post18Errors = {
   unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
 }
 
-export const delete5Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const delete5Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
-export const get24Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get24Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
 export const get25Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -664,9 +678,15 @@ export const get27Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const delete6Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const delete6Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
-export const get28Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get28Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
 export const get29Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
