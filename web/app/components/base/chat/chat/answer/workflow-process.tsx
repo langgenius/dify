@@ -135,7 +135,7 @@ const WorkflowProcessItem = ({
           {failed && data.error && (
             <div
               role="alert"
-              className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular wrap-anywhere text-text-destructive"
+              className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular wrap-break-word text-text-destructive"
             >
               {localizedError}
             </div>
