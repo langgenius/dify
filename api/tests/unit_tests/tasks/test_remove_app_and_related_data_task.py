@@ -1,23 +1,24 @@
 import logging
-from collections.abc import Iterator, Sequence
-from contextlib import AbstractContextManager
+from collections.abc import Generator, Iterator, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.remove_app_and_related_data_task as remove_app_task_module
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
+from graphon.variables.segments import StringSegment
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowArchiveLog
+from models.workflow import WorkflowArchiveLog, WorkflowDraftVariable
 from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
     _delete_app_stars,
@@ -425,36 +426,84 @@ class TestDeleteDraftVariableOffloadData:
 class TestDeleteDraftVariablesBatchTransactionScope:
     """The batch loop must not hold a transaction while object storage is cleaned up."""
 
-    def test_offload_cleanup_is_called_with_no_session_open(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        factory = _FakeSessionFactory([_FakeResult([("var-1", "vf-1")]), _FakeResult([], rowcount=1)])
-        observed_open_counts: list[int] = []
+    def test_offload_cleanup_is_called_with_no_session_open(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            user_id="user-1",
+            node_id="node-1",
+            name="value",
+            value=StringSegment(value="truncated"),
+            node_execution_id="exec-1",
+            file_id="vf-1",
+        )
+        other = WorkflowDraftVariable.new_node_variable(
+            app_id="app-2",
+            user_id="user-1",
+            node_id="node-1",
+            name="value",
+            value=StringSegment(value="untouched"),
+            node_execution_id="exec-2",
+        )
+        sqlite_session.add_all([variable, other])
+        sqlite_session.commit()
+        variable_id, other_id = variable.id, other.id
+        open_sessions: list[Session] = []
+
+        @contextmanager
+        def tracked_session() -> Generator[Session]:
+            with sqlite_session_factory() as session:
+                open_sessions.append(session)
+                try:
+                    yield session
+                finally:
+                    open_sessions.remove(session)
+
+        cleaned: list[list[str]] = []
 
         def _record_cleanup(file_ids: list[str]) -> int:
-            observed_open_counts.append(factory.open_count)
+            assert not open_sessions
+            cleaned.append(file_ids)
             return len(file_ids)
 
-        monkeypatch.setattr(remove_app_task_module, "session_factory", factory)
+        monkeypatch.setattr(remove_app_task_module.session_factory, "create_session", tracked_session)
         monkeypatch.setattr(remove_app_task_module, "_delete_draft_variable_offload_data", _record_cleanup)
 
         total_deleted = delete_draft_variables_batch("app-1", batch_size=10)
 
         assert total_deleted == 1
-        assert observed_open_counts == [0]
-        assert factory.open_count == 0
+        assert cleaned == [["vf-1"]]
+        assert not open_sessions
+        sqlite_session.expire_all()
+        assert sqlite_session.get(WorkflowDraftVariable, variable_id) is None
+        assert sqlite_session.get(WorkflowDraftVariable, other_id) is not None
 
-    def test_rows_without_offloaded_files_skip_cleanup(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_rows_without_offloaded_files_skip_cleanup(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         """A batch whose rows carry no file_id must not invoke the offload cleanup."""
-        factory = _FakeSessionFactory([_FakeResult([("var-1", None)]), _FakeResult([], rowcount=1)])
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            user_id="user-1",
+            node_id="node-1",
+            name="value",
+            value=StringSegment(value="plain"),
+            node_execution_id="exec-1",
+        )
+        sqlite_session.add(variable)
+        sqlite_session.commit()
+        variable_id = variable.id
         cleanup = MagicMock(return_value=0)
 
-        monkeypatch.setattr(remove_app_task_module, "session_factory", factory)
         monkeypatch.setattr(remove_app_task_module, "_delete_draft_variable_offload_data", cleanup)
 
         total_deleted = delete_draft_variables_batch("app-1", batch_size=10)
 
         assert total_deleted == 1
         cleanup.assert_not_called()
-        assert factory.open_count == 0
+        sqlite_session.expire_all()
+        assert sqlite_session.get(WorkflowDraftVariable, variable_id) is None
 
 
 class TestDeleteWorkflowArchiveLogs:
