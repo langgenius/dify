@@ -38,7 +38,7 @@ export function RecipientContactPreview({
           side="left"
           align="start"
           sideOffset={4}
-          className="flex w-60 flex-col gap-2 bg-components-tooltip-bg p-4 backdrop-blur-[5px]"
+          className="nokey flex w-60 flex-col gap-2 bg-components-tooltip-bg p-4 backdrop-blur-[5px]"
         >
           <div
             aria-hidden="true"
