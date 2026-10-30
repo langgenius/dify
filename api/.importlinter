@@ -324,6 +324,34 @@ forbidden_modules =
     repositories.credentials.query_repository
 allow_indirect_imports = True
 
+[importlinter:contract:retrieval-tuning-application-boundary]
+name = Retrieval tuning application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.retrieval_tuning
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:retrieval-tuning-repository-boundary]
+name = Retrieval tuning persistence is wired only by composition
+type = forbidden
+source_modules =
+    controllers
+    services
+    core
+forbidden_modules =
+    repositories.retrieval_tuning_repository
+allow_indirect_imports = True
+
 [importlinter:contract:pipeline-document-lookup-boundary]
 name = Pipeline core depends on its document store port
 type = forbidden

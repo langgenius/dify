@@ -39,6 +39,7 @@ from extensions.application_services.knowledge import (
 )
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.application_services.retrieval_tuning import RetrievalTuningServices, build_retrieval_tuning_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.workspace import (
     WorkspaceServices,
@@ -356,6 +357,7 @@ class ApplicationServices:
     saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
     app_audio: AppAudio
+    retrieval_tuning: RetrievalTuningServices
     trial_apps: TrialAppServices
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
@@ -815,6 +817,7 @@ def build_application_services(
         ),
         app_tasks=AppTaskControlService(redis_client=redis),
         app_audio=AppAudioRuntime(session_factory=database_client),
+        retrieval_tuning=build_retrieval_tuning_services(database_client=database_client),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
