@@ -7558,3 +7558,42 @@ def test_list_openapi_roster_agents_writes_nothing(openapi_roster: Session) -> N
     assert not openapi_roster.new
     assert not openapi_roster.dirty
     assert openapi_roster.scalars(conversations).all() == before
+
+
+@pytest.mark.parametrize(
+    ("key", "published"), [("published", True), ("edited", False), ("draft", False)], ids=["clean", "edited", "never"]
+)
+def test_describe_openapi_roster_agent_maps_the_entry(openapi_roster: Session, key: str, published: bool) -> None:
+    app = openapi_roster.get(App, f"app-{key}")
+    assert app is not None
+
+    entry = AgentRosterService(openapi_roster).describe_openapi_roster_agent(tenant_id="tenant-1", app=app)
+
+    assert (entry.agent_id, entry.app_id, entry.name, entry.published, entry.service_api_enabled) == (
+        f"agent-{key}",
+        f"app-{key}",
+        f"App {key}",
+        published,
+        True,
+    )
+
+
+def test_describe_openapi_roster_agent_refuses_an_app_without_a_roster_agent(openapi_roster: Session) -> None:
+    app = openapi_roster.get(App, "app-workflow-only")
+    assert app is not None
+
+    with pytest.raises(AgentNotFoundError):
+        AgentRosterService(openapi_roster).describe_openapi_roster_agent(tenant_id="tenant-1", app=app)
+
+
+def test_describe_openapi_roster_agent_writes_nothing(openapi_roster: Session) -> None:
+    app = openapi_roster.get(App, "app-published")
+    assert app is not None
+    conversations = select(AgentDebugConversation)
+    before = openapi_roster.scalars(conversations).all()
+
+    AgentRosterService(openapi_roster).describe_openapi_roster_agent(tenant_id="tenant-1", app=app)
+
+    assert not openapi_roster.new
+    assert not openapi_roster.dirty
+    assert openapi_roster.scalars(conversations).all() == before

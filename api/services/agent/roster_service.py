@@ -976,20 +976,32 @@ class AgentRosterService:
             tenant_id=tenant_id, agents=list(agents_by_app_id.values())
         )
         entries = [
-            RosterAgentEntry(
-                agent_id=agent.id,
-                app_id=str(app.id),
-                name=app.name,
-                description=app.description,
-                role=agent.role,
-                published=published_by_agent_id[agent.id],
-                updated_at=app.updated_at,
-                service_api_enabled=app.enable_api,
-            )
+            self._roster_entry(app, agent, published_by_agent_id[agent.id])
             for app in pagination.items
             if (agent := agents_by_app_id.get(str(app.id))) is not None
         ]
         return entries, pagination.total
+
+    def describe_openapi_roster_agent(self, *, tenant_id: str, app: App) -> RosterAgentEntry:
+        """One Agent App's roster entry, read-only like the list."""
+        agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=str(app.id))
+        if agent is None:
+            raise AgentNotFoundError()
+        published = self.load_active_config_is_published_by_agent_id(tenant_id=tenant_id, agents=[agent])
+        return self._roster_entry(app, agent, published[agent.id])
+
+    @staticmethod
+    def _roster_entry(app: App, agent: Agent, published: bool) -> RosterAgentEntry:
+        return RosterAgentEntry(
+            agent_id=agent.id,
+            app_id=str(app.id),
+            name=app.name,
+            description=app.description,
+            role=agent.role,
+            published=published,
+            updated_at=app.updated_at,
+            service_api_enabled=app.enable_api,
+        )
 
     def load_app_ids_for_agents(self, *, tenant_id: str, agent_ids: Sequence[str]) -> list[str]:
         """Return active Agent App ids for the requested roster Agents."""
