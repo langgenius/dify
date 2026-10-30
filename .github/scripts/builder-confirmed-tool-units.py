@@ -1553,7 +1553,7 @@ for module, functions in {
     "tests.unit_tests.services.dify_builder.test_confirmed_full_run": {
         "test_closed_preparation_failure_is_not_reconciled_as_a_dispatched_run": 1,
         "test_error_after_observed_dispatch_remains_unknown": 1,
-        "test_failed_native_plugin_resource_uses_actual_historical_graph": 1,
+        "test_failed_native_plugin_resource_uses_actual_historical_graph": 3,
         "test_observed_preparation_failure_is_failed_and_never_redispatched": 1,
         "test_preparation_failure_identifies_only_the_observed_resource_nodes": 1,
     },
@@ -2189,7 +2189,7 @@ a4_expected["tests.unit_tests.core.dify_builder.test_handlers_build"] = {
     "test_mock_inputs_route_a_missing_endpoint_back_to_the_testdata_gate": 1,
     "test_no_gap_notice_when_the_agent_reports_no_gap": 1,
     "test_no_rename_callback_wired_costs_no_model_call": 1,
-    "test_plan_approval_approve_builds_graph_and_reveals_nodes": 1,
+    "test_plan_approval_approve_builds_graph_and_notifies_once": 1,
     "test_plan_approval_deletes_pre_existing_start_on_from_scratch_build": 1,
     "test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_cannot_start": 1,
     "test_plan_approval_empty_build_surfaces_error_and_keeps_canvas": 1,
@@ -2581,6 +2581,33 @@ a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_agent_ri
         "test_risk_rubric_separates_observed_destruction_from_uncertain_side_effects": 1,
     }
 )
+# Exact additions from native cancellation, fix risk preparation and complete-goal handling.
+for module, functions in {
+    "tests.unit_tests.services.dify_builder.native_testing.test_confirmed_agent_completion": {
+        "test_cancel_control_repause_uses_real_workflow_stop_owner": 69,
+        "test_cancel_before_queued_resume_claim_stops_original_pause": 10,
+        "test_running_cancel_observes_native_cancelled_child_without_rewriting_failed_parent": 32,
+        "test_revocation_before_child_terminal_consumption_observes_original_cancelled_child": 12,
+    },
+    "tests.unit_tests.services.dify_builder.test_code_risk_preparation": {
+        "test_fix_preparation_assesses_without_business_goal_and_keeps_native_confirmation": 6,
+        "test_fix_risk_failure_keeps_code_simulated": 8,
+        "test_fix_risk_snapshot_cannot_authorize_changed_execution": 6,
+        "test_empty_nonfix_context_cannot_acquire_code_assessment": 7,
+        "test_malformed_persisted_fix_context_remains_unavailable": 6,
+    },
+    "tests.unit_tests.services.dify_builder.test_test_actions": {
+        "test_native_metadata_read_does_not_construct_private_command_owner": 1,
+        "test_native_command_keeps_owner_authorization_after_metadata_check": 3,
+        "test_native_command_projects_private_disclosure_only_after_execution": 2,
+        "test_native_metadata_read_selects_only_current_owned_input": 1,
+    },
+    "tests.unit_tests.core.dify_builder.test_handlers_build": {
+        "test_complete_goal_automatically_reaches_resources_without_a_requirements_submission": 2,
+        "test_complete_goal_without_a_usable_plan_fails_explicitly_without_an_empty_form": 1,
+    },
+}.items():
+    a4_expected.setdefault(module, a3_expected.get(module, {}).copy()).update(functions)
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
     for classname, name in identities:
