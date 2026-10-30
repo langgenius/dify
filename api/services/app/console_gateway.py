@@ -286,8 +286,14 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return try_read_yaml(source)
 
     @override
-    def read_app_package(self, source: BinaryIO, *, accept_roster_references: bool = False) -> AppImportPackage | None:
-        return self._packages.read_package(source, accept_roster_references=accept_roster_references)
+    def read_app_package(
+        self, source: BinaryIO, *, accept_roster_references: bool, refuse_roster_references: bool
+    ) -> AppImportPackage | None:
+        return self._packages.read_package(
+            source,
+            accept_roster_references=accept_roster_references,
+            refuse_roster_references=refuse_roster_references,
+        )
 
     def _import_actor(self, context: RequestContext) -> Account:
         with self._session_factory() as session:

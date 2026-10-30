@@ -776,15 +776,48 @@ class TestWorkflowPackageServiceCases:
             ),
         ],
     )
-    def test_reader_refuses_roster_references_unless_accepted(
+    def test_reader_refuses_roster_references_when_asked(
         sqlite_session: Session,
         storage: _MemoryStorage,
         package: Callable[[Session, _MemoryStorage], bytes],
         node_ids: list[str],
     ) -> None:
         with pytest.raises(RosterReferenceNotAcceptedError) as exc_info:
-            AppPackageService().read_package(io.BytesIO(package(sqlite_session, storage)))
+            AppPackageService().read_package(
+                io.BytesIO(package(sqlite_session, storage)), refuse_roster_references=True
+            )
         assert exc_info.value.node_ids == node_ids
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("package", "outcome"),
+        [
+            pytest.param(
+                _roster_export,
+                pytest.raises(InvalidRosterAgentPackageError, match="Agent references are invalid"),
+                id="with-inline-agents",
+            ),
+            pytest.param(
+                lambda _session, _storage: _roster_archive(
+                    {"binding_type": "roster_agent", "agent_id": "a"}
+                ).getvalue(),
+                nullcontext(),
+                id="roster-only",
+            ),
+        ],
+    )
+    def test_reader_reads_roster_references_as_before_by_default(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        package: Callable[[Session, _MemoryStorage], bytes],
+        outcome: AbstractContextManager[object],
+    ) -> None:
+        """The console import reads roster links as it did before the openapi import could refuse them."""
+        with outcome:
+            prepared = AppPackageService().read_package(io.BytesIO(package(sqlite_session, storage)))
+            assert prepared is not None
+            assert prepared.agents == {}
+            prepared.close()
 
     @staticmethod
     def test_reader_accepts_a_null_package_ref_as_a_roster_reference() -> None:
@@ -1048,12 +1081,17 @@ class TestWorkspaceSkillLinkCases:
         ("priority", "outcome"),
         [
             pytest.param(1, nullcontext(), id="distinct"),
-            pytest.param(0, pytest.raises(InvalidRosterAgentPackageError), id="shared"),
+            pytest.param(
+                0,
+                pytest.raises(InvalidRosterAgentPackageError, match="share priority 0"),
+                id="shared",
+            ),
         ],
     )
-    def test_reader_refuses_workspace_skills_that_share_a_priority(
+    def test_only_the_linking_check_refuses_workspace_skills_that_share_a_priority(
         sqlite_session: Session, storage: _MemoryStorage, priority: int, outcome: AbstractContextManager[object]
     ) -> None:
+        """Links at one priority would break the binding table's unique key; a copy import never writes them."""
         app = _source(sqlite_session, storage)
         _bind_second_workspace_skill(sqlite_session, storage, agent=1)
         content = _export(app, preserve_agent_bindings=True)
@@ -1062,12 +1100,10 @@ class TestWorkspaceSkillLinkCases:
             packages = cast(dict[str, dict[str, list[dict[str, object]]]], data["agent_packages"])
             packages["agent_1"]["workspace_skills"][1]["priority"] = priority
 
-        with outcome:
-            prepared = AppPackageService().read_package(
-                io.BytesIO(_rewrite(content, mutate)), accept_roster_references=True
-            )
-            assert prepared is not None
-            prepared.close()
+        prepared = AppPackageService().read_package(io.BytesIO(_rewrite(content, mutate)))
+        assert prepared is not None
+        with prepared, outcome:
+            prepared.require_workspace_skills(tenant_id="tenant-1")
 
 
 """Ordinary App packages preserve DSLs and enforce container integrity."""
