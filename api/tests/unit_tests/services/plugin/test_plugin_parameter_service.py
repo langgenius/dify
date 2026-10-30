@@ -44,7 +44,7 @@ def plugin_parameter_db() -> Iterator[Session]:
     db.init_app(app)
 
     with app.app_context():
-        BuiltinToolProvider.__table__.create(db.engine)
+        BuiltinToolProvider.__table__.create(db.engine)  # pyrefly: ignore[missing-attribute]
         with Session(db.engine, expire_on_commit=False) as session:
             yield session
 
@@ -52,7 +52,7 @@ def plugin_parameter_db() -> Iterator[Session]:
 class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_no_credentials_needed(self, mock_tool_mgr, mock_client_cls):
+    def test_no_credentials_needed(self, mock_tool_mgr: MagicMock, mock_client_cls: MagicMock) -> None:
         provider_ctrl = MagicMock()
         provider_ctrl.entity.identity.name = "google"
         provider_ctrl.plugin_unique_identifier = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -82,7 +82,7 @@ class TestGetDynamicSelectOptionsTool:
         self,
         mock_tool_mgr: MagicMock,
         mock_encrypter_fn: MagicMock,
-        mock_client_cls,
+        mock_client_cls: MagicMock,
         plugin_parameter_db: Session,
     ) -> None:
         tenant_id = str(uuid4())
@@ -151,7 +151,9 @@ class TestGetDynamicSelectOptionsTool:
 class TestGetDynamicSelectOptionsTrigger:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.TriggerSubscriptionBuilderService")
-    def test_uses_subscription_builder_when_credential_id(self, mock_builder_svc, mock_client_cls):
+    def test_uses_subscription_builder_when_credential_id(
+        self, mock_builder_svc: MagicMock, mock_client_cls: MagicMock
+    ) -> None:
         sub = MagicMock()
         sub.credentials = {"token": "abc"}
         sub.credential_type = "api_key"
@@ -179,7 +181,9 @@ class TestGetDynamicSelectOptionsTrigger:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
     @patch("services.plugin.plugin_parameter_service.TriggerSubscriptionBuilderService")
-    def test_falls_back_to_trigger_service(self, mock_builder_svc, mock_provider_svc, mock_client_cls):
+    def test_falls_back_to_trigger_service(
+        self, mock_builder_svc: MagicMock, mock_provider_svc: MagicMock, mock_client_cls: MagicMock
+    ) -> None:
         mock_builder_svc.get_subscription_builder.return_value = None
         trigger_sub = MagicMock()
         api_entity = MagicMock()
@@ -204,7 +208,7 @@ class TestGetDynamicSelectOptionsTrigger:
 
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
     @patch("services.plugin.plugin_parameter_service.TriggerSubscriptionBuilderService")
-    def test_raises_when_no_subscription_found(self, mock_builder_svc, mock_provider_svc):
+    def test_raises_when_no_subscription_found(self, mock_builder_svc: MagicMock, mock_provider_svc: MagicMock) -> None:
         mock_builder_svc.get_subscription_builder.return_value = None
         mock_provider_svc.get_subscription_by_id.return_value = None
 
@@ -224,7 +228,7 @@ class TestGetDynamicSelectOptionsTrigger:
 class TestGetDynamicSelectOptionsWithCredentials:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
-    def test_replaces_hidden_values(self, mock_provider_svc, mock_client_cls):
+    def test_replaces_hidden_values(self, mock_provider_svc: MagicMock, mock_client_cls: MagicMock) -> None:
         from constants import HIDDEN_VALUE
 
         original = MagicMock()
@@ -251,7 +255,7 @@ class TestGetDynamicSelectOptionsWithCredentials:
         assert resolved["name"] == "new-name"  # kept as-is
 
     @patch("services.plugin.plugin_parameter_service.TriggerProviderService")
-    def test_raises_when_subscription_not_found(self, mock_provider_svc):
+    def test_raises_when_subscription_not_found(self, mock_provider_svc: MagicMock) -> None:
         mock_provider_svc.get_subscription_by_id.return_value = None
 
         with pytest.raises(ValueError, match="not found"):
