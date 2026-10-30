@@ -1182,6 +1182,14 @@ class WorkflowService:
         """
         Run draft workflow node
         """
+        from services.workflow_test_execution import require_workflow_test_credentials
+
+        require_workflow_test_credentials(
+            app=app_model,
+            user=account,
+            workflow=draft_workflow,
+            node_id=node_id,
+        )
         files = files or []
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)

@@ -132,12 +132,14 @@ class AppDefinitionQueryService:
         get_connection_requirements: Callable[[Mapping[str, Any]], tuple[ToolConnectionRequirement, ...]],
         connection_revisions: ConnectionRevisions,
         plugin_readme: Callable[[str, str, str], str],
+        plugin_asset: Callable[[str, str, str], bytes],
     ) -> None:
         self._definitions = definitions
         self._connection_revisions = connection_revisions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
         self._get_connection_requirements = get_connection_requirements
         self._plugin_readme = plugin_readme
+        self._plugin_asset = plugin_asset
 
     def get_service_api_app(self, app_id: str | None, *, tenant_id: str | None = None) -> ServiceApiAppRecord:
         """Return an app admitted for Service API access, or raise a domain error.
@@ -234,13 +236,30 @@ class AppDefinitionQueryService:
 
     def get_web_plugin_readme(self, app_id: str, tenant_id: str, plugin_unique_identifier: str, language: str) -> str:
         """Only expose documentation for this App's published personal tool providers."""
+        self._require_web_plugin(app_id, tenant_id, plugin_unique_identifier)
+        return self._plugin_readme(tenant_id, plugin_unique_identifier, language)
+
+    def get_web_plugin_asset(self, app_id: str, tenant_id: str, plugin_unique_identifier: str, file_name: str) -> bytes:
+        """Read an asset relative to the authorized plugin's packaged _assets directory."""
+        self._require_web_plugin(app_id, tenant_id, plugin_unique_identifier)
+        if (
+            any(part in {"", ".", ".."} for part in file_name.split("/"))
+            or "\\" in file_name
+            or any(ord(character) < 32 or ord(character) == 127 for character in file_name)
+        ):
+            raise ValueError("Invalid plugin asset filename.")
+        try:
+            return self._plugin_asset(tenant_id, plugin_unique_identifier, file_name)
+        except ValueError:
+            raise AppDefinitionUnavailableError() from None
+
+    def _require_web_plugin(self, app_id: str, tenant_id: str, plugin_unique_identifier: str) -> None:
         parameters = self.get_web_parameters(app_id, tenant_id)
         if not any(
             requirement.plugin_unique_identifier == plugin_unique_identifier
             for requirement in parameters["connection_requirements"]
         ):
             raise AppDefinitionUnavailableError()
-        return self._plugin_readme(tenant_id, plugin_unique_identifier, language)
 
     @staticmethod
     def _map_parameters(config: AppParameterConfig | None) -> AppParametersDict:

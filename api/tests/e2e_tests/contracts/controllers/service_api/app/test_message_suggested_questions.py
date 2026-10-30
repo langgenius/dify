@@ -198,6 +198,7 @@ def harness(
             definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
             builtin_icon_url_prefix="",
             plugin_readme=PluginService.fetch_plugin_readme,
+            plugin_asset=PluginService.extract_asset,
             get_connection_requirements=get_tool_connection_requirements,
             connection_revisions=PluginConnectionRevisions(
                 providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),

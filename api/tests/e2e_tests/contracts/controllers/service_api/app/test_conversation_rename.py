@@ -177,6 +177,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             builtin_icon_url_prefix="",
             get_connection_requirements=get_tool_connection_requirements,
             plugin_readme=PluginService.fetch_plugin_readme,
+            plugin_asset=PluginService.extract_asset,
             connection_revisions=PluginConnectionRevisions(
                 providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
                 snapshots=EndUserConnectionRepository(session_factory=admission_factory),

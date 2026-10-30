@@ -30,6 +30,7 @@ from services.end_user_connections.errors import (
 from services.end_user_connections.policy import require_owned_connection
 from services.end_user_connections.revision import ConnectionRevisionAcceptance
 from services.workflow.tool_credentials import resolve_tool_credential_root
+from services.workflow_test_credentials import BuilderScope
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -71,6 +72,29 @@ def get_tool_runtime(
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 credential_id=root.credential_id,
                 execution_driver=execution_driver,
+            )
+        elif run_context.invoke_from == InvokeFrom.DEBUGGER and run_context.user_from == UserFrom.ACCOUNT:
+            from extensions.ext_application_services import application_services
+
+            resolved_test = application_services().workflow_test_credentials.resolve(
+                BuilderScope(run_context.tenant_id, run_context.app_id, run_context.user_id),
+                graph=graph,
+                node_id=node_id,
+            )
+            provider = ToolManager.get_builtin_provider(spec.provider_id, run_context.tenant_id)
+            definition = provider.get_tool(spec.tool_name)
+            if definition is None:
+                raise ConnectionConfigurationError()
+            tool = definition.fork_tool_runtime(
+                runtime=ToolRuntime(
+                    tenant_id=run_context.tenant_id,
+                    user_id=run_context.user_id,
+                    invoke_from=run_context.invoke_from,
+                    tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                    credentials=dict(resolved_test.credentials),
+                    credential_type=CredentialType(resolved_test.credential_type),
+                    credential_id=resolved_test.credential_id,
+                )
             )
         else:
             context = run_context.connection_context

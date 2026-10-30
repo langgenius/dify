@@ -2191,6 +2191,7 @@ Run draft workflow iteration node for advanced chat
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2218,6 +2219,7 @@ Run draft workflow loop node for advanced chat
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2244,7 +2246,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -4835,6 +4837,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -4860,6 +4863,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5054,6 +5058,7 @@ Get last run result for draft workflow node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5135,6 +5140,7 @@ Get variables for a specific node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -5230,6 +5236,22 @@ Get system variables for workflow
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflows/draft/test-credentials/preflight
+Check all EndUser test credentials in the current saved draft. No request body or draft hash is required. Returns readiness without creating a Run or executing tools; existing workspace OAuth credentials may be refreshed. Actual test execution checks credentials again.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Full draft test credential readiness | **application/json**: [TestCredentialPreflightResponse](#testcredentialpreflightresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
@@ -33605,6 +33627,46 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TenantPluginInstallPermission | string |  |  |
+
+#### TestCredentialCheck
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason_code | string |  | Yes |
+| retryable | boolean |  | Yes |
+| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+
+#### TestCredentialPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
+| ready | boolean |  | Yes |
+
+#### TestCredentialReadiness
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
+| ready | boolean |  | Yes |
+
+#### TestCredentialState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [TestCredentialCheck](#testcredentialcheck) |  | Yes |
+| credential_id | string |  | Yes |
+| node_id | string |  | Yes |
+| node_ids | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "connected", "disconnected", "incompatible", "invalid", "reconnect_required", "temporarily_unavailable" | *Enum:* `"connected"`, `"disconnected"`, `"incompatible"`, `"invalid"`, `"reconnect_required"`, `"temporarily_unavailable"` | Yes |
+
+#### TestCredentialsNotReadyError
+
+Required test credentials are not ready.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TestCredentialsNotReadyError |  | Required test credentials are not ready. |  |
 
 #### TextContentResponse
 

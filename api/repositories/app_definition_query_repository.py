@@ -1,5 +1,6 @@
 """Database repository for externally visible app definitions."""
 
+from collections.abc import Mapping
 from typing import Any, cast, override
 
 from sqlalchemy import String, select
@@ -10,7 +11,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -27,6 +28,7 @@ from services.app_definition_query_service import (
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 from services.workflow.tool_credentials import requires_end_user_connections
+from services.workflow_test_credentials import BuilderScope, BuilderTestMembership
 
 
 def map_site_configuration(site: Site) -> AppSiteConfiguration:
@@ -121,6 +123,40 @@ def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppPara
 class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_test_draft_graph(self, scope: BuilderScope) -> Mapping[str, Any] | None:
+        with self._session_factory() as session:
+            workflow = session.scalar(
+                select(Workflow)
+                .join(App, App.id == Workflow.app_id)
+                .where(
+                    Workflow.tenant_id == scope.tenant_id,
+                    Workflow.app_id == scope.app_id,
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                    App.tenant_id == scope.tenant_id,
+                    App.mode.in_([AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]),
+                )
+            )
+            return workflow.graph_dict if workflow is not None else None
+
+    def get_test_membership(self, scope: BuilderScope) -> BuilderTestMembership | None:
+        with self._session_factory() as session:
+            row = session.execute(
+                select(App.created_by, TenantAccountJoin.role)
+                .select_from(App)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == App.tenant_id)
+                .join(Account, Account.id == TenantAccountJoin.account_id)
+                .where(
+                    App.id == scope.app_id,
+                    App.tenant_id == scope.tenant_id,
+                    Account.id == scope.account_id,
+                    Account.status == AccountStatus.ACTIVE,
+                )
+            ).one_or_none()
+            if row is None:
+                return None
+            owner_id, role = row
+            return BuilderTestMembership(owner_id, role.value)
 
     @override
     def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None:

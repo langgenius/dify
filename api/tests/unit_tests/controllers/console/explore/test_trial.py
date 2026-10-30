@@ -2406,6 +2406,7 @@ class TestTrialPreviewCases:
                 get_connection_requirements=get_tool_connection_requirements,
                 definitions=AppDefinitionQueryRepository(session_factory=factory),
                 plugin_readme=lambda *_args: "",
+                plugin_asset=lambda *_args: b"",
                 builtin_icon_url_prefix="/tools/",
                 connection_revisions=create_autospec(ConnectionRevisions, instance=True, spec_set=True),
             ),

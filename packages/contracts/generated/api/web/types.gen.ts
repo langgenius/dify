@@ -105,6 +105,8 @@ export type AuthenticationFailedError = ErrorResponse & {
   status: 401
 }
 
+export type BinaryFileResponse = Blob | File
+
 export type BooleanResultResponse = {
   result: boolean
 }
@@ -1881,6 +1883,30 @@ export type PostConnectionsResponses = {
 }
 
 export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
+
+export type GetConnectionsAssetData = {
+  body?: never
+  path?: never
+  query: {
+    file_name: string
+    plugin_unique_identifier: string
+  }
+  url: '/connections/asset'
+}
+
+export type GetConnectionsAssetErrors = {
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsAssetError = GetConnectionsAssetErrors[keyof GetConnectionsAssetErrors]
+
+export type GetConnectionsAssetResponses = {
+  200: Blob | File
+}
+
+export type GetConnectionsAssetResponse =
+  GetConnectionsAssetResponses[keyof GetConnectionsAssetResponses]
 
 export type GetConnectionsConfigurationData = {
   body?: never
