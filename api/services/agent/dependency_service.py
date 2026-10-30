@@ -5,7 +5,7 @@ from models.agent_config_entities import (
     AgentKnowledgeRetrievalConfig,
     AgentSoulConfig,
 )
-from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.plugin.dependencies_analysis import PLUGIN_TOOL_PROVIDER_TYPES, DependenciesAnalysisService
 
 
 def _extract_knowledge_retrieval_dependencies(retrieval: AgentKnowledgeRetrievalConfig) -> list[str]:
@@ -51,6 +51,8 @@ def extract_agent_soul_dependencies(soul: AgentSoulConfig) -> list[str]:
             DependenciesAnalysisService.analyze_model_provider_dependency(suggested_questions.model.provider)
         )
     for tool in soul.tools.dify_tools:
+        if tool.provider_type not in PLUGIN_TOOL_PROVIDER_TYPES:
+            continue
         provider_id = tool.provider_id or (
             f"{tool.plugin_id}/{tool.provider}" if tool.plugin_id and tool.provider else None
         )

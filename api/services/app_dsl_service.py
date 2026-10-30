@@ -48,7 +48,7 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
-from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -85,7 +85,7 @@ from services.icon_configuration import (
     is_valid_image_icon,
 )
 from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
-from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.plugin.dependencies_analysis import PLUGIN_TOOL_PROVIDER_TYPES, DependenciesAnalysisService
 from services.workflow.graph_diff import draft_token
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -96,8 +96,6 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
-# Other provider types reference workspace records by id, so they never map to a plugin.
-PLUGIN_TOOL_PROVIDER_TYPES = frozenset({ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN})
 
 
 def initialize_imported_app_creator_access(result: Import, *, tenant_id: str, account_id: str) -> None:

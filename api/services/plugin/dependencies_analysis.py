@@ -17,6 +17,9 @@ from graphon.enums import BuiltinNodeTypes
 from models.provider_ids import GenericProviderID, ModelProviderID, ToolProviderID
 from services.entities.dsl_entities import DraftDependencyCheck
 
+# Other provider types reference workspace records by id, so they never map to a plugin.
+PLUGIN_TOOL_PROVIDER_TYPES = frozenset({ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN})
+
 # Compile regex pattern for version extraction at module level for better performance
 _VERSION_REGEX = re.compile(r":(?P<version>[0-9]+(?:\.[0-9]+){2}(?:[+-][0-9A-Za-z.-]+)?)(?:@|$)")
 
@@ -27,11 +30,6 @@ class DependenciesAnalysisService:
         if re.fullmatch(r"[a-z0-9_-]+/[a-z0-9_-]+", provider):
             return provider
         return cls.analyze_tool_dependency(provider)
-
-    @staticmethod
-    def is_plugin_backed_tool(provider_type: object) -> bool:
-        """Only builtin and plugin tools come from plugins; api, workflow and mcp providers do not."""
-        return provider_type in (None, ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN)
 
     @classmethod
     def extract_external_node_dependencies(cls, node_data: Mapping[str, Any]) -> list[str]:
@@ -71,7 +69,7 @@ class DependenciesAnalysisService:
                 if not isinstance(tool, Mapping):
                     continue
                 provider_type = tool.get("provider_type", tool.get("type"))
-                if not cls.is_plugin_backed_tool(provider_type):
+                if provider_type not in (None, "builtin", "plugin"):
                     continue
                 plugin_id = tool.get("plugin_id")
                 if isinstance(plugin_id, str) and plugin_id:
