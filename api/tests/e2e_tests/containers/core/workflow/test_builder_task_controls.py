@@ -43,6 +43,7 @@ from models.dify_builder import (
     DifyBuilderRun,
     DifyBuilderSession,
     DifyBuilderSessionCommit,
+    DifyBuilderWorkflowWriter,
 )
 from models.model import App, AppMode
 from models.trigger import WorkflowWebhookTrigger
@@ -105,6 +106,7 @@ def task_postgres_engine() -> Iterator[Engine]:
                         WorkflowWebhookTrigger,
                         DifyBuilderSession,
                         DifyBuilderSessionCommit,
+                        DifyBuilderWorkflowWriter,
                         DifyBuilderConversationItem,
                         DifyBuilderExecutionRequest,
                         DifyBuilderRun,
