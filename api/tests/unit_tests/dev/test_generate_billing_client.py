@@ -94,6 +94,19 @@ def test_rendered_module_types_fields_and_operations() -> None:
 
 
 @pytest.mark.usefixtures("subscription_info_only")
+def test_upstream_required_message_field_is_non_null() -> None:
+    source = _source_spec()
+    source["components"]["schemas"]["dify.saas.api.billing.GetSubscriptionInfoReply"]["required"] = ["members"]
+
+    snapshot = generator.build_snapshot("billing", source, "abc123")
+    schema = snapshot["components"]["schemas"]["GetSubscriptionInfoReply"]
+
+    assert schema["properties"]["members"] == {"$ref": "#/components/schemas/Quota"}
+    assert schema["required"] == ["plan", "paid_period_end", "members", "tags"]
+    assert "members: Quota\n" in generator.render_module("billing", snapshot)
+
+
+@pytest.mark.usefixtures("subscription_info_only")
 def test_snapshot_rejects_allowlisted_operation_missing_from_spec() -> None:
     source = _source_spec()
     del source["paths"]["/v1/subscription/info"]

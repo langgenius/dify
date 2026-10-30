@@ -12,9 +12,11 @@ The dify-saas checkout defaults to `../dify-saas` next to the dify repository; o
 `DIFY_SAAS_REPO`.
 
 Kratos serializes with protojson `EmitUnpopulated: true`, which the snapshot step records as presence:
-scalars, enums, lists, and maps are required and non-null; message fields are required but nullable
-(unset messages are emitted as null). Proto3 `optional` fields (annotated `nullable` in dify-saas) are
-synthetic oneofs, which protojson omits when unset, so they are optional and nullable.
+- Scalars, enums, lists, and maps are required and non-null.
+- Message fields are required but nullable, since unset messages are emitted as null. A message field
+  the upstream schema lists in `required` (`google.api.field_behavior = REQUIRED`) is non-null.
+- Proto3 `optional` fields (annotated `nullable` in dify-saas) are synthetic oneofs, which protojson
+  omits when unset, so they are optional and nullable.
 """
 
 from __future__ import annotations
@@ -167,10 +169,11 @@ def _ref_names(node: Any) -> set[str]:
 
 def _annotate_presence(schema: JsonObject) -> JsonObject:
     properties: dict[str, JsonObject] = schema.get("properties", {})
+    always_set = set(schema.get("required", []))
     annotated: dict[str, JsonObject] = {}
     required: list[str] = []
     for name, field in properties.items():
-        if "$ref" in field:
+        if "$ref" in field and name not in always_set:
             # OpenAPI 3.0 ignores siblings of $ref, so nullable refs are wrapped in allOf.
             annotated[name] = {"allOf": [{"$ref": field["$ref"]}], "nullable": True}
         else:
