@@ -110,3 +110,42 @@ test('requires CI metadata and credentials before starting preparation', async (
   }
   assert.equal(calls.length, 0)
 })
+
+test('retries transient GitHub API failures and still downloads the selected build', async () => {
+  const { calls, options } = fixture()
+  const execute = options.execute
+  let failures = 0
+  const delays = []
+  options.sleep = async (ms) => { delays.push(ms) }
+  options.execute = async (command, args, config) => {
+    if (args[0] === 'api' && args[1].includes('/jobs?') && failures++ < 2) {
+      const error = new Error('gh: Server Error (HTTP 502)')
+      error.stderr = 'gh: Server Error (HTTP 502)'
+      throw error
+    }
+    return execute(command, args, config)
+  }
+  await downloadWebBuild(options)
+  assert.equal(failures, 3)
+  assert.deepEqual(delays, [2000, 5000])
+  assert.ok(calls.some(({ command }) => command === 'tar'))
+})
+
+test('limits retries and does not retry authorization failures', async () => {
+  for (const [status, attempts, waits] of [[502, 4, 3], [403, 1, 0]]) {
+    const { calls, options } = fixture()
+    let attempted = 0
+    const delays = []
+    options.sleep = async (ms) => { delays.push(ms) }
+    options.execute = async () => {
+      attempted++
+      const error = new Error(`gh: Error (HTTP ${status})`)
+      error.stderr = `gh: Error (HTTP ${status})`
+      throw error
+    }
+    await assert.rejects(downloadWebBuild(options), new RegExp(`HTTP ${status}`))
+    assert.equal(attempted, attempts)
+    assert.equal(delays.length, waits)
+    assert.equal(calls.length, 0)
+  }
+})
