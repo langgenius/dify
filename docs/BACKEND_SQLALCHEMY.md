@@ -2,7 +2,7 @@
 
 ## Scope
 - Covers: SQLAlchemy session and transaction lifecycle, query construction, tenant scoping, raw SQL boundaries, and write-path concurrency safeguards.
-- Does NOT cover: table/model schema and migration design details (handled by `db-schema-rule.md`).
+- Does NOT cover: table/model schema and migration design details (handled by the [database schema guide](BACKEND_DATABASE_SCHEMA.md)).
 
 ## Rules
 

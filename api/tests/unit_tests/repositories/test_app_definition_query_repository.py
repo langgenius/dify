@@ -1289,16 +1289,17 @@ def test_test_preflight_graph_uses_saved_draft_and_scopes_both_owners(
     with sqlite_session_factory.begin() as session:
         app = _persist_app(session, mode=AppMode.WORKFLOW)
         for version in ("published", "draft"):
-            workflow = Workflow(
-                tenant_id=_TENANT_ID,
-                app_id=app.id,
-                type=WorkflowType.WORKFLOW,
-                version=version,
-                graph=json.dumps({"nodes": [{"id": version}]}),
-                created_by=_ACCOUNT_ID,
+            session.add(
+                Workflow(
+                    tenant_id=_TENANT_ID,
+                    app_id=app.id,
+                    type=WorkflowType.WORKFLOW,
+                    version=version,
+                    graph=json.dumps({"nodes": [{"id": version}]}),
+                    _features="{}",
+                    created_by=_ACCOUNT_ID,
+                )
             )
-            workflow.features = "{}"
-            session.add(workflow)
     scope = BuilderScope(_TENANT_ID, _APP_ID, _ACCOUNT_ID)
     repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
     assert repository.get_test_draft_graph(scope) == {"nodes": [{"id": "draft"}]}

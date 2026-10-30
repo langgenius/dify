@@ -60,7 +60,7 @@ import {
 import { resolveToolAuthorization } from '../nodes/tool/authorization'
 import { getToolAuthorizationTab } from '../nodes/tool/authorization-config'
 import { useStore, useWorkflowStore } from '../store'
-import { BlockEnum } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import {
   getDataSourceCheckParams,
   getNodeCatalogType,
@@ -126,6 +126,21 @@ const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerWebhook,
   BlockEnum.TriggerPlugin,
 ]
+
+const getEndUserAuthTriggerConflictNodeIds = (nodes: Node[]) => {
+  const executionNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
+  if (!executionNodes.some((node) => isTriggerNode(node.data.type))) return new Set<string>()
+
+  return new Set(
+    executionNodes
+      .filter(
+        (node) =>
+          node.data.type === BlockEnum.Tool &&
+          getToolAuthorizationTab(node.data as ToolNodeType) === 'app-user-auth',
+      )
+      .map((node) => node.id),
+  )
+}
 
 const getDuplicateEndOutputMessages = (
   nodes: Node[],
@@ -374,6 +389,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     const list: ChecklistItem[] = []
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
+    const endUserAuthTriggerConflictNodeIds = getEndUserAuthTriggerConflictNodeIds(filteredNodes)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
     const installedPluginIds = new Set(modelProviders.map((p) => extractPluginId(p.provider)))
 
@@ -455,6 +471,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         })
 
         const errorMessages: string[] = []
+        if (endUserAuthTriggerConflictNodeIds.has(node!.id))
+          errorMessages.push(t(($) => $['errorMsg.endUserAuthWithTrigger'], { ns: 'workflow' }))
         if (authorization?.status === 'invalid')
           errorMessages.push(t(($) => $['panel.selectReuseNode'], { ns: 'workflow' }))
         const inlineAgentIssues = inlineAgentConfigurationIssues[node!.id]
@@ -742,6 +760,7 @@ export const useChecklistBeforePublish = () => {
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
+    const endUserAuthTriggerConflictNodeIds = getEndUserAuthTriggerConflictNodeIds(filteredNodes)
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
@@ -815,6 +834,12 @@ export const useChecklistBeforePublish = () => {
       let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
       if (node!.data.type === BlockEnum.Tool) {
+        if (endUserAuthTriggerConflictNodeIds.has(node!.id)) {
+          toast.error(
+            `[${node!.data.title}] ${t(($) => $['errorMsg.endUserAuthWithTrigger'], { ns: 'workflow' })}`,
+          )
+          return false
+        }
         moreDataForCheckValid = getToolCheckParams(
           node!.data as ToolNodeType,
           buildInTools || [],

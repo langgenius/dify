@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Потрібна авторизація",
   "errorMsg.configureModel": "Налаштуйте модель",
   "errorMsg.duplicateOutputVariable": "Дубльована змінна вузла виводу \"{{variable}}\". Назви змінних вузла виводу мають бути унікальними.",
+  "errorMsg.endUserAuthWithTrigger": "Авторизація користувачів застосунку не підтримується в робочих процесах із тригерами.",
   "errorMsg.fieldRequired": "{{field}} є обов'язковим",
   "errorMsg.fields.code": "Код",
   "errorMsg.fields.model": "Модель",

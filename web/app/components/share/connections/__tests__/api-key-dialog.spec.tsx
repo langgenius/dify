@@ -102,58 +102,68 @@ describe('ApiKeyDialog', () => {
     },
   )
 
-  it('distinguishes rejected credentials from a request failure without discarding the draft', async () => {
-    const user = userEvent.setup()
-    const onSave = vi
-      .fn()
-      .mockRejectedValueOnce(new ORPCError('connection_credentials_invalid', { status: 400 }))
-      .mockRejectedValueOnce(new ORPCError('connection_credentials_unavailable', { status: 503 }))
-      .mockResolvedValueOnce(undefined)
-    const onOpenChange = vi.fn()
-    render(
-      <ApiKeyDialog
-        serviceId="research"
-        schemas={testApiKeySchema}
-        mode="add"
-        open
-        onSave={onSave}
-        onOpenChange={onOpenChange}
-      />,
-    )
-    const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
-    const name = within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
-    const token = within(dialog).getByLabelText(/share\.connections\.setup\.apiKey/)
-    const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
-    await user.type(name, 'Research')
-    await user.type(token, 'provider-secret')
-    await user.click(save)
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'share.connections.apiKeys.validationError',
-    )
-    expect(token).toHaveValue('provider-secret')
-    expect(toast.error).not.toHaveBeenCalled()
-    expect(onOpenChange).not.toHaveBeenCalled()
-    expect(save).toBeDisabled()
-    await user.type(name, ' renamed')
-    expect(save).toBeDisabled()
-    expect(within(dialog).getByRole('alert')).toHaveTextContent(
-      'share.connections.apiKeys.validationError',
-    )
-    await user.click(save)
-    expect(onSave).toHaveBeenCalledOnce()
-    await user.type(token, '-retry')
-    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
-    expect(save).toBeEnabled()
-    await user.click(save)
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed'),
-    )
-    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
-    expect(token).toHaveValue('provider-secret-retry')
-    await user.click(save)
-    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
-    expect(toast.error).toHaveBeenCalledOnce()
-  })
+  it.each([
+    { reason: 'missing', message: undefined },
+    { reason: 'blank', message: '   ' },
+  ])(
+    'uses fallback errors for $reason backend messages without discarding the draft',
+    async ({ message }) => {
+      const user = userEvent.setup()
+      const onSave = vi
+        .fn()
+        .mockRejectedValueOnce(
+          new ORPCError('connection_credentials_invalid', { status: 400, message }),
+        )
+        .mockRejectedValueOnce(
+          new ORPCError('connection_credentials_unavailable', { status: 503, message }),
+        )
+        .mockResolvedValueOnce(undefined)
+      const onOpenChange = vi.fn()
+      render(
+        <ApiKeyDialog
+          serviceId="research"
+          schemas={testApiKeySchema}
+          mode="add"
+          open
+          onSave={onSave}
+          onOpenChange={onOpenChange}
+        />,
+      )
+      const dialog = screen.getByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+      const name = within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' })
+      const token = within(dialog).getByLabelText(/share\.connections\.setup\.apiKey/)
+      const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+      await user.type(name, 'Research')
+      await user.type(token, 'provider-secret')
+      await user.click(save)
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'share.connections.apiKeys.validationError',
+      )
+      expect(token).toHaveValue('provider-secret')
+      expect(toast.error).not.toHaveBeenCalled()
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(save).toBeDisabled()
+      await user.type(name, ' renamed')
+      expect(save).toBeDisabled()
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(
+        'share.connections.apiKeys.validationError',
+      )
+      await user.click(save)
+      expect(onSave).toHaveBeenCalledOnce()
+      await user.type(token, '-retry')
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+      expect(save).toBeEnabled()
+      await user.click(save)
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed'),
+      )
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+      expect(token).toHaveValue('provider-secret-retry')
+      await user.click(save)
+      expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+      expect(toast.error).toHaveBeenCalledOnce()
+    },
+  )
 
   it('retains a replacement draft after failure and blocks duplicate submission and closing while saving', async () => {
     const user = userEvent.setup()

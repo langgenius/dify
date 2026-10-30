@@ -362,6 +362,12 @@ class InvalidFilePart(OpenApiError):  # noqa: N818
     description = "A request part could not be used"
 
 
+class RequestOverRouteLimits(OpenApiError):  # noqa: N818
+    code = 413
+    error_code = OpenApiErrorCode.REQUEST_TOO_LARGE
+    description = "Request is over this route's limits"
+
+
 class RunNotFound(OpenApiError):  # noqa: N818
     code = 404
     error_code = OpenApiErrorCode.RUN_NOT_FOUND

@@ -13,6 +13,7 @@ import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useMarketplace } from '@/features/marketplace/client'
 import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -32,6 +33,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const marketplaceEnabled = useMarketplace() !== null
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.meta.currentEnv,
@@ -53,7 +55,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
           agentV2Enabled,
           canViewSkills,
           isCurrentWorkspaceDatasetOperator,
-          marketplaceEnabled: systemFeatures.enable_marketplace,
+          marketplaceEnabled,
           skillEnabled: enableSkill === true,
         }),
       ).map((route) => ({
@@ -68,7 +70,7 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
       canViewSkills,
       enableSkill,
       isCurrentWorkspaceDatasetOperator,
-      systemFeatures.enable_marketplace,
+      marketplaceEnabled,
       t,
     ],
   )

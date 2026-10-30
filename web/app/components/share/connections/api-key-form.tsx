@@ -62,9 +62,10 @@ export function ApiKeyForm({
   const renderI18nObject = useRenderI18nObject()
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState(connectionName)
-  const [rejectedCredentials, setRejectedCredentials] = useState<Record<string, unknown> | null>(
-    null,
-  )
+  const [credentialRejection, setCredentialRejection] = useState<{
+    credentials: ApiKeyValues['credentials']
+    message: string
+  } | null>(null)
   const savingRef = useRef(false)
   const formId = useId()
   const nameLabel = t(($) => $['auth.authorizationName'], { ns: 'plugin' })
@@ -92,7 +93,7 @@ export function ApiKeyForm({
   })
   const form = useForm({ defaultValues })
   const credentials = useSelector(form.store, (state) => state.values)
-  const credentialsInvalid = rejectedCredentials === credentials
+  const credentialsInvalid = credentialRejection?.credentials === credentials
   const complete = schemas.every(
     (schema) => !schema.required || hasRequiredValue(credentials[schema.name]),
   )
@@ -102,16 +103,25 @@ export function ApiKeyForm({
     savingRef.current = true
     setSaving(true)
     onSavingChange?.(true)
-    setRejectedCredentials(null)
+    setCredentialRejection(null)
     let saved = false
     try {
       await onSave({ name: name.trim(), credentials })
       saved = true
     } catch (error) {
       if (isAbortError(error)) return
-      if (error instanceof ORPCError && error.code === 'connection_credentials_invalid')
-        setRejectedCredentials(credentials)
-      else toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      const message =
+        error instanceof ORPCError && error.message !== error.code
+          ? error.message.trim()
+          : undefined
+      if (error instanceof ORPCError && error.code === 'connection_credentials_invalid') {
+        setCredentialRejection({
+          credentials,
+          message: message || t(($) => $['connections.apiKeys.validationError'], { ns: 'share' }),
+        })
+      } else {
+        toast.error(message || t(($) => $['api.actionFailed'], { ns: 'common' }))
+      }
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -159,7 +169,7 @@ export function ApiKeyForm({
         )}
         {credentialsInvalid && (
           <p role="alert" className="system-sm-regular text-text-destructive">
-            {t(($) => $['connections.apiKeys.validationError'], { ns: 'share' })}
+            {credentialRejection.message}
           </p>
         )}
       </DialogBody>

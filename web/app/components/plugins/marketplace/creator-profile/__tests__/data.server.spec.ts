@@ -10,7 +10,16 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/config', () => ({ MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1' }))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1',
+    },
+  }
+})
 vi.mock('@/service/marketplace', () => ({ marketplaceClient: mocks }))
 
 const plugin = {

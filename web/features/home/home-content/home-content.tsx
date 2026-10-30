@@ -241,7 +241,6 @@ export function HomeContent() {
 
   const hideTryAppPanel = useCallback(() => {
     abandonHomeTourCreate()
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Also called from the tour-state sync effect when the Learn Dify action guide is skipped.
     setCurrentTryApp(undefined)
   }, [abandonHomeTourCreate])
   const homeTryAppCreateGuideActive =

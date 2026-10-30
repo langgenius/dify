@@ -1,6 +1,7 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { FC, RefObject } from 'react'
 import type { InputValueTypes, TextGenerationCustomConfig, TextGenerationRunControl } from './types'
+import type { AccessMode } from '@/models/access-control'
 import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -16,7 +17,6 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
-import { AccessMode } from '@/models/access-control'
 import RunBatch from './run-batch'
 import RunOnce from './run-once'
 import TextGenerationMenu from './text-generation-menu'
@@ -52,7 +52,6 @@ type TextGenerationSidebarProps = {
 }
 
 const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
-  accessMode,
   allTasksRun,
   connectionsReady = true,
   isConfiguringConnections = false,
@@ -113,10 +112,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             {siteInfo.title}
           </div>
           <WebAppConnectionControls isResponding={isResponding} />
-          <TextGenerationMenu
-            hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC}
-            data={siteInfo}
-          />
+          <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
         </div>
         {siteInfo.description && (
           <div>

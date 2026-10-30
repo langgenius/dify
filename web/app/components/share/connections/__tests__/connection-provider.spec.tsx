@@ -99,10 +99,12 @@ function mockCredentialRequests({
   initialConnection,
   loadSchema = () => Response.json(credentialSchema),
   loadReadme = () => Response.json({ readme: '# Connect GitHub' }),
+  saveCredentials,
 }: {
   initialConnection?: EndUserConnectionResponse
   loadSchema?: (request: Request) => Response | Promise<Response>
   loadReadme?: (request: Request) => Response | Promise<Response>
+  saveCredentials?: (request: Request) => Response | undefined
 } = {}) {
   const requests: Request[] = []
   let savedConnection = initialConnection
@@ -145,6 +147,8 @@ function mockCredentialRequests({
     if (path.endsWith('/revision'))
       return Response.json({ connection_revision: connectionRevision })
     if (request.method === 'POST' || request.method === 'PATCH') {
+      const failure = saveCredentials?.(request)
+      if (failure) return failure
       const payload = await request.json()
       savedConnection = connection({
         id: initialConnection?.id ?? firstId,
@@ -646,6 +650,100 @@ describe('WebAppConnectionsProvider', () => {
       'Old key',
     )
   })
+
+  it.each(['add', 'replace'] as const)(
+    'shows backend credential errors and preserves the draft until a successful %s request',
+    async (mode) => {
+      const user = userEvent.setup()
+      const invalidMessage = 'GitHub token is missing the repo scope.'
+      const unavailableMessage = 'GitHub could not validate this token. Please try again later.'
+      const saveCredentials = vi
+        .fn()
+        .mockReturnValueOnce(
+          Response.json(
+            {
+              code: 'connection_credentials_invalid',
+              message: invalidMessage,
+              status: 400,
+            },
+            { status: 400 },
+          ),
+        )
+        .mockReturnValueOnce(
+          Response.json(
+            {
+              code: 'connection_credentials_unavailable',
+              message: unavailableMessage,
+              status: 503,
+            },
+            { status: 503 },
+          ),
+        )
+        .mockReturnValue(undefined)
+      mockCredentialRequests({
+        initialConnection:
+          mode === 'replace'
+            ? connection({
+                name: 'Old key',
+                account_label: null,
+                credential_type: 'api-key',
+                credential_status: 'invalid',
+              })
+            : undefined,
+        saveCredentials,
+      })
+      render(tree({ address, entry: entry() }))
+      await waitFor(() =>
+        expect(screen.getByLabelText('Connection status')).toHaveTextContent('ready'),
+      )
+      if (mode === 'replace') {
+        await user.click(selectedAccount('Read repositories for the research brief.'))
+        await user.click(
+          await screen.findByRole('button', { name: 'share.connections.apiKeys.replace' }),
+        )
+      } else {
+        await user.click(screen.getByRole('button', { name: 'share.connections.setup.addApiKey' }))
+      }
+      const dialog = screen.getByRole('dialog', {
+        name:
+          mode === 'add'
+            ? 'share.connections.setup.addApiKey'
+            : 'share.connections.apiKeys.replaceTitle',
+      })
+      const token = await within(dialog).findByLabelText('Access token')
+      await user.type(token, 'provider-secret')
+      await user.type(
+        within(dialog).getByRole('textbox', { name: 'Provider user name' }),
+        'provider-user',
+      )
+      const save = within(dialog).getByRole('button', { name: 'common.operation.save' })
+      await user.click(save)
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(invalidMessage)
+      expect(token).toHaveValue('provider-secret')
+      expect(save).toBeDisabled()
+      expect(toast.error).not.toHaveBeenCalled()
+      await user.type(
+        within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+        ' renamed',
+      )
+      expect(save).toBeDisabled()
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(invalidMessage)
+      await user.type(token, '-retry')
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+      expect(save).toBeEnabled()
+      await user.click(save)
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith(unavailableMessage))
+      expect(dialog).toBeInTheDocument()
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+      expect(token).toHaveValue('provider-secret-retry')
+      expect(save).toBeEnabled()
+      await user.click(save)
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(saveCredentials).toHaveBeenCalledTimes(3)
+    },
+  )
 
   it('keeps credential submission unavailable after a schema failure until an explicit retry succeeds', async () => {
     const user = userEvent.setup()

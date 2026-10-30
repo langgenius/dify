@@ -342,6 +342,15 @@ export type AgentConfigFileUploadResponse = {
   file: AgentConfigFileItemResponse
 }
 
+export type AgentConfigFilesUploadPayload = {
+  upload_file_ids: Array<string>
+}
+
+export type AgentConfigFilesUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  files: Array<AgentConfigFileItemResponse>
+}
+
 export type AgentConfigDeleteResponse = {
   removed_names?: Array<string>
   result: 'success'
@@ -3375,6 +3384,33 @@ export type PostAgentByAgentIdConfigFilesResponses = {
 
 export type PostAgentByAgentIdConfigFilesResponse =
   PostAgentByAgentIdConfigFilesResponses[keyof PostAgentByAgentIdConfigFilesResponses]
+
+export type PostAgentByAgentIdConfigFilesBatchData = {
+  body: AgentConfigFilesUploadPayload
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files/batch'
+}
+
+export type PostAgentByAgentIdConfigFilesBatchErrors = {
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdConfigFilesBatchError =
+  PostAgentByAgentIdConfigFilesBatchErrors[keyof PostAgentByAgentIdConfigFilesBatchErrors]
+
+export type PostAgentByAgentIdConfigFilesBatchResponses = {
+  201: AgentConfigFilesUploadResponse
+}
+
+export type PostAgentByAgentIdConfigFilesBatchResponse =
+  PostAgentByAgentIdConfigFilesBatchResponses[keyof PostAgentByAgentIdConfigFilesBatchResponses]
 
 export type DeleteAgentByAgentIdConfigFilesByNameData = {
   body?: never

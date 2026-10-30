@@ -732,7 +732,7 @@ def test_console_account_avatar_query_param_renders_as_query(openapi_json: OpenA
     assert params["avatar"]["required"] is True
 
 
-def test_console_account_profile_patch_and_deprecated_aliases(openapi_json: OpenAPIJSONLoader):
+def test_console_account_profile_patch_without_legacy_update_routes(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
@@ -753,7 +753,7 @@ def test_console_account_profile_patch_and_deprecated_aliases(openapi_json: Open
         "/account/interface-theme",
         "/account/timezone",
     ):
-        assert paths[path]["post"]["deprecated"] is True
+        assert "post" not in paths.get(path, {})
 
     assert paths["/account/avatar"]["get"].get("deprecated") is not True
 

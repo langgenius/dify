@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Authorization is required",
   "errorMsg.configureModel": "Configureer een model",
   "errorMsg.duplicateOutputVariable": "Dubbele variabele van de outputnode \"{{variable}}\". Namen van outputnode-variabelen moeten uniek zijn.",
+  "errorMsg.endUserAuthWithTrigger": "Autorisatie van app-gebruikers wordt niet ondersteund in workflows met triggers.",
   "errorMsg.fieldRequired": "{{field}} is required",
   "errorMsg.fields.code": "Code",
   "errorMsg.fields.model": "Model",

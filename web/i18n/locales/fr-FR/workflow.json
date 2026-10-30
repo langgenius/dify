@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Autorisation requise",
   "errorMsg.configureModel": "Configurez un modèle",
   "errorMsg.duplicateOutputVariable": "Variable du nœud de sortie en double \"{{variable}}\". Les noms des variables du nœud de sortie doivent être uniques.",
+  "errorMsg.endUserAuthWithTrigger": "L’autorisation des utilisateurs de l’application n’est pas prise en charge dans les workflows avec des déclencheurs.",
   "errorMsg.fieldRequired": "{{field}} est requis",
   "errorMsg.fields.code": "Code",
   "errorMsg.fields.model": "Modèle",
