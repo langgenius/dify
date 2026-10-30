@@ -1182,16 +1182,16 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.parametrize("with_actor", [True, False])
-def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
+def test_initial_plan_defers_actor_eligible_published_agent_metadata_to_discovery(
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, with_actor: bool
 ) -> None:
-
     from services.agent import access_service
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
     from tests.builder_agent_fixtures import add_agent, make_case
 
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     case = make_case(sqlite_session)
+    foreign_case = make_case(sqlite_session)
     case.snapshot.summary = "Review report evidence"
     unpublished, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Unpublished", published=False)
     hidden, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Hidden")
@@ -1199,66 +1199,112 @@ def test_initial_plan_uses_only_current_actor_eligible_published_agent_metadata(
     monkeypatch.setattr(
         access_service,
         "resolve_current_agent_access_filter",
-        lambda **_kwargs: access_service.AgentAccessFilter(accessible_agent_ids={case.agent.id, unpublished.id}),
+        lambda **_kwargs: access_service.AgentAccessFilter(
+            accessible_agent_ids={case.agent.id, unpublished.id, foreign_case.agent.id}
+        ),
     )
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
-    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
-    captured = {}
+    inventory_reads: list[str] = []
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: inventory_reads.append("models") or [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: inventory_reads.append("datasets") or [])
+    monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: inventory_reads.append("tools") or [])
     steps = ["start node receives report", "New Agent v2 node reviews the report", "end node returns summary"]
+    model = _FakeInstance([_plan_reply(steps), json.dumps({"resource_ids": [f"agent:{case.agent.id}"]})])
+    agent = LlmBuilderAgent(
+        case.actor.tenant_id,
+        {},
+        account_id=case.actor.account_id if with_actor else None,
+        model_resolver_fn=lambda: model,
+    )
+    requirements = {"result": "summary"}
+    goal = "Use a Workspace Agent to review a report"
 
-    def propose(_model: object, *, system: str, user: str, **_kwargs: object) -> str:
-        captured.update(system=system, user=user)
-        return _plan_reply(steps)
-
-    monkeypatch.setattr(build.llm, "invoke_text", propose)
-    agent = LlmBuilderAgent(case.actor.tenant_id, {}, account_id=case.actor.account_id if with_actor else None)
-    monkeypatch.setattr(agent, "_model", lambda: object())
-
-    result = agent.propose_plan_v1({"result": "summary"}, goal_text="Use a Workspace Agent to review a report")
+    result = agent.propose_plan_v1(requirements, goal_text=goal)
 
     assert result is not None
     assert result.items == steps
-    system = captured["system"]
+    assert inventory_reads == []
+    system = model.calls[0][0][0].get_text_content()
     assert "New Agent v2" in system
     assert "version=2" in system
     assert "agent_node_kind=dify_agent" in system
     assert "legacy" in system.lower()
-    assert unpublished.id not in system
-    assert hidden.id not in system
-    if with_actor:
-        assert case.agent.id in system
-        assert "Review report evidence" in system
-        assert '"report": {"required": true, "type": "string"}' in system
-        assert "published_soul.app_variables" in system
-        assert "node_job_required" in system
-        assert "tool:plugin/provider/read" in system
-    else:
-        assert case.agent.id not in system
-        assert "# Published Workspace Agents" not in system
+    for candidate in (case.agent, unpublished, hidden, foreign_case.agent):
+        assert candidate.id not in system
+    assert "# Published Workspace Agents" not in system
+    assert "Review report evidence" not in system
+    assert "published_soul.app_variables" not in system
+    assert "tool:plugin/provider/read" not in system
     assert "HIDDEN" not in system
 
+    options = agent.discover_resources(result.items, goal_text=goal, requirements=requirements)
 
-def test_initial_plan_keeps_agent_catalogue_failure_distinct_from_no_agents(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert inventory_reads == ["models", "datasets", "tools"]
+    if with_actor:
+        assert len(options) == 1
+        assert options[0].id.startswith(f"agent:{case.agent.id}:{case.snapshot.id}:")
+        assert options[0].kind == "agent"
+        user = model.calls[1][0][1].get_text_content()
+        assert goal in user
+        assert '"result": "summary"' in user
+        assert "Review report evidence" in user
+        assert '"report": {"required": true, "type": "string"}' in user
+        assert "published_soul.app_variables" in user
+        assert "node_job_required" in user
+        assert "tool:plugin/provider/read" in user
+        for candidate in (unpublished, hidden, foreign_case.agent):
+            assert candidate.id not in user
+        assert "HIDDEN" not in user
+    else:
+        assert options == []
+        assert len(model.calls) == 1
+
+
+@pytest.mark.parametrize("source_error", [None, "Published Agent catalog unavailable"])
+def test_initial_plan_defers_agent_catalogue_failure_and_discovery_distinguishes_empty(
+    monkeypatch: pytest.MonkeyPatch, source_error: str | None
+) -> None:
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
+    inventory_reads: list[str] = []
     monkeypatch.setattr(
         resources,
         "list_tenant_resources",
-        lambda *_args, **_kwargs: resources.TenantResources(
-            models=[], datasets=[], tools=[], agent_source_error="Published Agent catalog unavailable"
+        lambda tenant_id, **_kwargs: (
+            inventory_reads.append(tenant_id)
+            or resources.TenantResources(
+                models=[],
+                datasets=[],
+                tools=[resources.ResourceRef(id="plugin/read", label="Read report")],
+                agent_source_error=source_error,
+            )
         ),
     )
-    model = _FakeInstance([_plan_reply(["start node receives report", "end node returns report"])])
-    agent = LlmBuilderAgent("tenant-1", {}, account_id="actor-1")
-    monkeypatch.setattr(agent, "_model", lambda: model)
+    model = _FakeInstance(
+        [
+            _plan_reply(["start node receives report", "end node returns report"]),
+            json.dumps({"resource_ids": []}),
+        ]
+    )
+    agent = LlmBuilderAgent("tenant-1", {}, account_id="actor-1", model_resolver_fn=lambda: model)
 
-    assert agent.propose_plan_v1({}, goal_text="Review a report") is not None
+    plan = agent.propose_plan_v1({}, goal_text="Review a report")
 
+    assert plan is not None
+    assert inventory_reads == []
     system = model.calls[0][0][0].get_text_content()
-    assert "Agent catalog is unavailable" in system
-    assert "do not infer" in system
+    assert "Agent catalog is unavailable" not in system
+    assert "plugin/read" not in system
+
+    assert agent.discover_resources(plan.items, goal_text="Review a report", requirements={}) == []
+
+    assert inventory_reads == ["tenant-1"]
+    discovery_system = model.calls[1][0][0].get_text_content()
+    if source_error:
+        assert "Agent catalog is unavailable" in discovery_system
+        assert "do not infer that the workspace has no Agents" in discovery_system
+    else:
+        assert "Agent catalog is unavailable" not in discovery_system
 
 
 def test_agent_binding_names_new_agent_step_instead_of_end(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1601,33 +1647,42 @@ def test_discovery_with_no_model_signal_still_recommends_nothing() -> None:
     assert build.discover_resources(model, TENANT_ID, ["tool node posts to chat"]) == []
 
 
-def test_planner_sees_relevant_installed_tools_including_delayed_setup_beyond_the_old_name_cap(
-    installed_tools: tuple[FakeToolDaemon, list[str]], monkeypatch: pytest.MonkeyPatch
+def test_initial_plan_defers_installed_tools_and_discovery_ranks_delayed_setup_beyond_the_old_name_cap(
+    installed_tools: tuple[FakeToolDaemon, list[str]],
 ) -> None:
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
-    _daemon, forbidden = installed_tools
-    captured = {}
+    daemon, forbidden = installed_tools
+    model = _FakeInstance(
+        [
+            _plan_reply(["tool node pages the on-call responders"]),
+            json.dumps({"resource_ids": [_PAGER_OPEN, _PAGER_PLUS]}),
+        ]
+    )
+    agent = LlmBuilderAgent(TENANT_ID, {}, model_resolver_fn=lambda: model)
+    requirements = {"severity": "high"}
+    goal = "Page the on-call responders when an incident opens."
 
-    def fake_invoke_text(model: object, *, system: str, user: str, **kw: object) -> str:  # noqa: ARG001
-        captured["system"] = system
-        return _plan_reply(["tool node pages the on-call responders"])
+    plan = agent.propose_plan_v1(requirements, goal_text=goal)
 
-    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
-    agent = LlmBuilderAgent(TENANT_ID, {})
-    monkeypatch.setattr(agent, "_model", lambda: _FakeInstance([]))
+    assert plan is not None
+    assert daemon.requests == []
+    system = model.calls[0][0][0].get_text_content()
+    assert _PAGER_OPEN not in system
+    assert _PAGER_PLUS not in system
+    assert "# Installed tools you may name" not in system
 
-    agent.propose_plan_v1({"severity": "high"}, goal_text="Page the on-call responders when an incident opens.")
+    options = agent.discover_resources(plan.items, goal_text=goal, requirements=requirements)
 
-    system = captured["system"]
-    section = system.split("# Installed tools you may name", 1)[1]
+    section = model.calls[1][0][1].get_text_content().split("AVAILABLE:\n", 1)[1]
     listed = [line for line in section.splitlines() if line.startswith("- ")]
     assert _PAGER_OPEN in section
-    # Installation is enough to plan a draft; setup remains a later admission check.
     assert _PAGER_PLUS in section
-    assert "setup" in section.lower()
     assert _HUDDLE_POST not in section
-    assert 0 < len(listed) <= build._MAX_PLANNER_TOOLS
+    assert 0 < len(listed) <= build._MAX_DISCOVERY_TOOLS
+    assert [(o.id, o.readiness) for o in options] == [(_PAGER_OPEN, "ready"), (_PAGER_PLUS, "missing_config")]
+    assert "setup" in next(o.meta for o in options if o.id == _PAGER_PLUS).lower()
+    assert daemon.requests
     assert forbidden == []
 
 

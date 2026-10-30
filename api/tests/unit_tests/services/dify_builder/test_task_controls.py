@@ -599,6 +599,18 @@ def test_actual_wired_command_stream_reads_after_request_context_teardown(
     monkeypatch.setattr(wiring, "_authorize_app", read_revision)
     monkeypatch.setattr(wiring, "_get_app_revision", read_revision)
     monkeypatch.setattr(wiring, "_get_verification_identity", lambda *_: (read_revision(), "graph"))
+    policy_admissions: list[Actor] = []
+
+    def admit_cognition(actor: Actor, requested: Graph | None) -> Graph:
+        # This test isolates the stream's live App context boundary. Supply an
+        # explicit admitted policy dependency, just as its App and queue ports
+        # are supplied above; real membership/refusal has separate SQL tests.
+        assert actor == _actor()
+        assert current_app.app_context().app is app
+        policy_admissions.append(actor)
+        return requested or {"provider": "openai", "name": "gpt", "mode": "chat", "completion_params": {}}
+
+    monkeypatch.setattr(wiring, "select_cognition_config", admit_cognition)
     monkeypatch.setattr(wiring.progress_bus, "subscribe", lambda *_: Subscription())
     monkeypatch.setattr(wiring.progress_bus, "publish_native_change", lambda *_: None)
     with app.test_request_context("/"):
@@ -610,6 +622,7 @@ def test_actual_wired_command_stream_reads_after_request_context_teardown(
     frames = list(stream)
     assert '"run_status": "paused"' in frames[-1]
     assert "command_finished" in frames[-1]
+    assert policy_admissions == [_actor()]
 
 
 def test_legacy_flag_only_pause_resumes_through_dsl_owner(

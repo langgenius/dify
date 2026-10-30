@@ -351,6 +351,9 @@ class DifyBuilderContext:
 
     # -- Build fields (Slice 2, additive) --
     goal_text: str = ""
+    # Bounded conversation-local excerpts; upload text never confers approval,
+    # resource identity or credential authority. Empty for legacy sessions.
+    attachment_material: list[dict[str, Any]] = field(default_factory=list)
     reply_language: str = ""  # detected user-input language (BCP-47); drives reply/localization
     requirements: dict[str, Any] = field(default_factory=dict)
     plan_items: list[str] = field(default_factory=list)

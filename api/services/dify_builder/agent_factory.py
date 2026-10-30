@@ -27,6 +27,7 @@ def build_dify_builder_agent(
     *,
     account_id: str | None = None,
     app_mode: str = "workflow",
+    app_id: str | None = None,
 ) -> DifyBuilderAgent:
     """Return the LLM-backed agent for one advance.
 
@@ -39,4 +40,4 @@ def build_dify_builder_agent(
     # install or type the factory override.
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
-    return LlmBuilderAgent(tenant_id, model_config, account_id=account_id, app_mode=app_mode)
+    return LlmBuilderAgent(tenant_id, model_config, account_id=account_id, app_mode=app_mode, app_id=app_id)
