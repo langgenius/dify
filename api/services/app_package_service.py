@@ -23,10 +23,15 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models.agent import WorkflowAgentBindingType
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import App, AppMode
+from models.skill import Skill
 from models.tools import ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AGENT_PACKAGE_REF_KEY, AgentPackage
-from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
+from services.agent.errors import (
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageTooLargeError,
+    WorkspaceSkillNotFoundError,
+)
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.package_resource_importer import AgentPackageResourceImporter
 from services.agent.roster_package_entities import (
@@ -115,7 +120,21 @@ class PreparedAppPackage(PreparedPackageArchive):
             elif item.icon_type == "image" and item.icon in mapping:
                 item.icon = mapping[item.icon]
 
-    def materialize_agents(self, *, tenant_id: str, account_id: str) -> tuple[dict[str, Any], list[DslImportWarning]]:
+    def require_workspace_skills(self, *, tenant_id: str) -> None:
+        """Refuse, before any write, an import that links Agents to workspace Skills the workspace lacks."""
+        names = {skill.name for agent in self.agents.values() for skill in agent.workspace_skills}
+        if not names:
+            return
+        with session_factory.create_session() as session:
+            present = set(
+                session.scalars(select(Skill.name).where(Skill.tenant_id == tenant_id, Skill.name.in_(names)))
+            )
+        if missing := sorted(names - present):
+            raise WorkspaceSkillNotFoundError(missing)
+
+    def materialize_agents(
+        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool = False
+    ) -> tuple[dict[str, Any], list[DslImportWarning]]:
         importer = AgentPackageResourceImporter()
         # Validate every Agent before uploading any resource.
         for ref, resources in self.agent_resources.items():
@@ -124,7 +143,12 @@ class PreparedAppPackage(PreparedPackageArchive):
         warnings: list[DslImportWarning] = []
         for ref, resources in self.agent_resources.items():
             agents[ref], resource_warnings = importer.materialize(
-                archive=self, resources=resources, agent_package=agents[ref], tenant_id=tenant_id, account_id=account_id
+                archive=self,
+                resources=resources,
+                agent_package=agents[ref],
+                tenant_id=tenant_id,
+                account_id=account_id,
+                link_workspace_skills=link_workspace_skills,
             )
             warnings.extend(
                 warning.model_copy(update={"path": f"agent_packages.{ref}.{warning.path}"})
@@ -410,7 +434,7 @@ class AppPackageService(RosterAgentPackageReader):
             resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["app"])
             if isinstance(prepared.data.get("site"), dict):
                 resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["site"])
-        resources.collect_workspace_skills()
+        resources.collect_workspace_skills(as_copies=not preserve_agent_bindings)
         if resources.packages:
             prepared.data["agent_packages"] = {
                 ref: package.model_dump(mode="json") for ref, package in resources.packages.items()

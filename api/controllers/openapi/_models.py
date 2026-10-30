@@ -690,8 +690,9 @@ class AppPackageExportQuery(BaseModel):
         True,
         description=(
             "true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) "
-            "and only inline Agents are packaged. false: every Agent is packaged, as the console does, "
-            f"for moving the App to another workspace. {_IGNORED_FOR_AGENT_APPS}"
+            "and only inline Agents are packaged; they keep their links to workspace skills, which the "
+            "importing workspace must have. false: every Agent is packaged with a copy of each workspace skill, "
+            f"as the console does, for moving the App to another workspace. {_IGNORED_FOR_AGENT_APPS}"
         ),
     )
 

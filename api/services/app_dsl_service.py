@@ -327,7 +327,9 @@ class AppDslService:
                             raise ValueError("App not found")
                         self._validate_workflow_overwrite(target, data)
                 package.materialize_icons(data=data, tenant_id=tenant_id, account_id=account.id)
-                agents, self._warnings = package.materialize_agents(tenant_id=tenant_id, account_id=account.id)
+                agents, self._warnings = package.materialize_agents(
+                    tenant_id=tenant_id, account_id=account.id, link_workspace_skills=preserve_agent_bindings
+                )
                 if agents:
                     data["agent_packages"] = agents
                 content = yaml.safe_dump(data, allow_unicode=True)
