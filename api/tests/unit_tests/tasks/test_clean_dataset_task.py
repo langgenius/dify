@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import cast
 
@@ -5,6 +6,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.clean_dataset_task as task_module
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.workflow.file_reference import build_file_reference
 from models.dataset import Document, DocumentSegment
 from models.model import UploadFile
@@ -81,7 +83,7 @@ def test_dataset_cleanup_retry_remembers_completed_index_cleanup(
     retry_kwargs: list[dict[str, object]] = []
 
     @contextmanager
-    def create_session():
+    def create_session() -> Generator[object]:
         yield object()
 
     monkeypatch.setattr(task_module.session_factory, "create_session", create_session)
@@ -203,7 +205,7 @@ def test_cleanup_reclaims_answer_only_files_unless_another_dataset_references_th
         session.add_all([_dataset("dataset-1", "workspace-1"), upload])
         for document_id in document_ids:
             document = _document(document_id)
-            document.doc_form = "qa_model"
+            document.doc_form = IndexStructureType.QA_INDEX
             session.add(document)
             session.add(
                 DocumentSegment(

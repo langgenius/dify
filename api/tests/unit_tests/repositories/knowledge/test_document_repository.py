@@ -28,7 +28,7 @@ from services.knowledge.documents.contracts import (
 )
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
-from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:
@@ -807,7 +807,7 @@ def test_failed_notion_indexing_discards_pending_source_version(
 @pytest.mark.parametrize("status", [IndexingStatus.PARSING, IndexingStatus.INDEXING])
 def test_stale_unchanged_notion_sync_does_not_overwrite_active_indexing(
     sqlite_session_factory: sessionmaker[Session],
-    status: str,
+    status: IndexingStatus,
 ) -> None:
     document = _document("document-1", status=status)
     document.data_source_info = json.dumps({"last_edited_time": "2026-01-01T00:00:00Z"})

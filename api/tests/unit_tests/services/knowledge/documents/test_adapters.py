@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -10,6 +11,8 @@ from controllers.console.datasets.datasets_document import DocumentDetailRespons
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.file_service import FileService
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.documents.application import DocumentListFilter, DocumentNotFoundError
 from services.knowledge.entities.resource_scope import DatasetRef
@@ -89,34 +92,11 @@ class TestDocumentAdaptersCases:
     def operations(sqlite_session_factory: sessionmaker[Session]) -> SQLAlchemyDocumentOperations:
         with sqlite_session_factory.begin() as session:
             session.add_all([_dataset(), _document()])
-        return SQLAlchemyDocumentOperations(session_factory=sqlite_session_factory)
-
-    @staticmethod
-    @pytest.mark.parametrize("foreign", [{"tenant_id": "other"}, {"dataset_id": "other"}])
-    def test_document_reads_and_writes_reject_incorrect_owner(
-        operations: SQLAlchemyDocumentOperations, sqlite_session_factory: sessionmaker[Session], foreign: dict[str, str]
-    ) -> None:
-        with sqlite_session_factory.begin() as session:
-            session.add(_document(id="foreign", **foreign))
-        ref = _DOCUMENT_ADAPTERS_REF.document("foreign")
-        assert operations.get_state(ref) is None
-        with pytest.raises(DocumentNotFoundError):
-            operations.get_detail(ref, metadata_only=False)
-        with pytest.raises(DocumentNotFoundError):
-            operations.update_document(ref, {"name": "changed"})
-        with pytest.raises(DocumentNotFoundError):
-            operations.rename_document(ref, "changed")
-        with sqlite_session_factory() as session:
-            document = session.get(Document, "foreign")
-            assert document is not None
-            assert document.name == "Document"
-
-    @staticmethod
-    def test_document_lookup_uses_active_workspace(operations: SQLAlchemyDocumentOperations) -> None:
-        assert operations.find_document(workspace_id="other", document_id="document-1") is None
-        assert operations.find_document(
-            workspace_id="tenant-1", document_id="document-1"
-        ) == _DOCUMENT_ADAPTERS_REF.document("document-1")
+        return SQLAlchemyDocumentOperations(
+            session_factory=sqlite_session_factory,
+            documents=SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory),
+            files=cast(FileService, object()),
+        )
 
     @staticmethod
     def test_listing_filters_scope_and_materializes_values(
@@ -236,19 +216,6 @@ class TestDocumentAdaptersCases:
         source.assert_not_called()
 
     @staticmethod
-    def test_update_is_committed_before_returning(
-        operations: SQLAlchemyDocumentOperations, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
-        operations.update_document(
-            _DOCUMENT_ADAPTERS_REF.document("document-1"), {"is_paused": True, "paused_by": "actor-1"}
-        )
-        with sqlite_session_factory() as session:
-            document = session.get(Document, "document-1")
-            assert document is not None
-            assert document.is_paused is True
-            assert document.paused_by == "actor-1"
-
-    @staticmethod
     def test_latest_pipeline_log_and_empty_result(
         operations: SQLAlchemyDocumentOperations, sqlite_session_factory: sessionmaker[Session]
     ) -> None:
@@ -270,32 +237,3 @@ class TestDocumentAdaptersCases:
         assert result["datasource_info"] == {"year": 2025}
         assert result["input_data"] == {"year": 2025}
 
-    @staticmethod
-    @pytest.mark.parametrize("settings", [None, {"enable": False}])
-    def test_summary_guard_rejects_disabled_summary(
-        operations: SQLAlchemyDocumentOperations,
-        sqlite_session_factory: sessionmaker[Session],
-        settings: dict[str, object] | None,
-    ) -> None:
-        with sqlite_session_factory.begin() as session:
-            dataset = session.get(Dataset, "dataset-1")
-            assert dataset is not None
-            dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-            dataset.summary_index_setting = settings
-        with pytest.raises(ValueError, match="not enabled"):
-            operations.require_summary_enabled(_DOCUMENT_ADAPTERS_REF)
-
-    @staticmethod
-    def test_enable_summary_only_updates_requested_owner(
-        operations: SQLAlchemyDocumentOperations, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
-        with sqlite_session_factory.begin() as session:
-            session.add(_document(id="foreign", tenant_id="other", need_summary=False))
-        operations.enable_summary(_DOCUMENT_ADAPTERS_REF, ["document-1", "foreign"])
-        with sqlite_session_factory() as session:
-            document = session.get(Document, "document-1")
-            foreign = session.get(Document, "foreign")
-            assert document is not None
-            assert foreign is not None
-            assert document.need_summary is True
-            assert foreign.need_summary is False

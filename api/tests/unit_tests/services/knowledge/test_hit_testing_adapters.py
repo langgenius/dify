@@ -12,7 +12,7 @@ from core.rag.models.document import Document as RetrievalDocument
 from graphon.model_runtime.errors.invoke import InvokeError
 from machinery.context import RequestContext
 from models.dataset import Dataset, DatasetQuery, Document, DocumentSegment
-from models.enums import SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
@@ -298,10 +298,10 @@ def test_response_formatting_drops_a_foreign_segment_referenced_by_stale_index_m
         tenant_id=REF.tenant_id,
         dataset_id=REF.dataset_id,
         position=1,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType.UPLOAD_FILE,
         batch="batch",
         name="allowed.txt",
-        created_from="api",
+        created_from=DocumentCreatedFrom.API,
         created_by="actor",
     )
     foreign_dataset = Dataset(tenant_id="other", name="Foreign", created_by="other-actor")
@@ -309,10 +309,10 @@ def test_response_formatting_drops_a_foreign_segment_referenced_by_stale_index_m
         tenant_id="other",
         dataset_id=foreign_dataset.id,
         position=1,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType.UPLOAD_FILE,
         batch="batch",
         name="foreign.txt",
-        created_from="api",
+        created_from=DocumentCreatedFrom.API,
         created_by="other-actor",
     )
     with sqlite_session_factory.begin() as session:

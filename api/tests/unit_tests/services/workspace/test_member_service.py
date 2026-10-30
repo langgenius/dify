@@ -16,7 +16,7 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.human_input_v2 import HumanInputContactIdentity
-from models.model import App
+from models.model import App, AppMode
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import AccountNotFoundError
 from services.enterprise import account_deletion_sync
@@ -430,7 +430,7 @@ def test_removal_transfers_maintainers_only_in_the_target_workspace(
         App(
             tenant_id=tenant_id,
             name="App",
-            mode="chat",
+            mode=AppMode.CHAT,
             maintainer=member_id,
             enable_site=True,
             enable_api=True,

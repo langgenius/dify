@@ -613,8 +613,10 @@ class TestUtilityFunctions:
     def test_process_mapping_response_invalid_mode(self) -> None:
         """Test processing mapping response with invalid app mode"""
         app = App(
-            mode="invalid_mode",
+            mode=AppMode.CHANNEL,
         )
+        # Model a corrupt/legacy database value without weakening the ORM constructor contract.
+        app.__dict__["mode"] = "invalid_mode"
 
         response = {"answer": "test"}
 

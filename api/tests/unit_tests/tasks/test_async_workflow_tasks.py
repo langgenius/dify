@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import AppTriggerType, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.enums import AppTriggerType, EndUserType, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, AppMode, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowPause, WorkflowRun, WorkflowType
@@ -790,7 +790,7 @@ def test_get_user_returns_tenant_scoped_end_user(sqlite_session: Session) -> Non
         id="end-user-1",
         tenant_id="tenant-1",
         app_id="app-1",
-        type="browser",
+        type=EndUserType.BROWSER,
         name="End User",
         session_id="session-1",
     )

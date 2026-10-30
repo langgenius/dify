@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import uuid
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from enum import StrEnum
 from functools import partial
@@ -375,7 +375,7 @@ def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any] | BaseModel],
+    response_stream: Iterable[str | Mapping[str, Any] | BaseModel],
     workflow_run_id: str | uuid.UUID,
     app_mode: AppMode,
     workflow_id: str,

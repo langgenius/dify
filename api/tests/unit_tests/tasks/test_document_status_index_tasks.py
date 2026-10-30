@@ -14,6 +14,7 @@ from redis.exceptions import RedisError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.db import session_factory as session_factory_module
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from services.knowledge.indexing.locks import KnowledgeIndexingLeaseLostError, document_index_lock_name
@@ -120,7 +121,7 @@ def _persist_document(
         created_from=DocumentCreatedFrom.WEB,
         created_by=str(uuid4()),
         indexing_status=IndexingStatus.COMPLETED,
-        doc_form="text_model",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
         enabled=enabled,
         archived=archived,
     )

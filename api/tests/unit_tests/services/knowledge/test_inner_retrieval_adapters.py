@@ -31,7 +31,7 @@ from services.knowledge.entities.retrieval import (
 )
 from services.knowledge.retrieval.adapters import SQLAlchemyInnerKnowledgeRetrievalScope
 from services.knowledge.retrieval.application import InnerKnowledgeRetrievalService
-from tests.unit_tests.model_factories import make_app, make_dataset
+from tests.helpers.unit.model_factories import make_app, make_dataset
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"

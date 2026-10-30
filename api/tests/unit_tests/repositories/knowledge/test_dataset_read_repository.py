@@ -134,14 +134,14 @@ def test_retrieval_attachment_file_keys_require_current_complete_owner_scope(
 ) -> None:
     dataset = _dataset()
     document = _document()
-    document.indexing_status = "completed"
+    document.indexing_status = IndexingStatus.COMPLETED
     document.enabled = True
     document.archived = False
     segment = _segment("image segment")
     segment.status = SegmentStatus.COMPLETED
     segment.enabled = True
     if owner_state == "document_incomplete":
-        document.indexing_status = "indexing"
+        document.indexing_status = IndexingStatus.INDEXING
     elif owner_state == "document_disabled":
         document.enabled = False
     elif owner_state == "document_archived":

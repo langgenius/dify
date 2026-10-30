@@ -91,7 +91,7 @@ def make_document(*, data_source_type: str, data_source_info: str) -> Document:
 class TestDocumentDetailDataSourceInfo:
     """Test cases for document detail API data_source_info serialization."""
 
-    def test_data_source_info_dict_returns_raw_data(self):
+    def test_data_source_info_dict_returns_raw_data(self) -> None:
         """Test that data_source_info_dict returns raw JSON data for all data_source_type values."""
         # Test data for different data_source_type values
         for case in cases:
@@ -107,7 +107,7 @@ class TestDocumentDetailDataSourceInfo:
             # Verify raw_result is always a valid dict
             assert isinstance(raw_result, dict)
 
-    def test_local_file_data_source_info_without_db_context(self):
+    def test_local_file_data_source_info_without_db_context(self) -> None:
         """Test that local_file type data_source_info_dict works without database context."""
         test_data: LocalFileInfo = {
             "file_path": "/local/path/document.txt",
@@ -129,7 +129,7 @@ class TestDocumentDetailDataSourceInfo:
         assert "file_path" in raw_data
         assert "size" in raw_data
 
-    def test_notion_and_website_crawl_data_source_detail(self):
+    def test_notion_and_website_crawl_data_source_detail(self) -> None:
         """Test that notion_import and website_crawl return raw data in data_source_detail_dict."""
         # Test notion_import
         notion_data: NotionImportInfo = {"notion_page_id": "page-123", "workspace_id": "ws-456"}
@@ -153,7 +153,7 @@ class TestDocumentDetailDataSourceInfo:
         detail_result = get_document_source_detail(document, session=MagicMock())
         assert detail_result == website_data
 
-    def test_local_file_data_source_detail_dict_without_db(self):
+    def test_local_file_data_source_detail_dict_without_db(self) -> None:
         """Test that local_file returns empty data_source_detail_dict (this doesn't need DB context)."""
         # Test local_file - this should work without database context since it returns {} early
         document = make_document(

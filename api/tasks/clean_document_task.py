@@ -51,7 +51,7 @@ def _delete_unreferenced_files_in_session(
     reclaimer.delete_unreferenced_files_in_session(
         session,
         tenant_id=tenant_id,
-        file_ids=(file_id for file_id in file_ids if file_id not in leased_file_ids),
+        file_ids=[file_id for file_id in file_ids if file_id not in leased_file_ids],
         delete_blob=storage.delete,
     )
 

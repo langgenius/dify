@@ -66,7 +66,10 @@ class _UnexpectedExternalRetrieval:
         raise AssertionError("internal dataset reached external retrieval")
 
 
-def _document(document_id: str, form: str = IndexStructureType.PARAGRAPH_INDEX) -> Document:
+def _document(
+    document_id: str,
+    form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
+) -> Document:
     return Document(
         id=document_id,
         tenant_id=REF.tenant_id,
@@ -521,7 +524,7 @@ def test_summary_scores_only_use_current_node_identity_and_preserve_parent_mappi
     gateway: DatasetHitTestingGateway,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
-    form: str,
+    form: IndexStructureType,
 ) -> None:
     rows: list[object] = [
         _document("document", form),
@@ -642,7 +645,7 @@ def test_valid_results_aggregate_scores_and_release_connections_before_signing_a
     sqlite_session_factory: sessionmaker[Session],
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
-    form: str,
+    form: IndexStructureType,
 ) -> None:
     with sqlite_session_factory.begin() as session:
         session.add_all(
@@ -728,7 +731,7 @@ def test_index_form_only_includes_the_matching_kind_of_node(
     gateway: DatasetHitTestingGateway,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
-    form: str,
+    form: IndexStructureType,
     node_id: str,
 ) -> None:
     with sqlite_session_factory.begin() as session:

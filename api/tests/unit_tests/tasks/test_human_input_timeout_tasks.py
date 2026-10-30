@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,10 +16,10 @@ from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from enums.creator import CreatorUserRole
 from graphon.entities.pause_reason import PauseReasonType
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
-from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun, WorkflowType
 from tasks import human_input_timeout_tasks as task_module
 from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -41,6 +42,7 @@ class _FailOnceService(_FakeService):
         super().__init__()
         self._failed = False
 
+    @override
     def enqueue_resume(self, workflow_run_id: str | None) -> None:
         if not self._failed:
             self._failed = True
@@ -241,9 +243,9 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
     service_factory.assert_called_once_with(task_session_maker, form_repository=repo)
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(HumanInputForm, "form-global").status == HumanInputFormStatus.EXPIRED
-    assert sqlite_session.get(HumanInputForm, "form-node").status == HumanInputFormStatus.TIMEOUT
-    assert sqlite_session.get(HumanInputForm, "form-delivery").status == HumanInputFormStatus.TIMEOUT
+    assert sqlite_session.get_one(HumanInputForm, "form-global").status == HumanInputFormStatus.EXPIRED
+    assert sqlite_session.get_one(HumanInputForm, "form-node").status == HumanInputFormStatus.TIMEOUT
+    assert sqlite_session.get_one(HumanInputForm, "form-delivery").status == HumanInputFormStatus.TIMEOUT
 
 
 def test_check_and_handle_human_input_timeouts_pages_through_submitted_pauses(
@@ -330,8 +332,8 @@ def test_expired_pause_stop_is_retried_and_then_becomes_idempotent(
     try:
         task_module.check_and_handle_human_input_timeouts(limit=1)
         sqlite_session.expire_all()
-        assert sqlite_session.get(WorkflowRun, run.id).status == WorkflowExecutionStatus.PAUSED
-        assert sqlite_session.get(WorkflowPause, pause.id).resumed_at is None
+        assert sqlite_session.get_one(WorkflowRun, run.id).status == WorkflowExecutionStatus.PAUSED
+        assert sqlite_session.get_one(WorkflowPause, pause.id).resumed_at is None
         assert deleted_keys == []
         sqlite_session.rollback()
 
@@ -341,8 +343,8 @@ def test_expired_pause_stop_is_retried_and_then_becomes_idempotent(
         event.remove(Session, "before_commit", fail_first_commit)
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(WorkflowRun, run.id).status == WorkflowExecutionStatus.STOPPED
-    assert sqlite_session.get(WorkflowPause, pause.id).resumed_at is not None
+    assert sqlite_session.get_one(WorkflowRun, run.id).status == WorkflowExecutionStatus.STOPPED
+    assert sqlite_session.get_one(WorkflowPause, pause.id).resumed_at is not None
     assert deleted_keys == [pause.state_object_key]
 
 
@@ -402,8 +404,8 @@ def test_global_timeout_cannot_stop_a_replacement_pause(
 
     assert stopped is False
     sqlite_session.expire_all()
-    assert sqlite_session.get(WorkflowRun, run.id).status == WorkflowExecutionStatus.PAUSED
-    assert sqlite_session.get(WorkflowPause, current_pause.id).resumed_at is None
+    assert sqlite_session.get_one(WorkflowRun, run.id).status == WorkflowExecutionStatus.PAUSED
+    assert sqlite_session.get_one(WorkflowPause, current_pause.id).resumed_at is None
     assert deleted_keys == []
 
 
@@ -445,8 +447,8 @@ def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
         reason="delivery_test_timeout",
     )
     sqlite_session.expire_all()
-    assert sqlite_session.get(HumanInputForm, "form-a").status == HumanInputFormStatus.TIMEOUT
-    assert sqlite_session.get(HumanInputForm, "form-b").status == HumanInputFormStatus.WAITING
+    assert sqlite_session.get_one(HumanInputForm, "form-a").status == HumanInputFormStatus.TIMEOUT
+    assert sqlite_session.get_one(HumanInputForm, "form-b").status == HumanInputFormStatus.WAITING
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)

@@ -21,7 +21,7 @@ from repositories.workflow.human_input.file_upload_repository import SQLAlchemyH
 from services.errors.file import UploadFileReferenceNotFoundError
 from services.human_input_file_upload_service import HumanInputUploadFormRecord, InvalidUploadTokenError
 from services.human_input_service import FormSubmittedError
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 _TENANT_ID = "11111111-1111-1111-1111-111111111111"
 _OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"

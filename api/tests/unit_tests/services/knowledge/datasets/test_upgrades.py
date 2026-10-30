@@ -43,16 +43,18 @@ class FakeDatasets:
     visible_ids: tuple[str, ...] = ()
     list_calls: list[tuple[DatasetListFilter, list[str] | None, bool]] = field(default_factory=list)
 
-    def visibility(self, _context: RequestContext) -> DatasetVisibility:
+    def visibility(self, context: RequestContext) -> DatasetVisibility:
+        del context
         return DatasetVisibility()
 
     def list_datasets(
         self,
-        _context: RequestContext,
+        context: RequestContext,
         query: DatasetListFilter,
         accessible_ids: list[str] | None,
         include_own: bool,
     ) -> DatasetPage:
+        del context
         self.list_calls.append((query, accessible_ids, include_own))
         requested = set(query.ids)
         data = [
@@ -63,7 +65,8 @@ class FakeDatasets:
             {"data": data, "has_more": False, "total": len(data), "page": 1, "limit": query.limit},
         )
 
-    def get_dataset(self, _context: RequestContext, _ref: DatasetRef) -> DatasetDetailRecord:
+    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord:
+        del context, ref
         raise AssertionError("not used by these tests")
 
 

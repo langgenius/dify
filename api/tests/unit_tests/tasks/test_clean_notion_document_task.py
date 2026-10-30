@@ -1,11 +1,11 @@
 import json
-from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.clean_notion_document_task as task_module
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
@@ -49,10 +49,8 @@ def _document(
         name="Document",
         created_from=DocumentCreatedFrom.API,
         created_by="account-1",
-        created_at=datetime(2026, 1, 1),
-        updated_at=datetime(2026, 1, 1),
         indexing_status=IndexingStatus.COMPLETED,
-        doc_form="text_model",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
         enabled=True,
         archived=False,
         is_paused=False,

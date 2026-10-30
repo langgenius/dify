@@ -26,8 +26,8 @@ from services.extraction.contracts import (
     WebsiteInfo,
 )
 from services.extraction.processor import ExtractProcessor
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _upload_file(*, key: str, file_id: str = "upload-file-1") -> UploadFile:

@@ -85,7 +85,7 @@ class SQLAlchemyRagPipelineDatasetProjectionWriter:
                     kind=published.kind,
                     version=Workflow.version_from_datetime(naive_utc_now()),
                     graph=published_graph,
-                    features=published.serialized_features,
+                    _features=published.serialized_features,
                     created_by=actor_id,
                     marked_name="",
                     marked_comment="",

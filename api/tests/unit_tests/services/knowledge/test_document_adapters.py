@@ -8,10 +8,11 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from enums.creator import CreatorUserRole
 from machinery.context import RequestContext
 from models.dataset import Dataset, DatasetProcessRule, Document
-from models.enums import IndexingStatus, ProcessRuleMode
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.entities.upload_file import FileUploadActor
 from services.errors.file import FileTooLargeError
@@ -34,7 +35,7 @@ from services.knowledge.documents.application import (
 from services.knowledge.documents.contracts import DocumentBatchCleanupJob, DocumentCleanupJob, DocumentIndexingJobs
 from services.knowledge.entities.model_configuration import DatasetModelConfiguration, EmbeddingModelConfiguration
 from services.knowledge.entities.resource_scope import DatasetRef
-from tests.unit_tests.model_factories import make_tenant, make_upload_file
+from tests.helpers.unit.model_factories import make_tenant, make_upload_file
 
 REF = DatasetRef("tenant-1", "dataset-1")
 
@@ -136,27 +137,27 @@ def _dataset() -> Dataset:
 
 
 def _document(**values: object) -> Document:
-    return Document(
-        **{
-            "id": "document-1",
-            "tenant_id": "tenant-1",
-            "dataset_id": "dataset-1",
-            "position": 1,
-            "data_source_type": "local_file",
-            "data_source_info": json.dumps({"file_path": "/path/to/file"}),
-            "batch": "batch-1",
-            "name": "Document",
-            "created_from": "web",
-            "created_by": "actor-1",
-            "indexing_status": IndexingStatus.COMPLETED,
-            "doc_form": "text_model",
-            "enabled": True,
-            "archived": False,
-            "word_count": 10,
-            "created_at": datetime(2024, 1, 1),
-            **values,
-        }
+    document = Document(
+        id="document-1",
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        position=1,
+        data_source_type=DataSourceType.LOCAL_FILE,
+        data_source_info=json.dumps({"file_path": "/path/to/file"}),
+        batch="batch-1",
+        name="Document",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="actor-1",
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        enabled=True,
+        archived=False,
+        word_count=10,
     )
+    document.created_at = datetime(2024, 1, 1)
+    for key, value in values.items():
+        setattr(document, key, value)
+    return document
 
 
 @pytest.fixture
@@ -268,7 +269,7 @@ def test_download_url_resolves_scoped_upload_file(
 ) -> None:
     with sqlite_session_factory.begin() as session:
         document = session.get_one(Document, "document-1")
-        document.data_source_type = "upload_file"
+        document.data_source_type = DataSourceType.UPLOAD_FILE
         document.data_source_info = json.dumps({"upload_file_id": "upload-1"})
         session.add(
             make_upload_file(file_id="upload-1", tenant_id="tenant-1", name="document.txt", created_by="actor-1")

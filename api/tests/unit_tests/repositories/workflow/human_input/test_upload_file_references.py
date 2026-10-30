@@ -2,6 +2,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 import sqlalchemy as sa
+from graphon.variables.segments import ObjectSegment
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.resolved_form import ResolvedForm
@@ -51,7 +52,7 @@ def test_v2_forms_and_contact_avatars_retain_only_tenant_owned_candidates(sqlite
         submitted_by_delivery_id=str(uuid4()),
         selected_action_id="approve",
         raw_submission_inputs={"attachment": {"upload_file_id": raw_file_id}},
-        normalized_submission_data={"attachment": {"upload_file_id": normalized_file_id}},
+        normalized_submission_data={"attachment": ObjectSegment(value={"upload_file_id": normalized_file_id})},
     )
     sqlite_session.execute(
         sa.insert(HumanInputExternalContactProfile),

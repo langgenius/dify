@@ -40,7 +40,7 @@ def _document(
     tenant_id: str,
     enabled: bool = True,
     archived: bool = False,
-    indexing_status: str = IndexingStatus.COMPLETED,
+    indexing_status: IndexingStatus = IndexingStatus.COMPLETED,
 ) -> Document:
     completed_at = datetime.datetime(2026, 1, 1) if indexing_status == IndexingStatus.COMPLETED else None
     return Document(

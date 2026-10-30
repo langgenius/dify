@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import build_knowledge_fs_node_dependencies
+from core.workflow.node_runtime import build_knowledge_fs_node_dependencies, build_knowledge_index_files
 from extensions import ext_application_services
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
@@ -23,6 +23,7 @@ from services.knowledge_fs.knowledge_retrieval_v2.knowledge_retrieval_v2_node im
 from services.knowledge_fs.resource import KnowledgeResourceRef
 from services.knowledge_fs.retrieval_contracts import KnowledgeFSAppBindingPayload, KnowledgeFSRetrievalTestPayload
 from tests.workflow_test_utils import build_test_graph_init_params
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @dataclass
@@ -153,6 +154,8 @@ def test_graph_can_create_unused_retrieval_node_without_knowledge_fs_config(
     factory = DifyNodeFactory(
         init_params=build_test_graph_init_params(),
         runtime_state=RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=time.perf_counter()),
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
 
     with app.app_context():

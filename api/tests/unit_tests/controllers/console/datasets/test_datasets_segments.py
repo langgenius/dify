@@ -68,8 +68,8 @@ from services.knowledge.segments.contracts import (
     SegmentListFilter,
     SegmentPage,
 )
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account
 
 
 def _admission_layer(method: Callable[..., object]) -> Callable[..., object]:
@@ -168,7 +168,10 @@ def _patch_services(segments: DatasetSegmentApplicationService) -> AbstractConte
 
 
 @pytest.fixture
-def batch_import_routes(monkeypatch: pytest.MonkeyPatch, config_overrides) -> BatchImportRoutes:
+def batch_import_routes(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> BatchImportRoutes:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
         LOGIN_DISABLED=True,

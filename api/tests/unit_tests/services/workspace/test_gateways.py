@@ -98,12 +98,11 @@ def test_workspace_creation_capacity_bypasses_cached_enterprise_usage(
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-    snapshots = iter(
-        (
+    snapshot_values: tuple[dict[str, object], ...] = (
             {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 0}}},
             {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 1}}},
-        )
     )
+    snapshots = iter(snapshot_values)
     uncached_queries = 0
 
     def get_uncached_info() -> dict[str, object]:

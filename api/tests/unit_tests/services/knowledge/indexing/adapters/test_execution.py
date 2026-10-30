@@ -11,7 +11,6 @@ import pytest
 from flask import Flask
 from sqlalchemy import Connection, Engine, event, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
-from tests.unit_tests.services.knowledge.test_indexing_execution import _TestIndexingLock
 from werkzeug.exceptions import NotFound
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError, QuotaExceededError
@@ -50,6 +49,7 @@ from services.knowledge.indexing.contracts import IndexingDocument
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.indexing.execution import DocumentIndexingService
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
+from tests.unit_tests.services.knowledge.indexing.test_execution import _TestIndexingLock
 
 MODULE = "services.knowledge.indexing.adapters.execution"
 CLEANUP_MODULE = "services.knowledge.indexing.adapters.cleanup"
@@ -894,7 +894,12 @@ def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
     adapter, documents, segments, _, job, redis = backend
     chunk = IndexDocument(page_content="hello world", metadata={"doc_id": "node", "doc_hash": "hash"})
     segments.save_for_indexing(job, [chunk], [5])
-    service = DocumentIndexingService(documents=documents, segments=segments, backend=adapter)
+    service = DocumentIndexingService(
+        documents=documents,
+        segments=segments,
+        backend=adapter,
+        indexing_locks=_TestIndexingLock(),
+    )
     write_keywords = Jieba.update_texts
 
     def cleanup_wins_the_race(

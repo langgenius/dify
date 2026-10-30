@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
+from services.knowledge.entities.external import ExternalDatasetCreatePayload
 
 from tests.unit_tests.controllers.conftest import app_query_services as app_query_services  # noqa: PLC0414
 from tests.unit_tests.controllers.conftest import (

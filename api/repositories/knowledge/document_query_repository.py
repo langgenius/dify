@@ -253,7 +253,11 @@ def load_document_read_projections(
         source_info = dict(document.data_source_info_dict)
         file_id = source_info.get("upload_file_id")
         file = batch.uploads.get((document.tenant_id, file_id)) if isinstance(file_id, str) else None
-        process_rule = batch.process_rules.get(document.dataset_process_rule_id)
+        process_rule = (
+            batch.process_rules.get(document.dataset_process_rule_id)
+            if document.dataset_process_rule_id is not None
+            else None
+        )
         if process_rule is not None and process_rule.dataset_id != document.dataset_id:
             process_rule = None
         projections.append(

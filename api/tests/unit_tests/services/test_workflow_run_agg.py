@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
@@ -57,11 +57,9 @@ from models.workflow import (
 )
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.human_input_v2.form_repository import Form
+from services.file_adapters import build_file_service
 from services.agent.workspace_service import AgentWorkspaceService
-from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow_run_agg import WorkflowRunAgg
-from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
-from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
     _build_app_generate_entity,
     _build_runner,
@@ -72,6 +70,7 @@ from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_binding_resolver import _agent, _binding, _snapshot
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _install_backend_client
 from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form as _v2_form_fixture
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 """Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
 
@@ -162,7 +161,12 @@ def _pipeline_tool_runner(
         else WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
     )
     nodes = SQLAlchemyWorkflowNodeExecutionRepository(
-        sqlite_engine, "tenant", user, "pipe", WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN
+        sqlite_engine,
+        "tenant",
+        user,
+        "pipe",
+        WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+        files=build_file_service(session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False)),
     )
     return runner, runs, nodes
 
@@ -353,10 +357,12 @@ def make_workflow_runner(
         user=user,
         app_id=app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False)),
     )
     runner = WorkflowAppRunner(
         application_generate_entity=entity,
         queue_manager=queue,
+        knowledge_retrieval=make_knowledge_retriever(),
         variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow,
         system_user_id=user_id,
@@ -517,11 +523,7 @@ class TestWorkflowRunAggCases:
             session.add(trigger_log)
             session.commit()
         start_time = datetime.now(UTC) - timedelta(seconds=10)
-        plan = AsyncWorkflowCFSPlanEntity(
-            schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.Nop,
-            queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
-        )
-        runner._graph_engine_layers = (TriggerPostLayer(plan, start_time, trigger_log.id),)
+        runner._graph_engine_layers = (TriggerPostLayer(start_time, trigger_log.id),)
         WorkflowRunAgg.run(
             runner,
             PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id),
@@ -574,7 +576,11 @@ class TestWorkflowRunAggCases:
         first = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
         late = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
         queue = WorkflowAppQueueManager("form-refresh-task", "user", InvokeFrom.DEBUGGER, AppMode.WORKFLOW)
-        runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+        runner = WorkflowBasedAppRunner(
+            queue_manager=queue,
+            knowledge_retrieval=make_knowledge_retriever(),
+            app_id="app",
+        )
         entry = _make_paused_workflow(runner, [first, late])
         for event in _resume_events(runner, entry):
             runner.handle_event(entry, event)
@@ -625,6 +631,7 @@ class TestWorkflowRunAggCases:
         resumed = WorkflowAppRunner(
             application_generate_entity=entity,
             queue_manager=queue,
+            knowledge_retrieval=make_knowledge_retriever(),
             variable_loader=DUMMY_VARIABLE_LOADER,
             workflow=original._workflow,
             system_user_id=entity.user_id,
@@ -788,6 +795,7 @@ class TestWorkflowRunAggCases:
         resumed = WorkflowAppRunner(
             application_generate_entity=entity,
             queue_manager=queue,
+            knowledge_retrieval=make_knowledge_retriever(),
             variable_loader=DUMMY_VARIABLE_LOADER,
             workflow=original._workflow,
             system_user_id=entity.user_id,
@@ -821,6 +829,7 @@ class TestWorkflowRunAggCases:
         fresh = WorkflowAppRunner(
             application_generate_entity=fresh_entity,
             queue_manager=fresh_queue,
+            knowledge_retrieval=make_knowledge_retriever(),
             variable_loader=DUMMY_VARIABLE_LOADER,
             workflow=original._workflow,
             system_user_id=fresh_entity.user_id,
@@ -987,6 +996,7 @@ class TestWorkflowRunAggCases:
                     queue_manager=WorkflowAppQueueManager(
                         entity.task_id, entity.user_id, entity.invoke_from, AppMode.WORKFLOW
                     ),
+                    knowledge_retrieval=make_knowledge_retriever(),
                     variable_loader=DUMMY_VARIABLE_LOADER,
                     workflow=original._workflow,
                     system_user_id=entity.user_id,

@@ -121,7 +121,9 @@ def _build_workflow_generate_entity(stream: bool) -> WorkflowAppGenerateEntity:
     )
 
 
-def _single_event_generator(payload):
+def _single_event_generator(
+    payload: str | Mapping[str, object] | BaseModel,
+) -> Generator[str | Mapping[str, object] | BaseModel]:
     yield payload
 
 
@@ -129,8 +131,13 @@ def _decode_published_payload(payload: bytes) -> dict[str, object] | str:
     return json.loads(payload.decode())
 
 
-def _published_payloads(topic: MagicMock) -> list[dict[str, object] | str]:
-    return [_decode_published_payload(call.args[0]) for call in topic.publish.call_args_list]
+def _published_payloads(topic: MagicMock) -> list[dict[str, object]]:
+    payloads: list[dict[str, object]] = []
+    for call in topic.publish.call_args_list:
+        payload = _decode_published_payload(call.args[0])
+        assert isinstance(payload, dict)
+        payloads.append(payload)
+    return payloads
 
 
 def _make_account(*, account_id: str = "account-id") -> Account:
@@ -451,7 +458,7 @@ def test_resume_execution_task_forwards_knowledge_retrieval(
         ("workflow_started", None),
     ],
 )
-def test_get_event_name(event: object, expected: str | None):
+def test_get_event_name(event: str | Mapping[str, object] | BaseModel, expected: str | None) -> None:
     assert workflow_execute_task_module._get_event_name(event) == expected
 
 
@@ -467,7 +474,7 @@ def test_get_event_name(event: object, expected: str | None):
         ("task-id", None),
     ],
 )
-def test_get_task_id(event: object, expected: str | None):
+def test_get_task_id(event: str | Mapping[str, object] | BaseModel, expected: str | None) -> None:
     assert workflow_execute_task_module._get_task_id(event) == expected
 
 
@@ -482,7 +489,7 @@ def test_get_task_id(event: object, expected: str | None):
         ("workflow error", None),
     ],
 )
-def test_get_error_message(event: str | Mapping[str, object] | BaseModel, expected: str | None):
+def test_get_error_message(event: str | Mapping[str, object] | BaseModel, expected: str | None) -> None:
     assert workflow_execute_task_module._get_error_message(event) == expected
 
 
@@ -496,7 +503,7 @@ def mock_topic(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return topic
 
 
-def test_publish_streaming_response_with_uuid(mock_topic: MagicMock):
+def test_publish_streaming_response_with_uuid(mock_topic: MagicMock) -> None:
     workflow_run_id = uuid.uuid4()
     response_stream = iter(
         [
@@ -518,7 +525,7 @@ def test_publish_streaming_response_with_uuid(mock_topic: MagicMock):
     assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
 
 
-def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock):
+def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock) -> None:
     workflow_run_id = uuid.uuid4()
     response_stream = iter([{"event": "workflow_paused", "task_id": "task-id"}])
 
@@ -537,10 +544,10 @@ def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock):
 
 def test_publish_streaming_response_publishes_started_then_failed_terminal_when_iteration_raises(
     mock_topic: MagicMock,
-):
-    def _response_stream():
+) -> None:
+    def _response_stream() -> Generator[Mapping[str, object]]:
         if False:
-            yield None
+            yield {}
         raise RuntimeError("stream exploded")
 
     with pytest.raises(RuntimeError, match="stream exploded"):
@@ -564,16 +571,17 @@ def test_publish_streaming_response_publishes_started_then_failed_terminal_when_
 def test_publish_streaming_response_recovers_when_workflow_started_publish_fails_first(
     mock_topic: MagicMock,
     caplog: pytest.LogCaptureFixture,
-):
+) -> None:
     caplog.set_level(logging.ERROR, logger="tasks.app_generate.workflow_execute_task")
     response_stream = iter([{"event": "workflow_started", "task_id": "task-id"}])
-    successful_payloads: list[dict[str, object] | str] = []
+    successful_payloads: list[dict[str, object]] = []
     started_publish_attempts = 0
 
     def _publish(payload: bytes) -> None:
         nonlocal started_publish_attempts
 
         decoded = _decode_published_payload(payload)
+        assert isinstance(decoded, dict)
         if isinstance(decoded, dict) and decoded.get("event") == "workflow_started":
             started_publish_attempts += 1
             if started_publish_attempts == 1:
@@ -605,7 +613,7 @@ def test_publish_streaming_response_recovers_when_workflow_started_publish_fails
 def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_started_on_publish_error(
     mock_topic: MagicMock,
     caplog: pytest.LogCaptureFixture,
-):
+) -> None:
     caplog.set_level(logging.ERROR, logger="tasks.app_generate.workflow_execute_task")
     response_stream = iter(
         [
@@ -618,10 +626,11 @@ def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_
             {"event": "node_started", "task_id": "task-id"},
         ]
     )
-    successful_payloads: list[dict[str, object] | str] = []
+    successful_payloads: list[dict[str, object]] = []
 
     def _publish(payload: bytes) -> None:
         decoded = _decode_published_payload(payload)
+        assert isinstance(decoded, dict)
         if isinstance(decoded, dict) and decoded.get("event") == "node_started":
             raise RuntimeError("broker write failed")
         successful_payloads.append(decoded)
@@ -649,7 +658,7 @@ def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_
 def test_publish_streaming_response_recovers_when_workflow_finished_publish_fails_first(
     mock_topic: MagicMock,
     caplog: pytest.LogCaptureFixture,
-):
+) -> None:
     caplog.set_level(logging.ERROR, logger="tasks.app_generate.workflow_execute_task")
     response_stream = iter(
         [
@@ -657,13 +666,14 @@ def test_publish_streaming_response_recovers_when_workflow_finished_publish_fail
             {"event": "workflow_finished", "task_id": "task-id", "data": {"status": "succeeded"}},
         ]
     )
-    successful_payloads: list[dict[str, object] | str] = []
+    successful_payloads: list[dict[str, object]] = []
     finished_publish_attempts = 0
 
     def _publish(payload: bytes) -> None:
         nonlocal finished_publish_attempts
 
         decoded = _decode_published_payload(payload)
+        assert isinstance(decoded, dict)
         if isinstance(decoded, dict) and decoded.get("event") == "workflow_finished":
             finished_publish_attempts += 1
             if finished_publish_attempts == 1:
@@ -693,7 +703,7 @@ def test_publish_streaming_response_recovers_when_workflow_finished_publish_fail
 def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_without_terminal_event(
     mock_topic: MagicMock,
     caplog: pytest.LogCaptureFixture,
-):
+) -> None:
     caplog.set_level(logging.WARNING, logger="tasks.app_generate.workflow_execute_task")
     response_stream = iter(
         [
@@ -724,7 +734,7 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
     assert "ended without a terminal event" in caplog.text
 
 
-def test_publish_streaming_response_uses_error_message_for_failed_terminal(mock_topic: MagicMock):
+def test_publish_streaming_response_uses_error_message_for_failed_terminal(mock_topic: MagicMock) -> None:
     def response_stream() -> Generator[str | Mapping[str, object] | BaseModel]:
         yield {
             "event": "error",
@@ -756,7 +766,9 @@ def test_publish_streaming_response_uses_error_message_for_failed_terminal(mock_
     assert finished_data["error"] == "LLM provider and model are required."
 
 
-def test_publish_streaming_response_does_not_publish_synthetic_failure_after_terminal_event(mock_topic: MagicMock):
+def test_publish_streaming_response_does_not_publish_synthetic_failure_after_terminal_event(
+    mock_topic: MagicMock,
+) -> None:
     response_stream = iter(
         [
             {
@@ -806,7 +818,7 @@ def test_app_runner_streaming_failure_publishes_started_then_failed_workflow_fin
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     exec_params = AppExecutionParams(
         app_id="app-id",
         workflow_id="workflow-id",
@@ -861,7 +873,7 @@ def test_app_runner_streaming_failure_publishes_started_then_failed_workflow_fin
 def test_app_runner_resolves_account_without_switching_tenant(
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     account_id = str(uuid.uuid4())
     exec_params = AppExecutionParams(
         app_id="app-id",
@@ -887,11 +899,12 @@ def test_app_runner_resolves_account_without_switching_tenant(
 
     resolved_user = runner._resolve_user()
 
+    assert isinstance(resolved_user, Account)
     assert resolved_user.id == account_id
     assert resolved_user.current_tenant is None
 
 
-def test_resolve_account_for_run_without_switching_tenant(sqlite_session: Session):
+def test_resolve_account_for_run_without_switching_tenant(sqlite_session: Session) -> None:
     account_id = str(uuid.uuid4())
     account = Account(name="Run Account", email="run@example.com")
     account.id = account_id
@@ -910,7 +923,7 @@ def test_app_runner_streaming_failure_keeps_existing_pre_runtime_helper_behavior
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     exec_params = AppExecutionParams(
         app_id="app-id",
         workflow_id="workflow-id",
@@ -949,7 +962,7 @@ def test_app_runner_streaming_success_calls_publish_streaming_response_with_full
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     exec_params = AppExecutionParams(
         app_id="app-id",
         workflow_id="workflow-id",
@@ -995,7 +1008,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     workflow_run_id = "run-id"
     conversation_id = "conversation-id"
     _persist_resumption_models(
@@ -1073,7 +1086,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     workflow_run_id = "run-id"
     _persist_resumption_models(sqlite_session_factory, workflow_run_id=workflow_run_id)
 
@@ -1119,7 +1132,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     """A resumed run reuses the paused task ID, so it must not inherit its cancellation signals.
 
     Regression test for #40878: a stop flag or queued AbortCommand left over from
@@ -1177,7 +1190,7 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     """No attempt is starting, so nothing may clear the signals guarding this task."""
     workflow_run_id = "run-id"
     _persist_resumption_models(sqlite_session_factory, workflow_run_id=workflow_run_id)
@@ -1404,7 +1417,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     generate_entity = _build_advanced_chat_generate_entity(conversation_id="conversation-id")
     generate_entity.stream = False
     workflow = _make_workflow()
@@ -1462,7 +1475,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     generate_entity = _build_workflow_generate_entity(stream=False)
     workflow = _make_workflow()
 
@@ -1528,7 +1541,7 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     knowledge_retrieval: KnowledgeRetriever,
-):
+) -> None:
     generate_entity = _build_workflow_generate_entity(stream=False)
     workflow = _make_workflow()
 

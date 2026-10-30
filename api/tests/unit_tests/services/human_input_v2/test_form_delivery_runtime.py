@@ -36,11 +36,12 @@ from core.workflow.nodes.human_input_v2.entities import (
 )
 from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, convert_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
+from core.workflow.node_runtime import build_knowledge_index_files
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
-from models import CreatorUserRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.human_input_v2 import (
@@ -63,6 +64,7 @@ from models.human_input_v2 import (
     RecipientSubjectType,
 )
 from models.model import EndUser
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun, WorkflowType
 from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot, SubmissionAuthType
 from repositories.human_input_v2.email_channel.entities import ResendCandidate, ResendCredentials
@@ -258,6 +260,8 @@ def test_factory_runs_v2_and_reuses_persisted_approval(
             call_depth=0,
         ),
         RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0),
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     node_data = _node(Initiator()).model_dump(mode="json")
     if selected is not None:
@@ -3091,7 +3095,12 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     ]
     if include_initiator:
         recipients[0] = Initiator()
-    approval = DifyNodeFactory(params, state).create_node(
+    approval = DifyNodeFactory(
+        params,
+        state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
+    ).create_node(
         {"id": "approval", "data": _node(*recipients).model_dump(mode="json")}
     )
     start = StartNode(

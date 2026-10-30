@@ -9,13 +9,6 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from tests.unit_tests.model_factories import (
-    make_account,
-    make_app,
-    make_conversation,
-    make_message,
-    make_upload_file,
-)
 
 from enums.creator import CreatorUserRole
 from graphon.file import FileTransferMethod, FileType
@@ -28,6 +21,13 @@ from repositories.file.upload_file_repository import (
 )
 from services.errors.file import UploadFileReferenceNotFoundError
 from services.file_adapters import build_upload_file_reclaimer
+from tests.helpers.unit.model_factories import (
+    make_account,
+    make_app,
+    make_conversation,
+    make_message,
+    make_upload_file,
+)
 
 
 def _sessions(session: Session) -> sessionmaker[Session]:

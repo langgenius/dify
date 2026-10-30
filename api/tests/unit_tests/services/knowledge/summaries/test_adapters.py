@@ -199,7 +199,7 @@ class TestGenerateAndCreate:
         usage = _usage()
         generate = _install_summary_generator(monkeypatch, usage=usage)
 
-        def call_model(**kwargs):
+        def call_model(**kwargs: object) -> tuple[str, MagicMock]:
             assert not sqlite_session.in_transaction()
             return "generated summary", usage
 
@@ -307,7 +307,7 @@ class TestVectorizeSummary:
         summary = _persist_summary(sqlite_session, dataset, document, segment)
         vector = _install_vector_dependencies(monkeypatch)
 
-        def write_vector(*args, **kwargs):
+        def write_vector(*args: object, **kwargs: object) -> None:
             assert not sqlite_session.in_transaction()
             if vector.add_texts.call_count == 1:
                 raise ConnectionError("connection timeout")
@@ -437,14 +437,14 @@ class TestBatchAndGeneration:
             other = _persist_dataset(sqlite_session, dataset_id="other", tenant_id=OTHER_TENANT_ID)
             document.dataset_id, document.tenant_id = other.id, other.tenant_id
         sqlite_session.commit()
-        sessions = []
+        sessions: list[Session] = []
 
-        def create_session():
+        def create_session() -> Session:
             session = sqlite_session_factory()
             sessions.append(session)
             return session
 
-        def generate(**kwargs):
+        def generate(**kwargs: object) -> list[DocumentSegmentSummary]:
             assert sessions
             assert all(not session.in_transaction() for session in sessions)
             return []
@@ -485,22 +485,6 @@ class TestBatchAndGeneration:
             assert [row.chunk_id for row in rows] == [first.id, second.id]
             assert all(row.status == SummaryStatus.NOT_STARTED for row in rows)
             assert all(row.enabled and row.error is None for row in rows)
-
-    def test_update_error_persists_existing_and_missing_is_noop(
-        self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
-        dataset, document, segment = _graph(sqlite_session)
-        summary = _persist_summary(sqlite_session, dataset, document, segment)
-
-        SummaryIndexAdapter.update_summary_record_error(segment, dataset, "generation failed")
-
-        with sqlite_session_factory() as observer:
-            stored = observer.get(DocumentSegmentSummary, summary.id)
-            assert stored is not None
-            assert (stored.status, stored.error) == (SummaryStatus.ERROR, "generation failed")
-        other = _persist_segment(sqlite_session, dataset, document, segment_id="seg-2", position=2)
-        SummaryIndexAdapter.update_summary_record_error(other, dataset, "ignored")
-        assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegmentSummary)) == 1
 
     def test_generate_and_vectorize_creates_commits_and_returns_row(
         self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch

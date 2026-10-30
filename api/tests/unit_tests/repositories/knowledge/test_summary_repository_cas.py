@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
-from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SummaryStatus
 from repositories.knowledge.summary_repository import SQLAlchemySummaryRepository
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
@@ -92,7 +92,7 @@ def _seed_summary(factory: sessionmaker[Session]) -> SummaryVectorInput:
             name="Document",
             created_from=DocumentCreatedFrom.WEB,
             created_by="account-1",
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,

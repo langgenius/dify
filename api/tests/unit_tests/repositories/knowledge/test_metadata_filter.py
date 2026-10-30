@@ -8,9 +8,10 @@ from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.dataset import Document
+from models.enums import IndexingStatus
 from repositories.knowledge.metadata_filter import process_metadata_filter_func, query_metadata_filter_document_ids
 from services.knowledge.entities.metadata import Condition
-from tests.unit_tests.model_factories import make_dataset, make_document
+from tests.helpers.unit.model_factories import make_dataset, make_document
 
 TENANT_ID = "tenant-1"
 DATASET_ID = "dataset-1"
@@ -42,7 +43,7 @@ def test_sqlite_numeric_filter_only_compares_json_numbers(
             )
             document.enabled = True
             document.archived = False
-            document.indexing_status = "completed"
+            document.indexing_status = IndexingStatus.COMPLETED
             session.add(document)
 
     with sqlite_session_factory() as session:

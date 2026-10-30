@@ -36,7 +36,7 @@ from services.human_input_file_upload_service import (
     InvalidUploadTokenError,
 )
 from services.remote_file_service import RemoteFileService
-from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_upload_file
 
 
 class _RecordingFiles(FileService):

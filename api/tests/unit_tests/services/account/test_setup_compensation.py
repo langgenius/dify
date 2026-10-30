@@ -15,7 +15,7 @@ from services.account.service import AccountSetupProvisioner
 from services.entities.account_entities import AccountSnapshot
 from services.workspace.contracts import CreatedWorkspace, WorkspaceCreation
 from services.workspace.gateways import WorkspaceProvisioningEffectsGateway
-from tests.unit_tests.account_domain import AccountDomain
+from tests.helpers.unit.account_domain import AccountDomain
 
 
 class _UnexpectedTelemetry:

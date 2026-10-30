@@ -285,7 +285,7 @@ def _tokens_for_cleanup(*, tenant_id: str) -> Select[tuple[ApiToken]]:
     )
 
 
-def _bindings_for_current_scope(locked_key_ids: tuple[str, ...]) -> Select[tuple[str, str]]:
+def _bindings_for_current_scope(locked_key_ids: tuple[str, ...]) -> Select[tuple[str, str | None]]:
     return (
         select(DatasetApiTokenBinding.api_token_id, DatasetApiTokenBinding.dataset_id)
         .where(DatasetApiTokenBinding.api_token_id.in_(locked_key_ids))

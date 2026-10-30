@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from models.model import App, IconType
 from repositories.app.console_repository import ConsoleAppRepository
 from services.errors.file import UploadFileReferenceNotFoundError
-from tests.unit_tests.model_factories import make_app, make_upload_file
+from tests.helpers.unit.model_factories import make_app, make_upload_file
 
 
 def test_update_icon_validates_new_image_in_owner_transaction(sqlite_session: Session) -> None:

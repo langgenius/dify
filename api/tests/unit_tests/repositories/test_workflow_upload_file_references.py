@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from core.workflow.file_reference import build_file_reference
 from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.errors.file import UploadFileReferenceNotFoundError
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _local_file(file_id: str) -> dict[str, str]:

@@ -207,20 +207,23 @@ def _run_website_document_sync(
                 )
             except Exception as error:
                 session.rollback()
-                document = _lock_document(session, document_ref)
+                locked_document = _lock_document(session, document_ref)
                 sync_lease.assert_owned()
                 indexing_lease.assert_owned()
-                if document is not None and document.indexing_status in _SYNC_ACTIVE_STATUSES:
+                if locked_document is not None and locked_document.indexing_status in _SYNC_ACTIVE_STATUSES:
                     # Only a not-yet-started sync can retain its previously
                     # published index. Later phases may already have removed it.
-                    if document.indexing_status == IndexingStatus.WAITING and document.completed_at is not None:
-                        document.indexing_status = IndexingStatus.COMPLETED
-                        document.error = None
+                    if (
+                        locked_document.indexing_status == IndexingStatus.WAITING
+                        and locked_document.completed_at is not None
+                    ):
+                        locked_document.indexing_status = IndexingStatus.COMPLETED
+                        locked_document.error = None
                     else:
-                        document.indexing_status = IndexingStatus.ERROR
-                        document.error = f"Website source is not executable: {error}"
-                        document.stopped_at = naive_utc_now()
-                    session.add(document)
+                        locked_document.indexing_status = IndexingStatus.ERROR
+                        locked_document.error = f"Website source is not executable: {error}"
+                        locked_document.stopped_at = naive_utc_now()
+                    session.add(locked_document)
                     sync_lease.assert_owned()
                     indexing_lease.assert_owned()
                     session.commit()
@@ -242,15 +245,15 @@ def _run_website_document_sync(
                     )
             except Exception as e:
                 session.rollback()
-                document = _lock_document(session, document_ref)
+                locked_document = _lock_document(session, document_ref)
                 sync_lease.assert_owned()
                 indexing_lease.assert_owned()
-                if document is None or document.indexing_status not in _SYNC_ACTIVE_STATUSES:
+                if locked_document is None or locked_document.indexing_status not in _SYNC_ACTIVE_STATUSES:
                     return
-                document.indexing_status = IndexingStatus.ERROR
-                document.error = str(e)
-                document.stopped_at = naive_utc_now()
-                session.add(document)
+                locked_document.indexing_status = IndexingStatus.ERROR
+                locked_document.error = str(e)
+                locked_document.stopped_at = naive_utc_now()
+                session.add(locked_document)
                 sync_lease.assert_owned()
                 indexing_lease.assert_owned()
                 session.commit()
@@ -305,9 +308,14 @@ def _run_website_document_sync(
             indexing_lease.assert_owned()
             session.commit()
 
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
-            session.add(document)
+            active_document = _lock_document(session, document_ref)
+            sync_lease.assert_owned()
+            indexing_lease.assert_owned()
+            if active_document is None or active_document.indexing_status not in _SYNC_ACTIVE_STATUSES:
+                return
+            active_document.indexing_status = IndexingStatus.PARSING
+            active_document.processing_started_at = naive_utc_now()
+            session.add(active_document)
             # Release document/segment locks before extraction starts.
             sync_lease.assert_owned()
             indexing_lease.assert_owned()
@@ -321,14 +329,14 @@ def _run_website_document_sync(
             session.rollback()
             # A replacement owner may already be processing a newer WAITING
             # generation. Never use this worker's stale ORM state after loss.
-            document = _lock_document(session, document_ref)
+            locked_document = _lock_document(session, document_ref)
             sync_lease.assert_owned()
             indexing_lease.assert_owned()
-            if document and document.indexing_status in _SYNC_ACTIVE_STATUSES:
-                document.indexing_status = IndexingStatus.ERROR
-                document.error = str(ex)
-                document.stopped_at = naive_utc_now()
-                session.add(document)
+            if locked_document and locked_document.indexing_status in _SYNC_ACTIVE_STATUSES:
+                locked_document.indexing_status = IndexingStatus.ERROR
+                locked_document.error = str(ex)
+                locked_document.stopped_at = naive_utc_now()
+                session.add(locked_document)
                 sync_lease.assert_owned()
                 indexing_lease.assert_owned()
                 session.commit()

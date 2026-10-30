@@ -16,7 +16,7 @@ from core.rag.models.document import Document as RagDocument
 from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
-from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from repositories.knowledge.retrieval_source_repository import expand_attachment_document_filter
 from services.knowledge.retrieval import finalization as retrieval_finalization
@@ -39,7 +39,7 @@ def graph(sqlite_session: Session) -> tuple[Dataset, Document, DocumentSegment, 
         created_by="admin",
         doc_form=IndexStructureType("text_model"),
         doc_metadata={},
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
     )
     segment = DocumentSegment(
         tenant_id=dataset.tenant_id,
@@ -400,8 +400,8 @@ def test_shared_attachment_hit_expands_only_current_source_dataset_bindings(
         name="Current owner",
         created_from=DocumentCreatedFrom.WEB,
         created_by="admin",
-        doc_form="text_model",
-        indexing_status="completed",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        indexing_status=IndexingStatus.COMPLETED,
     )
     current_segment = DocumentSegment(
         tenant_id=dataset.tenant_id,
@@ -427,8 +427,8 @@ def test_shared_attachment_hit_expands_only_current_source_dataset_bindings(
         name="Other route owner",
         created_from=DocumentCreatedFrom.WEB,
         created_by="admin",
-        doc_form="text_model",
-        indexing_status="completed",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        indexing_status=IndexingStatus.COMPLETED,
     )
     other_segment = DocumentSegment(
         tenant_id=dataset.tenant_id,
@@ -626,7 +626,7 @@ def test_invalid_segment_owner_chain_grants_no_access(
     elif broken_owner == "document":
         segment.document_id = str(uuid4())
     elif broken_owner == "document_status":
-        document.indexing_status = "error"
+        document.indexing_status = IndexingStatus.ERROR
     elif broken_owner == "segment_status":
         segment.status = SegmentStatus.ERROR
     elif broken_owner == "disabled":

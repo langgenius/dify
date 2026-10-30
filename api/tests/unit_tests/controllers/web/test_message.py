@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import inspect
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Literal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload
+from controllers.common.errors import NotFoundError
 from controllers.web import message as message_module
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -24,25 +25,94 @@ from controllers.web.message import (
     MessageMoreLikeThisQuery,
     MessageSuggestedQuestionApi,
 )
+from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
-from services.app_generate_service import AppGenerateService
+from services.entities.message_entities import MessageActor
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
-from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
-from tests.unit_tests.model_factories import make_end_user
+from services.message_more_like_this_service import MoreLikeThisResponse
+from tests.helpers.unit.model_factories import make_end_user
+
+
+@dataclass
+class _MessageFeedbacksFake:
+    error: Exception | None = None
+    calls: list[str] = field(default_factory=list)
+
+    def set_feedback(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        actor: MessageActor,
+        message_id: str,
+        rating: FeedbackRating | None,
+        content: str | None,
+    ) -> None:
+        self.calls.append(message_id)
+        if self.error is not None:
+            raise self.error
+
+
+@dataclass
+class _MessageMoreLikeThisFake:
+    response: MoreLikeThisResponse = field(default_factory=lambda: {"answer": "similar"})
+    error: Exception | None = None
+    calls: list[str] = field(default_factory=list)
+
+    def generate(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        actor: MessageActor,
+        message_id: str,
+        streaming: bool,
+    ) -> MoreLikeThisResponse:
+        self.calls.append(message_id)
+        if self.error is not None:
+            raise self.error
+        return self.response
+
+
+@dataclass
+class _MessageSuggestedQuestionsFake:
+    response: list[str] = field(default_factory=list)
+    error: Exception | None = None
+    calls: list[str] = field(default_factory=list)
+
+    def get_suggested_questions(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        expected_app_mode: str,
+        actor: MessageActor,
+        invoke_from: Literal["explore", "debugger", "web-app", "service-api"],
+        message_id: str,
+    ) -> list[str]:
+        self.calls.append(message_id)
+        if self.error is not None:
+            raise self.error
+        return self.response
 
 
 @dataclass(frozen=True, slots=True)
 class _ApplicationServicesStub:
-    app_generation: AppGenerateService
+    message_feedbacks: _MessageFeedbacksFake
+    message_more_like_this: _MessageMoreLikeThisFake
+    message_suggested_questions: _MessageSuggestedQuestionsFake
 
 
 @pytest.fixture(autouse=True)
-def app_generation(monkeypatch: pytest.MonkeyPatch) -> AppGenerateService:
-    service = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
-    services = _ApplicationServicesStub(app_generation=service)
+def message_services(monkeypatch: pytest.MonkeyPatch) -> _ApplicationServicesStub:
+    services = _ApplicationServicesStub(
+        message_feedbacks=_MessageFeedbacksFake(),
+        message_more_like_this=_MessageMoreLikeThisFake(),
+        message_suggested_questions=_MessageSuggestedQuestionsFake(),
+    )
     monkeypatch.setattr(message_module, "application_services", lambda: services)
-    return service
+    return services
 
 
 def _chat_app() -> App:
@@ -68,8 +138,7 @@ _more_like_this_get = inspect.unwrap(MessageMoreLikeThisApi.get)
 # MessageFeedbackApi
 # ---------------------------------------------------------------------------
 class TestMessageFeedbackApi:
-    @patch("controllers.web.message.MessageService.create_feedback")
-    def test_feedback_success(self, mock_create: MagicMock, app: Flask) -> None:
+    def test_feedback_success(self, message_services: _ApplicationServicesStub, app: Flask) -> None:
         payload = MessageFeedbackPayload.model_validate({"rating": "like", "content": "great"})
         msg_id = uuid4()
 
@@ -77,10 +146,9 @@ class TestMessageFeedbackApi:
             result = _feedback_post(MessageFeedbackApi(), payload, _chat_app(), _end_user(), msg_id)
 
         assert result == {"result": "success"}
-        mock_create.assert_called_once()
+        assert message_services.message_feedbacks.calls == [str(msg_id)]
 
-    @patch("controllers.web.message.MessageService.create_feedback")
-    def test_feedback_null_rating(self, mock_create: MagicMock, app: Flask) -> None:
+    def test_feedback_null_rating(self, app: Flask) -> None:
         payload = MessageFeedbackPayload.model_validate({"rating": None})
         msg_id = uuid4()
 
@@ -89,16 +157,13 @@ class TestMessageFeedbackApi:
 
         assert result == {"result": "success"}
 
-    @patch(
-        "controllers.web.message.MessageService.create_feedback",
-        side_effect=MessageNotExistsError(),
-    )
-    def test_feedback_message_not_found(self, mock_create: MagicMock, app: Flask) -> None:
+    def test_feedback_message_not_found(self, message_services: _ApplicationServicesStub, app: Flask) -> None:
         payload = MessageFeedbackPayload.model_validate({"rating": "dislike"})
         msg_id = uuid4()
+        message_services.message_feedbacks.error = MessageNotExistsError()
 
         with app.test_request_context(f"/messages/{msg_id}/feedbacks", method="POST"):
-            with pytest.raises(NotFound, match="Message Not Exists"):
+            with pytest.raises(NotFoundError, match="Message Not Exists"):
                 _feedback_post(MessageFeedbackApi(), payload, _chat_app(), _end_user(), msg_id)
 
 
@@ -109,55 +174,41 @@ class TestMessageMoreLikeThisApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
         msg_id = uuid4()
         query = MessageMoreLikeThisQuery.model_validate({"response_mode": "blocking"})
-        session = MagicMock()
         with app.test_request_context(f"/messages/{msg_id}/more-like-this?response_mode=blocking"):
             with pytest.raises(NotCompletionAppError):
-                _more_like_this_get(MessageMoreLikeThisApi(), query, session, _chat_app(), _end_user(), msg_id)
+                _more_like_this_get(MessageMoreLikeThisApi(), query, _chat_app(), _end_user(), msg_id)
 
     @patch("controllers.web.message.helper.compact_generate_response", return_value={"answer": "similar"})
-    @patch("services.app_generate_service.AppGenerateService.generate_more_like_this")
     def test_happy_path(
         self,
-        mock_gen: MagicMock,
         mock_compact: MagicMock,
+        message_services: _ApplicationServicesStub,
         app: Flask,
     ) -> None:
         msg_id = uuid4()
-        mock_gen.return_value = "response"
         query = MessageMoreLikeThisQuery.model_validate({"response_mode": "blocking"})
-        session = MagicMock()
 
         with app.test_request_context(f"/messages/{msg_id}/more-like-this?response_mode=blocking"):
-            result = _more_like_this_get(
-                MessageMoreLikeThisApi(), query, session, _completion_app(), _end_user(), msg_id
-            )
+            result = _more_like_this_get(MessageMoreLikeThisApi(), query, _completion_app(), _end_user(), msg_id)
 
         assert result == {"answer": "similar"}
-        assert "external_retrieval" not in mock_gen.call_args.kwargs
+        assert message_services.message_more_like_this.calls == [str(msg_id)]
 
-    @patch(
-        "services.app_generate_service.AppGenerateService.generate_more_like_this",
-        side_effect=MessageNotExistsError(),
-    )
-    def test_message_not_found(self, mock_gen: MagicMock, app: Flask) -> None:
+    def test_message_not_found(self, message_services: _ApplicationServicesStub, app: Flask) -> None:
         msg_id = uuid4()
         query = MessageMoreLikeThisQuery.model_validate({"response_mode": "blocking"})
-        session = MagicMock()
+        message_services.message_more_like_this.error = MessageNotExistsError()
         with app.test_request_context(f"/messages/{msg_id}/more-like-this?response_mode=blocking"):
-            with pytest.raises(NotFound, match="Message Not Exists"):
-                _more_like_this_get(MessageMoreLikeThisApi(), query, session, _completion_app(), _end_user(), msg_id)
+            with pytest.raises(NotFoundError, match="Message Not Exists"):
+                _more_like_this_get(MessageMoreLikeThisApi(), query, _completion_app(), _end_user(), msg_id)
 
-    @patch(
-        "services.app_generate_service.AppGenerateService.generate_more_like_this",
-        side_effect=MoreLikeThisDisabledError(),
-    )
-    def test_feature_disabled(self, mock_gen: MagicMock, app: Flask) -> None:
+    def test_feature_disabled(self, message_services: _ApplicationServicesStub, app: Flask) -> None:
         msg_id = uuid4()
         query = MessageMoreLikeThisQuery.model_validate({"response_mode": "blocking"})
-        session = MagicMock()
+        message_services.message_more_like_this.error = MoreLikeThisDisabledError()
         with app.test_request_context(f"/messages/{msg_id}/more-like-this?response_mode=blocking"):
             with pytest.raises(AppMoreLikeThisDisabledError):
-                _more_like_this_get(MessageMoreLikeThisApi(), query, session, _completion_app(), _end_user(), msg_id)
+                _more_like_this_get(MessageMoreLikeThisApi(), query, _completion_app(), _end_user(), msg_id)
 
 
 # ---------------------------------------------------------------------------
@@ -170,22 +221,18 @@ class TestMessageSuggestedQuestionApi:
             with pytest.raises(NotChatAppError):
                 MessageSuggestedQuestionApi().get(_completion_app(), _end_user(), msg_id)
 
-    @patch("controllers.web.message.MessageService.get_suggested_questions_after_answer")
-    def test_happy_path(self, mock_suggest: MagicMock, app: Flask) -> None:
+    def test_happy_path(self, message_services: _ApplicationServicesStub, app: Flask) -> None:
         msg_id = uuid4()
-        mock_suggest.return_value = ["What about X?", "Tell me more about Y."]
+        message_services.message_suggested_questions.response = ["What about X?", "Tell me more about Y."]
 
         with app.test_request_context(f"/messages/{msg_id}/suggested-questions"):
             result = MessageSuggestedQuestionApi().get(_chat_app(), _end_user(), msg_id)
 
         assert result["data"] == ["What about X?", "Tell me more about Y."]
 
-    @patch(
-        "controllers.web.message.MessageService.get_suggested_questions_after_answer",
-        side_effect=MessageNotExistsError(),
-    )
-    def test_message_not_found(self, mock_suggest: MagicMock, app: Flask) -> None:
+    def test_message_not_found(self, message_services: _ApplicationServicesStub, app: Flask) -> None:
         msg_id = uuid4()
+        message_services.message_suggested_questions.error = MessageNotExistsError()
         with app.test_request_context(f"/messages/{msg_id}/suggested-questions"):
-            with pytest.raises(NotFound, match="Message not found"):
+            with pytest.raises(NotFoundError, match="Message not found"):
                 MessageSuggestedQuestionApi().get(_chat_app(), _end_user(), msg_id)

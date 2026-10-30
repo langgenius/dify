@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.dataset import Document, build_built_in_field_values
-from models.enums import DataSourceType
+from models.enums import DataSourceType, DocumentCreatedFrom
 from repositories.knowledge import document_repository
 from repositories.knowledge.document_repository import build_document
 from repositories.knowledge.metadata_filter import process_metadata_filter_func
-from tests.unit_tests.model_factories import make_account, make_dataset, make_document
+from tests.helpers.unit.model_factories import make_account, make_dataset, make_document
 
 CREATED_AT = datetime(2026, 10, 16, 8, 0, 0)
 CREATED_AT_EPOCH = 1792137600
@@ -88,7 +88,7 @@ def test_build_document_writes_built_in_fields_in_shared_format(
         document_form="text_model",
         document_language="English",
         data_source_info={},
-        created_from="web",
+        created_from=DocumentCreatedFrom.WEB,
         position=1,
         account=make_account(name="Alice"),
         name="doc.txt",
@@ -114,7 +114,7 @@ def test_build_document_skips_built_in_fields_when_disabled() -> None:
         document_form="text_model",
         document_language="English",
         data_source_info={},
-        created_from="web",
+        created_from=DocumentCreatedFrom.WEB,
         position=1,
         account=make_account(name="Alice"),
         name="doc.txt",

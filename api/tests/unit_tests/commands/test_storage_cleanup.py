@@ -17,7 +17,7 @@ from models.model import UploadFile
 from models.skill import AgentSkillBinding, Skill, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from models.workflow import Workflow, WorkflowNodeExecutionOffload, WorkflowType
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 @dataclass

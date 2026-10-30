@@ -23,7 +23,7 @@ from services.entities.account_login_entities import (
     AccountSessionPreparation,
     PasswordLoginCompletion,
 )
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _persist_account(session: Session) -> Account:

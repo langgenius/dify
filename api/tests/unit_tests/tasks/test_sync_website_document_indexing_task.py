@@ -175,6 +175,10 @@ class _WebsiteResumeBackend:
             [str(chunk.metadata["doc_id"]) for chunk in chunks],
         )
 
+    @staticmethod
+    def discard(document: IndexingDocument, chunks: list[IndexDocument]) -> None:
+        del document, chunks
+
 
 def _dataset(tenant_id: str) -> Dataset:
     return make_dataset(
@@ -286,7 +290,7 @@ def test_source_identity_failure_preserves_published_index_and_completed_state(s
     tenant_id = str(uuid.uuid4())
     dataset = _dataset(tenant_id)
     document = _document(dataset)
-    document.indexing_status = "waiting"
+    document.indexing_status = IndexingStatus.WAITING
     document.completed_at = naive_utc_now()
     segment = _segment(tenant_id=tenant_id, dataset_id=dataset.id, document_id=document.id)
     segment.index_node_id = "published-node"
@@ -328,7 +332,7 @@ def test_source_identity_failure_does_not_mark_never_completed_document_successf
     tenant_id = str(uuid.uuid4())
     dataset = _dataset(tenant_id)
     document = _document(dataset)
-    document.indexing_status = "waiting"
+    document.indexing_status = IndexingStatus.WAITING
     document.completed_at = None
     segment = _segment(tenant_id=tenant_id, dataset_id=dataset.id, document_id=document.id)
     sqlite_session.add_all([dataset, document, segment])
@@ -413,11 +417,14 @@ def test_lost_lease_after_parsing_commit_retries_the_same_message(sqlite_session
 @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 @pytest.mark.parametrize(
     ("status", "resume_method"),
-    [("splitting", "run_in_splitting_status"), ("indexing", "run_in_indexing_status")],
+    [
+        (IndexingStatus.SPLITTING, "run_in_splitting_status"),
+        (IndexingStatus.INDEXING, "run_in_indexing_status"),
+    ],
 )
 def test_redelivery_resumes_the_persisted_indexing_phase(
     sqlite_session: Session,
-    status: str,
+    status: IndexingStatus,
     resume_method: str,
 ) -> None:
     tenant_id = str(uuid.uuid4())
@@ -639,7 +646,7 @@ def test_completed_document_drops_stale_message_before_redis_claim(sqlite_sessio
     tenant_id = str(uuid.uuid4())
     dataset = _dataset(tenant_id)
     document = _document(dataset)
-    document.indexing_status = "completed"
+    document.indexing_status = IndexingStatus.COMPLETED
     sqlite_session.add_all([dataset, document])
     sqlite_session.commit()
 

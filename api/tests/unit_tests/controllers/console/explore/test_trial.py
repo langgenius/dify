@@ -33,7 +33,7 @@ import controllers.console.remote_files as remote_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
 import services.app_service as app_module
-import services.file_service as file_module
+import services.file_adapters as file_adapters_module
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.common.errors import UnauthorizedError
 from controllers.console import api as console_api
@@ -1164,6 +1164,8 @@ class TestTrialFileUploadCases:
             sessions.append(session)
 
         io = _TrialFileUploadExternalio(sessions)
+        monkeypatch.setattr(file_adapters_module.storage, "save", io.save)
+        monkeypatch.setattr(file_adapters_module, "naive_utc_now", lambda: _TRIAL_FILE_UPLOAD_CREATED_AT)
         files = build_file_service(session_factory=sqlite_session_factory)
         services = _TrialFileUploadApplicationservices(
             trial_apps=_TrialFileUploadTrialappservices(
@@ -1187,8 +1189,6 @@ class TestTrialFileUploadCases:
         monkeypatch.setattr(console_wraps, "_is_setup_completed", setup_completed)
         monkeypatch.setattr(login_module, "current_user", account)
         monkeypatch.setattr(login_module, "check_csrf_token", csrf)
-        monkeypatch.setattr(file_module.storage, "save", io.save)
-        monkeypatch.setattr(file_module, "naive_utc_now", lambda: _TRIAL_FILE_UPLOAD_CREATED_AT)
         monkeypatch.setattr(remote_fetcher, "make_request", io.request)
 
         app = Flask(__name__)

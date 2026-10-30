@@ -29,7 +29,14 @@ from models.dataset import (
     Pipeline,
     build_built_in_field_values,
 )
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
+from models.enums import (
+    DataSourceType,
+    DocumentCreatedFrom,
+    DocumentDocType,
+    IndexingStatus,
+    ProcessRuleMode,
+    SegmentStatus,
+)
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from repositories.file.upload_file_repository import (
@@ -310,12 +317,12 @@ def build_document(
     document_form: str,
     document_language: str,
     data_source_info: dict[str, object],
-    created_from: str,
+    created_from: DocumentCreatedFrom,
     position: int,
     account: Account,
     name: str,
     batch: str,
-):
+) -> Document:
     # Set need_summary based on dataset's summary_index_setting
     need_summary = False
     if dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True:
@@ -325,14 +332,14 @@ def build_document(
         tenant_id=dataset.tenant_id,
         dataset_id=dataset.id,
         position=position,
-        data_source_type=data_source_type,
+        data_source_type=DataSourceType(data_source_type),
         data_source_info=json.dumps(data_source_info),
         dataset_process_rule_id=process_rule_id,
         batch=batch,
         name=name,
         created_from=created_from,
         created_by=account.id,
-        doc_form=document_form,
+        doc_form=IndexStructureType(document_form),
         doc_language=document_language,
         need_summary=need_summary,
     )
@@ -353,7 +360,7 @@ def update_prepared_document(
     document_data: DocumentWriteConfig,
     account: Account,
     dataset_process_rule: DatasetProcessRule | None = None,
-    created_from: str = DocumentCreatedFrom.WEB,
+    created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
     *,
     session: Session,
 ):
@@ -437,7 +444,7 @@ def update_prepared_document(
                 for url in website_info.urls:
                     source_projection = build_website_document_source(website_info, url)
         if source_projection is not None:
-            document.data_source_type = source_projection.data_source_type
+            document.data_source_type = DataSourceType(source_projection.data_source_type)
             document.data_source_info = json.dumps(source_projection.data_source_info)
             document.name = source_projection.name
 
@@ -477,7 +484,7 @@ def save_prepared_documents(
     knowledge_config: DocumentWriteConfig,
     account: Account,
     dataset_process_rule: DatasetProcessRule | None = None,
-    created_from: str = DocumentCreatedFrom.WEB,
+    created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
     *,
     session: Session,
 ) -> tuple[list[Document], str, DocumentIndexingJobs]:
@@ -680,7 +687,7 @@ def save_prepared_documents(
             )
             if documents:
                 for document in documents:
-                    data_source_info = json.loads(document.data_source_info)
+                    data_source_info = document.data_source_info_dict
                     exist_page_ids.append(data_source_info["notion_page_id"])
                     exist_document[data_source_info["notion_page_id"]] = document.id
             for notion_info in notion_info_list:
@@ -1028,11 +1035,13 @@ class SQLAlchemyDocumentRepository:
             custom_values = {field.name: current[field.name] for _binding, field in bound if field.name in current}
             values = dict(doc_metadata)
             for field in BuiltInField:
-                values.pop(field, None)
+                values.pop(field.value, None)
             if dataset.built_in_field_enabled:
-                values.update({field: current[field] for field in BuiltInField if field in current})
+                values.update(
+                    {field.value: current[field.value] for field in BuiltInField if field.value in current}
+                )
             values.update(custom_values)
-            document.doc_type = doc_type
+            document.doc_type = DocumentDocType(doc_type)
             document.doc_metadata = values
             document.updated_at = updated_at
 
@@ -1045,7 +1054,10 @@ class SQLAlchemyDocumentRepository:
             if document is None:
                 raise DocumentPersistenceNotFoundError("Document not found.")
             if dataset.built_in_field_enabled:
-                document.doc_metadata = {**(document.doc_metadata or {}), BuiltInField.document_name: name}
+                document.doc_metadata = {
+                    **(document.doc_metadata or {}),
+                    BuiltInField.document_name.value: name,
+                }
             document.name = name
             file_id = document.data_source_info_dict.get("upload_file_id")
             if isinstance(file_id, str):

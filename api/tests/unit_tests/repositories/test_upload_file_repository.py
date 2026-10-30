@@ -11,7 +11,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.file_reference import build_file_reference
 from enums.creator import CreatorUserRole
@@ -42,7 +42,7 @@ from repositories.workflow.upload_file_references import get_referenced_upload_f
 from services.entities.upload_file import UploadFileReferenceCandidate
 from services.errors.file import UploadFileReferenceNotFoundError
 from services.file_adapters import build_upload_file_reclaimer
-from tests.unit_tests.model_factories import make_app, make_upload_file
+from tests.helpers.unit.model_factories import make_app, make_upload_file
 
 
 def _workflow_execution(*, inputs: str = "{}") -> WorkflowNodeExecutionModel:
@@ -85,6 +85,7 @@ def _serialized_pause_state(reference: str) -> bytes:
                 inputs={},
                 files=[],
                 user_id="account-1",
+                user_from=UserFrom.ACCOUNT,
                 stream=False,
                 invoke_from=InvokeFrom.DEBUGGER,
                 workflow_execution_id="run-1",

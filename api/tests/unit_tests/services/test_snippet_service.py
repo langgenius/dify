@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -49,13 +50,15 @@ def _snippet_service(session_factory: sessionmaker[Session]) -> SnippetService:
     )
 
 
-def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
+def _create_workflow(
+    *, workflow_id: str, version: str, graph: Mapping[str, object], features: Mapping[str, object]
+) -> Workflow:
     return Workflow(
         id=workflow_id,
         tenant_id="tenant-1",
         app_id="snippet-1",
-        type=WorkflowType.WORKFLOW.value,
-        kind=WorkflowKind.SNIPPET.value,
+        type=WorkflowType.WORKFLOW,
+        kind=WorkflowKind.SNIPPET,
         version=version,
         graph=json.dumps(graph),
         _features=json.dumps(features),
@@ -66,17 +69,16 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
     )
 
 
-def _snippet(**overrides) -> CustomizedSnippet:
-    values = {
-        "id": "snippet-1",
-        "tenant_id": "tenant-1",
-        "name": "Snippet",
-        "description": "",
-        "type": SnippetType.NODE,
-        "created_by": "account-1",
-    }
-    values.update(overrides)
-    return CustomizedSnippet(**values)
+def _snippet(*, workflow_id: str | None = None) -> CustomizedSnippet:
+    return CustomizedSnippet(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        name="Snippet",
+        description="",
+        type=SnippetType.NODE,
+        created_by="account-1",
+        workflow_id=workflow_id,
+    )
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -146,7 +148,7 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
-    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     get_target_ids = Mock(return_value=[])
     monkeypatch.setattr(application_tags, "find_target_ids", get_target_ids)
@@ -161,7 +163,7 @@ def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
 
 
 def test_get_snippets_applies_filters_and_paginates(
-    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     snippets = []
     for index in range(3):
@@ -240,7 +242,7 @@ def test_get_snippets_keyword_treats_like_wildcards_literally(
             )
         )
     sqlite_session.flush()
-    service = SnippetService(session=sqlite_session)
+    service = SnippetService.__new__(SnippetService)
 
     result, total, has_more = service.get_snippets(
         tenant_id="tenant-1", session=sqlite_session, keyword=keyword, tags=application_tags
@@ -323,6 +325,7 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
 
     assert workflow.app_id == snippet.id
     assert workflow.kind == WorkflowKind.SNIPPET
+    assert snippet.input_fields is not None
     assert json.loads(snippet.input_fields) == [{"variable": "query"}]
     sqlite_session.expire_all()
     stored_workflow = sqlite_session.scalar(select(Workflow).where(Workflow.id == workflow.id))
@@ -393,6 +396,7 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(
     assert result.updated_by == account.id
     assert result.environment_variables == []
     assert result.conversation_variables == []
+    assert snippet.input_fields is not None
     assert json.loads(snippet.input_fields) == [{"variable": "query"}]
     sqlite_session.expire_all()
     assert sqlite_session.get(Workflow, workflow.id) is not None

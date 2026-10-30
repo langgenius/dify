@@ -824,7 +824,10 @@ def build_application_services(
         ),
         message_more_like_this=MessageMoreLikeThisService(
             repository=messages,
-            generator=MessageMoreLikeThisGenerator(session_factory=database_client),
+            generator=MessageMoreLikeThisGenerator(
+                session_factory=database_client,
+                knowledge_retrieval=knowledge.retrieval,
+            ),
         ),
         message_suggested_questions=MessageSuggestedQuestionsService(
             queries=suggested_questions,

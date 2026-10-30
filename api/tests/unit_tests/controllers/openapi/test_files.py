@@ -23,7 +23,7 @@ from models import Account
 from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
-from tests.unit_tests.controllers.openapi.auth._world import account_subject, make_tenant
+from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_tenant
 
 
 def _caller() -> Account:

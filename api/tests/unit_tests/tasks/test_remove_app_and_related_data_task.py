@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import tasks.remove_app_and_related_data_task as remove_app_task_module
 from enums import DeploymentEdition
 from enums.creator import CreatorUserRole
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from libs.archive_storage import ArchiveStorageNotConfiguredError
@@ -31,6 +31,7 @@ from models.workflow import (
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
+    WorkflowType,
 )
 from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
@@ -454,7 +455,7 @@ def test_app_cleanup_retries_remaining_model_configs_after_a_real_delete_failure
 
 
 class TestDeleteDraftVariablesBatch:
-    def test_delete_draft_variables_batch_invalid_batch_size(self):
+    def test_delete_draft_variables_batch_invalid_batch_size(self) -> None:
         """Test that invalid batch size raises ValueError."""
         app_id = "test-app-id"
 
@@ -465,7 +466,7 @@ class TestDeleteDraftVariablesBatch:
             delete_draft_variables_batch(app_id, 0)
 
     @patch("tasks.remove_app_and_related_data_task.delete_draft_variables_batch")
-    def test_delete_draft_variables_calls_batch_function(self, mock_batch_delete):
+    def test_delete_draft_variables_calls_batch_function(self, mock_batch_delete: MagicMock) -> None:
         """Test that _delete_draft_variables calls the batch function correctly."""
         app_id = "test-app-id"
         expected_return = 42
@@ -656,8 +657,8 @@ class TestDeleteWorkflowArchiveLogs:
     @patch("tasks.remove_app_and_related_data_task._delete_records")
     @patch("tasks.remove_app_and_related_data_task.db")
     def test_delete_app_workflow_archive_logs_calls_delete_records(
-        self, mock_db, mock_delete_records, sqlite_session: Session
-    ):
+        self, mock_db: MagicMock, mock_delete_records: MagicMock, sqlite_session: Session
+    ) -> None:
         tenant_id = "tenant-1"
         app_id = "app-1"
 
@@ -704,7 +705,9 @@ class TestDeleteWorkflowArchiveLogs:
 class TestDeleteAppStars:
     @pytest.mark.parametrize("sqlite_session", [(AppStar,)], indirect=True)
     @patch("tasks.remove_app_and_related_data_task._delete_records")
-    def test_delete_app_stars_calls_delete_records(self, mock_delete_records, sqlite_session: Session):
+    def test_delete_app_stars_calls_delete_records(
+        self, mock_delete_records: MagicMock, sqlite_session: Session
+    ) -> None:
         tenant_id = "tenant-1"
         app_id = "app-1"
 
@@ -730,8 +733,8 @@ class TestDeleteAppStars:
 class TestDeleteArchivedWorkflowRunFiles:
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
     def test_delete_archived_workflow_run_files_not_configured(
-        self, mock_get_storage, caplog: pytest.LogCaptureFixture
-    ):
+        self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("missing config")
 
         with (
@@ -743,7 +746,9 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert caplog.text.count("Archive storage not configured") == 1
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_list_failure(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
+    def test_delete_archived_workflow_run_files_list_failure(
+        self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         storage = _ArchiveStorage(list_failure=Exception("list failed"))
         mock_get_storage.return_value = storage
 
@@ -758,7 +763,9 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert "Failed to list archive files for app app-1" in caplog.text
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_propagates_partial_delete_failure(self, mock_get_storage):
+    def test_delete_archived_workflow_run_files_propagates_partial_delete_failure(
+        self, mock_get_storage: MagicMock
+    ) -> None:
         storage = _ArchiveStorage(
             keys=["key-1", "key-2"],
             delete_failures=[None, RuntimeError("archive delete failed")],
@@ -771,7 +778,9 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert storage.deleted == ["key-1", "key-2"]
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_success(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
+    def test_delete_archived_workflow_run_files_success(
+        self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         storage = _ArchiveStorage(keys=["key-1", "key-2"])
         mock_get_storage.return_value = storage
 

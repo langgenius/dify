@@ -28,8 +28,8 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from tests.helpers.unit.model_factories import make_app, make_end_user
 from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
-from tests.unit_tests.model_factories import make_app, make_end_user
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,7 +106,7 @@ class TestCompletionApi:
         mock_compact: MagicMock,
         app: Flask,
     ) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "test"}
+        mock_ns.payload = {"inputs": dict[str, object](), "query": "test"}
         mock_gen.return_value = "response-obj"
 
         with app.test_request_context("/completion-messages", method="POST"):
@@ -121,7 +121,7 @@ class TestCompletionApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_provider_not_init_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        mock_ns.payload = {"inputs": dict[str, object]()}
 
         with app.test_request_context("/completion-messages", method="POST"):
             with pytest.raises(ProviderNotInitializeError):
@@ -133,7 +133,7 @@ class TestCompletionApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_quota_exceeded_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        mock_ns.payload = {"inputs": dict[str, object]()}
 
         with app.test_request_context("/completion-messages", method="POST"):
             with pytest.raises(ProviderQuotaExceededError):
@@ -145,7 +145,7 @@ class TestCompletionApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_model_not_support_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        mock_ns.payload = {"inputs": dict[str, object]()}
 
         with app.test_request_context("/completion-messages", method="POST"):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
@@ -189,7 +189,7 @@ class TestChatApi:
         mock_compact: MagicMock,
         app: Flask,
     ) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "hi"}
+        mock_ns.payload = {"inputs": dict[str, object](), "query": "hi"}
         mock_gen.return_value = "response"
 
         with app.test_request_context("/chat-messages", method="POST"):
@@ -204,7 +204,7 @@ class TestChatApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_invoke_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "x"}
+        mock_ns.payload = {"inputs": dict[str, object](), "query": "x"}
 
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(CompletionRequestError):
@@ -216,7 +216,7 @@ class TestChatApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_agent_not_published_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "x"}
+        mock_ns.payload = {"inputs": dict[str, object](), "query": "x"}
         app_model = _app(AppMode.AGENT)
 
         with app.test_request_context("/chat-messages", method="POST"):
@@ -234,7 +234,11 @@ class TestChatApi:
         app: Flask,
         unbound_session: Session,
     ) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())}
+        mock_ns.payload = {
+            "inputs": dict[str, object](),
+            "query": "hi",
+            "conversation_id": str(uuid.uuid4()),
+        }
         session = unbound_session
 
         with app.test_request_context("/chat-messages", method="POST"):
