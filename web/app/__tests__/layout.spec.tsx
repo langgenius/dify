@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 const mocks = vi.hoisted(() => ({
   dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
   getOptionalSystemFeatures: vi.fn(),
+  getDatasetMap: vi.fn<() => Record<string, string>>(() => ({})),
   headers: vi.fn(async () => new Headers()),
 }))
 
@@ -18,7 +19,7 @@ vi.mock('@/env', async (importOriginal) => {
 
   return {
     ...actual,
-    getDatasetMap: () => ({}),
+    getDatasetMap: mocks.getDatasetMap,
   }
 })
 
@@ -33,6 +34,7 @@ vi.mock('@/next/headers', () => ({
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getDatasetMap.mockReturnValue({})
     mocks.headers.mockResolvedValue(new Headers())
   })
 
@@ -65,6 +67,22 @@ describe('Root layout System Features bootstrap', () => {
       expect(mocks.dehydrateSystemFeatures).not.toHaveBeenCalled()
     },
   )
+
+  it('makes runtime configuration available on html before head scripts and keeps body attributes', async () => {
+    const dataset = {
+      'data-api-prefix': 'https://runtime.example.com/console/api',
+      'data-enable-hitl-im': 'true',
+    }
+    mocks.getDatasetMap.mockReturnValue(dataset)
+    mocks.headers.mockResolvedValue(new Headers({ 'x-dify-pathname': '/webapp-unavailable' }))
+    const { default: RootLayout } = await import('../layout')
+    const html = renderToStaticMarkup(await RootLayout({ children: <main>App unavailable</main> }))
+    const document = new DOMParser().parseFromString(html, 'text/html')
+    for (const [key, value] of Object.entries(dataset)) {
+      expect(document.documentElement).toHaveAttribute(key, value)
+      expect(document.body).toHaveAttribute(key, value)
+    }
+  })
 
   it('uses optional System Features for branded metadata', async () => {
     mocks.getOptionalSystemFeatures.mockResolvedValue({
