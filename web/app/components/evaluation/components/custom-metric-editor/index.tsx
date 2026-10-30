@@ -92,6 +92,11 @@ const CustomMetricEditorCard = ({
   const selectedWorkflowAppId =
     metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? ''
   const { data: selectedWorkflow } = useAppWorkflow(selectedWorkflowAppId)
+  const { data: selectedEvaluatorApp } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: selectedWorkflowAppId ? { params: { app_id: selectedWorkflowAppId } } : skipToken,
+    }),
+  )
   const { data: currentApp } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: resourceType === 'apps' ? { params: { app_id: resourceId } } : skipToken,
@@ -214,7 +219,12 @@ const CustomMetricEditorCard = ({
     <div className="px-3 pt-1 pb-3">
       <WorkflowSelector
         value={metric.customConfig.workflowId}
-        selectedWorkflowName={metric.customConfig.workflowName}
+        selectedWorkflowName={
+          metric.customConfig.workflowName ||
+          selectedWorkflow?.marked_name ||
+          selectedEvaluatorApp?.name ||
+          selectedWorkflowAppId
+        }
         onSelect={(workflow) =>
           setCustomMetricWorkflow(resourceType, resourceId, metric.id, {
             workflowId: workflow.app_id,
@@ -271,7 +281,7 @@ const CustomMetricEditorCard = ({
               <div key={`${output.nodeId}-${output.id}`} className="flex items-center">
                 <span className="px-1 system-xs-medium text-text-secondary">{output.id}</span>
                 {output.valueType && <span>{output.valueType}</span>}
-                {index < workflowOutputs.length - 1 && <span className="pl-0.5">,</span>}
+                {index < workflowOutputs.length - 1 && <span className="ps-0.5">,</span>}
               </div>
             ))}
           </div>
