@@ -501,7 +501,7 @@ class AppPackageService(RosterAgentPackageReader):
             resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["app"])
             if isinstance(prepared.data.get("site"), dict):
                 resources.collect_icon(session=session, tenant_id=app_model.tenant_id, metadata=prepared.data["site"])
-        resources.collect_workspace_skills(as_copies=not preserve_agent_bindings)
+        resources.collect_workspace_skills()
         if resources.packages:
             prepared.data["agent_packages"] = {
                 ref: package.model_dump(mode="json") for ref, package in resources.packages.items()
