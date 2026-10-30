@@ -94,6 +94,7 @@ def test_max_length_omitted_when_zero() -> None:
         (AppMode.CHAT, True),
         (AppMode.AGENT_CHAT, True),
         (AppMode.ADVANCED_CHAT, True),
+        (AppMode.AGENT, True),
         (AppMode.WORKFLOW, False),
         (AppMode.COMPLETION, False),
     ],

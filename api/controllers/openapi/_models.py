@@ -131,6 +131,20 @@ class AgentListResponse(PaginationEnvelope[AgentListRow]):
     pass
 
 
+class AgentDescribeInfo(AgentListRow):
+    service_api_enabled: bool
+
+
+class AgentDescribeResponse(Hinted):
+    info: AgentDescribeInfo | None = None
+    parameters: dict[str, Any] | None = Field(
+        default=None, description="The published version's inputs; null while the Agent has no published version"
+    )
+    input_schema: dict[str, Any] | None = Field(
+        default=None, description="JSON Schema of a run's body; null while the Agent has no published version"
+    )
+
+
 class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
     pass
 

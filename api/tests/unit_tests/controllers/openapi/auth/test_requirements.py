@@ -706,6 +706,12 @@ ROUTES: tuple[Route, ...] = (
     Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("agents.list", "GET", "/workspaces/{workspace_id}/agents", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
+        "agents.describe",
+        "GET",
+        "/workspaces/{workspace_id}/agents/{agent_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
         "agent_run.run",
         "POST",
         "/workspaces/{workspace_id}/agents/{agent_id}:run",
@@ -1375,6 +1381,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "agents.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "agents.describe": {**_ACCOUNT_READER_APP, Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT},
     "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1676,6 +1683,13 @@ _REQ_AGENT_RUN = (
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckAppAccess(),
 )
+_REQ_AGENT_DESCRIBE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_READ),
+    CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
+)
 _REQ_AGENT_TEST = (*_REQ_AGENT_RUN[:-1], CheckWorkspaceRole(_EDITOR_UP))
 _RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
 
@@ -1694,6 +1708,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
     "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
     "agents.list": _REQ_ACCOUNT_APPS_READ_MEMBER,
+    "agents.describe": _REQ_AGENT_DESCRIBE,
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
         *_REQ_ACCOUNT_WORKSPACE_READ[1:],
@@ -2273,6 +2288,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/agents"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/agents/{agent_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/archive"): frozenset({"200", "422", "default"}),
