@@ -135,9 +135,6 @@ class AgentPackageResources(BaseModel):
             app_workspace_names = [item.name for item in package.workspace_skills]
             if len(app_workspace_names) != len(set(app_workspace_names)):
                 raise ValueError("workspace skill names must be unique in the Agent DSL")
-            app_workspace_priorities = [item.priority for item in package.workspace_skills]
-            if len(app_workspace_priorities) != len(set(app_workspace_priorities)):
-                raise ValueError("workspace skill priorities must be unique in the Agent DSL")
             if set(app_workspace_names) - workspace_names:
                 raise ValueError("workspace skill references must match the package resource index")
             referenced_workspace_names.update(app_workspace_names)

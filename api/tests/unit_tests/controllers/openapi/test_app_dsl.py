@@ -756,6 +756,7 @@ class _PackageImportCall:
     source: BinaryIO
     content: bytes
     preserve_agent_bindings: bool
+    refuse_roster_references: bool
     prepare_dsl: Callable[[str], str]
 
 
@@ -772,10 +773,15 @@ def _recorded_package_import(
         *,
         source: BinaryIO,
         preserve_agent_bindings: bool,
+        refuse_roster_references: bool,
         prepare_dsl: Callable[[str], str],
     ) -> Import:
         assert context == _CONTEXT
-        calls.append(_PackageImportCall(params, source, source.read(), preserve_agent_bindings, prepare_dsl))
+        calls.append(
+            _PackageImportCall(
+                params, source, source.read(), preserve_agent_bindings, refuse_roster_references, prepare_dsl
+            )
+        )
         if isinstance(outcome, Exception):
             raise outcome
         return outcome
@@ -819,7 +825,10 @@ def test_package_import_passes_whether_to_keep_links(
     _import_package(app, AppPackageImportPayload.model_validate({"package": _part(b"x"), **fields}))
 
     [call] = calls
-    assert call.preserve_agent_bindings is preserve_agent_bindings
+    assert (call.preserve_agent_bindings, call.refuse_roster_references) == (
+        preserve_agent_bindings,
+        not preserve_agent_bindings,
+    )
 
 
 def test_package_import_builds_a_folder_into_the_package(

@@ -135,7 +135,7 @@ class AppTransfers(Protocol):
     def read_import_yaml(self, source: BinaryIO) -> str | None: ...
 
     def read_app_package(
-        self, source: BinaryIO, *, accept_roster_references: bool = False
+        self, source: BinaryIO, *, accept_roster_references: bool, refuse_roster_references: bool
     ) -> AppImportPackage | None: ...
 
     def import_dsl(
@@ -243,17 +243,24 @@ class ConsoleAppService:
         *,
         source: BinaryIO | None = None,
         preserve_agent_bindings: bool = False,
+        refuse_roster_references: bool = False,
         prepare_dsl: Callable[[str], str] | None = None,
     ) -> Import:
         """Import an App from params or from an uploaded package.
 
-        ``preserve_agent_bindings`` and ``prepare_dsl`` apply to an App package passed as ``source``:
-        the first keeps its roster Agent and workspace Skill links, the second rewrites or refuses the
-        root App's YAML before anything is created.
+        The keyword options apply to an App package passed as ``source``, and only the openapi import sets
+        them: ``preserve_agent_bindings`` keeps its roster Agent and workspace Skill links,
+        ``refuse_roster_references`` refuses roster Agent links instead of reading them as the console does, and
+        ``prepare_dsl`` rewrites or refuses the root App's YAML before anything is created.
         """
         if source is not None:
             return self._import_package(
-                context, params, source, preserve_agent_bindings=preserve_agent_bindings, prepare_dsl=prepare_dsl
+                context,
+                params,
+                source,
+                preserve_agent_bindings=preserve_agent_bindings,
+                refuse_roster_references=refuse_roster_references,
+                prepare_dsl=prepare_dsl,
             )
         if params.mode == "template":
             if (
@@ -295,11 +302,17 @@ class ConsoleAppService:
         source: BinaryIO,
         *,
         preserve_agent_bindings: bool = False,
+        refuse_roster_references: bool = False,
         prepare_dsl: Callable[[str], str] | None = None,
     ) -> Import:
-        package = self._transfers.read_app_package(source, accept_roster_references=preserve_agent_bindings)
+        package = self._transfers.read_app_package(
+            source,
+            accept_roster_references=preserve_agent_bindings,
+            refuse_roster_references=refuse_roster_references,
+        )
         if package is not None:
             with closing(package):
+                self._access.require_import(context, "dsl")
                 if preserve_agent_bindings:
                     package.require_workspace_skills(tenant_id=context.active_workspace_id)
                 dsl = prepare_dsl(package.dsl) if prepare_dsl is not None else package.dsl
@@ -307,7 +320,7 @@ class ConsoleAppService:
                     return self._import_with_workflow_tools(
                         context, params, package, dsl=dsl, preserve_agent_bindings=preserve_agent_bindings
                     )
-                return self._import_dsl(
+                return self._import_admitted_dsl(
                     context,
                     params.model_copy(update={"mode": "yaml-content", "yaml_content": dsl, "yaml_url": None}),
                     package=package,
@@ -330,13 +343,13 @@ class ConsoleAppService:
     ) -> Import:
         """Create the workflows a package calls as Workflow Tools, then import the App that calls them.
 
-        ``dsl`` is the root App's YAML; ``preserve_agent_bindings`` applies to the root App only.
+        The caller has checked the import rights. ``dsl`` is the root App's YAML; ``preserve_agent_bindings``
+        applies to the root App only.
 
         Workflow Tools already in the workspace are reused. New tools get their ids up front, so a DSL can
         reference a tool that is created after it and workflows that call each other need no order. Apps
         created before a failure are deleted.
         """
-        self._access.require_import(context, "dsl")
         targets = self._transfers.plan_workflow_tools(
             context, package.workflow_tools, creates_root_app=not params.app_id
         )
@@ -348,13 +361,14 @@ class ConsoleAppService:
                 if not target.create:
                     continue
                 with closing(package.open_workflow_tool(tool)) as workflow_package:
-                    imported = self._import_dsl(
+                    imported = self._import_admitted_dsl(
                         context,
                         AppImportParams(
                             mode="yaml-content",
                             yaml_content=retarget_workflow_tool_dsl(workflow_package.dsl, targets),
                         ),
                         package=workflow_package,
+                        preserve_agent_bindings=False,
                     )
                 if imported.app_id and imported.app_created:
                     created_app_ids.append(imported.app_id)
@@ -376,7 +390,7 @@ class ConsoleAppService:
                     warning.model_copy(update={"path": f"workflow_tools.{tool.id}.{warning.path}"})
                     for warning in imported.warnings
                 )
-            result = self._import_dsl(
+            result = self._import_admitted_dsl(
                 context,
                 params.model_copy(
                     update={
@@ -415,15 +429,19 @@ class ConsoleAppService:
             warnings=result.warnings,
         )
 
-    def _import_dsl(
+    def _import_dsl(self, context: RequestContext, params: AppImportParams) -> Import:
+        self._access.require_import(context, "dsl")
+        return self._import_admitted_dsl(context, params, package=None, preserve_agent_bindings=False)
+
+    def _import_admitted_dsl(
         self,
         context: RequestContext,
         params: AppImportParams,
         *,
-        package: AppImportPackage | None = None,
-        preserve_agent_bindings: bool = False,
+        package: AppImportPackage | None,
+        preserve_agent_bindings: bool,
     ) -> Import:
-        self._access.require_import(context, "dsl")
+        """Import a DSL, or an App package's, for a caller that has checked the import rights."""
         result = self._transfers.import_dsl(
             context, params, package=package, preserve_agent_bindings=preserve_agent_bindings
         )
