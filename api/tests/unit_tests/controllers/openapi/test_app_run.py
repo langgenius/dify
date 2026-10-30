@@ -6,8 +6,6 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
 from io import BytesIO
-from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -237,6 +235,42 @@ class _GenerationServices:
     app_generation: _GenerationRecorder
 
 
+@dataclass(frozen=True)
+class _WorkspaceRef:
+    id: str
+
+
+@dataclass
+class _UploadFileRecorder:
+    session: Session
+    operations: list[str]
+
+    def upload_file(
+        self,
+        *,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        actor: FileUploadActor,
+        tenant_id: str,
+    ) -> UploadFile:
+        assert not self.session.in_transaction()
+        assert content in {b"pdf", b"jpg"}
+        assert actor.id == _TEST_ACCOUNT_ID
+        assert tenant_id == _TEST_TENANT_ID
+        self.operations.append("upload")
+        return make_upload_file(
+            file_id=f"uf-{filename}",
+            extension=filename.rsplit(".", 1)[-1],
+            mime_type=mimetype,
+        )
+
+
+@dataclass(frozen=True)
+class _FileServices:
+    files: _UploadFileRecorder
+
+
 def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> _GenerationRecorder:
     generation = _GenerationRecorder(chunks)
     services = _GenerationServices(app_generation=generation)
@@ -252,7 +286,7 @@ def _ctx(mode: AppMode, session: Session | None = None) -> _SealableContext:
         caller=_make_account(),
         session=session or Session(),
         subject=_subject(),
-        workspace=SimpleNamespace(id=_TEST_TENANT_ID),
+        workspace=_WorkspaceRef(id=_TEST_TENANT_ID),
     )
 
 
@@ -289,32 +323,12 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     generation = _generate_stub(monkeypatch, [])
-    upload_service = Mock()
     operations: list[str] = []
     sqlite_session.begin()
     event.listen(sqlite_session, "after_commit", lambda _session: operations.append("commit"))
-
-    def upload_file(
-        *,
-        filename: str,
-        content: bytes,
-        mimetype: str,
-        actor: FileUploadActor,
-        tenant_id: str,
-    ) -> UploadFile:
-        assert not sqlite_session.in_transaction()
-        assert actor.id == _TEST_ACCOUNT_ID
-        assert tenant_id == _TEST_TENANT_ID
-        operations.append("upload")
-        return make_upload_file(
-            file_id=f"uf-{filename}",
-            extension=filename.rsplit(".", 1)[-1],
-            mime_type=mimetype,
-        )
-
-    upload_service.upload_file.side_effect = upload_file
+    upload_service = _UploadFileRecorder(session=sqlite_session, operations=operations)
     monkeypatch.setattr(
-        sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
+        sys.modules["controllers.openapi._files"], "application_services", lambda: _FileServices(files=upload_service)
     )
     body = CompletionRunPayload(
         inputs={},
