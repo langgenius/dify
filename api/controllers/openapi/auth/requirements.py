@@ -139,15 +139,6 @@ class CheckScope(Requirement):
         raise Forbidden("insufficient_scope")
 
 
-class CheckScopeEarly(CheckScope):
-    """For a route whose later checks load the resource: ranked with the other EARLY
-    checks, so declared after the membership check and ahead of the loading one, a
-    token without the scope is refused before the resource is looked up.
-    """
-
-    rank = Rank.EARLY
-
-
 class CheckWorkspaceInvitationQuota(Requirement):
     """Run after workspace membership and permission checks, before the handler."""
 
