@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import httpx
@@ -6,7 +7,7 @@ import pytest
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter
 from machinery.context import RequestContext
-from services.billing_client import transport
+from services.billing_client import billing, transport
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.errors.billing import (
@@ -65,7 +66,8 @@ def test_get_link_checks_limit_fetches_and_increments(
         return 0
 
     commands.side_effect = execute
-    fetch_link.side_effect = lambda *_args: events.append("fetch") or {"url": "https://example.com/report"}
+    link = billing.DownloadComplianceDocumentReply(url="https://example.com/report")
+    fetch_link.side_effect = lambda *_args: events.append("fetch") or link
 
     result = service.get_link(
         request_context=request_context,
@@ -74,7 +76,7 @@ def test_get_link_checks_limit_fetches_and_increments(
         device_info="test-agent",
     )
 
-    assert result == {"url": "https://example.com/report"}
+    assert result is link
     assert events == ["check", "fetch", "increment"]
     assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD", "ZADD", "EXPIRE"]
     assert all(call.args[1] == "compliance:account-1:workspace-1" for call in commands.call_args_list)
@@ -132,6 +134,7 @@ def test_get_link_does_not_increment_after_fetch_failure(
 @pytest.mark.parametrize("payload", [{}, {"url": None}, {"url": 123}])
 def test_invalid_billing_response_does_not_consume_download_limit(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     rate_limiter: RateLimiter,
     request_context: RequestContext,
     redis_transport: tuple[RedisClientWrapper, MagicMock],
@@ -142,7 +145,7 @@ def test_invalid_billing_response_does_not_consume_download_limit(
     service = ComplianceDownloadService(
         fetch_link=BillingService.get_compliance_download_link, rate_limiter=rate_limiter
     )
-    monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+    config_overrides(BILLING_API_URL="http://billing/v1")
     with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
         monkeypatch.setattr(transport, "_http_client", client)
 
