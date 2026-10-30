@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -7,6 +8,9 @@ class EvaluationFrameworkEnum(StrEnum):
     RAGAS = "ragas"
     DEEPEVAL = "deepeval"
     NONE = "none"
+
+
+SelectableEvaluationFramework = Literal[EvaluationFrameworkEnum.RAGAS, EvaluationFrameworkEnum.DEEPEVAL]
 
 
 class BaseEvaluationConfig(BaseModel):

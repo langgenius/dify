@@ -1,6 +1,7 @@
 import type { EvaluationResourceState } from '../types'
 import {
   buildEvaluationConfigPayload,
+  buildEvaluationRunRequest,
   buildEvaluationTemplateConfigPayload,
   buildStateFromEvaluationConfig,
   createBuiltinMetric,
@@ -12,6 +13,7 @@ import {
 const createResource = (
   overrides: Partial<EvaluationResourceState> = {},
 ): EvaluationResourceState => ({
+  evaluationFramework: 'ragas',
   judgeModelId: null,
   metrics: [],
   judgmentConfig: {
@@ -44,6 +46,7 @@ describe('evaluation store utils', () => {
 
     expect(isEvaluationRunnable(resource)).toBe(true)
     expect(buildEvaluationConfigPayload(resource, 'apps', 'app-under-test')).toEqual({
+      evaluation_framework: 'ragas',
       default_metrics: [],
       customized_metrics: {
         evaluation_workflow_id: 'app-1',
@@ -66,6 +69,7 @@ describe('evaluation store utils', () => {
     expect(isEvaluationRunnable(resource)).toBe(false)
     expect(buildEvaluationConfigPayload(resource, 'apps', 'app-1')).toBeNull()
     expect(buildEvaluationTemplateConfigPayload(resource, 'apps', 'app-1')).toEqual({
+      evaluation_framework: 'ragas',
       default_metrics: [
         {
           metric: 'answer-correctness',
@@ -91,6 +95,7 @@ describe('evaluation store utils', () => {
     })
 
     expect(buildEvaluationConfigPayload(resource, 'datasets', 'dataset-1')).toEqual({
+      evaluation_framework: 'ragas',
       evaluation_model: 'gpt-4o-mini',
       evaluation_model_provider: 'openai',
       default_metrics: [
@@ -189,5 +194,49 @@ describe('evaluation store utils', () => {
         outputs: [{ id: 'score', valueType: 'number' }],
       },
     })
+  })
+
+  it('defaults legacy configurations to Ragas and restores a saved framework', () => {
+    expect(buildStateFromEvaluationConfig('apps', 'app-1', {}).evaluationFramework).toBe('ragas')
+
+    const savedConfig = { default_metrics: [], evaluation_framework: 'deepeval' }
+    expect(buildStateFromEvaluationConfig('apps', 'app-1', savedConfig).evaluationFramework).toBe(
+      'deepeval',
+    )
+  })
+
+  it('includes the selected framework in evaluation run requests', () => {
+    const resource = createResource({
+      evaluationFramework: 'deepeval',
+      judgeModelId: 'openai::gpt-4o-mini',
+      metrics: [
+        createBuiltinMetric(resolveMetricOption('answer_correctness'), [
+          { node_id: 'llm-1', title: 'Answer', type: 'llm' },
+        ]),
+      ],
+    })
+
+    expect(buildEvaluationRunRequest(resource, 'file-1', 'apps', 'app-1')).toMatchObject({
+      evaluation_framework: 'deepeval',
+      file_id: 'file-1',
+    })
+  })
+
+  it('keeps unsupported metrics selected but blocks DeepEval submission', () => {
+    const resource = createResource({
+      evaluationFramework: 'deepeval',
+      judgeModelId: 'openai::gpt-4o-mini',
+      metrics: [
+        createBuiltinMetric(resolveMetricOption('semantic_similarity'), [
+          { node_id: 'llm-1', title: 'Answer', type: 'llm' },
+        ]),
+      ],
+    })
+
+    expect(resource.metrics).toHaveLength(1)
+    expect(isEvaluationRunnable(resource)).toBe(false)
+    expect(buildEvaluationConfigPayload(resource, 'apps', 'app-1')).toBeNull()
+    expect(buildEvaluationRunRequest(resource, 'file-1', 'apps', 'app-1')).toBeNull()
+    expect(isEvaluationRunnable({ ...resource, evaluationFramework: 'ragas' })).toBe(true)
   })
 })

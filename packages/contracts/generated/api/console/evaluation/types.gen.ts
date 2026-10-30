@@ -21,7 +21,9 @@ export type ErrorResponse = {
 export type GetEvaluationAvailableMetricsData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    evaluation_framework?: 'deepeval' | 'ragas'
+  }
   url: '/evaluation/available-metrics'
 }
 

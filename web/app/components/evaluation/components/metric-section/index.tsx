@@ -7,6 +7,7 @@ import { useEvaluationResource } from '../../store'
 import MetricSelector from '../metric-selector'
 import { getDefaultMetricNodeInfoMap } from '../metric-selector/utils'
 import { InlineSectionHeader } from '../section-header'
+import UnsupportedMetricsWarning from '../unsupported-metrics-warning'
 import MetricCard from './metric-card'
 import MetricSectionEmptyState from './metric-section-empty-state'
 
@@ -18,6 +19,7 @@ const MetricSection = ({ resourceType, resourceId }: NonPipelineEvaluationResour
   const { data: defaultMetricsData } = useDefaultEvaluationMetrics(
     resourceType,
     resourceId,
+    resource.evaluationFramework,
     hasBuiltinMetrics,
   )
   const nodeInfoMap = getDefaultMetricNodeInfoMap(defaultMetricsData?.default_metrics ?? [])
@@ -29,6 +31,7 @@ const MetricSection = ({ resourceType, resourceId }: NonPipelineEvaluationResour
         tooltip={t(($) => $['metrics.description'])}
       />
       <div className="mt-1 space-y-1">
+        <UnsupportedMetricsWarning resourceType={resourceType} resourceId={resourceId} />
         {!hasMetrics && (
           <MetricSectionEmptyState description={t(($) => $['metrics.description'])} />
         )}

@@ -32,6 +32,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum, SelectableEvaluationFramework
 from core.evaluation.entities.evaluation_entity import (
     CustomizedMetrics,
     DefaultMetric,
@@ -84,6 +85,10 @@ class EvaluationRunPayload(EvaluationRunRequest):
     pass
 
 
+class EvaluationFrameworkQuery(BaseModel):
+    evaluation_framework: SelectableEvaluationFramework = EvaluationFrameworkEnum.RAGAS
+
+
 class EvaluationNodeInfoPayload(BaseModel):
     metrics: list[str] = Field(default_factory=list)
 
@@ -107,6 +112,7 @@ class AvailableEvaluationWorkflowQuery(BaseModel):
 
 
 class EvaluationConfigResponse(ResponseModel):
+    evaluation_framework: SelectableEvaluationFramework = EvaluationFrameworkEnum.RAGAS
     evaluation_model: str | None = None
     evaluation_model_provider: str | None = None
     default_metrics: list[DefaultMetric] | None = None
@@ -272,6 +278,7 @@ register_schema_models(
     console_ns,
     EvaluationConfigPayload,
     EvaluationRunPayload,
+    EvaluationFrameworkQuery,
     EvaluationNodeInfoPayload,
     EvaluationRunListQuery,
     EvaluationRunDetailQuery,
@@ -399,6 +406,7 @@ def _config_response(config: EvaluationConfiguration | None, *, target_type: str
     return dump_response(
         EvaluationConfigResponse,
         {
+            "evaluation_framework": config.evaluation_framework,
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
             "default_metrics": default_metrics,
@@ -850,6 +858,7 @@ class EvaluationRunRetryApi(EvaluationEditionResource):
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/metrics")
 class EvaluationMetricsApi(EvaluationEditionResource):
+    @console_ns.doc(params=query_params_from_model(EvaluationFrameworkQuery))
     @console_ns.response(200, "Evaluation metrics", console_ns.models[EvaluationMetricsResponse.__name__])
     @setup_required
     @login_required
@@ -857,8 +866,9 @@ class EvaluationMetricsApi(EvaluationEditionResource):
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
+        query = EvaluationFrameworkQuery.model_validate(request.args.to_dict(flat=True))
         metrics = {
-            category.value: EvaluationService.get_console_supported_metrics(category)
+            category.value: EvaluationService.get_console_supported_metrics(category, query.evaluation_framework)
             for category in (EvaluationCategory.LLM, EvaluationCategory.RETRIEVAL, EvaluationCategory.AGENT)
         }
         return dump_response(EvaluationMetricsResponse, {"metrics": metrics})
@@ -866,6 +876,7 @@ class EvaluationMetricsApi(EvaluationEditionResource):
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/default-metrics")
 class EvaluationDefaultMetricsApi(EvaluationEditionResource):
+    @console_ns.doc(params=query_params_from_model(EvaluationFrameworkQuery))
     @console_ns.response(200, "Default metrics", console_ns.models[EvaluationDefaultMetricsResponse.__name__])
     @setup_required
     @login_required
@@ -873,10 +884,12 @@ class EvaluationDefaultMetricsApi(EvaluationEditionResource):
     @with_session(write=False)
     @evaluation_target_required(app_permission=RBACPermission.APP_VIEW_LAYOUT)
     def get(self, session: Session, target: EvaluationTarget, target_type: str) -> dict[str, Any]:
+        query = EvaluationFrameworkQuery.model_validate(request.args.to_dict(flat=True))
         metrics = EvaluationService.get_default_metrics_with_nodes_for_published_target(
             target,
             target_type,
             session,
+            query.evaluation_framework,
         )
         return dump_response(
             EvaluationDefaultMetricsResponse,
@@ -906,6 +919,7 @@ class EvaluationNodeInfoApi(EvaluationEditionResource):
 
 @console_ns.route("/evaluation/available-metrics")
 class EvaluationAvailableMetricsApi(EvaluationEditionResource):
+    @console_ns.doc(params=query_params_from_model(EvaluationFrameworkQuery))
     @console_ns.response(
         200,
         "Available evaluation metrics",
@@ -915,9 +929,10 @@ class EvaluationAvailableMetricsApi(EvaluationEditionResource):
     @login_required
     @account_initialization_required
     def get(self) -> dict[str, Any]:
+        query = EvaluationFrameworkQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             EvaluationAvailableMetricsResponse,
-            {"metrics": EvaluationService.get_available_metrics()},
+            {"metrics": EvaluationService.get_available_metrics(query.evaluation_framework)},
         )
 
 
@@ -1261,6 +1276,7 @@ class DatasetEvaluationRunRetryApi(EvaluationEditionResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/evaluation/metrics")
 class DatasetEvaluationMetricsApi(EvaluationEditionResource):
+    @console_ns.doc(params=query_params_from_model(EvaluationFrameworkQuery))
     @console_ns.response(200, "Retrieval evaluation metrics", console_ns.models[EvaluationMetricsResponse.__name__])
     @setup_required
     @login_required
@@ -1270,9 +1286,14 @@ class DatasetEvaluationMetricsApi(EvaluationEditionResource):
     def get(self, session: Session, dataset_id: UUID) -> dict[str, Any]:
         current_user, tenant_id = current_account_with_tenant()
         _get_accessible_dataset(session, dataset_id, current_user, tenant_id)
+        query = EvaluationFrameworkQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             EvaluationMetricsResponse,
-            {"metrics": EvaluationService.get_supported_metrics(EvaluationCategory.RETRIEVAL)},
+            {
+                "metrics": EvaluationService.get_console_supported_metrics(
+                    EvaluationCategory.RETRIEVAL, query.evaluation_framework
+                )
+            },
         )
 
 

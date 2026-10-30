@@ -6,6 +6,7 @@ import { useDocLink } from '@/context/i18n'
 import BatchTestPanel from '../batch-test-panel'
 import ConditionsSection from '../conditions-section'
 import EvaluationConfigActions from '../config-actions'
+import EvaluationFrameworkSelector from '../evaluation-framework-selector'
 import JudgeModelSelector from '../judge-model-selector'
 import MetricSection from '../metric-section'
 import SectionHeader, { InlineSectionHeader } from '../section-header'
@@ -40,6 +41,10 @@ const NonPipelineEvaluation = ({
             descriptionClassName="max-w-[700px]"
             action={<EvaluationConfigActions resourceType={resourceType} resourceId={resourceId} />}
           />
+          <section className="max-w-[700px] py-4">
+            <EvaluationFrameworkSelector resourceType={resourceType} resourceId={resourceId} />
+          </section>
+          <div className="max-w-[700px] border-b border-divider-subtle" />
           <section className="max-w-[700px] py-4">
             <InlineSectionHeader
               title={t(($) => $['judgeModel.title'])}

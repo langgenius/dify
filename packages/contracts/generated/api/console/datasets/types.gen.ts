@@ -605,6 +605,7 @@ export type ErrorDocsResponse = {
 export type EvaluationConfigResponse = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric> | null
+  evaluation_framework?: 'deepeval' | 'ragas'
   evaluation_model?: string | null
   evaluation_model_provider?: string | null
   judgment_config?: JudgmentConfig | null
@@ -613,6 +614,7 @@ export type EvaluationConfigResponse = {
 export type EvaluationConfigPayload = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric>
+  evaluation_framework?: 'deepeval' | 'ragas'
   evaluation_model?: string
   evaluation_model_provider?: string
   judgment_config?: JudgmentConfig | null
@@ -646,6 +648,7 @@ export type EvaluationMetricsResponse = {
 export type EvaluationRunPayload = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric>
+  evaluation_framework?: 'deepeval' | 'ragas'
   evaluation_model?: string
   evaluation_model_provider?: string
   file_id: string
@@ -3192,7 +3195,9 @@ export type GetDatasetsByDatasetIdEvaluationMetricsData = {
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    evaluation_framework?: 'deepeval' | 'ragas'
+  }
   url: '/datasets/{dataset_id}/evaluation/metrics'
 }
 

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { getTranslatedMetricDescription } from '../../default-metric-descriptions'
 import { useDefaultEvaluationMetrics } from '../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
+import { isBuiltinMetricSupportedByFramework } from '../../store-utils'
 import { buildMetricOption, dedupeNodeInfoList, getDefaultMetricNodeInfoMap } from './utils'
 
 type UseMetricSelectorDataOptions = {
@@ -29,11 +30,12 @@ export const useMetricSelectorData = ({
   resourceId,
 }: UseMetricSelectorDataOptions): UseMetricSelectorDataResult => {
   const { t } = useTranslation(['evaluation'])
-  const metrics = useEvaluationResource(resourceType, resourceId).metrics
+  const resource = useEvaluationResource(resourceType, resourceId)
+  const metrics = resource.metrics
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
   const { data: defaultMetricsData, isLoading: isDefaultMetricsLoading } =
-    useDefaultEvaluationMetrics(resourceType, resourceId, open)
+    useDefaultEvaluationMetrics(resourceType, resourceId, resource.evaluationFramework, open)
 
   const builtinMetrics = useMemo(() => {
     return metrics.filter((metric) => metric.kind === 'builtin')
@@ -51,13 +53,16 @@ export const useMetricSelectorData = ({
 
   const resolvedMetrics = useMemo(() => {
     return defaultMetrics
+      .filter((defaultMetric) =>
+        isBuiltinMetricSupportedByFramework(defaultMetric.metric, resource.evaluationFramework),
+      )
       .map((defaultMetric) => {
         if (!defaultMetric.metric) return null
 
         return buildMetricOption(defaultMetric.metric, defaultMetric.value_type)
       })
       .filter((metric): metric is MetricOption => !!metric)
-  }, [defaultMetrics])
+  }, [defaultMetrics, resource.evaluationFramework])
 
   const filteredSections = useMemo(() => {
     const keyword = query.trim().toLowerCase()

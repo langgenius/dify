@@ -2,7 +2,11 @@ import type {
   EvaluationConfigPayload,
   EvaluationRunPayload,
 } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
-import type { EvaluationResourceProps, NonDatasetEvaluationResourceType } from './types'
+import type {
+  EvaluationFramework,
+  EvaluationResourceProps,
+  NonDatasetEvaluationResourceType,
+} from './types'
 import {
   keepPreviousData,
   skipToken,
@@ -52,10 +56,17 @@ const normalizeAvailableEvaluationWorkflowsParams = (
   }
 }
 
-export const useDatasetEvaluationMetrics = (datasetId: string, enabled = true) => {
+export const useDatasetEvaluationMetrics = (
+  datasetId: string,
+  framework: EvaluationFramework,
+  enabled = true,
+) => {
   return useQuery(
     consoleQuery.datasets.byDatasetId.evaluation.metrics.get.queryOptions({
-      input: datasetId && enabled ? { params: { dataset_id: datasetId } } : skipToken,
+      input:
+        datasetId && enabled
+          ? { params: { dataset_id: datasetId }, query: { evaluation_framework: framework } }
+          : skipToken,
       refetchOnWindowFocus: false,
     }),
   )
@@ -64,6 +75,7 @@ export const useDatasetEvaluationMetrics = (datasetId: string, enabled = true) =
 export const useDefaultEvaluationMetrics = (
   resourceType: NonDatasetEvaluationResourceType,
   resourceId: string,
+  framework: EvaluationFramework,
   enabled = true,
 ) => {
   return useQuery(
@@ -76,6 +88,7 @@ export const useDefaultEvaluationMetrics = (
                   evaluate_target_id: resourceId,
                   evaluate_target_type: resourceType,
                 },
+                query: { evaluation_framework: framework },
               }
             : skipToken,
         refetchOnWindowFocus: false,

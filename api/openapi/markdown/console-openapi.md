@@ -7266,6 +7266,7 @@ Get dataset error documents
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
 | dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -7801,6 +7802,12 @@ Delete an API key for a dataset
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /evaluation/available-metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -18480,6 +18487,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
 | evaluate_target_id | path |  | Yes | string (uuid) |
 | evaluate_target_type | path |  | Yes | string |
 
@@ -18528,6 +18536,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
 | evaluate_target_id | path |  | Yes | string (uuid) |
 | evaluate_target_type | path |  | Yes | string |
 
@@ -25562,6 +25571,7 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
 | default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
 | evaluation_model | string |  | No |
 | evaluation_model_provider | string |  | No |
 | judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
@@ -25572,6 +25582,7 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
 | default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
 | evaluation_model | string |  | No |
 | evaluation_model_provider | string |  | No |
 | judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
@@ -25593,6 +25604,12 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | mime_type | string |  | Yes |
 | name | string |  | Yes |
 | size | integer |  | Yes |
+
+#### EvaluationFrameworkQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
 
 #### EvaluationMetric
 
@@ -25682,6 +25699,7 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
 | default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
 | evaluation_model | string |  | No |
 | evaluation_model_provider | string |  | No |
 | file_id | string |  | Yes |

@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, Field
 
-from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum, SelectableEvaluationFramework
 from core.evaluation.entities.judgment_entity import JudgmentConfig, JudgmentResult
 
 
@@ -442,6 +442,7 @@ class CustomizedMetrics(BaseModel):
 class EvaluationConfigData(BaseModel):
     """Structured data for saving evaluation configuration."""
 
+    evaluation_framework: SelectableEvaluationFramework = EvaluationFrameworkEnum.RAGAS
     evaluation_model: str = ""
     evaluation_model_provider: str = ""
     default_metrics: list[DefaultMetric] = Field(default_factory=list)
@@ -458,7 +459,6 @@ class EvaluationRunRequest(EvaluationConfigData):
 class EvaluationRunSnapshot(EvaluationRunRequest):
     """Immutable run configuration plus the target's pinned dataset input schema."""
 
-    evaluation_framework: EvaluationFrameworkEnum = EvaluationFrameworkEnum.RAGAS
     dataset_input_types: dict[str, str] = Field(default_factory=dict)
 
 

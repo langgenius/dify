@@ -86,6 +86,7 @@ import {
   zGetDatasetsByDatasetIdEvaluationLogsQuery,
   zGetDatasetsByDatasetIdEvaluationLogsResponse,
   zGetDatasetsByDatasetIdEvaluationMetricsPath,
+  zGetDatasetsByDatasetIdEvaluationMetricsQuery,
   zGetDatasetsByDatasetIdEvaluationMetricsResponse,
   zGetDatasetsByDatasetIdEvaluationPath,
   zGetDatasetsByDatasetIdEvaluationResponse,
@@ -1513,7 +1514,12 @@ export const get29 = oc
     path: '/datasets/{dataset_id}/evaluation/metrics',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdEvaluationMetricsPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdEvaluationMetricsPath,
+      query: zGetDatasetsByDatasetIdEvaluationMetricsQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdEvaluationMetricsResponse)
 
 export const metrics = {

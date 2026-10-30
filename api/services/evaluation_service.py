@@ -23,6 +23,7 @@ from core.evaluation.agent.customized_workflow_adapter import (
     AGENT_CUSTOM_EVALUATOR_OUTPUT_TYPES,
 )
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum, SelectableEvaluationFramework
 from core.evaluation.entities.evaluation_entity import (
     METRIC_NODE_TYPE_MAPPING,
     METRIC_VALUE_TYPE_MAPPING,
@@ -354,6 +355,7 @@ class EvaluationService:
             )
             session.add(config)
 
+        config.evaluation_framework = data.evaluation_framework
         config.evaluation_model_provider = data.evaluation_model_provider
         config.evaluation_model = data.evaluation_model
         config.metrics_config = json.dumps(
@@ -399,9 +401,8 @@ class EvaluationService:
         """Hydrate an empty run request from the latest saved evaluation config.
 
         Console callers may submit only ``file_id`` when they want to reuse the
-        previously saved evaluation settings. We only hydrate the request when
-        *all* config fields are absent so partially specified payloads remain
-        exactly as submitted by the caller.
+        previously saved evaluation settings. An explicit framework can override
+        the saved choice. Other partially specified payloads remain as submitted.
         """
         if cls._has_inline_run_config(run_request):
             return run_request
@@ -412,6 +413,11 @@ class EvaluationService:
 
         return EvaluationRunRequest(
             file_id=run_request.file_id,
+            evaluation_framework=(
+                run_request.evaluation_framework
+                if "evaluation_framework" in run_request.model_fields_set
+                else cast(SelectableEvaluationFramework, config.evaluation_framework)
+            ),
             evaluation_model=config.evaluation_model or "",
             evaluation_model_provider=config.evaluation_model_provider or "",
             default_metrics=[DefaultMetric.model_validate(metric) for metric in config.default_metrics_list],
@@ -427,7 +433,7 @@ class EvaluationService:
 
     @staticmethod
     def _has_inline_run_config(run_request: EvaluationRunRequest) -> bool:
-        """Return True when the request body already includes evaluation settings."""
+        """Return True when the request includes inline settings besides the framework."""
         return bool(
             run_request.evaluation_model.strip()
             or run_request.evaluation_model_provider.strip()
@@ -454,7 +460,9 @@ class EvaluationService:
         if data.default_metrics and (not data.evaluation_model_provider or not data.evaluation_model):
             raise ValueError("evaluation_model_provider and evaluation_model are required for default metrics.")
         if data.default_metrics:
-            evaluation_instance = EvaluationManager.get_evaluation_instance()
+            if EvaluationManager.get_evaluation_instance() is None:
+                raise EvaluationFrameworkNotConfiguredError()
+            evaluation_instance = EvaluationManager.get_evaluation_instance(data.evaluation_framework)
             if evaluation_instance is None:
                 raise EvaluationFrameworkNotConfiguredError()
             cls._validate_evaluation_model(
@@ -557,7 +565,7 @@ class EvaluationService:
                 categories = {cls.category_for_node_type(node.type) for node in metric.node_info_list}
 
             for category in categories:
-                supported_metrics = set(cls.get_supported_metrics(category))
+                supported_metrics = set(cls.get_supported_metrics(category, data.evaluation_framework))
                 if metric.metric not in supported_metrics:
                     raise ValueError(f"Metric '{metric.metric}' is not supported for category '{category.value}'.")
 
@@ -897,13 +905,11 @@ class EvaluationService:
         """Validate dataset, create run record, dispatch Celery task.
 
         Saves the effective parameters as the latest EvaluationConfiguration
-        before creating the run. When the request body contains only ``file_id``,
-        the latest saved evaluation config for the target is reused.
+        before creating the run. A file-only request reuses the latest saved
+        evaluation config, including its framework.
         """
-        # Check framework is configured
-        evaluation_framework = EvaluationManager.get_configured_framework()
-        evaluation_instance = EvaluationManager.get_evaluation_instance(evaluation_framework)
-        if evaluation_instance is None:
+        # The deployment setting enables evaluation; each run selects its own framework.
+        if EvaluationManager.get_configured_framework() == EvaluationFrameworkEnum.NONE:
             raise EvaluationFrameworkNotConfiguredError()
 
         resolved_run_request = cls.resolve_run_request_config(
@@ -913,6 +919,10 @@ class EvaluationService:
             target_id=target_id,
             run_request=run_request,
         )
+        evaluation_framework = resolved_run_request.evaluation_framework
+        evaluation_instance = EvaluationManager.get_evaluation_instance(evaluation_framework)
+        if evaluation_instance is None:
+            raise EvaluationFrameworkNotConfiguredError()
         pinned_run_request = cls._pin_customized_evaluator(
             session=session,
             tenant_id=tenant_id,
@@ -1067,9 +1077,7 @@ class EvaluationService:
         evaluation_instance = EvaluationManager.get_evaluation_instance(run_snapshot.evaluation_framework)
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
-        run_request = EvaluationRunRequest.model_validate(
-            run_snapshot.model_dump(exclude={"dataset_input_types", "evaluation_framework"})
-        )
+        run_request = EvaluationRunRequest.model_validate(run_snapshot.model_dump(exclude={"dataset_input_types"}))
         pinned_workflow = cls._resolve_pinned_target_workflow_for_run(session=session, run=run)
         if run_snapshot.dataset_input_types:
             input_types = run_snapshot.dataset_input_types
@@ -1787,18 +1795,32 @@ class EvaluationService:
         return upload_file
 
     @classmethod
-    def get_supported_metrics(cls, category: EvaluationCategory) -> list[str]:
-        return EvaluationManager.get_supported_metrics(category)
+    def get_supported_metrics(
+        cls, category: EvaluationCategory, framework: EvaluationFrameworkEnum | None = None
+    ) -> list[str]:
+        if EvaluationManager.get_configured_framework() == EvaluationFrameworkEnum.NONE:
+            return []
+        return EvaluationManager.get_supported_metrics(category, framework)
 
     @classmethod
-    def get_console_supported_metrics(cls, category: EvaluationCategory) -> list[str]:
+    def get_console_supported_metrics(
+        cls, category: EvaluationCategory, framework: EvaluationFrameworkEnum | None = None
+    ) -> list[str]:
         """Return selectable metrics while retaining hidden legacy metrics for old runs."""
-        return [metric for metric in cls.get_supported_metrics(category) if metric not in cls.CONSOLE_DISABLED_METRICS]
+        return [
+            metric
+            for metric in cls.get_supported_metrics(category, framework)
+            if metric not in cls.CONSOLE_DISABLED_METRICS
+        ]
 
     @classmethod
-    def get_available_metrics(cls) -> list[str]:
-        """Return console-visible metrics implemented by the configured framework."""
-        return [metric for metric in cls._union_supported_metric_names() if metric not in cls.CONSOLE_DISABLED_METRICS]
+    def get_available_metrics(cls, framework: EvaluationFrameworkEnum | None = None) -> list[str]:
+        """Return console-visible metrics implemented by the selected framework."""
+        return [
+            metric
+            for metric in cls._union_supported_metric_names(framework)
+            if metric not in cls.CONSOLE_DISABLED_METRICS
+        ]
 
     @classmethod
     def filter_console_default_metrics(
@@ -1870,9 +1892,18 @@ class EvaluationService:
     ) -> list[EvaluationTemplateColumn]:
         """Build dataset template columns from target inputs and the selected evaluation config."""
         input_columns = cls._get_target_input_columns(target, target_type, session)
-        expected_output_columns = cls._get_expected_output_columns(data.default_metrics)
-        success_criteria_columns = cls._get_success_criteria_columns(data.default_metrics)
-        expected_tool_call_columns = cls._get_expected_tool_call_columns(data.default_metrics)
+        evaluation_instance = (
+            EvaluationManager.get_evaluation_instance(data.evaluation_framework) if data.default_metrics else None
+        )
+        expected_output_columns = cls._get_expected_output_columns(
+            data.default_metrics, evaluation_instance=evaluation_instance
+        )
+        success_criteria_columns = cls._get_success_criteria_columns(
+            data.default_metrics, evaluation_instance=evaluation_instance
+        )
+        expected_tool_call_columns = cls._get_expected_tool_call_columns(
+            data.default_metrics, evaluation_instance=evaluation_instance
+        )
         agent_custom_reference_columns = (
             cls._get_agent_custom_reference_columns(data.customized_metrics)
             if target_type == EvaluationTargetType.AGENTS.value
@@ -2109,12 +2140,12 @@ class EvaluationService:
         return True
 
     @classmethod
-    def _union_supported_metric_names(cls) -> list[str]:
-        """Metric names the current evaluation framework supports for any :class:`EvaluationCategory`."""
+    def _union_supported_metric_names(cls, framework: EvaluationFrameworkEnum | None = None) -> list[str]:
+        """Metric names the selected evaluation framework supports for any category."""
         ordered: list[str] = []
         seen: set[str] = set()
         for category in EvaluationCategory:
-            for name in cls.get_supported_metrics(category):
+            for name in cls.get_supported_metrics(category, framework):
                 if name not in seen:
                     seen.add(name)
                     ordered.append(name)
@@ -2126,16 +2157,17 @@ class EvaluationService:
         target: App | CustomizedSnippet | Agent,
         target_type: str,
         session: Session,
+        framework: EvaluationFrameworkEnum | None = None,
     ) -> list[DefaultMetric]:
         """List default metrics and matching nodes using only the *published* workflow graph.
 
-        Metrics are those supported by the configured evaluation framework and present in
+        Metrics are those supported by the selected evaluation framework and present in
         :data:`METRIC_NODE_TYPE_MAPPING`. Node lists are derived from the published workflow only
         (no draft fallback).
         """
         if target_type == EvaluationTargetType.AGENTS.value and isinstance(target, Agent):
             target_node = NodeInfo(node_id=target.id, type="agent", title=target.name)
-            agent_supported = set(cls.get_console_supported_metrics(EvaluationCategory.AGENT))
+            agent_supported = set(cls.get_console_supported_metrics(EvaluationCategory.AGENT, framework))
             return [
                 DefaultMetric(
                     metric=metric.value,
@@ -2150,7 +2182,7 @@ class EvaluationService:
         if not workflow:
             return []
 
-        supported = cls._union_supported_metric_names()
+        supported = cls._union_supported_metric_names(framework)
         metric_names = sorted(m for m in supported if m in METRIC_NODE_TYPE_MAPPING)
         if not metric_names:
             return []

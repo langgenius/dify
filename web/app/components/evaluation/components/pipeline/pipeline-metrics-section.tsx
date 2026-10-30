@@ -5,8 +5,10 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetEvaluationMetrics } from '../../queries'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
+import { isBuiltinMetricSupportedByFramework } from '../../store-utils'
 import { buildMetricOption } from '../metric-selector/utils'
 import { InlineSectionHeader } from '../section-header'
+import UnsupportedMetricsWarning from '../unsupported-metrics-warning'
 import PipelineMetricItem from './pipeline-metric-item'
 
 const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResourceProps) => {
@@ -14,8 +16,11 @@ const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResource
   const addBuiltinMetric = useEvaluationStore((state) => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore((state) => state.removeMetric)
   const updateMetricThreshold = useEvaluationStore((state) => state.updateMetricThreshold)
-  const { data: datasetMetricsData } = useDatasetEvaluationMetrics(resourceId)
   const resource = useEvaluationResource(resourceType, resourceId)
+  const { data: datasetMetricsData } = useDatasetEvaluationMetrics(
+    resourceId,
+    resource.evaluationFramework,
+  )
   const builtinMetricMap = useMemo(
     () =>
       new Map(
@@ -29,10 +34,15 @@ const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResource
     const responseMetrics = Array.isArray(datasetMetricsData?.metrics)
       ? datasetMetricsData.metrics
       : Object.values(datasetMetricsData?.metrics ?? {}).flat()
-    const metricIds = new Set([...responseMetrics, ...builtinMetricMap.keys()])
+    const metricIds = new Set([
+      ...responseMetrics.filter((metricId) =>
+        isBuiltinMetricSupportedByFramework(metricId, resource.evaluationFramework),
+      ),
+      ...builtinMetricMap.keys(),
+    ])
 
     return Array.from(metricIds).map((metricId) => buildMetricOption(metricId))
-  }, [datasetMetricsData?.metrics, builtinMetricMap])
+  }, [datasetMetricsData?.metrics, builtinMetricMap, resource.evaluationFramework])
 
   const handleToggleMetric = (metricId: string) => {
     const selectedMetric = builtinMetricMap.get(metricId)
@@ -52,6 +62,7 @@ const PipelineMetricsSection = ({ resourceType, resourceId }: EvaluationResource
         tooltip={t(($) => $['metrics.description'])}
       />
       <div className="mt-1 space-y-0.5">
+        <UnsupportedMetricsWarning resourceType={resourceType} resourceId={resourceId} />
         {availableBuiltinMetrics.map((metric) => {
           const selectedMetric = builtinMetricMap.get(metric.id)
 
