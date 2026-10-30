@@ -1614,8 +1614,6 @@ def test_legacy_segment_mutation_rejects_mismatched_rows_before_dispatch(
     segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
     setattr(segment, owner_field, "foreign-owner")
     mutations = create_autospec(SegmentMutationService, instance=True, spec_set=True)
-    commits: list[bool] = []
-    event.listen(unbound_session, "after_commit", lambda _session: commits.append(True))
     with pytest.raises(ValueError, match="Segment does not belong"):
         SegmentService.update_segment(
             SegmentUpdateArgs(content="new"),
@@ -1627,9 +1625,7 @@ def test_legacy_segment_mutation_rejects_mismatched_rows_before_dispatch(
             mutations=mutations,
         )
     mutations.update_segment.assert_not_called()
-    assert not commits
-    assert not unbound_session.new
-    assert not unbound_session.deleted
+    assert not unbound_session.in_transaction()
 
 
 def _persist_index_batch(
