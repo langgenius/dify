@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import { ENABLE_HITL_IM } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -33,13 +34,17 @@ import {
   X_OFFSET,
   Y_OFFSET,
 } from '../constants'
-import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { getNodeUsedVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useCreateInlineAgentBinding } from '../nodes/agent-v2/hooks'
 import {
   hasAgentV2OutputRoutes,
   isAgentV2NodeData,
   needsInlineAgentBindingCreation,
 } from '../nodes/agent-v2/types'
+import {
+  canInsertHumanInput,
+  canInsertHumanInputNodes,
+} from '../nodes/human-input-v2/migration/policy'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -846,6 +851,25 @@ export const useNodesInteractions = () => {
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData) return
       const { defaultValue } = nodeMetaData
+      if (
+        !canInsertHumanInput(nodes, nodeType, {
+          ...(defaultValue as Node['data']),
+          ...pluginDefaultValue,
+        })
+      ) {
+        toast.warning(
+          t(
+            ($) =>
+              $[
+                ENABLE_HITL_IM
+                  ? 'nodes.humanInputMigration.disabledReason'
+                  : 'nodes.humanInputV2.disabled'
+              ],
+            { ns: 'workflow' },
+          ),
+        )
+        return
+      }
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
       const shouldCreateInlineAgentBinding =
         nodeType === BlockEnum.AgentV2 &&
@@ -1025,7 +1049,8 @@ export const useNodesInteractions = () => {
           nodeType !== BlockEnum.IfElse &&
           nodeType !== BlockEnum.QuestionClassifier &&
           !hasAgentV2OutputRoutes(newNode.data) &&
-          nodeType !== BlockEnum.HumanInput
+          nodeType !== BlockEnum.HumanInput &&
+          nodeType !== BlockEnum.HumanInputV2
         ) {
           newNode.data._connectedSourceHandleIds = [sourceHandle]
         }
@@ -1061,6 +1086,7 @@ export const useNodesInteractions = () => {
           nodeType !== BlockEnum.QuestionClassifier &&
           !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
+          nodeType !== BlockEnum.HumanInputV2 &&
           nodeType !== BlockEnum.LoopEnd
         ) {
           newEdge = {
@@ -1223,6 +1249,7 @@ export const useNodesInteractions = () => {
           nodeType !== BlockEnum.QuestionClassifier &&
           !hasAgentV2OutputRoutes(newNode.data) &&
           nodeType !== BlockEnum.HumanInput &&
+          nodeType !== BlockEnum.HumanInputV2 &&
           nodeType !== BlockEnum.LoopEnd
         ) {
           newNextEdge = {
@@ -1343,6 +1370,7 @@ export const useNodesInteractions = () => {
       workflowStore,
       getAfterNodesInSameBranch,
       nodesMetaDataMap,
+      t,
     ],
   )
 
@@ -1356,11 +1384,30 @@ export const useNodesInteractions = () => {
       if (getNodesReadOnly()) return
 
       const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-      const currentNode = nodes.find((node) => node.id === currentNodeId)!
-      const connectedEdges = getConnectedEdges([currentNode], edges)
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData) return
       const { defaultValue } = nodeMetaData
+      if (
+        !canInsertHumanInput(nodes, nodeType, {
+          ...(defaultValue as Node['data']),
+          ...pluginDefaultValue,
+        })
+      ) {
+        toast.warning(
+          t(
+            ($) =>
+              $[
+                ENABLE_HITL_IM
+                  ? 'nodes.humanInputMigration.disabledReason'
+                  : 'nodes.humanInputV2.disabled'
+              ],
+            { ns: 'workflow' },
+          ),
+        )
+        return
+      }
+      const currentNode = nodes.find((node) => node.id === currentNodeId)!
+      const connectedEdges = getConnectedEdges([currentNode], edges)
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
       const shouldCreateInlineAgentBinding =
         nodeType === BlockEnum.AgentV2 &&
@@ -1552,6 +1599,7 @@ export const useNodesInteractions = () => {
       saveStateToHistory,
       nodesMetaDataMap,
       autoGenerateWebhookUrl,
+      t,
     ],
   )
 
@@ -1716,6 +1764,20 @@ export const useNodesInteractions = () => {
     if (!validatedClipboardElements.length) return
 
     const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+    if (!canInsertHumanInputNodes(nodes, validatedClipboardElements)) {
+      toast.warning(
+        t(
+          ($) =>
+            $[
+              ENABLE_HITL_IM
+                ? 'nodes.humanInputMigration.disabledReason'
+                : 'nodes.humanInputV2.disabled'
+            ],
+          { ns: 'workflow' },
+        ),
+      )
+      return
+    }
     const reservedNodeTitles = new Set(
       nodes
         .map((node) => node.data.title)
@@ -2088,6 +2150,18 @@ export const useNodesInteractions = () => {
         })
         nodesToPaste.push(...newChildren)
       }
+    })
+
+    nodesToPaste.forEach((node, index) => {
+      const remappedNode = getNodeUsedVars(node).reduce((currentNode, selector) => {
+        if (!Array.isArray(selector) || !selector.length) return currentNode
+        const mappedNodeId = idMapping[selector[0]!]
+        if (!mappedNodeId) return currentNode
+
+        return updateNodeVars(currentNode, selector, [mappedNodeId, ...selector.slice(1)])
+      }, node)
+      nodesToPaste[index] = remappedNode
+      pastedNodesMap[remappedNode.id] = remappedNode
     })
 
     const sourceEdges = validatedClipboardEdges

@@ -16,16 +16,20 @@ from models.model import UploadFile
 from repositories.knowledge.dataset_read_repository import (
     DatasetDetailPrefetch,
     DocumentReadBatch,
+    SegmentReadBatch,
     build_dataset_detail_prefetch,
     get_document_dataset,
     get_document_metadata_rows,
     get_document_upload_file,
     get_document_uploader,
     get_query_upload_files,
-    get_segment_child_chunks,
     load_document_read_batch,
+    load_segment_read_batch,
 )
-from repositories.knowledge.segment_read_adapter import get_segment_attachments, sign_segment_content
+from repositories.knowledge.segment_read_adapter import (
+    format_segment_attachments,
+    sign_segment_content,
+)
 from services.knowledge.entities.datasets import DatasetDetailRecord
 
 
@@ -127,9 +131,13 @@ def load_document_details(documents: Iterable[Document], *, session: Session) ->
     ]
 
 
-def load_segment_detail(segment: DocumentSegment, summary: str | None, *, session: Session) -> dict[str, Any]:
+def load_segment_detail(
+    segment: DocumentSegment, summary: str | None, *, session: Session, batch: SegmentReadBatch | None = None
+) -> dict[str, Any]:
     """Load relations and authorize file links before handing plain values to the response model."""
-    child_chunks = get_segment_child_chunks(segment, session=session, include_full_doc=False)
+    if batch is None:
+        batch = load_segment_read_batch([segment], session=session)
+    child_chunks = batch.child_chunks.get(segment.id, [])
     return {
         "id": segment.id,
         "position": segment.position,
@@ -168,7 +176,7 @@ def load_segment_detail(segment: DocumentSegment, summary: str | None, *, sessio
             }
             for chunk in child_chunks
         ],
-        "attachments": get_segment_attachments(segment, session=session),
+        "attachments": format_segment_attachments(batch.attachments.get(segment.id, [])),
         "summary": summary,
     }
 
@@ -176,7 +184,9 @@ def load_segment_detail(segment: DocumentSegment, summary: str | None, *, sessio
 def load_segment_details(
     segments: Iterable[DocumentSegment], summaries: Mapping[str, str | None], *, session: Session
 ) -> list[dict[str, Any]]:
-    return [load_segment_detail(segment, summaries.get(segment.id), session=session) for segment in segments]
+    items = list(segments)
+    batch = load_segment_read_batch(items, session=session)
+    return [load_segment_detail(segment, summaries.get(segment.id), session=session, batch=batch) for segment in items]
 
 
 def format_document_source_detail(document: Document, file: UploadFile | None) -> dict[str, Any]:

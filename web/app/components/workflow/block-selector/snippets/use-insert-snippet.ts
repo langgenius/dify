@@ -7,6 +7,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { toast } from '@/app/notifications'
+import { ENABLE_HITL_IM } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
@@ -15,6 +16,7 @@ import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workfl
 import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
 import { hasAgentV2OutputRoutes } from '../../nodes/agent-v2/types'
 import { AssignerNodeInputType } from '../../nodes/assigner/types'
+import { canInsertHumanInputNodes } from '../../nodes/human-input-v2/migration/policy'
 import { BlockEnum } from '../../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
 
@@ -404,7 +406,7 @@ const createBoundaryEdges = ({
 }
 
 export const useInsertSnippet = () => {
-  const { t } = useTranslation(['snippet'])
+  const { t } = useTranslation(['snippet', 'workflow'])
   const queryClient = useQueryClient()
   const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -427,6 +429,20 @@ export const useInsertSnippet = () => {
 
         const { getNodes, setNodes, edges, setEdges } = store.getState()
         const currentNodes = getNodes()
+        if (!canInsertHumanInputNodes(currentNodes, snippetNodes)) {
+          toast.warning(
+            t(
+              ($) =>
+                $[
+                  ENABLE_HITL_IM
+                    ? 'nodes.humanInputMigration.disabledReason'
+                    : 'nodes.humanInputV2.disabled'
+                ],
+              { ns: 'workflow' },
+            ),
+          )
+          return false
+        }
         const remappedGraph = remapSnippetGraph(
           currentNodes,
           snippetNodes,

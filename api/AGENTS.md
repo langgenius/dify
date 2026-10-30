@@ -20,9 +20,9 @@ Follow the backend developer guide's [test layout and naming requirements](READM
 Read all backend architecture documentation before modifying backend code:
 
 - [Backend architecture][architecture]
-- [Repositories rule][repositories]
-- [SQLAlchemy rule][sqlalchemy]
-- [Database schema rule][db-schema]
+- [Repositories][repositories]
+- [SQLAlchemy][sqlalchemy]
+- [Database schema][db-schema]
 - [API schema guide][schema-guide]
 
 ## Additional Backend Rules
@@ -37,13 +37,18 @@ guard rejects new `Base` subclasses. Existing `Base` subclasses may be edited
 or migrated without adding more legacy inheritance. `make lint` checks local
 changes, and CI checks the PR against its target revision.
 
+## Billing And SaaS Calls
+
+- Call billing and saas only through the generated functions in `services/billing_client`; do not hand-write paths or response types.
+- To call a new endpoint, add it to `ALLOWED_OPERATIONS` in `dev/generate_billing_client.py` and rerun that script against a dify-saas checkout. Never edit the generated modules or snapshots by hand.
+
 ## Typing Best Practises
 
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
 
-[architecture]: ../.agents/skills/backend-code-review/references/architecture-rule.md
-[repositories]: ../.agents/skills/backend-code-review/references/repositories-rule.md
-[sqlalchemy]: ../.agents/skills/backend-code-review/references/sqlalchemy-rule.md
-[db-schema]: ../.agents/skills/backend-code-review/references/db-schema-rule.md
+[architecture]: ../docs/BACKEND_ARCHITECTURE.md
+[repositories]: ../docs/BACKEND_REPOSITORIES.md
+[sqlalchemy]: ../docs/BACKEND_SQLALCHEMY.md
+[db-schema]: ../docs/BACKEND_DATABASE_SCHEMA.md
 [schema-guide]: controllers/API_SCHEMA_GUIDE.md

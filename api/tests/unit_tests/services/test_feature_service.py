@@ -242,6 +242,21 @@ def test_skill_feature_follows_env_config(config_overrides: Callable[..., None])
     assert features.enable_skill is True
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_knowledge_fs_feature_follows_deployment_availability(
+    config_overrides: Callable[..., None], enabled: bool
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        KNOWLEDGE_FS_ENABLED=enabled,
+        KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=True,
+    )
+
+    features = FeatureService.get_features("")
+
+    assert features.enable_knowledge_fs is enabled
+
+
 def test_get_public_system_features_excludes_trial_models() -> None:
     result = SystemFeatureService.get_public_system_features().model_dump()
 

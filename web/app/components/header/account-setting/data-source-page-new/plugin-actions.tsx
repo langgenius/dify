@@ -12,10 +12,8 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useQuery } from '@tanstack/react-query'
 import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import {
@@ -25,29 +23,14 @@ import {
 import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
-import { PluginSource } from '@/app/components/plugins/types'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import useTheme from '@/hooks/use-theme'
 import useTimestamp from '@/hooks/use-timestamp'
-import { marketplaceQuery } from '@/service/marketplace'
 import { isEarlierThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
   detail: PluginDetail
   onUpdate?: (isDelete?: boolean) => void
-}
-
-const getDetailUrl = (detail: PluginDetail, locale: string, theme: string) => {
-  const { source, meta } = detail
-  const { author, name } = detail.declaration || detail
-
-  if (source === PluginSource.github) return meta?.repo ? `https://github.com/${meta.repo}` : ''
-
-  if (source === PluginSource.marketplace)
-    return getMarketplaceUrl(`/plugins/${author}/${name}`, { language: locale, theme })
-
-  return ''
 }
 
 const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
@@ -55,13 +38,12 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   const versionMenuLabelId = useId()
   const { formatDate } = useTimestamp()
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
-  const { theme } = useTheme()
-  const locale = useLocale()
   const renderI18nObject = useRenderI18nObject()
   const readmeTriggerId = useId()
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const detailHeaderState = useDetailHeaderState(detail)
+  const marketplace = useMarketplace()
   const {
     modalStates,
     versionPicker,
@@ -82,16 +64,10 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   const displayVersion = isFromGitHub ? (detail.meta?.version ?? detail.version) : detail.version
   const pluginLabel = renderI18nObject(detail.declaration.label) || detail.name
 
-  const [organization, pluginName] = detail.plugin_id.split('/')
-  const versionsQuery = useQuery(
-    marketplaceQuery.pluginVersions.queryOptions({
-      input:
-        organization && pluginName
-          ? { params: { organization, pluginName }, query: { page: 1, page_size: 100 } }
-          : skipToken,
-      enabled: versionPicker.isShow && canUpdatePlugin && isFromMarketplace,
-      retry: false,
-    }),
+  const canChangeVersion = canUpdatePlugin && isFromMarketplace && marketplace !== null
+  const versionsQuery = useMarketplacePluginVersions(
+    detail.plugin_id,
+    versionPicker.isShow && canChangeVersion,
   )
   const loadingVersions =
     versionPicker.isShow && (versionsQuery.isPending || autoUpgradeSettings.isPending)
@@ -127,13 +103,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
   return (
     <div className="flex shrink-0 items-center gap-1">
       <Menu
-        open={
-          !!displayVersion &&
-          versionPicker.isShow &&
-          canUpdatePlugin &&
-          isFromMarketplace &&
-          !loadingVersions
-        }
+        open={!!displayVersion && versionPicker.isShow && canChangeVersion && !loadingVersions}
         onOpenChange={versionPicker.setIsShow}
       >
         {!!displayVersion && (
@@ -142,7 +112,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
               <Button
                 variant="ghost"
                 size="small"
-                disabled={!canUpdatePlugin || !isFromMarketplace}
+                disabled={!canChangeVersion}
                 loading={loadingVersions}
                 aria-label={`${t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })} ${pluginLabel} ${displayVersion}`}
                 className="relative h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.5 system-xs-medium text-text-tertiary"
@@ -151,7 +121,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
                   <span className="absolute -inset-e-0.5 -top-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                 )}
                 <span>{displayVersion}</span>
-                {canUpdatePlugin && isFromMarketplace && !loadingVersions && (
+                {canChangeVersion && !loadingVersions && (
                   <span aria-hidden className="i-ri-arrow-left-right-line size-3" />
                 )}
               </Button>
@@ -228,7 +198,8 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
         onCheckVersion={handleUpdate}
         onRemove={modalStates.showDeleteConfirm}
         onViewReadme={detail.plugin_unique_identifier ? handleViewReadme : undefined}
-        detailUrl={getDetailUrl(detail, locale, theme || 'light')}
+        marketplacePlugin={{ org: detail.declaration.author, name: detail.declaration.name }}
+        repo={detail.meta?.repo}
         triggerSize="xs"
         showCheckVersion={canUpdatePlugin}
         showRemove={canDeletePlugin}

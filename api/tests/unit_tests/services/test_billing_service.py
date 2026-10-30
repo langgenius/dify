@@ -693,17 +693,7 @@ class TestBillingServiceUsageCalculation:
 
     Tests cover:
     - Quota information retrieval
-    - Credit addition (positive delta)
-    - Credit consumption (negative delta)
-    - Usage refunds
-    - Specific feature usage queries
     """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
 
     def test_get_quota_info(self):
         """Test retrieval of quota info from new endpoint."""
@@ -719,82 +709,6 @@ class TestBillingServiceUsageCalculation:
         # Assert
         assert result == expected_response
         mock_send_quota_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
-
-    def test_update_tenant_feature_plan_usage_positive_delta(self, mock_send_request):
-        """Test updating tenant feature usage with positive delta (adding credits)."""
-        # Arrange
-        tenant_id = "tenant-123"
-        feature_key = "trigger"
-        delta = 10
-        expected_response = {"result": "success", "history_id": "hist-uuid-123"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.update_tenant_feature_plan_usage(tenant_id, feature_key, delta)
-
-        # Assert
-        assert result == expected_response
-        assert result["result"] == "success"
-        assert "history_id" in result
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/tenant-feature-usage/usage",
-            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
-        )
-
-    def test_update_tenant_feature_plan_usage_negative_delta(self, mock_send_request):
-        """Test updating tenant feature usage with negative delta (consuming credits)."""
-        # Arrange
-        tenant_id = "tenant-456"
-        feature_key = "workflow"
-        delta = -5
-        expected_response = {"result": "success", "history_id": "hist-uuid-456"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.update_tenant_feature_plan_usage(tenant_id, feature_key, delta)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/tenant-feature-usage/usage",
-            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
-        )
-
-    def test_refund_tenant_feature_plan_usage(self, mock_send_request):
-        """Test refunding a previous usage charge."""
-        # Arrange
-        history_id = "hist-uuid-789"
-        expected_response = {"result": "success", "history_id": history_id}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.refund_tenant_feature_plan_usage(history_id)
-
-        # Assert
-        assert result == expected_response
-        assert result["result"] == "success"
-        mock_send_request.assert_called_once_with(
-            "POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id}
-        )
-
-    def test_get_tenant_feature_plan_usage(self, mock_send_request):
-        """Test getting specific feature usage for a tenant."""
-        # Arrange
-        tenant_id = "tenant-123"
-        feature_key = "trigger"
-        expected_response = {"used": 75, "limit": 100, "remaining": 25}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_tenant_feature_plan_usage(tenant_id, feature_key)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET", "/billing/tenant_feature_plan/usage", params={"tenant_id": tenant_id, "feature_key": feature_key}
-        )
 
 
 class TestBillingServiceQuotaOperations:
@@ -1318,7 +1232,6 @@ class TestBillingServiceEdgeCases:
     - Malformed JSON responses
     - Boundary conditions for rate limits
     - Multiple subscription tiers
-    - Zero and negative usage deltas
     """
 
     @pytest.fixture
@@ -1336,42 +1249,6 @@ class TestBillingServiceEdgeCases:
 
         with pytest.raises(ValidationError):
             BillingService.get_info(tenant_id)
-
-    def test_update_tenant_feature_plan_usage_zero_delta(self, mock_send_request):
-        """Test updating tenant feature usage with zero delta (no change)."""
-        # Arrange
-        tenant_id = "tenant-123"
-        feature_key = "trigger"
-        delta = 0  # No change
-        expected_response = {"result": "success", "history_id": "hist-uuid-zero"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.update_tenant_feature_plan_usage(tenant_id, feature_key, delta)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/tenant-feature-usage/usage",
-            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
-        )
-
-    def test_update_tenant_feature_plan_usage_large_negative_delta(self, mock_send_request):
-        """Test updating tenant feature usage with large negative delta."""
-        # Arrange
-        tenant_id = "tenant-456"
-        feature_key = "workflow"
-        delta = -1000  # Large consumption
-        expected_response = {"result": "success", "history_id": "hist-uuid-large"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.update_tenant_feature_plan_usage(tenant_id, feature_key, delta)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once()
 
     def test_get_knowledge_rate_limit_all_subscription_tiers(self, mock_send_request):
         """Test knowledge rate limit for all subscription tiers."""
@@ -1423,21 +1300,6 @@ class TestBillingServiceEdgeCases:
 
         # Assert
         assert result == expected_response
-
-    def test_refund_with_invalid_history_id_format(self, mock_send_request):
-        """Test refund with various history ID formats."""
-        # Arrange - test with different ID formats
-        test_ids = ["hist-123", "uuid-abc-def", "12345", ""]
-
-        for history_id in test_ids:
-            expected_response = {"result": "success", "history_id": history_id}
-            mock_send_request.return_value = expected_response
-
-            # Act
-            result = BillingService.refund_tenant_feature_plan_usage(history_id)
-
-            # Assert
-            assert result["history_id"] == history_id
 
 
 class TestBillingServiceSubscriptionOperations:
@@ -1693,7 +1555,6 @@ class TestBillingServiceIntegrationScenarios:
 
     These tests combine multiple service methods to test common workflows:
     - Complete subscription upgrade flow
-    - Usage tracking and refund workflow
     - Rate limit boundary testing
     """
 
@@ -1733,35 +1594,6 @@ class TestBillingServiceIntegrationScenarios:
         rate_limit = BillingService.get_knowledge_rate_limit(tenant_id)
         assert rate_limit["subscription_plan"] == CloudPlan.PROFESSIONAL
         assert rate_limit["limit"] == 100
-
-    def test_usage_tracking_and_refund_workflow(self, mock_send_request):
-        """Test usage tracking with subsequent refund."""
-        # Arrange
-        tenant_id = "tenant-usage"
-        feature_key = "workflow"
-
-        # Step 1: Consume credits
-        mock_send_request.return_value = {"result": "success", "history_id": "hist-consume-123"}
-        consume_result = BillingService.update_tenant_feature_plan_usage(tenant_id, feature_key, -10)
-        history_id = consume_result["history_id"]
-        assert history_id == "hist-consume-123"
-
-        # Step 2: Check current usage
-        mock_send_request.return_value = {"used": 10, "limit": 100, "remaining": 90}
-        usage = BillingService.get_tenant_feature_plan_usage(tenant_id, feature_key)
-        assert usage["used"] == 10
-        assert usage["remaining"] == 90
-
-        # Step 3: Refund the usage
-        mock_send_request.return_value = {"result": "success", "history_id": history_id}
-        refund_result = BillingService.refund_tenant_feature_plan_usage(history_id)
-        assert refund_result["result"] == "success"
-
-        # Step 4: Verify usage after refund
-        mock_send_request.return_value = {"used": 0, "limit": 100, "remaining": 100}
-        updated_usage = BillingService.get_tenant_feature_plan_usage(tenant_id, feature_key)
-        assert updated_usage["used"] == 0
-        assert updated_usage["remaining"] == 100
 
 
 class TestBillingServiceSubscriptionInfoDataType:

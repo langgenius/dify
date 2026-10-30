@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { createDeferred } from '@/test/deferred'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import RenameDatasetModal from '../index'
@@ -114,6 +115,32 @@ describe('RenameDatasetModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUpdateDatasetSetting.mockResolvedValue(createMockDataset())
+  })
+
+  it('keeps a pending rename open and preserves the draft for retry after failure', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<ReturnType<typeof createMockDataset>>()
+    mockUpdateDatasetSetting.mockReturnValueOnce(pending.promise)
+    render(<RenameDatasetModal {...defaultProps} />)
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(name)
+    await user.type(name, 'Retry this rename{Enter}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+    await user.keyboard('{Escape}')
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(defaultProps.onSuccess).not.toHaveBeenCalled()
+    await act(async () => pending.reject(new Error('offline')))
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalled())
+    expect(name).toHaveValue('Retry this rename')
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
+    expect(mockUpdateDatasetSetting).toHaveBeenCalledTimes(2)
+    expect(mockUpdateDatasetSetting).toHaveBeenLastCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ name: 'Retry this rename' }) }),
+    )
   })
 
   describe('User Interactions', () => {

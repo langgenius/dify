@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import useGetIcon from '../../base/use-get-icon'
 import Version from '../../base/version'
 
@@ -40,7 +40,7 @@ const Installed: FC<Props> = ({ list, installStatus, versionInfo, onCancel, isHi
                 payload={{
                   ...plugin,
                   icon: installStatus[index]!.isFromMarketPlace
-                    ? `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
+                    ? getMarketplacePluginIconUrl(`${plugin.org}/${plugin.name}`)
                     : getIconUrl(plugin.icon),
                 }}
                 installed={installStatus[index]!.success}

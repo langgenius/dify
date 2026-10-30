@@ -1,0 +1,1420 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "",
+    "version": "0.0.1"
+  },
+  "x-dify-saas-commit": "a0b548cf3020d490a8b7fad21dfbb66b72fa0ed6",
+  "paths": {
+    "/v1/subscription/info": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetSubscriptionInfo",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "exclude_vector_space",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSubscriptionInfoReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/vector-space": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetSubscriptionVectorSpace",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bypass_cache",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorSpaceQuota"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/knowledge-rate-limit": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetKnowledgeRateLimit",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetKnowledgeRateLimitReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/payment-link": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetSubscriptionPaymentLink",
+        "parameters": [
+          {
+            "name": "plan",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefilled_email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSubscriptionPaymentLinkReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/plan/batch": {
+      "post": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_BatchGetSubscriptionPlan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchGetSubscriptionPlanReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchGetSubscriptionPlanReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/cleanup/whitelist": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_ListSubscriptionCleanupWhitelist",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSubscriptionCleanupWhitelistReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/model-provider/payment-link": {
+      "get": {
+        "tags": [
+          "BillingModelProvider"
+        ],
+        "operationId": "BillingModelProvider_GetModelProviderPaymentLink",
+        "parameters": [
+          {
+            "name": "provider_name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefilled_email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetModelProviderPaymentLinkReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invoices": {
+      "get": {
+        "tags": [
+          "BillingInvoice"
+        ],
+        "operationId": "BillingInvoice_GetInvoices",
+        "parameters": [
+          {
+            "name": "prefilled_email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetInvoicesReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education/verify": {
+      "get": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_VerifyEducationIdentity",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEducationIdentityReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education/status": {
+      "get": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_GetEducationIdentityStatus",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEducationIdentityStatusReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education": {
+      "post": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_CreateEducationIdentity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEducationIdentityReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateEducationIdentityReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education/autocomplete": {
+      "get": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_AutocompleteEducationInstitution",
+        "parameters": [
+          {
+            "name": "keywords",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutocompleteEducationInstitutionReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/download": {
+      "post": {
+        "tags": [
+          "BillingCompliance"
+        ],
+        "operationId": "BillingCompliance_DownloadComplianceDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadComplianceDocumentReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadComplianceDocumentReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/info": {
+      "get": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "GetQuotaInfo returns aggregated quota info for all billing features of a tenant.",
+        "operationId": "BillingQuota_GetQuotaInfo",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaGetInfoReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/reserve": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "Reserve pre-allocates quota before task execution.",
+        "operationId": "BillingQuota_Reserve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaReserveReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaReserveReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/commit": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "Commit finalizes the reservation with actual cost.",
+        "operationId": "BillingQuota_Commit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaCommitReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaCommitReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/release": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "Release cancels a reservation and returns quota.",
+        "operationId": "BillingQuota_Release",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaReleaseReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaReleaseReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/balance": {
+      "get": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "GetBalance returns current available and reserved quota for a single feature.",
+        "operationId": "BillingQuota_GetBalance",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feature_key",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaGetBalanceReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/consume-capped": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "ConsumeCapped atomically consumes up to the available quota.",
+        "operationId": "BillingQuota_ConsumeCapped",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaConsumeCappedReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaConsumeCappedReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AutocompleteEducationInstitutionReply": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "curr_page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "has_next": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data",
+          "curr_page",
+          "has_next"
+        ]
+      },
+      "BatchGetSubscriptionPlanReply": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SubscriptionPlanItem"
+            }
+          }
+        },
+        "description": "Batch get subscription plan reply",
+        "required": [
+          "data"
+        ]
+      },
+      "BatchGetSubscriptionPlanReq": {
+        "type": "object",
+        "properties": {
+          "tenant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Batch get subscription plan request",
+        "required": [
+          "tenant_ids"
+        ]
+      },
+      "BillingSubscriptionPlan": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "enum": [
+              "sandbox",
+              "professional",
+              "team"
+            ],
+            "type": "string"
+          },
+          "interval": {
+            "enum": [
+              "",
+              "month",
+              "year"
+            ],
+            "type": "string"
+          },
+          "education": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "cancel_at_period_end": {
+            "type": "boolean"
+          },
+          "paid_period_end": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Subscription plan and billing cycle info",
+        "required": [
+          "plan",
+          "interval",
+          "education",
+          "status",
+          "cancel_at_period_end",
+          "paid_period_end"
+        ]
+      },
+      "CreateEducationIdentityReply": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "CreateEducationIdentityReq": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "curr_tenant_id": {
+            "type": "string"
+          },
+          "institution": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "curr_tenant_id",
+          "institution",
+          "role",
+          "token"
+        ]
+      },
+      "DownloadComplianceDocumentReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "DownloadComplianceDocumentReq": {
+        "type": "object",
+        "properties": {
+          "doc_name": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "device_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_name",
+          "account_id",
+          "tenant_id",
+          "ip_address",
+          "device_info"
+        ]
+      },
+      "GetEducationIdentityStatusReply": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "boolean"
+          },
+          "is_student": {
+            "type": "boolean"
+          },
+          "expire_at": {
+            "type": "string"
+          },
+          "allow_refresh": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "result",
+          "is_student",
+          "expire_at",
+          "allow_refresh"
+        ]
+      },
+      "GetInvoicesReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "GetKnowledgeRateLimitReply": {
+        "type": "object",
+        "properties": {
+          "subscription_plan": {
+            "enum": [
+              "sandbox",
+              "professional",
+              "team"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "subscription_plan",
+          "limit"
+        ]
+      },
+      "GetModelProviderPaymentLinkReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "GetSubscriptionInfoReply": {
+        "required": [
+          "enabled",
+          "subscription",
+          "members",
+          "apps",
+          "vector_space",
+          "knowledge_rate_limit",
+          "documents_upload_quota",
+          "annotation_quota_limit",
+          "docs_processing",
+          "can_replace_logo",
+          "model_load_balancing_enabled",
+          "knowledge_pipeline_publish_enabled",
+          "next_credit_reset_date"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/BillingSubscriptionPlan"
+          },
+          "members": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "apps": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "vector_space": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VectorSpaceQuota"
+              }
+            ],
+            "nullable": true
+          },
+          "knowledge_rate_limit": {
+            "$ref": "#/components/schemas/KnowledgeRateLimit"
+          },
+          "documents_upload_quota": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "annotation_quota_limit": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "docs_processing": {
+            "enum": [
+              "standard",
+              "priority",
+              "top-priority"
+            ],
+            "type": "string"
+          },
+          "can_replace_logo": {
+            "type": "boolean"
+          },
+          "model_load_balancing_enabled": {
+            "type": "boolean"
+          },
+          "knowledge_pipeline_publish_enabled": {
+            "type": "boolean"
+          },
+          "next_credit_reset_date": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Get subscription info reply"
+      },
+      "GetSubscriptionPaymentLinkReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "description": "Get subscription payment link reply",
+        "required": [
+          "url"
+        ]
+      },
+      "KnowledgeRateLimit": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "string",
+            "format": "int64"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Knowledge rate limit (requests per minute)\n NOTE: size is retained for structural consistency but is not consumed by dify.\n Implementation should populate 0 for paid users.",
+        "required": [
+          "size",
+          "limit"
+        ]
+      },
+      "ListSubscriptionCleanupWhitelistReply": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionCleanupWhitelist"
+            }
+          }
+        },
+        "description": "List subscription cleanup whitelist reply",
+        "required": [
+          "data"
+        ]
+      },
+      "QuotaCommitReply": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "refunded": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "available",
+          "reserved",
+          "refunded"
+        ]
+      },
+      "QuotaCommitReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "reservation_id": {
+            "type": "string"
+          },
+          "actual_amount": {
+            "type": "string",
+            "format": "int64"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "bucket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "reservation_id",
+          "actual_amount",
+          "meta",
+          "bucket"
+        ]
+      },
+      "QuotaConsumeCappedReply": {
+        "type": "object",
+        "properties": {
+          "deducted": {
+            "type": "string",
+            "format": "int64"
+          },
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "quota": {
+            "type": "string",
+            "format": "int64"
+          },
+          "usage": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "deducted",
+          "available",
+          "reserved",
+          "quota",
+          "usage"
+        ]
+      },
+      "QuotaConsumeCappedReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "format": "int64"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "bucket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "request_id",
+          "amount",
+          "meta",
+          "bucket"
+        ]
+      },
+      "QuotaFeatureInfo": {
+        "type": "object",
+        "properties": {
+          "usage": {
+            "type": "string",
+            "format": "int64"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reset_date": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Per-feature quota detail",
+        "required": [
+          "usage",
+          "limit",
+          "reset_date"
+        ]
+      },
+      "QuotaGetBalanceReply": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "quota": {
+            "type": "string",
+            "format": "int64"
+          },
+          "usage": {
+            "type": "string",
+            "format": "int64"
+          },
+          "exhausted_at": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "available",
+          "reserved",
+          "quota",
+          "usage",
+          "exhausted_at"
+        ]
+      },
+      "QuotaGetInfoReply": {
+        "required": [
+          "trigger_event",
+          "api_rate_limit"
+        ],
+        "type": "object",
+        "properties": {
+          "trigger_event": {
+            "$ref": "#/components/schemas/QuotaFeatureInfo"
+          },
+          "api_rate_limit": {
+            "$ref": "#/components/schemas/QuotaFeatureInfo"
+          }
+        }
+      },
+      "QuotaReleaseReply": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "released": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "available",
+          "reserved",
+          "released"
+        ]
+      },
+      "QuotaReleaseReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "reservation_id": {
+            "type": "string"
+          },
+          "bucket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "reservation_id",
+          "bucket"
+        ]
+      },
+      "QuotaReserveReply": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "available",
+          "reserved"
+        ]
+      },
+      "QuotaReserveReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "format": "int64"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional metadata (model name, trace_id, etc.)"
+          },
+          "bucket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "request_id",
+          "amount",
+          "meta",
+          "bucket"
+        ]
+      },
+      "SubscriptionCleanupWhitelist": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "contact": {
+            "type": "string"
+          },
+          "expired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Single whitelist item",
+        "required": [
+          "id",
+          "tenant_id",
+          "contact",
+          "expired_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "SubscriptionPlanItem": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "enum": [
+              "sandbox",
+              "professional",
+              "team"
+            ],
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Subscription plan item",
+        "required": [
+          "plan",
+          "expiration_date"
+        ]
+      },
+      "SubscriptionQuota": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "string",
+            "format": "int64"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Generic usage quota (size = current usage, limit = max allowed)",
+        "required": [
+          "size",
+          "limit"
+        ]
+      },
+      "VectorSpaceQuota": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "number",
+            "format": "double"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          },
+          "usage_unknown": {
+            "nullable": true,
+            "type": "boolean"
+          }
+        },
+        "description": "Vector space quota (size is double because dataset sizes are fractional MB)",
+        "required": [
+          "size",
+          "limit"
+        ]
+      },
+      "VerifyEducationIdentityReply": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    }
+  }
+}

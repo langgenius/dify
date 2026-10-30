@@ -501,11 +501,7 @@ function PickerTrigger({
     <PopoverTrigger
       id={triggerId}
       aria-label={ariaLabel}
-      aria-labelledby={
-        labelId
-          ? [labelId, field.serializedValue ? field.valueId : undefined].filter(Boolean).join(' ')
-          : undefined
-      }
+      aria-labelledby={labelId ? `${labelId} ${field.valueId}` : undefined}
       {...getStateAttributesProps(
         {
           ...baseField.state,

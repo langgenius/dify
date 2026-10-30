@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy import Engine as _webhook_service_relationships_Engine
-from sqlalchemy import Table, select
+from sqlalchemy import select
 from sqlalchemy.engine import Engine as _webhook_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
@@ -21,7 +21,6 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from graphon.variables.types import SegmentType
-from models.base import TypeBase
 from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App, AppMode, EndUser
 from models.tools import ToolFile
@@ -1273,8 +1272,6 @@ class TestWebhookServiceRelationshipsCases:
     def test_draft_sync_preserves_webhook_id_when_deleted_node_is_restored(
         monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
     ) -> None:
-        webhook_trigger_table = cast(Table, WorkflowWebhookTrigger.__table__)
-        TypeBase.metadata.create_all(sqlite_engine, tables=[webhook_trigger_table])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         app = cast(
             App,
@@ -1320,8 +1317,6 @@ class TestWebhookServiceRelationshipsCases:
     def test_published_sync_removes_stale_webhook_relationships(
         monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
     ) -> None:
-        webhook_trigger_table = cast(Table, WorkflowWebhookTrigger.__table__)
-        TypeBase.metadata.create_all(sqlite_engine, tables=[webhook_trigger_table])
         session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         app = cast(
             App,
