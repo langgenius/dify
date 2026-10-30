@@ -343,8 +343,9 @@ class ConsoleAppService:
     ) -> Import:
         """Create the workflows a package calls as Workflow Tools, then import the App that calls them.
 
-        The caller has checked the import rights. ``dsl`` is the root App's YAML; ``preserve_agent_bindings``
-        applies to the root App only.
+        The caller has checked the import rights once; each workflow and the root App check them again before
+        their import, so a refusal partway deletes the Apps created so far. ``dsl`` is the root App's YAML;
+        ``preserve_agent_bindings`` applies to the root App only.
 
         Workflow Tools already in the workspace are reused. New tools get their ids up front, so a DSL can
         reference a tool that is created after it and workflows that call each other need no order. Apps
@@ -361,6 +362,7 @@ class ConsoleAppService:
                 if not target.create:
                     continue
                 with closing(package.open_workflow_tool(tool)) as workflow_package:
+                    self._access.require_import(context, "dsl")
                     imported = self._import_admitted_dsl(
                         context,
                         AppImportParams(
@@ -390,6 +392,7 @@ class ConsoleAppService:
                     warning.model_copy(update={"path": f"workflow_tools.{tool.id}.{warning.path}"})
                     for warning in imported.warnings
                 )
+            self._access.require_import(context, "dsl")
             result = self._import_admitted_dsl(
                 context,
                 params.model_copy(
