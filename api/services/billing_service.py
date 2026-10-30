@@ -1,5 +1,4 @@
 import logging
-import os
 from collections.abc import Mapping, Sequence
 from typing import Literal
 from warnings import deprecated
@@ -22,9 +21,6 @@ def _quota_meta(meta: Mapping[str, object] | None) -> dict[str, str]:
 
 
 class BillingService:
-    base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
-    secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
-
     # Redis key prefix for tenant plan cache
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
