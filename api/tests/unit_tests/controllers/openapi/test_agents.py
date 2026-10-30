@@ -4,7 +4,8 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Protocol, cast
+from enum import StrEnum
+from typing import cast
 
 import pytest
 from sqlalchemy import select, update
@@ -24,7 +25,6 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
 from core.app.app_config.common.parameters_mapping import AppParametersDict
 from extensions.ext_application_services import ApplicationServices
@@ -42,8 +42,8 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import AppMode
 from services.agent.roster_service import AgentRosterService
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
+from tests.helpers.unit.controllers.openapi.auth._world import EndpointOwner, canonical
 from tests.helpers.unit.model_factories import make_app
-from tests.unit_tests.controllers.openapi.auth.test_requirements import _canonical
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 AGENT_ID = "11111111-1111-4111-8111-111111111111"
@@ -181,7 +181,7 @@ REVISION_ID = "33333333-3333-4333-8333-333333333333"
 APP_VARIABLES = [{"name": "topic", "type": "text", "required": True}]
 
 
-class PublishState:
+class PublishState(StrEnum):
     NEVER = "never"
     CLEAN = "clean"
     EDITED = "edited"
@@ -192,13 +192,15 @@ def _services(monkeypatch: pytest.MonkeyPatch, account_application_services: App
     monkeypatch.setattr(agents, "application_services", lambda: account_application_services)
 
 
-def _persist_agent(world: AdmittedWorld, session: Session, state: str, *, enable_api: bool = True) -> str:
+def _persist_agent(world: AdmittedWorld, session: Session, state: PublishState, *, enable_api: bool = True) -> str:
     app_id = str(uuid.uuid4())
     published = state != PublishState.NEVER
+    app = make_app(
+        app_id=app_id, tenant_id=world.workspace_id, name="Support desk", mode=AppMode.AGENT, enable_api=enable_api
+    )
+    app.updated_at = UPDATED_AT
     rows: list[object] = [
-        make_app(
-            app_id=app_id, tenant_id=world.workspace_id, name="Support desk", mode=AppMode.AGENT, enable_api=enable_api
-        ),
+        app,
         Agent(
             id=AGENT_ID,
             tenant_id=world.workspace_id,
@@ -241,7 +243,7 @@ def _describe(world: AdmittedWorld, query: str = "", agent_id: str = AGENT_ID) -
     )
 
 
-def _info(app_id: str, *, published: bool, updated_at: str) -> dict[str, object]:
+def _info(app_id: str, *, published: bool) -> dict[str, object]:
     return AgentDescribeInfo(
         agent_id=AGENT_ID,
         app_id=app_id,
@@ -249,7 +251,7 @@ def _info(app_id: str, *, published: bool, updated_at: str) -> dict[str, object]
         description="",
         role="triage",
         published=published,
-        updated_at=updated_at,
+        updated_at=UPDATED_AT.isoformat(),
         service_api_enabled=True,
     ).model_dump()
 
@@ -264,7 +266,7 @@ def _hints(world: AdmittedWorld, op: str) -> list[dict[str, object]]:
     ids=["clean", "edited-since-publish"],
 )
 def test_describe_agent_shows_the_inputs_of_its_published_version(
-    admitted_bearer: AdmittedWorld, sqlite_session: Session, state: str, published: bool
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, state: PublishState, published: bool
 ) -> None:
     app_id = _persist_agent(admitted_bearer, sqlite_session, state)
 
@@ -272,7 +274,7 @@ def test_describe_agent_shows_the_inputs_of_its_published_version(
 
     body = response.get_json()
     assert response.status_code == 200
-    assert body["info"] == _info(app_id, published=published, updated_at=body["info"]["updated_at"])
+    assert body["info"] == _info(app_id, published=published)
     assert [{key: hint[key] for key in ("op", "input")} for hint in body["hints"]] == _hints(
         admitted_bearer, "run.agent"
     )
@@ -288,7 +290,7 @@ def test_describe_agent_without_a_published_version_hints_the_draft(
 
     body = _describe(admitted_bearer).get_json()
 
-    assert body["info"] == _info(app_id, published=False, updated_at=body["info"]["updated_at"])
+    assert body["info"] == _info(app_id, published=False)
     assert (body["parameters"], body["input_schema"]) == (None, None)
     assert [{key: hint[key] for key in ("op", "input")} for hint in body["hints"]] == _hints(
         admitted_bearer, "test.agent"
@@ -366,10 +368,6 @@ def test_describe_agent_with_its_service_api_off_is_refused(
     ]
 
 
-class EndpointOwner(Protocol):
-    __spec__: EndpointSpec
-
-
 def test_describe_agent_declares_its_guards() -> None:
     spec = cast(EndpointOwner, AgentDescribeApi.get).__spec__
     expected = (
@@ -380,5 +378,5 @@ def test_describe_agent_declares_its_guards() -> None:
         CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
     )
 
-    assert [*map(_canonical, spec.requirements)] == [*map(_canonical, expected)]
+    assert [*map(canonical, spec.requirements)] == [*map(canonical, expected)]
     assert spec.context == "orm"

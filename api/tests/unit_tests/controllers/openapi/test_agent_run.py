@@ -28,23 +28,25 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceRole,
     Requirement,
 )
-from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account
 from models.model import App, AppMode
 from tests.helpers.unit.controllers.openapi.auth._world import (
+    AGENT_APP_ID,
+    AGENT_ID,
     OTHER_TENANT_ID,
     TENANT_ID,
+    EndpointOwner,
     account_subject,
+    canonical,
     make_account,
+    make_agent,
     make_app,
     make_tenant,
     persist,
 )
-from tests.unit_tests.controllers.openapi.auth.test_loaders import AGENT_APP_ID, AGENT_ID, _agent
-from tests.unit_tests.controllers.openapi.auth.test_requirements import _canonical
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 _AGENT_RUN_ROUTES = [
@@ -105,15 +107,11 @@ def _stub_generate(
 
 @pytest.fixture
 def agent_ctx(sqlite_session: Session) -> Context:
-    persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), _agent())
+    persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), make_agent())
     ctx = Context(account_subject(), sqlite_session, {"workspace_id": TENANT_ID, "agent_id": AGENT_ID})
     load_app(ctx)
     ctx._caller = make_account()
     return ctx
-
-
-class EndpointOwner(Protocol):
-    __spec__: EndpointSpec
 
 
 class _AgentView(Protocol):
@@ -207,7 +205,7 @@ _SHARED_GUARDS = (
 def test_agent_routes_declare_their_guards(view: type[AgentRunApi | AgentTestApi], last_guard: Requirement) -> None:
     spec = cast(EndpointOwner, view.post).__spec__
 
-    assert [*map(_canonical, spec.requirements)] == [*map(_canonical, (_ACCOUNT_ONLY, *_SHARED_GUARDS, last_guard))]
+    assert [*map(canonical, spec.requirements)] == [*map(canonical, (_ACCOUNT_ONLY, *_SHARED_GUARDS, last_guard))]
     assert spec.context == "orm"
 
 
@@ -218,7 +216,7 @@ def test_an_agent_of_another_workspace_is_not_found_and_runs_nothing(
     persist(
         sqlite_session,
         make_app(app_id=AGENT_APP_ID, tenant_id=OTHER_TENANT_ID, mode=AppMode.AGENT),
-        _agent(tenant_id=OTHER_TENANT_ID),
+        make_agent(tenant_id=OTHER_TENANT_ID),
     )
     stub = _stub_generate(monkeypatch)
 
@@ -239,7 +237,7 @@ def test_an_agent_with_its_service_api_off_is_refused_and_runs_nothing(
     persist(
         sqlite_session,
         make_app(app_id=AGENT_APP_ID, tenant_id=admitted_bearer.workspace_id, mode=AppMode.AGENT, enable_api=False),
-        _agent(tenant_id=admitted_bearer.workspace_id),
+        make_agent(tenant_id=admitted_bearer.workspace_id),
     )
     stub = _stub_generate(monkeypatch)
 
