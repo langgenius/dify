@@ -9,6 +9,8 @@ from controllers.common.controller_schemas import MessageFeedbackPayload as _Mes
 from controllers.common.errors import InternalServerError as InternalServerHTTPError
 from controllers.common.errors import MessageFeedbackRatingRequiredError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.generative_ui_errors import OpenUIBlockNotReadyHTTPError
+from controllers.common.generative_ui_schemas import OpenUIStatePayload, OpenUIStateResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -54,6 +56,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.generative_ui_state_service import OpenUIBlockNotReadyError
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +104,7 @@ register_schema_models(
     console_ns,
     ChatMessagesQuery,
     AppMessageFeedbackPayload,
+    OpenUIStatePayload,
 )
 register_response_schema_models(
     console_ns,
@@ -108,6 +112,7 @@ register_response_schema_models(
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
     SimpleResultResponse,
+    OpenUIStateResponse,
 )
 
 
@@ -309,6 +314,63 @@ class AgentMessageApi(Resource):
         except AgentAppNotFoundError as exc:
             raise AgentNotFoundError() from exc
         return _get_message_detail(context=context, app_id=app_id, message_id=message_id)
+
+
+@console_ns.route("/apps/<uuid:app_id>/messages/<uuid:message_id>/content-blocks/<string:block_id>/state")
+class MessageOpenUIStateApi(Resource):
+    @error_responses(AppNotFoundError, NotFoundError, OpenUIBlockNotReadyHTTPError)
+    @console_ns.expect(console_ns.models[OpenUIStatePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Draft saved", console_ns.models[OpenUIStateResponse.__name__])
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),))
+    @model_validate(OpenUIStatePayload)
+    def put(
+        self, payload: OpenUIStatePayload, context: RequestContext, app_id: UUID, message_id: UUID, block_id: str
+    ) -> dict[str, object]:
+        try:
+            app = application_services().apps.console.get_reference(context, str(app_id))
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError() from exc
+        return _save_openui_state(
+            payload=payload, context=context, app_id=app.id, message_id=message_id, block_id=block_id
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/messages/<uuid:message_id>/content-blocks/<string:block_id>/state")
+class AgentMessageOpenUIStateApi(Resource):
+    @error_responses(AgentNotFoundError, NotFoundError, OpenUIBlockNotReadyHTTPError)
+    @console_ns.expect(console_ns.models[OpenUIStatePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Draft saved", console_ns.models[OpenUIStateResponse.__name__])
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()),))
+    @model_validate(OpenUIStatePayload)
+    def put(
+        self, payload: OpenUIStatePayload, context: RequestContext, agent_id: UUID, message_id: UUID, block_id: str
+    ) -> dict[str, object]:
+        try:
+            app_id = application_services().agent_apps.access.resolve_existing_runtime_app_id(context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError() from exc
+        return _save_openui_state(
+            payload=payload, context=context, app_id=app_id, message_id=message_id, block_id=block_id
+        )
+
+
+def _save_openui_state(
+    *, payload: OpenUIStatePayload, context: RequestContext, app_id: str, message_id: UUID, block_id: str
+) -> dict[str, object]:
+    try:
+        block = application_services().openui_states.save_state(
+            actor=MessageAccount(account_id=context.account_id),
+            app_id=app_id,
+            app_owner_tenant_id=context.active_workspace_id,
+            message_id=str(message_id),
+            block_id=block_id,
+            form_state=payload.form_state,
+        )
+    except MessageNotExistsError as exc:
+        raise NotFoundError("Message or content block not found") from exc
+    except OpenUIBlockNotReadyError as exc:
+        raise OpenUIBlockNotReadyHTTPError() from exc
+    return dump_response(OpenUIStateResponse, {"block": block})
 
 
 def _list_chat_messages(*, args: ChatMessagesQuery, context: RequestContext, app_id: str) -> dict[str, object]:

@@ -151,6 +151,54 @@ describe('useCreateSnippetFromSelection', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('removes generative UI from the snippet without changing the source LLM configuration', async () => {
+    const model = {
+      provider: 'openai',
+      name: 'gpt-4o',
+      mode: 'chat',
+      completion_params: { temperature: 0.7 },
+    }
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        title: 'Interactive answer',
+        model,
+        prompt_template: [{ role: 'system', text: 'Summarize the results.' }],
+        context: { enabled: false, variable_selector: [] },
+        vision: { enabled: false },
+        structured_output_enabled: false,
+        generative_ui_enabled: true,
+      }),
+      createNode('template', {
+        type: BlockEnum.TemplateTransform,
+        title: 'Format answer',
+        template: '{{ answer }}',
+        variables: [{ variable: 'answer', value_selector: ['llm', 'text'] }],
+      }),
+    ]
+    const originalNodes = structuredClone(selectedNodes)
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose: vi.fn(),
+      }),
+    )
+
+    act(() => result.current.handleOpenCreateSnippet())
+
+    const submitted = await submitDialog(result.current.createSnippetDialog)
+    expect(submitted.graph?.nodes[0]?.data).not.toHaveProperty('generative_ui_enabled')
+    expect(submitted.graph?.nodes[0]?.data).toMatchObject({
+      model,
+      prompt_template: [{ role: 'system', text: 'Summarize the results.' }],
+      structured_output_enabled: false,
+    })
+    expect(submitted.graph?.nodes[1]?.data).toEqual(originalNodes[1]?.data)
+    expect(selectedNodes).toEqual(originalNodes)
+  })
+
   it('should preserve legacy non-environment model selectors', async () => {
     const selectedNodes = [
       createNode('llm', {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import queue
 import uuid
 from collections.abc import Generator, Iterator, Sequence
 from dataclasses import dataclass
@@ -25,7 +26,12 @@ from core.app.app_config.entities import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, CompletionAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import (
+    AgentChatAppGenerateEntity,
+    ChatAppGenerateEntity,
+    CompletionAppGenerateEntity,
+    InvokeFrom,
+)
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     MessageQueueMessage,
@@ -51,6 +57,7 @@ from core.app.entities.task_entities import (
     ErrorStreamResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
+    MessageContentStreamResponse,
     MessageEndStreamResponse,
     MessageFileStreamResponse,
     MessageReplaceStreamResponse,
@@ -60,15 +67,18 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager
+from extensions.ext_code_based_extension import code_based_extension
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
-from models.enums import ConversationFromSource, CreatorUserRole
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentDelta
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_upload_file
@@ -841,7 +851,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 return MessageEndStreamResponse(task_id="task", id="msg")
 
             _set_method(pipeline._message_cycle_manager, "get_message_event_type", _message_event_type)
-            _set_method(pipeline, "handle_output_moderation_when_task_finished", lambda completion: None)
+            _set_method(pipeline, "handle_output_moderation_when_task_finished", lambda completion, extra_texts: None)
             _set_method(pipeline, "_message_end_to_stream_response", _message_end)
             _set_method(pipeline, "_save_message", lambda **kwargs: None)
 
@@ -1607,11 +1617,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             pipeline._task_state.llm_result.message.content = "raw answer"
             _set_queue_events(pipeline, [_queue_message(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))])
             pipeline._handle_stop = Mock()
-            _set_method(pipeline, "handle_output_moderation_when_task_finished", lambda answer: "moderated answer")
+            _set_method(
+                pipeline, "handle_output_moderation_when_task_finished", lambda answer, extra_texts: "moderated answer"
+            )
             _set_method(
                 pipeline._message_cycle_manager,
                 "message_replace_to_stream_response",
-                lambda answer: MessageReplaceStreamResponse(task_id="task", answer=answer, reason=""),
+                lambda answer, reason: MessageReplaceStreamResponse(task_id="task", answer=answer, reason=reason),
             )
             _set_method(pipeline, "_save_message", lambda **kwargs: None)
             _set_method(
@@ -2339,6 +2351,7 @@ class TestEasyUiMessageEndFilesCases:
                 "usage": pipeline._task_state.llm_result.usage.model_dump(exclude_none=True),
                 "retriever_resources": [],
                 "reasoning": {},
+                "content_blocks": [],
             }
 
         def test_message_end_with_local_file(
@@ -2496,3 +2509,574 @@ class TestEasyUiMessageEndFilesCases:
             assert len(result.files) == 1
             assert result.files[0]["url"].startswith("https://example.com/fallback-url")
             get_signed_url.assert_called_once_with(upload_file_id=str(message_file_local.upload_file_id))
+
+
+class TestAgentGenerativeUI:
+    @pytest.fixture
+    def pipeline(
+        self,
+        agent_generate_entity: AgentChatAppGenerateEntity,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+    ) -> EasyUIBasedGenerateTaskPipeline:
+        agent_generate_entity.app_config.app_mode = AppMode.AGENT
+        agent_generate_entity.app_config.app_model_config_dict = {"generative_ui": {"enabled": True}}
+        conversation, message = agent_records
+        return EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=agent_generate_entity,
+            queue_manager=agent_queue_manager,
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+
+    @pytest.mark.parametrize("terminal", ["error", "cancelled"])
+    @pytest.mark.parametrize("final_started", [False, True])
+    @pytest.mark.parametrize("with_ui", [False, True])
+    def test_interrupted_answer_persists_prose_in_the_same_coordinate_system_as_ui(
+        self,
+        terminal: str,
+        final_started: bool,
+        with_ui: bool,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        live_ui = '```openui\nroot = Text("Live")\n```\n' if with_ui else ""
+        live = f"Before \U00020000\n{live_ui}After\n``"
+        agent_queue_manager.publish(QueueAgentMessageEvent(chunk=llm_chunk(live)), PublishFrom.TASK_PIPELINE)
+        if final_started:
+            final_ui = '```openui\nroot = Text("Final")\n```\n' if with_ui else ""
+            final = f"Final\n{final_ui}End"
+            agent_queue_manager.publish(QueueLLMChunkEvent(chunk=llm_chunk(final)), PublishFrom.TASK_PIPELINE)
+        terminal_event = (
+            QueueErrorEvent(error=ValueError("generation failed"))
+            if terminal == "error"
+            else QueueStopEvent(stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY)
+        )
+        agent_queue_manager.publish(terminal_event, PublishFrom.TASK_PIPELINE)
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        sqlite_session.refresh(agent_records[1])
+        saved = agent_records[1]
+        expected_prose = "Final\nEnd" if final_started else "Before \U00020000\nAfter\n``"
+        assert saved.answer == expected_prose
+        assert saved.message_metadata_dict.get("agent_response_is_partial", False) is (not final_started)
+        if with_ui:
+            block = saved.message_metadata_dict["content_blocks"][0]
+            assert block["text_offset"] == len("Final\n" if final_started else "Before \U00020000\n")
+            assert block["source"] == ('root = Text("Final")\n' if final_started else 'root = Text("Live")\n')
+        else:
+            assert saved.message_metadata_dict["content_blocks"] == []
+        live_responses = [response.answer for response in responses if isinstance(response, AgentMessageStreamResponse)]
+        assert "".join(live_responses) == "Before \U00020000\nAfter\n``"
+        if terminal == "cancelled":
+            assert isinstance(responses[-1], MessageEndStreamResponse)
+            assert responses[-1].metadata.get("agent_response_is_partial", False) is (not final_started)
+
+    @pytest.mark.parametrize("terminal", ["error", "cancelled"])
+    def test_interrupted_live_answer_does_not_restore_moderated_prose(
+        self,
+        terminal: str,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        for queue_event in [
+            QueueAgentMessageEvent(chunk=llm_chunk('Original\n```openui\nroot = Text("Original")\n```\n')),
+            QueueMessageReplaceEvent(
+                text="Safe.", reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
+            ),
+            QueueErrorEvent(error=ValueError("generation failed"))
+            if terminal == "error"
+            else QueueStopEvent(stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY),
+        ]:
+            agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
+
+        list(pipeline._process_stream_response(publisher=None))
+
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == "Safe."
+        assert agent_records[1].message_metadata_dict["content_blocks"] == []
+        assert "agent_response_is_partial" not in agent_records[1].message_metadata_dict
+
+    @pytest.mark.parametrize("stream_final_chunks", [True, False], ids=["streamed", "result-only"])
+    @pytest.mark.parametrize("final_kind", ["ui-only", "reordered", "plain"])
+    def test_final_boundary_precedes_rebased_content_and_discards_live_membership(
+        self,
+        stream_final_chunks: bool,
+        final_kind: str,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        first = 'root = Stack([Text("First")])\n'
+        second = 'root = Stack([Text("Second")])\n'
+        live = f"Live introduction\n```openui\n{first}```\nLive middle\n```openui\n{second}```\n"
+        final = {
+            "ui-only": f"```openui\n{second}```\n",
+            "reordered": f"```openui\n{second}```\nFinal middle\n```openui\n{first}```\n",
+            "plain": "Final prose.",
+        }[final_kind]
+        agent_queue_manager.publish(QueueAgentMessageEvent(chunk=llm_chunk(live)), PublishFrom.TASK_PIPELINE)
+        if stream_final_chunks:
+            agent_queue_manager.publish(QueueLLMChunkEvent(chunk=llm_chunk(final)), PublishFrom.TASK_PIPELINE)
+        agent_queue_manager.publish(QueueMessageEndEvent(llm_result=llm_result(final)), PublishFrom.TASK_PIPELINE)
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        boundary_indexes = [
+            index
+            for index, response in enumerate(responses)
+            if isinstance(response, MessageReplaceStreamResponse) and response.reason == "generative_ui_final"
+        ]
+        assert len(boundary_indexes) == 1
+        boundary_index = boundary_indexes[0]
+        boundary = responses[boundary_index]
+        assert isinstance(boundary, MessageReplaceStreamResponse)
+        assert boundary.answer == ""
+        assert not any(isinstance(response, MessageStreamResponse) for response in responses[:boundary_index])
+        live_blocks = [
+            response.data
+            for response in responses[:boundary_index]
+            if isinstance(response, MessageContentStreamResponse)
+        ]
+        assert len(live_blocks) == 2
+        final_blocks = [
+            response.data
+            for response in responses[boundary_index + 1 :]
+            if isinstance(response, MessageContentStreamResponse)
+        ]
+        expected_sources = {"ui-only": [second], "reordered": [second, first], "plain": []}[final_kind]
+        assert all(isinstance(block, OpenUIContentBlock) for block in final_blocks)
+        assert [block.source for block in final_blocks if isinstance(block, OpenUIContentBlock)] == expected_sources
+        if final_blocks:
+            assert isinstance(final_blocks[0], OpenUIContentBlock)
+            assert final_blocks[0].text_offset == 0
+        for block in final_blocks:
+            assert block.sequence > next(live_block.sequence for live_block in live_blocks if live_block.id == block.id)
+        expected_answer = {"ui-only": "", "reordered": "Final middle\n", "plain": "Final prose."}[final_kind]
+        assert (
+            "".join(
+                response.answer
+                for response in responses[boundary_index + 1 :]
+                if isinstance(response, MessageStreamResponse)
+            )
+            == expected_answer
+        )
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == expected_answer
+        assert [
+            block["source"] for block in agent_records[1].message_metadata_dict["content_blocks"]
+        ] == expected_sources
+        assert "agent_response_is_partial" not in agent_records[1].message_metadata_dict
+
+    def test_final_boundary_forces_snapshot_even_when_live_source_can_be_appended(
+        self,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+    ) -> None:
+        prefix = "```openui\nroot = Stack(["
+        suffix = 'Text("Final")])\n```'
+        for queue_event in [
+            QueueAgentMessageEvent(chunk=llm_chunk(prefix)),
+            QueueLLMChunkEvent(chunk=llm_chunk(prefix)),
+            QueueLLMChunkEvent(chunk=llm_chunk(suffix)),
+            QueueMessageEndEvent(llm_result=llm_result(prefix + suffix)),
+        ]:
+            agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        boundary_index = next(
+            index
+            for index, response in enumerate(responses)
+            if isinstance(response, MessageReplaceStreamResponse) and response.reason == "generative_ui_final"
+        )
+        restart = responses[boundary_index + 1]
+        assert isinstance(restart, MessageContentStreamResponse)
+        assert isinstance(restart.data, OpenUIContentBlock)
+        assert restart.data.source == "root = Stack(["
+        live = responses[0]
+        assert isinstance(live, MessageContentStreamResponse)
+        assert restart.data.sequence > live.data.sequence
+
+    def test_final_replay_replaces_incomplete_live_block_and_keeps_ui_out_of_tts(
+        self,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        final_answer = 'Summary.\n```openui\nroot = Card("Final")\n```\nDone.'
+        events = [
+            QueueAgentMessageEvent(chunk=llm_chunk('Summary.\n```openui\nroot = Card("Par')),
+            QueuePingEvent(),
+            QueueLLMChunkEvent(chunk=llm_chunk(final_answer)),
+            QueueMessageEndEvent(llm_result=llm_result(final_answer)),
+        ]
+        for queue_event in events:
+            agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
+        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
+        publisher._msg_queue = queue.Queue()
+
+        responses = list(pipeline._process_stream_response(publisher=publisher))
+
+        content = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
+        assert isinstance(content[0], OpenUIContentBlock)
+        assert isinstance(content[-1], OpenUIContentBlock)
+        assert content[0].source == 'root = Card("Par'
+        assert content[-1].source == 'root = Card("Final")\n'
+        assert content[-1].status == "completed"
+        assert len({block.id for block in content}) == 1
+        assert [block.sequence for block in content] == sorted({block.sequence for block in content})
+        assert pipeline._task_state.llm_result.message.content == "Summary.\nDone."
+        end = responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == [content[-1].model_dump(mode="json")]
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == "Summary.\nDone."
+        assert agent_records[1].message_metadata_dict["content_blocks"] == end.metadata["content_blocks"]
+
+        published = []
+        while not publisher._msg_queue.empty():
+            published.append(publisher._msg_queue.get_nowait())
+        assert all(message is not None for message in published)
+        speech = "".join(
+            message.event.chunk.delta.message.get_text_content()
+            for message in published
+            if message is not None and isinstance(message.event, QueueLLMChunkEvent)
+        )
+        assert speech == "Summary.\nDone."
+        assert [type(message.event) for message in published if message is not None] == [
+            QueuePingEvent,
+            QueueLLMChunkEvent,
+            QueueLLMChunkEvent,
+            QueueMessageEndEvent,
+        ]
+
+    def test_final_replay_positions_ui_against_exact_persisted_unicode_prose(
+        self,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        source = 'root = Stack([Text("Data")])\n'
+        live_answer = f"Live\n```openui\n{source}"
+        prefix = "  Summary \U00020000 {{name}}\n"
+        between = "Recommendation\n"
+        final_answer = f"{prefix}```openui\n{source}```\n{between}```openui\n{source}```\n  "
+        for queue_event in [
+            QueueAgentMessageEvent(chunk=llm_chunk(live_answer)),
+            QueueLLMChunkEvent(chunk=llm_chunk(final_answer)),
+            QueueMessageEndEvent(llm_result=llm_result(final_answer)),
+        ]:
+            agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        content = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
+        assert isinstance(content[0], OpenUIContentBlock)
+        assert content[0].text_offset == len("Live\n")
+        snapshots = [
+            block for block in content if isinstance(block, OpenUIContentBlock) and block.status == "completed"
+        ]
+        assert [block.text_offset for block in snapshots] == [len(prefix), len(prefix + between)]
+        assert pipeline._task_state.llm_result.message.content == prefix + between + "  "
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == prefix + between + "  "
+        assert [block["text_offset"] for block in agent_records[1].message_metadata_dict["content_blocks"]] == [
+            len(prefix),
+            len(prefix + between),
+        ]
+
+    @pytest.mark.parametrize("live_completed", [False, True])
+    def test_split_final_replay_starts_with_snapshot_then_appends_deltas(
+        self,
+        live_completed: bool,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        live_answer = '```openui\nroot = Text("Draft")\n' + ("```\n" if live_completed else "")
+        final_chunks = ["```openui\n", "root = Stack([", 'Text("Final")])\n', "```"]
+        agent_queue_manager.publish(QueueAgentMessageEvent(chunk=llm_chunk(live_answer)), PublishFrom.TASK_PIPELINE)
+        for chunk in final_chunks:
+            agent_queue_manager.publish(QueueLLMChunkEvent(chunk=llm_chunk(chunk)), PublishFrom.TASK_PIPELINE)
+        agent_queue_manager.publish(
+            QueueMessageEndEvent(llm_result=llm_result("".join(final_chunks))), PublishFrom.TASK_PIPELINE
+        )
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        content = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
+        assert len(content) == 5
+        live, restart, first_delta, second_delta, terminal = content
+        assert isinstance(live, OpenUIContentBlock)
+        assert live.status == ("completed" if live_completed else "streaming")
+        assert isinstance(restart, OpenUIContentBlock)
+        assert restart.status == "streaming"
+        assert restart.source == ""
+        assert restart.sequence > live.sequence
+        assert isinstance(first_delta, OpenUIContentDelta)
+        assert first_delta.base_sequence == restart.sequence
+        assert first_delta.source_delta == final_chunks[1]
+        assert isinstance(second_delta, OpenUIContentDelta)
+        assert second_delta.base_sequence == first_delta.sequence
+        assert second_delta.source_delta == final_chunks[2]
+        assert isinstance(terminal, OpenUIContentBlock)
+        assert terminal.sequence > second_delta.sequence
+        assert terminal.status == "completed"
+        assert terminal.source == first_delta.source_delta + second_delta.source_delta
+        assert len({block.id for block in content}) == 1
+        end = responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == [terminal.model_dump(mode="json")]
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].message_metadata_dict["content_blocks"] == end.metadata["content_blocks"]
+
+    @pytest.mark.parametrize("terminal", ["error", "cancelled"])
+    def test_unfinished_ui_persists_terminal_status(
+        self,
+        terminal: str,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        agent_queue_manager.publish(
+            QueueAgentMessageEvent(chunk=llm_chunk('```openui\nroot = Card("Partial")')),
+            PublishFrom.TASK_PIPELINE,
+        )
+        terminal_event = (
+            QueueErrorEvent(error=ValueError("generation failed"))
+            if terminal == "error"
+            else QueueStopEvent(stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY)
+        )
+        agent_queue_manager.publish(terminal_event, PublishFrom.TASK_PIPELINE)
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        content = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
+        assert isinstance(content[-1], OpenUIContentBlock)
+        assert content[-1].status == terminal
+        assert content[-1].source == 'root = Card("Partial")'
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == ""
+        assert agent_records[1].message_metadata_dict["content_blocks"] == [content[-1].model_dump(mode="json")]
+        if terminal == "error":
+            assert isinstance(responses[-1], ErrorStreamResponse)
+            assert agent_records[1].status == MessageStatus.ERROR
+        else:
+            assert isinstance(responses[-1], MessageEndStreamResponse)
+            assert agent_records[1].message_metadata_dict["agent_stop_requested"] is True
+
+    @pytest.mark.parametrize("final_has_ui", [False, True], ids=["plain-final", "fewer-final-blocks"])
+    def test_final_replay_removes_live_blocks_absent_from_final_answer(
+        self,
+        final_has_ui: bool,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        live_answer = '```openui\nroot = Card("First draft")\n```\n```openui\nroot = Card("Discarded")'
+        final_answer = 'Final prose.\n```openui\nroot = Card("Final")\n```\n' if final_has_ui else "Final prose.\n"
+        for queue_event in [
+            QueueAgentMessageEvent(chunk=llm_chunk(live_answer)),
+            QueueLLMChunkEvent(chunk=llm_chunk(final_answer)),
+            QueueMessageEndEvent(llm_result=llm_result(final_answer)),
+        ]:
+            agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        content = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
+        live_ids = {block.id for block in content[:2]}
+        assert len(live_ids) == 2
+        end = responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        expected_blocks = [content[-1].model_dump(mode="json")] if final_has_ui else []
+        assert end.metadata["content_blocks"] == expected_blocks
+        assert pipeline._task_state.metadata.model_dump(mode="json")["content_blocks"] == expected_blocks
+        if final_has_ui:
+            assert isinstance(content[-1], OpenUIContentBlock)
+            assert content[-1].id == content[0].id
+            assert content[-1].source == 'root = Card("Final")\n'
+            assert content[-1].status == "completed"
+        for block_id in live_ids:
+            sequences = [block.sequence for block in content if block.id == block_id]
+            assert sequences == sorted(set(sequences))
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == ("Final prose.\n" if final_has_ui else "Final prose.")
+        assert agent_records[1].message_metadata_dict["content_blocks"] == expected_blocks
+
+    @pytest.mark.parametrize("closing_fence", ["```\n", ""])
+    def test_direct_output_moderation_clears_ui_when_stop_precedes_replacement(
+        self,
+        closing_fence: str,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        initial_responses = list(
+            pipeline._process_generative_ui_final_text(
+                f'Original forbidden prose.\n```openui\nroot = Card("Safe UI")\n{closing_fence}'
+            )
+        )
+        assert any(isinstance(response, MessageContentStreamResponse) for response in initial_responses)
+        code_based_extension.init()
+        pipeline.output_moderation_handler = OutputModeration(
+            tenant_id="tenant",
+            app_id="app1",
+            rule=ModerationRule(
+                type="keywords",
+                config={
+                    "keywords": "forbidden",
+                    "inputs_config": {"enabled": False},
+                    "outputs_config": {"enabled": True, "preset_response": "Blocked."},
+                },
+            ),
+            queue_manager=agent_queue_manager,
+            final_output="Blocked.",
+        )
+
+        assert pipeline._handle_output_moderation_chunk("More prose.") is True
+        agent_queue_manager.publish(
+            QueueMessageReplaceEvent(
+                text="Blocked.",
+                reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
+            ),
+            PublishFrom.TASK_PIPELINE,
+        )
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        assert not any(
+            isinstance(response, (MessageContentStreamResponse, MessageReplaceStreamResponse)) for response in responses
+        )
+        end = responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == []
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == "Blocked."
+        assert agent_records[1].message_metadata_dict["content_blocks"] == []
+
+    def test_moderation_replacement_suppresses_current_and_later_ui_blocks(
+        self,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        initial = 'Original.\n```openui\nroot = Card("Partial'
+        tail = '")\n```\nFollowing prose.\n```openui\nroot = Card("Later UI")\n```\nDone.'
+        replacement = 'Redacted.\n```openui\nroot = Card("Replacement UI")\n```\n'
+        for queue_event in [
+            QueueLLMChunkEvent(chunk=llm_chunk(initial)),
+            QueueMessageReplaceEvent(
+                text=replacement, reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
+            ),
+            QueueLLMChunkEvent(chunk=llm_chunk(tail)),
+            QueueMessageEndEvent(llm_result=llm_result(initial + tail)),
+        ]:
+            agent_queue_manager.publish(queue_event, PublishFrom.TASK_PIPELINE)
+        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
+        publisher._msg_queue = queue.Queue()
+
+        responses = list(pipeline._process_stream_response(publisher=publisher))
+
+        replacement_index = next(
+            index
+            for index, response in enumerate(responses)
+            if isinstance(response, MessageReplaceStreamResponse) and response.reason == "output_moderation"
+        )
+        replacement_response = responses[replacement_index]
+        assert isinstance(replacement_response, MessageReplaceStreamResponse)
+        assert replacement_response.answer == "Redacted.\n"
+        assert replacement_response.reason == "output_moderation"
+        assert any(isinstance(response, MessageContentStreamResponse) for response in responses[:replacement_index])
+        assert not any(isinstance(response, MessageContentStreamResponse) for response in responses[replacement_index:])
+        end = responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == []
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == "Redacted.\nFollowing prose.\nDone."
+        assert agent_records[1].message_metadata_dict["content_blocks"] == []
+        speech = []
+        while not publisher._msg_queue.empty():
+            message = publisher._msg_queue.get_nowait()
+            if message is not None and isinstance(message.event, QueueLLMChunkEvent):
+                speech.append(message.event.chunk.delta.message.get_text_content())
+        assert "".join(speech) == "Original.\nFollowing prose.\nDone."
+
+    @pytest.mark.parametrize(("keyword", "expected_prose"), [("forbidden", "Summary."), ("Summary.", "Blocked.")])
+    @pytest.mark.parametrize("cancelled", [False, True])
+    def test_final_keyword_moderation_keeps_ui_sources_and_replacements_out_of_answer(
+        self,
+        keyword: str,
+        expected_prose: str,
+        cancelled: bool,
+        pipeline: EasyUIBasedGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        agent_records: tuple[Conversation, Message],
+        sqlite_session: Session,
+    ) -> None:
+        answer = 'Summary.\n```openui\nroot = Card("forbidden")\n```\n'
+        chunk_event = (
+            QueueAgentMessageEvent(chunk=llm_chunk(answer))
+            if cancelled
+            else QueueLLMChunkEvent(chunk=llm_chunk(answer))
+        )
+        terminal_event = (
+            QueueStopEvent(stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY)
+            if cancelled
+            else QueueMessageEndEvent(llm_result=llm_result(answer))
+        )
+        agent_queue_manager.publish(chunk_event, PublishFrom.TASK_PIPELINE)
+        agent_queue_manager.publish(terminal_event, PublishFrom.TASK_PIPELINE)
+        responses = pipeline._process_stream_response(publisher=None)
+        if not cancelled:
+            boundary = next(responses)
+            assert isinstance(boundary, MessageReplaceStreamResponse)
+            assert boundary.reason == "generative_ui_final"
+        assert isinstance(next(responses), AgentMessageStreamResponse if cancelled else MessageStreamResponse)
+        assert isinstance(next(responses), MessageContentStreamResponse)
+        code_based_extension.init()
+        pipeline.output_moderation_handler = OutputModeration(
+            tenant_id="tenant",
+            app_id="app1",
+            rule=ModerationRule(
+                type="keywords",
+                config={
+                    "keywords": keyword,
+                    "inputs_config": {"enabled": False},
+                    "outputs_config": {
+                        "enabled": True,
+                        "preset_response": 'Blocked.\n```openui\nroot = Card("Replacement UI")\n```\n',
+                    },
+                },
+            ),
+            queue_manager=agent_queue_manager,
+        )
+
+        terminal_responses = list(responses)
+
+        replacement = terminal_responses[0]
+        assert isinstance(replacement, MessageReplaceStreamResponse)
+        assert replacement.answer == expected_prose + "\n"
+        assert replacement.reason == "output_moderation"
+        end = terminal_responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == []
+        assert "agent_response_is_partial" not in end.metadata
+        sqlite_session.refresh(agent_records[1])
+        assert agent_records[1].answer == expected_prose
+        assert agent_records[1].message_metadata_dict["content_blocks"] == []
+        assert "agent_response_is_partial" not in agent_records[1].message_metadata_dict

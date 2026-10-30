@@ -681,6 +681,7 @@ export type MessageDetailResponse = {
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
   answer_tokens: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   error?: string | null
@@ -703,6 +704,21 @@ export type MessageDetailResponse = {
   retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
+}
+
+export type OpenUiStatePayload = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+}
+
+export type OpenUiStateResponse = {
+  block: OpenUiContentBlock
+}
+
+export type OpenuiBlockNotReadyError = ErrorResponse & {
+  code: 'openui_block_not_ready'
+  status: 409
 }
 
 export type AppModelConfigPayload = {
@@ -1981,6 +1997,7 @@ export type MessageDetail = {
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
   answer_tokens: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   error?: string | null
@@ -2041,6 +2058,19 @@ export type ConversationAnnotationHitHistory = {
   annotation_create_account?: SimpleAccount | null
   annotation_id: string
   created_at?: number | null
+}
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  text_offset: number
+  type: 'openui'
 }
 
 export type HumanInputContent = {
@@ -3122,6 +3152,8 @@ export type SimpleAccount = {
   name: string
 }
 
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
+
 export type HumanInputFormDefinition = {
   actions?: Array<UserActionConfig>
   display_in_ui?: boolean
@@ -3466,6 +3498,7 @@ export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
   file_upload?: AgentFileUploadFeatureConfig
+  generative_ui?: AgentFeatureToggleConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -6658,6 +6691,33 @@ export type GetAppsByAppIdMessagesByMessageIdResponses = {
 
 export type GetAppsByAppIdMessagesByMessageIdResponse =
   GetAppsByAppIdMessagesByMessageIdResponses[keyof GetAppsByAppIdMessagesByMessageIdResponses]
+
+export type PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateData = {
+  body: OpenUiStatePayload
+  path: {
+    app_id: string
+    block_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/messages/{message_id}/content-blocks/{block_id}/state'
+}
+
+export type PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateErrors = {
+  404: AppNotFoundError | ErrorResponse
+  409: OpenuiBlockNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateError =
+  PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateErrors[keyof PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateErrors]
+
+export type PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponses = {
+  200: OpenUiStateResponse
+}
+
+export type PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponses[keyof PutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponses]
 
 export type PostAppsByAppIdModelConfigData = {
   body: AppModelConfigPayload

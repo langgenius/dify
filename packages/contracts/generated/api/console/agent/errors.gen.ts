@@ -202,6 +202,14 @@ const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zOpenuiBlockNotReadyError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('openui_block_not_ready'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zAgentModelNotConfiguredError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -539,6 +547,11 @@ export const get20Errors = { agent_not_found_error: { status: 404, data: zAgentN
 
 export const get21Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
+export const put3Errors = {
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  openui_block_not_ready: { status: 409, data: zOpenuiBlockNotReadyError },
+}
+
 export const get22Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -682,7 +695,7 @@ export const delete6Errors = { agent_not_found_error: { status: 404, data: zAgen
 
 export const get35Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const put3Errors = {
+export const put4Errors = {
   agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
 }

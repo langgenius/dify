@@ -9,6 +9,7 @@ import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
 import { resolveKnowledgeCitationLinks } from './knowledge-citation-links'
+import { OrderedResponseContent } from './ordered-response-content'
 
 type AgentRosterResponseContentProps = {
   item: ChatItem
@@ -33,6 +34,7 @@ type AgentActivityEntry =
       type: 'message'
       content: string
       key: string
+      contentBlocks?: ChatItem['content_blocks']
     }
   | {
       type: 'thought'
@@ -101,26 +103,18 @@ function getThoughtKey(thought: ThoughtItem) {
   return thought.id || `${thought.message_id}-${thought.position}`
 }
 
-function hashString(value: string) {
-  let hash = 5381
-  for (let i = 0; i < value.length; i++) hash = ((hash << 5) + hash) ^ value.charCodeAt(i)
-
-  return (hash >>> 0).toString(36)
-}
-
 function hasVisibleActivity(thought: ThoughtItem) {
   return !!thought.tool || !!thought.message_files?.length
 }
 
+/** Live parts append in order, so message identity stays stable as its prose grows. */
 function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
   if (item.agent_response_parts?.length) {
     const keyOccurrences = new Map<string, number>()
 
-    return item.agent_response_parts.flatMap<AgentActivityEntry>((part) => {
+    return item.agent_response_parts.flatMap<AgentActivityEntry>((part, index) => {
       const baseKey =
-        part.type === 'message'
-          ? `message-${part.content.length}-${hashString(part.content)}`
-          : `thought-${getThoughtKey(part.thought)}`
+        part.type === 'message' ? `message-${index}` : `thought-${getThoughtKey(part.thought)}`
       const occurrence = keyOccurrences.get(baseKey) ?? 0
       keyOccurrences.set(baseKey, occurrence + 1)
       const key = occurrence ? `${baseKey}-${occurrence}` : baseKey
@@ -140,13 +134,39 @@ function getAgentActivityEntries(item: ChatItem): AgentActivityEntry[] {
       const parts: AgentActivityEntry[] = []
       const key = getThoughtKey(thought)
       const answer = thought.answer
-      if (answer?.trim()) parts.push({ type: 'message', content: answer, key: `message-${key}` })
+      if (!item.agent_response_is_partial && answer?.trim())
+        parts.push({ type: 'message', content: answer, key: `message-${key}` })
 
       if (hasVisibleActivity(thought))
         parts.push({ type: 'thought', thought, key: `thought-${key}` })
 
       return parts
     })
+}
+
+/** Live public text belongs to response parts; block offsets address their concatenation. */
+function addLiveContentBlocks(entries: AgentActivityEntry[], item: ChatItem): AgentActivityEntry[] {
+  const blocks = item.content_blocks
+  if (!item.agent_response_parts?.length || !blocks?.length) return entries
+
+  const lastMessage = [...entries].reverse().find((entry) => entry.type === 'message')
+  if (!lastMessage) {
+    return [...entries, { type: 'message', content: '', key: 'ui-only', contentBlocks: blocks }]
+  }
+
+  let offset = 0
+  return entries.map((entry) => {
+    if (entry.type !== 'message') return entry
+    const start = offset
+    offset += Array.from(entry.content).length
+    const contentBlocks = blocks
+      .filter(
+        (block) =>
+          block.text_offset >= start && (entry === lastMessage || block.text_offset < offset),
+      )
+      .map((block) => ({ ...block, text_offset: block.text_offset - start }))
+    return { ...entry, contentBlocks }
+  })
 }
 
 function useWorkingDuration(enabled?: boolean) {
@@ -218,7 +238,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
     <div className="flex w-full max-w-full min-w-0 flex-col items-start">
       {hasDetails ? (
         <Collapsible className="w-full max-w-full items-start">
-          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary">
+          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-start system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary">
             {content}
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
@@ -309,7 +329,7 @@ function AgentActivityDisclosure({
     <Collapsible className="w-full max-w-full items-start gap-1" defaultOpen={defaultOpen}>
       <CollapsibleTrigger
         aria-label={title}
-        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary"
+        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-start system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary"
       >
         <span>{thinking}</span>
         {duration && (
@@ -327,9 +347,13 @@ function AgentActivityDisclosure({
         <div className="flex w-full max-w-full min-w-0 flex-col gap-1 overflow-hidden">
           {entries.map((entry) =>
             entry.type === 'message' ? (
-              <ResponseMessage
+              <OrderedResponseContent
                 key={entry.key}
-                content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
+                item={{ id: item.id, content_blocks: entry.contentBlocks }}
+                content={entry.content}
+                renderText={(text) => (
+                  <ResponseMessage content={resolveKnowledgeCitationLinks(text, item.citation)} />
+                )}
               />
             ) : (
               <AgentActivityItem key={entry.key} thought={entry.thought} responding={responding} />
@@ -348,14 +372,17 @@ export function AgentRosterResponseContent({
 }: AgentRosterResponseContentProps) {
   if (item.annotation?.logAnnotation) {
     return (
-      <Markdown
-        content={item.annotation.logAnnotation.content || ''}
-        data-testid="agent-content-markdown"
-      />
+      <>
+        <Markdown
+          content={item.annotation.logAnnotation.content || ''}
+          data-testid="agent-content-markdown"
+        />
+        <OrderedResponseContent item={item} content="" renderText={() => null} />
+      </>
     )
   }
 
-  const entries = getAgentActivityEntries(item)
+  const entries = addLiveContentBlocks(getAgentActivityEntries(item), item)
   const hasLiveResponseParts = !!item.agent_response_parts?.length
   const hasThinkingStatus =
     entries.length === 0 && !!item.agent_response_parts?.some((part) => part.type === 'thought')
@@ -366,8 +393,15 @@ export function AgentRosterResponseContent({
     ? hasActivity
       ? []
       : entries.flatMap((entry) => (entry.type === 'message' ? [entry] : []))
-    : content
-      ? [{ type: 'message' as const, content, key: 'final-answer' }]
+    : content || item.content_blocks?.length
+      ? [
+          {
+            type: 'message' as const,
+            content: content ?? item.content,
+            key: 'final-answer',
+            contentBlocks: item.content_blocks,
+          },
+        ]
       : []
 
   return (
@@ -385,9 +419,13 @@ export function AgentRosterResponseContent({
         />
       )}
       {standaloneMessages.map((message) => (
-        <ResponseMessage
+        <OrderedResponseContent
           key={message.key}
-          content={resolveKnowledgeCitationLinks(message.content, item.citation)}
+          item={{ id: item.id, content_blocks: message.contentBlocks }}
+          content={message.content}
+          renderText={(text) => (
+            <ResponseMessage content={resolveKnowledgeCitationLinks(text, item.citation)} />
+          )}
         />
       ))}
     </div>

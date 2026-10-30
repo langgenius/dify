@@ -225,6 +225,7 @@ const createContextValue = (
 
 const createUseChatReturn = (overrides: Partial<UseChatReturn> = {}): UseChatReturn => ({
   chatList: [],
+  handleContentBlockStateSaved: vi.fn(),
   setTargetMessageId: vi.fn() as UseChatReturn['setTargetMessageId'],
   handleSend: vi.fn(),
   handleResume: vi.fn(),

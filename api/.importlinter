@@ -1299,3 +1299,20 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:generative-ui-application-boundary]
+name = OpenUI protocol and draft service are framework and persistence neutral
+type = forbidden
+source_modules =
+    libs.generative_ui
+    services.generative_ui_state_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug

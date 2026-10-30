@@ -670,6 +670,18 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
 )
 
 /**
+ * OpenuiBlockNotReadyError
+ *
+ * Only completed OpenUI blocks accept form state.
+ */
+export const zOpenuiBlockNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('openui_block_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AppNamePayload
  */
 export const zAppNamePayload = z.object({
@@ -1712,6 +1724,13 @@ export const zJsonValue = z.unknown()
 export const zMessageTemplateTestRequest = z.object({
   channel: zDebugChannel,
   inputs: z.record(z.string(), zJsonValue).optional(),
+})
+
+/**
+ * OpenUIStatePayload
+ */
+export const zOpenUiStatePayload = z.object({
+  form_state: z.record(z.string(), zJsonValue),
 })
 
 export const zShallowJsonValue = z
@@ -3401,6 +3420,29 @@ export const zFeedback = z.object({
   rating: z.string(),
 })
 
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1').default('dify-ui-v1'),
+  sequence: z.int().gte(0).default(0),
+  source: z.string().default(''),
+  status: zOpenUiContentStatus.default('streaming'),
+  text_offset: z.int().gte(0).default(0),
+  type: z.literal('openui').default('openui'),
+})
+
+/**
+ * OpenUIStateResponse
+ */
+export const zOpenUiStateResponse = z.object({
+  block: zOpenUiContentBlock,
+})
+
 /**
  * HumanInputFormSubmissionData
  */
@@ -3477,6 +3519,7 @@ export const zMessageDetail = z.object({
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
   answer: z.string(),
   answer_tokens: z.int(),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   error: z.string().nullish(),
@@ -5529,6 +5572,7 @@ export const zMessageDetailResponse = z.object({
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
   answer: z.string(),
   answer_tokens: z.int(),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   error: z.string().nullish(),
@@ -5954,6 +5998,7 @@ export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
  */
 export const zAgentSoulAppFeaturesConfig = z.object({
   file_upload: zAgentFileUploadFeatureConfig.optional(),
+  generative_ui: zAgentFeatureToggleConfig.optional(),
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
@@ -7387,6 +7432,20 @@ export const zGetAppsByAppIdMessagesByMessageIdPath = z.object({
  * Message retrieved successfully
  */
 export const zGetAppsByAppIdMessagesByMessageIdResponse = zMessageDetailResponse
+
+export const zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateBody = zOpenUiStatePayload
+
+export const zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStatePath = z.object({
+  app_id: z.uuid(),
+  block_id: z.string(),
+  message_id: z.uuid(),
+})
+
+/**
+ * Draft saved
+ */
+export const zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  zOpenUiStateResponse
 
 export const zPostAppsByAppIdModelConfigBody = zAppModelConfigPayload
 

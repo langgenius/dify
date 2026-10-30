@@ -35,6 +35,7 @@ import {
   zNoFileUploadedError,
   zNodeNotInWorkflowRunError,
   zNodeOutputNotDeclaredError,
+  zOpenuiBlockNotReadyError,
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -529,6 +530,9 @@ import {
   zPostAppsWorkflowsOnlineUsersBody,
   zPostAppsWorkflowsOnlineUsersResponse,
   zPutAppsByAppIdBody,
+  zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateBody,
+  zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStatePath,
+  zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse,
   zPutAppsByAppIdNetworkAccessGroupBody,
   zPutAppsByAppIdNetworkAccessGroupPath,
   zPutAppsByAppIdNetworkAccessGroupResponse,
@@ -2184,6 +2188,38 @@ export const icon = {
   post: post26,
 }
 
+export const put = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdState',
+    path: '/apps/{app_id}/messages/{message_id}/content-blocks/{block_id}/state',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateBody,
+      params: zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStatePath,
+    }),
+  )
+  .output(zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    openui_block_not_ready: { status: 409, data: zOpenuiBlockNotReadyError },
+  })
+
+export const state = {
+  put,
+}
+
+export const byBlockId = {
+  state,
+}
+
+export const contentBlocks = {
+  byBlockId,
+}
+
 /**
  * Get message details by ID
  */
@@ -2205,6 +2241,7 @@ export const get32 = oc
 
 export const byMessageId2 = {
   get: get32,
+  contentBlocks,
 }
 
 export const messages = {
@@ -2283,7 +2320,7 @@ export const get34 = oc
   .output(zGetAppsByAppIdNetworkAccessGroupResponse)
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
-export const put = oc
+export const put2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -2302,7 +2339,7 @@ export const put = oc
 
 export const networkAccessGroup = {
   get: get34,
-  put,
+  put: put2,
   status: status2,
 }
 
@@ -2377,7 +2414,7 @@ export const post31 = oc
 /**
  * Update MCP server configuration for an application
  */
-export const put2 = oc
+export const put3 = oc
   .route({
     description: 'Update MCP server configuration for an application',
     inputStructure: 'detailed',
@@ -2393,7 +2430,7 @@ export const put2 = oc
 export const server = {
   get: get35,
   post: post31,
-  put: put2,
+  put: put3,
   refresh,
 }
 
@@ -3431,7 +3468,7 @@ export const delete9 = oc
  *
  * Update a comment reply
  */
-export const put3 = oc
+export const put4 = oc
   .route({
     description: 'Update a comment reply',
     inputStructure: 'detailed',
@@ -3455,7 +3492,7 @@ export const put3 = oc
 
 export const byReplyId = {
   delete: delete9,
-  put: put3,
+  put: put4,
 }
 
 /**
@@ -3567,7 +3604,7 @@ export const get59 = oc
  *
  * Update a workflow comment
  */
-export const put4 = oc
+export const put5 = oc
   .route({
     description: 'Update a workflow comment',
     inputStructure: 'detailed',
@@ -3592,7 +3629,7 @@ export const put4 = oc
 export const byCommentId = {
   delete: delete10,
   get: get59,
-  put: put4,
+  put: put5,
   replies,
   resolve,
 }
@@ -4283,7 +4320,7 @@ export const get70 = oc
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
-export const put5 = oc
+export const put6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -4310,7 +4347,7 @@ export const put5 = oc
 
 export const agentComposer = {
   get: get70,
-  put: put5,
+  put: put6,
   candidates,
   copyFromRoster,
   impact,
@@ -4678,7 +4715,7 @@ export const trigger2 = {
 /**
  * Reset a workflow variable to its default value
  */
-export const put6 = oc
+export const put7 = oc
   .route({
     description: 'Reset a workflow variable to its default value',
     inputStructure: 'detailed',
@@ -4692,7 +4729,7 @@ export const put6 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const reset = {
-  put: put6,
+  put: put7,
 }
 
 /**
@@ -5206,7 +5243,7 @@ export const get88 = oc
 /**
  * Update application details
  */
-export const put7 = oc
+export const put8 = oc
   .route({
     description: 'Update application details',
     inputStructure: 'detailed',
@@ -5221,7 +5258,7 @@ export const put7 = oc
 export const byAppId2 = {
   delete: delete15,
   get: get88,
-  put: put7,
+  put: put8,
   advancedChat,
   agent,
   annotationReply,

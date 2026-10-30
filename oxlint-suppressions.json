@@ -1052,16 +1052,6 @@
       "count": 91
     }
   },
-  "web/app/components/base/chat/chat/answer/agent-roster-response-content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/base/chat/chat/answer/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    }
-  },
   "web/app/components/base/chat/chat/answer/more.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -5331,11 +5321,6 @@
   "web/app/components/workflow/nodes/llm/components/panel-memory-section.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/llm/components/panel-output-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/workflow/nodes/llm/components/resolution-picker.tsx": {

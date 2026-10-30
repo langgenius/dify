@@ -165,6 +165,46 @@ beforeEach(() => {
 })
 
 describe('LLM Panel', () => {
+  it('enables generative UI for a Chatflow node and keeps JSON output mutually exclusive', async () => {
+    const user = userEvent.setup()
+    const { getNodeData } = renderPanel({
+      resource: { kind: 'app', appId: 'test-app', mode: 'advanced-chat' },
+    })
+
+    const generativeUI = screen.getByRole('switch', { name: 'appDebug.generativeUI.title' })
+    await user.click(generativeUI)
+
+    expect(getNodeData().generative_ui_enabled).toBe(true)
+    expect(generativeUI).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'app.structOutput.structured' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    await user.click(generativeUI)
+    expect(getNodeData().generative_ui_enabled).toBe(false)
+    expect(screen.getByRole('switch', { name: 'app.structOutput.structured' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    await user.click(screen.getByRole('switch', { name: 'app.structOutput.structured' }))
+    expect(getNodeData().structured_output_enabled).toBe(true)
+    expect(screen.getByRole('switch', { name: 'app.structOutput.structured' })).toBeChecked()
+  })
+
+  it('explains why generative UI is unavailable while JSON output is enabled', () => {
+    renderPanel({
+      data: createData({ structured_output_enabled: true }),
+      resource: { kind: 'app', appId: 'test-app', mode: 'advanced-chat' },
+    })
+
+    expect(screen.getByRole('switch', { name: 'appDebug.generativeUI.title' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByText('appDebug.generativeUI.structuredOutputConflict')).toBeVisible()
+  })
+
   it('offers model selection and disables parameter settings for an unconfigured model', async () => {
     renderPanel({
       data: createData({ model: { provider: '', name: '', mode: 'chat', completion_params: {} } }),

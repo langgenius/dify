@@ -25,6 +25,7 @@ import {
   zNotChatAppError,
   zNotCompletionAppError,
   zNotWorkflowAppError,
+  zOpenuiBlockNotReadyError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
   zProviderNotSupportTextToSpeechError,
@@ -97,6 +98,9 @@ import {
   zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath,
   zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse,
+  zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateBody,
+  zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStatePath,
+  zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse,
 } from './zod.gen.ts'
 
 export const post = oc
@@ -378,6 +382,41 @@ export const conversations = {
   byCId,
 }
 
+export const put = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdState',
+    path: '/installed-apps/{installed_app_id}/messages/{message_id}/content-blocks/{block_id}/state',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateBody,
+      params: zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStatePath,
+    }),
+  )
+  .output(zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    openui_block_not_ready: { status: 409, data: zOpenuiBlockNotReadyError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
+
+export const state = {
+  put,
+}
+
+export const byBlockId = {
+  state,
+}
+
+export const contentBlocks = {
+  byBlockId,
+}
+
 export const post7 = oc
   .route({
     inputStructure: 'detailed',
@@ -476,6 +515,7 @@ export const suggestedQuestions = {
 }
 
 export const byMessageId = {
+  contentBlocks,
   feedbacks,
   moreLikeThis,
   suggestedQuestions,

@@ -46,6 +46,7 @@ import {
   zNotChatAppError,
   zNotCompletionAppError,
   zNotWorkflowAppError,
+  zOpenuiBlockNotReadyError,
   zPasswordMismatchError,
   zPasswordResetRateLimitExceededError,
   zProviderNotInitializeError,
@@ -173,6 +174,9 @@ import {
   zPostWorkflowsRunResponse,
   zPostWorkflowsTasksByTaskIdStopPath,
   zPostWorkflowsTasksByTaskIdStopResponse,
+  zPutMessagesByMessageIdContentBlocksByBlockIdStateBody,
+  zPutMessagesByMessageIdContentBlocksByBlockIdStatePath,
+  zPutMessagesByMessageIdContentBlocksByBlockIdStateResponse,
 } from './zod.gen.ts'
 
 /**
@@ -1105,6 +1109,35 @@ export const logout = {
   post: post23,
 }
 
+export const put = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putMessagesByMessageIdContentBlocksByBlockIdState',
+    path: '/messages/{message_id}/content-blocks/{block_id}/state',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPutMessagesByMessageIdContentBlocksByBlockIdStateBody,
+      params: zPutMessagesByMessageIdContentBlocksByBlockIdStatePath,
+    }),
+  )
+  .output(zPutMessagesByMessageIdContentBlocksByBlockIdStateResponse)
+  .errors({ openui_block_not_ready: { status: 409, data: zOpenuiBlockNotReadyError } })
+
+export const state = {
+  put,
+}
+
+export const byBlockId = {
+  state,
+}
+
+export const contentBlocks = {
+  byBlockId,
+}
+
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
@@ -1201,6 +1234,7 @@ export const suggestedQuestions = {
 }
 
 export const byMessageId = {
+  contentBlocks,
   feedbacks,
   moreLikeThis,
   suggestedQuestions,

@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -39,7 +39,9 @@ from core.app.entities.task_entities import (
     ErrorStreamResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
+    MessageContentStreamResponse,
     MessageEndStreamResponse,
+    MessageStreamResponse,
     StreamEvent,
     StreamResponse,
 )
@@ -62,6 +64,13 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
+from libs.generative_ui import (
+    OpenUIContentBlock,
+    OpenUIStreamParser,
+    encode_openui_update,
+    extract_openui_prose,
+    generative_ui_enabled,
+)
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 logger = logging.getLogger(__name__)
@@ -98,6 +107,16 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
+        self._generative_ui_enabled = self._app_config.app_mode == AppMode.AGENT and generative_ui_enabled(
+            self._app_config.app_model_config_dict.get("generative_ui")
+        )
+        self._openui_parser = OpenUIStreamParser(message.id)
+        self._openui_agent_parser = OpenUIStreamParser(message.id)
+        self._openui_final_started = False
+        self._openui_live_prose = ""
+        self._openui_response_is_partial = False
+        self._openui_sequences: dict[str, int] = {}
+        self._generative_ui_suppressed = False
 
         self._task_state = EasyUITaskState(
             llm_result=LLMResult(
@@ -151,6 +170,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     extras = {"usage": self._task_state.llm_result.usage.model_dump()}
                     if self._task_state.metadata:
                         extras["metadata"] = self._task_state.metadata.model_dump()
+                        if self._openui_response_is_partial:
+                            extras["metadata"]["agent_response_is_partial"] = True
                     response: ChatbotAppBlockingResponse | CompletionAppBlockingResponse
                     if self._conversation_mode == AppMode.COMPLETION:
                         response = CompletionAppBlockingResponse(
@@ -279,13 +300,19 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         :return:
         """
         for message in self.queue_manager.listen():
-            if publisher:
-                publisher.publish(message)
             event = message.event
+            if publisher and (
+                not self._generative_ui_enabled or not isinstance(event, QueueLLMChunkEvent | QueueAgentMessageEvent)
+            ):
+                publisher.publish(message)
 
             match event:
                 case QueueErrorEvent():
+                    if self._generative_ui_enabled:
+                        yield from self._finish_generative_ui("error")
                     with session_factory.create_session() as session:
+                        if self._generative_ui_enabled:
+                            self._save_message(session=session, trace_manager=trace_manager)
                         err = self.handle_error(event=event, session=session, message_id=self._message_id)
                         session.commit()
 
@@ -304,18 +331,36 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 case QueueStopEvent() | QueueMessageEndEvent():
                     if isinstance(event, QueueMessageEndEvent):
                         if event.llm_result:
+                            if self._generative_ui_enabled and not self._openui_final_started:
+                                yield from self._process_generative_ui_final_text(
+                                    event.llm_result.message.get_text_content()
+                                )
+                            text_content = self._task_state.llm_result.message.get_text_content()
                             self._task_state.llm_result = event.llm_result
-                    else:
+                            if self._generative_ui_enabled:
+                                self._task_state.llm_result.message.content = text_content
+                    if self._generative_ui_enabled:
+                        yield from self._finish_generative_ui(
+                            "cancelled" if isinstance(event, QueueStopEvent) else "completed"
+                        )
+                    if isinstance(event, QueueStopEvent):
                         self._handle_stop(event)
 
                     # handle output moderation
                     output_moderation_answer = self.handle_output_moderation_when_task_finished(
-                        self._task_state.llm_result.message.get_text_content()
+                        self._task_state.llm_result.message.get_text_content(),
+                        extra_texts=[block.source for block in self._task_state.metadata.content_blocks],
                     )
-                    if output_moderation_answer:
+                    if output_moderation_answer is not None:
+                        self._task_state.metadata.content_blocks.clear()
+                        if self._generative_ui_enabled:
+                            self._generative_ui_suppressed = True
+                            self._openui_response_is_partial = False
+                            output_moderation_answer = extract_openui_prose(output_moderation_answer)
                         self._task_state.llm_result.message.content = output_moderation_answer
                         yield self._message_cycle_manager.message_replace_to_stream_response(
-                            answer=output_moderation_answer
+                            answer=output_moderation_answer,
+                            reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                         )
 
                     stopped_agent_message: Message | None = None
@@ -365,6 +410,15 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     delta_text = self._chunk_delta_text(chunk)
                     if delta_text is None:
                         continue
+                    if self._generative_ui_enabled:
+                        for part in self._openui_agent_parser.feed(delta_text):
+                            if isinstance(part, OpenUIContentBlock):
+                                if not self._generative_ui_suppressed:
+                                    yield self._openui_to_stream_response(part)
+                            else:
+                                self._openui_live_prose += part
+                                yield self._agent_message_to_stream_response(answer=part, message_id=self._message_id)
+                        continue
                     yield self._agent_message_to_stream_response(
                         answer=delta_text,
                         message_id=self._message_id,
@@ -378,11 +432,24 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
-                    # handle output moderation chunk
-                    should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-                    if should_direct_answer:
+                    if self._generative_ui_enabled:
+                        for response in self._process_generative_ui_final_text(delta_text):
+                            if publisher and isinstance(response, MessageStreamResponse):
+                                text_chunk = chunk.model_copy(
+                                    update={
+                                        "delta": chunk.delta.model_copy(
+                                            update={"message": AssistantPromptMessage(content=response.answer)}
+                                        )
+                                    }
+                                )
+                                publisher.publish(
+                                    message.model_copy(update={"event": QueueLLMChunkEvent(chunk=text_chunk)})
+                                )
+                            yield response
                         continue
 
+                    if self._handle_output_moderation_chunk(delta_text):
+                        continue
                     current_content = cast(str, self._task_state.llm_result.message.content)
                     current_content += delta_text
                     self._task_state.llm_result.message.content = current_content
@@ -398,13 +465,95 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         event_type=self._precomputed_event_type,
                     )
                 case QueueMessageReplaceEvent():
-                    yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
+                    replacement = event.text
+                    if (
+                        self._generative_ui_enabled
+                        and event.reason == QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
+                    ):
+                        self._generative_ui_suppressed = True
+                        self._task_state.metadata.content_blocks.clear()
+                        replacement = extract_openui_prose(replacement)
+                        self._task_state.llm_result.message.content = replacement
+                    yield self._message_cycle_manager.message_replace_to_stream_response(
+                        answer=replacement, reason=event.reason
+                    )
                 case QueuePingEvent():
                     yield self.ping_stream_response()
                 case _:
                     continue
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
+
+    def _openui_to_stream_response(self, block: OpenUIContentBlock) -> MessageContentStreamResponse:
+        block = block.model_copy(update={"sequence": max(block.sequence, self._openui_sequences.get(block.id, 0) + 1)})
+        self._openui_sequences[block.id] = block.sequence
+        blocks = self._task_state.metadata.content_blocks
+        previous: OpenUIContentBlock | None = None
+        for index, current in enumerate(blocks):
+            if current.id == block.id:
+                previous = current
+                blocks[index] = block
+                break
+        else:
+            blocks.append(block)
+        return MessageContentStreamResponse(
+            task_id=self._application_generate_entity.task_id, data=encode_openui_update(block, previous)
+        )
+
+    def _process_generative_ui_final_text(self, text: str) -> Generator[StreamResponse]:
+        """Reset the visible answer before authoritative replay, retaining sequence monotonicity.
+
+        Live prose and final prose have separate coordinate systems. The explicit
+        boundary lets clients clear live parts and blocks before any rebased UI
+        snapshot, while keeping their separate agent activity history intact.
+        """
+        if not self._openui_final_started:
+            self._openui_final_started = True
+            for part in self._openui_agent_parser.finish("completed"):
+                if isinstance(part, str):
+                    yield self._agent_message_to_stream_response(answer=part, message_id=self._message_id)
+            self._openui_live_prose = ""
+            self._task_state.metadata.content_blocks.clear()
+            if not self._generative_ui_suppressed:
+                yield self._message_cycle_manager.message_replace_to_stream_response(
+                    answer="", reason=QueueMessageReplaceEvent.MessageReplaceReason.GENERATIVE_UI_FINAL
+                )
+        for part in self._openui_parser.feed(text):
+            if isinstance(part, OpenUIContentBlock):
+                if not self._generative_ui_suppressed:
+                    yield self._openui_to_stream_response(part)
+            else:
+                if self._handle_output_moderation_chunk(part):
+                    continue
+                current = self._task_state.llm_result.message.get_text_content()
+                self._task_state.llm_result.message.content = current + part
+                yield self._message_cycle_manager.message_to_stream_response(answer=part, message_id=self._message_id)
+
+    def _finish_generative_ui(self, status: Literal["completed", "cancelled", "error"]) -> Generator[StreamResponse]:
+        """Close content streams and retain live prose when no authoritative answer arrived.
+
+        The partial marker tells history consumers that the saved answer already
+        includes public prose retained in the separate agent activity records.
+        """
+        live_tail = [] if self._openui_final_started else self._openui_agent_parser.finish(status)
+        for part in live_tail:
+            if isinstance(part, OpenUIContentBlock):
+                if not self._generative_ui_suppressed:
+                    yield self._openui_to_stream_response(part)
+            else:
+                self._openui_live_prose += part
+                yield self._agent_message_to_stream_response(answer=part, message_id=self._message_id)
+        for part in self._openui_parser.finish(status):
+            if isinstance(part, OpenUIContentBlock):
+                if not self._generative_ui_suppressed:
+                    yield self._openui_to_stream_response(part)
+            else:
+                current = self._task_state.llm_result.message.get_text_content()
+                self._task_state.llm_result.message.content = current + part
+                yield self._message_cycle_manager.message_to_stream_response(answer=part, message_id=self._message_id)
+        if status != "completed" and not self._openui_final_started and not self._generative_ui_suppressed:
+            self._task_state.llm_result.message.content = self._openui_live_prose
+            self._openui_response_is_partial = True
 
     @staticmethod
     def _chunk_delta_text(chunk: LLMResultChunk) -> str | None:
@@ -441,6 +590,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
     ) -> Message:
         """
         Save message.
+
+        UI offsets address exact streamed prose, so messages containing UI retain
+        whitespace and template-shaped text unchanged after a history reload.
         :return:
         """
         llm_result = self._task_state.llm_result
@@ -475,10 +627,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             message.message_tokens = usage.prompt_tokens
             message.message_unit_price = usage.prompt_unit_price
             message.message_price_unit = usage.prompt_price_unit
+        answer = llm_result.message.get_text_content()
         message.answer = (
-            PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
-            if llm_result.message.content
-            else ""
+            answer
+            if self._task_state.metadata.content_blocks or self._openui_response_is_partial
+            else PromptTemplateParser.remove_template_variables(answer.strip())
         )
         message.updated_at = naive_utc_now()
         if not has_persisted_usage:
@@ -492,6 +645,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             self._task_state.metadata.usage = self._task_state.llm_result.usage
 
         metadata = self._task_state.metadata.model_dump(mode="json")
+        if self._openui_response_is_partial:
+            metadata["agent_response_is_partial"] = True
         if has_persisted_usage and "usage" in existing_metadata:
             metadata["usage"] = existing_metadata["usage"]
         if agent_stop_requested:
@@ -554,6 +709,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         """
         self._task_state.metadata.usage = self._task_state.llm_result.usage
         metadata_dict = self._task_state.metadata.model_dump(exclude_none=True)
+        if self._openui_response_is_partial:
+            metadata_dict["agent_response_is_partial"] = True
 
         # Fetch files associated with this message
         files: Sequence[Mapping[str, Any]] = []
@@ -633,6 +790,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         """
         if self.output_moderation_handler:
             if self.output_moderation_handler.should_direct_output():
+                self._generative_ui_suppressed = True
+                self._task_state.metadata.content_blocks.clear()
                 # stop subscribe new token when output moderation should direct output
                 self._task_state.llm_result.message.content = self.output_moderation_handler.get_final_output()
                 self.queue_manager.publish(

@@ -1,6 +1,7 @@
 import type { BlockDefaultValue } from '../../block-selector/types'
 import type { AvailableNodesMetaData } from '../../hooks-store'
 import type { Edge, Node } from '../../types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { consoleClient } from '@/service/console'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { act, waitFor } from '@testing-library/react'
@@ -18,7 +19,7 @@ import AgentV2Default from '../../nodes/agent-v2/default'
 import endDefault from '../../nodes/end/default'
 import { createDefaultFormInputByType } from '../../nodes/human-input/types'
 import { BlockEnum, InputVarType } from '../../types'
-import { writeWorkflowClipboard } from '../../utils/clipboard'
+import { readWorkflowClipboard, writeWorkflowClipboard } from '../../utils/clipboard'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
 const createAgent = vi.hoisted(() =>
@@ -85,11 +86,13 @@ function setup({
   edges = [],
   chatflow = false,
   readonly = false,
+  resource,
 }: {
   nodes?: Node[]
   edges?: Edge[]
   chatflow?: boolean
   readonly?: boolean
+  resource?: EditorResource
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper()
   seedModelProviderQueries(queryClient)
@@ -99,7 +102,11 @@ function setup({
     nodes,
     edges,
     queryClient,
-    resource: { kind: 'app', appId: 'app-1', mode: chatflow ? 'advanced-chat' : 'workflow' },
+    resource: resource ?? {
+      kind: 'app',
+      appId: 'app-1',
+      mode: chatflow ? 'advanced-chat' : 'workflow',
+    },
     historyStore: { nodes, edges },
     initialStoreState: { canvasReadOnly: readonly },
     hooksStoreProps: { doSyncWorkflowDraft: sync },
@@ -402,6 +409,41 @@ const memory = {
   query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
 }
 const promptTemplate = [{ role: 'user', text: '{{#start.query#}}' }]
+it.each<{ target: string; resource: EditorResource; keepsGenerativeUI: boolean }>([
+  {
+    target: 'Workflow',
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    keepsGenerativeUI: false,
+  },
+  {
+    target: 'Snippet',
+    resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    keepsGenerativeUI: false,
+  },
+  {
+    target: 'Chatflow',
+    resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    keepsGenerativeUI: true,
+  },
+])(
+  'adapts generative UI when pasting an LLM into $target',
+  async ({ resource, keepsGenerativeUI }) => {
+    const source = workflowNode(BlockEnum.LLM, 'source', {
+      data: { generative_ui_enabled: true, prompt_template: promptTemplate },
+    })
+    const { result } = await paste([source], [], { nodes: [], resource })
+    const added = result.current.nodes[0]!
+
+    if (keepsGenerativeUI) expect(added.data).toHaveProperty('generative_ui_enabled', true)
+    else expect(added.data).not.toHaveProperty('generative_ui_enabled')
+    expect(added.data).toHaveProperty('prompt_template', promptTemplate)
+    expect(source.data).toHaveProperty('generative_ui_enabled', true)
+    expect(await readWorkflowClipboard('1.0.0')).toMatchObject({
+      nodes: [{ id: 'source', data: { generative_ui_enabled: true } }],
+    })
+  },
+)
+
 it.each(
   [
     BlockEnum.LLM,
@@ -436,7 +478,12 @@ it.each([BlockEnum.Iteration, BlockEnum.Loop])(
     })
     const child = workflowNode(BlockEnum.LLM, 'child', {
       parentId: 'parent',
-      data: { type: BlockEnum.LLM, memory, prompt_template: promptTemplate },
+      data: {
+        type: BlockEnum.LLM,
+        memory,
+        prompt_template: promptTemplate,
+        generative_ui_enabled: true,
+      },
     })
     const { result } = setup({ nodes: [parent, child] })
     act(() => result.current.handleNodesCopy('parent'))
@@ -450,7 +497,9 @@ it.each([BlockEnum.Iteration, BlockEnum.Loop])(
     expect(addedParent.parentId).toBeUndefined()
     expect(addedChild.parentId).toBe(addedParent.id)
     expect(addedChild.data).not.toHaveProperty('memory')
+    expect(addedChild.data).not.toHaveProperty('generative_ui_enabled')
     expect(child.data).toHaveProperty('memory', memory)
+    expect(child.data).toHaveProperty('generative_ui_enabled', true)
   },
 )
 

@@ -56,6 +56,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
 )
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from libs.generative_ui_prompt import load_generative_ui_prompt
 from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
@@ -176,6 +177,9 @@ class AgentAppRuntimeRequestBuilder:
         )
 
         tracing_hooks = application_tracing_hooks()
+        system_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
+        if agent_soul.app_features.generative_ui.enabled:
+            system_prompt = f"{system_prompt}\n\n{load_generative_ui_prompt()}".strip()
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
@@ -203,8 +207,7 @@ class AgentAppRuntimeRequestBuilder:
                 backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
                 # no frontend-internal {{#…#}} marker ever reaches the model.
-                agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
-                or None,
+                agent_soul_prompt=system_prompt or None,
                 agent_config_version_kind=context.agent_config_version_kind,
                 user_prompt=context.user_query,
                 user_files=user_files,
