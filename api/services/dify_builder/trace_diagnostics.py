@@ -208,18 +208,47 @@ def plugin_activation_unavailable(error: Exception) -> bool:
 
 
 def failure_reason(error: Exception | None) -> FailureReason:
+    """Classify explicit causes for observation only, with bounded cycle handling."""
+    seen: set[int] = set()
+    current: BaseException | None = error
+    for _ in range(8):
+        if current is None or id(current) in seen:
+            break
+        seen.add(id(current))
+        reason = _failure_reason(current)
+        if reason != "unknown":
+            return reason
+        # Implicit context may be an unrelated failure being handled. Only
+        # an explicit cause carries the original provider failure attribution.
+        current = current.__cause__
+    return "unknown"
+
+
+def _failure_reason(error: BaseException) -> FailureReason:
+    from httpx import HTTPStatusError
+
+    from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
     from services.tools.draft_tool_setup import DraftToolSetupError
 
     if isinstance(error, DraftToolSetupError) and error.setup_failure is not None:
         return error.setup_failure.reason
-    if error is not None and plugin_activation_unavailable(error):
+    if isinstance(error, Exception) and plugin_activation_unavailable(error):
         return "service_unavailable"
     if isinstance(error, ConnectionRefusedError):
         return "connection_refused"
     if isinstance(error, TimeoutError):
         return "timeout"
+    if isinstance(error, InvokeAuthorizationError):
+        return "authentication"
+    if isinstance(error, PermissionError):
+        return "permission_denied"
+    if isinstance(error, HTTPStatusError):
+        if error.response.status_code == 401:
+            return "authentication"
+        if error.response.status_code == 403:
+            return "permission_denied"
     # Inspect only to classify; never copy provider bodies or URLs into Trace.
-    text = str(error).lower() if error is not None else ""
+    text = str(error).lower()
     reasons: dict[FailureReason, tuple[str, ...]] = {
         "connection_refused": ("connection refused", "connectionrefused"),
         "timeout": ("timed out", "timeout"),

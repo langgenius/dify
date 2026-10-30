@@ -32,7 +32,7 @@ import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, TypedDict, cast
 
 from jinja2 import TemplateSyntaxError
 from jinja2.sandbox import SandboxedEnvironment
@@ -93,6 +93,8 @@ from services.dify_builder.api_tool_output_context import (
     format_api_tool_output_context,
     format_plugin_tool_output_context,
 )
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+from services.dify_builder.cognition_model_gateway import PolicyModelInstance
 from services.dify_builder.native_agent_output_contract import declares_native_agent_output, native_agent_config_errors
 from services.dify_builder.native_api_output_contract import (
     collect_native_api_selector_refs,
@@ -149,11 +151,16 @@ _FILE_VARIABLE_TYPES = frozenset({"file", "file-list"})
 _DEFAULT_ALLOWED_FILE_TYPES = ("document", "image", "audio", "video")
 _DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 
+
 # Token ceiling for the planner call when the caller didn't pin one. The plan
 # includes model reasoning as well as its JSON answer for some providers.
 # Leave headroom for both while bounding a runaway response. The injected
 # default is limited by the model's public schema; explicit caller budgets
 # and the independent Builder budget are preserved.
+class _OwnerDefaultsKwargs(TypedDict, total=False):
+    owner_defaults: dict[str, Any]
+
+
 _PLANNER_DEFAULT_MAX_TOKENS = 16384
 _TOOL_ROUTER_MAX_TOKENS = 256
 _MAX_OMITTED_TOOL_PREVIEW = 20
@@ -889,6 +896,8 @@ class WorkflowGenerator:
         except (_StageJSONError, _StageSchemaError) as e:
             logger.warning("Workflow generator: %s", e)
             return None, _err(_stage_error_to_envelope_code(e), str(e))
+        except CognitionPolicyDeniedError:
+            raise
         except Exception as e:
             logger.exception("Workflow generator: %s step failed", stage.lower())
             return None, _err(WorkflowGenerateErrorCode.MODEL_ERROR, f"{failure_fallback_message}: {e}")
@@ -974,6 +983,8 @@ class WorkflowGenerator:
                 (time.monotonic() - started_at) * 1000,
             )
             return format_tool_catalogue(selection.entries, max_tools=None)
+        except CognitionPolicyDeniedError:
+            raise
         except Exception as e:
             fallback_selection = select_legacy_fallback_selection(
                 tool_catalogue_entries,
@@ -1002,18 +1013,22 @@ class WorkflowGenerator:
             instruction=instruction.strip(),
             ideal_output_section=format_ideal_output_section(ideal_output),
         )
+        owner_defaults = _clamp_for_tool_router({}) if isinstance(model_instance, PolicyModelInstance) else None
         response = cls._invoke_with_retry(
             model_instance=model_instance,
             prompt_messages=[
                 SystemPromptMessage(content=TOOL_ROUTER_SYSTEM_PROMPT),
                 UserPromptMessage(content=user_prompt),
             ],
-            model_parameters=_clamp_for_tool_router(model_parameters),
+            model_parameters=owner_defaults if owner_defaults is not None else _clamp_for_tool_router(model_parameters),
             stage="Tool Router",
+            **({"owner_defaults": owner_defaults} if owner_defaults is not None else {}),
         )
         response_text = response.message.get_text_content() or ""
         try:
             parsed = parse_workflow_generator_response(response_text)
+        except CognitionPolicyDeniedError:
+            raise
         except Exception as e:
             raise _StageJSONError("Tool Router", str(e)) from e
         if not isinstance(parsed, dict):
@@ -1057,6 +1072,7 @@ class WorkflowGenerator:
         prompt_messages,
         model_parameters: dict[str, Any],
         stage: str,
+        owner_defaults: dict[str, Any] | None = None,
     ) -> LLMResult:
         """
         Invoke the LLM, retrying transient provider errors with bounded backoff.
@@ -1074,6 +1090,11 @@ class WorkflowGenerator:
                     prompt_messages=prompt_messages,
                     model_parameters=model_parameters,
                     stream=False,
+                    **(
+                        {"owner_defaults": owner_defaults}
+                        if isinstance(model_instance, PolicyModelInstance) and owner_defaults is not None
+                        else {}
+                    ),
                 )
             except _TRANSIENT_INVOKE_ERRORS as e:
                 last_exc = e
@@ -1103,6 +1124,7 @@ class WorkflowGenerator:
         model_parameters: dict[str, Any],
         stage: str,
         validate: Callable[[dict[str, Any]], None] | None = None,
+        owner_defaults: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Parse an object and optionally validate it within one correction budget.
@@ -1142,6 +1164,7 @@ class WorkflowGenerator:
                 prompt_messages=attempt_messages,
                 model_parameters=model_parameters,
                 stage=stage,
+                **({"owner_defaults": owner_defaults} if owner_defaults is not None else {}),
             )
             text = response.message.get_text_content() or ""
             requested_max_tokens = model_parameters.get("max_tokens")
@@ -1163,6 +1186,8 @@ class WorkflowGenerator:
             )
             try:
                 parsed = parse_workflow_generator_response(text)
+            except CognitionPolicyDeniedError:
+                raise
             except Exception as e:
                 # Parser exception messages can embed rejected response text.
                 last_error = _StageJSONError(stage, f"JSON parse failed: {type(e).__name__}")
@@ -1216,12 +1241,26 @@ class WorkflowGenerator:
             ),
             UserPromptMessage(content=user_prompt),
         ]
-        clamped_parameters = _clamp_for_planner(model_parameters, model_instance=model_instance)
+        owner_defaults = (
+            _clamp_for_planner({}, model_instance=model_instance)
+            if isinstance(model_instance, PolicyModelInstance)
+            else None
+        )
+        clamped_parameters = (
+            owner_defaults
+            if owner_defaults is not None
+            else _clamp_for_planner(
+                model_parameters,
+                model_instance=model_instance,
+            )
+        )
+        owner_kwargs: _OwnerDefaultsKwargs = {"owner_defaults": owner_defaults} if owner_defaults is not None else {}
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
             messages=messages,
             model_parameters=clamped_parameters,
             stage="Planner",
+            **owner_kwargs,
         )
         try:
             return cls._validate_planner_schema(parsed)
@@ -1232,6 +1271,7 @@ class WorkflowGenerator:
             messages=[*messages, UserPromptMessage(content=_PLANNER_SCHEMA_RETRY_HINT)],
             model_parameters=clamped_parameters,
             stage="Planner",
+            **owner_kwargs,
         )
         return cls._validate_planner_schema(parsed)
 
@@ -3584,6 +3624,8 @@ def _clamp_for_planner(params: dict[str, Any], *, model_instance: Any | None = N
                     if type(maximum) in (int, float) and 1 <= maximum < budget:
                         budget = int(maximum)
                     break
+            except CognitionPolicyDeniedError:
+                raise
             except Exception:
                 # Schema inspection is advisory; never expose provider details
                 # or turn metadata unavailability into a failed generation.

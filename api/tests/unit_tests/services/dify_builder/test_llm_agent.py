@@ -11,15 +11,15 @@ from services.dify_builder.agent import build as build_mod
 from services.dify_builder.agent import chat as chat_mod
 from services.dify_builder.agent import edit as edit_mod
 from services.dify_builder.agent import fix as fix_mod
-from services.dify_builder.agent import llm_agent, resources
+from services.dify_builder.agent import resources
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
-from services.dify_builder.agent.resources import ResourceRef, TenantResources
+from services.dify_builder.agent.resources import TenantResources
 from services.dify_builder.application.ports import DifyBuilderAgent, ReasoningStreamingAgent
 from services.dify_builder.plan import WorkflowPlan
 
 
 def test_is_dify_builder_agent() -> None:
-    agent = LlmBuilderAgent("t1", None)
+    agent = LlmBuilderAgent("t1", None, model_resolver_fn=lambda: None)
     assert isinstance(agent, DifyBuilderAgent)
     assert isinstance(agent, ReasoningStreamingAgent)
 
@@ -35,7 +35,7 @@ def test_llm_agent_build_methods_delegate_to_build(monkeypatch: pytest.MonkeyPat
             "values": {},
         },
     )
-    agent = LlmBuilderAgent("t1", {})
+    agent = LlmBuilderAgent("t1", {}, model_resolver_fn=lambda: None)
     assert agent.analyze_goal("goal")["fields"][0]["key"] == "k"
 
 
@@ -75,16 +75,13 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         requirements: Inputs,
         _reasoning: object = None,
         *,
-        tools: Sequence[ResourceRef] = (),
-        agents: Sequence[ResourceRef] = (),
-        agent_source_error: str | None = None,
         goal_text: str,
         mode: str,
         reply_language: str | None = None,
     ) -> WorkflowPlan | None:
         assert mode == "workflow"
         assert reply_language is None
-        seen["propose_plan_v1"] = (model, requirements, list(tools), list(agents), agent_source_error, goal_text)
+        seen["propose_plan_v1"] = (model, requirements, goal_text)
         return None
 
     def mock_discover_resources(
@@ -136,7 +133,9 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         trusted_text: str = "",
         account_id: str | None = None,  # noqa: ARG001
         reply_language: str | None = None,
+        cognition_model: object | None = None,
     ) -> list[object]:
+        del cognition_model
         assert mode == "workflow"
         assert reply_language is None
         seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids, trusted_text)
@@ -153,16 +152,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         seen["learn_from_build"] = (model, goal_text, requirements, plan_items, built_node_ids)
         return "skill"
 
-    catalogue_tool = ResourceRef(id="catalogue-stub", label="Catalogue tool")
-    catalogue_agent = ResourceRef(id="agent-stub", label="Catalogue agent")
     monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
-    monkeypatch.setattr(
-        build_mod,
-        "planning_catalogue",
-        lambda _tenant_id, **_kwargs: resources.TenantResources(
-            models=[], datasets=[], tools=[catalogue_tool], agents=[catalogue_agent]
-        ),
-    )
     monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
     monkeypatch.setattr(build_mod, "assess_capability_gap", mock_assess_capability_gap)
     monkeypatch.setattr(build_mod, "bind_resources", mock_bind_resources)
@@ -176,7 +166,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
     goal = "Upload the real file. " + "原始目标。" * 1800
     requirements = {"format": "pptx", "endpoint": {"url": "https://example.test"}}
     agent.propose_plan_v1(requirements, goal_text=goal)
-    assert seen["propose_plan_v1"] == ("MODEL", requirements, [catalogue_tool], [catalogue_agent], None, goal)
+    assert seen["propose_plan_v1"] == ("MODEL", requirements, goal)
     assert seen["propose_plan_v1"][1] is requirements
 
     agent.discover_resources(["step"], goal_text=goal, requirements=requirements, reply_language="zh-Hans")
@@ -205,22 +195,25 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
 
 def test_fix_methods_degrade_without_model() -> None:
     """Fix methods call fix.* which degrades gracefully when model_config is None."""
-    agent = LlmBuilderAgent("t1", None)
+    agent = LlmBuilderAgent("t1", None, model_resolver_fn=lambda: None)
     diag = Diagnosis(culprit_node_id="llm", root_cause="x", severity="high")
     intents, risk = agent.propose_repair(diag, {})
     assert intents == []  # degraded response: no fix
     assert risk.level == "high"  # degraded response: high risk
 
 
-def test_model_is_resolved_lazily_and_memoized(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_model_is_resolved_lazily_and_memoized() -> None:
     calls = {"n": 0}
 
     def fake_resolve(tenant_id: str, model_config: Inputs | None) -> str:  # noqa: ARG001
         calls["n"] += 1
         return "INSTANCE"
 
-    monkeypatch.setattr(llm_agent, "resolve_model_instance", fake_resolve)
-    agent = LlmBuilderAgent("t1", {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}})
+    agent = LlmBuilderAgent(
+        "t1",
+        {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+        model_resolver_fn=lambda: fake_resolve("t1", None),
+    )
     assert calls["n"] == 0  # not resolved at construction
     assert agent._model() == "INSTANCE"
     assert agent._model() == "INSTANCE"
@@ -258,7 +251,7 @@ def test_model_or_none_swallows_resolution_error(monkeypatch: pytest.MonkeyPatch
         "propose_repair",
         lambda model, d, g, _reasoning=None, *, reply_language=None: seen.setdefault("m", model) or ([], None),  # noqa: ARG005
     )
-    agent = LlmBuilderAgent("t1", None)
+    agent = LlmBuilderAgent("t1", None, model_resolver_fn=lambda: None)
 
     def boom() -> Never:
         raise RuntimeError("no default model")
@@ -277,7 +270,7 @@ def test_llm_agent_generate_mock_inputs_delegates(monkeypatch: pytest.MonkeyPatc
         "generate",
         lambda _m, _s, _p, _reasoning=None, *, business_context="": {"q": business_context or "x"},
     )
-    agent = LlmBuilderAgent("t1", {})
+    agent = LlmBuilderAgent("t1", {}, model_resolver_fn=lambda: None)
     assert agent.generate_mock_inputs({"variables": []}, {}) == {"q": "x"}
     assert agent.generate_mock_inputs({"variables": []}, {}, business_context="Daily orders") == {"q": "Daily orders"}
 
@@ -293,7 +286,7 @@ def test_llm_agent_edit_methods_delegate_to_edit(monkeypatch: pytest.MonkeyPatch
         },
     )
     monkeypatch.setattr(edit_mod, "build_edit_intents", lambda _m, _r, _graph, _reasoning=None, **_kw: [])
-    agent = LlmBuilderAgent("t1", {})
+    agent = LlmBuilderAgent("t1", {}, model_resolver_fn=lambda: None)
     assert agent.analyze_impact("g", {"nodes": [], "edges": []}) == {
         "fields": [],
         "values": {},
@@ -469,18 +462,23 @@ def _capture_tool_owners(monkeypatch: pytest.MonkeyPatch) -> Graph:
     return seen
 
 
-def test_planner_tool_catalogue_is_ranked_against_the_goal_and_requirements(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_initial_plan_defers_catalogue_and_discovery_receives_goal_and_requirements(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     seen = _capture_tool_owners(monkeypatch)
-    agent = LlmBuilderAgent("t1", {})
+    agent = LlmBuilderAgent("t1", {}, model_resolver_fn=lambda: None)
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
-    agent.propose_plan_v1({"channel": "#oncall"}, goal_text="Page the on-call responders")
+    requirements = {"channel": "#oncall"}
+    goal = "Page the on-call responders"
+    agent.propose_plan_v1(requirements, goal_text=goal)
+    assert "planning_catalogue" not in seen
 
-    tenant_id, kwargs = seen["planning_catalogue"]
+    agent.discover_resources(["Notify responders"], goal_text=goal, requirements=requirements)
+    tenant_id, kwargs = seen["discover_resources"]
     assert tenant_id == "t1"
-    query = " ".join(str(value) for value in kwargs.values())
-    assert "Page the on-call responders" in query
-    assert "#oncall" in query
+    assert kwargs["goal_text"] == goal
+    assert kwargs["requirements"] is requirements
 
 
 def test_every_tool_owner_receives_the_acting_account(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -493,7 +491,8 @@ def test_every_tool_owner_receives_the_acting_account(monkeypatch: pytest.Monkey
     agent.bind_resources(["step"], ["rid"])
     agent.build_nodes(["step"])
 
-    for owner in ("planning_catalogue", "discover_resources", "bind_resources", "build_nodes"):
+    assert "planning_catalogue" not in seen
+    for owner in ("discover_resources", "bind_resources", "build_nodes"):
         assert seen[owner][0] == "t1"
         assert seen[owner][1].get("account_id") == "acct-a", owner
 
@@ -503,7 +502,7 @@ def test_every_tool_owner_receives_the_acting_account(monkeypatch: pytest.Monkey
 
 def test_an_agent_without_an_actor_passes_none_rather_than_inventing_one(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _capture_tool_owners(monkeypatch)
-    agent = LlmBuilderAgent("t1", {})
+    agent = LlmBuilderAgent("t1", {}, model_resolver_fn=lambda: None)
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
     agent.bind_resources(["step"], ["rid"])

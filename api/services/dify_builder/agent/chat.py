@@ -8,6 +8,7 @@ from core.dify_builder.models import ConversationItem, DifyBuilderContext, Graph
 from core.dify_builder.state import PcState
 from services.dify_builder.agent import llm
 from services.dify_builder.agent.model_resolver import normalize_completion_params
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,8 @@ def respond(
         reply = "".join(chunks)
         if reply.strip():
             return reply
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         if chunks:
             logger.exception("Dify Builder: multi-turn reply generation failed after a partial response")
@@ -135,6 +138,8 @@ def continuation_intent(model, model_config: dict, context: DifyBuilderContext, 
         )
         if set(result) == {"intent"} and result["intent"] in ("chat", "edit", "test"):
             return result["intent"]
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         logger.exception("dify_builder: continuation intent unavailable; preserving chat")
     return "chat"

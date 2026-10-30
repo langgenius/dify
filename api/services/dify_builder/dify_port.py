@@ -806,6 +806,8 @@ class WorkflowServiceDifyPort:
                     facts,
                     reason=builder_code_reasoner(
                         tenant_id=actor.tenant_id,
+                        account_id=actor.account_id,
+                        app_id=app_id,
                         model_config=context.model_config,
                     ),
                 ).model_dump(mode="json")

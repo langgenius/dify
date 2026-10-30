@@ -32,7 +32,7 @@ import dataclasses
 import functools
 import logging
 from collections.abc import Callable, Iterator
-from typing import Literal, cast
+from typing import Literal, TypedDict, cast
 
 from flask import Flask, Response, current_app, request
 from flask_restx import Resource
@@ -195,6 +195,10 @@ def _stream_response(make_generator: Callable[[], Iterator[str]]) -> Response | 
     return Response(generator, mimetype="text/event-stream", headers=_SSE_HEADERS)
 
 
+class _AttachmentArguments(TypedDict, total=False):
+    attachments: list[str]
+
+
 def _create(body, actor: Actor) -> Response | tuple[dict, int]:
     try:
         payload = DifyBuilderCreateSessionPayload.model_validate(body).root
@@ -202,6 +206,8 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
         return {"code": "bad_request"}, 400
 
     model_config = dataclasses.asdict(payload.model_config_data) if payload.model_config_data else None
+    attachments = [str(attachment.upload_file_id) for attachment in payload.attachments]
+    attachment_arguments: _AttachmentArguments = {"attachments": attachments} if attachments else {}
     if isinstance(payload, DifyBuilderCreateBuildSessionPayload):
         return _stream_response(
             lambda: build_service().create_build_session_stream(
@@ -210,6 +216,7 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
                 goal_text=payload.goal_text,
                 model_config=model_config,
                 derive_app_name=payload.derive_app_name,
+                **attachment_arguments,
             )
         )
     if isinstance(payload, DifyBuilderCreateEditSessionPayload):
@@ -219,6 +226,7 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
                 actor=actor,
                 model_config=model_config,
                 goal_text=payload.goal_text,
+                **attachment_arguments,
             )
         )
     if isinstance(payload, DifyBuilderCreateChecklistFixSessionPayload):
@@ -228,6 +236,7 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
                 actor=actor,
                 failed_run_id=payload.failed_run_id,
                 checklist_errors=[error.model_dump() for error in payload.checklist_errors],
+                **attachment_arguments,
                 model_config=model_config,
             )
         )
@@ -238,6 +247,7 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
                 actor=actor,
                 failed_run_id=payload.failed_run_id,
                 model_config=model_config,
+                **attachment_arguments,
             )
         )
     raise AssertionError(f"Unsupported Dify Builder create payload: {type(payload)}")
@@ -283,6 +293,11 @@ def _message(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]
             payload.text,
             payload.base_version,
             payload.client_turn_id,
+            **(
+                {"attachments": [str(item.upload_file_id) for item in payload.attachments]}
+                if payload.attachments
+                else {}
+            ),
         )
     )
 
@@ -524,7 +539,7 @@ def _ping(body, actor: Actor) -> tuple[dict, int]:
     try:
         from services.dify_builder.agent.ping import ping_model
 
-        return ping_model(actor.tenant_id, model_config), 200
+        return ping_model(actor.tenant_id, model_config, account_id=actor.account_id), 200
     except Exception as exc:  # a health check returns ok:false rather than 500
         logger.warning("dify_builder agent ping failed: %s", exc)
         return {"ok": False, "error": str(exc)}, 200

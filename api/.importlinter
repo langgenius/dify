@@ -83,12 +83,8 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
-    # The Dify node factory composes the Human Input runtime for workflow execution.
-    core.workflow.node_factory -> services.human_input_v2.composition
     # Legacy generators delegate configured file defaults to the application owner during core migration.
     core.app.apps.base_app_generator -> services.app.file_input_defaults
-    core.app.apps.advanced_chat.app_generator -> services.app.file_input_defaults
-    core.app.apps.workflow.app_generator -> services.app.file_input_defaults
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
@@ -101,9 +97,6 @@ ignore_imports =
     core.app.apps.agent_chat.app_generator -> services.conversation_service
     core.app.apps.base_app_generator -> services.workflow_draft_variable_service
     core.app.apps.chat.app_generator -> services.conversation_service
-    core.app.apps.common.workflow_response_converter -> services.variable_truncator
-    core.app.apps.completion.app_generator -> services.errors.app
-    core.app.apps.completion.app_generator -> services.errors.message
     core.app.apps.message_based_app_generator -> services.errors.app_model_config
     core.app.apps.message_based_app_generator -> services.errors.conversation
     core.app.apps.message_based_app_generator -> services.errors.message
@@ -132,15 +125,8 @@ ignore_imports =
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
     core.tools.tool_manager -> services
     core.workflow.node_runtime -> services
-    # Node construction delegates datasource dependency assembly to the composition root.
-    core.workflow.node_factory -> extensions.application_services.data_sources
-    # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
-    core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter
-    core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.entities
+    core.workflow.workflow_tool_container_handler -> services.workflow_runtime.node_factory
     core.workflow.nodes.agent.message_transformer -> services
-    core.workflow.nodes.agent_v2.agent_node -> services.agent.knowledge_citations
-    core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
-    core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.dify_tools_builder -> services
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
@@ -1382,6 +1368,29 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:runtime-contracts-neutrality]
+name = Shared runtime contracts are independent of application and infrastructure owners
+type = forbidden
+source_modules =
+    runtime_contracts
+forbidden_modules =
+    core
+    services
+    controllers
+    extensions
+    models
+    repositories
+    tasks
+
+[importlinter:contract:ordinary-code-execution-client-boundary]
+name = Ordinary code execution client is independent of application and controller owners
+type = forbidden
+source_modules =
+    clients.code_execution
+forbidden_modules =
+    services
+    controllers
+
 [importlinter:contract:annotation-application-boundary]
 name = Annotation application services and contracts are framework and persistence neutral
 type = forbidden
@@ -1399,6 +1408,62 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:builder-cognition-policy-application-boundary]
+name = Builder cognition policy contracts and service are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.dify_builder.application.cognition_policy
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:builder-cognition-policy-controller-boundary]
+name = Builder cognition policy transport reaches persistence through its composition root
+type = forbidden
+source_modules =
+    controllers.console.dify_builder_policy
+forbidden_modules =
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:builder-material-application-boundary]
+name = Builder material intake and prompt records use no direct framework or persistence dependency
+type = forbidden
+source_modules =
+    services.dify_builder.attachment_intake
+    services.dify_builder.attachment_context
+    services.dify_builder.attachment_extraction
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:builder-material-controller-boundary]
+name = Builder material transport reaches persistence through its composition root
+type = forbidden
+source_modules =
+    controllers.console.dify_builder
+forbidden_modules =
+    models
+    repositories
+allow_indirect_imports = True
 
 [importlinter:contract:tracing-application-boundary]
 name = Trace pipeline and Agent trace collection services and contracts are framework and persistence neutral
@@ -1712,26 +1777,3 @@ source_modules =
 forbidden_modules =
     services.agent.roster_service
 allow_indirect_imports = True
-
-[importlinter:contract:runtime-contracts-neutrality]
-name = Shared runtime contracts are independent of application and infrastructure owners
-type = forbidden
-source_modules =
-    runtime_contracts
-forbidden_modules =
-    core
-    services
-    controllers
-    extensions
-    models
-    repositories
-    tasks
-
-[importlinter:contract:ordinary-code-execution-client-boundary]
-name = Ordinary code execution client is independent of application and controller owners
-type = forbidden
-source_modules =
-    clients.code_execution
-forbidden_modules =
-    services
-    controllers

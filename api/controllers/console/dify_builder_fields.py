@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Annotated, Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StringConstraints, model_validator
 
@@ -46,10 +47,29 @@ class DifyBuilderPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
-class DifyBuilderCreateBuildSessionPayload(DifyBuilderPayload):
+class DifyBuilderAttachmentPayload(DifyBuilderPayload):
+    """An opaque native upload reference; authority is reconstructed server-side."""
+
+    upload_file_id: UUID
+
+
+class DifyBuilderMaterialPayload(DifyBuilderPayload):
+    attachments: list[DifyBuilderAttachmentPayload] = Field(default_factory=list, max_length=5)
+
+
+class DifyBuilderGoalPayload(DifyBuilderMaterialPayload):
+    goal_text: Annotated[str, StringConstraints(strip_whitespace=True, max_length=20000)] = ""
+
+    @model_validator(mode="after")
+    def require_goal_or_material(self) -> "DifyBuilderGoalPayload":
+        if not self.goal_text and not self.attachments:
+            raise ValueError("goal_text or attachments are required")
+        return self
+
+
+class DifyBuilderCreateBuildSessionPayload(DifyBuilderGoalPayload):
     app_id: NonEmptyString
     scenario: Literal["build"]
-    goal_text: NonEmptyString
     # True when the app was created from this same prompt and still carries the
     # name cut from it, so Builder may rewrite it once it understands the goal.
     # False is create-from-blank: the user named the app, Builder inherits it.
@@ -57,14 +77,13 @@ class DifyBuilderCreateBuildSessionPayload(DifyBuilderPayload):
     model_config_data: SessionModel | None = Field(default=None, alias="model_config")
 
 
-class DifyBuilderCreateEditSessionPayload(DifyBuilderPayload):
+class DifyBuilderCreateEditSessionPayload(DifyBuilderGoalPayload):
     app_id: NonEmptyString
     scenario: Literal["edit"]
-    goal_text: NonEmptyString
     model_config_data: SessionModel | None = Field(default=None, alias="model_config")
 
 
-class DifyBuilderCreateFixSessionPayload(DifyBuilderPayload):
+class DifyBuilderCreateFixSessionPayload(DifyBuilderMaterialPayload):
     app_id: NonEmptyString
     scenario: Literal["fix"]
     failed_run_id: NonEmptyString
@@ -80,7 +99,7 @@ class DifyBuilderChecklistErrorPayload(DifyBuilderPayload):
     plugin_missing: bool
 
 
-class DifyBuilderCreateChecklistFixSessionPayload(DifyBuilderPayload):
+class DifyBuilderCreateChecklistFixSessionPayload(DifyBuilderMaterialPayload):
     app_id: NonEmptyString
     scenario: Literal["fix"]
     checklist_errors: Annotated[list[DifyBuilderChecklistErrorPayload], Field(min_length=1)]
@@ -140,10 +159,16 @@ class DifyBuilderSubmitActionPayload(DifyBuilderPayload):
     base_app_revision: NonEmptyString
 
 
-class DifyBuilderSubmitMessagePayload(DifyBuilderPayload):
-    text: NonEmptyString
+class DifyBuilderSubmitMessagePayload(DifyBuilderMaterialPayload):
+    text: Annotated[str, StringConstraints(strip_whitespace=True, max_length=20000)] = ""
     base_version: StrictInt
     client_turn_id: ClientTurnId
+
+    @model_validator(mode="after")
+    def require_text_or_material(self) -> "DifyBuilderSubmitMessagePayload":
+        if not self.text and not self.attachments:
+            raise ValueError("text or attachments are required")
+        return self
 
 
 class DifyBuilderConversationListQuery(DifyBuilderPayload):
@@ -296,7 +321,32 @@ class DifyBuilderAppRevisionResponse(ResponseModel):
     conflicted: bool
 
 
+class DifyBuilderAttachmentStateResponse(ResponseModel):
+    upload_file_id: UUID
+    name: str
+    extension: str
+    size: int
+    status: Literal["pending", "consumed", "truncated", "rejected"]
+    digest: str = ""
+    reason: str = ""
+
+
+class DifyBuilderMaterialReceiptResponse(ResponseModel):
+    id: UUID
+    seq: int
+    app_id: str
+    session_id: str
+    task_id: str
+    generation: int
+    client_turn_id: str
+    status: Literal["pending", "consumed", "truncated", "rejected", "superseded"]
+    consumed_version: int | None
+    test_input_candidate: bool
+    attachments: list[DifyBuilderAttachmentStateResponse] = Field(max_length=5)
+
+
 class DifyBuilderSessionStateResponse(ResponseModel):
+    attachments: list[DifyBuilderMaterialReceiptResponse] = Field(default_factory=list, max_length=100)
     test_execution: NativeTestPublicReceipt | None = None
     diagnostics: list[dict[str, Any]] = Field(default_factory=list, max_length=33)
     session_id: str
@@ -494,6 +544,8 @@ class DifyBuilderErrorEventData(ResponseModel):
     command_id: str | None = None
     code: str | None = None
     message: str
+    reason_code: ReasonCode | None = None
+    recoverable: bool | None = None
 
 
 class DifyBuilderErrorEventResponse(ResponseModel):

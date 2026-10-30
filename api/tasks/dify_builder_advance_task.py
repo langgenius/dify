@@ -56,6 +56,7 @@ from services.dify_builder import app_naming, progress_bus, progress_snapshot, s
 from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.localize import LanguageDetector
 from services.dify_builder.agent_factory import build_dify_builder_agent
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.application.execution_policy import (
     BuilderExecutionPolicyError,
     ConfirmedToolExecutionContext,
@@ -229,6 +230,12 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # The per-session model choice lives on the context (stable for the session).
         # Read the head so the real agent is constructed with the user's chosen model.
         loaded_session, _fc = repo.get_session(session_id)
+        from services.dify_builder.application.cognition_policy import cognition_admission_required
+
+        if not confirmed and cognition_admission_required(action.kind):
+            from extensions.application_services.dify_builder_cognition_policy import select_cognition_config
+
+            select_cognition_config(actor, _fc.model_config)
         from services.dify_builder.task_controls import generation, require_active
 
         expected_generation = action.execution_generation
@@ -242,6 +249,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             model_config=_fc.model_config,
             account_id=actor.account_id,
             app_mode=dify.get_app_mode(loaded_session.app_id, actor),
+            app_id=loaded_session.app_id,
         )
 
         fence = None
@@ -386,6 +394,18 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 proposed=proposed,
             )
 
+        from services.dify_builder.wiring import build_app_metadata, build_attachment_intake
+
+        def describe_app(description: str) -> str:
+            assert actor is not None
+            assert loaded_session is not None
+            return build_app_metadata().describe_empty_app(
+                app_id=loaded_session.app_id,
+                tenant_id=actor.tenant_id,
+                account_id=actor.account_id,
+                description=description,
+            )
+
         env = Env(
             dify=dify,
             agent=agent,
@@ -397,9 +417,14 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             emit_item=emit_item,
             emit_progress=emit_progress,
             emit_reasoning=emit_reasoning,
-            # A confirmed outcome is deterministic status metadata: no model call.
-            detect_language=None if confirmed else language_detector.detect_language,
+            # Native controls/history must not gain an optional inference just
+            # because an old session has no persisted reply language.
+            detect_language=language_detector.detect_language
+            if not confirmed and cognition_admission_required(action.kind)
+            else None,
             rename_app=None if confirmed else rename_app,
+            describe_app=None if confirmed else describe_app,
+            consume_material=None if confirmed else build_attachment_intake(repo).consume,
             command_id=action.command_id,
         )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
@@ -423,6 +448,15 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             runner.advance(session_id, Turn(action=action, actor=actor))
         action.execution_generation = fence.generation
         completed = (repo, dify, actor)
+    except CognitionPolicyDeniedError as error:
+        terminal_error = {
+            "kind": "error",
+            "error": "model_unavailable",
+            "reason_code": error.reason,
+            "recoverable": True,
+            "session_id": session_id,
+            "command_id": action.command_id if action is not None else action_dict.get("command_id"),
+        }
     except (ConflictError, HashMismatchError):
         if repo is not None and action is not None and action.kind == "task_continue":
             from services.dify_builder.task_control_service import release_unstarted_continuation
@@ -600,6 +634,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         # error frame so the client stream always ends.
         try:
             repo, dify, actor = completed
+            from services.dify_builder.wiring import build_attachment_intake
 
             def get_verification_identity(app_id: str, owner: Actor) -> tuple[str, str]:
                 graph, revision = dify.read_graph(app_id, owner)
@@ -612,6 +647,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 get_app_revision_fn=lambda app_id, owner: dify.read_graph(app_id, owner)[1],
                 get_verification_identity_fn=get_verification_identity,
                 test_actions=_build_test_actions(repo),
+                attachment_intake=build_attachment_intake(repo),
             ).get_session_view(session_id, actor)
             progress_bus.publish(
                 session_id,
@@ -642,6 +678,15 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 )
             except Exception:
                 logger.exception("dify_builder terminal error frame also failed to publish for session %s", session_id)
+
+    if completed is not None and terminal_error is None:
+        from services.dify_builder.wiring import dispatch_pending_builder_material
+
+        try:
+            completed_repo, _, completed_actor = completed
+            dispatch_pending_builder_material(completed_repo, session_id, completed_actor)
+        except Exception:
+            logger.exception("dify_builder pending material handoff unavailable for session %s", session_id)
 
 
 @shared_task(queue="dify_builder")

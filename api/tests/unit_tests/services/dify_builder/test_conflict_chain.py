@@ -37,6 +37,7 @@ from tests.unit_tests.services.dify_builder.test_advance_task import (
     ACCOUNT_ID,
     APP_ID,
     TENANT_ID,
+    admitted_stub_cognition,
 )
 from tests.unit_tests.services.dify_builder.test_advance_task import (
     active_worker_lock as active_worker_lock,  # noqa: PLC0414 - shared pytest fixtures
@@ -106,6 +107,9 @@ class _GenerateArguments(TypedDict):
 _ACTOR = Actor(account_id=ACCOUNT_ID, tenant_id=TENANT_ID)
 _BASE = "a" * 64
 _CURRENT = "b" * 64
+
+
+__all__ = ["admitted_stub_cognition"]
 
 
 def _row[T](db: DatabaseSession, model: type[T], row_id: str) -> T:

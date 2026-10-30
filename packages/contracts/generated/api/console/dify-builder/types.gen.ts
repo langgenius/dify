@@ -56,6 +56,7 @@ export type DifyBuilderSessionViewResponse = {
   actions?: Array<DifyBuilderActionResponse>
   active_interaction?: DifyBuilderActiveInteractionResponse | null
   app_revision?: DifyBuilderAppRevisionResponse | null
+  attachments?: Array<DifyBuilderMaterialReceiptResponse>
   canvas_read_only: boolean
   conversation_last_seq: number
   decision?: Decision | null
@@ -105,9 +106,10 @@ export type DifyBuilderConversationPageResponse = {
 }
 
 export type DifyBuilderSubmitMessagePayload = {
+  attachments?: Array<DifyBuilderAttachmentPayload>
   base_version: number
   client_turn_id: string
-  text: string
+  text?: string
 }
 
 export type DifyBuilderNativeTestInputResponse = {
@@ -272,21 +274,24 @@ export type DifyBuilderTaskControlPayload = {
 
 export type DifyBuilderCreateBuildSessionPayload = {
   app_id: string
+  attachments?: Array<DifyBuilderAttachmentPayload>
   derive_app_name?: boolean
-  goal_text: string
+  goal_text?: string
   model_config?: SessionModel | null
   scenario: 'build'
 }
 
 export type DifyBuilderCreateEditSessionPayload = {
   app_id: string
-  goal_text: string
+  attachments?: Array<DifyBuilderAttachmentPayload>
+  goal_text?: string
   model_config?: SessionModel | null
   scenario: 'edit'
 }
 
 export type DifyBuilderCreateFixSessionPayload = {
   app_id: string
+  attachments?: Array<DifyBuilderAttachmentPayload>
   failed_run_id: string
   model_config?: SessionModel | null
   scenario: 'fix'
@@ -294,6 +299,7 @@ export type DifyBuilderCreateFixSessionPayload = {
 
 export type DifyBuilderCreateChecklistFixSessionPayload = {
   app_id: string
+  attachments?: Array<DifyBuilderAttachmentPayload>
   checklist_errors: Array<DifyBuilderChecklistErrorPayload>
   failed_run_id?: string | null
   model_config?: SessionModel | null
@@ -390,6 +396,20 @@ export type DifyBuilderActiveInteractionResponse = {
 export type DifyBuilderAppRevisionResponse = {
   conflicted: boolean
   current: string
+}
+
+export type DifyBuilderMaterialReceiptResponse = {
+  app_id: string
+  attachments: Array<DifyBuilderAttachmentStateResponse>
+  client_turn_id: string
+  consumed_version: number | null
+  generation: number
+  id: string
+  seq: number
+  session_id: string
+  status: 'consumed' | 'pending' | 'rejected' | 'superseded' | 'truncated'
+  task_id: string
+  test_input_candidate: boolean
 }
 
 export type Decision = {
@@ -541,6 +561,10 @@ export type DifyBuilderTestResultConversationItemResponse = {
   kind: 'test_result'
   payload: TestResultCard
   seq: number
+}
+
+export type DifyBuilderAttachmentPayload = {
+  upload_file_id: string
 }
 
 export type NativeTestInputBinding = {
@@ -797,6 +821,7 @@ export type DifyBuilderCommandFinishedEventData = {
   actions?: Array<DifyBuilderActionResponse>
   active_interaction?: DifyBuilderActiveInteractionResponse | null
   app_revision?: DifyBuilderAppRevisionResponse | null
+  attachments?: Array<DifyBuilderMaterialReceiptResponse>
   canvas_read_only: boolean
   command_id: string
   conversation_last_seq: number
@@ -820,6 +845,8 @@ export type DifyBuilderErrorEventData = {
   code?: string | null
   command_id?: string | null
   message: string
+  reason_code?: string | null
+  recoverable?: boolean | null
   session_id?: string | null
 }
 
@@ -842,6 +869,16 @@ export type BuilderCopy = {
 export type BuilderTextParts = {
   parts: Array<string | BuilderCopy>
   type?: 'parts'
+}
+
+export type DifyBuilderAttachmentStateResponse = {
+  digest?: string
+  extension: string
+  name: string
+  reason?: string
+  size: number
+  status: 'consumed' | 'pending' | 'rejected' | 'truncated'
+  upload_file_id: string
 }
 
 export type CardOption = {

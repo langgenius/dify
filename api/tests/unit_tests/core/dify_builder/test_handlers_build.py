@@ -361,12 +361,8 @@ def test_capability_check_rejects_a_session_without_a_persisted_goal() -> None:
         handle_capability_check(env, Turn(actor=_actor()), s, fc)
 
 
-def test_submitting_requirements_goes_straight_to_resources() -> None:
-    """The decision-free find_resources gate at build.initial_plan is gone --
-    submit_requirements now tail-calls the shared discovery helper directly,
-    so the resource card arrives in the SAME step and no plan card is shown
-    (the plan is still computed internally; it just isn't displayed until
-    build.resource_recommendation confirms it, per task 3's renumbering)."""
+def test_submitting_requirements_prepares_plan_before_automatic_resource_stage() -> None:
+    """The abstract plan is committed before automatic discovery offers resources."""
     from services.dify_builder.application.handlers_build import handle_goal_analysis
 
     env, repo = _new_env()
@@ -390,7 +386,7 @@ def test_submitting_requirements_goes_straight_to_resources() -> None:
     )
     res = handle_goal_analysis(env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1])
 
-    assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert res.next == PcState.BUILD_INITIAL_PLAN
     assert res.context is not None
     assert res.context.requirements["currency"] == "EUR"  # payload overrides
     assert res.context.requirements["audience"] == "board"  # new listed key merged
@@ -399,22 +395,13 @@ def test_submitting_requirements_goes_straight_to_resources() -> None:
     assert res.context.plan_items  # the plan is still drafted internally
     kinds = [i.kind for i in res.items]
     assert "decision" in kinds
-    assert "resource_select" in kinds
-    assert "assistant_turn" in kinds
+    assert "resource_select" not in kinds
+    assert "assistant_turn" not in kinds
     assert "plan" not in kinds  # no plan card is shown a second time
 
 
-def test_submitting_requirements_progress_is_one_operation_with_monotonic_revisions() -> None:
-    """Regression: handle_goal_analysis used to build its own ProgressReporter
-    (build-review-requirements/build-draft-plan), finish() it, then
-    tail-call _discover_and_offer_resources, which built a SECOND reporter
-    under the SAME env.operation_id -- restarting `revision` at 1.
-    ProgressEventData's docstring (contract.py) requires revision to be
-    monotonic within an operation_id, and every other handler in this file
-    uses exactly one ProgressReporter per step. The straight-through path
-    (requirements submitted) must emit ONE operation_id with strictly
-    increasing revisions across all four progress steps (review-requirements,
-    draft-plan, discover-resources, prepare-resource-options)."""
+def test_submitting_requirements_progress_has_monotonic_revisions_for_each_committed_stage() -> None:
+    """Planning and discovery each own one monotonic progress operation."""
     from services.dify_builder.application.handlers_build import build_registry
 
     events: list[ProgressEventData] = []
@@ -432,10 +419,12 @@ def test_submitting_requirements_progress_is_one_operation_with_monotonic_revisi
 
     assert events, "expected progress events to be emitted"
     operation_ids = {e.operation_id for e in events}
-    assert len(operation_ids) == 1, f"expected a single operation_id across the whole step, got {operation_ids}"
-    revisions = [e.revision for e in events]
-    assert revisions == sorted(revisions), f"revision must be non-decreasing, got {revisions}"
-    assert len(revisions) == len(set(revisions)), f"revision must not repeat, got {revisions}"
+    assert len(operation_ids) == 2
+    assert {event.stage_id for event in events} == {str(PcState.BUILD_GOAL_ANALYSIS), str(PcState.BUILD_INITIAL_PLAN)}
+    for operation_id in operation_ids:
+        revisions = [event.revision for event in events if event.operation_id == operation_id]
+        assert revisions == sorted(revisions)
+        assert len(revisions) == len(set(revisions))
     # all four progress steps actually fired (review, draft, discover, prepare)
     activity_ids = {e.activity.id for e in events if e.activity is not None}
     assert {

@@ -32,7 +32,13 @@ def _scripts() -> ScriptDirectory:
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     scripts = _scripts()
-    assert scripts.get_heads() == ["db7f42c9a801"]
+    assert scripts.get_heads() == ["4a62d9b7e013"]
+    material = scripts.get_revision("4a62d9b7e013")
+    assert material is not None
+    assert material.down_revision == "3f51c8a6d902"
+    policy = scripts.get_revision("3f51c8a6d902")
+    assert policy is not None
+    assert policy.down_revision == "db7f42c9a801"
     merged = scripts.get_revision("db7f42c9a801")
     assert merged is not None
     assert isinstance(merged.down_revision, tuple)

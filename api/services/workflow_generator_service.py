@@ -53,6 +53,7 @@ class WorkflowGeneratorService:
         current_graph: dict[str, Any] | None = None,
         ready_tool_keys: frozenset[tuple[str, str]] | None = None,
         reply_language: str | None = None,
+        model_instance_override: ModelInstance | None = None,
     ) -> WorkflowGenerateResultDict:
         """
         Resolve a model instance for the tenant and run the generator.
@@ -85,7 +86,12 @@ class WorkflowGeneratorService:
         validation on.
         """
         model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
-            cls._resolve_generation_context(tenant_id=tenant_id, mode=mode, model_config=model_config)
+            cls._resolve_generation_context(
+                tenant_id=tenant_id,
+                mode=mode,
+                model_config=model_config,
+                model_instance_override=model_instance_override,
+            )
         )
         if ready_tool_keys is not None:
             tool_catalogue_entries = [
@@ -160,6 +166,7 @@ class WorkflowGeneratorService:
         tenant_id: str,
         mode: WorkflowGenerationModeRequest,
         model_config: ModelConfig,
+        model_instance_override: ModelInstance | None = None,
     ) -> tuple[
         ModelInstance,
         dict[str, Any],
@@ -182,19 +189,22 @@ class WorkflowGeneratorService:
             "workflow": CreditUsageAppType.WORKFLOW,
             "advanced-chat": CreditUsageAppType.CHATFLOW,
         }.get(mode, CreditUsageAppType.UNKNOWN)
-        model_manager = ModelManager.for_tenant(
-            tenant_id=tenant_id,
-            request_metadata={
-                "app_type": app_type,
-                "created_by": CreditUsageCreatedBy.WORKFLOW_GENERATION,
-            },
-        )
-        model_instance = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-            provider=model_config.provider,
-            model=model_config.name,
-        )
+        if model_instance_override is not None:
+            model_instance = model_instance_override
+        else:
+            model_manager = ModelManager.for_tenant(
+                tenant_id=tenant_id,
+                request_metadata={
+                    "app_type": app_type,
+                    "created_by": CreditUsageCreatedBy.WORKFLOW_GENERATION,
+                },
+            )
+            model_instance = model_manager.get_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+                provider=model_config.provider,
+                model=model_config.name,
+            )
 
         model_parameters: dict[str, Any] = dict(model_config.completion_params or {})
 

@@ -20,12 +20,25 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from core.model_manager import ModelInstance
+from extensions.application_services.dify_builder_cognition_policy import guarded_cognition_model
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import build, chat, edit, fix, mock_inputs, resources
-from services.dify_builder.agent.model_resolver import resolve_model_instance
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+from services.dify_builder.cognition_model_gateway import PolicyModelInstance
 from services.dify_builder.plan import WorkflowPlan
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_model_instance(tenant_id, model_config, *, account_id=None, app_id=None):
+    """Guarded resolver seam; absent admitted App identity always refuses.
+
+    Explicit injected resolvers keep native cognition tests independent from
+    SQL/metadata adapters; production calls carry actor and App identities.
+    """
+    if app_id is None:
+        raise CognitionPolicyDeniedError("policy_permission_denied")
+    return guarded_cognition_model(tenant_id, model_config, account_id=account_id, app_id=app_id)
 
 
 class _ToolParameterPromptKwargs(TypedDict, total=False):
@@ -40,17 +53,21 @@ class LlmBuilderAgent:
         *,
         account_id: str | None = None,
         app_mode: str = "workflow",
+        app_id: str | None = None,
+        model_resolver_fn: Callable[[], Any] | None = None,
     ) -> None:
         """``account_id`` is the acting member, whose credential visibility
         decides which installed tools are ready; ``None`` means no member is
         known and only team-shared credentials count."""
         self._tenant_id = tenant_id
         self._account_id = account_id
+        self._app_id = app_id
+        self._model_resolver_fn = model_resolver_fn
         if app_mode not in {"workflow", "advanced-chat"}:
             raise ValueError(f"Unsupported Builder app mode: {app_mode}")
         self._app_mode = app_mode
         self._model_config = model_config or {}
-        self._model_instance: ModelInstance | None = None
+        self._model_instance: ModelInstance | PolicyModelInstance | None = None
         self._resolution_failed = False
         self._diagnostic_callback: diagnostics.DiagnosticCallback | None = None
         self._reasoning_callback: Callable[[str, str], None] | None = None
@@ -67,18 +84,31 @@ class LlmBuilderAgent:
             return None
         return lambda delta: callback(span_id, delta)
 
-    def _model(self) -> ModelInstance:
+    def _model(self) -> ModelInstance | PolicyModelInstance:
         """Lazily resolve + memoize the chosen model. Used by cognition (next slice)."""
         if self._model_instance is None:
-            self._model_instance = resolve_model_instance(self._tenant_id, self._model_config)
+            if self._model_resolver_fn is not None:
+                self._model_instance = self._model_resolver_fn()
+            elif self._account_id is None and self._app_id is None:
+                self._model_instance = resolve_model_instance(self._tenant_id, self._model_config)
+            else:
+                self._model_instance = resolve_model_instance(
+                    self._tenant_id,
+                    self._model_config,
+                    account_id=self._account_id,
+                    app_id=self._app_id,
+                )
+        assert self._model_instance is not None
         return self._model_instance
 
-    def model_or_none(self) -> ModelInstance | None:
+    def model_or_none(self) -> ModelInstance | PolicyModelInstance | None:
         """The resolved model, or None if it can't resolve — cognition degrades on
         None rather than crashing the advance. Logs the resolution failure once per
         agent instance (per advance) so a misconfigured llm-mode tenant is visible."""
         try:
             return self._model()
+        except CognitionPolicyDeniedError:
+            raise
         except Exception as exc:
             diagnostics.report("model_resolution_failed", error=exc, fallback_used=True)
             if not self._resolution_failed:
@@ -182,16 +212,10 @@ class LlmBuilderAgent:
     def propose_plan_v1(
         self, requirements: dict[str, Any], *, goal_text: str, reply_language: str | None = None
     ) -> WorkflowPlan | None:
-        catalogue = build.planning_catalogue(
-            self._tenant_id, account_id=self._account_id, goal_text=goal_text, requirements=requirements
-        )
         return build.propose_plan_v1(
             self.model_or_none(),
             requirements,
             self._reasoning_for("propose-build-plan"),
-            tools=catalogue.tools,
-            agents=catalogue.agents,
-            agent_source_error=catalogue.agent_source_error,
             goal_text=goal_text,
             mode=self._app_mode,
             reply_language=reply_language,
@@ -241,6 +265,7 @@ class LlmBuilderAgent:
             account_id=self._account_id,
             mode=self._app_mode,
             reply_language=reply_language,
+            cognition_model=self._model(),
         )
 
     @diagnostics.cognition

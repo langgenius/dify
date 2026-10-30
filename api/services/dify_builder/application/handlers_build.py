@@ -213,12 +213,10 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
 
 
 def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) On ``submit_requirements`` merge the form payload, propose
-    plan v1, and go straight to resource discovery (build.resource_recommendation)
-    via the shared ``_discover_and_offer_resources`` helper. The decision-free
-    find_resources gate that used to sit at build.initial_plan (showing the
-    same plan a second time) is gone; that state serves complete goals with
-    no clarification and the retry_after_revert loop-back (handle_initial_plan). Continue adjusting
+    """Merge requirements and commit the abstract plan before resource discovery.
+
+    The automatic initial-plan state performs discovery only after this
+    transition is durable. Continue adjusting
     first collects a fresh required change request in this existing form gate.
     If planning returns no usable plan, keep this waiting state and prior plan."""
     kind = action_kind(turn)
@@ -260,16 +258,11 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     store_plan(fc, plan)
 
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_SUBMITTED_REQUIREMENTS)))
-    # Pass the live reporter through: this is still the SAME operation as the
-    # requirements review above, and every other handler in this file uses
-    # exactly one ProgressReporter per step. A second reporter under the same
-    # env.operation_id would restart `revision` at 1, breaking the documented
-    # per-operation-monotonic invariant (contract.py's ProgressEventData).
-    resource_items, next_state = _discover_and_offer_resources(env, s, fc, progress)
+    progress.finish()
     return StepResult(
-        next=next_state,
+        next=PcState.BUILD_INITIAL_PLAN,
         context=fc,
-        items=[*decision_items, *resource_items],
+        items=decision_items,
     )
 
 
@@ -399,7 +392,7 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     """(working, auto) Discover resources for the prepared plan and fall straight
     through to build.resource_recommendation. Entered after a complete goal
     needs no clarification, or via the retry_after_revert loop-back.
-    Submitted requirements discover resources directly (see handle_goal_analysis). Unconditional: this
+    Submitted requirements also enter after their abstract plan commits. Unconditional: this
     is a working/pass-through state now (state.py), so the runner drives it
     on entry with no action to gate on -- it must NOT re-require find_resources,
     or the loop-back (which lands here with the action already consumed)
@@ -652,6 +645,10 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
+    if env.describe_app is not None:
+        env.describe_app(
+            "\n".join(value for value in (fc.plan_title, fc.plan_input_summary, fc.plan_output_summary) if value)[:1024]
+        )
     fc.built_node_ids = [
         intent.args["node_id"]
         for intent in intents

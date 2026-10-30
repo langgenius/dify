@@ -274,6 +274,13 @@ class InMemoryRepository(Repository):
                 raise NotFoundError(f"test input {id} not found")
             return copy.deepcopy(ti)
 
+    # This repository has no material intake writer. Its worker fixtures therefore
+    # have an empty material queue; the SQL-backed suites exercise actual intake.
+    def list_builder_material(self, session_id: str, actor: Actor) -> list[object]:
+        del actor
+        self.get_session(session_id)
+        return []
+
     # -- conversation --
 
     @override

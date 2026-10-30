@@ -37,6 +37,8 @@ from core.dify_builder.contract import (
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import (
     CONFIRMED_TOOL_ACTION,
+    Action,
+    Actor,
     Checkpoint,
     ConversationItem,
     DifyBuilderContext,
@@ -49,6 +51,7 @@ from core.dify_builder.state import PcState, is_terminal, is_waiting, is_working
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import BuilderText, copy_text
 from services.dify_builder import recovery, trace_diagnostics
+from services.dify_builder.application.cognition_policy import cognition_admission_required
 from services.dify_builder.application.ports import (
     DiagnosticReportingAgent,
     DifyBuilderAgent,
@@ -118,6 +121,12 @@ class Env:
     # service-layer implementation swallows its own errors -- a failed rename
     # leaves the derived name in place and never blocks the build.
     rename_app: Callable[[str], str] | None = None
+    describe_app: Callable[[str], str] | None = None
+    # Current queue prefix is consumed only between handlers, never during a
+    # model or draft mutation. None preserves existing text-only adapters.
+    consume_material: (
+        Callable[[Session, DifyBuilderContext, Actor], tuple[Session, DifyBuilderContext, bool]] | None
+    ) = None
     # Set by the runner for a reserved confirmed Tool command: its deterministic
     # status copy is committed without language detection or model localization.
     suppress_model_calls: bool = False
@@ -323,6 +332,20 @@ class Runner:
         self._env = env
         self._registry = registry
 
+    def _material_reentry(self, actor: Actor, session: Session, context: DifyBuilderContext) -> Turn:
+        """A queued supplement never carries forward the superseded approval."""
+        if session.current_state == PcState.EDIT_CAPABILITY_CHECK:
+            return Turn(
+                actor=actor,
+                action=Action(
+                    kind="send_edit_goal",
+                    payload={"text": context.goal_text},
+                    base_version=session.version,
+                    command_id=self._env.command_id,
+                ),
+            )
+        return Turn(actor=actor)
+
     def _commit(
         self,
         session: Session,
@@ -441,6 +464,13 @@ class Runner:
         from services.dify_builder.conversation_tasks import active_entry_mode
 
         s.entry_mode = active_entry_mode(s, fc)
+        if self._env.consume_material is not None and not fc.paused:
+            old_version = s.version
+            s, fc, invalidated = self._env.consume_material(s, fc, turn.actor)
+            if turn.action is not None and turn.action.base_version == old_version:
+                turn.action.base_version = s.version
+                if invalidated or turn.action.kind == "consume_material":
+                    turn = self._material_reentry(turn.actor, s, fc)
         if turn.action is not None:
             self._env.command_id = turn.action.command_id
         action_kind = turn.action.kind if turn.action is not None else ""
@@ -459,7 +489,7 @@ class Runner:
                 or turn.action.command_id != fc.confirmed_command_id
             ):
                 raise ConflictError(f"dify_builder: confirmed command is not reserved for session {session_id}")
-        elif self._env.detect_language is not None:
+        elif self._env.detect_language is not None and cognition_admission_required(action_kind):
             with trace_diagnostics.scope(self._env.record_diagnostic, "detect-language"):
                 user_text = turn.action.payload.get("text") if turn.action is not None else None
                 if isinstance(user_text, str) and user_text.strip():
@@ -622,14 +652,18 @@ class Runner:
                 session_id,
                 limit=_MESSAGE_HISTORY_LIMIT,
             )
-            reply = self._env.agent.respond_to_message(
-                s.current_state,
-                fc,
-                message_history,
-                graph,
-                text,
-                emit_delta,
-            )
+            from services.dify_builder.attachment_context import material_scope
+            from services.dify_builder.task_controls import generation
+
+            with material_scope(fc.attachment_material, generation(fc)):
+                reply = self._env.agent.respond_to_message(
+                    s.current_state,
+                    fc,
+                    message_history,
+                    graph,
+                    text,
+                    emit_delta,
+                )
             streamed_reply = "".join(streamed_parts)
             if not streamed_reply:
                 # Protocol adapters are expected to use ``on_delta``. Preserve
@@ -666,6 +700,11 @@ class Runner:
             from services.dify_builder.task_controls import check_current
 
             check_current()
+            material_turn = None
+            if not first and self._env.consume_material is not None:
+                s, fc, invalidated = self._env.consume_material(s, fc, turn.actor)
+                if invalidated:
+                    material_turn = self._material_reentry(turn.actor, s, fc)
             if is_waiting(s.current_state) and first and turn.action is None:
                 return s  # nothing to do
             if is_terminal(s.current_state):
@@ -678,7 +717,15 @@ class Runner:
             if not first:
                 self._env.begin_operation(s)
             step_turn = turn if first else Turn(actor=turn.actor)  # action consumed; keep actor for working steps
-            with trace_diagnostics.scope(self._env.record_diagnostic, str(s.current_state).replace(".", "-")):
+            if material_turn is not None:
+                step_turn = material_turn
+            from services.dify_builder.attachment_context import material_scope
+            from services.dify_builder.task_controls import generation
+
+            with (
+                material_scope(fc.attachment_material, generation(fc)),
+                trace_diagnostics.scope(self._env.record_diagnostic, str(s.current_state).replace(".", "-")),
+            ):
                 res = handler(self._env, step_turn, s, fc)
             check_current()
             if res.context is None:
@@ -728,4 +775,10 @@ class Runner:
             first = False
 
             if settled:
+                if self._env.consume_material is not None:
+                    s, fc, invalidated = self._env.consume_material(s, fc, turn.actor)
+                    if invalidated:
+                        turn = self._material_reentry(turn.actor, s, fc)
+                        first = True
+                        continue
                 return s

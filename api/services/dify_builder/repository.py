@@ -27,7 +27,7 @@ from collections.abc import Callable, Iterable, Iterator
 from itertools import islice
 from typing import cast
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -50,6 +50,7 @@ from core.dify_builder.models import (
     Session as DomainSession,
 )
 from core.dify_builder.state import PcState
+from models.account import Tenant, TenantAccountJoin
 from models.dify_builder import (
     DifyBuilderCheckpoint,
     DifyBuilderConversationItem,
@@ -58,6 +59,12 @@ from models.dify_builder import (
     DifyBuilderSessionCommit,
     DifyBuilderSnapshot,
     DifyBuilderTestInput,
+)
+from models.dify_builder_cognition_policy import DifyBuilderCognitionPolicy
+from services.dify_builder.application.cognition_policy import (
+    CognitionModel,
+    CognitionPolicy,
+    CognitionPolicyDeniedError,
 )
 from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -158,7 +165,68 @@ def _conversation_groups_backward(items: Iterator[ConversationItem]) -> Iterator
 
 
 class SqlDifyBuilderRepository:
-    """SQL-backed ``Repository`` for the Dify Builder engine."""
+    """SQL-backed Repository and current Workspace policy persistence."""
+
+    def require_member(self, actor, *, admin: bool) -> None:
+        with self._session_factory() as session:
+            role = session.scalar(
+                select(TenantAccountJoin.role).where(
+                    TenantAccountJoin.tenant_id == actor.tenant_id,
+                    TenantAccountJoin.account_id == actor.account_id,
+                )
+            )
+        if role is None or (admin and role not in {"owner", "admin"}):
+            raise CognitionPolicyDeniedError("policy_permission_denied")
+
+    def get_policy(self, actor) -> CognitionPolicy | None:
+        with self._session_factory() as session:
+            row = session.get(DifyBuilderCognitionPolicy, actor.tenant_id)
+            if row is None:
+                return None
+            data = row.policy
+            return CognitionPolicy(
+                data["enabled"],
+                tuple(CognitionModel(**model) for model in data["models"]),
+                data["default_model_id"],
+                tuple(data["fallback_model_ids"]),
+                row.revision,
+                "explicit",
+            )
+
+    def put_policy(self, actor, policy: CognitionPolicy, expected_revision: int) -> CognitionPolicy:
+        with self._session_factory() as session, session.begin():
+            tenant = session.scalar(select(Tenant.id).where(Tenant.id == actor.tenant_id).with_for_update())
+            role = session.scalar(
+                select(TenantAccountJoin.role)
+                .where(
+                    TenantAccountJoin.tenant_id == actor.tenant_id,
+                    TenantAccountJoin.account_id == actor.account_id,
+                )
+                .with_for_update()
+            )
+            if tenant is None or role not in {"owner", "admin"}:
+                raise CognitionPolicyDeniedError("policy_permission_denied")
+            row = session.get(DifyBuilderCognitionPolicy, actor.tenant_id)
+            revision = row.revision if row else 0
+            if revision != expected_revision:
+                raise CognitionPolicyDeniedError("policy_revision_conflict")
+            data = {
+                "enabled": policy.enabled,
+                "models": [dataclasses.asdict(model) for model in policy.models],
+                "default_model_id": policy.default_model_id,
+                "fallback_model_ids": list(policy.fallback_model_ids),
+            }
+            if row is None:
+                session.add(
+                    DifyBuilderCognitionPolicy(
+                        tenant_id=actor.tenant_id, revision=1, policy=data, updated_by=actor.account_id
+                    )
+                )
+            else:
+                row.revision = revision + 1
+                row.policy = data
+                row.updated_by = actor.account_id
+            return dataclasses.replace(policy, revision=revision + 1, source="explicit")
 
     def __init__(self, session_factory: sessionmaker) -> None:
         self._session_factory = session_factory
@@ -354,6 +422,26 @@ class SqlDifyBuilderRepository:
         )
 
         db_session.add_all(self._to_conversation_row(session_id, item) for item in items)
+
+        chat_turn_ids = [item.payload.get("turn_id") for item in items if item.kind == "assistant_turn"]
+        if chat_turn_ids:
+            from models.dify_builder_material import DifyBuilderMaterial
+
+            with db_session.no_autoflush:
+                owner = db_session.get(DifyBuilderSession, session_id)
+                if owner is not None:
+                    db_session.execute(
+                        update(DifyBuilderMaterial)
+                        .where(
+                            DifyBuilderMaterial.session_id == session_id,
+                            DifyBuilderMaterial.tenant_id == owner.tenant_id,
+                            DifyBuilderMaterial.owner_account_id == owner.owner_account_id,
+                            DifyBuilderMaterial.app_id == owner.app_id,
+                            DifyBuilderMaterial.client_turn_id.in_(chat_turn_ids),
+                            DifyBuilderMaterial.status == "chat_pending",
+                        )
+                        .values(status="chat_consumed", consumed_version=new_version)
+                    )
 
         try:
             db_session.flush()
@@ -678,3 +766,315 @@ class SqlDifyBuilderRepository:
             payload=row.payload,
             at_version=row.at_version,
         )
+
+    # -- Conversation-local supplemental intake (ENG-1188) --
+
+    @staticmethod
+    def _material_scope(sql, session_id, actor, *, expected_generation=None, task_id=None, allow_paused=False):
+        from services.dify_builder.attachment_intake import material_task_id
+        from services.dify_builder.task_controls import generation
+
+        row = sql.scalar(
+            select(DifyBuilderSession)
+            .where(
+                DifyBuilderSession.id == session_id,
+                DifyBuilderSession.tenant_id == actor.tenant_id,
+                DifyBuilderSession.owner_account_id == actor.account_id,
+            )
+            .with_for_update()
+        )
+        if row is None:
+            raise NotFoundError("session not found")
+        commit = sql.scalar(
+            select(DifyBuilderSessionCommit).where(
+                DifyBuilderSessionCommit.session_id == row.id, DifyBuilderSessionCommit.version == row.version
+            )
+        )
+        if commit is None:
+            raise NotFoundError("session not found")
+        context = context_from_dict(commit.context)
+        if expected_generation is not None and (
+            (context.paused and not allow_paused)
+            or generation(context) != expected_generation
+            or material_task_id(SqlDifyBuilderRepository._to_domain_session(row), context) != task_id
+        ):
+            raise ConflictError("task execution stopped or superseded")
+        return row, context
+
+    @staticmethod
+    def _material_query(row, actor):
+        from models.dify_builder_material import DifyBuilderMaterial
+
+        return select(DifyBuilderMaterial).where(
+            DifyBuilderMaterial.session_id == row.id,
+            DifyBuilderMaterial.app_id == row.app_id,
+            DifyBuilderMaterial.tenant_id == actor.tenant_id,
+            DifyBuilderMaterial.owner_account_id == actor.account_id,
+        )
+
+    @staticmethod
+    def _material_record(row):
+        from services.dify_builder.attachment_intake import MaterialReceipt
+
+        return MaterialReceipt(
+            id=row.id,
+            seq=row.seq,
+            app_id=row.app_id,
+            session_id=row.session_id,
+            task_id=row.task_id,
+            generation=row.generation,
+            client_turn_id=row.client_turn_id,
+            text=row.text,
+            uploads=[dict(upload) for upload in row.uploads],
+            status=row.status,
+            consumed_version=row.consumed_version,
+            test_candidate=row.test_candidate,
+        )
+
+    @staticmethod
+    def _authorized_context_upload(sql, actor, upload_file_id):
+        from models.enums import CreatorUserRole
+        from models.model import UploadFile
+
+        upload = sql.scalar(
+            select(UploadFile).where(
+                UploadFile.id == upload_file_id,
+                UploadFile.tenant_id == actor.tenant_id,
+                UploadFile.created_by == actor.account_id,
+                UploadFile.created_by_role == CreatorUserRole.ACCOUNT,
+            )
+        )
+        if upload is None:
+            raise NotFoundError("upload not found")
+        return upload
+
+    def queue_builder_material(
+        self,
+        session_id,
+        actor,
+        *,
+        expected_generation,
+        task_id,
+        client_turn_id,
+        text,
+        upload_file_ids,
+        as_message=False,
+    ):
+        from core.dify_builder.errors import BadRequestError
+        from models.dify_builder_material import DifyBuilderMaterial
+        from runtime_contracts.builder.execution import canonical_digest
+        from services.dify_builder.attachment_intake import validated_upload_ids
+
+        upload_file_ids = validated_upload_ids(upload_file_ids)
+        digest = canonical_digest({"text": text, "upload_file_ids": upload_file_ids})
+        with self._session_factory() as sql, sql.begin():
+            owner, context = self._material_scope(
+                sql,
+                session_id,
+                actor,
+                expected_generation=expected_generation,
+                task_id=task_id,
+                allow_paused=as_message,
+            )
+            replay = sql.scalar(
+                self._material_query(owner, actor).where(DifyBuilderMaterial.client_turn_id == client_turn_id)
+            )
+            if replay is not None:
+                if replay.input_digest != digest:
+                    raise ConflictError("client_turn_id was already used with different input")
+                record = self._material_record(replay)
+                return (
+                    dataclasses.replace(record, status="superseded")
+                    if (replay.generation != expected_generation or replay.task_id != task_id)
+                    else record
+                )
+            previous_user = sql.scalar(
+                select(DifyBuilderConversationItem)
+                .where(
+                    DifyBuilderConversationItem.session_id == session_id,
+                    DifyBuilderConversationItem.kind == "user",
+                    DifyBuilderConversationItem.payload["turn_id"].as_string() == client_turn_id,
+                )
+                .limit(1)
+            )
+            if previous_user is not None:
+                if upload_file_ids or previous_user.payload.get("text") != text:
+                    raise ConflictError("client_turn_id was already used with different input")
+                as_message = True
+            legacy_reply = (
+                sql.scalar(
+                    select(DifyBuilderConversationItem)
+                    .where(
+                        DifyBuilderConversationItem.session_id == session_id,
+                        DifyBuilderConversationItem.kind == "assistant_turn",
+                        DifyBuilderConversationItem.payload["turn_id"].as_string() == client_turn_id,
+                    )
+                    .limit(1)
+                )
+                if as_message
+                else None
+            )
+            active = list(
+                sql.scalars(
+                    self._material_query(owner, actor).where(
+                        DifyBuilderMaterial.generation == expected_generation,
+                        DifyBuilderMaterial.status.not_in(("chat_pending", "chat_consumed")),
+                    )
+                )
+            )
+            if not as_message and (
+                len(active) >= 100 or sum(len(row.uploads) for row in active) + len(upload_file_ids) > 20
+            ):
+                raise BadRequestError("Conversation material limit reached")
+            maximum_seq = sql.scalar(
+                self._material_query(owner, actor).with_only_columns(func.max(DifyBuilderMaterial.seq))
+            )
+            uploads = []
+            for upload_id in upload_file_ids:
+                upload = self._authorized_context_upload(sql, actor, upload_id)
+                uploads.append(
+                    {
+                        "upload_file_id": upload.id,
+                        "name": upload.name[:255],
+                        "extension": upload.extension,
+                        "size": upload.size,
+                        "status": "pending",
+                    }
+                )
+                upload.used = True
+                upload.used_by = actor.account_id
+            test_states = {
+                PcState.BUILD_AWAIT_TESTDATA,
+                PcState.BUILD_TEST_AND_REPAIR,
+                PcState.BUILD_REVIEW,
+                PcState.EDIT_AWAIT_TESTDATA,
+                PcState.EDIT_TEST_AFFECTED_PATHS,
+                PcState.EDIT_REVIEW,
+                PcState.FIX_AWAIT_TESTDATA,
+                PcState.FIX_VERIFY,
+                PcState.FIX_AWAIT_VERIFY,
+                PcState.FIX_AWAIT_DECISION,
+            }
+            row = DifyBuilderMaterial(
+                tenant_id=actor.tenant_id,
+                owner_account_id=actor.account_id,
+                app_id=owner.app_id,
+                session_id=owner.id,
+                task_id=task_id,
+                generation=expected_generation,
+                seq=(maximum_seq or 0) + 1,
+                client_turn_id=client_turn_id,
+                input_digest=digest,
+                text=text,
+                uploads=uploads,
+                status="chat_consumed" if legacy_reply is not None else "chat_pending" if as_message else "pending",
+                consumed_version=legacy_reply.at_version if legacy_reply is not None else None,
+                test_candidate=PcState(owner.current_state) in test_states,
+            )
+            sql.add(row)
+            sql.flush()
+            return self._material_record(row)
+
+    def authorize_builder_uploads(self, actor, upload_file_ids):
+        with self._session_factory() as sql, sql.begin():
+            for upload_file_id in upload_file_ids:
+                self._authorized_context_upload(sql, actor, upload_file_id)
+
+    def list_builder_material(self, session_id, actor):
+        from models.dify_builder_material import DifyBuilderMaterial
+        from services.dify_builder.task_controls import generation
+
+        with self._session_factory() as sql, sql.begin():
+            owner, context = self._material_scope(sql, session_id, actor)
+            rows = list(
+                sql.scalars(
+                    self._material_query(owner, actor)
+                    .where(DifyBuilderMaterial.status.not_in(("chat_pending", "chat_consumed")))
+                    .order_by(DifyBuilderMaterial.seq.desc())
+                    .limit(100)
+                )
+            )
+            records = [self._material_record(row) for row in reversed(rows)]
+            return [
+                dataclasses.replace(record, status="superseded") if record.generation != generation(context) else record
+                for record in records
+            ]
+
+    def find_builder_material(self, session_id, actor, client_turn_id):
+        from models.dify_builder_material import DifyBuilderMaterial
+
+        with self._session_factory() as sql, sql.begin():
+            owner, _ = self._material_scope(sql, session_id, actor)
+            row = sql.scalar(
+                self._material_query(owner, actor).where(DifyBuilderMaterial.client_turn_id == client_turn_id)
+            )
+            return self._material_record(row) if row is not None else None
+
+    def read_builder_upload(self, session_id, actor, *, receipt_id, upload_file_id, expected_generation, task_id):
+        from models.dify_builder_material import DifyBuilderMaterial
+        from services.dify_builder.attachment_intake import NativeContextUpload
+
+        with self._session_factory() as sql, sql.begin():
+            owner, _ = self._material_scope(
+                sql, session_id, actor, expected_generation=expected_generation, task_id=task_id
+            )
+            row = sql.scalar(
+                self._material_query(owner, actor).where(
+                    DifyBuilderMaterial.id == receipt_id,
+                    DifyBuilderMaterial.generation == expected_generation,
+                    DifyBuilderMaterial.task_id == task_id,
+                    DifyBuilderMaterial.status == "pending",
+                )
+            )
+            if row is None or not any(ref["upload_file_id"] == upload_file_id for ref in row.uploads):
+                raise NotFoundError("upload association not found")
+            upload = self._authorized_context_upload(sql, actor, upload_file_id)
+            return NativeContextUpload(
+                upload_file_id=upload.id, key=upload.key, extension=upload.extension, size=upload.size
+            )
+
+    def consume_builder_material(
+        self, session_id, actor, *, base_version, expected_generation, task_id, watermark, results, context, next_state
+    ):
+        from models.dify_builder_material import DifyBuilderMaterial
+
+        with self._session_factory() as sql, sql.begin():
+            owner, _ = self._material_scope(
+                sql, session_id, actor, expected_generation=expected_generation, task_id=task_id
+            )
+            rows = list(
+                sql.scalars(
+                    self._material_query(owner, actor)
+                    .where(
+                        DifyBuilderMaterial.generation == expected_generation,
+                        DifyBuilderMaterial.task_id == task_id,
+                        DifyBuilderMaterial.seq <= watermark,
+                        DifyBuilderMaterial.status == "pending",
+                    )
+                    .order_by(DifyBuilderMaterial.seq)
+                )
+            )
+            if [row.id for row in rows] != [result.receipt_id for result in results]:
+                raise ConflictError("material watermark changed")
+            from core.dify_builder.contract import UserItem
+
+            items = []
+            for row in rows:
+                if row.text:
+                    items.append(
+                        UserItem(text=row.text, turn_id=row.client_turn_id).to_item(
+                            seq=context.next_seq, at_version=base_version + 1
+                        )
+                    )
+                    context.next_seq += 1
+            version = self._compare_and_advance_in_session(sql, session_id, base_version, next_state, context, items)
+            for row, result in zip(rows, results, strict=True):
+                row.uploads = result.uploads
+                states = {upload["status"] for upload in result.uploads}
+                if result.text_truncated:
+                    states.add("truncated")
+                row.status = (
+                    "rejected" if states == {"rejected"} else "truncated" if "truncated" in states else "consumed"
+                )
+                row.consumed_version = version
+            return version

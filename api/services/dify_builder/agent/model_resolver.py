@@ -27,9 +27,11 @@ def normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict
     return params, stop
 
 
-def resolve_model_instance(tenant_id: str, model_config: dict[str, Any] | None) -> ModelInstance:
+def resolve_model_instance(
+    tenant_id: str, model_config: dict[str, Any] | None, *, account_id: str | None = None
+) -> ModelInstance:
     """A chosen model_config -> that model; empty/None -> the tenant default LLM."""
-    manager = ModelManager.for_tenant(tenant_id)
+    manager = ModelManager.for_tenant(tenant_id, user_id=account_id)
     if model_config:
         mc = ModelConfig.model_validate(model_config)
         return manager.get_model_instance(
