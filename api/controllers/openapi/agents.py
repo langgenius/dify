@@ -12,17 +12,27 @@ from controllers.common.agent_access import resolve_agent_access_filter
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
 from controllers.openapi._models import AgentListQuery, AgentListResponse, AgentListRow
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject, CheckWorkspaceMember
 from controllers.openapi.auth.subjects import AccountSubject
-from core.db.session_factory import session_factory
-from machinery.context import RequestContext
-from services.agent.roster_service import AgentRosterService
+from services.agent.roster_service import AgentRosterService, RosterAgentEntry
+
+
+def _row(entry: RosterAgentEntry) -> AgentListRow:
+    return AgentListRow(
+        agent_id=entry.agent_id,
+        app_id=entry.app_id,
+        name=entry.name,
+        description=entry.description,
+        role=entry.role,
+        published=entry.published,
+        updated_at=entry.updated_at.isoformat(),
+    )
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/agents")
 class AgentListApi(Resource):
     @endpoint(
-        context="workspace",
         op="get.agent",
         kind=Kind.LIST,
         summary="List the Agents you can see in a workspace",
@@ -35,26 +45,20 @@ class AgentListApi(Resource):
         query=AgentListQuery,
         returns=(HTTPStatus.OK, AgentListResponse, "Agent list"),
     )
-    def get(self, ctx: RequestContext, workspace_id: str, *, query: AgentListQuery):
+    def get(self, ctx: Context, workspace_id: str, *, query: AgentListQuery):
         accessible_agent_ids = None
         if dify_config.RBAC_ENABLED:
-            accessible_agent_ids = resolve_agent_access_filter(
-                ctx.active_workspace_id, ctx.account_id
-            ).accessible_agent_ids
+            accessible_agent_ids = resolve_agent_access_filter(ctx.workspace.id, ctx.account.id).accessible_agent_ids
 
-        with session_factory.create_session() as session:
-            entries, total = AgentRosterService(session).list_openapi_roster_agents(
-                tenant_id=ctx.active_workspace_id,
-                account_id=ctx.account_id,
-                page=query.page,
-                limit=query.limit,
-                name=query.name,
-                published=query.published,
-                accessible_agent_ids=accessible_agent_ids,
-            )
-        return AgentListResponse.build(
+        entries, total = AgentRosterService(ctx.session).list_openapi_roster_agents(
+            tenant_id=ctx.workspace.id,
+            account_id=ctx.account.id,
             page=query.page,
             limit=query.limit,
-            total=total,
-            items=[AgentListRow.model_validate(entry._asdict()) for entry in entries],
+            name=query.name,
+            published=query.published,
+            accessible_agent_ids=accessible_agent_ids,
+        )
+        return AgentListResponse.build(
+            page=query.page, limit=query.limit, total=total, items=[_row(entry) for entry in entries]
         )

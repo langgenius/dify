@@ -7414,8 +7414,10 @@ def _openapi_agent_app(
     key: str,
     *,
     published: bool = False,
+    edited_since_publish: bool = False,
     enable_api: bool = True,
     scope: AgentScope = AgentScope.ROSTER,
+    maintainer: str | None = None,
 ) -> None:
     agent = _agent(
         agent_id=f"agent-{key}",
@@ -7424,6 +7426,9 @@ def _openapi_agent_app(
         source=AgentSource.AGENT_APP,
         app_id=f"app-{key}",
     )
+    if published or edited_since_publish:
+        agent.active_config_snapshot_id = f"snapshot-{key}"
+        agent.active_config_is_published = published
     session.add_all(
         [
             make_app(
@@ -7432,28 +7437,18 @@ def _openapi_agent_app(
                 mode=AppMode.AGENT,
                 enable_api=enable_api,
                 created_by="account-1",
+                maintainer=maintainer,
             ),
             agent,
         ]
     )
-    if published:
-        agent.active_config_snapshot_id = f"snapshot-{key}"
-        agent.active_config_is_published = True
-        session.add(
-            AgentConfigRevision(
-                tenant_id="tenant-1",
-                agent_id=agent.id,
-                current_snapshot_id=agent.active_config_snapshot_id,
-                revision=1,
-                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
-            )
-        )
 
 
 @pytest.fixture
 def openapi_roster(sqlite_session: Session) -> Session:
     _openapi_agent_app(sqlite_session, "published", published=True)
     _openapi_agent_app(sqlite_session, "draft")
+    _openapi_agent_app(sqlite_session, "edited", edited_since_publish=True)
     _openapi_agent_app(sqlite_session, "api-off", published=True, enable_api=False)
     _openapi_agent_app(sqlite_session, "workflow-only", scope=AgentScope.WORKFLOW_ONLY)
     sqlite_session.commit()
@@ -7481,9 +7476,9 @@ def _list_openapi_agents(
 @pytest.mark.parametrize(
     ("published", "accessible_agent_ids", "expected"),
     [
-        (None, None, {"agent-published", "agent-draft"}),
+        (None, None, {"agent-published", "agent-draft", "agent-edited"}),
         (True, None, {"agent-published"}),
-        (False, None, {"agent-draft"}),
+        (False, None, {"agent-draft", "agent-edited"}),
         (None, {"agent-draft"}, {"agent-draft"}),
         (None, {"agent-draft", "agent-api-off", "agent-workflow-only"}, {"agent-draft"}),
         (True, {"agent-draft"}, set()),
@@ -7520,10 +7515,28 @@ def test_list_openapi_roster_agents_maps_the_entry(openapi_roster: Session) -> N
     ) == ("agent-published", "app-published", "App published", "", "assistant", True, True)
 
 
-def test_list_openapi_roster_agents_reports_an_unpublished_agent(openapi_roster: Session) -> None:
-    entries, _ = _list_openapi_agents(openapi_roster, name="App draft")
+@pytest.mark.parametrize("published", [True, False], ids=["published", "unpublished"])
+def test_list_openapi_roster_agents_filter_and_row_agree(openapi_roster: Session, published: bool) -> None:
+    entries, _ = _list_openapi_agents(openapi_roster, published=published)
 
-    assert [entry.published for entry in entries] == [False]
+    assert {entry.published for entry in entries} == {published}
+
+
+def test_list_openapi_roster_agents_lists_an_edited_agent_as_unpublished(openapi_roster: Session) -> None:
+    entries, _ = _list_openapi_agents(openapi_roster, name="App edited")
+
+    assert [(entry.agent_id, entry.published) for entry in entries] == [("agent-edited", False)]
+
+
+def test_list_openapi_roster_agents_empty_access_still_lists_apps_the_caller_maintains(
+    openapi_roster: Session,
+) -> None:
+    _openapi_agent_app(openapi_roster, "maintained", maintainer="account-9")
+    openapi_roster.commit()
+
+    entries, total = _list_openapi_agents(openapi_roster, accessible_agent_ids=set())
+
+    assert ([entry.agent_id for entry in entries], total) == (["agent-maintained"], 1)
 
 
 def test_list_openapi_roster_agents_drops_an_app_without_a_roster_agent(
@@ -7533,7 +7546,7 @@ def test_list_openapi_roster_agents_drops_an_app_without_a_roster_agent(
 
     entries, total = _list_openapi_agents(openapi_roster)
 
-    assert (entries, total) == ([], 2)
+    assert (entries, total) == ([], 3)
 
 
 def test_list_openapi_roster_agents_writes_nothing(openapi_roster: Session) -> None:
