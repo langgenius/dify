@@ -26,6 +26,7 @@ from core.dify_builder.models import (
     DifyBuilderContext,
     EntryMode,
     Graph,
+    Inputs,
     MutationIntent,
     Run,
     Session,
@@ -2416,7 +2417,15 @@ def test_retry_whose_handler_raises_lands_in_restartable_failed_state(
     authoritative failed-state projection with its restart action.
     """
     import tasks.dify_builder_advance_task as advance_mod
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
+    from extensions.application_services import dify_builder_cognition_policy as policy
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    def select(actor: Actor, requested: Inputs | None) -> Inputs:
+        assert actor == _actor()
+        return requested or {}
+
+    monkeypatch.setattr(policy, "select_cognition_config", select)
+    monkeypatch.setattr(advance_mod, "build_dify_builder_agent", lambda **_: StubAgent())
 
     class RaisingDify(FakeBuildDifyPort):
         @override
@@ -2665,3 +2674,36 @@ def test_completed_task_message_can_prepare_against_current_draft(
     assert advance
     assert not items
     assert not enqueued
+
+
+def test_current_workspace_policy_is_rechecked_before_cognition_enqueue(
+    repo: SqlDifyBuilderRepository,
+    lock: FakeSessionLock,
+    enqueued: list[Enqueued],
+) -> None:
+    from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+
+    denied = False
+    selected: Inputs = {"provider": "openai", "name": "gpt", "mode": "chat", "completion_params": {}}
+
+    def select(actor: Actor, _requested: Inputs | None) -> Inputs:
+        assert actor == _actor()
+        if denied:
+            raise CognitionPolicyDeniedError("builder_disabled")
+        return selected
+
+    def enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
+        enqueued.append((session_id, action, actor, token))
+
+    service = DifyBuilderService(repo, lock, enqueue, cognition_policy_fn=select)
+    view = service.create_build_session(APP_ID, _actor(), goal_text="Build it")
+    lock.release(view.session_id, enqueued[0][3])
+    enqueued.clear()
+    denied = True
+    session, _ = repo.get_session(view.session_id)
+    with pytest.raises(CognitionPolicyDeniedError, match="builder_disabled"):
+        service.dispatch(
+            view.session_id, Action(kind="message", base_version=session.version, payload={"text": "more"}), _actor()
+        )
+    assert enqueued == []
+    assert service.get_session_view(view.session_id, _actor()).session_id == view.session_id

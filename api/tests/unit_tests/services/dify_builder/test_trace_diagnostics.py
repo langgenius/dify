@@ -261,10 +261,13 @@ def test_edit_fix_and_mock_response_shapes_are_observed(diagnostic_model: Diagno
     assert {r["span_id"] for r in records if r["code"] == "response_schema_invalid"} == {"edit", "fix", "mock"}
 
 
-def test_graph_generation_retry_evidence_survives_success(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_graph_generation_retry_evidence_survives_success(
+    monkeypatch: pytest.MonkeyPatch, diagnostic_model: DiagnosticFactory
+) -> None:
     from services.dify_builder.application.ports import BuildNodesResult
 
     agent = LlmBuilderAgent("tenant")
+    agent._model_instance = diagnostic_model()
     records = []
     agent.set_diagnostic_callback(records.append)
     monkeypatch.setattr(
