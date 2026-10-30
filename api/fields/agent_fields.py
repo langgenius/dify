@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
+from fields.conversation_fields import AgentThought
 from libs.helper import to_timestamp
 from models.agent import (
     AgentConfigDraftType,
@@ -197,6 +198,9 @@ class AgentLogMessageItemResponse(ResponseModel):
     latency: float
     created_at: int | None = None
     updated_at: int | None = None
+    # Present for Agent App conversations and Workflow Agent nodes that recorded
+    # their process; empty when the run predates process persistence.
+    agent_thoughts: list[AgentThought] = Field(default_factory=list)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod

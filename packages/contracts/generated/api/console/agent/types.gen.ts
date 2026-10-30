@@ -1187,6 +1187,7 @@ export type AgentLogConversationItemResponse = {
 }
 
 export type AgentLogMessageItemResponse = {
+  agent_thoughts?: Array<AgentThought>
   answer: string
   answer_tokens: number
   conversation_id: string

@@ -2,7 +2,7 @@ import type {
   AgentLogConversationItemResponse,
   AgentLogMessageItemResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
 import { DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import { ExternalTraceRow } from '@/app/components/workflow/run/external-trace-row'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -164,12 +165,38 @@ export function AgentLogDetailPanel({
               hideProcessDetail
               chatContainerInnerClassName="px-3"
               onFeedback={handleFeedback}
+              renderAgentContent={AgentRosterResponseContent}
             />
           </div>
         )}
       </div>
     </div>
   )
+}
+
+/**
+ * Agent App thoughts and workflow Agent node entries share one wire shape, while
+ * `ThoughtItem` requires non-null `tool`/`thought`/`tool_input`/`observation` and a
+ * `conversation_id` the Agent log payload does not carry per thought.
+ */
+function toChatThoughts(message: AgentLogMessageItemResponse): ThoughtItem[] | undefined {
+  const thoughts = message.agent_thoughts
+  if (!thoughts?.length)
+    return thoughts
+
+  return thoughts.map(thought => ({
+    id: thought.id,
+    tool: thought.tool ?? '',
+    thought: thought.thought ?? '',
+    answer: thought.answer ?? undefined,
+    tool_input: thought.tool_input ?? '',
+    tool_labels: thought.tool_labels as ThoughtItem['tool_labels'],
+    message_id: thought.message_id,
+    conversation_id: message.conversation_id,
+    observation: thought.observation ?? '',
+    position: thought.position,
+    files: thought.files,
+  }))
 }
 
 function formatAgentLogMessages({
@@ -195,6 +222,7 @@ function formatAgentLogMessages({
     chatList.push({
       id: message.id,
       content: message.answer || message.error || '',
+      agent_thoughts: toChatThoughts(message),
       conversationId,
       feedback: userFeedback,
       adminFeedback,
