@@ -50,6 +50,21 @@ from tests.unit_tests.core.dify_builder.fakes import (
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
+class NativeFlowAgent(PlaceholderAgent):
+    """Generic FSM fixtures do not request the unsupported knowledge capability."""
+
+    @override
+    def discover_resources(
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: Inputs,
+        reply_language: str | None = None,
+    ) -> list[ResourceOption]:
+        return []
+
+
 def _actor() -> Actor:
     return Actor(account_id="acc-1", tenant_id="tenant-1")
 
@@ -275,7 +290,11 @@ def test_complete_goal_automatically_reaches_resources_without_a_requirements_su
     assert fc.requirements == values
     assert fc.reply_language == "zh-Hans"
     assert fc.plan_items
-    assert fc.resource_selection == {}
+    assert fc.resource_selection == {
+        "knowledge_source_unavailable": False,
+        "knowledge_requires_clarification": False,
+        "offered_knowledge_ids": ["kb-company"],
+    }
     assert fc.built_node_ids == []
     assert agent.calls == ["analyze", "plan", "resources"]
     kinds = [item.kind for item in repo.list_conversation(s.id)]
@@ -1508,7 +1527,7 @@ def test_full_build_flow_goal_to_complete() -> None:
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
-    env, repo = _new_env(dify=dify)
+    env, repo = _new_env(dify=dify, agent=NativeFlowAgent())
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
@@ -1525,7 +1544,7 @@ def test_full_build_flow_goal_to_complete() -> None:
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
 
     # 3) confirm_resources -> build.plan_approval
-    confirm_payload = {"resource_ids": ["kb-company"]}
+    confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     assert out.current_state == PcState.BUILD_PLAN_APPROVAL
@@ -1591,7 +1610,7 @@ def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm() -> N
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
-    env, repo = _new_env(dify=dify)
+    env, repo = _new_env(dify=dify, agent=NativeFlowAgent())
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
@@ -1599,7 +1618,7 @@ def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm() -> N
     out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"]}
+    confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
@@ -1632,7 +1651,7 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish() -> None:
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
-    env, repo = _new_env(dify=dify)
+    env, repo = _new_env(dify=dify, agent=NativeFlowAgent())
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
@@ -1642,7 +1661,7 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish() -> None:
     # (the decision-free find_resources gate at build.initial_plan is gone).
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"]}
+    confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
     out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
@@ -1670,7 +1689,7 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent() -> None:
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
-    env, repo = _new_env(dify=dify)
+    env, repo = _new_env(dify=dify, agent=NativeFlowAgent())
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
@@ -1680,7 +1699,7 @@ def test_review_continue_adjusting_then_reapprove_is_idempotent() -> None:
     # (the decision-free find_resources gate at build.initial_plan is gone).
     reqs_action = Action(kind="submit_requirements", base_version=out.version)
     out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
-    confirm_payload = {"resource_ids": ["kb-company"]}
+    confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
     out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
 
@@ -2165,7 +2184,7 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent() -> N
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
-    env, repo = _new_env(dify=dify)
+    env, repo = _new_env(dify=dify, agent=NativeFlowAgent())
     s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
     runner = Runner(env, build_registry())
 
@@ -2175,7 +2194,7 @@ def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent() -> N
     out = runner.advance(
         s.id, Turn(action=Action(kind="submit_requirements", base_version=out.version), actor=_actor())
     )
-    confirm_payload = {"resource_ids": ["kb-company"]}
+    confirm_payload: dict[str, list[str]] = {"resource_ids": []}
     out = runner.advance(
         s.id,
         Turn(
