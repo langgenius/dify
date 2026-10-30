@@ -94,7 +94,7 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
     assert set(ops) <= set(seen)
     per_mode = {f"run.console_app.{mode}" for mode in ("workflow", "chat", "advanced_chat", "completion")}
     draft = {f"test.console_app.{mode}" for mode in ("workflow", "advanced_chat")}
-    assert streaming == per_mode | draft | {"get.run.event"}
+    assert streaming == per_mode | draft | {"run.agent", "test.agent", "get.run.event"}
 
 
 # Every op whose effect differs from its HTTP method, plus one default per method.
