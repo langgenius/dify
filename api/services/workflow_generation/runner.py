@@ -1704,6 +1704,11 @@ class WorkflowGenerator:
                 node = deepcopy(existing) if existing is not None else {"id": node_id}
                 node["id"] = node_id
                 node["data"] = data
+                if node_type == "custom-note":
+                    # A planned annotation names a canvas component, not an
+                    # executable node. Preserve the native note representation.
+                    node["type"] = "custom-note"
+                    data["type"] = ""
 
             parent_ref = str(planned.get("parent") or "")
             parent_id = label_to_id.get(parent_ref, parent_ref)
