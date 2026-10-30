@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
@@ -24,6 +23,7 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from enums import WorkflowKind
 from extensions.tracing import bind_tracing
 from graphon.engine.event.node_failure import NodeFailureHandler

@@ -84,6 +84,10 @@ Stored configurations keep the provider's fields at the top level, with `secret(
    - moderation, tools, retrieval, conversation naming and suggested questions.
 
    A scope exists only when the app has tracing enabled or enterprise telemetry is on.
+   The producer snapshots the event and hands it to a background publisher, so storage and
+   broker I/O do not delay the execution. Each process buffers at most 256 pending events;
+   a full buffer drops new events with a warning. Graceful shutdown drains accepted events,
+   but events not yet published can be lost if the process crashes.
 2. `tasks.trace_delivery_task` hands each event on `OPS_TRACE_QUEUE` (default `ops_trace_v2`) to `services.tracing.delivery.TraceDeliveryService`:
    - `repositories.trace_record_repository` reloads the records through the event's workspace.
    - Enterprise telemetry receives every record.

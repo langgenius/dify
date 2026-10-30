@@ -13,7 +13,6 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import WorkflowRunCompleted
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
@@ -21,6 +20,7 @@ from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from extensions.tracing import application_tracing_hooks
 from graphon.engine.layer import Layer
 from graphon.engine_events import (

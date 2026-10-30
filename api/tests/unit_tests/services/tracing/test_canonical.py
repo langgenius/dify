@@ -1,5 +1,9 @@
+import os
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from dify_trace_sdk.ids import span_id_for, trace_id_for
@@ -359,3 +363,33 @@ def test_records_without_a_provider_mapping_are_not_exported() -> None:
     )
 
     assert CanonicalTraceBuilder().build(record) is None
+
+
+def test_tracing_application_imports_do_not_load_runtime_dependencies() -> None:
+    api_root = Path(__file__).resolve().parents[4]
+    script = """
+import sys
+import services.tracing.canonical
+import services.tracing.collection
+import services.tracing.service
+
+forbidden = (
+    "celery", "configs", "controllers", "core", "enterprise", "extensions",
+    "flask", "models", "repositories", "sqlalchemy", "tasks", "werkzeug",
+)
+loaded = sorted(
+    name for name in sys.modules
+    if any(name == prefix or name.startswith(prefix + ".") for prefix in forbidden)
+)
+assert not loaded, loaded
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=api_root,
+        env={**os.environ, "PYTHONPATH": str(api_root)},
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr

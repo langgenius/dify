@@ -1,4 +1,4 @@
-"""Validated internal payloads for persisted workflow node retry history."""
+"""Validated retry history shared by workflow persistence and tracing."""
 
 from collections.abc import Mapping
 from typing import Any

@@ -19,7 +19,7 @@ from dify_trace_sdk.ids import span_id_for, trace_id_for
 from dify_trace_sdk.model import Cost, Span, SpanKind, SpanRef, SpanStatus, TokenUsage, Trace
 from pydantic import JsonValue
 
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
 from services.tracing.hierarchy import build_workflow_hierarchy, execution_metadata, finished_at

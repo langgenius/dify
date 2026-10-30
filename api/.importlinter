@@ -1341,6 +1341,7 @@ forbidden_modules =
     celery
     configs
     controllers
+    core
     enterprise
     extensions
     flask

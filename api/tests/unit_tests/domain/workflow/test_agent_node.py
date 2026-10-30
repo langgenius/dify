@@ -1,8 +1,6 @@
 import pytest
-from pydantic import ValidationError
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
-from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
+from domain.workflow.agent_node import is_dify_agent_node_data
 from graphon.entities.base_node_data import BaseNodeData
 
 
@@ -24,8 +22,3 @@ def test_is_dify_agent_node_data_supports_base_node_data() -> None:
     node_data = BaseNodeData.model_validate({"type": "agent", "version": "2", "agent_node_kind": "dify_agent"})
 
     assert is_dify_agent_node_data(node_data) is True
-
-
-def test_dify_agent_node_data_requires_explicit_kind_marker() -> None:
-    with pytest.raises(ValidationError, match="agent_node_kind"):
-        DifyAgentNodeData.model_validate({"type": "agent", "version": "2"})

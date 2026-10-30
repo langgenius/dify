@@ -1,3 +1,5 @@
+"""Identify Dify Agent nodes without importing their execution runtime."""
+
 from collections.abc import Mapping
 from typing import Any
 

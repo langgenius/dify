@@ -13,9 +13,9 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from domain.tracing.sources import SourceNodeExecution, SourceWorkflowRun
 from domain.tracing.trace_run_agg import TraceRunState, TraceSourceKind
+from domain.workflow.agent_node import is_dify_agent_node_data
 from services.tracing.providers import TraceProviderSupport
 
 
