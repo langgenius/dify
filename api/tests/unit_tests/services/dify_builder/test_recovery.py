@@ -75,6 +75,8 @@ def edit_flow() -> EditFlow:
         try:
             runner.advance(session_id, Turn(action=action, actor=actor))
         finally:
+            # This eager worker owns both command leases, as the Celery task does.
+            repo.release_workflow_writer(session_id, token=_token)
             lock.release(session_id, _token)
 
     service = DifyBuilderService(

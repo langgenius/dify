@@ -114,6 +114,16 @@ class DifyBuilderAgent(Protocol):
 
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]: ...
 
+    def reconcile_resource_plan(
+        self,
+        plan: WorkflowPlan,
+        resource_ids: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, Any],
+        reply_language: str | None = None,
+    ) -> WorkflowPlan | None: ...
+
     def build_nodes(
         self,
         plan_items: list[str],
@@ -332,7 +342,15 @@ class Repository(Protocol):
 
     def get_session_at_version(self, session_id: str, version: int) -> tuple[Session, DifyBuilderContext]: ...
 
-    def is_task_active(self, session_id: str, expected_generation: int) -> bool: ...
+    def reserve_workflow_writer(self, session_id: str, token: str, generation: int, lease_seconds: int) -> bool: ...
+
+    def activate_workflow_writer(self, session_id: str, token: str, lease_seconds: int) -> bool: ...
+
+    def release_workflow_writer(
+        self, session_id: str, *, token: str | None = None, generation: int | None = None
+    ) -> None: ...
+
+    def is_task_active(self, session_id: str, expected_generation: int, writer_token: str | None = None) -> bool: ...
 
     def compare_and_advance(
         self,

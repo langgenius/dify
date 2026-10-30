@@ -1,7 +1,7 @@
 """Durable task cancellation authority, shared by SQL writers and workers.
 
-The Redis lease only schedules work. A session row and its persisted task
- generation decide whether an old worker can still mutate the draft.
+The Redis lease only schedules work. The durable workflow command owner and
+session task generation decide whether an old worker can still mutate the draft.
 """
 
 from collections.abc import Callable, Generator
@@ -9,10 +9,10 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from core.dify_builder.errors import ConflictError
-from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit
+from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderWorkflowWriter
 
 
 @dataclass
@@ -21,6 +21,7 @@ class ExecutionFence:
     generation: int
     check: Callable[[], None]
     dsl: dict
+    writer_token: str | None = None
 
 
 _current: ContextVar[ExecutionFence | None] = ContextVar("builder_task_execution", default=None)
@@ -50,15 +51,18 @@ def synchronized_dsl() -> dict:
     return fence.dsl if fence is not None else {}
 
 
-def lock_execution(sql, *, app_id: str | None = None) -> None:
+def lock_execution(sql, *, app_id: str | None = None, session_id: str | None = None) -> None:
     """Acquire session before workflow locks, in the actual write transaction.
 
-    No network or Redis access. A stale worker cannot proceed after Stop's
-    session-row transaction committed, even when the draft revision matches.
+    Lock order is session, workflow command owner, then App/workflow/request.
+    No network or Redis access. A stale worker cannot proceed after Stop or a
+    replacement command commits, even when the draft revision matches.
     """
     fence = _current.get()
     if fence is None:
         return
+    if session_id is not None and fence.session_id != session_id:
+        raise ConflictError("task execution session changed")
     row = sql.scalar(select(DifyBuilderSession).where(DifyBuilderSession.id == fence.session_id).with_for_update())
     if row is None or (app_id is not None and row.app_id != app_id):
         raise ConflictError("task execution owner changed")
@@ -68,13 +72,30 @@ def lock_execution(sql, *, app_id: str | None = None) -> None:
             DifyBuilderSessionCommit.version == row.version,
         )
     )
+    writer = sql.scalar(
+        select(DifyBuilderWorkflowWriter)
+        .where(
+            DifyBuilderWorkflowWriter.tenant_id == row.tenant_id,
+            DifyBuilderWorkflowWriter.app_id == row.app_id,
+        )
+        .with_for_update()
+    )
+    if (fence.writer_token is not None and writer is None) or (
+        writer is not None
+        and (
+            writer.session_id != row.id
+            or writer.expires_at <= sql.scalar(select(func.current_timestamp())).replace(tzinfo=None)
+            or (fence.writer_token is not None and writer.token != fence.writer_token)
+        )
+    ):
+        raise ConflictError("workflow writer was superseded")
     context = commit.context if commit else {}
     if context.get("paused") or int((context.get("task_control") or {}).get("generation", 0)) != fence.generation:
         raise ConflictError("task execution stopped or superseded")
 
 
-def require_active(repo, session_id: str, expected_generation: int) -> None:
-    if not repo.is_task_active(session_id, expected_generation):
+def require_active(repo, session_id: str, expected_generation: int, *, writer_token: str | None = None) -> None:
+    if not repo.is_task_active(session_id, expected_generation, writer_token):
         raise ConflictError("task execution stopped or superseded")
 
 

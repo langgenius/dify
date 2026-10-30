@@ -75,7 +75,7 @@ def test_stop_accepts_progress_but_old_stop_cannot_pause_resumed_generation(
     assert repo.get_session(s.id)[0].version == before_replay
 
 
-def test_resume_enqueue_failure_is_retryable_without_duplicate_command(
+def test_resume_unknown_enqueue_ack_is_not_replayed(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
 ) -> None:
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
@@ -87,9 +87,18 @@ def test_resume_enqueue_failure_is_retryable_without_duplicate_command(
         service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
     service._enqueue_fn = enqueue
     service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
-    assert len(enqueued) == 1
+    assert len(enqueued) == 0
     service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
-    assert len(enqueued) == 1
+    assert len(enqueued) == 0
+
+    _, context = repo.get_session(s.id)
+    assert context.task_control["receipt"]["enqueue"] == "unknown"
+    # Even after both leases disappear, the uncertain delivery is never replayed.
+    token = service._session_lock.current_owner(s.id)
+    assert token is not None
+    service._release_workflow_writer(s.id, token)
+    service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
+    assert len(enqueued) == 0
 
 
 def test_stop_replay_returns_durable_original_projection_after_resume(
@@ -823,3 +832,27 @@ def test_busy_edit_goal_is_not_persisted_without_dispatch_admission(
     head, context = repo.get_session(session_id)
     assert head.version == 1
     assert context.goal_text == "accepted original goal"
+
+
+def test_unknown_continuation_ack_still_accepts_its_exact_first_delivery(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
+    from services.dify_builder.task_control_service import claim_continuation
+
+    s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
+    service._read_task_dsl_fn = lambda *_: (Graph(graph=Graph(nodes=[], edges=[])), "current")
+    stopped = service.stop_task(s.id, _actor(), base_version=1, client_action_id="stop")
+    accepted: list[Enqueued] = []
+
+    def accept_without_ack(session_id: str, action: Action, actor: Actor, token: str) -> None:
+        accepted.append((session_id, action, actor, token))
+        raise RuntimeError("ack unknown")
+
+    service._enqueue_fn = accept_without_ack
+    with pytest.raises(RuntimeError, match="ack unknown"):
+        service.resume_task(s.id, _actor(), base_version=stopped.version, client_action_id="resume")
+    sid, action, actor, _token = accepted[0]
+    claim_continuation(repo, sid, actor, action)
+    assert repo.get_session(sid)[1].task_control["receipt"]["enqueue"] == "claimed"
+    with pytest.raises(ConflictError):
+        claim_continuation(repo, sid, actor, action)

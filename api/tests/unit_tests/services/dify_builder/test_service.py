@@ -1325,7 +1325,11 @@ def test_every_backend_waiting_action_has_a_ui_path() -> None:
     for state, backend_kinds in service_module._BACKEND_ACTIONS_FOR.items():
         surfaced_kinds = {
             resolve_action_kind(action.id)
-            for action in [*service_module._ACTIONS_FOR.get(state, []), *service_module._actions_for(state)]
+            for action in [
+                *service_module._ACTIONS_FOR.get(state, []),
+                *service_module._actions_for(state),
+                *service_module._actions_for(state, DifyBuilderContext(resource_selection={"refresh_required": True})),
+            ]
         }
         assert backend_kinds <= surfaced_kinds, f"{state}: hidden backend actions {backend_kinds - surfaced_kinds}"
 
@@ -1665,7 +1669,7 @@ def test_create_stream_closes_subscription_when_state_projection_fails(
     assert subscription.closed is True
 
 
-def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlDifyBuilderRepository) -> None:
+def test_dispatch_retains_lock_when_enqueue_ack_is_unknown(repo: SqlDifyBuilderRepository) -> None:
     lock = FakeSessionLock()
 
     def raising_enqueue(*_args: object) -> None:
@@ -1680,10 +1684,10 @@ def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlDifyBuilderRepositor
     with pytest.raises(RuntimeError):
         svc.submit_action(s.id, actor, Action(kind="run_verify", base_version=1))
 
-    # ...and it must release the lock it acquired, so the session isn't
-    # wedged by a failed enqueue.
-    assert lock.exists(s.id) is False
-    assert lock.acquire(s.id) is not None
+    # An exception cannot prove the broker rejected delivery. Retain the
+    # owner until explicit Stop or expiry, so another command cannot replay it.
+    assert lock.exists(s.id) is True
+    assert lock.acquire(s.id) is None
 
 
 def test_submit_message_constructs_message_action(repo: SqlDifyBuilderRepository) -> None:
@@ -2237,6 +2241,8 @@ def test_every_action_the_edit_gate_offers_is_actually_admitted(
         kind = resolve_submitted_action(action_id, None)
         service.submit_action(session.id, _actor(), Action(kind=kind, base_version=session.version))
         assert enqueued[-1][1].kind == kind, f"{action_id} was rendered but not dispatched"
+        # Each iteration represents an independent completed command.
+        service._release_workflow_writer(session.id, enqueued[-1][3])
 
     assert [a.kind for _sid, a, _act, _tok in enqueued] == ["approve_repair", "re_fix", "undo"]
 
@@ -2440,7 +2446,7 @@ def test_retry_whose_handler_raises_lands_in_restartable_failed_state(
 
     s = _seed_session_at(repo, PcState.BUILD_PUBLISH, verified=True)  # already interrupted: working, lock unheld
     actor = _actor()
-    token = lock.acquire(s.id)
+    token = service._acquire_workflow_writer(s.id)
     assert token is not None
 
     action: Graph = {"kind": "recovery_continue", "payload": {}, "base_version": s.version}

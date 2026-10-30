@@ -56,6 +56,19 @@ class DifyBuilderSession(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, r
     )
 
 
+class DifyBuilderWorkflowWriter(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
+    """One expiring command owner per tenant/App, independent of conversation history."""
+
+    __tablename__ = "dify_builder_workflow_writers"
+    __table_args__ = (sa.Index("builder_workflow_writer_session_idx", "session_id"),)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    app_id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    token: Mapped[str] = mapped_column(String(255), nullable=False)
+    generation: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
 class DifyBuilderSessionCommit(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
     """
     DifyBuilder Session Commit Model

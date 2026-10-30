@@ -36,8 +36,9 @@ import copy
 import threading
 import uuid
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
+from time import monotonic
 from typing import Unpack, override
 
 from typing_extensions import TypedDict
@@ -103,6 +104,14 @@ __all__ = ["FakeBuildDifyPort", "FakeDifyPort", "FakeEditDifyPort", "InMemoryRep
 # ---- in-memory Repository ----------------------------------------------
 
 
+@dataclass
+class _WorkflowWriter:
+    session_id: str
+    token: str
+    generation: int
+    expires_at: float
+
+
 class InMemoryRepository(Repository):
     """A thread-safe, in-process ``Repository``.
 
@@ -123,6 +132,7 @@ class InMemoryRepository(Repository):
         self._items: dict[str, list[ConversationItem]] = {}
         self._used_seqs: dict[str, set[int]] = {}
         self._test_inputs: dict[str, TestInput] = {}
+        self._workflow_writers: dict[tuple[str, str], _WorkflowWriter] = {}
 
     # -- sessions --
 
@@ -162,13 +172,74 @@ class InMemoryRepository(Repository):
             return copy.deepcopy(session), copy.deepcopy(self._contexts[id])
 
     @override
-    def is_task_active(self, session_id: str, expected_generation: int) -> bool:
+    def reserve_workflow_writer(self, session_id: str, token: str, generation: int, lease_seconds: int) -> bool:
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None:
+                raise NotFoundError(f"session {session_id} not found")
+            key = session.tenant_id, session.app_id
+            current = self._workflow_writers.get(key)
+            now = monotonic()
+            if current is not None and current.expires_at > now:
+                return False
+            self._workflow_writers[key] = _WorkflowWriter(session_id, token, generation, now + lease_seconds)
+            return True
+
+    @override
+    def activate_workflow_writer(self, session_id: str, token: str, lease_seconds: int) -> bool:
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None:
+                return False
+            current = self._workflow_writers.get((session.tenant_id, session.app_id))
+            now = monotonic()
+            if (
+                current is None
+                or current.session_id != session_id
+                or current.token != token
+                or current.expires_at <= now
+            ):
+                return False
+            current.expires_at = now + lease_seconds
+            return True
+
+    @override
+    def release_workflow_writer(
+        self, session_id: str, *, token: str | None = None, generation: int | None = None
+    ) -> None:
+        if token is None and generation is None:
+            raise ValueError("writer release requires an owner")
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session is None:
+                return
+            current = self._workflow_writers.get((session.tenant_id, session.app_id))
+            if current is None or current.session_id != session_id:
+                return
+            if (token is not None and current.token == token) or (
+                token is None and generation is not None and current.generation <= generation
+            ):
+                current.expires_at = monotonic()
+
+    @override
+    def is_task_active(self, session_id: str, expected_generation: int, writer_token: str | None = None) -> bool:
         with self._lock:
             context = self._contexts.get(session_id)
+            if (
+                context is None
+                or context.paused
+                or int(context.task_control.get("generation", 0) or 0) != expected_generation
+            ):
+                return False
+            if writer_token is None:
+                return True
+            session = self._sessions[session_id]
+            current = self._workflow_writers.get((session.tenant_id, session.app_id))
             return (
-                context is not None
-                and not context.paused
-                and int(context.task_control.get("generation", 0) or 0) == expected_generation
+                current is not None
+                and current.session_id == session_id
+                and current.token == writer_token
+                and current.expires_at > monotonic()
             )
 
     @override
@@ -610,6 +681,21 @@ class StubAgent(DifyBuilderAgent):
     @override
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]:
         return []
+
+    @override
+    def reconcile_resource_plan(
+        self,
+        plan: WorkflowPlan,
+        resource_ids: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, object],
+        reply_language: str | None = None,
+    ) -> WorkflowPlan | None:
+        del goal_text, requirements, reply_language
+        return WorkflowPlan(
+            plan.title, plan.input_summary, plan.output_summary, self.bind_resources(plan.items, resource_ids)
+        )
 
     @override
     def build_nodes(

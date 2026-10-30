@@ -384,6 +384,8 @@ def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
     monkeypatch.setattr(task.session_lock, "release", lambda *_a: None)
     monkeypatch.setattr(task.progress_snapshot, "save", lambda *_a, **_kw: None)
     monkeypatch.setattr(task.progress_bus, "publish", lambda _sid, event: events.append(event))
+    # Direct worker delivery must carry the writer reservation made by dispatch.
+    assert repo.reserve_workflow_writer(session.id, "token", 0, 600)
     task.advance_session(
         session.id, asdict(Action(kind="start_build", base_version=session.version)), asdict(actor), "token"
     )
