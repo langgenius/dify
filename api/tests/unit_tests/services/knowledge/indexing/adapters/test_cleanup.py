@@ -217,7 +217,8 @@ def test_cleanup_reclaims_child_only_files_after_vector_cleanup(
     monkeypatch.setattr(dataset_task, "schedule_billing_vector_space_refresh", lambda _tenant_id: None)
     monkeypatch.setattr(dataset_task, "cleanup_dataset_crawl_cache", lambda *_args: None)
     monkeypatch.setattr(
-        "core.rag.index_processor.processor.parent_child_index_processor.Vector", MagicMock(return_value=vector)
+        "core.rag.index_processor.processor.parent_child_index_processor.Vector",
+        lambda *_args, **_kwargs: vector,
     )
 
     if kind == "dataset":

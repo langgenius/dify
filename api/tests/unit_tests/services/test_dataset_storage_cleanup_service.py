@@ -16,7 +16,7 @@ from services.data_source.website_crawl_cache import (
     website_crawl_provider_instance_prefix,
     website_crawl_receipt_key,
 )
-from tests.unit_tests.model_factories import make_dataset, make_document
+from tests.helpers.unit.model_factories import make_dataset, make_document
 
 
 @dataclass

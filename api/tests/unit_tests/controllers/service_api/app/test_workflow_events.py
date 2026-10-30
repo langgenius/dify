@@ -59,6 +59,7 @@ from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 """Dedicated tests for HITL behavior exposed through the Service API."""
 
@@ -86,7 +87,7 @@ def _hitl_service_api_mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflo
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
-        workflow_events_module.DifyAPIRepositoryFactory,
+        workflow_events_module.WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: repo,
     )
@@ -456,7 +457,7 @@ class TestHitlServiceApi:
         user = _hitl_service_api_end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")
 
         with sqlite_session_maker() as session:
-            result = AppGenerateService.generate(
+            result = AppGenerateService(knowledge_retrieval=make_knowledge_retriever()).generate(
                 session=session,
                 app_model=app_model,
                 user=user,

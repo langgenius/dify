@@ -1,25 +1,49 @@
+from __future__ import annotations
+
 from contextlib import ExitStack, nullcontext
-from importlib import import_module
+from types import ModuleType
 from unittest.mock import patch
 
 import pytest
+from celery import Task
 
+import tasks.batch_clean_document_task as batch_clean_module
+import tasks.clean_document_task as clean_document_module
+import tasks.clean_notion_document_task as clean_notion_module
 from services.knowledge.indexing.locks import KnowledgeIndexingLease
 
 
-@pytest.mark.parametrize("name", ["clean_document_task", "batch_clean_document_task", "clean_notion_document_task"])
+@pytest.mark.parametrize(
+    ("name", "module", "task", "task_args"),
+    [
+        (
+            "clean_document_task",
+            clean_document_module,
+            clean_document_module.clean_document_task,
+            ("document-1", "dataset-1", "text_model", None),
+        ),
+        (
+            "batch_clean_document_task",
+            batch_clean_module,
+            batch_clean_module.batch_clean_document_task,
+            (["document-1"], "dataset-1", "text_model", []),
+        ),
+        (
+            "clean_notion_document_task",
+            clean_notion_module,
+            clean_notion_module.clean_notion_document_task,
+            (["document-1"], "dataset-1"),
+        ),
+    ],
+)
 @pytest.mark.parametrize("invalid", [False, True])
-def test_cleanup_retry_budget_survives_lock_waits_but_rejects_invalid_input(name: str, invalid: bool) -> None:
-    module = import_module(f"tasks.{name}")
-    task = getattr(module, name)
-    task_args: tuple[object, ...]
-    if name == "clean_document_task":
-        task_args = ("document-1", "dataset-1", "text_model", None)
-    elif name == "batch_clean_document_task":
-        file_ids: list[str] = []
-        task_args = (["document-1"], "dataset-1", "text_model", file_ids)
-    else:
-        task_args = (["document-1"], "dataset-1")
+def test_cleanup_retry_budget_survives_lock_waits_but_rejects_invalid_input(
+    name: str,
+    module: ModuleType,
+    task: Task[..., None],
+    task_args: tuple[object, ...],
+    invalid: bool,
+) -> None:
     with ExitStack() as stack:
         cleanup = stack.enter_context(patch.object(module, "_clean_documents"))
         if name == "clean_notion_document_task":

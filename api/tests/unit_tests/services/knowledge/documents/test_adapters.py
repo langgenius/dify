@@ -8,7 +8,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.datasets.datasets_document import DocumentDetailResponse, DocumentWithSegmentsListResponse
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
@@ -236,4 +236,3 @@ class TestDocumentAdaptersCases:
         result = operations.get_execution_log(_DOCUMENT_ADAPTERS_REF.document("document-1"))
         assert result["datasource_info"] == {"year": 2025}
         assert result["input_data"] == {"year": 2025}
-

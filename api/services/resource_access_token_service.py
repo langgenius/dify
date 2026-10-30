@@ -94,6 +94,8 @@ class ResourceAccessTokenService:
         if workspace_id and workspace_id != access.tenant_id:
             raise ResourceAccessTokenForbiddenError("resource_not_authorized")
         apps = tuple(r for r in access.resources if r.type == ResourceAccessTokenResourceType.APP and r.exists)
+        if not apps:
+            raise ResourceAccessTokenForbiddenError("resource_not_authorized")
         if app_id and not any(r.id == app_id and r.enabled for r in apps):
             raise ResourceAccessTokenForbiddenError("resource_not_authorized")
         self._tokens.record_usage(access.tenant_id, access.token_id)

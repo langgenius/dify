@@ -2,7 +2,7 @@ import json
 from collections import UserString
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import ANY, MagicMock, patch, sentinel
 
 import pytest
 from pytest_mock import MockerFixture
@@ -76,6 +76,7 @@ from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import 
 from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
     _workflow_tool_container_workflow_tool_source as _workflow_tool_source,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
@@ -504,6 +505,7 @@ class TestWorkflowEntryCases:
                 user_id="user",
                 user_inputs=inputs,
                 variable_pool=variable_pool,
+                knowledge_retrieval=make_knowledge_retriever(),
                 execution_driver=None,
             )
 
@@ -607,6 +609,7 @@ class TestWorkflowEntryCases:
                 user_id="user",
                 user_inputs={},
                 variable_pool=variable_pool,
+                knowledge_retrieval=make_knowledge_retriever(),
                 execution_driver=None,
             )
 
@@ -1168,6 +1171,7 @@ class TestWorkflowEntryHelpersCases:
                     user_id="user-id",
                     user_inputs={},
                     variable_pool=sentinel.variable_pool,
+                    knowledge_retrieval=make_knowledge_retriever(),
                     execution_driver=None,
                 )
 
@@ -1232,6 +1236,7 @@ class TestWorkflowEntryHelpersCases:
                     user_id="user-id",
                     user_inputs={},
                     variable_pool=variable_pool,
+                    knowledge_retrieval=make_knowledge_retriever(),
                     variable_loader=variable_loader,
                     execution_driver=None,
                 )
@@ -1286,6 +1291,7 @@ class TestWorkflowEntryHelpersCases:
                     user_id="user-id",
                     user_inputs={"question": "hello"},
                     variable_pool=sentinel.variable_pool,
+                    knowledge_retrieval=make_knowledge_retriever(),
                     execution_driver=None,
                 )
 
@@ -1354,6 +1360,7 @@ class TestWorkflowEntryHelpersCases:
                     user_id="user-id",
                     user_inputs={"question": "hello"},
                     variable_pool=sentinel.variable_pool,
+                    knowledge_retrieval=make_knowledge_retriever(),
                     execution_driver=None,
                 )
 
@@ -1411,6 +1418,7 @@ class TestWorkflowEntryHelpersCases:
                         user_id="user-id",
                         user_inputs={},
                         variable_pool=sentinel.variable_pool,
+                        knowledge_retrieval=make_knowledge_retriever(),
                         execution_driver=None,
                     )
 
@@ -1444,6 +1452,7 @@ class TestWorkflowEntryHelpersCases:
                     tenant_id="tenant-id",
                     user_id="user-id",
                     user_inputs={},
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
         def test_run_free_node_rejects_missing_node_class(self, monkeypatch: pytest.MonkeyPatch):
@@ -1460,6 +1469,7 @@ class TestWorkflowEntryHelpersCases:
                     tenant_id="tenant-id",
                     user_id="user-id",
                     user_inputs={},
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
         def test_run_free_node_uses_empty_mapping_when_selector_extraction_is_not_implemented(
@@ -1520,6 +1530,7 @@ class TestWorkflowEntryHelpersCases:
                     tenant_id="tenant-id",
                     user_id="user-id",
                     user_inputs={"question": "hello"},
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
             assert node.id == "node-id"
@@ -1541,6 +1552,8 @@ class TestWorkflowEntryHelpersCases:
                 ),
                 run_context={"_dify": "context"},
                 call_depth=0,
+            knowledge_retrieval=ANY,
+            knowledge_index_files=ANY,
             )
             dify_node_factory_cls.assert_called_once_with(
                 graph_init_context=sentinel.graph_init_context,
@@ -1602,6 +1615,7 @@ class TestWorkflowEntryHelpersCases:
                         tenant_id="tenant-id",
                         user_id="user-id",
                         user_inputs={"question": "hello"},
+                        knowledge_retrieval=make_knowledge_retriever(),
                     )
 
         def test_handle_special_values_serializes_nested_files(self):

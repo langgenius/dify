@@ -430,7 +430,12 @@ def test_interrupted_document_resumes_under_the_owned_lease(
     with patch("tasks.document_indexing_sync_task.build_document_indexing_service") as builder:
         document_indexing_sync_task(dataset_id, document_id)
 
-    resumed = getattr(builder.return_value, runner)
+    if runner == "run":
+        resumed = builder.return_value.run
+    elif runner == "run_in_indexing_status":
+        resumed = builder.return_value.run_in_indexing_status
+    else:
+        resumed = builder.return_value.run_in_splitting_status
     resumed.assert_called_once()
     assert resumed.call_args.kwargs.get("owned_lease") or resumed.call_args.kwargs.get("owned_leases")
 

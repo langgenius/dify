@@ -335,7 +335,6 @@ class TestMessageBasedAppGeneratorExtras:
                 queue_manager=SimpleNamespace(),
                 conversation=Conversation(id="conv", app_id="app"),
                 message=Message(id="msg", app_id="app", conversation_id="conv"),
-                user=_account(),
                 stream=False,
             )
 

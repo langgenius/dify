@@ -13,7 +13,7 @@ from core.rag.docstore.dataset_docstore import DatasetDocumentStore, DocumentSeg
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, SegmentAttachmentBinding
 from services.errors.file import UploadFileReferenceNotFoundError
-from tests.helpers.unit.model_factories import make_dataset
+from tests.helpers.unit.model_factories import make_dataset, make_upload_file
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DATASET_ID = "00000000-0000-0000-0000-000000000002"
@@ -503,6 +503,10 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
         attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
 
         mock_session = self.session
+        upload = make_upload_file(tenant_id=TENANT_ID)
+        upload.id = ATTACHMENT_ID
+        mock_session.add(upload)
+        mock_session.flush()
 
         store = DatasetDocumentStore(
             dataset=_dataset(),

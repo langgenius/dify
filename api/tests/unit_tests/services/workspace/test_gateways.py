@@ -7,9 +7,9 @@ import httpx
 import pytest
 
 from enums import CloudPlan, DeploymentEdition
+from enums.creator import CreatorUserRole
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
-from models.account import Account
 from services.account.adapters import RedisInvitationTokenStore
 from services.credit_pool_service import CreditPoolBalance
 from services.enterprise.base import EnterpriseRequest
@@ -99,8 +99,8 @@ def test_workspace_creation_capacity_bypasses_cached_enterprise_usage(
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     snapshot_values: tuple[dict[str, object], ...] = (
-            {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 0}}},
-            {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 1}}},
+        {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 0}}},
+        {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 1}}},
     )
     snapshots = iter(snapshot_values)
     uncached_queries = 0
@@ -471,8 +471,8 @@ class TestWorkspaceFileGatewayCases:
         assert gateway.upload(context, filename="logo.png", content=b"image", mimetype="image/png") == "file-id"
 
         kwargs = files.upload_file.call_args.kwargs
-        assert isinstance(kwargs["user"], Account)
-        assert kwargs["user"].id == "account"
+        assert kwargs["actor"].id == "account"
+        assert kwargs["actor"].creator_role == CreatorUserRole.ACCOUNT
         assert kwargs["tenant_id"] == "workspace"
         assert kwargs["content"] == b"image"
 

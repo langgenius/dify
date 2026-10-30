@@ -42,6 +42,7 @@ from models.oauth import DatasourceProvider
 from models.provider_ids import ModelProviderID
 from services.dataset_knowledge_fs_upgrade_file_lease import release_upgrade_file_lease
 from services.feature_service import FeatureService
+from services.file_service import FileService
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.initial_source_import import (
     KnowledgeFSInitialSourceNotReadyError,
@@ -498,8 +499,9 @@ class KnowledgeFSUpgradeSnapshotService:
 class KnowledgeFSUpgradeRunner:
     """Execute one durable stage or item per dedicated-worker delivery."""
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(self, session_maker: sessionmaker[Session], *, files: FileService) -> None:
         self._session_maker = session_maker
+        self._files = files
 
     def run_next(self, *, job_id: str, celery_task_id: str) -> bool | None:
         """Return True for another checkpoint, False for reconciliation, or None for an obsolete delivery."""
@@ -799,12 +801,10 @@ class KnowledgeFSUpgradeRunner:
             self._fail_document(document_id=document_id, error=error)
             raise error
         try:
-            from extensions.ext_application_services import application_services
-
             staged = KnowledgeFSStagedUploadService(
                 self._session_maker,
                 facade=get_knowledge_fs_runtime(self._session_maker).facade,
-                files=application_services().files,
+                files=self._files,
             )
             if staged_upload_id is None:
                 with self._session_maker() as session:

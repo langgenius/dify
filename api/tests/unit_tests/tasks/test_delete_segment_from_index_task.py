@@ -3,6 +3,7 @@ import uuid
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from typing import Protocol, runtime_checkable
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -37,6 +38,12 @@ class _OwnedLease:
 
     def release(self) -> bool:
         return True
+
+
+@runtime_checkable
+class _AutoretryTask(Protocol):
+    autoretry_for: tuple[type[Exception], ...]
+    retry_backoff: bool
 
 
 class _CleanProbe:
@@ -273,9 +280,10 @@ def test_delete_segment_cleanup_uses_explicit_nodes_after_document_state_changes
 
 
 def test_delete_segment_cleanup_uses_bounded_late_ack_retry_policy() -> None:
-    assert getattr(delete_segment_from_index_task, "autoretry_for", ()) == (Exception,)
+    assert isinstance(delete_segment_from_index_task, _AutoretryTask)
+    assert delete_segment_from_index_task.autoretry_for == (Exception,)
     assert delete_segment_from_index_task.max_retries == 5
-    assert getattr(delete_segment_from_index_task, "retry_backoff", False) is True
+    assert delete_segment_from_index_task.retry_backoff is True
     assert delete_segment_from_index_task.acks_late is True
     assert delete_segment_from_index_task.reject_on_worker_lost is True
 

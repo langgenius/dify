@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from decimal import Decimal
 from types import ModuleType, SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pydantic import BaseModel, ValidationError
@@ -73,6 +73,7 @@ from models.workflow import Workflow as _app_generator_Workflow
 from models.workflow import Workflow as _pause_resume_Workflow
 from models.workflow import WorkflowType
 from services.errors.conversation import ConversationNotExistsError
+from services.file_service import UploadFileCreator
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file
@@ -292,11 +293,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -418,11 +419,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="execution"),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="node"),
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: var_loader)
@@ -483,11 +484,11 @@ class TestAdvancedChatAppGeneratorInternals:
             lambda **kwargs: app_config,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="execution"),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(repo="node"),
         )
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.DraftVarLoader", lambda **kwargs: var_loader)
@@ -1309,11 +1310,11 @@ class TestAdvancedChatAppGeneratorInternals:
             dummy_trace_queue_manager,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -1386,11 +1387,11 @@ class TestAdvancedChatAppGeneratorInternals:
             dummy_trace_queue_manager,
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             lambda **kwargs: SimpleNamespace(),
         )
         monkeypatch.setattr(
@@ -1702,11 +1703,11 @@ def test_generate_falls_back_to_new_conversation_when_conversation_missing(
         lambda **_kwargs: trace_manager,
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "core.app.apps.advanced_chat.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
         lambda **_kwargs: SimpleNamespace(),
     )
 
@@ -1910,6 +1911,8 @@ def _build_graph(runtime_state: RuntimeState, *, pause_on: str | None) -> Graph:
     node_factory = DifyNodeFactory(
         init_params=params,
         runtime_state=runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=create_autospec(UploadFileCreator, instance=True),
     )
 
     return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")

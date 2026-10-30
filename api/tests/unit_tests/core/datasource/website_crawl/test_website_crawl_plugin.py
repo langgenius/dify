@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 from pytest_mock import MockerFixture
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.entities.datasource_entities import WebSiteInfo, WebSiteInfoDetail, WebsiteCrawlMessage
+from core.datasource.entities.datasource_entities import WebsiteCrawlMessage, WebSiteInfo, WebSiteInfoDetail
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from tests.helpers.unit.core.datasource.factories import datasource_entity
 

@@ -386,14 +386,14 @@ def test_deletion_locks_keys_before_reading_current_remaining_scope(
     event.listen(sqlite_session, "do_orm_execute", capture_read)
     try:
         if resource_type == ApiTokenBindingResourceType.DATASET:
-            dataset_api_key_bindings.delete_keys_scoped_only_to(sqlite_session, other_id)
+            dataset_api_key_bindings.delete_keys_scoped_only_to(sqlite_session, other_id, tenant_id=tenant_id)
         else:
             dataset_api_key_bindings.delete_keys_scoped_only_to_knowledge_space(sqlite_session, other_id)
     finally:
         event.remove(sqlite_session, "do_orm_execute", capture_read)
 
     assert len(reads) == 2
-    assert "SELECT api_tokens.id" in reads[0]
+    assert "FROM api_tokens" in reads[0]
     assert "ORDER BY api_tokens.id" in reads[0]
     assert all(sql.rstrip().endswith("FOR UPDATE") for sql in reads)
     if resource_type == ApiTokenBindingResourceType.DATASET:

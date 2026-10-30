@@ -15,7 +15,7 @@ from services.knowledge.documents.contracts import (
     DocumentWriteSource,
 )
 from services.knowledge.entities.resource_scope import DatasetRef
-from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 
 TENANT_ID = "tenant-1"
 DATASET_ID = "dataset-1"

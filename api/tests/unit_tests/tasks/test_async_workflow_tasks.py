@@ -544,6 +544,7 @@ def test_concurrent_redelivery_does_not_start_a_second_generator(
     monkeypatch.setattr(async_workflow_tasks.session_factory, "create_session", create_session)
     monkeypatch.setattr(async_workflow_tasks, "_hold_workflow_execution", hold_execution)
     monkeypatch.setattr(async_workflow_tasks, "_get_user", lambda _session, _trigger: object())
+    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_identity", lambda _user: object())
     monkeypatch.setattr(async_workflow_tasks.session_factory, "get_session_maker", lambda: "session-maker")
     generator_calls: list[str] = []
     retrieval = cast(KnowledgeRetriever, object())

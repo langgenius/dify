@@ -309,8 +309,6 @@ def _run_website_document_sync(
             session.commit()
 
             active_document = _lock_document(session, document_ref)
-            sync_lease.assert_owned()
-            indexing_lease.assert_owned()
             if active_document is None or active_document.indexing_status not in _SYNC_ACTIVE_STATUSES:
                 return
             active_document.indexing_status = IndexingStatus.PARSING

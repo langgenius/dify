@@ -134,6 +134,7 @@ class DatasetListFilter:
     include_all: bool = False
     ids: Sequence[str] = ()
     tag_ids: Sequence[str] = ()
+    creator_ids: Sequence[str] = ()
 
 
 @dataclass(frozen=True)

@@ -568,7 +568,7 @@ def tags(monkeypatch: pytest.MonkeyPatch) -> TagServiceFake:
     from controllers.service_api.dataset import dataset as controller
 
     service = TagServiceFake()
-    monkeypatch.setattr(controller, "application_services", lambda: ApplicationServicesFake(service))
+    monkeypatch.setattr(controller, "application_services", lambda: ApplicationServicesFake(tags=service))
     return service
 
 

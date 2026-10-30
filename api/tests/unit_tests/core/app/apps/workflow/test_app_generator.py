@@ -308,10 +308,10 @@ class TestWorkflowAppGeneratorCases:
         )
         repository_tenant_ids: dict[str, str] = {}
         workflow_execution_factory = (
-            _workflow_app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository
+            _workflow_app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository
         )
         workflow_node_execution_factory = (
-            _workflow_app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository
+            _workflow_app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository
         )
 
         def create_workflow_execution_repository(**kwargs):
@@ -323,11 +323,11 @@ class TestWorkflowAppGeneratorCases:
             return workflow_node_execution_factory(**kwargs)
 
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+            "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
             create_workflow_execution_repository,
         )
         monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             create_workflow_node_execution_repository,
         )
         monkeypatch.setattr(
@@ -1134,11 +1134,11 @@ class TestAppGeneratorExtraCases:
                 lambda **kwargs: app_config,
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+                "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(
@@ -1199,11 +1199,11 @@ class TestAppGeneratorExtraCases:
                 lambda **kwargs: app_config,
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+                "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(
-                "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
                 lambda **kwargs: repository_session_makers.append(kwargs["session_factory"]) or SimpleNamespace(),
             )
             monkeypatch.setattr(
@@ -1658,14 +1658,13 @@ def test_resume_path_runs_worker_with_runtime_state(
         def is_alive(self):
             return False
 
-    monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", ImmediateThread)
-
     pause_config = PauseStateLayerConfig(
         session_factory=sqlite_session_factory,
         state_owner_user_id="owner",
     )
 
     application_generate_entity = _generate_entity(app, workflow, end_user)
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", ImmediateThread)
     workflow_execution_repository, workflow_node_execution_repository = _repositories(
         sqlite_session_factory, app, end_user
     )

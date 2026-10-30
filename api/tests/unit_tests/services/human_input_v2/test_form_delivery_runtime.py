@@ -25,6 +25,7 @@ from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, RecipientId, TenantId
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import (
@@ -36,7 +37,6 @@ from core.workflow.nodes.human_input_v2.entities import (
 )
 from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, convert_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
-from core.workflow.node_runtime import build_knowledge_index_files
 from enums import DeploymentEdition
 from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
@@ -64,7 +64,6 @@ from models.human_input_v2 import (
     RecipientSubjectType,
 )
 from models.model import EndUser
-from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun, WorkflowType
 from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot, SubmissionAuthType
 from repositories.human_input_v2.email_channel.entities import ResendCandidate, ResendCredentials
@@ -81,6 +80,7 @@ from services.human_input_v2.form_service import (
     FormExecutionContext,
     HumanInputFormService,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 _TENANT = TenantId("00000000-0000-0000-0000-000000000001")
 _APP = "00000000-0000-0000-0000-000000000002"
@@ -3100,9 +3100,7 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
         state,
         knowledge_retrieval=make_knowledge_retriever(),
         knowledge_index_files=build_knowledge_index_files(),
-    ).create_node(
-        {"id": "approval", "data": _node(*recipients).model_dump(mode="json")}
-    )
+    ).create_node({"id": "approval", "data": _node(*recipients).model_dump(mode="json")})
     start = StartNode(
         node_id="start",
         data=StartNodeData(title="Start", variables=[]),

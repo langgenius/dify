@@ -132,6 +132,7 @@ from services.installed_app_access_service import (
 )
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime as InstalledAppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
+from services.knowledge.admission.limits import _RECORD_RATE_LIMIT_REQUEST_LUA
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
@@ -330,7 +331,7 @@ def test_build_application_services_preserves_composed_boundaries(
     assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
     assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
-    assert register_script.call_count == 3
+    assert register_script.call_args_list.count(call(_RECORD_RATE_LIMIT_REQUEST_LUA)) == 1
     assert services.conversation_queries._files is services.message_queries._files
 
     assert isinstance(services.installed_apps.generation, InstalledAppGenerationService)

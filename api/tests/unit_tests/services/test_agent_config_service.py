@@ -821,71 +821,6 @@ def test_upload_skill_for_console_maps_package_validation_failures(sqlite_sessio
     assert persisted.config_snapshot.config_skills == []
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_prepare_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session) -> None:
-    service = _service(sqlite_session)
-
-    with pytest.raises(AgentConfigServiceError, match="tool files") as exc_info:
-        service._prepare_skill_updates(
-            tenant_id=TENANT,
-            user_id=USER,
-            updates=[
-                ConfigPushSkillItem.model_validate(
-                    {"name": "alpha", "file_ref": {"kind": "upload_file", "id": "upload-1"}}
-                )
-            ],
-        )
-
-    assert exc_info.value.code == "invalid_skill_file_ref"
-
-
-@pytest.mark.parametrize(
-    ("error_code", "message"),
-    [
-        ("skill_name_mismatch", "skill name does not match requested config key"),
-        ("invalid_archive", "stored tool file is not a valid skill archive"),
-    ],
-)
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_prepare_skill_updates_maps_normalizer_failures(
-    error_code: str,
-    message: str,
-    sqlite_session: Session,
-) -> None:
-    service = _service(sqlite_session)
-    tool_file = ToolFile(
-        user_id=USER,
-        tenant_id=TENANT,
-        conversation_id=None,
-        file_key="tool-files/alpha.zip",
-        mimetype="application/zip",
-        name="alpha.zip",
-        size=1,
-    )
-
-    with (
-        patch.object(service, "_require_tool_file_source", return_value=tool_file),
-        patch(f"{MODULE}.storage.load_once", return_value=b"bad-archive"),
-        patch.object(
-            service._skill_normalizer,
-            "normalize",
-            side_effect=SkillPackageError(error_code, message, status_code=400),
-        ),
-    ):
-        with pytest.raises(AgentConfigServiceError, match=message) as exc_info:
-            service._prepare_skill_updates(
-                tenant_id=TENANT,
-                user_id=USER,
-                updates=[
-                    ConfigPushSkillItem.model_validate(
-                        {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
-                    )
-                ],
-            )
-
-    assert exc_info.value.code == error_code
-
-
 def test_apply_env_text_supports_delete_comments_export_and_keeps_unmentioned_values() -> None:
     current = [
         AgentEnvVariableConfig(key="KEEP", name="KEEP", value="old"),
@@ -1563,6 +1498,7 @@ def test_push_files_for_console_locks_parent_then_draft_and_refreshes_cached_sna
     assert [ref.name for ref in persisted.config_snapshot.config_files] == ["keep.txt", "new.txt"]
 
 
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
 def test_push_normalizes_and_adopts_skill_tool_file_in_the_config_transaction(
     sqlite_session: Session,
 ) -> None:
@@ -1634,6 +1570,8 @@ def test_push_normalizes_and_adopts_skill_tool_file_in_the_config_transaction(
     create_storage.save.assert_called_once()
 
 
+@pytest.mark.parametrize("owner_change", ["delete", "reassign"])
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
 def test_push_does_not_adopt_normalized_skill_after_target_ownership_changes(
     sqlite_session: Session,
     owner_change: str,
@@ -1709,6 +1647,7 @@ def test_push_does_not_adopt_normalized_skill_after_target_ownership_changes(
     assert pending is not None
 
 
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
 def test_upload_skill_for_console_persists_normalized_file(
     sqlite_session: Session,
 ) -> None:
@@ -1735,6 +1674,7 @@ def test_upload_skill_for_console_persists_normalized_file(
     create_storage.save.assert_called_once()
 
 
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_snapshot_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session) -> None:
     service = AgentConfigService()
 
@@ -1752,6 +1692,14 @@ def test_snapshot_skill_updates_rejects_non_tool_file_refs(sqlite_session: Sessi
     assert exc_info.value.code == "invalid_skill_file_ref"
 
 
+@pytest.mark.parametrize(
+    ("error_code", "message"),
+    [
+        ("skill_name_mismatch", "skill name does not match requested config key"),
+        ("invalid_archive", "stored tool file is not a valid skill archive"),
+    ],
+)
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_normalize_skill_updates_maps_normalizer_failures(
     error_code: str,
     message: str,

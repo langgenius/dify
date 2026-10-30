@@ -144,14 +144,16 @@ def test_staged_upload_cleanup_uses_the_configured_batch_limit(monkeypatch: pyte
             "tasks.knowledge_fs_lifecycle_tasks.get_knowledge_fs_runtime",
             return_value=_Runtime(facade="facade-1"),
         ) as runtime,
+        patch("tasks.knowledge_fs_lifecycle_tasks.application_services") as application_services,
         patch(
             "tasks.knowledge_fs_lifecycle_tasks.KnowledgeFSStagedUploadService",
             return_value=staged_uploads,
         ) as service,
     ):
+        application_services.return_value.files = "files-1"
         result = cleanup_knowledge_fs_staged_uploads.run()
 
     assert result == 4
     runtime.assert_called_once_with("maker-1")
-    service.assert_called_once_with("maker-1", facade="facade-1")
+    service.assert_called_once_with("maker-1", facade="facade-1", files="files-1")
     assert staged_uploads.limits == [25]

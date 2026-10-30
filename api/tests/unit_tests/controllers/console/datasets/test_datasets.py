@@ -534,4 +534,4 @@ def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(a
     # A raised BadRequest gets the standard error body; ``Namespace.abort(message=...)`` replaced it.
     with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:
         unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
-    assert error.value.description == "dataset_ids must be a list of strings."
+    assert error.value.description == "dataset_ids and knowledge_space_ids must be lists of strings."

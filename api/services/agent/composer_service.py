@@ -85,8 +85,8 @@ _PUBLISH_SAVE_STRATEGIES = frozenset(
 logger = logging.getLogger(__name__)
 
 
-def _image_upload_file_id(*, icon_type: object, icon: str | None) -> str | None:
-    icon_type_value = getattr(icon_type, "value", icon_type)
+def _image_upload_file_id(*, icon_type: AgentIconType | str | None, icon: str | None) -> str | None:
+    icon_type_value = icon_type.value if isinstance(icon_type, AgentIconType) else icon_type
     return icon if icon_type_value == AgentIconType.IMAGE.value and icon else None
 
 
@@ -1920,7 +1920,7 @@ class AgentComposerService:
         name: str | None = None,
         description: str = "",
         role: str = "",
-        icon_type: Any | None = None,
+        icon_type: AgentIconType | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
     ) -> Agent:

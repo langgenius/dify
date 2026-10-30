@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import sys
 import uuid
-from dataclasses import replace
+from collections.abc import Iterator
+from dataclasses import dataclass, field, replace
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -45,6 +46,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
 from services.app_task_service import AppTaskControlService
+from services.entities.upload_file import FileUploadActor
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
@@ -220,11 +222,26 @@ class _SealableContext:
         return self._values[name]
 
 
-def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> Mock:
-    generate_mock = Mock(return_value=iter(chunks))
-    services = SimpleNamespace(app_generation=SimpleNamespace(generate=generate_mock))
+@dataclass
+class _GenerationRecorder:
+    chunks: list[str]
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def generate(self, **kwargs: object) -> Iterator[str]:
+        self.calls.append(kwargs)
+        return iter(self.chunks)
+
+
+@dataclass(frozen=True)
+class _GenerationServices:
+    app_generation: _GenerationRecorder
+
+
+def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> _GenerationRecorder:
+    generation = _GenerationRecorder(chunks)
+    services = _GenerationServices(app_generation=generation)
     monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "application_services", lambda: services)
-    return generate_mock
+    return generation
 
 
 def _ctx(mode: AppMode, session: Session | None = None) -> _SealableContext:
@@ -235,13 +252,14 @@ def _ctx(mode: AppMode, session: Session | None = None) -> _SealableContext:
         caller=_make_account(),
         session=session or Session(),
         subject=_subject(),
+        workspace=SimpleNamespace(id=_TEST_TENANT_ID),
     )
 
 
 def test_run_reads_everything_off_the_context_before_streaming(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
-    generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
+    generation = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
     commits: list[Session] = []
     event.listen(unbound_session, "after_commit", commits.append)
     ctx = _ctx(AppMode.ADVANCED_CHAT, unbound_session)
@@ -253,31 +271,40 @@ def test_run_reads_everything_off_the_context_before_streaming(
         body = "".join(response.response)
 
     assert body == "event: a\n\nevent: b\n\n"
-    assert generate_mock.call_args.kwargs["streaming"] is True
+    assert generation.calls[0]["streaming"] is True
     assert commits == []
 
 
 def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    generate_mock = _generate_stub(monkeypatch, [])
+    generation = _generate_stub(monkeypatch, [])
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         with pytest.raises(AppModeMismatch):
             api.post.__handler__(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
-    generate_mock.assert_not_called()
+    assert generation.calls == []
 
 
 def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
-    generate_mock = _generate_stub(monkeypatch, [])
+    generation = _generate_stub(monkeypatch, [])
     upload_service = Mock()
     operations: list[str] = []
     sqlite_session.begin()
     event.listen(sqlite_session, "after_commit", lambda _session: operations.append("commit"))
 
-    def upload_file(*, filename: str, content: bytes, mimetype: str, user: Account) -> UploadFile:
+    def upload_file(
+        *,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        actor: FileUploadActor,
+        tenant_id: str,
+    ) -> UploadFile:
         assert not sqlite_session.in_transaction()
+        assert actor.id == _TEST_ACCOUNT_ID
+        assert tenant_id == _TEST_TENANT_ID
         operations.append("upload")
         return make_upload_file(
             file_id=f"uf-{filename}",
@@ -300,7 +327,8 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
 
     # The read transaction ends before the first object-storage write (api/AGENTS.md).
     assert operations == ["commit", "upload", "upload"]
-    args = generate_mock.call_args.kwargs["args"]
+    args = generation.calls[0]["args"]
+    assert isinstance(args, dict)
     assert args["inputs"]["doc"] == {
         "transfer_method": "local_file",
         "upload_file_id": "uf-r.pdf",

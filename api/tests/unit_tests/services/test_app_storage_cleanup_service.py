@@ -400,7 +400,7 @@ def test_pause_files_and_reasons_are_removed_only_after_storage_success(
 
 
 @pytest.mark.parametrize("fails", [False, True])
-def test_end_user_files_are_cleaned_before_owner_records(
+def test_end_user_tool_files_are_cleaned_before_owner_records_but_uploads_wait_for_liveness_check(
     sqlite_session: Session, storage: MagicMock, fails: bool
 ) -> None:
     user = _end_user(sqlite_session)
@@ -431,7 +431,7 @@ def test_end_user_files_are_cleaned_before_owner_records(
         cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
     assert (sqlite_session.get(ToolFile, tool_id) is not None) == fails
-    assert (sqlite_session.get(UploadFile, file_id) is not None) == fails
+    assert sqlite_session.get(UploadFile, file_id) is not None
     assert sqlite_session.get(EndUser, user.id) is not None
 
 
@@ -620,8 +620,8 @@ def test_message_reference_protection_for_tools_and_uploads(
     retained = message_owner != "app-1"
     sqlite_session.expire_all()
     assert (sqlite_session.get(ToolFile, tool_id) is not None) == retained
-    assert (sqlite_session.get(UploadFile, file_id) is not None) == retained
-    assert sorted(deleted_keys) == ([] if retained else ["tools/reference.json", "uploads/reference.json"])
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    assert sorted(deleted_keys) == ([] if retained else ["tools/reference.json"])
 
 
 @pytest.mark.parametrize("reference", ["offload", "draft", "foreign_tenant"])

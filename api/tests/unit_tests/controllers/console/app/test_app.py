@@ -197,11 +197,12 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = MagicMock()
+            generation.generate.return_value = {"text": "ok"}
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: {"text": "ok"},
+                completion_module,
+                "application_services",
+                lambda: SimpleNamespace(app_generation=generation),
             )
             monkeypatch.setattr(
                 completion_module.helper,
@@ -228,13 +229,14 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = MagicMock()
+            generation.generate.side_effect = (
+                completion_module.services.errors.conversation.ConversationNotExistsError()
+            )
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: (_ for _ in ()).throw(
-                    completion_module.services.errors.conversation.ConversationNotExistsError()
-                ),
+                completion_module,
+                "application_services",
+                lambda: SimpleNamespace(app_generation=generation),
             )
 
             with (
@@ -255,11 +257,12 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = MagicMock()
+            generation.generate.side_effect = completion_module.ProviderTokenNotInitError("x")
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: (_ for _ in ()).throw(completion_module.ProviderTokenNotInitError("x")),
+                completion_module,
+                "application_services",
+                lambda: SimpleNamespace(app_generation=generation),
             )
 
             with (
@@ -280,11 +283,12 @@ class TestAppApisCases:
         ) -> None:
             api = completion_module.CompletionMessageApi()
             method = unwrap(api.post)
-
+            generation = MagicMock()
+            generation.generate.side_effect = completion_module.QuotaExceededError()
             monkeypatch.setattr(
-                completion_module.AppGenerateService,
-                "generate",
-                lambda **_kwargs: (_ for _ in ()).throw(completion_module.QuotaExceededError()),
+                completion_module,
+                "application_services",
+                lambda: SimpleNamespace(app_generation=generation),
             )
 
             with (

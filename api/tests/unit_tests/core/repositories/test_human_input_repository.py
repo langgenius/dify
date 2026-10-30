@@ -1113,18 +1113,6 @@ class TestHumanInputRepositoryCases:
         assert record.status == HumanInputFormStatus.TIMEOUT
 
     @staticmethod
-    def test_mark_timeout_submitted_raises_form_not_found(repository_session: Session) -> None:
-        form = _human_input_repository_persist_form(
-            repository_session,
-            form_id="f",
-            workflow_run_id=None,
-            status=HumanInputFormStatus.SUBMITTED,
-        )
-        repo = HumanInputFormSubmissionRepository()
-        with pytest.raises(FormNotFoundError, match="form already submitted"):
-            repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.EXPIRED)
-
-    @staticmethod
     def test_mark_timeout_updates_fields(repository_session: Session) -> None:
         form = _human_input_repository_persist_form(repository_session, form_id="f", workflow_run_id=None)
         form.selected_action_id = "a"

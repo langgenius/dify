@@ -52,7 +52,7 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 if TYPE_CHECKING:
     from models import Account

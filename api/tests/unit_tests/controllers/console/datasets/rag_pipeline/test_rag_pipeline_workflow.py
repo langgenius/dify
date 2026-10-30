@@ -38,8 +38,8 @@ from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.knowledge.dataset_access import DatasetAccessDeniedError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account, make_dataset, make_tenant
 
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
@@ -58,15 +58,12 @@ def _make_workflow(**overrides: object) -> Workflow:
         marked_name="Release 1",
         marked_comment="Initial release",
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps({"file_upload": {"enabled": False}}),
+        _features=json.dumps({"file_upload": {"enabled": False}}),
         created_by=DEFAULT_WORKFLOW_CREATED_BY,
-        created_at=datetime(2024, 1, 1, 12, 0, 0),
         updated_by=None,
-        updated_at=datetime(2024, 1, 1, 12, 1, 0),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
     )
+    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
+    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow

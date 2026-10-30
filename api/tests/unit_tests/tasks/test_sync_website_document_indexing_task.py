@@ -447,7 +447,11 @@ def test_redelivery_resumes_the_persisted_indexing_phase(
     ):
         sync_website_document_indexing_task.run(dataset.id, document.id)
 
-    resume = getattr(indexing_runner.return_value, resume_method)
+    resume = (
+        indexing_runner.return_value.run_in_indexing_status
+        if resume_method == "run_in_indexing_status"
+        else indexing_runner.return_value.run_in_splitting_status
+    )
     resume.assert_called_once()
     assert resume.call_args.kwargs["owned_lease"] is not None
     indexing_runner.return_value.run.assert_not_called()

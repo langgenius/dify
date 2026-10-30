@@ -140,6 +140,18 @@ def _published_payloads(topic: MagicMock) -> list[dict[str, object]]:
     return payloads
 
 
+def _payload_data(payload: Mapping[str, object]) -> dict[str, object]:
+    data = payload["data"]
+    assert isinstance(data, dict)
+    return data
+
+
+def _payload_inputs(payload: Mapping[str, object]) -> dict[str, object]:
+    inputs = _payload_data(payload)["inputs"]
+    assert isinstance(inputs, dict)
+    return inputs
+
+
 def _make_account(*, account_id: str = "account-id") -> Account:
     account = Account(name="Workflow Runner", email=f"{account_id}@example.com")
     account.id = account_id
@@ -562,10 +574,10 @@ def test_publish_streaming_response_publishes_started_then_failed_terminal_when_
 
     payloads = _published_payloads(mock_topic)
     assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
-    assert payloads[0]["data"]["workflow_id"] == "workflow-id"
-    assert payloads[0]["data"]["inputs"] == {"foo": "bar"}
-    assert payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert payloads[1]["data"]["error"] == "stream exploded"
+    assert _payload_data(payloads[0])["workflow_id"] == "workflow-id"
+    assert _payload_inputs(payloads[0]) == {"foo": "bar"}
+    assert _payload_data(payloads[1])["status"] == WorkflowExecutionStatus.FAILED
+    assert _payload_data(payloads[1])["error"] == "stream exploded"
 
 
 def test_publish_streaming_response_recovers_when_workflow_started_publish_fails_first(
@@ -602,10 +614,10 @@ def test_publish_streaming_response_recovers_when_workflow_started_publish_fails
 
     assert [payload["event"] for payload in successful_payloads] == ["workflow_started", "workflow_finished"]
     assert successful_payloads[0]["task_id"] == "task-id"
-    assert isinstance(successful_payloads[0]["data"]["inputs"]["file"], str)
+    assert isinstance(_payload_inputs(successful_payloads[0])["file"], str)
     assert successful_payloads[1]["task_id"] == "task-id"
-    assert successful_payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert successful_payloads[1]["data"]["error"] == "started publish failed"
+    assert _payload_data(successful_payloads[1])["status"] == WorkflowExecutionStatus.FAILED
+    assert _payload_data(successful_payloads[1])["error"] == "started publish failed"
     assert "workflow-run-id" in caplog.text
     assert "publishing fallback terminal event" in caplog.text
 
@@ -649,8 +661,8 @@ def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_
 
     assert [payload["event"] for payload in successful_payloads] == ["workflow_started", "workflow_finished"]
     assert successful_payloads[1]["task_id"] == "task-id"
-    assert successful_payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert successful_payloads[1]["data"]["error"] == "broker write failed"
+    assert _payload_data(successful_payloads[1])["status"] == WorkflowExecutionStatus.FAILED
+    assert _payload_data(successful_payloads[1])["error"] == "broker write failed"
     assert "workflow-run-id" in caplog.text
     assert "publishing fallback terminal event" in caplog.text
 
@@ -694,8 +706,8 @@ def test_publish_streaming_response_recovers_when_workflow_finished_publish_fail
 
     assert [payload["event"] for payload in successful_payloads] == ["workflow_started", "workflow_finished"]
     assert successful_payloads[1]["task_id"] == "task-id"
-    assert successful_payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert successful_payloads[1]["data"]["error"] == "finished publish failed"
+    assert _payload_data(successful_payloads[1])["status"] == WorkflowExecutionStatus.FAILED
+    assert _payload_data(successful_payloads[1])["error"] == "finished publish failed"
     assert "workflow-run-id" in caplog.text
     assert "publishing fallback terminal event" in caplog.text
 
@@ -728,8 +740,8 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
     payloads = _published_payloads(mock_topic)
     assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
     assert payloads[1]["task_id"] == "task-id"
-    assert payloads[1]["data"]["status"] == WorkflowExecutionStatus.FAILED
-    assert payloads[1]["data"]["error"] == "Workflow stream ended without a terminal event"
+    assert _payload_data(payloads[1])["status"] == WorkflowExecutionStatus.FAILED
+    assert _payload_data(payloads[1])["error"] == "Workflow stream ended without a terminal event"
     assert "workflow-run-id" in caplog.text
     assert "ended without a terminal event" in caplog.text
 
@@ -954,8 +966,8 @@ def test_app_runner_streaming_failure_keeps_existing_pre_runtime_helper_behavior
         runner.run()
 
     payloads = _published_payloads(mock_topic)
-    assert payloads[0]["data"]["inputs"] == {}
-    assert payloads[0]["data"]["reason"] == WorkflowStartReason.INITIAL
+    assert _payload_inputs(payloads[0]) == {}
+    assert _payload_data(payloads[0])["reason"] == WorkflowStartReason.INITIAL
 
 
 def test_app_runner_streaming_success_calls_publish_streaming_response_with_full_signature(

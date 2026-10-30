@@ -394,6 +394,25 @@ def test_listing_requires_all_selected_tags(
     assert [row["id"] for row in result["data"]] == ["dataset"]
 
 
+@pytest.mark.parametrize("requested_ids", [(), ("dataset", "other-creator")])
+def test_listing_filters_creators_for_paginated_and_explicit_id_queries(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    requested_ids: tuple[str, ...],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(dataset(id="other-creator", name="Other creator", created_by="other"))
+
+    result = operations.list_datasets(
+        CONTEXT,
+        DatasetListFilter(ids=requested_ids, creator_ids=("actor",)),
+        None,
+        False,
+    )
+
+    assert [row["id"] for row in result["data"]] == ["dataset"]
+
+
 @pytest.mark.parametrize("ids", [[], ["dataset"]])
 @pytest.mark.parametrize("maintainer", ["actor", "other"])
 def test_list_visibility_restricts_even_requested_ids(

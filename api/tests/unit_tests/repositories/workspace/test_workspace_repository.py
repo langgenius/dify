@@ -29,6 +29,7 @@ from services.workspace.service import (
     WorkspaceQueryService,
     WorkspaceService,
 )
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def make_account(
@@ -510,6 +511,9 @@ class TestWorkspaceRepositoryCases:
     def test_writes_commit_and_other_accounts_cannot_mutate(
         seeded: WorkspaceRepository, sqlite_session_factory: sessionmaker[Session]
     ) -> None:
+        with sqlite_session_factory.begin() as session:
+            session.add(make_upload_file(file_id="logo", tenant_id="w1"))
+
         assert seeded.rename(workspace_id="w1", account_id="a1", name="New").name == "New"
         config = WorkspaceCustomConfig(False, "logo")
         seeded.update_custom_config(workspace_id="w1", account_id="a1", changes=config)

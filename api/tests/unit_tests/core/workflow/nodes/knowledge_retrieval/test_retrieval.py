@@ -1,13 +1,14 @@
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from unittest.mock import create_autospec, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.trace import StatusCode, get_current_span, get_tracer
+from opentelemetry.trace import StatusCode, get_current_span
 
 from core.rag.models.document import Document
 from services.knowledge.admission.application import DatasetAdmissionLimits
@@ -26,6 +27,19 @@ from services.knowledge.retrieval.retrieval import (
     ExternalDatasetRetriever,
     RetrievalDatasetSnapshot,
 )
+from tests.unit_tests.core.app.workflow.layers.conftest import memory_span_exporter
+
+
+@pytest.fixture
+def tracer_provider_with_memory_exporter(
+    memory_span_exporter: InMemorySpanExporter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[TracerProvider]:
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(memory_span_exporter))
+    monkeypatch.setattr("extensions.otel.decorators.base.get_tracer", provider.get_tracer)
+    yield provider
+    provider.shutdown()
 
 
 def _candidate_search() -> CandidateSearch:
@@ -152,7 +166,9 @@ def test_knowledge_retrieval_creates_a_child_otel_span(
     no_datasets: list[RetrievalDatasetSnapshot] = []
     repository.available_datasets = no_datasets
 
-    with get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span:
+    with tracer_provider_with_memory_exporter.get_tracer(__name__).start_as_current_span(
+        "knowledge-retrieval-node"
+    ) as node_span:
         assert retrieval.retrieve(request, request_metadata=None).sources == []
 
     retrieval_span = next(
@@ -182,7 +198,9 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
     with (
         app.app_context(),
         patch.object(retrieval, "_search_across_datasets", side_effect=record_active_trace),
-        get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span,
+        tracer_provider_with_memory_exporter.get_tracer(__name__).start_as_current_span(
+            "knowledge-retrieval-node"
+        ) as node_span,
     ):
         retrieval.search_multiple(
             request=_request(retrieval_dataset),
@@ -252,7 +270,9 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
 
     with (
         patch.object(retrieval, "_retrieve_dataset", side_effect=expected_error),
-        get_tracer(__name__).start_as_current_span("dataset-retrieval-parent"),
+            tracer_provider_with_memory_exporter.get_tracer(__name__).start_as_current_span(
+                "dataset-retrieval-parent"
+            ),
     ):
         retrieval._retrieve_dataset_safely(
             flask_app=app,

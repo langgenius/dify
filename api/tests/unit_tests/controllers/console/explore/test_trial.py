@@ -1281,7 +1281,13 @@ class TestTrialFileUploadCases:
         assert harness.io.saved == {file.key: _CONTENT}
         assert harness.io.requests == [
             ("HEAD", _REMOTE_URL, {}),
-            ("GET", _REMOTE_URL, {} if head_status == 200 else {"timeout": 3, "follow_redirects": True}),
+            (
+                "GET",
+                _REMOTE_URL,
+                {"follow_redirects": True, "stream_response": True}
+                if head_status == 200
+                else {"timeout": 3, "follow_redirects": True, "stream_response": True},
+            ),
         ]
         assert harness.usage() is None
 

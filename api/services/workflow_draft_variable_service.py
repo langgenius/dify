@@ -812,7 +812,7 @@ def _batch_upsert_draft_variable(
             )
         )
         introduced_upload_file_ids.update(current_ids - previous_ids)
-        introduced_upload_file_ids.update(getattr(draft_var, "_pending_upload_file_reference_ids", ()))
+        introduced_upload_file_ids.update(draft_var.__dict__.get("_pending_upload_file_reference_ids", ()))
 
     if introduced_upload_file_ids:
         lock_and_validate_owned_upload_files_in_session(

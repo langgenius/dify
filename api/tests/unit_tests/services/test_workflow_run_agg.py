@@ -57,8 +57,8 @@ from models.workflow import (
 )
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.human_input_v2.form_repository import Form
-from services.file_adapters import build_file_service
 from services.agent.workspace_service import AgentWorkspaceService
+from services.file_adapters import build_file_service
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
     _build_app_generate_entity,
@@ -67,10 +67,10 @@ from tests.unit_tests.core.app.apps.pipeline.test_pipeline_runner import (
     _persist_scope,
     _workflow,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_binding_resolver import _agent, _binding, _snapshot
 from tests.unit_tests.core.workflow.nodes.agent_v2.test_session_store import _install_backend_client
 from tests.unit_tests.core.workflow.nodes.human_input_v2.test_node import form as _v2_form_fixture
-from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 """Pipeline tool lifecycle through the real Engine and SQLAlchemy repositories."""
 

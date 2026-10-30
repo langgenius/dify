@@ -154,6 +154,7 @@ class SQLAlchemyDatasetOperations:
                     include_all=query.include_all,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
+                    creator_ids=query.creator_ids,
                 )
             else:
                 datasets, total = list_visible_datasets(
@@ -169,6 +170,7 @@ class SQLAlchemyDatasetOperations:
                     tag_target_ids=tag_target_ids,
                     page=page,
                     per_page=limit,
+                    creator_ids=query.creator_ids,
                 )
             data = load_dataset_details(datasets, session=session)
             partial_ids = [item["id"] for item in data if item["permission"] == "partial_members"]

@@ -26,8 +26,8 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.controllers.error_body import raised_error
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.controllers.error_body import raised_error
 
 
 @pytest.fixture(autouse=True)
@@ -132,17 +132,14 @@ def _make_workflow(**overrides) -> Workflow:
         type=WorkflowType.WORKFLOW,
         version="1",
         graph=json.dumps(graph),
-        features=json.dumps(features),
         marked_name="Release 1",
         marked_comment="Initial release",
         created_by="user-1",
-        created_at=datetime(2024, 1, 1, 12, 0, 0),
         updated_by=None,
-        updated_at=datetime(2024, 1, 1, 12, 1, 0),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _features=json.dumps(features),
     )
+    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
+    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
     if environment_variables and isinstance(environment_variables[0], dict):
         workflow._environment_variables = json.dumps(
             {str(index): value for index, value in enumerate(environment_variables)}
@@ -1150,7 +1147,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(
 
     def resolve_access(tenant_id: str, account_id: str) -> AppAccessFilter:
         actors.append((tenant_id, account_id))
-        return AppAccessFilter(accessible_app_ids={app_id_1}, can_manage_own_apps=False)
+        return AppAccessFilter(accessible_app_ids={app_id_1})
 
     monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
     monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)

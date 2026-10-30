@@ -153,7 +153,7 @@ def test_binding_revocation_is_immediate(resource_fixture: ResourceFixture, sqli
     call(flask_app, app_id)
     sqlite_session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id))
     sqlite_session.commit()
-    with pytest.raises(Unauthorized):
+    with pytest.raises(Forbidden, match="resource_not_authorized"):
         call(flask_app, app_id)
 
 
@@ -182,7 +182,7 @@ def test_app_discovery_rejects_token_with_no_remaining_bindings(
     flask_app, _, token_id, tenant_id, _ = resource_fixture
     sqlite_session.execute(delete(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token_id))
     sqlite_session.commit()
-    with pytest.raises(Unauthorized):
+    with pytest.raises(Forbidden, match="resource_not_authorized"):
         call(flask_app, workspace_id=tenant_id, scope=Scope.APPS_READ)
 
 

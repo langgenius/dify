@@ -671,6 +671,7 @@ class TestWorkflowNodeExecutionBatchCases:
                 make_account(),
                 "source-app",
                 WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+                files=build_file_service(session_factory=expiring_session_factory),
             )
         else:
             repository = sql
@@ -878,6 +879,7 @@ class TestWorkflowNodeExecutionCallersCases:
                 make_account(),
                 "source-app",
                 WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+                files=build_file_service(session_factory=sqlite_session_factory),
             )
         else:
             repository = sql

@@ -1183,6 +1183,11 @@ class TestAdvancedChatGenerateTaskPipeline:
             start_at=0.0,
         )
 
+        upload = make_upload_file(tenant_id="tenant")
+        upload.id = "file-id"
+        sqlite_session.add(upload)
+        sqlite_session.commit()
+
         pipeline._save_message(session=sqlite_session, graph_runtime_state=graph_runtime_state)
         sqlite_session.commit()
 

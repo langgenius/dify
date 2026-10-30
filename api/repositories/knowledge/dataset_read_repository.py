@@ -468,6 +468,7 @@ def list_visible_datasets_by_ids(
     include_all: bool,
     accessible_dataset_ids: Sequence[str] | None,
     include_own_datasets: bool,
+    creator_ids: Sequence[str] = (),
 ) -> tuple[list[Dataset], int]:
     """List requested datasets under the same account policy as the ordinary list."""
 
@@ -490,6 +491,8 @@ def list_visible_datasets_by_ids(
         rbac_enabled=rbac_enabled,
         include_all=include_all,
     )
+    if creator_ids:
+        statement = statement.where(Dataset.created_by.in_(tuple(dict.fromkeys(creator_ids))))
     page = paginate_query(statement, session=session, page=1, per_page=len(unique_ids), max_per_page=len(unique_ids))
     return page.items, page.total
 
@@ -544,6 +547,7 @@ def list_visible_datasets(
     tag_target_ids: Sequence[str] | None,
     page: int,
     per_page: int,
+    creator_ids: Sequence[str] = (),
 ) -> tuple[list[Dataset], int]:
     """List datasets using access decisions already resolved by the application adapter."""
 
@@ -566,6 +570,8 @@ def list_visible_datasets(
 
     if keyword:
         statement = statement.where(Dataset.name.ilike(f"%{escape_like_pattern(keyword)}%", escape="\\"))
+    if creator_ids:
+        statement = statement.where(Dataset.created_by.in_(tuple(dict.fromkeys(creator_ids))))
     if tag_target_ids is not None:
         if not tag_target_ids:
             return [], 0

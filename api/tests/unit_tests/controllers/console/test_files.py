@@ -26,7 +26,7 @@ from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountRole
 from models.model import UploadFile
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def unwrap(func):

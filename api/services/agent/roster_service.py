@@ -85,8 +85,8 @@ class AgentRosterService:
         self._session = session
 
     @staticmethod
-    def _image_icon_id(*, icon_type: object, icon: str | None) -> str | None:
-        icon_type_value = getattr(icon_type, "value", icon_type)
+    def _image_icon_id(*, icon_type: AgentIconType | IconType | str | None, icon: str | None) -> str | None:
+        icon_type_value = icon_type.value if isinstance(icon_type, AgentIconType | IconType) else icon_type
         return icon if icon_type_value == AgentIconType.IMAGE.value and icon else None
 
     def _lock_new_agent_file_references(
@@ -94,7 +94,7 @@ class AgentRosterService:
         *,
         tenant_id: str,
         previous_icon_id: str | None = None,
-        current_icon_type: object = None,
+        current_icon_type: AgentIconType | IconType | str | None = None,
         current_icon: str | None = None,
         previous_config: object = None,
         current_config: object = None,

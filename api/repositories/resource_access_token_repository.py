@@ -344,8 +344,6 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
             for _, _, relation, app_id, app_status, app_enabled, dataset_id, dataset_enabled in rows
             if relation is not None
         )
-        if not resources:
-            raise ResourceAccessTokenInvalidError("Resource access token is invalid.")
         return ResourceAccessTokenAccess(token.id, token.tenant_id, tenant_status == TenantStatus.NORMAL, resources)
 
 

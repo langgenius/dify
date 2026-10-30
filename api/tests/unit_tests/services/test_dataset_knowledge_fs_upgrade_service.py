@@ -5,6 +5,7 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
+from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
@@ -47,6 +48,7 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeRunner,
     KnowledgeFSUpgradeSnapshotService,
 )
+from services.file_service import FileService
 from services.knowledge.datasets.upgrades import enqueue_upgrade_job
 from services.knowledge_fs.initial_source_import import (
     KnowledgeFSInitialSourceNotReadyError,
@@ -227,8 +229,12 @@ def _claimed_response(asset_id: str, compilation_job_id: str) -> KnowledgeFSDocu
     )
 
 
+def _runner(session_factory: sessionmaker[Session]) -> KnowledgeFSUpgradeRunner:
+    return KnowledgeFSUpgradeRunner(session_factory, files=cast(FileService, object()))
+
+
 def _unused_runner() -> KnowledgeFSUpgradeRunner:
-    return KnowledgeFSUpgradeRunner(cast("sessionmaker[Session]", UnusedSessionFactory()))
+    return _runner(cast("sessionmaker[Session]", UnusedSessionFactory()))
 
 
 def _document_asset() -> KnowledgeFSDocumentResponse:
@@ -340,7 +346,7 @@ def test_failed_next_checkpoint_dispatch_leaves_a_recoverable_job(
     job = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, celery_task_id="task-1")
     with sqlite_session_factory.begin() as session:
         session.add(job)
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     snapshots = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory)
 
     assert runner.release_for_dispatch(job_id=job.id, celery_task_id="stale-task") is None
@@ -706,7 +712,7 @@ def test_finalize_requires_every_document_and_source_handoff(sqlite_session_fact
         session.add(job)
 
     with pytest.raises(KnowledgeFSUpgradeError, match="Not all Dataset documents"):
-        KnowledgeFSUpgradeRunner(sqlite_session_factory)._finalize(job)
+        _runner(sqlite_session_factory)._finalize(job)
 
 
 def test_shared_source_file_lease_is_released_after_every_document_handoff(
@@ -789,7 +795,7 @@ def test_shared_source_file_lease_is_released_after_every_document_handoff(
         lambda _tenant_id: 15,
     )
 
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     assert runner._submit_next_document(job) is True
     with sqlite_session_factory() as session:
         persisted = session.get(KnowledgeFSUpgradeFileLease, lease.id)
@@ -1112,7 +1118,7 @@ def test_access_migration_maps_visibility_members_apps_api_and_tags(
     )
     monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: runtime)
 
-    KnowledgeFSUpgradeRunner(sqlite_session_factory)._migrate_access(job)
+    _runner(sqlite_session_factory)._migrate_access(job)
 
     assert facade.list_metadata_fields.calls == []
     members = control_plane.replace_members.last.kwargs["members"]
@@ -1205,7 +1211,7 @@ def test_runner_failure_loading_and_running_state_are_persisted(
         )
         session.add(lease)
 
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     assert KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).claim_enqueue(
         tenant_id=_TENANT_ID, job_id=job.id, task_id="task-2"
     )
@@ -1281,7 +1287,7 @@ def test_runner_creates_space_and_advances_after_activation(
         "get_knowledge_fs_runtime",
         lambda _: FakeRuntime(application=application),
     )
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     runner._create_space(job)
 
     payload = application.create_space.last.kwargs["payload"]
@@ -1318,7 +1324,7 @@ def test_runner_waiting_for_space_reports_each_invalid_state(
     job = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, stage=KnowledgeFSUpgradeStage.WAITING_FOR_SPACE)
     with sqlite_session_factory.begin() as session:
         session.add(job)
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
 
     with pytest.raises(KnowledgeFSUpgradeError, match="reference is missing"):
         runner._advance_when_space_is_active(job)
@@ -1410,7 +1416,7 @@ def test_runner_creates_source_and_marks_its_documents_handed_off(
         )
     )
     monkeypatch.setattr(upgrade_module, "submit_initial_source_for_upgrade", submit)
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     assert runner._create_next_source(job) is True
     assert len(submit.calls) == 1
 
@@ -1460,7 +1466,7 @@ def test_runner_source_failure_is_retryable_or_persisted(
 
     error: Exception = KnowledgeFSInitialSourceNotReadyError("busy") if not_ready else RuntimeError("source failed")
     monkeypatch.setattr(upgrade_module, "submit_initial_source_for_upgrade", CallRecorder(error=error))
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
 
     expected_error = KnowledgeFSUpgradeNotReadyError if not_ready else RuntimeError
     with pytest.raises(expected_error):
@@ -1502,7 +1508,7 @@ def test_runner_document_boundaries_and_successful_finalize(
         )
         session.add(document)
 
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     with pytest.raises(KnowledgeFSUpgradeError, match="no source file reference"):
         runner._submit_next_document(job)
     with sqlite_session_factory.begin() as session:
@@ -1644,7 +1650,7 @@ def test_notion_credential_resolution_prefers_direct_then_workspace_match(
         direct_id = direct.id
         fallback_id = fallback.id
 
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     assert (
         runner._resolve_notion_credential(
             tenant_id=_TENANT_ID,
@@ -1681,7 +1687,7 @@ def test_notion_credential_resolution_handles_single_fallback_and_missing(
         session.flush()
         only_id = only.id
 
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     assert (
         runner._resolve_notion_credential(
             tenant_id=single_tenant_id,
@@ -1732,7 +1738,7 @@ def test_document_submission_persists_missing_file_and_invalid_body_errors(
     staged = FakeStagedUploads()
     monkeypatch.setattr(upgrade_module, "KnowledgeFSStagedUploadService", lambda *_args, **_kwargs: staged)
     monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=FakeUpgradeFacade()))
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     with pytest.raises(KnowledgeFSUpgradeError, match="source file is unavailable"):
         runner._submit_next_document(job)
 
@@ -1870,7 +1876,7 @@ def test_retry_reclaims_abandoned_worker_and_publication_claims(
     with patch("tasks.knowledge_fs_upgrade_tasks.run_knowledge_fs_upgrade.apply_async") as publish:
         enqueue_upgrade_job(snapshots, _TENANT_ID, job.id)
     task_id = publish.call_args.kwargs["task_id"]
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     assert runner.run_next(job_id=job.id, celery_task_id="lost-task") is None
     assert runner.run_next(job_id=job.id, celery_task_id=task_id) is False
     # Redelivery after the final commit must still trigger document reconciliation.
@@ -1893,7 +1899,7 @@ def test_live_checkpoint_cannot_be_stolen_by_retry_or_duplicate_delivery(
     assert retried.status is KnowledgeFSUpgradeJobStatus.RUNNING
     assert not snapshots.claim_enqueue(tenant_id=_TENANT_ID, job_id=job.id, task_id="another-task")
     assert snapshots.recover_stalled_jobs() == []
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     with pytest.raises(KnowledgeFSUpgradeBusyError):
         runner.run_next(job_id=job.id, celery_task_id="live-task")
     runner.fail(job_id=job.id, celery_task_id="obsolete-task", error=ValueError("obsolete"))
@@ -1947,7 +1953,7 @@ def test_broker_redelivery_resumes_the_expired_checkpoint(sqlite_session_factory
     job.updated_at = naive_utc_now() - UPGRADE_DELIVERY_TIMEOUT - timedelta(seconds=1)
     with sqlite_session_factory.begin() as session:
         session.add(job)
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     assert runner.run_next(job_id=job.id, celery_task_id="redelivered-task") is False
 
 
@@ -1957,7 +1963,7 @@ def test_provisioning_retry_releases_execution_but_keeps_delivery_identity(
     job = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, celery_task_id="task-1")
     with sqlite_session_factory.begin() as session:
         session.add(job)
-    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner = _runner(sqlite_session_factory)
     runner.release_for_retry(job_id=job.id, celery_task_id="obsolete-task")
     with pytest.raises(KnowledgeFSUpgradeBusyError):
         runner._mark_running(job_id=job.id, celery_task_id="task-1")
@@ -2287,9 +2293,7 @@ def test_recovery_sweep_finds_parent_success_without_a_reconciliation_claim(
 
     job, _ = _pending_reconciliation_job(sqlite_session_factory)
     # The parent commits success, then its process dies before claiming any follow-up.
-    assert (
-        KnowledgeFSUpgradeRunner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task") is False
-    )
+    assert _runner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task") is False
     with sqlite_session_factory() as session:
         persisted = session.get(KnowledgeFSUpgradeJob, job.id)
         assert persisted is not None
@@ -2320,7 +2324,13 @@ def test_final_reconciliation_publication_failure_is_recovered_after_parent_succ
     job, document = _pending_reconciliation_job(sqlite_session_factory)
     run_knowledge_fs_upgrade.request_stack.push(Context(id="parent-task", retries=0))
     try:
-        with patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async", side_effect=OSError("broker down")):
+        with (
+            patch(
+                "tasks.knowledge_fs_upgrade_tasks.application_services",
+                return_value=SimpleNamespace(files=cast(FileService, object())),
+            ),
+            patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async", side_effect=OSError("broker down")),
+        ):
             run_knowledge_fs_upgrade.run(job_id=job.id)
     finally:
         run_knowledge_fs_upgrade.pop_request()
@@ -2367,7 +2377,7 @@ def test_reconciliation_recovers_lost_deliveries_and_fences_stale_workers(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, started: bool
 ) -> None:
     job, _ = _pending_reconciliation_job(sqlite_session_factory)
-    KnowledgeFSUpgradeRunner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task")
+    _runner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task")
     reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
     now = naive_utc_now()
     monkeypatch.setattr(upgrade_module, "naive_utc_now", lambda: now)
@@ -2400,7 +2410,7 @@ def test_reconciliation_sweep_retries_unfinished_documents_without_a_celery_retr
     from tasks.knowledge_fs_upgrade_tasks import reconcile_knowledge_fs_upgrade_documents
 
     job, _ = _pending_reconciliation_job(sqlite_session_factory)
-    KnowledgeFSUpgradeRunner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task")
+    _runner(sqlite_session_factory).run_next(job_id=job.id, celery_task_id="parent-task")
     reconciler = KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory)
     now = naive_utc_now()
     monkeypatch.setattr(upgrade_module, "naive_utc_now", lambda: now)

@@ -118,6 +118,7 @@ class RecordingDocuments:
         content: bytes,
         mimetype: str,
         settings: Mapping[str, object],
+        attribute_to_dataset_creator: bool = False,
     ) -> dict[str, object]:
         return cast(
             dict[str, object],
@@ -130,6 +131,7 @@ class RecordingDocuments:
                     "content": content,
                     "mimetype": mimetype,
                     "settings": dict(settings),
+                    "attribute_to_dataset_creator": attribute_to_dataset_creator,
                 },
             ),
         )
@@ -379,6 +381,7 @@ class TestDocumentControllerDelegation:
             "content": b"file contents",
             "mimetype": "text/plain",
             "settings": {"doc_language": "Japanese", "indexing_technique": "economy"},
+            "attribute_to_dataset_creator": True,
         }
 
     def test_create_by_file_requires_upload(

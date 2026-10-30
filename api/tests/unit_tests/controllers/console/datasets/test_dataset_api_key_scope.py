@@ -67,7 +67,7 @@ def test_invalid_scope_cannot_create_an_unrestricted_key(api_key_routes: ApiKeyR
     assert response.status_code == 400
     assert response.json == {
         "code": "bad_request",
-        "message": "dataset_ids must be a list of strings.",
+        "message": "dataset_ids and knowledge_space_ids must be lists of strings.",
         "status": 400,
     }
     api_key_routes.keys.create_workspace_key.assert_not_called()

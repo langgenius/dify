@@ -15,7 +15,6 @@ import json
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from contextlib import contextmanager
 from typing import Any, Self, override
 from unittest.mock import MagicMock, create_autospec
 
@@ -131,12 +130,6 @@ def _make_workflow(
         _environment_variables=[],
         _conversation_variables=[],
     )
-
-
-@contextmanager
-def _noop_rate_limit_context(rate_limit: object, request_id: str) -> Generator[None, None, None]:
-    """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
-    yield
 
 
 # ---------------------------------------------------------------------------
@@ -305,11 +298,6 @@ class TestGenerate(_RealSessionTest):
     def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        # Prevent AppExecutionParams.new from touching real models via isinstance
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     # -- COMPLETION ---------------------------------------------------------
     def test_completion_mode(self, mocker: MockerFixture) -> None:
@@ -475,9 +463,7 @@ class TestGenerate(_RealSessionTest):
         retrieve_spy.assert_not_called()
 
     # -- ADVANCED_CHAT streaming --------------------------------------------
-    def test_advanced_chat_streaming(
-        self, mocker: MockerFixture, config_overrides: Callable[..., None]
-    ) -> None:
+    def test_advanced_chat_streaming(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
         config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
@@ -672,14 +658,8 @@ class TestGenerateBilling(_RealSessionTest):
     @pytest.fixture(autouse=True)
     def _common(self, mocker: MockerFixture) -> None:
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
-    def test_cloud_edition_consumes_quota(
-        self, mocker: MockerFixture, config_overrides: Callable[..., None]
-    ) -> None:
+    def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         reserve_mock = mocker.patch(

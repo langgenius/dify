@@ -96,9 +96,9 @@ def _admit_dataset_request[R](view: Callable[..., R]) -> Callable[..., R]:
     @wraps(view)
     def admitted(*args: Any, **kwargs: Any) -> R:
         dataset_id = _dataset_id_from_route(args, kwargs)
-        services = application_services()
         auth_token = peek_service_api_bearer_token()
         if auth_token and is_resource_access_token(auth_token):
+            services = application_services()
             with resource_access_token_errors():
                 grant = services.resource_access_tokens.resolve_datasets_for_service_api(
                     token=auth_token, dataset_id=dataset_id
@@ -112,6 +112,7 @@ def _admit_dataset_request[R](view: Callable[..., R]) -> Callable[..., R]:
             resource_dataset_ids = grant.dataset_ids
         else:
             key = validate_and_get_api_token("dataset")
+            services = application_services()
             workspace_id, api_key_id = key.tenant_id, key.id
             resource_dataset_ids = None
         try:

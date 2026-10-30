@@ -6,7 +6,6 @@ import httpx
 import pytest
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
-from tests.helpers.unit.rbac_fakes import RBACDomain
 
 from constants import HIDDEN_VALUE
 from controllers.console.datasets.external import ExternalKnowledgeApiListResponse
@@ -35,6 +34,7 @@ from services.knowledge.external.application import (
     ExternalKnowledgeApplicationService,
 )
 from services.tag_application_service import TagApplicationService
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")
 REF = DatasetRef("tenant", "dataset")

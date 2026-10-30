@@ -98,6 +98,7 @@ from graphon.engine_events import (
     GraphEdgeTakenEvent,
     NodeRunHumanInputFormFilledEvent,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from graphon.file import File, FileTransferMethod, FileType
@@ -1490,7 +1491,11 @@ def _publish_graph_events(
     events: Iterable[EngineEvent], *, graph: Graph, runtime_state: RuntimeState
 ) -> list[AppQueueEvent]:
     queue_manager = _EventQueue(InvokeFrom.WEB_APP, runtime_state)
-    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
+    runner = WorkflowBasedAppRunner(
+        queue_manager=queue_manager,
+        app_id="app",
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
     workflow_entry = WorkflowEntry(
         graph_config={},
         graph=graph,

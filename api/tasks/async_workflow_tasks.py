@@ -345,6 +345,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData, *, knowledge_retrieval
                         if attempt == 2:
                             raise
                         logger.warning("Retrying workflow terminal publication: %s", trigger_log.id, exc_info=True)
+                session.expire_all()
                 current = trigger_log_repo.lock_for_execution_update(trigger_log_id=trigger_log.id)
                 if current is not None and current.status == WorkflowTriggerStatus.RUNNING:
                     raise RuntimeError("Workflow returned without publishing its trigger terminal state")

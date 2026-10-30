@@ -190,7 +190,13 @@ def test_recovery_retries_lease_loss_without_discarding_its_phase(
             raise KnowledgeIndexingLeaseLostError("temporary lease loss")
 
     with patch.object(recovery_module, "build_document_indexing_service", autospec=True) as builder:
-        getattr(builder.return_value, runner).side_effect = recover
+        if runner == "run":
+            resumed = builder.return_value.run
+        elif runner == "run_in_indexing_status":
+            resumed = builder.return_value.run_in_indexing_status
+        else:
+            resumed = builder.return_value.run_in_splitting_status
+        resumed.side_effect = recover
         result = recovery_module.recover_document_indexing_task.apply(args=("dataset-1", "document-1"), throw=False)
 
     assert result.state == "SUCCESS"

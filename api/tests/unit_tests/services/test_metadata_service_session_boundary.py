@@ -31,7 +31,7 @@ from services.knowledge.entities.knowledge_entities import (
 from services.knowledge.entities.metadata import MetadataFilteringCondition
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataService
-from tests.unit_tests.model_factories import make_account, make_dataset, make_document
+from tests.helpers.unit.model_factories import make_account, make_dataset, make_document
 
 REF = DatasetRef("tenant-1", "dataset-1")
 DOCUMENT_ID = "11111111-1111-1111-1111-111111111111"
@@ -81,7 +81,7 @@ def metadata_service(sqlite_session_factory: sessionmaker[Session]) -> MetadataS
             )
             document.enabled = True
             document.archived = False
-            document.indexing_status = "completed"
+            document.indexing_status = IndexingStatus.COMPLETED
             session.add(document)
     return MetadataService(
         store=SQLAlchemyMetadataRepository(session_factory=sqlite_session_factory),
@@ -332,6 +332,7 @@ def test_builtin_fields_use_owned_document_uploader(
         foreign = session.get(Document, FOREIGN_ID)
         assert document is not None
         assert foreign is not None
+        assert document.doc_metadata is not None
         assert document.doc_metadata["uploader"] == "User"
         assert foreign.doc_metadata is None
     metadata_service.disable_built_in_field(REF)

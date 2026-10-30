@@ -10,6 +10,7 @@ from functools import partial
 from threading import Event, get_ident
 from types import TracebackType
 from typing import override
+from unittest.mock import create_autospec
 
 import pytest
 from flask import current_app, g
@@ -141,10 +142,16 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.file_adapters import build_file_service
+from services.file_service import UploadFileCreator
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
+
+
+def _knowledge_index_files() -> UploadFileCreator:
+    return create_autospec(UploadFileCreator, instance=True)
 
 
 def _workflow_tool_container_workflow_tool_node(
@@ -215,7 +222,7 @@ def _workflow_tool_container_workflow_tool_node(
         runtime=ToolRuntime(tenant_id="tenant", invoke_from=InvokeFrom.DEBUGGER),
     )
     tool.prepare_container_inputs = lambda *_args, **_kwargs: (payload.inputs, [])
-    runtime = DifyToolNodeRuntime(init_params.run_context)
+    runtime = DifyToolNodeRuntime(init_params.run_context, knowledge_retrieval=make_knowledge_retriever())
     runtime.get_runtime = lambda **_kwargs: ToolRuntimeHandle(raw=tool)
     node = DifyWorkflowToolNode(
         node_id="tool",
@@ -236,7 +243,14 @@ def _workflow_tool_container_outer_graph(node: DifyWorkflowToolNode) -> Graph:
         init_params=node.init_params,
         runtime_state=node.runtime_state,
     )
-    return Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
+    graph = Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
+    graph.node_factory = DifyNodeFactory(
+        node.init_params,
+        node.runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=_knowledge_index_files(),
+    )
+    return graph
 
 
 def _workflow_tool_container_workflow_tool_source() -> WorkflowToolSource:
@@ -582,7 +596,13 @@ class TestWorkflowToolContainerCases:
     @staticmethod
     def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> None:
         node, _, _ = _workflow_tool_container_workflow_tool_node()
-        factory = DifyNodeFactory(node.init_params, node.runtime_state, use_workflow_tool_containers=True)
+        factory = DifyNodeFactory(
+            node.init_params,
+            node.runtime_state,
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=_knowledge_index_files(),
+            use_workflow_tool_containers=True,
+        )
         assert (
             factory._resolve_node_class_for_factory(
                 node_type=BuiltinNodeTypes.TOOL,
@@ -964,6 +984,12 @@ class TestWorkflowToolContainerCases:
             )
             .build()
         )
+        graph.node_factory = DifyNodeFactory(
+            node.init_params,
+            node.runtime_state,
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=_knowledge_index_files(),
+        )
         persisted: list[_workflow_tool_container_NodeEvent] = []
         engine = Engine(
             graph=graph,
@@ -1066,7 +1092,11 @@ class TestWorkflowToolContainerCases:
         initial_node, _, _ = _workflow_tool_container_workflow_tool_node(initial_state, app_id="intermediate-app")
         initial_graph = _workflow_tool_container_outer_graph(initial_node)
         initial_owner_factory = DifyNodeFactory(
-            initial_node.init_params, initial_state, human_input_run_context=build_test_run_context(app_id="outer-app")
+            initial_node.init_params,
+            initial_state,
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=_knowledge_index_files(),
+            human_input_run_context=build_test_run_context(app_id="outer-app"),
         )
         initial_graph.node_factory = initial_owner_factory
         initial_events = list(
@@ -1121,6 +1151,8 @@ class TestWorkflowToolContainerCases:
         restored_owner_factory = DifyNodeFactory(
             restored_node.init_params,
             restored_state,
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=_knowledge_index_files(),
             human_input_run_context=initial_owner_factory.human_input_run_context,
         )
         restored_graph.node_factory = restored_owner_factory
@@ -1496,6 +1528,8 @@ class TestWorkflowToolEventDeliveryCases:
             node_factory=DifyNodeFactory(
                 init_params=build_test_graph_init_params(workflow_id="outer-workflow", graph_config=outer_graph),
                 runtime_state=state,
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=_knowledge_index_files(),
             ),
             root_node_id="start",
         )
@@ -1932,6 +1966,8 @@ class TestWorkflowToolFileAccessCases:
                 }
             ),
             runtime_state=runtime_state,
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=_knowledge_index_files(),
         )
         variables: list[dict[str, object]] = []
         if input_kind == "system_files":

@@ -39,7 +39,7 @@ from models.dataset import (
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.workflow import Workflow, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
@@ -1164,14 +1164,15 @@ class TestRagPipelineServiceCases:
         # Mock Repository
         mock_repo_instance = mocker.Mock()
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             return_value=mock_repo_instance,
         )
-        # Repository._to_db_model is also called
         mock_db_exec = mocker.Mock()
         mock_db_exec.node_id = "node-1"
         mock_db_exec.node_type = "datasource"
-        mock_repo_instance._to_db_model.return_value = mock_db_exec
+        rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
+            get_execution_by_id=mocker.Mock(return_value=mock_db_exec)
+        )
 
         # Mock DraftVariableSaver
         mock_saver_instance = mocker.Mock()

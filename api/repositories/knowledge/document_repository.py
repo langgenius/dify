@@ -1037,9 +1037,7 @@ class SQLAlchemyDocumentRepository:
             for field in BuiltInField:
                 values.pop(field.value, None)
             if dataset.built_in_field_enabled:
-                values.update(
-                    {field.value: current[field.value] for field in BuiltInField if field.value in current}
-                )
+                values.update({field.value: current[field.value] for field in BuiltInField if field.value in current})
             values.update(custom_values)
             document.doc_type = DocumentDocType(doc_type)
             document.doc_metadata = values

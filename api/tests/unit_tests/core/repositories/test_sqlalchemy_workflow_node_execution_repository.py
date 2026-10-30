@@ -487,6 +487,9 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             type_=offload_type,
             file_id="file-1",
         )
+        upload_file = make_upload_file(file_id="file-1", tenant_id="tenant-1")
+        with sqlite_session_factory.begin() as session:
+            session.add(upload_file)
         result = SimpleNamespace(truncated_value={"large": "truncated"}, offload=offload)
         monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args: result if values else None)
         repo.save_execution_data(execution)
@@ -727,7 +730,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         uploaded.id = "file-1"
         repo = _repository(monkeypatch, sqlite_session_factory)
         upload_file = Mock(return_value=uploaded)
-        monkeypatch.setattr(repo._file_service, "upload_file", upload_file)
+        monkeypatch.setattr(repo._files, "upload_file", upload_file)
 
         class Truncator:
             def truncate_variable_mapping(self, _value: Any) -> tuple[dict[str, bool], bool]:
@@ -738,11 +741,11 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         assert result is not None
         assert result.truncated_value == {"truncated": True}
         upload_file.assert_called_once_with(
+            actor=repo._file_actor,
+            tenant_id="tenant-1",
             filename="node_execution_execution-1_inputs.json",
             content=b'{"value": 1}',
             mimetype="application/json",
-            user=repo._user,
-            tenant_id="tenant-1",
         )
         assert result.offload.file_id == "file-1"
         assert result.offload.type_ == ExecutionOffLoadType.INPUTS

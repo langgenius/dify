@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping, Sequence
+from enum import Enum
 from urllib.parse import unquote, urlsplit
 
 import markdown
@@ -108,7 +109,7 @@ def trusted_upload_file_ids(payload: object) -> set[str]:
     def visit(value: object) -> None:
         if isinstance(value, Mapping):
             icon_type = value.get("icon_type")
-            icon_type_value = getattr(icon_type, "value", icon_type)
+            icon_type_value = icon_type.value if isinstance(icon_type, Enum) else icon_type
             if icon_type_value == "image":
                 icon = value.get("icon")
                 if isinstance(icon, str) and icon:
@@ -124,7 +125,7 @@ def trusted_upload_file_ids(payload: object) -> set[str]:
                 return
 
             transfer_method = value.get("transfer_method")
-            transfer_method_value = getattr(transfer_method, "value", transfer_method)
+            transfer_method_value = transfer_method.value if isinstance(transfer_method, Enum) else transfer_method
             if transfer_method_value == "tool_file":
                 return
             if transfer_method_value in _UPLOAD_FILE_TRANSFER_METHODS:

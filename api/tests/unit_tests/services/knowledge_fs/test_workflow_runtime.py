@@ -22,8 +22,8 @@ from services.knowledge_fs import workflow_runtime
 from services.knowledge_fs.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from services.knowledge_fs.resource import KnowledgeResourceRef
 from services.knowledge_fs.retrieval_contracts import KnowledgeFSAppBindingPayload, KnowledgeFSRetrievalTestPayload
-from tests.workflow_test_utils import build_test_graph_init_params
 from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @dataclass

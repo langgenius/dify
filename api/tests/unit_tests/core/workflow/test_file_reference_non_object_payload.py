@@ -52,25 +52,23 @@ def test_raw_record_id_stays_lenient() -> None:
         "dify-file-ref:" + base64.urlsafe_b64encode(b"not json").decode(),
     ],
 )
-def test_malformed_encoded_payload_falls_back_to_raw_reference(reference: str) -> None:
+def test_malformed_encoded_payload_is_rejected(reference: str) -> None:
     parsed = parse_file_reference(reference)
 
-    assert parsed is not None
-    assert parsed.record_id == reference
+    assert parsed is None
+    assert resolve_file_record_id(reference) is None
     assert is_canonical_file_reference(reference) is False
 
 
 @pytest.mark.parametrize("payload", [[], None, "abc", 3, [{"record_id": "record-1"}]])
-def test_non_object_payload_falls_back_to_raw_reference(payload: object) -> None:
+def test_non_object_payload_is_rejected(payload: object) -> None:
     reference = _canonical_with_payload(payload)
 
     parsed = parse_file_reference(reference)
 
-    assert parsed is not None
-    assert parsed.record_id == reference
-    assert parsed.storage_key is None
+    assert parsed is None
     assert is_canonical_file_reference(reference) is False
-    assert resolve_file_record_id(reference) == reference
+    assert resolve_file_record_id(reference) is None
 
 
 def test_download_mapping_rejects_non_object_payload_with_validation_error() -> None:
@@ -80,15 +78,14 @@ def test_download_mapping_rejects_non_object_payload_with_validation_error() -> 
         RequestDownloadFileMapping.model_validate({"transfer_method": "local_file", "reference": reference})
 
 
-def test_object_payload_without_valid_record_id_falls_back_to_raw_reference() -> None:
+def test_object_payload_without_valid_record_id_is_rejected() -> None:
     reference = _canonical_with_payload({"storage_key": "storage-1"})
 
     parsed = parse_file_reference(reference)
 
-    assert parsed is not None
-    assert parsed.record_id == reference
-    assert parsed.storage_key is None
+    assert parsed is None
     assert is_canonical_file_reference(reference) is False
+    assert resolve_file_record_id(reference) is None
 
 
 def test_non_string_storage_key_is_dropped() -> None:
