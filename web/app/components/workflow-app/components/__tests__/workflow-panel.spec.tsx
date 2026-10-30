@@ -273,7 +273,7 @@ it('reopens a closed message log on its default detail tab', async () => {
     'aria-selected',
     'true',
   )
-  expect(api.run).toHaveBeenCalledWith('/apps/app-123/workflow-runs/run-1')
+  expect(api.run).toHaveBeenCalledWith('/apps/app-123/workflow-runs/run-1', { silent: true })
   expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
     'href',
     'https://cloud.langfuse.com/trace/run-1',

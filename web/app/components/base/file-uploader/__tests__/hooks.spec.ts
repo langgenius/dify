@@ -380,7 +380,9 @@ it('keeps public chat tokens on the normal upload transport', async () => {
   )
   await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined))
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
-  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf')
+  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', {
+    silent: true,
+  })
 })
 
 it.each(['unsupported', 'oversized', 'failed'] as const)(
@@ -456,6 +458,30 @@ it.each(['local', 'retry', 'remote'] as const)(
     }
   },
 )
+
+it.each([
+  ['File size exceeded.', 'File size exceeded.'],
+  ['File type not allowed.', 'File type not allowed.'],
+  [
+    'The remote file cannot be accessed without authorization.',
+    'The remote file cannot be accessed without authorization.',
+  ],
+  ['', 'common.fileUploader.pasteFileLinkInvalid'],
+])('reports the actual remote upload failure once: %s', async (message, expected) => {
+  const { result } = setup({
+    uploadUrls: {
+      uploadStrategy: {
+        uploadLocal: vi.fn(),
+        uploadRemote: vi.fn().mockRejectedValue(new Error(message)),
+      },
+    },
+  })
+
+  await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
+
+  await waitFor(() => expect(result.current.files).toEqual([]))
+  expect(toast.error).toHaveBeenCalledExactlyOnceWith(expected)
+})
 
 it('keeps the original URL and infers the file type when remote metadata is nullable', async () => {
   request.mockResolvedValueOnce(Response.json({ ...uploadResponse, mime_type: null, url: null }))
