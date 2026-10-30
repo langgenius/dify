@@ -2,6 +2,7 @@ import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/k
 import type { RagPipelineDatasourceProviderResponse as DataSourceItem } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactElement } from 'react'
 import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-models'
+import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -3071,10 +3072,29 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
   })
 
-  it('keeps the removal confirmation open when the request fails', async () => {
+  it.each([
+    [
+      'access denied without structured details',
+      new ORPCError('knowledge_fs_access_denied', {
+        status: 403,
+        message: 'Agent Knowledge Base operation is not allowed.',
+      }),
+      'Agent Knowledge Base operation is not allowed.',
+    ],
+    [
+      'conflict without structured details',
+      new ORPCError('knowledge_fs_conflict', {
+        status: 409,
+        message: 'Agent Knowledge Base operation conflicts with the current resource state.',
+      }),
+      'Agent Knowledge Base operation conflicts with the current resource state.',
+    ],
+    // oxlint-disable-next-line unicorn/error-message -- Verify the generic fallback for an error without a message.
+    ['missing error message', new Error(''), 'knowledgeSpace.sourcesErrorDescription'],
+  ])('keeps the removal confirmation open and reports %s', async (_scenario, error, message) => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
-    clientMock.deleteSource.mockRejectedValue(new Error('temporary failure'))
+    clientMock.deleteSource.mockRejectedValue(error)
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
@@ -3085,9 +3105,11 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeSources.removeSource' }))
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.removeSource' }))
 
-    await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith('knowledgeSpace.sourcesErrorDescription'),
-    )
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(message))
+    expect(toastErrorMock).toHaveBeenCalledOnce()
+    expect(clientMock.deleteSource).toHaveBeenCalledWith(expect.anything(), {
+      context: { silent: true },
+    })
     expect(
       screen.getByRole('button', { name: 'knowledgeSources.removeSource' }),
     ).toBeInTheDocument()

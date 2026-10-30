@@ -28,6 +28,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { SourceEditDialog } from './source-edit-dialog'
@@ -93,7 +94,11 @@ export function SourceActions({
         result = await mutation()
       } catch (error) {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-        toast.error(messageKey ? tError(($) => $[messageKey]) : t(($) => $.sourcesErrorDescription))
+        toast.error(
+          messageKey
+            ? tError(($) => $[messageKey])
+            : (getErrorMessage(error) ?? t(($) => $.sourcesErrorDescription)),
+        )
         try {
           await queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
