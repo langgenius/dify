@@ -183,6 +183,7 @@ class QdrantVector(BaseVector):
             texts, embeddings, filtered_metadatas, uuids, 64, self._group_id
         ):
             self._client.upsert(collection_name=self._collection_name, points=cast("common_types.Points", points))
+            self._delete_legacy_points(batch_ids)
             added_ids.extend(batch_ids)
 
         return added_ids
@@ -212,7 +213,7 @@ class QdrantVector(BaseVector):
 
             points = [
                 rest.PointStruct(
-                    id=point_id,
+                    id=self._physical_point_id(point_id),
                     vector=vector,
                     payload=payload,
                 )
@@ -232,6 +233,43 @@ class QdrantVector(BaseVector):
             ]
 
             yield batch_ids, points
+
+    def _physical_point_id(self, logical_point_id: str) -> str:
+        """Return a stable collection-wide ID scoped to this dataset group."""
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, f"dify:qdrant:{self._group_id}:{logical_point_id}"))
+
+    @staticmethod
+    def _legacy_point_id(logical_point_id: str) -> str | None:
+        """Return the pre-namespace Qdrant ID when one could have existed."""
+        try:
+            return str(uuid.UUID(str(logical_point_id)))
+        except ValueError:
+            # Qdrant accepted only integer or UUID point IDs before namespacing.
+            # Logical IDs are strings here, so a non-UUID cannot name a legacy point.
+            return None
+
+    def _delete_legacy_points(self, logical_point_ids: Sequence[str]) -> None:
+        """Remove this group's pre-namespace points after their replacements exist."""
+        from qdrant_client.http import models
+
+        legacy_point_ids = [
+            legacy_id for point_id in logical_point_ids if (legacy_id := self._legacy_point_id(point_id))
+        ]
+        if not legacy_point_ids:
+            return
+        filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key=Field.GROUP_KEY,
+                    match=models.MatchValue(value=self._group_id),
+                ),
+                models.HasIdCondition(has_id=legacy_point_ids),
+            ],
+        )
+        self._client.delete(
+            collection_name=self._collection_name,
+            points_selector=FilterSelector(filter=filter),
+        )
 
     @classmethod
     def _build_payloads(
@@ -263,6 +301,10 @@ class QdrantVector(BaseVector):
         try:
             filter = models.Filter(
                 must=[
+                    models.FieldCondition(
+                        key=Field.GROUP_KEY,
+                        match=models.MatchValue(value=self._group_id),
+                    ),
                     models.FieldCondition(
                         key=f"metadata.{key}",
                         match=models.MatchValue(value=value),
@@ -319,6 +361,10 @@ class QdrantVector(BaseVector):
             filter = models.Filter(
                 must=[
                     models.FieldCondition(
+                        key=Field.GROUP_KEY,
+                        match=models.MatchValue(value=self._group_id),
+                    ),
+                    models.FieldCondition(
                         key="metadata.doc_id",
                         match=models.MatchAny(any=ids),
                     ),
@@ -345,9 +391,16 @@ class QdrantVector(BaseVector):
             all_collection_name.append(collection.name)
         if self._collection_name not in all_collection_name:
             return False
-        response = self._client.retrieve(collection_name=self._collection_name, ids=[id])
+        point_ids = [self._physical_point_id(id)]
+        if legacy_point_id := self._legacy_point_id(id):
+            point_ids.append(legacy_point_id)
+        response = self._client.retrieve(
+            collection_name=self._collection_name,
+            ids=point_ids,
+            with_payload=True,
+        )
 
-        return len(response) > 0
+        return any(record.payload and record.payload.get(Field.GROUP_KEY) == self._group_id for record in response)
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:

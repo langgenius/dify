@@ -43,6 +43,7 @@ from models.model import App, AppModelConfig, UploadFile
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.tools import ToolFile
 from models.workflow import Workflow
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
@@ -58,6 +59,7 @@ from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
+from services.file_reference_parser import trusted_upload_file_ids
 
 
 class AgentPackageImportResult(BaseModel):
@@ -341,21 +343,28 @@ class AgentDslService:
             )
 
             node_job = WorkflowNodeJobConfig.model_validate(node_data.get(AGENT_NODE_JOB_DSL_KEY) or {})
-            self.session.add(
-                WorkflowAgentNodeBinding(
-                    tenant_id=workflow.tenant_id,
-                    app_id=workflow.app_id,
-                    workflow_id=workflow.id,
-                    workflow_version=workflow.version,
-                    node_id=node_id,
-                    binding_type=WorkflowAgentBindingType.INLINE_AGENT,
-                    agent_id=imported.agent.id,
-                    current_snapshot_id=imported.snapshot.id,
-                    node_job_config=node_job,
-                    created_by=account.id,
-                    updated_by=account.id,
-                )
+            binding = WorkflowAgentNodeBinding(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                workflow_id=workflow.id,
+                workflow_version=workflow.version,
+                node_id=node_id,
+                binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+                agent_id=imported.agent.id,
+                current_snapshot_id=imported.snapshot.id,
+                node_job_config=node_job,
+                created_by=account.id,
+                updated_by=account.id,
             )
+            self.session.add(binding)
+            self.session.flush()
+            node_job_file_ids = trusted_upload_file_ids(node_job.model_dump(mode="json"))
+            if node_job_file_ids:
+                lock_and_validate_owned_upload_files_in_session(
+                    self.session,
+                    tenant_id=workflow.tenant_id,
+                    upload_file_ids=tuple(node_job_file_ids),
+                )
             node_data["agent_binding"] = {
                 "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
                 "agent_id": imported.agent.id,
@@ -766,6 +775,13 @@ class AgentDslService:
         )
         self.session.add(snapshot)
         self.session.flush()
+        upload_file_ids = trusted_upload_file_ids(soul.model_dump(mode="json"))
+        if upload_file_ids:
+            lock_and_validate_owned_upload_files_in_session(
+                self.session,
+                tenant_id=tenant_id,
+                upload_file_ids=tuple(upload_file_ids),
+            )
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
             agent_id=agent.id,

@@ -1002,18 +1002,6 @@ export const zAppUnavailableError = zErrorResponse.and(
 )
 
 /**
- * ArchivedDocumentImmutableError
- *
- * The archived document is not editable.
- */
-export const zArchivedDocumentImmutableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('archived_document_immutable'),
-    status: z.literal(403),
-  }),
-)
-
-/**
  * AudioTooLargeError
  *
  * Audio size exceeded. {message}
@@ -1098,6 +1086,18 @@ export const zConversationVariableTypeMismatchError = zErrorResponse.and(
 )
 
 /**
+ * DatasetConcurrentUpdateError
+ *
+ * The dataset changed while it was being updated. Please retry the request.
+ */
+export const zDatasetConcurrentUpdateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_concurrent_update'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -1106,6 +1106,18 @@ export const zDatasetNameDuplicateError = zErrorResponse.and(
   z.object({
     code: z.literal('dataset_name_duplicate'),
     status: z.literal(409),
+  }),
+)
+
+/**
+ * DatasetNotInitializedError
+ *
+ * The dataset is still being initialized or indexing. Please wait a moment.
+ */
+export const zDatasetNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_not_initialized'),
+    status: z.literal(400),
   }),
 )
 
@@ -1130,6 +1142,18 @@ export const zEventStreamResponse = z.string()
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * ExternalHitTestingRecordResponse
+ */
+export const zExternalHitTestingRecordResponse = z
+  .object({
+    content: z.string().nullish(),
+    metadata: z.record(z.string(), z.unknown()).nullish(),
+    score: z.number().nullish(),
+    title: z.string().nullish(),
+  })
+  .strict()
 
 /**
  * FeedbackListQuery
@@ -1306,6 +1330,17 @@ export const zHitTestingDocument = z.object({
 })
 
 /**
+ * HitTestingExternalRetrievalModel
+ *
+ * Optional per-request overrides for an external knowledge provider.
+ */
+export const zHitTestingExternalRetrievalModel = z.object({
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean().nullish(),
+  top_k: z.int().nullish(),
+})
+
+/**
  * HitTestingFile
  */
 export const zHitTestingFile = z.object({
@@ -1370,7 +1405,7 @@ export const zHitTestingRecord = z.object({
  */
 export const zHitTestingResponse = z.object({
   query: zHitTestingQuery,
-  records: z.array(zHitTestingRecord),
+  records: z.array(z.union([zHitTestingRecord, zExternalHitTestingRecordResponse])),
 })
 
 /**
@@ -4385,7 +4420,7 @@ export const zPreProcessingRule = z.object({
 /**
  * ProcessRuleMode
  *
- * Dataset Process Rule Mode
+ * Dataset process-rule mode.
  */
 export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
 
@@ -5714,13 +5749,7 @@ export const zDocumentTextUpdate = z.intersection(
  */
 export const zHitTestingPayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
-  external_retrieval_model: z
-    .object({
-      score_threshold: z.number().optional(),
-      score_threshold_enabled: z.boolean().optional(),
-      top_k: z.int().optional(),
-    })
-    .nullish(),
+  external_retrieval_model: zHitTestingExternalRetrievalModel.nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
 })

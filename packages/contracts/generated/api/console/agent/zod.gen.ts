@@ -1892,6 +1892,70 @@ export const zFeedback = z.object({
  */
 export const zExecutionContentType = z.enum(['human_input'])
 
+export const zJsonValue = z.unknown()
+
+/**
+ * AppEnabledExternalDataToolResponse
+ */
+export const zAppEnabledExternalDataToolResponse = z.object({
+  config: z.record(z.string(), zJsonValue),
+  enabled: z.literal(true),
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  label: z.string().optional(),
+  type: z.string(),
+  variable: z.string(),
+})
+
+/**
+ * AppDisabledExternalDataToolResponse
+ */
+export const zAppDisabledExternalDataToolResponse = z.object({
+  config: z.record(z.string(), zJsonValue).optional(),
+  enabled: z.literal(false),
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  label: z.string().optional(),
+  type: z.string().optional(),
+  variable: z.string().optional(),
+})
+
+/**
+ * AppSensitiveWordAvoidanceResponse
+ */
+export const zAppSensitiveWordAvoidanceResponse = z.object({
+  config: z.record(z.string(), zJsonValue).optional(),
+  configs: z.array(zJsonValue).optional(),
+  enabled: z.boolean(),
+  type: z.string().optional(),
+})
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
+})
+
+/**
+ * AttachmentInfoDict
+ *
+ * Published attachment metadata; MIME type may be null for legacy uploads.
+ */
+export const zAttachmentInfoDict = z.object({
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  name: z.string(),
+  size: z.int(),
+  source_url: z.string(),
+})
+
 /**
  * KnowledgeFsCitation
  *
@@ -1921,13 +1985,13 @@ export const zRetrievalSourceMetadata = z.object({
   data_source_type: z.string().nullish(),
   dataset_id: z.string().nullish(),
   dataset_name: z.string().nullish(),
-  doc_metadata: z.record(z.string(), z.unknown()).nullish(),
+  doc_metadata: z.record(z.string(), zJsonValue).nullish(),
   document_asset_id: z.string().nullish(),
   document_id: z.string().nullish(),
   document_name: z.string().nullish(),
   document_revision: z.int().nullish(),
   document_version: z.int().nullish(),
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z.array(zAttachmentInfoDict).nullish(),
   hit_count: z.int().nullish(),
   index_node_hash: z.string().nullish(),
   knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
@@ -2078,6 +2142,34 @@ export const zAppAgentPromptResponse = z.object({
 export const zPlanningStrategy = z.enum(['function_call', 'react', 'react_router', 'router'])
 
 /**
+ * AppLegacyGoogleSearchToolResponse
+ */
+export const zAppLegacyGoogleSearchToolResponse = z.object({
+  google_search: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * AppLegacyWebReaderToolResponse
+ */
+export const zAppLegacyWebReaderToolResponse = z.object({
+  web_reader: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * AppLegacyWikipediaToolResponse
+ */
+export const zAppLegacyWikipediaToolResponse = z.object({
+  wikipedia: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * AppLegacyCurrentDatetimeToolResponse
+ */
+export const zAppLegacyCurrentDatetimeToolResponse = z.object({
+  current_datetime: z.record(z.string(), zJsonValue),
+})
+
+/**
  * AppEmbeddingModelResponse
  */
 export const zAppEmbeddingModelResponse = z.object({
@@ -2144,84 +2236,6 @@ export const zRerankMode = z.enum(['reranking_model', 'weighted_score'])
 export const zAppRerankingModelResponse = z.object({
   reranking_model_name: z.string().optional(),
   reranking_provider_name: z.string().optional(),
-})
-
-export const zJsonValue = z.unknown()
-
-/**
- * AppEnabledExternalDataToolResponse
- */
-export const zAppEnabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue),
-  enabled: z.literal(true),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  label: z.string().optional(),
-  type: z.string(),
-  variable: z.string(),
-})
-
-/**
- * AppDisabledExternalDataToolResponse
- */
-export const zAppDisabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue).optional(),
-  enabled: z.literal(false),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  label: z.string().optional(),
-  type: z.string().optional(),
-  variable: z.string().optional(),
-})
-
-/**
- * AppSensitiveWordAvoidanceResponse
- */
-export const zAppSensitiveWordAvoidanceResponse = z.object({
-  config: z.record(z.string(), zJsonValue).optional(),
-  configs: z.array(zJsonValue).optional(),
-  enabled: z.boolean(),
-  type: z.string().optional(),
-})
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue).nullish(),
-})
-
-/**
- * AppLegacyGoogleSearchToolResponse
- */
-export const zAppLegacyGoogleSearchToolResponse = z.object({
-  google_search: z.record(z.string(), zJsonValue),
-})
-
-/**
- * AppLegacyWebReaderToolResponse
- */
-export const zAppLegacyWebReaderToolResponse = z.object({
-  web_reader: z.record(z.string(), zJsonValue),
-})
-
-/**
- * AppLegacyWikipediaToolResponse
- */
-export const zAppLegacyWikipediaToolResponse = z.object({
-  wikipedia: z.record(z.string(), zJsonValue),
-})
-
-/**
- * AppLegacyCurrentDatetimeToolResponse
- */
-export const zAppLegacyCurrentDatetimeToolResponse = z.object({
-  current_datetime: z.record(z.string(), zJsonValue),
 })
 
 /**

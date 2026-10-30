@@ -17,6 +17,7 @@ from core.app.file_access import (
     grant_tool_file_access,
 )
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from factories.file_factory.builders import _resolve_file_type
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
@@ -32,7 +33,7 @@ from graphon.model_runtime.entities import (
 from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import LLMNodeChatModelMessage
 from graphon.runtime import VariablePool
-from models import CreatorUserRole, ToolFile, UploadFile
+from models import ToolFile, UploadFile
 
 # Test Data
 TEST_TENANT_ID = "test_tenant_id"

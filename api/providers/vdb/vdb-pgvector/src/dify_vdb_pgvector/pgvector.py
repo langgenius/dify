@@ -140,7 +140,14 @@ class PGVector(BaseVector):
     @override
     def text_exists(self, id: str) -> bool:
         with self._get_cursor() as cur:
-            cur.execute(f"SELECT id FROM {self.table_name} WHERE id = %s", (id,))
+            try:
+                cur.execute(f"SELECT id FROM {self.table_name} WHERE id = %s", (id,))
+            except psycopg2.errors.UndefinedTable:
+                # Image-only indexing checks for a duplicate before create()
+                # has had a chance to initialize the collection. Recover the
+                # pooled connection's aborted transaction before returning it.
+                cur.connection.rollback()
+                return False
             return cur.fetchone() is not None
 
     def get_by_ids(self, ids: list[str]) -> list[Document]:

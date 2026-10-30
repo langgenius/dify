@@ -41,6 +41,7 @@ from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from repositories.tag_repository import TagRepository
 from services.agent.errors import (
     AgentAccessNotReadyError,
@@ -682,6 +683,12 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
         session.add(app)
         session.flush()
+        if app.icon_type == IconType.IMAGE and app.icon:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=tenant_id,
+                upload_file_ids=(app.icon,),
+            )
 
         if settings.model_config:
             app_model_config = AppModelConfig(
@@ -793,6 +800,8 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         :param args: request args
         :return: App instance
         """
+        app = cls._lock_app_for_update(app, session=session)
+        previous_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
@@ -800,6 +809,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
         app.icon_type = resolved_icon_type
         app.icon = args["icon"]
+        cls._lock_new_image_icon(app, previous_icon_id=previous_icon_id, session=session)
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.max_active_requests = args.get("max_active_requests")
@@ -826,10 +836,13 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     @classmethod
     def update_app_fields(cls, app: App, changes: AppFieldChanges, *, account_id: str, session: Session) -> App:
         """Write only the fields in `changes`; the others keep their stored values."""
+        app = cls._lock_app_for_update(app, session=session)
+        previous_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
         app.name = changes.get("name", app.name)
         app.description = changes.get("description", app.description)
         app.icon_type = changes.get("icon_type", app.icon_type)
         app.icon = changes.get("icon", app.icon)
+        cls._lock_new_image_icon(app, previous_icon_id=previous_icon_id, session=session)
         app.icon_background = changes.get("icon_background", app.icon_background)
         app.use_icon_as_answer_icon = changes.get("use_icon_as_answer_icon", app.use_icon_as_answer_icon)
         app.max_active_requests = changes.get("max_active_requests", app.max_active_requests)
@@ -891,10 +904,13 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         :param icon_type: new icon type
         :return: App instance
         """
+        app = cls._lock_app_for_update(app, session=session)
+        previous_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
         app.icon = icon
         app.icon_background = icon_background
         if icon_type is not None:
             app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
+        cls._lock_new_image_icon(app, previous_icon_id=previous_icon_id, session=session)
         app.updated_by = account_id
         app.updated_at = naive_utc_now()
         cls._sync_backing_agent_identity(
@@ -909,6 +925,29 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         session.commit()
 
         return app
+
+    @staticmethod
+    def _lock_app_for_update(app: App, *, session: Session) -> App:
+        locked = session.scalar(
+            select(App)
+            .where(App.id == app.id, App.tenant_id == app.tenant_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if locked is None:
+            raise ConsoleAppNotFoundError("App not found")
+        return locked
+
+    @staticmethod
+    def _lock_new_image_icon(app: App, *, previous_icon_id: str | None, session: Session) -> None:
+        current_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
+        if not current_icon_id or current_icon_id == previous_icon_id:
+            return
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=app.tenant_id,
+            upload_file_ids=(current_icon_id,),
+        )
 
     @staticmethod
     def is_agent_app_access_ready(app: App, *, session: Session) -> bool:

@@ -9,8 +9,12 @@ from celery.canvas import Signature
 from configs import dify_config
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums import CloudPlan, DeploymentEdition
-from extensions.ext_database import db
+from enums import (
+    CloudPlan,
+    DeploymentEdition,
+)
+from enums.creator import CreatorUserRole
+from services.entities.upload_file import FileUploadActor
 from services.feature_service import FeatureService
 from services.file_service import FileService
 
@@ -22,11 +26,17 @@ class RagPipelineTaskProxy:
     _RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME = "rag_pipeline_invoke_entities.json"
 
     def __init__(
-        self, dataset_tenant_id: str, user_id: str, rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity]
-    ):
+        self,
+        dataset_tenant_id: str,
+        user_id: str,
+        rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity],
+        *,
+        files: FileService,
+    ) -> None:
         self._dataset_tenant_id = dataset_tenant_id
         self._user_id = user_id
         self._rag_pipeline_invoke_entities = rag_pipeline_invoke_entities
+        self._files = files
         self._tenant_isolated_task_queue = TenantIsolatedTaskQueue(dataset_tenant_id, "pipeline")
 
     @cached_property
@@ -37,8 +47,11 @@ class RagPipelineTaskProxy:
         text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]
         # Convert list to proper JSON string
         json_text = json.dumps(text)
-        upload_file = FileService(db.engine).upload_text(
-            json_text, self._RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME, self._user_id, self._dataset_tenant_id
+        upload_file = self._files.upload_text(
+            actor=FileUploadActor(id=self._user_id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=self._dataset_tenant_id,
+            text=json_text,
+            text_name=self._RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME,
         )
         logger.info(
             "tenant %s upload %d invoke entities", self._dataset_tenant_id, len(self._rag_pipeline_invoke_entities)

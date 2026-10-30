@@ -28,10 +28,12 @@ from controllers.common.access_response import (
     register_auth_error_response,
 )
 from controllers.mcp import mcp
+from controllers.service_api.flask_admission import DatasetApiResource
 from controllers.trigger import webhook
 from extensions import ext_request_logging
 from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import ExternalApi
+from machinery.context import RequestContext
 from models.engine import db
 from models.model import ApiToken, App, AppMCPServer, AppMode
 from services.app.mcp_server_service import AppMCPServerStatus
@@ -205,10 +207,9 @@ def uncached_token_client(
         def get(self, app_model: App) -> Never:
             pytest.fail(f"Invalid credentials reached the handler for app {app_model.id}")
 
-    class DatasetTokenResource(Resource):
-        @token_wraps.validate_dataset_token
-        def get(self, tenant_id: str) -> Never:
-            pytest.fail(f"Invalid credentials reached the dataset handler for tenant {tenant_id}")
+    class DatasetTokenResource(DatasetApiResource):
+        def get(self, context: RequestContext) -> Never:
+            pytest.fail(f"Invalid credentials reached the dataset handler for tenant {context.active_workspace_id}")
 
     api.add_resource(AppTokenResource, "/app")
     api.add_resource(DatasetTokenResource, "/dataset")
@@ -397,11 +398,11 @@ def test_existing_mcp_keeps_normal_large_payload_and_response(
     client, _execute, _end_user = mcp_client
     _persist(sqlite_session, _mcp_server("existing-app", "existing-fixture"), _app("existing-app", "tenant"))
     mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
-    expected_body = b'{"id":2,"jsonrpc":"2.0","result":{}}'
+    expected_body = b'{"jsonrpc": "2.0", "id": 2, "result": {}}'
     process = mocker.patch.object(
         mcp.MCPAppApi,
-        "_process_mcp_message",
-        return_value=Response(expected_body, status=200, content_type="application/json"),
+        "_handle_request",
+        return_value=Response(expected_body, content_type="application/json"),
     )
     payload = {
         "jsonrpc": "2.0",
@@ -501,6 +502,11 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     mocker.patch.object(maker, "class_", side_effect=create_session)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     form = mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
+    process = mocker.patch.object(
+        mcp.MCPAppApi,
+        "_handle_request",
+        return_value=Response('{"jsonrpc":"2.0","id":1,"result":{}}', content_type="application/json"),
+    )
     attached_to: list[Session | None] = []
 
     def process_message(*args: object) -> Response:

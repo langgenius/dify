@@ -9,6 +9,7 @@ from models.utils.file_input_compat import (
     build_file_from_stored_mapping,
     rebuild_serialized_graph_files_without_lookup,
     resolve_file_mapping_tenant_id,
+    resolve_upload_file_ids_from_serialized_file_value,
     restore_input_files,
 )
 
@@ -126,6 +127,28 @@ def test_rebuild_serialized_graph_files_without_lookup_rehydrates_nested_files()
 
 def test_rebuild_serialized_graph_files_without_lookup_preserves_scalar_values() -> None:
     assert rebuild_serialized_graph_files_without_lookup("plain-text") == "plain-text"
+
+
+def test_resolve_upload_file_ids_from_serialized_file_value_uses_persistent_upload_grammar() -> None:
+    value = [
+        {"transfer_method": "local_file", "reference": "local-file"},
+        {"transfer_method": "remote_url", "related_id": "remote-upload"},
+        {"transfer_method": "remote_url", "url": "https://example.test/external.png"},
+        {"transfer_method": "tool_file", "related_id": "tool-file"},
+        {"transfer_method": "datasource_file", "related_id": "datasource-file"},
+        {"transfer_method": "datasource_file", "datasource_file_id": "legacy-datasource-file"},
+        {"transfer_method": "local_file", "upload_file_id": "legacy-upload"},
+    ]
+
+    assert resolve_upload_file_ids_from_serialized_file_value(
+        value_type="array[file]",
+        value=value,
+    ) == ("local-file", "remote-upload", "datasource-file", "legacy-datasource-file", "legacy-upload")
+
+
+def test_resolve_upload_file_ids_from_serialized_file_value_ignores_unrelated_values() -> None:
+    assert resolve_upload_file_ids_from_serialized_file_value(value_type="string", value='{"related_id":"x"}') == ()
+    assert resolve_upload_file_ids_from_serialized_file_value(value_type="file", value="not-json") == ()
 
 
 def test_build_file_from_stored_mapping_rebuilds_remote_urls_without_record_lookup(

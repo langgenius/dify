@@ -1,5 +1,3 @@
-from typing import overload
-
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -9,6 +7,7 @@ from controllers.common import helpers
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
+    ForbiddenError,
     RemoteFileAccessDeniedError,
     RemoteFileInvalidResponseError,
     RemoteFileInvalidUrlError,
@@ -21,6 +20,7 @@ from controllers.common.schema import JsonResponseWithStatus, register_response_
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate, with_current_user
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from libs.external_api import error_responses
@@ -28,7 +28,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
-from services.file_service import FileUploadActor
+from services.entities.upload_file import FileUploadActor
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -96,42 +96,18 @@ class GetRemoteFileInfo(Resource):
         )
 
 
-@overload
 def upload_remote_file(
     *,
     url: str,
-    current_user: Account,
-    resource_tenant_id: str | None = None,
-) -> RemoteFileUploadResult: ...
-
-
-@overload
-def upload_remote_file(
-    *,
-    url: str,
-    current_user: FileUploadActor,
-    resource_tenant_id: str,
-) -> RemoteFileUploadResult: ...
-
-
-def upload_remote_file(
-    *,
-    url: str,
-    current_user: Account | FileUploadActor,
-    resource_tenant_id: str | None = None,
+    actor: FileUploadActor,
+    tenant_id: str,
 ) -> RemoteFileUploadResult:
-    """Fetch a remote file and persist it under the requested tenant.
-
-    For Account, resource_tenant_id=None (including when omitted) uses the
-    current workspace; an explicit value takes precedence. FileUploadActor
-    carries no tenant, so resource_tenant_id must be provided explicitly.
-    RemoteFileService enforces this before fetching the remote file.
-    """
+    """Upload for an admitted actor and tenant, translating failures to HTTP errors."""
     try:
         return application_services().remote_files.upload_from_url(
             url=url,
-            user=current_user,
-            tenant_id=resource_tenant_id,
+            actor=actor,
+            tenant_id=tenant_id,
         )
     except RemoteFileInvalidUrlServiceError as error:
         raise RemoteFileInvalidUrlError from error
@@ -146,11 +122,11 @@ def upload_remote_file(
     except RemoteFileInvalidResponseServiceError as error:
         raise RemoteFileInvalidResponseError from error
     except services.errors.file.FileTooLargeError as error:
-        raise FileTooLargeError(error.description or "File size exceeded.") from error
+        raise FileTooLargeError(description="File size exceeded.") from error
     except services.errors.file.UnsupportedFileTypeError as error:
         raise UnsupportedFileTypeError from error
     except services.errors.file.BlockedFileExtensionError as error:
-        raise BlockedFileExtensionError(error.description) from error
+        raise BlockedFileExtensionError() from error
 
 
 @console_ns.route("/remote-files/upload")
@@ -183,8 +159,12 @@ class RemoteFileUpload(Resource):
     @with_current_user
     @model_validate(RemoteFileUploadPayload)
     def post(self, payload: RemoteFileUploadPayload, current_user: Account) -> JsonResponseWithStatus:
+        tenant_id = current_user.current_tenant_id
+        if not tenant_id:
+            raise ForbiddenError()
         remote_file = upload_remote_file(
             url=payload.url,
-            current_user=current_user,
+            actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=tenant_id,
         )
         return dump_response(FileWithSignedUrl, remote_file), 201

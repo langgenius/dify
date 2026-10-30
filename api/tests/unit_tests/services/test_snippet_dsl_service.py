@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from typing import NoReturn
 from unittest.mock import Mock
 
@@ -8,13 +8,17 @@ import pytest
 import yaml
 from redis import Redis
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.nodes import BuiltinNodeTypes
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.snippet_dsl_service import (
     IMPORT_INFO_REDIS_EXPIRY,
@@ -25,7 +29,7 @@ from services.snippet_dsl_service import (
     _check_version_compatibility,
 )
 from services.snippet_service import SnippetService
-from tests.helpers.unit.model_factories import make_account, make_tenant, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
 pytestmark = [
@@ -37,9 +41,23 @@ type PendingCache = tuple[Redis[bytes], dict[str, bytes], list[tuple[object, ...
 
 
 @pytest.fixture
-def service(sqlite_session: Session) -> SnippetDslService:
+def snippets(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> SnippetService:
+    """Bind the shared snippet service to the caller-owned DSL transaction."""
+    service = SnippetService(
+        session_maker=sqlite_session_factory,
+        node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory),
+        workflow_runs=DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory),
+    )
+    return service.with_session(sqlite_session)
+
+
+@pytest.fixture
+def service(sqlite_session: Session, snippets: SnippetService) -> SnippetDslService:
     """Create the service with a real caller-owned SQLite session."""
-    return SnippetDslService(session=sqlite_session)
+    return SnippetDslService(session=sqlite_session, snippets=snippets)
 
 
 @pytest.fixture
@@ -113,8 +131,8 @@ def _snippet(
     name: str = "Snippet",
     description: str | None = None,
     snippet_type: SnippetType = SnippetType.NODE,
-    icon_info: dict | None = None,
-    input_fields: list[dict] | None = None,
+    icon_info: dict[str, object] | None = None,
+    input_fields: list[dict[str, object]] | None = None,
 ) -> CustomizedSnippet:
     return CustomizedSnippet(
         id=snippet_id,
@@ -128,8 +146,42 @@ def _snippet(
     )
 
 
-def _workflow(*, graph: dict | None = None) -> Workflow:
-    return make_workflow(workflow_id="workflow-1", app_id="snippet-1", kind=WorkflowKind.SNIPPET, graph=graph)
+def _workflow(*, graph: Mapping[str, object] | None = None) -> Workflow:
+    return make_workflow(
+        workflow_id="workflow-1",
+        app_id="snippet-1",
+        kind=WorkflowKind.SNIPPET,
+        graph=dict(graph) if graph is not None else None,
+    )
+
+
+def _yaml_with_upload_reference(file_id: str) -> tuple[str, dict[str, object]]:
+    graph: dict[str, object] = {
+        "nodes": [
+            {
+                "id": "llm-1",
+                "data": {
+                    "type": "llm",
+                    "files": [
+                        {
+                            "transfer_method": "local_file",
+                            "upload_file_id": file_id,
+                        }
+                    ],
+                },
+            }
+        ],
+        "edges": [],
+    }
+    content = yaml.safe_dump(
+        {
+            "version": "0.1.0",
+            "kind": "snippet",
+            "snippet": {"name": "Imported", "type": "node"},
+            "workflow": {"graph": graph},
+        }
+    )
+    return content, graph
 
 
 @pytest.mark.parametrize(
@@ -140,7 +192,7 @@ def _workflow(*, graph: dict | None = None) -> Workflow:
         ("0.1.0", ImportStatus.COMPLETED_WITH_WARNINGS),
     ],
 )
-def test_check_version_compatibility_special_cases(version, expected):
+def test_check_version_compatibility_special_cases(version: str, expected: ImportStatus) -> None:
     assert _check_version_compatibility(version) == expected
 
 
@@ -148,12 +200,12 @@ def test_check_version_compatibility_returns_pending_for_older_major() -> None:
     assert _check_version_compatibility("0.0.9") == ImportStatus.COMPLETED_WITH_WARNINGS
 
 
-def test_import_snippet_rejects_invalid_mode(service: SnippetDslService):
+def test_import_snippet_rejects_invalid_mode(service: SnippetDslService) -> None:
     with pytest.raises(ValueError, match="Invalid import_mode"):
         service.import_snippet(account=_account(), import_mode="bad-mode")
 
 
-def test_import_snippet_requires_yaml_content(service: SnippetDslService):
+def test_import_snippet_requires_yaml_content(service: SnippetDslService) -> None:
     result = service.import_snippet(
         account=_account(),
         import_mode=ImportMode.YAML_CONTENT.value,
@@ -303,7 +355,9 @@ def test_import_snippet_rejects_oversized_yaml_content(
         ("version: 0.1.0\nkind: snippet\n", "Missing snippet data in YAML content"),
     ],
 )
-def test_import_snippet_rejects_invalid_yaml_shapes(service: SnippetDslService, yaml_content, expected_error) -> None:
+def test_import_snippet_rejects_invalid_yaml_shapes(
+    service: SnippetDslService, yaml_content: str, expected_error: str
+) -> None:
     result = service.import_snippet(
         account=_account(),
         import_mode=ImportMode.YAML_CONTENT.value,
@@ -336,7 +390,7 @@ def test_import_snippet_returns_failed_for_invalid_yaml_syntax(service: SnippetD
     assert result.error.startswith("Invalid YAML format:")
 
 
-def test_import_snippet_rejects_forbidden_nodes(service: SnippetDslService):
+def test_import_snippet_rejects_forbidden_nodes(service: SnippetDslService) -> None:
     yaml_content = """
 version: 0.3.0
 kind: snippet
@@ -405,7 +459,7 @@ workflow:
     assert pending.description == "Override description"
 
 
-def test_import_snippet_returns_failed_when_update_target_missing(service: SnippetDslService):
+def test_import_snippet_returns_failed_when_update_target_missing(service: SnippetDslService) -> None:
     yaml_content = """
 version: 0.1.0
 kind: snippet
@@ -428,9 +482,86 @@ workflow:
     assert result.error == "Snippet not found"
 
 
+@pytest.mark.parametrize(
+    ("file_id", "file_tenant"),
+    [
+        ("missing-file", None),
+        ("foreign-file", "tenant-2"),
+    ],
+)
+def test_import_existing_snippet_rejects_unowned_new_workflow_file_without_changing_draft(
+    service: SnippetDslService,
+    sqlite_session: Session,
+    file_id: str,
+    file_tenant: str | None,
+) -> None:
+    old_graph: dict[str, object] = {"nodes": [], "edges": [], "marker": "old"}
+    snippet = _snippet(name="Original")
+    draft = _workflow(graph=old_graph)
+    sqlite_session.add_all([snippet, draft])
+    if file_tenant is not None:
+        sqlite_session.add(make_upload_file(file_id=file_id, tenant_id=file_tenant))
+    sqlite_session.commit()
+    yaml_content, _new_graph = _yaml_with_upload_reference(file_id)
+
+    result = service.import_snippet(
+        account=_account(),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content=yaml_content,
+        snippet_id=snippet.id,
+    )
+    sqlite_session.rollback()
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error
+    sqlite_session.expire_all()
+    persisted_snippet = sqlite_session.get(CustomizedSnippet, snippet.id)
+    persisted_draft = sqlite_session.get(Workflow, draft.id)
+    assert persisted_snippet is not None
+    assert persisted_snippet.name == "Original"
+    assert persisted_draft is not None
+    assert persisted_draft.graph_dict == old_graph
+
+
+def test_import_existing_snippet_accepts_owned_workflow_file_through_real_file_validator(
+    service: SnippetDslService,
+    sqlite_session: Session,
+) -> None:
+    snippet = _snippet(name="Original")
+    draft = _workflow(graph={"nodes": [], "edges": [], "marker": "old"})
+    upload = make_upload_file(file_id="owned-file", tenant_id=snippet.tenant_id)
+    sqlite_session.add_all([snippet, draft, upload])
+    sqlite_session.commit()
+    yaml_content, new_graph = _yaml_with_upload_reference(upload.id)
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        statements.append(" ".join(statement.lower().replace('"', "").split()))
+
+    engine = sqlite_session.get_bind()
+    event.listen(engine, "before_cursor_execute", record_statement)
+    try:
+        result = service.import_snippet(
+            account=_account(),
+            import_mode=ImportMode.YAML_CONTENT.value,
+            yaml_content=yaml_content,
+            snippet_id=snippet.id,
+        )
+    finally:
+        event.remove(engine, "before_cursor_execute", record_statement)
+
+    assert result.status != ImportStatus.FAILED
+    assert result.snippet_id == snippet.id
+    assert any(" from upload_files " in statement for statement in statements)
+    sqlite_session.expire_all()
+    persisted_draft = sqlite_session.get(Workflow, draft.id)
+    assert persisted_draft is not None
+    assert persisted_draft.graph_dict == new_graph
+
+
 def test_import_snippet_passes_dependencies_to_create_or_update(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     snippet = _snippet()
     create_or_update = Mock(return_value=snippet)
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
@@ -463,7 +594,7 @@ workflow:
 
 def test_import_snippet_rolls_back_when_create_or_update_raises(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     rollback_events: list[str] = []
     event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
     sqlite_session.begin()
@@ -481,7 +612,7 @@ def test_import_snippet_rolls_back_when_create_or_update_raises(
 
 
 @pytest.mark.usefixtures("pending_cache")
-def test_confirm_import_returns_failed_when_pending_data_missing(service: SnippetDslService):
+def test_confirm_import_returns_failed_when_pending_data_missing(service: SnippetDslService) -> None:
     result = service.confirm_import(import_id="missing", account=_account())
 
     assert result.status == ImportStatus.FAILED
@@ -490,7 +621,7 @@ def test_confirm_import_returns_failed_when_pending_data_missing(service: Snippe
 
 def test_confirm_import_returns_failed_for_invalid_pending_payload(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=object()))
 
     result = service.confirm_import(import_id="bad", account=_account())
@@ -500,7 +631,11 @@ def test_confirm_import_returns_failed_for_invalid_pending_payload(
 
 
 def test_confirm_import_is_scoped_to_its_owner(
-    service: SnippetDslService, monkeypatch: pytest.MonkeyPatch, pending_cache: PendingCache, sqlite_session: Session
+    service: SnippetDslService,
+    snippets: SnippetService,
+    monkeypatch: pytest.MonkeyPatch,
+    pending_cache: PendingCache,
+    sqlite_session: Session,
 ) -> None:
     account = _account()
     yaml_content = """
@@ -553,7 +688,7 @@ workflow:
     assert snippet.created_by == account.id
     assert snippet.name == "Override name"
     assert snippet.description == "Override description"
-    assert SnippetService(session=sqlite_session).get_draft_workflow(snippet) is not None
+    assert snippets.get_draft_workflow(snippet) is not None
     assert commands[-1] == ("DEL", redis_key)
     assert redis_key not in values
 
@@ -603,7 +738,7 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(
     assert rollback_events == ["rollback"]
 
 
-def test_check_dependencies_returns_empty_without_draft_workflow(service: SnippetDslService):
+def test_check_dependencies_returns_empty_without_draft_workflow(service: SnippetDslService) -> None:
     result = service.check_dependencies(_snippet())
 
     assert result.leaked_dependencies == []
@@ -657,8 +792,11 @@ def test_check_dependencies_returns_generated_dependencies(
 
 
 def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
-    service: SnippetDslService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+    service: SnippetDslService,
+    snippets: SnippetService,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
     snippet = _snippet(
         name="Old",
         description="Old",
@@ -713,7 +851,7 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     persisted = sqlite_session.get(CustomizedSnippet, snippet.id)
     assert persisted is not None
     assert persisted.name == "New"
-    workflow = SnippetService(session=sqlite_session).get_draft_workflow(snippet)
+    workflow = snippets.get_draft_workflow(snippet)
     assert workflow is draft_workflow
     assert workflow.graph_dict == {"nodes": [], "edges": []}
     assert sqlite_session.get(WorkflowAgentNodeBinding, "retired-binding") is None
@@ -726,7 +864,11 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     ]
 
 
-def test_create_or_update_snippet_creates_new_snippet_and_flushes(service: SnippetDslService, sqlite_session: Session):
+def test_create_or_update_snippet_creates_new_snippet_and_flushes(
+    service: SnippetDslService,
+    snippets: SnippetService,
+    sqlite_session: Session,
+) -> None:
     result = service._create_or_update_snippet(
         snippet=None,
         data={
@@ -745,20 +887,20 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(service: Snipp
     assert result.type == "group"
     assert not sqlite_session.in_transaction()
     assert sqlite_session.get(CustomizedSnippet, result.id) is result
-    workflow = SnippetService(session=sqlite_session).get_draft_workflow(result)
+    workflow = snippets.get_draft_workflow(result)
     assert workflow is not None
     assert workflow.graph_dict == {"nodes": [], "edges": []}
     assert workflow.created_by == "account-1"
     assert result.input_fields_list == [{"variable": "query"}]
 
 
-def test_export_snippet_dsl_raises_without_draft_workflow(service: SnippetDslService):
+def test_export_snippet_dsl_raises_without_draft_workflow(service: SnippetDslService) -> None:
     with pytest.raises(ValueError, match="Missing draft workflow"):
         service.export_snippet_dsl(_snippet())
 
 
 @pytest.mark.usefixtures("plugin_catalog")
-def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_session: Session):
+def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_session: Session) -> None:
     workflow = _workflow()
     snippet = _snippet(
         name="Exported",
@@ -777,7 +919,9 @@ def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_sess
 
 
 @pytest.mark.usefixtures("plugin_catalog")
-def test_export_snippet_dsl_uses_requested_published_workflow(service: SnippetDslService, sqlite_session: Session):
+def test_export_snippet_dsl_uses_requested_published_workflow(
+    service: SnippetDslService, sqlite_session: Session
+) -> None:
     workflow = _workflow(graph={"nodes": [], "edges": []})
     workflow.version = "published-1"
     draft_workflow = _workflow(graph={"nodes": [], "edges": [], "draft_only": True})
@@ -868,11 +1012,14 @@ def test_extract_dependencies_from_workflow_graph_covers_model_variants(service:
 
 
 @pytest.mark.usefixtures("plugin_catalog")
-def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(service: SnippetDslService):
+def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(
+    service: SnippetDslService,
+) -> None:
+    empty_data: dict[str, object] = {}
     workflow_dict = {
         "graph": {
             "nodes": [
-                {"data": {}},
+                {"data": empty_data},
                 {
                     "data": {
                         "type": BuiltinNodeTypes.TOOL,
@@ -921,7 +1068,7 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
 @pytest.mark.usefixtures("plugin_catalog")
 def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
-):
+) -> None:
     workflow_dict = {
         "graph": {
             "nodes": [

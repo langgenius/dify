@@ -74,8 +74,8 @@ from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode
-from services.app_generate_service import AppGenerateService
 from services.app_task_service import WorkflowStopOutcome
+from services.entities.upload_file import FileUploadActor
 from services.errors.app import (
     IsDraftWorkflowError,
     WorkflowIdFormatError,
@@ -149,7 +149,7 @@ _STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
 
 def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, invoke_from: InvokeFrom):
-    return AppGenerateService.generate(
+    return application_services().app_generation.generate(
         session=session,
         app_model=app,
         user=caller,
@@ -161,11 +161,13 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, inv
 
 def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
     args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
+    actor = FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role)
+    tenant_id = ctx.workspace.id
     if payload.files or payload.attachments:
         end_read_transaction(ctx.session)
-    args["inputs"] = merge_files(payload.inputs, payload.files, ctx.caller)
+    args["inputs"] = merge_files(payload.inputs, payload.files, actor=actor, tenant_id=tenant_id)
     if payload.attachments:
-        args["files"] = materialize(payload.attachments, ctx.caller)
+        args["files"] = materialize(payload.attachments, actor=actor, tenant_id=tenant_id)
     return args
 
 

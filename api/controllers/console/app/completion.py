@@ -45,6 +45,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
@@ -55,7 +56,6 @@ from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
-from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
@@ -177,7 +177,7 @@ class CompletionMessageApi(Resource):
         args["auto_generate_name"] = False
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=current_user,
@@ -561,7 +561,7 @@ def _generate_chat_message(
     streaming: bool,
 ):
     try:
-        return AppGenerateService.generate(
+        return application_services().app_generation.generate(
             session=session,
             app_model=app_model,
             user=current_user,

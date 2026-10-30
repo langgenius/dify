@@ -199,6 +199,18 @@ export const zRetrievalSettingResponse = z.object({
 })
 
 /**
+ * DatasetConcurrentUpdateError
+ *
+ * The dataset changed while it was being updated. Please retry the request.
+ */
+export const zDatasetConcurrentUpdateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_concurrent_update'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -326,18 +338,6 @@ export const zSimpleResultMessageResponse = z.object({
 })
 
 /**
- * DocumentIndexingError
- *
- * The document is being processed and cannot be edited.
- */
-export const zDocumentIndexingError = zErrorResponse.and(
-  z.object({
-    code: z.literal('document_indexing'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ArchivedDocumentImmutableError
  *
  * The archived document is not editable.
@@ -346,6 +346,18 @@ export const zArchivedDocumentImmutableError = zErrorResponse.and(
   z.object({
     code: z.literal('archived_document_immutable'),
     status: z.literal(403),
+  }),
+)
+
+/**
+ * DocumentIndexingError
+ *
+ * The document is being processed and cannot be edited.
+ */
+export const zDocumentIndexingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_indexing'),
+    status: z.literal(400),
   }),
 )
 
@@ -734,7 +746,7 @@ export const zProcessRuleLimitsResponse = z.object({
 /**
  * ProcessRuleMode
  *
- * Dataset Process Rule Mode
+ * Dataset process-rule mode.
  */
 export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
 
@@ -857,12 +869,14 @@ export const zExternalHitTestingQueryResponse = z.object({
 /**
  * ExternalHitTestingRecordResponse
  */
-export const zExternalHitTestingRecordResponse = z.object({
-  content: z.string().nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish(),
-  score: z.number().nullish(),
-  title: z.string().nullish(),
-})
+export const zExternalHitTestingRecordResponse = z
+  .object({
+    content: z.string().nullish(),
+    metadata: z.record(z.string(), z.unknown()).nullish(),
+    score: z.number().nullish(),
+    title: z.string().nullish(),
+  })
+  .strict()
 
 /**
  * ExternalHitTestingResponse
@@ -870,6 +884,17 @@ export const zExternalHitTestingRecordResponse = z.object({
 export const zExternalHitTestingResponse = z.object({
   query: zExternalHitTestingQueryResponse,
   records: z.array(zExternalHitTestingRecordResponse),
+})
+
+/**
+ * HitTestingExternalRetrievalModel
+ *
+ * Optional per-request overrides for an external knowledge provider.
+ */
+export const zHitTestingExternalRetrievalModel = z.object({
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean().nullish(),
+  top_k: z.int().nullish(),
 })
 
 /**
@@ -1535,13 +1560,7 @@ export const zRetrievalModel = z.object({
  */
 export const zHitTestingPayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
-  external_retrieval_model: z
-    .object({
-      score_threshold: z.number().optional(),
-      score_threshold_enabled: z.boolean().optional(),
-      top_k: z.int().optional(),
-    })
-    .nullish(),
+  external_retrieval_model: zHitTestingExternalRetrievalModel.nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
 })
@@ -1792,7 +1811,7 @@ export const zHitTestingRecord = z.object({
  */
 export const zHitTestingResponse = z.object({
   query: zHitTestingQuery,
-  records: z.array(zHitTestingRecord),
+  records: z.array(z.union([zHitTestingRecord, zExternalHitTestingRecordResponse])),
 })
 
 /**
@@ -2367,18 +2386,6 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath 
  * Document resumed successfully
  */
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse = z.void()
-
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath = z.object({
-  action: z.string(),
-  dataset_id: z.uuid(),
-  document_id: z.uuid(),
-})
-
-/**
- * Processing status updated successfully
- */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse =
-  zSimpleResultResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameBody = zDocumentRenamePayload
 

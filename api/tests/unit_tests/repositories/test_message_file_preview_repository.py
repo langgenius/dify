@@ -6,12 +6,13 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from models.base import TypeBase
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import Message, MessageFile, UploadFile
-from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.conversation.message_file_preview_repository import MessageFilePreviewQueryRepository
 from services.message_file_preview_service import (
     MessageFilePreviewAccessDeniedError,
     MessageFilePreviewNotFoundError,

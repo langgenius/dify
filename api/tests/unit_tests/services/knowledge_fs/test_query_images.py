@@ -6,9 +6,9 @@ from datetime import datetime
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.knowledge_fs import query_images

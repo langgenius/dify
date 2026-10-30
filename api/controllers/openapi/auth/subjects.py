@@ -16,10 +16,11 @@ from constants.oauth_bearer import Scope, SubjectType
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.data import ExternalIdentity
 from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from libs.oauth_bearer import AuthContext
 from models.account import Account
-from models.enums import CreatorUserRole, EndUserType
+from models.enums import EndUserType
 from models.model import EndUser
 from services.enterprise.enterprise_service import WebAppAccessMode
 

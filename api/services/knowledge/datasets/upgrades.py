@@ -1,13 +1,12 @@
 """Classic-to-Agent knowledge base upgrade use cases behind the dataset console endpoints."""
 
 from collections.abc import Callable
+from typing import Protocol
 from uuid import uuid4
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
-from models import Dataset
 from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus
 from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeNotFoundError,
@@ -15,8 +14,9 @@ from services.dataset_knowledge_fs_upgrade_service import (
     upgrade_discovery_response,
 )
 from services.knowledge.dataset_access import DatasetAccess, DatasetAccessError
-from services.knowledge.dataset_service import DatasetService
-from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations, load_actor
+from services.knowledge.datasets.contracts import DatasetListFilter, DatasetVisibility
+from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge_fs.product_dto import KnowledgeFSUpgradeDiscoveryResponse
 
 _RECOVERABLE_STATUSES = (
@@ -30,13 +30,27 @@ class KnowledgeFSUpgradeUnavailableError(Exception):
     """The KnowledgeFS feature is disabled, so upgrades cannot start or retry."""
 
 
+class KnowledgeUpgradeDatasets(Protocol):
+    def visibility(self, context: RequestContext) -> DatasetVisibility: ...
+
+    def list_datasets(
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        accessible_ids: list[str] | None,
+        include_own: bool,
+    ) -> DatasetPage: ...
+
+    def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
+
+
 class KnowledgeUpgradeApplicationService:
     def __init__(
         self,
         *,
         session_factory: sessionmaker[Session],
         dataset_access: DatasetAccess,
-        datasets: SQLAlchemyDatasetOperations,
+        datasets: KnowledgeUpgradeDatasets,
         rbac_enabled: bool,
         feature_enabled: Callable[[], bool],
         enqueue: Callable[[KnowledgeFSUpgradeSnapshotService, str, str], None] | None = None,
@@ -57,16 +71,16 @@ class KnowledgeUpgradeApplicationService:
         dataset_ids = list(dict.fromkeys(job.old_dataset_id for job in jobs))
         if not dataset_ids:
             return []
-        accessible_ids = self._datasets.visibility(context).list_scope(rbac_enabled=self._rbac_enabled)
-        with self._sessions() as session:
-            datasets, _ = DatasetService.get_datasets_by_ids(
-                dataset_ids,
-                workspace_id,
-                user=load_actor(session, context),
-                accessible_dataset_ids=accessible_ids,
-                session=session,
+        accessible_ids, include_own = self._datasets.visibility(context).list_scope(rbac_enabled=self._rbac_enabled)
+        visible_ids: list[str] = []
+        for offset in range(0, len(dataset_ids), 100):
+            page = self._datasets.list_datasets(
+                context,
+                DatasetListFilter(ids=dataset_ids[offset : offset + 100], limit=100),
+                accessible_ids,
+                include_own,
             )
-            visible_ids = [str(dataset.id) for dataset in datasets]
+            visible_ids.extend(str(dataset["id"]) for dataset in page["data"])
         allowed_ids: set[str] = set()
         for dataset_id in visible_ids:
             try:
@@ -78,13 +92,12 @@ class KnowledgeUpgradeApplicationService:
 
     def discovery(self, context: RequestContext, *, dataset_id: str) -> KnowledgeFSUpgradeDiscoveryResponse:
         dataset = self._dataset_access.require_accessible(context, dataset_id)
-        with self._sessions() as session:
-            provider = session.scalar(
-                select(Dataset.provider).where(Dataset.id == dataset.id, Dataset.tenant_id == dataset.workspace_id)
-            )
+        details = self._datasets.get_dataset(context, DatasetRef(dataset.workspace_id, dataset.id))
         job = self._snapshots().get_latest(tenant_id=dataset.workspace_id, dataset_id=dataset.id)
         return upgrade_discovery_response(
-            job, feature_enabled=self._feature_enabled(), dataset_provider=str(provider or "")
+            job,
+            feature_enabled=self._feature_enabled(),
+            dataset_provider=str(details["provider"]),
         )
 
     def start(self, context: RequestContext, *, dataset_id: str, idempotency_key: str) -> KnowledgeFSUpgradeJob:

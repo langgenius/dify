@@ -218,14 +218,20 @@ class HumanInputFileUploadApi(Resource):
         # The browser always submits multipart/form-data. A non-empty `url`
         # switches the endpoint into the remote-fetch flow; otherwise the
         # request must carry a local `file`.
-        if form.url is not None:
-            response = _upload_remote_file(
-                service=upload_service,
-                context=context,
-                url=str(form.url),
-            )
-        else:
-            response = _upload_local_file(service=upload_service, context=context)
+        try:
+            if form.url is not None:
+                response = _upload_remote_file(
+                    service=upload_service,
+                    context=context,
+                    url=str(form.url),
+                )
+            else:
+                response = _upload_local_file(service=upload_service, context=context)
+        except InvalidUploadTokenError as exc:
+            # The form/token owner is rechecked after the potentially slow file
+            # write. A deletion in that window is still an invalid capability,
+            # not an internal upload failure.
+            raise InvalidUploadTokenForbiddenError() from exc
 
         # response-contract:ignore pre-dumped response. See above
         return response, 201

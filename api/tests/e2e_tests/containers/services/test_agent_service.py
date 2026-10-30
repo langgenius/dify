@@ -6,7 +6,8 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models import Account, AppMode, CreatorUserRole
+from enums.creator import CreatorUserRole
+from models import Account, AppMode
 from models.enums import ConversationFromSource, EndUserType, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.agent_service import AgentService

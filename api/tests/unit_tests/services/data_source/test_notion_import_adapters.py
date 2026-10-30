@@ -278,7 +278,7 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor(
 ) -> None:
     _store_credentials(sqlite_session_factory, {"integration_secret": "encrypted-secret"})
     extractor_calls: list[NotionExtractor] = []
-    factory_calls: list[tuple[str, str, str, str, Callable[[], str], str]] = []
+    factory_calls: list[tuple[str, str, str]] = []
 
     def extract(extractor: NotionExtractor) -> list[Document]:
         extractor_calls.append(extractor)
@@ -286,30 +286,15 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor(
 
     def extractor_factory(
         *,
-        notion_workspace_id: str,
         notion_obj_id: str,
         notion_page_type: str,
         notion_access_token: str,
-        notion_token_loader: Callable[[], str],
-        tenant_id: str,
     ) -> NotionExtractor:
-        factory_calls.append(
-            (
-                notion_workspace_id,
-                notion_obj_id,
-                notion_page_type,
-                notion_access_token,
-                notion_token_loader,
-                tenant_id,
-            )
-        )
+        factory_calls.append((notion_obj_id, notion_page_type, notion_access_token))
         return NotionExtractor(
-            notion_workspace_id=notion_workspace_id,
             notion_obj_id=notion_obj_id,
             notion_page_type=notion_page_type,
             notion_access_token=notion_access_token,
-            notion_token_loader=notion_token_loader,
-            tenant_id=tenant_id,
         )
 
     monkeypatch.setattr(NotionExtractor, "extract", extract)
@@ -331,13 +316,10 @@ def test_preview_requires_secret_and_passes_it_only_to_extractor(
     assert len(extractor_calls) == 1
     assert type(extractor_calls[0]) is NotionExtractor
     assert len(factory_calls) == 1
-    workspace_id, object_id, page_type, access_token, token_loader, tenant_id = factory_calls[0]
-    assert workspace_id == ""
+    object_id, page_type, access_token = factory_calls[0]
     assert object_id == "page-1"
     assert page_type == "page"
     assert access_token == "secret"
-    assert token_loader() == "secret"
-    assert tenant_id == "workspace-1"
 
 
 def test_preview_fails_closed_when_secret_is_missing(

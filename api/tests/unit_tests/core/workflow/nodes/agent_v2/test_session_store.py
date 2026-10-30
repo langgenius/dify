@@ -21,6 +21,7 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentWorkspaceStore,
     resolve_workflow_agent_workspace_owner_scope,
 )
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models.agent import (
     AgentConfigVersionKind,
@@ -30,7 +31,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
@@ -41,6 +42,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.app_service import AppService
+from services.file_adapters import build_file_service
 from tests.helpers.unit.model_factories import make_account
 
 
@@ -489,6 +491,7 @@ def test_node_completion_preserves_workspace_binding_and_sandbox_access(
         make_account(),
         scope.app_id,
         WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=sqlite_session_factory),
     )
     execution = WorkflowNodeExecution(
         id=scope.node_execution_id,

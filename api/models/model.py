@@ -20,6 +20,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, scoped_
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from factories.file_url_factory import re_sign_file_urls
 from graphon.enums import WorkflowExecutionStatus
@@ -39,7 +40,6 @@ from .enums import (
     BannerStatus,
     ConversationFromSource,
     ConversationStatus,
-    CreatorUserRole,
     CustomizeTokenStrategy,
     EndUserType,
     FeedbackFromSource,
@@ -1745,10 +1745,10 @@ class Message(TypeBase):
         if self.workflow_run_id:
             from sqlalchemy.orm import sessionmaker
 
-            from repositories.factory import DifyAPIRepositoryFactory
+            from repositories.workflow.factory import WorkflowRepositoryFactory
 
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
             return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
 
         return None
@@ -2227,7 +2227,7 @@ class ApiToken(TypeBase):
       expressed with ``DatasetApiTokenBinding`` rows (a key with no binding rows can
       reach every dataset in the tenant — the default and the pre-scoping behavior; a
       key with binding rows is limited to exactly those datasets). Enforcement lives in
-      ``validate_dataset_token`` (controllers/service_api/wraps.py).
+      the dataset Service API admission service.
 
     """
 

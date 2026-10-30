@@ -16,7 +16,10 @@ def _service(session_factory: sessionmaker[Session]) -> module.WorkspaceResource
     return module.WorkspaceResourceCleanupService(
         session_factory=session_factory,
         apps=ConsoleAppRepository(session_factory=session_factory),
-        datasets=SQLAlchemyDatasetRepository(session_factory=session_factory),
+        datasets=SQLAlchemyDatasetRepository(
+            revoke_keys_after_commit=lambda _session, _tokens: None,
+            session_factory=session_factory,
+        ),
         agent_resources=WorkspaceResourceCleanupRepository(session_factory=session_factory),
     )
 
@@ -75,7 +78,9 @@ def test_agent_sweep_covers_all_scopes_and_retains_other_tenants(
 
 
 def test_dataset_deletion_schedules_even_without_index_configuration(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     sqlite_session.add_all(
         [
@@ -84,18 +89,26 @@ def test_dataset_deletion_schedules_even_without_index_configuration(
         ]
     )
     sqlite_session.commit()
-    cleanup = Mock()
-    monkeypatch.setattr(module, "clean_dataset_task", cleanup)
-    monkeypatch.setattr(module.dataset_api_key_bindings, "delete_keys_scoped_only_to", Mock())
-    monkeypatch.setattr(module, "build_resource_access_token_cleanup_service", Mock())
+    cleanup_dispatch = Mock()
+    monkeypatch.setattr(module, "dispatch_dataset_cleanup", cleanup_dispatch)
     _service(sqlite_session_factory)._delete_dataset("target", "other-dataset")
-    cleanup.delay.assert_not_called()
+    cleanup_dispatch.assert_not_called()
+
+    def assert_committed(_cleanup: object) -> None:
+        sqlite_session.expire_all()
+        assert sqlite_session.get(Dataset, "dataset") is None
+
+    cleanup_dispatch.side_effect = assert_committed
     _service(sqlite_session_factory)._delete_dataset("target", "dataset")
-    cleanup.delay.assert_called_once()
-    assert cleanup.delay.call_args.args[:2] == ("dataset", "target")
     sqlite_session.expire_all()
     assert sqlite_session.get(Dataset, "dataset") is None
     assert sqlite_session.get(Dataset, "other-dataset") is not None
+    cleanup_dispatch.assert_called_once()
+    cleanup = cleanup_dispatch.call_args.args[0]
+    assert cleanup.id == "dataset"
+    assert cleanup.workspace_id == "target"
+    assert cleanup.indexing_technique is None
+    assert cleanup.doc_form == "text_model"
 
 
 def test_agent_collection_failure_propagates_and_retirement_can_be_retried(

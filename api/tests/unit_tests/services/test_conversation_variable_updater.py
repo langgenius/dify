@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.variables import StringVariable
 from models import ConversationVariable
+from models.model import App, AppMode
 from services.conversation_variable_updater import ConversationVariableUpdater
 
 
-@pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
+@pytest.mark.parametrize("sqlite_session", [(App, ConversationVariable)], indirect=True)
 @pytest.mark.parametrize("variable_id", ["imported-topic", "33333333-3333-3333-3333-333333333333"])
 def test_runtime_update_preserves_authored_id_and_other_conversations(
     sqlite_session: Session, variable_id: str
@@ -22,6 +23,16 @@ def test_runtime_update_preserves_authored_id_and_other_conversations(
         )
         for owner in (conversation_id, other_conversation_id)
     ]
+    sqlite_session.add(
+        App(
+            id="11111111-1111-1111-1111-111111111111",
+            tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            name="Conversation App",
+            mode=AppMode.ADVANCED_CHAT,
+            enable_site=True,
+            enable_api=True,
+        )
+    )
     sqlite_session.add_all(rows)
     sqlite_session.commit()
     updater = ConversationVariableUpdater(sessionmaker(bind=sqlite_session.get_bind()))

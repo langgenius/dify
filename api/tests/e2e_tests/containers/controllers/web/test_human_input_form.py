@@ -21,10 +21,11 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import (
     HumanInputDelivery,
     HumanInputForm,

@@ -35,6 +35,7 @@ from controllers.console.error import (
     InvalidAccountPasswordRequestError,
     NotAllowedCreateWorkspace,
     SeatsLimitExceeded,
+    WorkspaceMembersLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
@@ -372,6 +373,16 @@ def test_refresh_does_not_require_completed_setup(
         ),
         (login._raise_password_login_error, account_errors.InvalidLoginInvitationEmailError(), InvalidEmailError),
         (login._raise_password_login_error, account_errors.LoginWorkspaceLimitError(), WorkspacesLimitExceeded),
+        (
+            login._raise_password_login_error,
+            account_errors.LoginInvitationQuotaError(seats=False),
+            WorkspaceMembersLimitExceeded,
+        ),
+        (
+            login._raise_password_login_error,
+            account_errors.LoginInvitationQuotaError(seats=True),
+            SeatsLimitExceeded,
+        ),
         (login._raise_password_login_error, account_errors.AccountNotFoundError(), AccountNotFound),
         (
             login._raise_reset_password_email_error,

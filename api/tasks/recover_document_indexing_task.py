@@ -3,18 +3,25 @@ import time
 
 import click
 from celery import shared_task
+from redis.exceptions import RedisError
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from models.dataset import Document
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.indexing.locks import KnowledgeIndexingLeaseLostError, KnowledgeIndexingLockBusyError
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
+@shared_task(
+    queue="dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=None,
+)
 def recover_document_indexing_task(dataset_id: str, document_id: str):
     """
     Async recover document
@@ -50,5 +57,7 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
             logger.info(click.style(f"Processed document: {document.id} latency: {end_at - start_at}", fg="green"))
         except DocumentIsPausedError as ex:
             logger.info(click.style(str(ex), fg="yellow"))
+        except (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError):
+            raise
         except Exception:
             logger.exception("recover_document_indexing_task failed, document_id: %s", document_id)

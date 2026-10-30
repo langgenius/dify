@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from unittest.mock import create_autospec
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.tools.utils.yaml_utils import _load_yaml_file
@@ -43,8 +44,10 @@ from graphon.variables import (
     ObjectVariable,
     StringVariable,
 )
+from services.file_service import UploadFileCreator
 from tests.helpers.workflow.mock_config import MockConfig
 from tests.helpers.workflow.mock_factory import MockNodeFactory
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +221,19 @@ class WorkflowRunner:
 
         if use_mock_factory:
             node_factory = MockNodeFactory(
-                init_params=graph_init_params, runtime_state=graph_runtime_state, mock_config=mock_config
+                init_params=graph_init_params,
+                runtime_state=graph_runtime_state,
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=create_autospec(UploadFileCreator, instance=True),
+                mock_config=mock_config,
             )
         else:
-            node_factory = DifyNodeFactory(init_params=graph_init_params, runtime_state=graph_runtime_state)
+            node_factory = DifyNodeFactory(
+                init_params=graph_init_params,
+                runtime_state=graph_runtime_state,
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=create_autospec(UploadFileCreator, instance=True),
+            )
 
         graph = Graph.init(
             graph_config=graph_config,

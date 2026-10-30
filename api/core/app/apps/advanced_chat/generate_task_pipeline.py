@@ -77,17 +77,21 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
-from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
+from models.enums import MessageFileBelongsTo, MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowRun
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from services.file_reference_parser import trusted_upload_file_ids
 
 logger = logging.getLogger(__name__)
 
@@ -1027,14 +1031,34 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             logger.debug("Conversation name generation running as daemon thread")
 
     def _save_message(self, *, session: Session, graph_runtime_state: RuntimeState | None = None):
-        message = self._get_message(session=session)
+        message = self._get_message(session=session, lock=True)
         if message is None:
             return
 
+        resolved_files = []
+        for file in self._recorded_files:
+            reference = file.get("reference") or file.get("related_id")
+            file_id = resolve_file_record_id(reference if isinstance(reference, str) else None)
+            resolved_files.append((file, file_id))
+        answer_text = self._task_state.answer
+        introduced_answer_file_ids = trusted_upload_file_ids(answer_text) - trusted_upload_file_ids(message.answer)
+        locked_upload_files = lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=self._workflow_tenant_id,
+            upload_file_ids=tuple(
+                sorted(
+                    {
+                        file_id
+                        for file, file_id in resolved_files
+                        if file_id is not None and file["transfer_method"] != FileTransferMethod.TOOL_FILE
+                    }
+                    | introduced_answer_file_ids
+                )
+            ),
+        )
+
         if message.status == MessageStatus.PAUSED:
             message.status = MessageStatus.NORMAL
-
-        answer_text = self._task_state.answer
 
         message.answer = answer_text
         message.updated_at = naive_utc_now()
@@ -1067,8 +1091,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         metadata = self._task_state.metadata.model_dump()
         message.message_metadata = json.dumps(jsonable_encoder(metadata))
         message_files: list[MessageFile] = []
-        for file in self._recorded_files:
-            reference = file.get("reference") or file.get("related_id")
+        for file, file_id in resolved_files:
+            if file_id is not None and file["transfer_method"] != FileTransferMethod.TOOL_FILE:
+                file_id = locked_upload_files[file_id].id
             message_files.append(
                 MessageFile(
                     message_id=message.id,
@@ -1076,7 +1101,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     transfer_method=file["transfer_method"],
                     url=file["remote_url"],
                     belongs_to=MessageFileBelongsTo.ASSISTANT,
-                    upload_file_id=resolve_file_record_id(reference if isinstance(reference, str) else None),
+                    upload_file_id=file_id,
                     created_by_role=CreatorUserRole.ACCOUNT
                     if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
                     else CreatorUserRole.END_USER,
@@ -1142,8 +1167,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         return False
 
-    def _get_message(self, *, session: Session):
+    def _get_message(self, *, session: Session, lock: bool = False):
         stmt = select(Message).where(Message.id == self._message_id)
+        if lock:
+            stmt = stmt.with_for_update()
         message = session.scalar(stmt)
         if not message:
             raise ValueError(f"Message not found: {self._message_id}")

@@ -66,14 +66,6 @@ const zAppUnavailableError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-const zArchivedDocumentImmutableError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('archived_document_immutable'),
-      status: z.literal(403),
-    }),
-  ))()
-
 const zAudioTooLargeError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -130,11 +122,27 @@ const zConversationVariableTypeMismatchError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zDatasetConcurrentUpdateError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('dataset_concurrent_update'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zDatasetNameDuplicateError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('dataset_name_duplicate'),
       status: z.literal(409),
+    }),
+  ))()
+
+const zDatasetNotInitializedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('dataset_not_initialized'),
+      status: z.literal(400),
     }),
   ))()
 
@@ -647,25 +655,33 @@ export const post9Errors = {
 export const post13Errors = {
   file_too_large: { status: 413, data: zFileTooLargeError },
   filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   no_file_uploaded: { status: 400, data: zNoFileUploadedError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   too_many_files: { status: 400, data: zTooManyFilesError },
 }
 
 export const post14Errors = {
   file_too_large: { status: 413, data: zFileTooLargeError },
   filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   no_file_uploaded: { status: 400, data: zNoFileUploadedError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   too_many_files: { status: 400, data: zTooManyFilesError },
 }
 
 export const post15Errors = {
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
 export const post16Errors = {
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
 export const patch2Errors = { invalid_action: { status: 400, data: zInvalidActionError } }
@@ -675,6 +691,7 @@ export const post19Errors = {
 }
 
 export const post20Errors = {
+  invalid_action: { status: 400, data: zInvalidActionError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
 }
 
@@ -689,7 +706,9 @@ export const post21Errors = {
 export const post22Errors = {
   file_too_large: { status: 413, data: zFileTooLargeError },
   filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   too_many_files: { status: 400, data: zTooManyFilesError },
   unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
 }
@@ -697,21 +716,23 @@ export const post22Errors = {
 export const post23Errors = {
   file_too_large: { status: 413, data: zFileTooLargeError },
   filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   too_many_files: { status: 400, data: zTooManyFilesError },
   unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
 }
 
 export const post24Errors = {
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
 export const post25Errors = {
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-}
-
-export const delete6Errors = {
-  archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
 export const get13Errors = { invalid_metadata: { status: 400, data: zInvalidMetadataError } }
@@ -719,13 +740,16 @@ export const get13Errors = { invalid_metadata: { status: 400, data: zInvalidMeta
 export const patch4Errors = {
   file_too_large: { status: 413, data: zFileTooLargeError },
   filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   too_many_files: { status: 400, data: zTooManyFilesError },
   unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
 }
 
 export const post26Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },
+  dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -735,9 +759,14 @@ export const post30Errors = { pipeline_run_error: { status: 500, data: zPipeline
 
 export const post31Errors = {
   completion_request_error: { status: 400, data: zCompletionRequestError },
+  dataset_not_initialized: { status: 400, data: zDatasetNotInitializedError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+}
+
+export const patch6Errors = {
+  dataset_concurrent_update: { status: 409, data: zDatasetConcurrentUpdateError },
 }
 
 export const post32Errors = {

@@ -17,6 +17,7 @@ from fields.base import ResponseModel
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
+    WorkspaceInvitationQuotaError,
     WorkspaceNotFoundError,
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
@@ -136,7 +137,10 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     )
     def post(self):
         args = validate_request(WorkspaceOwnerlessPayload)
-        tenant = application_services().workspaces.provisioning.create(name=args.name)
+        try:
+            tenant = application_services().workspaces.provisioning.create(name=args.name)
+        except WorkspacesLimitExceededError as exc:
+            raise InvalidArgumentError(str(exc)) from exc
         return WorkspaceOwnerlessCreateResponse(
             message="enterprise workspace created.",
             tenant=WorkspaceOwnerlessTenantResponse(
@@ -180,6 +184,8 @@ class EnterpriseWorkspaceMember(Resource):
             return {"message": "workspace not found."}, 404
         except AccountNotFoundError:
             return {"message": "account not found."}, 404
+        except WorkspaceInvitationQuotaError as exc:
+            raise InvalidArgumentError(str(exc)) from exc
         return WorkspaceMemberResponse(
             message="enterprise workspace member joined.",
             member=WorkspaceMemberInfoResponse(

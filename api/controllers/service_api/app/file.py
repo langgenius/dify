@@ -15,11 +15,13 @@ from controllers.common.schema import JsonResponseWithStatus, register_response_
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from models import App, EndUser
+from services.entities.upload_file import FileUploadActor
 
 register_response_schema_models(service_api_ns, FileResponse)
 
@@ -91,7 +93,8 @@ class FileApi(Resource):
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=end_user,
+                actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+                tenant_id=app_model.tenant_id,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description) from file_too_large_error

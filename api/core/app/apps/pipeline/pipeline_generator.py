@@ -38,11 +38,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from core.repositories.factory import (
-    DifyCoreRepositoryFactory,
-    WorkflowExecutionRepository,
-    WorkflowNodeExecutionRepository,
-)
+from core.workflow.nodes.knowledge_index.protocols import SummaryIndexServiceProtocol
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
@@ -52,12 +48,18 @@ from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFro
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline, build_built_in_field_values
 from models.enums import DataSourceType, DocumentCreatedFrom, WorkflowRunTriggeredFrom
 from models.model import AppMode
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.data_source.provider_service import DatasourceProviderService
+from services.file_service import FileService
+from services.knowledge.documents.creation import check_document_creation_limits
+from services.knowledge.documents.creation_adapters import load_document_creation_environment
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
+from services.workflow.persistence import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +71,16 @@ class PipelineGenerator(BaseAppGenerator):
         execution_driver: "WorkflowRunDriver",
         documents: PipelineDocumentStore,
         datasource_providers: DatasourceProviderService,
+        knowledge_retrieval: "KnowledgeRetriever",
+        summary_index_service: SummaryIndexServiceProtocol,
+        files: FileService,
     ) -> None:
         self._execution_driver = execution_driver
         self._documents = documents
         self._datasource_providers = datasource_providers
+        self._knowledge_retrieval = knowledge_retrieval
+        self._summary_index_service = summary_index_service
+        self._files = files
 
     @overload
     def generate(
@@ -154,15 +162,21 @@ class PipelineGenerator(BaseAppGenerator):
         )
         documents: list[Document] = []
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry and not args.get("original_document_id"):
-            from services.feature_service import FeatureService
-            from services.knowledge.dataset_service import DocumentService
-
-            features = FeatureService.get_features(pipeline.tenant_id)
-            DocumentService.check_document_creation_limits(len(datasource_info_list), features)
+            creation_environment = load_document_creation_environment(pipeline.tenant_id)
+            check_document_creation_limits(len(datasource_info_list), creation_environment.limits)
+            self._documents.lock_new_upload_file_references(
+                session,
+                workspace_id=pipeline.tenant_id,
+                payloads=datasource_info_list,
+            )
 
             for datasource_info in datasource_info_list:
-                position = DocumentService.get_documents_position(dataset.id, session)
-                document_created_from: DocumentCreatedFrom = DocumentCreatedFrom("rag-pipeline")
+                position = self._documents.next_document_position(
+                    session,
+                    workspace_id=pipeline.tenant_id,
+                    dataset_id=dataset.id,
+                )
+                document_created_from = DocumentCreatedFrom.RAG_PIPELINE
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
@@ -204,7 +218,9 @@ class PipelineGenerator(BaseAppGenerator):
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
                 dataset_id=dataset.id,
-                original_document_id=None if is_retry else args.get("original_document_id"),
+                # Keep the replacement identity on retries so the knowledge-index
+                # node can replace segments left by the failed indexing attempt.
+                original_document_id=args.get("original_document_id"),
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
@@ -230,7 +246,7 @@ class PipelineGenerator(BaseAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN
             # Create workflow node execution repository
             session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-            workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
                 tenant_id=pipeline.tenant_id,
                 user=user,
@@ -238,12 +254,13 @@ class PipelineGenerator(BaseAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
 
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
                 tenant_id=pipeline.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+                files=self._files,
             )
             if invoke_from == InvokeFrom.DEBUGGER or is_retry:
                 return self._generate(
@@ -277,7 +294,12 @@ class PipelineGenerator(BaseAppGenerator):
         if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
             session.commit()
         if rag_pipeline_invoke_entities:
-            RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities).delay()
+            RagPipelineTaskProxy(
+                dataset.tenant_id,
+                user.id,
+                rag_pipeline_invoke_entities,
+                files=self._files,
+            ).delay()
         # return batch, dataset, documents
         return {
             "batch": batch,
@@ -454,7 +476,7 @@ class PipelineGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
@@ -462,12 +484,13 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
         )
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=self._files,
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -556,7 +579,7 @@ class PipelineGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
@@ -564,12 +587,13 @@ class PipelineGenerator(BaseAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
         )
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=pipeline.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=self._files,
         )
         draft_var_srv = WorkflowDraftVariableService(session)
         draft_var_srv.prefill_conversation_variable_default_values(workflow, user_id=user.id)
@@ -643,6 +667,7 @@ class PipelineGenerator(BaseAppGenerator):
                     else:
                         # For internal calls, use the original user ID
                         system_user_id = application_generate_entity.user_id
+
                     # workflow app
                     runner = PipelineRunner(
                         execution_driver=self._execution_driver,
@@ -653,6 +678,9 @@ class PipelineGenerator(BaseAppGenerator):
                         workflow=workflow,
                         system_user_id=system_user_id,
                         documents=self._documents,
+                        knowledge_retrieval=self._knowledge_retrieval,
+                        summary_index_service=self._summary_index_service,
+                        files=self._files,
                     )
 
                     self._execution_driver(

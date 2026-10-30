@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
+from libs.flask_restx_compat import finalize_openapi_payload
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -280,7 +281,6 @@ def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
 
 
 def test_finalize_openapi_payload_preserves_canonical_operation_id():
-    module = _load_generate_swagger_specs_module()
     payload = {
         "paths": {
             "/items/create-by-file": {
@@ -292,7 +292,7 @@ def test_finalize_openapi_payload_preserves_canonical_operation_id():
         }
     }
 
-    result = module.finalize_openapi_payload(payload)
+    result = finalize_openapi_payload(payload)
 
     assert result["paths"]["/items/create-by-file"]["post"]["operationId"] == "create_item"
     legacy_operation_id = result["paths"]["/items/create_by_file"]["post"]["operationId"]
@@ -300,7 +300,6 @@ def test_finalize_openapi_payload_preserves_canonical_operation_id():
 
 
 def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
-    module = _load_generate_swagger_specs_module()
     payload = {
         "paths": {
             "/transport": {
@@ -325,7 +324,7 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
         }
     }
 
-    result = module.finalize_openapi_payload(payload)
+    result = finalize_openapi_payload(payload)
     operation = result["paths"]["/transport"]["get"]
     content = operation["responses"]["200"]["content"]
 
@@ -614,7 +613,7 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     )
     assert "404" not in payload["paths"]["/workflows/tasks/{task_id}/stop"]["post"]["responses"]
 
-    vector_space_operations = {
+    unavailable_operations = {
         (method, path)
         for path, path_item in payload["paths"].items()
         for method, operation in path_item.items()
@@ -623,7 +622,7 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         # KnowledgeFS operations document their own 503 when KnowledgeFS is unavailable.
         and not path.startswith("/knowledge-fs/")
     }
-    assert vector_space_operations == {
+    vector_space_operations = {
         ("post", "/datasets/{dataset_id}/document/create-by-file"),
         ("post", "/datasets/{dataset_id}/document/create-by-text"),
         ("post", "/datasets/{dataset_id}/document/create_by_file"),
@@ -641,6 +640,13 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_file"),
         ("post", "/datasets/{dataset_id}/documents/{document_id}/update_by_text"),
     }
+    retrieval_unavailable_operations = {
+        ("post", "/datasets/{dataset_id}/hit-testing"),
+        ("post", "/datasets/{dataset_id}/retrieve"),
+    }
+    assert unavailable_operations == vector_space_operations | retrieval_unavailable_operations
+    for method, path in retrieval_unavailable_operations:
+        assert "knowledge index" in payload["paths"][path][method]["responses"]["503"]["description"]
     vector_space_unavailable_description = (
         "`service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox "
         "plan only; retry the request later."

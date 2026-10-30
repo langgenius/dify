@@ -1,6 +1,6 @@
+from collections.abc import Generator
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Literal
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -10,64 +10,73 @@ from machinery.context import RequestContext
 from services.knowledge.dataset_access import (
     AccessibleDataset,
     DatasetAccess,
-    DatasetAccessDeniedError,
     DatasetAccessRecord,
     DatasetAccessSnapshot,
 )
-from services.knowledge.entities.segments import SegmentRecord, SegmentUpdateArgs
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.entities.segments import SegmentFileAccess, SegmentReadSnapshot, SegmentUpdateArgs
+from services.knowledge.indexing.locks import document_index_lock_name
 from services.knowledge.segments.application import (
-    ChildChunkNotFoundError,
     DatasetSegmentApplicationService,
     SegmentBatchImportDispatcher,
-    SegmentBatchImportDispatchError,
     SegmentBatchImportNotFoundError,
-    SegmentDatasetModelUnavailableError,
     SegmentDatasetNotFoundError,
-    SegmentDatasetRecord,
-    SegmentDetail,
     SegmentDocumentIndexingError,
-    SegmentDocumentNotFoundError,
-    SegmentDocumentRecord,
-    SegmentEmbeddingModelUnavailableError,
     SegmentIndex,
     SegmentIndexingState,
-    SegmentInvalidFileTypeError,
-    SegmentListFilter,
-    SegmentModelGuard,
-    SegmentModelProviderError,
-    SegmentMutationScope,
-    SegmentNotFoundError,
-    SegmentPage,
-    SegmentPermissionDeniedError,
-    SegmentScope,
+    SegmentMutationService,
+    SegmentPresenter,
     SegmentScopeReader,
-    SegmentStatusUpdateError,
     SegmentStore,
-    SegmentUpdateState,
     SegmentUploadCatalog,
-    SegmentUploadFileNotFoundError,
+)
+from services.knowledge.segments.contracts import (
+    ChildChunkListFilter,
+    ChildChunkPage,
+    SegmentDatasetRecord,
+    SegmentDetail,
+    SegmentDocumentMutationBusyError,
+    SegmentDocumentRecord,
+    SegmentIndexTarget,
+    SegmentListFilter,
+    SegmentMutationScope,
+    SegmentPageData,
+    SegmentScope,
+    SegmentStatusState,
+    SegmentStatusTransition,
+    SegmentUpdateState,
 )
 
 
 @dataclass
-class SegmentLimitsStub:
+class _Limits:
     SINGLE_CHUNK_ATTACHMENT_LIMIT: int = 10
+    DATASET_MAX_SEGMENTS_PER_REQUEST: int = 100
+
+
+class _NoopModelGuard:
+    def check(self, dataset: SegmentDatasetRecord) -> None:
+        del dataset
+
+
+@dataclass
+class _Fixture:
+    service: DatasetSegmentApplicationService
+    access: Mock
+    store: Mock
+    presenter: Mock
+    index: Mock
+    uploads: Mock
+    scopes: Mock
+    indexing_state: Mock
+    dispatcher: Mock
 
 
 def _context() -> RequestContext:
-    return RequestContext(
-        request_id="request-1",
-        trace_id=None,
-        account_id="account-1",
-        active_workspace_id="workspace-1",
-    )
+    return RequestContext("request-1", None, "account-1", "workspace-1")
 
 
-def _dataset(
-    *,
-    indexing_technique: str = "economy",
-) -> SegmentDatasetRecord:
+def _dataset(*, indexing_technique: str = "economy") -> SegmentDatasetRecord:
     return SegmentDatasetRecord(
         id="dataset-1",
         workspace_id="workspace-1",
@@ -86,9 +95,10 @@ def _document() -> SegmentDocumentRecord:
     )
 
 
-def _snapshot() -> DatasetAccessSnapshot:
+def _access_snapshot() -> DatasetAccessSnapshot:
     return DatasetAccessSnapshot(
-        DatasetAccessRecord("dataset-1", "workspace-1", "account-1", "all_team_members"), False
+        DatasetAccessRecord("dataset-1", "workspace-1", "account-1", "all_team_members"),
+        False,
     )
 
 
@@ -100,248 +110,276 @@ def _scope(
     return SegmentScope(
         dataset=_dataset() if dataset is None else dataset,
         document=_document() if document is None else document,
-        access_snapshot=_snapshot(),
+        access_snapshot=_access_snapshot(),
     )
 
 
-type ServiceFixture = tuple[DatasetSegmentApplicationService, Mock, Mock, Mock, Mock, Mock, Mock]
+def _snapshot() -> SegmentReadSnapshot:
+    return SegmentReadSnapshot(
+        values={},
+        child_chunks=(),
+        attachments=(),
+        summary=None,
+        file_access=SegmentFileAccess(frozenset(), frozenset()),
+    )
 
 
-def _service(scope: SegmentScope | None = None, *, uploads: SegmentUploadCatalog | None = None) -> ServiceFixture:
-    dataset_access = create_autospec(DatasetAccess, instance=True, spec_set=True)
-    dataset_access.check_access.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
+@pytest.fixture
+def fixture() -> _Fixture:
+    access = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    access.check_access.return_value = AccessibleDataset("dataset-1", "workspace-1")
     store = create_autospec(SegmentStore, instance=True, spec_set=True)
+    presenter = create_autospec(SegmentPresenter, instance=True, spec_set=True)
+    presenter.present.side_effect = tuple
+    index = create_autospec(SegmentIndex, instance=True, spec_set=True)
+    index.count_tokens_many.side_effect = lambda _dataset, texts: [0] * len(texts)
+    uploads = create_autospec(SegmentUploadCatalog, instance=True, spec_set=True)
     scopes = create_autospec(SegmentScopeReader, instance=True, spec_set=True)
-    scopes.get_segment_scope.return_value = scope or _scope()
-    model_guard = create_autospec(SegmentModelGuard, instance=True, spec_set=True)
+    scopes.get_segment_scope.return_value = _scope()
     indexing_state = create_autospec(SegmentIndexingState, instance=True, spec_set=True)
+    indexing_state.lock.return_value = nullcontext()
     indexing_state.is_document_indexing.return_value = False
     indexing_state.is_segment_indexing.return_value = False
     dispatcher = create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True)
     service = DatasetSegmentApplicationService(
-        dataset_access=dataset_access,
-        store=store,
-        limits=SegmentLimitsStub(),
-        text_hash=generate_text_hash,
-        index=create_autospec(SegmentIndex, instance=True, spec_set=True),
-        uploads=uploads or create_autospec(SegmentUploadCatalog, instance=True, spec_set=True),
+        dataset_access=access,
         scopes=scopes,
-        model_guard=model_guard,
+        store=store,
+        presenter=presenter,
+        index=index,
+        limits=_Limits(),
+        text_hash=generate_text_hash,
+        uploads=uploads,
+        model_guard=_NoopModelGuard(),
         indexing_state=indexing_state,
         batch_dispatcher=dispatcher,
         job_id_factory=lambda: "job-1",
     )
-    return service, dataset_access, store, scopes, model_guard, indexing_state, dispatcher
+    return _Fixture(service, access, store, presenter, index, uploads, scopes, indexing_state, dispatcher)
 
 
-def test_list_segments_uses_complete_owner_scope() -> None:
-    service, dataset_access, store, scopes, _, _, _ = _service()
-    expected = SegmentPage(items=(), total=0, total_pages=0, page=1, limit=20)
-    store.list_segments.return_value = expected
+def test_list_segments_uses_authorized_owner_scope(fixture: _Fixture) -> None:
+    fixture.store.list_segments.return_value = SegmentPageData(items=(), total=0, total_pages=0, page=1, limit=20)
+    query = SegmentListFilter(keyword="needle")
 
-    result = service.list_segments(
+    result = fixture.service.list_segments(
         _context(),
         dataset_id="dataset-1",
         document_id="document-1",
-        query=SegmentListFilter(keyword="needle"),
+        query=query,
     )
 
-    assert result is expected
-    assert scopes.get_segment_scope.call_args.kwargs == {
-        "dataset_ref": DatasetRef("workspace-1", "dataset-1"),
-        "document_id": "document-1",
-        "actor_id": "account-1",
-    }
-    assert store.list_segments.call_args.args[0] == _document().ref
-    dataset_access.check_access.assert_called_once_with(_context(), _snapshot())
+    assert result.doc_form == "text_model"
+    assert result.items == ()
+    fixture.scopes.get_segment_scope.assert_called_once_with(
+        dataset_ref=DatasetRef("workspace-1", "dataset-1"),
+        document_id="document-1",
+        actor_id="account-1",
+    )
+    fixture.access.check_access.assert_called_once_with(_context(), _access_snapshot())
+    fixture.store.list_segments.assert_called_once_with(_document().ref, query)
 
 
-@pytest.mark.parametrize(
-    ("scope", "expected"),
-    [
-        (SegmentScope(None, None), SegmentDatasetNotFoundError),
-        (SegmentScope(_dataset(), None, _snapshot()), SegmentDocumentNotFoundError),
-    ],
-)
-def test_mutations_reject_invalid_scope_before_store_operation(
-    scope: SegmentScope,
-    expected: type[Exception],
-) -> None:
-    service, _, store, scopes, _, _, _ = _service(scope)
+def test_missing_dataset_stops_before_store_access(fixture: _Fixture) -> None:
+    fixture.scopes.get_segment_scope.return_value = SegmentScope(None, None)
 
-    with pytest.raises(expected):
-        service.delete_segment(
+    with pytest.raises(SegmentDatasetNotFoundError):
+        fixture.service.delete_segment(
             _context(),
             dataset_id="dataset-1",
             document_id="document-1",
             segment_id="segment-1",
         )
 
-    store.delete_segments.assert_not_called()
+    fixture.store.get_segments.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    ("access_error", "expected"),
-    [
-        (DatasetAccessDeniedError(), SegmentPermissionDeniedError),
-    ],
-)
-def test_dataset_access_errors_are_translated(
-    access_error: Exception,
-    expected: type[Exception],
-) -> None:
-    service, dataset_access, store, scopes, _, _, _ = _service()
-    dataset_access.check_access.side_effect = access_error
+def test_create_segment_validates_and_delegates_to_current_mutation_contract(fixture: _Fixture) -> None:
+    mutation = create_autospec(SegmentMutationService, instance=True, spec_set=True)
+    fixture.service.mutations = mutation
+    segment_ref = _document().ref.segment("segment-1")
+    mutation.create_segment.return_value = segment_ref
+    fixture.store.get_segment.return_value = SegmentDetail(_snapshot(), "text_model")
+    fixture.presenter.present.side_effect = None
+    fixture.presenter.present.return_value = ("presented",)
 
-    with pytest.raises(expected):
-        service.delete_segment(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_id="segment-1",
+    result = fixture.service.create_segment(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "new content"},
+    )
+
+    assert result == SegmentDetail("presented", "text_model")
+    assert mutation.create_segment.call_args.args[0].document == _document()
+    assert mutation.create_segment.call_args.kwargs["actor_id"] == "account-1"
+    assert mutation.create_segment.call_args.kwargs["args"].content == "new content"
+
+
+def test_create_segments_persists_and_publishes_the_batch_under_the_document_lock(fixture: _Fixture) -> None:
+    lock_held = False
+    events: list[str] = []
+
+    @contextmanager
+    def hold_document_lock() -> Generator[object]:
+        nonlocal lock_held
+        lock_held = True
+        try:
+            yield object()
+        finally:
+            lock_held = False
+
+    fixture.indexing_state.lock.return_value = hold_document_lock()
+    fixture.index.count_tokens.return_value = 0
+    fixture.store.create_segments.side_effect = lambda *_args: events.append(f"persist:{lock_held}")
+    fixture.index.create_many.side_effect = lambda *_args, **_kwargs: events.append(f"publish:{lock_held}")
+
+    refs = fixture.service.mutations.create_segments(
+        SegmentMutationScope(_dataset(), _document()),
+        actor_id="account-1",
+        args=(SegmentUpdateArgs(content="first"), SegmentUpdateArgs(content="second")),
+    )
+
+    assert len(refs) == 2
+    assert events == ["persist:True", "publish:True"]
+    assert len(fixture.store.create_segments.call_args.args[1]) == 2
+    fixture.index.create_many.assert_called_once()
+    fixture.indexing_state.lock.assert_called_once_with(document_index_lock_name("document-1"), timeout=600)
+
+
+def test_create_segments_maps_locked_rag_pipeline_state_to_document_indexing_error(fixture: _Fixture) -> None:
+    fixture.indexing_state.lock.return_value = nullcontext()
+    fixture.index.count_tokens.return_value = 0
+    fixture.store.create_segments.side_effect = SegmentDocumentMutationBusyError("Document is being indexed")
+
+    with pytest.raises(SegmentDocumentIndexingError, match="being indexed"):
+        fixture.service.mutations.create_segments(
+            SegmentMutationScope(_dataset(), _document()),
+            actor_id="account-1",
+            args=(SegmentUpdateArgs(content="content"),),
         )
 
-    store.delete_segments.assert_not_called()
+    fixture.index.create_many.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    ("kind", "method", "expected", "message"),
-    [
-        ("bad_request", "create_segment", SegmentEmbeddingModelUnavailableError, "No Embedding Model"),
-        ("token", "create_segment", SegmentEmbeddingModelUnavailableError, "token missing"),
-        ("bad_request", "delete_segment", SegmentDatasetModelUnavailableError, "No Embedding Model"),
-        ("token", "delete_segment", SegmentDatasetModelUnavailableError, "dataset is unavailable"),
-    ],
-)
-def test_model_failures_are_translated_per_use_case(
-    kind: Literal["bad_request", "token"],
-    method: str,
-    expected: type[Exception],
-    message: str,
-) -> None:
-    service, _, store, scopes, model_guard, _, _ = _service(_scope(dataset=_dataset(indexing_technique="high_quality")))
-    model_guard.check.side_effect = SegmentModelProviderError(kind=kind, description="token missing")
-    store.get_segment.return_value = None
+def test_delete_segments_removes_owned_rows_before_cleanup_dispatch(fixture: _Fixture) -> None:
+    segments = (SegmentIndexTarget("segment-1", "node-1", True),)
+    fixture.store.get_segments.return_value = segments
+    fixture.store.get_children_for_segments.return_value = ()
+    events: list[str] = []
+    fixture.store.delete_segments.side_effect = lambda *_args: events.append("delete_rows")
+    fixture.index.delete.side_effect = lambda *_args: events.append("dispatch_cleanup")
 
-    if method == "create_segment":
+    fixture.service.delete_segments(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=("segment-1",),
+    )
 
-        def invoke() -> object:
-            return service.create_segment(
-                _context(),
-                dataset_id="dataset-1",
-                document_id="document-1",
-                values={"content": "content"},
-            )
-
-    else:
-
-        def invoke() -> object:
-            return service.delete_segment(
-                _context(),
-                dataset_id="dataset-1",
-                document_id="document-1",
-                segment_id="segment-1",
-            )
-
-    with pytest.raises(expected, match=message):
-        invoke()
+    assert events == ["delete_rows", "dispatch_cleanup"]
+    fixture.index.delete.assert_called_once_with(_document().ref, segments, ())
+    fixture.store.delete_segments.assert_called_once_with(_document().ref, ["segment-1"])
 
 
-def test_status_change_is_fenced_by_document_indexing_state() -> None:
-    service, _, store, scopes, _, state, _ = _service()
-    state.is_document_indexing.return_value = True
+def test_delete_segment_removes_owned_row_before_cleanup_dispatch(fixture: _Fixture) -> None:
+    segment = SegmentIndexTarget("segment-1", "node-1", True)
+    fixture.store.get_segments.return_value = (segment,)
+    fixture.store.get_children_for_segments.return_value = ()
+    events: list[str] = []
+    fixture.store.delete_segments.side_effect = lambda *_args: events.append("delete_rows")
+    fixture.index.delete.side_effect = lambda *_args: events.append("dispatch_cleanup")
 
-    with pytest.raises(SegmentDocumentIndexingError):
-        service.change_segment_status(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_ids=["segment-1"],
-            action="disable",
-        )
+    fixture.service.delete_segment(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id="segment-1",
+    )
 
-    store.save_segment.assert_not_called()
-
-
-def test_status_change_translates_operation_failure() -> None:
-    service, _, store, scopes, _, _, _ = _service()
-    store.get_segments.side_effect = RuntimeError("failed")
-
-    with pytest.raises(SegmentStatusUpdateError, match="failed"):
-        service.change_segment_status(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_ids=["segment-1"],
-            action="enable",
-        )
+    assert events == ["delete_rows", "dispatch_cleanup"]
+    fixture.store.delete_segments.assert_called_once_with(_document().ref, ("segment-1",))
+    fixture.index.delete.assert_called_once_with(_document().ref, (segment,), ())
 
 
-def test_update_and_delete_segment_map_missing_segment() -> None:
-    service, _, store, scopes, _, _, _ = _service()
-    store.get_segment_update_state.return_value = None
-    store.get_segments.return_value = ()
+def test_delete_segment_serializes_owner_removal_with_segment_writers(fixture: _Fixture) -> None:
+    segment = SegmentIndexTarget("segment-1", "node-1", True)
+    fixture.store.get_segments.return_value = (segment,)
+    fixture.store.get_children_for_segments.return_value = ()
+    events: list[str] = []
 
-    with pytest.raises(SegmentNotFoundError):
-        service.update_segment(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_id="segment-1",
-            values={"content": "content"},
-        )
-    with pytest.raises(SegmentNotFoundError):
-        service.delete_segment(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_id="segment-1",
-        )
+    @contextmanager
+    def hold(name: str, *, timeout: int) -> Generator[object]:
+        assert timeout == 600
+        events.append(f"acquire:{name}")
+        try:
+            yield object()
+        finally:
+            events.append(f"release:{name}")
 
+    fixture.indexing_state.lock.side_effect = hold
+    fixture.store.delete_segments.side_effect = lambda *_args: events.append("delete_rows")
+    fixture.index.delete.side_effect = lambda *_args: events.append("dispatch_cleanup")
 
-@pytest.mark.parametrize(
-    ("filename", "expected"),
-    [
-        (None, SegmentUploadFileNotFoundError),
-        ("segments.txt", SegmentInvalidFileTypeError),
-    ],
-)
-def test_batch_import_validates_tenant_scoped_upload(filename: str | None, expected: type[Exception]) -> None:
-    uploads = create_autospec(SegmentUploadCatalog, instance=True, spec_set=True)
-    uploads.get_file_name.return_value = filename
-    service, _, store, scopes, _, state, dispatcher = _service(uploads=uploads)
+    fixture.service.delete_segment(_context(), dataset_id="dataset-1", document_id="document-1", segment_id="segment-1")
 
-    with pytest.raises(expected):
-        service.start_batch_import(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            upload_file_id="file-1",
-        )
-
-    assert uploads.get_file_name.call_args.kwargs["workspace_id"] == "workspace-1"
-    state.set_batch_waiting.assert_not_called()
-    dispatcher.dispatch.assert_not_called()
+    assert events == [
+        "acquire:document_document-1_is_retried",
+        "acquire:knowledge:indexing:segment-mutation:segment-1",
+        "delete_rows",
+        "release:knowledge:indexing:segment-mutation:segment-1",
+        "release:document_document-1_is_retried",
+        "dispatch_cleanup",
+    ]
 
 
-def test_batch_import_records_status_before_dispatch() -> None:
-    uploads = create_autospec(SegmentUploadCatalog, instance=True, spec_set=True)
-    uploads.get_file_name.return_value = "segments.CSV"
-    service, _, store, scopes, _, state, dispatcher = _service(uploads=uploads)
-    calls: list[str] = []
-    state.set_batch_waiting.side_effect = lambda _job_id: calls.append("status")
-    dispatcher.dispatch.side_effect = lambda **_kwargs: calls.append("dispatch")
+def test_change_status_filters_already_matching_and_indexing_segments(fixture: _Fixture) -> None:
+    fixture.store.get_segments.return_value = (
+        SegmentIndexTarget("enabled", "node-1", True),
+        SegmentIndexTarget("disabled", None, False),
+        SegmentIndexTarget("busy", "node-2", True),
+    )
+    fixture.indexing_state.is_segment_indexing.side_effect = lambda segment_id: segment_id == "busy"
+    previous = SegmentStatusState("enabled", True, None, None, None)
+    applied = SegmentStatusState("enabled", False, None, "account-1", None)
+    fixture.store.stage_segment_status.return_value = (SegmentStatusTransition(previous, applied),)
 
-    result = service.start_batch_import(
+    fixture.service.change_segment_status(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=("enabled", "disabled", "busy"),
+        action="disable",
+    )
+
+    fixture.store.stage_segment_status.assert_called_once_with(
+        _document().ref,
+        ("enabled", "disabled"),
+        action="disable",
+        actor_id="account-1",
+    )
+    fixture.index.change_status.assert_called_once_with(_document().ref, ("enabled",), "disable")
+
+
+def test_batch_import_uses_scoped_upload_and_current_dispatch_contract(fixture: _Fixture) -> None:
+    fixture.uploads.get_file_name.return_value = "segments.csv"
+
+    result = fixture.service.start_batch_import(
         _context(),
         dataset_id="dataset-1",
         document_id="document-1",
         upload_file_id="file-1",
     )
 
-    assert result.job_id == "job-1"
-    assert calls == ["status", "dispatch"]
-    dispatcher.dispatch.assert_called_once_with(
+    assert (result.job_id, result.job_status) == ("job-1", "waiting")
+    fixture.scopes.get_segment_scope.assert_called_once_with(
+        dataset_ref=DatasetRef("workspace-1", "dataset-1"),
+        document_id="document-1",
+        actor_id="account-1",
+    )
+    fixture.access.check_access.assert_called_once_with(_context(), _access_snapshot())
+    fixture.indexing_state.set_batch_waiting.assert_called_once_with("job-1")
+    fixture.dispatcher.dispatch.assert_called_once_with(
         job_id="job-1",
         upload_file_id="file-1",
         dataset_id="dataset-1",
@@ -351,156 +389,84 @@ def test_batch_import_records_status_before_dispatch() -> None:
     )
 
 
-def test_batch_import_translates_dispatch_failure() -> None:
-    uploads = create_autospec(SegmentUploadCatalog, instance=True, spec_set=True)
-    uploads.get_file_name.return_value = "segments.csv"
-    service, _, store, scopes, _, _, dispatcher = _service(uploads=uploads)
-    dispatcher.dispatch.side_effect = RuntimeError("queue down")
+def test_unknown_batch_import_status_is_distinct(fixture: _Fixture) -> None:
+    fixture.indexing_state.get_batch_status.return_value = None
 
-    with pytest.raises(SegmentBatchImportDispatchError, match="queue down"):
-        service.start_batch_import(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            upload_file_id="file-1",
-        )
-
-
-def test_batch_import_status_distinguishes_unknown_job() -> None:
-    service, _, _, scopes, _, state, _ = _service()
-    state.get_batch_status.return_value = None
     with pytest.raises(SegmentBatchImportNotFoundError):
-        service.get_batch_import_status("missing")
-
-    state.get_batch_status.return_value = "completed"
-    assert service.get_batch_import_status("job-1").job_status == "completed"
+        fixture.service.get_batch_import_status("missing")
 
 
-def test_child_chunk_update_distinguishes_missing_parent_and_child() -> None:
-    service, _, store, scopes, _, _, _ = _service()
-    store.get_children.return_value = None
-    with pytest.raises(SegmentNotFoundError):
-        service.update_child_chunk(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_id="segment-1",
-            child_chunk_id="child-1",
-            content="content",
-        )
+def test_list_child_chunks_uses_owner_scope_without_actor(fixture: _Fixture) -> None:
+    query = ChildChunkListFilter(page=2, limit=10)
+    expected = ChildChunkPage(items=(), total=0, total_pages=0, page=2, limit=10)
+    fixture.store.list_child_chunks.return_value = expected
 
-    store.get_children.return_value = ()
-    with pytest.raises(ChildChunkNotFoundError):
-        service.update_child_chunk(
-            _context(),
-            dataset_id="dataset-1",
-            document_id="document-1",
-            segment_id="segment-1",
-            child_chunk_id="child-1",
-            content="content",
-        )
-
-
-def _segment_detail(*, enabled: bool = True) -> SegmentDetail:
-    return SegmentDetail(
-        data=SegmentRecord(
-            id="segment-1",
-            position=1,
-            document_id="document-1",
-            content="content",
-            sign_content="content",
-            answer=None,
-            word_count=7,
-            tokens=0,
-            keywords=None,
-            index_node_id=None,
-            index_node_hash=None,
-            hit_count=0,
-            enabled=enabled,
-            disabled_at=None,
-            disabled_by=None,
-            status="completed",
-            created_by="account-1",
-            created_at=datetime(2026, 1, 1),
-            updated_at=datetime(2026, 1, 1),
-            updated_by=None,
-            indexing_at=None,
-            completed_at=None,
-            error=None,
-            stopped_at=None,
-            child_chunks=(),
-            attachments=(),
-            summary=None,
-        ),
-        doc_form="text_model",
-    )
-
-
-def test_create_segment_returns_store_detail() -> None:
-    service, _, store, scopes, _, _, _ = _service()
-    detail = _segment_detail()
-    store.get_segment.return_value = detail
-
-    result = service.create_segment(
-        _context(),
+    result = fixture.service.list_child_chunks(
+        workspace_id="workspace-1",
         dataset_id="dataset-1",
         document_id="document-1",
-        values={"content": "content"},
+        segment_id="segment-1",
+        query=query,
     )
 
-    assert result is detail
-    assert store.save_segment.call_args.args[1]["created_by"] == _context().account_id
+    assert result == expected
+    fixture.scopes.get_segment_scope.assert_called_once_with(
+        dataset_ref=DatasetRef("workspace-1", "dataset-1"),
+        document_id="document-1",
+        actor_id=None,
+    )
+    fixture.store.list_child_chunks.assert_called_once_with(_document().ref.segment("segment-1"), query)
 
 
-@pytest.mark.parametrize(
-    ("enabled", "indexing", "message"),
-    [(False, False, "Can't update disabled segment"), (True, True, "Segment is indexing")],
-)
-def test_shared_update_rejects_disabled_or_indexing_segments(enabled: bool, indexing: bool, message: str) -> None:
-    service, _, store, _, _, state, _ = _service()
-    store.get_segment_update_state.return_value = SegmentUpdateState("content", enabled, None)
-    state.is_segment_indexing.return_value = indexing
-    with pytest.raises(ValueError, match=message):
-        service.mutations.update_segment(
+def test_segment_input_failure_keeps_previous_publication(fixture: _Fixture) -> None:
+    from services.errors.file import UploadFileReferenceNotFoundError
+
+    fixture.store.get_segment_update_state.return_value = SegmentUpdateState("previous", True, None)
+    fixture.store.save_segment.side_effect = UploadFileReferenceNotFoundError(["missing"])
+    fixture.index.count_tokens.return_value = 0
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        fixture.service.mutations.update_segment(
             SegmentMutationScope(_dataset(), _document()),
-            actor_id="editor",
+            actor_id="account-1",
             segment_id="segment-1",
             args=SegmentUpdateArgs(content="changed"),
         )
-    store.save_segment.assert_not_called()
+    assert fixture.store.save_segment.call_count == 1
+    fixture.index.update.assert_not_called()
 
 
-def test_shared_disable_patch_does_not_replace_content() -> None:
-    service, _, store, _, _, state, _ = _service()
-    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None)
-    service.mutations.update_segment(
-        SegmentMutationScope(_dataset(), _document()),
-        actor_id="editor",
-        segment_id="segment-1",
-        args=SegmentUpdateArgs(enabled=False),
-    )
-    changes = store.save_segment.call_args.args[1]
-    assert changes["enabled"] is False
-    assert changes["disabled_by"] == "editor"
-    assert "content" not in changes
-    state.mark_segment_indexing.assert_called_once_with("segment-1")
-    store.get_segment.assert_not_called()
+def test_child_input_failure_precedes_all_vector_io(fixture: _Fixture) -> None:
+    from services.errors.file import UploadFileReferenceNotFoundError
+
+    fixture.store.get_children.return_value = ()
+    fixture.store.child_mutation.side_effect = UploadFileReferenceNotFoundError(["missing"])
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        fixture.service.mutations.create_child_chunk(
+            _document().ref.segment("segment-1"),
+            content="invalid file reference",
+            actor_id="account-1",
+        )
+    fixture.index.update_children.assert_not_called()
+    fixture.store.save_children.assert_not_called()
 
 
-def test_shared_writes_do_not_build_segment_detail() -> None:
-    service, _, store, _, _, _, _ = _service()
-    store.get_segment.side_effect = RuntimeError("attachment URL signing unavailable")
-    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None)
-    scope = SegmentMutationScope(_dataset(), _document())
+def test_child_commit_failure_restores_previous_vectors(fixture: _Fixture) -> None:
+    fixture.store.get_children.return_value = ()
 
-    created = service.mutations.create_segment(scope, actor_id="author", args=SegmentUpdateArgs(content="content"))
-    service.mutations.update_segment(
-        scope,
-        actor_id="editor",
-        segment_id=created.segment_id,
-        args=SegmentUpdateArgs(content="updated"),
-    )
+    @contextmanager
+    def fail_commit() -> Generator[None]:
+        yield
+        raise RuntimeError("commit rolled back")
 
-    assert store.save_segment.call_count == 2
-    assert store.save_segment.call_args.args[1]["content"] == "updated"
-    store.get_segment.assert_not_called()
+    fixture.store.child_mutation.return_value = fail_commit()
+    from services.knowledge.segments.application import ChildChunkIndexingApplicationError
+
+    with pytest.raises(ChildChunkIndexingApplicationError):
+        fixture.service.mutations.create_child_chunk(
+            _document().ref.segment("segment-1"),
+            content="new",
+            actor_id="account-1",
+        )
+    assert fixture.index.update_children.call_count == 2
+    published = fixture.index.update_children.call_args_list[0].kwargs["added"]
+    assert fixture.index.update_children.call_args_list[1].kwargs["deleted"] == published

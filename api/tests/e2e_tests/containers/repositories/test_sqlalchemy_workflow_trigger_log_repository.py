@@ -7,7 +7,8 @@ from uuid import uuid4
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from enums.creator import CreatorUserRole
+from models.enums import AppTriggerType, WorkflowTriggerStatus
 from models.trigger import WorkflowTriggerLog
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 

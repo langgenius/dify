@@ -1,12 +1,13 @@
 import contextlib
 import logging
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Iterable, Mapping, Sequence
+from datetime import UTC, datetime
 from enum import StrEnum
 from functools import partial
 from typing import Annotated, Any
 
-from celery import shared_task
+from celery import Task, shared_task
 from flask import current_app, json
 from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
@@ -23,9 +24,11 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
-from core.repositories import DifyCoreRepositoryFactory
+from core.app.layers.trigger_post_layer import TriggerPostLayer
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from graphon.engine.filter import ResponseStreamFilter
+from graphon.engine.layer import Layer
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState
@@ -33,12 +36,15 @@ from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from libs.helper import to_timestamp
 from models.account import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.app_task_service import AppTaskService
+from services.file_adapters import build_file_service
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 
@@ -138,11 +144,18 @@ class AppExecutionParams(BaseModel):
 
 
 class _AppRunner:
-    def __init__(self, session_factory: sessionmaker | Engine, exec_params: AppExecutionParams):
+    def __init__(
+        self,
+        session_factory: sessionmaker | Engine,
+        exec_params: AppExecutionParams,
+        *,
+        knowledge_retrieval: KnowledgeRetriever,
+    ):
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
         self._exec_params = exec_params
+        self._knowledge_retrieval = knowledge_retrieval
 
     @contextlib.contextmanager
     def _session(self):
@@ -216,7 +229,9 @@ class _AppRunner:
     ):
         exec_params = self._exec_params
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            return AdvancedChatAppGenerator(
+                execution_driver=WorkflowRunAgg.run, knowledge_retrieval=self._knowledge_retrieval
+            ).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -228,7 +243,9 @@ class _AppRunner:
                 session=session,
             )
         if exec_params.app_mode == AppMode.WORKFLOW:
-            return WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+            return WorkflowAppGenerator(
+                execution_driver=WorkflowRunAgg.run, knowledge_retrieval=self._knowledge_retrieval
+            ).generate(
                 app_model=app,
                 workflow=workflow,
                 user=user,
@@ -358,7 +375,7 @@ def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None
 
 
 def _publish_streaming_response(
-    response_stream: Generator[str | Mapping[str, Any] | BaseModel],
+    response_stream: Iterable[str | Mapping[str, Any] | BaseModel],
     workflow_run_id: str | uuid.UUID,
     app_mode: AppMode,
     workflow_id: str,
@@ -479,19 +496,61 @@ def _publish_streaming_response(
 def workflow_based_app_execution_task(
     payload: str,
 ) -> Mapping[str, Any] | None:
+    from extensions.ext_application_services import application_services
+
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
 
-    runner = _AppRunner(db.engine, exec_params=exec_params)
+    runner = _AppRunner(
+        db.engine,
+        exec_params=exec_params,
+        knowledge_retrieval=application_services().knowledge.retrieval,
+    )
     return runner.run()
 
 
-def _resume_app_execution(payload: dict[str, Any]) -> None:
+class WorkflowTriggerPublicationError(RuntimeError):
+    """Retry only the persisted result projection, never workflow execution."""
+
+
+def _reconcile_trigger_result(
+    sessions: sessionmaker[Session],
+    workflow_run_id: str,
+    *,
+    include_paused: bool = False,
+    retry_on_error: bool = True,
+) -> bool:
+    try:
+        with sessions.begin() as session:
+            return SQLAlchemyWorkflowTriggerLogRepository(session).reconcile_published_run_result(
+                workflow_run_id,
+                include_paused=include_paused,
+            )
+    except Exception as error:
+        if not retry_on_error:
+            # A pre-resume read failure has not executed the accepted command.
+            # Do not turn its next delivery into projection-only work.
+            raise
+        raise WorkflowTriggerPublicationError(f"Cannot publish workflow result: {workflow_run_id}") from error
+
+
+def _resume_app_execution(
+    payload: dict[str, Any],
+    *,
+    knowledge_retrieval: KnowledgeRetriever,
+    reconcile_only: bool = False,
+) -> None:
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-    workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_factory)
+    if _reconcile_trigger_result(
+        session_factory, workflow_run_id, include_paused=reconcile_only, retry_on_error=reconcile_only
+    ):
+        return
+    if reconcile_only:
+        raise WorkflowTriggerPublicationError(f"Workflow result is not yet ready: {workflow_run_id}")
+    workflow_run_repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker=session_factory)
 
     pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
     if pause_entity is None:
@@ -502,7 +561,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
     except Exception:
         logger.exception("Failed to load resumption context for workflow run %s", workflow_run_id)
-        return
+        raise
 
     generate_entity = resumption_context.get_generate_entity()
 
@@ -600,6 +659,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
     except WorkflowRunNotPausedError:
         logger.info("Workflow run %s was stopped or resumed by another request", workflow_run_id)
+        _reconcile_trigger_result(session_factory, workflow_run_id)
         return
 
     pause_config = PauseStateLayerConfig(
@@ -613,6 +673,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             assert message is not None
             with session_factory() as session:
                 _resume_advanced_chat(
+                    knowledge_retrieval=knowledge_retrieval,
                     app_model=app_model,
                     workflow=workflow,
                     user=user,
@@ -628,7 +689,9 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                     session=session,
                 )
         case WorkflowAppGenerateEntity():
+            graph_engine_layers = _get_trigger_resume_layers(session_factory, workflow_run_id)
             _resume_workflow(
+                knowledge_retrieval=knowledge_retrieval,
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
@@ -641,11 +704,22 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 workflow_run=workflow_run,
                 workflow_run_repo=workflow_run_repo,
                 pause_entity=pause_entity,
+                graph_engine_layers=graph_engine_layers,
             )
+
+
+def _get_trigger_resume_layers(session_factory: sessionmaker[Session], workflow_run_id: str) -> tuple[Layer, ...]:
+    with session_factory() as session:
+        trigger_log = SQLAlchemyWorkflowTriggerLogRepository(session).get_by_workflow_run_id(workflow_run_id)
+    if trigger_log is None:
+        return ()
+
+    return (TriggerPostLayer(datetime.now(UTC), trigger_log.id),)
 
 
 def _resume_advanced_chat(
     *,
+    knowledge_retrieval: KnowledgeRetriever,
     app_model: App,
     workflow: Workflow,
     user: Account | EndUser,
@@ -667,22 +741,23 @@ def _resume_advanced_chat(
     except ValueError:
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
-    workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+    workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=session_factory),
     )
 
-    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run, knowledge_retrieval=knowledge_retrieval)
 
     try:
         response = generator.resume(
@@ -716,6 +791,7 @@ def _resume_advanced_chat(
 
 def _resume_workflow(
     *,
+    knowledge_retrieval: KnowledgeRetriever,
     app_model: App,
     workflow: Workflow,
     user: Account | EndUser,
@@ -728,6 +804,7 @@ def _resume_workflow(
     workflow_run: WorkflowRun,
     workflow_run_repo,
     pause_entity,
+    graph_engine_layers: Sequence[Layer] = (),
 ) -> None:
     resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
 
@@ -736,22 +813,23 @@ def _resume_workflow(
     except ValueError:
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
-    workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+    workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
-    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+    workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
         tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=session_factory),
     )
 
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run, knowledge_retrieval=knowledge_retrieval)
 
     try:
         response = generator.resume(
@@ -762,6 +840,7 @@ def _resume_workflow(
             graph_runtime_state=graph_runtime_state,
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
+            graph_engine_layers=graph_engine_layers,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
         )
@@ -779,6 +858,22 @@ def _resume_workflow(
         WorkflowStartReason.RESUMPTION,
     )
 
+    # Retry the in-memory receipt first, then reconstruct it from committed SQL.
+    for layer in graph_engine_layers:
+        if isinstance(layer, TriggerPostLayer):
+            for attempt in range(3):
+                try:
+                    layer.publish_pending_terminal()
+                    break
+                except Exception as error:
+                    if attempt == 2:
+                        if not _reconcile_trigger_result(session_factory, workflow_run_id, include_paused=True):
+                            raise WorkflowTriggerPublicationError(
+                                f"Workflow result is not ready: {workflow_run_id}"
+                            ) from error
+    if not _reconcile_trigger_result(session_factory, workflow_run_id, include_paused=True):
+        raise WorkflowTriggerPublicationError(f"Workflow result is not ready: {workflow_run_id}")
+
     try:
         workflow_run_repo.delete_workflow_pause(pause_entity)
     except Exception as exc:
@@ -790,6 +885,19 @@ def _resume_workflow(
         )
 
 
-@shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
-def resume_app_execution(payload: dict[str, Any]) -> None:
-    _resume_app_execution(payload)
+@shared_task(
+    bind=True,
+    queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE,
+    name="resume_app_execution",
+    autoretry_for=(WorkflowTriggerPublicationError,),
+    retry_backoff=True,
+    max_retries=None,
+)
+def resume_app_execution(self: Task, payload: dict[str, Any]) -> None:
+    from extensions.ext_application_services import application_services
+
+    _resume_app_execution(
+        payload,
+        knowledge_retrieval=application_services().knowledge.retrieval,
+        reconcile_only=self.request.retries > 0,
+    )

@@ -10,6 +10,7 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def test_materialized_tool_sources_keep_the_published_version_and_tenant(
@@ -392,6 +393,7 @@ def test_running_tool_keeps_materialized_definition_after_republication(
     resuming: bool,
 ) -> None:
     from core.workflow.node_factory import DifyNodeFactory
+    from core.workflow.node_runtime import build_knowledge_index_files
     from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
     from graphon.engine import Engine
     from graphon.engine_events import NodeRunSucceededEvent
@@ -473,6 +475,8 @@ def test_running_tool_keeps_materialized_definition_after_republication(
         ),
         runtime_state=state,
         workflow_tools={provider_id: source.tool},
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     completed_nodes = []
     engine = Engine(
@@ -481,7 +485,9 @@ def test_running_tool_keeps_materialized_definition_after_republication(
         workers=1,
         container_handler_factories=(
             partial(
-                WorkflowToolContainerHandler, sources=sources, event_listener_factory=lambda *_: completed_nodes.append
+                WorkflowToolContainerHandler,
+                sources=sources,
+                event_listener_factory=lambda *_: completed_nodes.append,
             ),
         ),
     )

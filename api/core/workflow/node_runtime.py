@@ -78,6 +78,8 @@ from graphon.nodes.tool_runtime_entities import (
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
+from services.file_adapters import build_file_service
+from services.file_service import UploadFileCreator
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .human_input_adapter import (
@@ -126,9 +128,15 @@ if TYPE_CHECKING:
     from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+def build_knowledge_index_files() -> UploadFileCreator:
+    """Build the upload capability used by knowledge index nodes."""
+    return build_file_service(session_factory=session_factory.get_session_maker())
 
 
 def resolve_dify_run_context(run_context: Mapping[str, Any] | DifyRunContext) -> DifyRunContext:
@@ -546,6 +554,8 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     def __init__(
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
+        *,
+        knowledge_retrieval: KnowledgeRetriever,
         session_maker: sessionmaker[Session] | None = None,
         execution_driver: WorkflowRunDriver | None = None,
         workflow_tools: Mapping[str, WorkflowTool] | None = None,
@@ -554,6 +564,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._session_maker = session_maker
         self._execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
         self._workflow_tools = workflow_tools if workflow_tools is not None else {}
 
     @property
@@ -588,6 +599,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                     if self._is_workflow_tool_provider(node_data)
                     else None
                 ),
+                knowledge_retrieval=self._knowledge_retrieval,
             )
             tool_runtime.runtime.dify_run_context = self._run_context
         except ToolNodeError:

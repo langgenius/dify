@@ -68,20 +68,19 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.conversation.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.conversation_repository import ConversationRepository
 from repositories.conversation_variable_repository import ConversationVariableRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
-from repositories.factory import DifyAPIRepositoryFactory
-from repositories.file_grant_repository import FileGrantRepository
-from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.file.file_grant_repository import FileGrantRepository
+from repositories.file.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
+from repositories.file.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
-from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.message_repository import MessageRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
-from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -89,9 +88,10 @@ from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchem
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
-from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from repositories.workflow.human_input.file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -109,6 +109,7 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent_tool_inner_service import AgentToolInnerService
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
@@ -124,6 +125,7 @@ from services.app.workflow_comment_service import WorkflowCommentService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_generate_service import AppGenerateService
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_details_service import AppPreviewDetails
 from services.app_preview_query_service import AppPreviewQueryService
@@ -152,6 +154,7 @@ from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
+from services.file_adapters import build_file_service
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
@@ -191,6 +194,9 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.plugin.app_invocation import PluginAppInvocationService
+from services.plugin.node_invocation import PluginNodeInvocationService
+from services.plugin.tool_invocation import PluginToolInvocationService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -213,6 +219,8 @@ from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock
 from services.setup_service import SetupService
+from services.snippet_generate_service import SnippetGenerateService
+from services.snippet_service import SnippetService
 from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
@@ -235,8 +243,11 @@ from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_run_service import WorkflowRunService
+from services.workflow_service import WorkflowService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from services.workspace.gateways import WorkspaceInvitationGateway
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
@@ -299,6 +310,13 @@ class ApplicationServices:
     annotation_reply: AnnotationReplyService
     rbac: RBACServices
     agent_apps: AgentAppServices
+    agent_tools: AgentToolInnerService
+    plugin_apps: PluginAppInvocationService
+    plugin_nodes: PluginNodeInvocationService
+    plugin_tools: PluginToolInvocationService
+    snippets: SnippetService
+    snippet_generation: SnippetGenerateService
+    app_generation: AppGenerateService
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
@@ -406,14 +424,14 @@ def _build_oauth_device_service(
     )
 
 
-def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> FileGrantService:
+def _build_file_grant_service(*, database_client: sessionmaker[Session], files: FileService) -> FileGrantService:
     repository = FileGrantRepository(session_factory=database_client)
     return FileGrantService(
         repository=repository,
         files=FileGrantFileGateway(
             load_end_user=repository.get_end_user,
             subject_exists=repository.subject_exists,
-            file_service=FileService(session_factory=database_client),
+            file_service=files,
             tool_files=ToolFileManager(),
             storage=storage,
         ),
@@ -486,6 +504,7 @@ def build_application_services(
     workspace_members, workspace_provisioning = build_workspace_membership_services(
         workspaces=workspace_repository,
         accounts=accounts,
+        redis=redis,
     )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
@@ -528,9 +547,13 @@ def build_application_services(
         rbac_members=rbac.members,
         tracing_configs=tracing_configs,
     )
-    tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
+    tag_repository = TagRepository(session_factory=database_client)
+    tags = TagApplicationService(tags=tag_repository)
+    credential_queries = CredentialQueryRepository(session_factory=database_client)
+    file_service = build_file_service(session_factory=database_client)
     knowledge = build_knowledge_services(
         database_client=database_client,
+        files=file_service,
         dataset_access=dataset_dependencies.access,
         datasets=dataset_dependencies.datasets,
         documents=dataset_dependencies.documents,
@@ -540,9 +563,15 @@ def build_application_services(
         redis=redis,
         tags=tags,
         rbac_members=rbac.members,
+        workspaces=workspace_repository,
+        deployment_edition=deployment_edition,
     )
+    app_generation = AppGenerateService(knowledge_retrieval=knowledge.retrieval)
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
-    file_service = FileService(session_factory=database_client)
+    app_scoped_end_users = AppScopedEndUserServices(
+        commands=AppScopedEndUserService(end_users=app_scoped_end_user_repository),
+        queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
+    )
     remote_file_service = RemoteFileService(files=file_service)
     passwords = DefaultAccountPasswordHasher()
     web_authentication_tokens = TokenManagerWebAuthenticationGateway(
@@ -555,10 +584,20 @@ def build_application_services(
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
     invitation_tokens = RedisInvitationTokenStore(redis=redis)
+    invitation_gateway = WorkspaceInvitationGateway(tokens=invitation_tokens, redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
-    workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+    workflow_node_execution_repository = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
         session_maker=database_client
+    )
+    workflow_run_query_repository = WorkflowRepositoryFactory.create_api_workflow_run_repository(
+        session_maker=database_client
+    )
+    workflow_service = WorkflowService(session_maker=database_client)
+    snippets = SnippetService(
+        session_maker=database_client,
+        node_executions=workflow_node_execution_repository,
+        workflow_runs=workflow_run_query_repository,
     )
     account_services = build_account_services(
         database_client=database_client,
@@ -571,6 +610,7 @@ def build_application_services(
         passwords=passwords,
         invitation_tokens=invitation_tokens,
         activation_accounts=activation_accounts,
+        invitation_quotas=invitation_gateway,
     )
     workspace_services = build_workspace_services(
         database_client=database_client,
@@ -581,7 +621,7 @@ def build_application_services(
         members=workspace_members,
         provisioning=workspace_provisioning,
         registration=account_services.lifecycle,
-        invitation_tokens=invitation_tokens,
+        invitation_gateway=invitation_gateway,
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(conversations=conversations, generate_name=generate_conversation_name)
@@ -633,8 +673,31 @@ def build_application_services(
         conversation_queries=conversation_queries,
         accounts=account_services,
         apps=apps,
-        credential_queries=CredentialQueryRepository(session_factory=database_client),
+        credential_queries=credential_queries,
         agent_apps=build_agent_app_services(database_client=database_client),
+        agent_tools=AgentToolInnerService(knowledge_retrieval=knowledge.retrieval),
+        plugin_apps=PluginAppInvocationService(
+            session_factory=database_client,
+            execution_driver=WorkflowRunAgg.run,
+            end_users=app_scoped_end_users.commands,
+            knowledge_retrieval=knowledge.retrieval,
+        ),
+        plugin_nodes=PluginNodeInvocationService(
+            workflow=workflow_service,
+            knowledge_retrieval=knowledge.retrieval,
+        ),
+        plugin_tools=PluginToolInvocationService(
+            execution_driver=WorkflowRunAgg.run,
+            knowledge_retrieval=knowledge.retrieval,
+        ),
+        snippets=snippets,
+        snippet_generation=SnippetGenerateService(
+            snippets=snippets,
+            workflows=workflow_service,
+            session_factory=database_client,
+            knowledge_retrieval=knowledge.retrieval,
+        ),
+        app_generation=app_generation,
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(
@@ -679,10 +742,7 @@ def build_application_services(
         ),
         data_sources=data_sources,
         knowledge=knowledge,
-        app_scoped_end_users=AppScopedEndUserServices(
-            commands=AppScopedEndUserService(end_users=app_scoped_end_user_repository),
-            queries=AppScopedEndUserQueryService(end_users=app_scoped_end_user_repository),
-        ),
+        app_scoped_end_users=app_scoped_end_users,
         webapp_access=webapp_access,
         web_authentication=WebAuthenticationService(
             accounts=accounts,
@@ -712,6 +772,7 @@ def build_application_services(
             webapp_access=webapp_access,
             get_workspace_role=workspace_repository.get_account_role,
             webapp_auth_enabled=webapp_auth_enabled,
+            app_generation=app_generation,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
@@ -740,13 +801,11 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
-        file_grants=_build_file_grant_service(database_client=database_client),
+        file_grants=_build_file_grant_service(database_client=database_client, files=file_service),
         files=file_service,
         human_input_file_uploads=HumanInputFileUploadService(
             uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),
-            workflow_run_repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-                session_maker=database_client,
-            ),
+            workflow_run_repository=workflow_run_query_repository,
             files=file_service,
             remote_files=remote_file_service,
         ),
@@ -765,7 +824,10 @@ def build_application_services(
         ),
         message_more_like_this=MessageMoreLikeThisService(
             repository=messages,
-            generator=MessageMoreLikeThisGenerator(session_factory=database_client),
+            generator=MessageMoreLikeThisGenerator(
+                session_factory=database_client,
+                knowledge_retrieval=knowledge.retrieval,
+            ),
         ),
         message_suggested_questions=MessageSuggestedQuestionsService(
             queries=suggested_questions,
@@ -819,7 +881,11 @@ def build_application_services(
         ),
         app_tasks=AppTaskControlService(redis_client=redis),
         app_audio=AppAudioRuntime(session_factory=database_client),
-        trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
+        trial_apps=build_trial_app_services(
+            database_client=database_client,
+            trial_apps=trial_apps,
+            app_generation=app_generation,
+        ),
         workflow_run_archives=WorkflowRunArchiveService(
             bundles=WorkflowRunArchiveBundleQueryRepository(session_factory=database_client),
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
@@ -862,9 +928,7 @@ def build_application_services(
         ),
         tags=tags,
         workflow_statistics=WorkflowStatisticQueryService(
-            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-                session_maker=database_client,
-            ),
+            workflow_runs=workflow_run_query_repository,
         ),
     )
 

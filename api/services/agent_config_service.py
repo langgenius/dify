@@ -48,8 +48,10 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.tools import ToolFile
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
+from services.file_reference_parser import added_trusted_upload_file_ids
 from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
@@ -106,6 +108,19 @@ class ConfigPushPayload(BaseModel):
     skills: list[ConfigPushSkillItem] = Field(default_factory=list)
     env_text: str | None = None
     note: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _ConfigSkillUpdateSource:
+    name: str
+    file_key: str | None
+    filename: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedConfigSkillUpdate:
+    name: str
+    skill_ref: AgentConfigSkillRefConfig | None
 
 
 @dataclass(slots=True)
@@ -707,11 +722,17 @@ class AgentConfigService:
                 for_update=True,
             )
             self._require_writable(target, surface=AgentConfigMutationSurface.CONSOLE)
+            session.refresh(target.version, with_for_update=True)
             upload_file = self._require_console_upload_file_source(session, tenant_id=tenant_id, file_id=upload_file_id)
             agent_soul = target.agent_soul.model_copy(deep=True)
             agent_soul.config_files = self._upsert_upload_file(
                 current=agent_soul.config_files,
                 upload_file=upload_file,
+            )
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=tenant_id,
+                upload_file_ids=(upload_file_id,),
             )
             target.version.config_snapshot = agent_soul
             session.commit()
@@ -780,9 +801,9 @@ class AgentConfigService:
         payload: ConfigPushPayload,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        prepared_skills: list[tuple[str, AgentConfigSkillRefConfig | None]] = []
-        if payload.skills:
-            target = self.resolve_target(
+        with self._session_factory() as session:
+            target = self._resolve_target_in_session(
+                session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 config_version_id=config_version_id,
@@ -790,8 +811,16 @@ class AgentConfigService:
                 user_id=user_id,
             )
             self._require_writable(target, surface=surface)
-            prepared_skills = self._prepare_skill_updates(tenant_id=tenant_id, user_id=user_id, updates=payload.skills)
-
+            skill_sources = self._snapshot_skill_update_sources(
+                session,
+                tenant_id=tenant_id,
+                updates=payload.skills,
+            )
+        prepared_skills = self._normalize_skill_updates(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            sources=skill_sources,
+        )
         with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
@@ -803,6 +832,7 @@ class AgentConfigService:
                 for_update=True,
             )
             self._require_writable(target, surface=surface)
+            previous_soul_payload = target.agent_soul.model_dump(mode="json")
             agent_soul = target.agent_soul.model_copy(deep=True)
             if payload.files:
                 agent_soul.config_files = self._apply_file_updates(
@@ -811,14 +841,25 @@ class AgentConfigService:
                     current=agent_soul.config_files,
                     updates=payload.files,
                 )
-            if payload.skills:
-                agent_soul.config_skills = self._merge_skill_updates(
-                    current=agent_soul.config_skills, updates=prepared_skills
+            if prepared_skills:
+                agent_soul.config_skills = self._apply_skill_updates(
+                    current=agent_soul.config_skills,
+                    updates=prepared_skills,
                 )
             if payload.env_text is not None:
                 agent_soul.env.variables = self._apply_env_text(agent_soul.env.variables, payload.env_text)
             if payload.note is not None:
                 agent_soul.config_note = payload.note
+            added_file_ids = added_trusted_upload_file_ids(
+                previous=previous_soul_payload,
+                current=agent_soul.model_dump(mode="json"),
+            )
+            if added_file_ids:
+                lock_and_validate_owned_upload_files_in_session(
+                    session,
+                    tenant_id=tenant_id,
+                    upload_file_ids=tuple(added_file_ids),
+                )
             target.version.config_snapshot = agent_soul
             session.commit()
             target.agent_soul = agent_soul
@@ -1169,65 +1210,80 @@ class AgentConfigService:
         )
         return [by_name[item_name] for item_name in order if item_name in by_name]
 
-    def _prepare_skill_updates(
+    def _snapshot_skill_update_sources(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        updates: list[ConfigPushSkillItem],
+    ) -> tuple[_ConfigSkillUpdateSource, ...]:
+        sources: list[_ConfigSkillUpdateSource] = []
+        for update in updates:
+            name = validate_config_skill_name(update.name)
+            if update.file_ref is None:
+                sources.append(_ConfigSkillUpdateSource(name=name, file_key=None, filename=None))
+                continue
+            if update.file_ref.kind != "tool_file":
+                raise AgentConfigServiceError(
+                    "invalid_skill_file_ref",
+                    "config skills must be uploaded as tool files",
+                    status_code=400,
+                )
+            tool_file = self._require_tool_file_source(
+                session,
+                tenant_id=tenant_id,
+                file_id=update.file_ref.id,
+            )
+            sources.append(
+                _ConfigSkillUpdateSource(
+                    name=name,
+                    file_key=tool_file.file_key,
+                    filename=tool_file.name,
+                )
+            )
+        return tuple(sources)
+
+    def _normalize_skill_updates(
         self,
         *,
         tenant_id: str,
         user_id: str,
-        updates: list[ConfigPushSkillItem],
-    ) -> list[tuple[str, AgentConfigSkillRefConfig | None]]:
-        # None represents removal. Capture only trusted source metadata before storage I/O.
-        sources: list[tuple[str, tuple[str, str] | None]] = []
-        with self._session_factory() as session:
-            for update in updates:
-                name = validate_config_skill_name(update.name)
-                if update.file_ref is None:
-                    sources.append((name, None))
-                    continue
-                if update.file_ref.kind != "tool_file":
-                    raise AgentConfigServiceError(
-                        "invalid_skill_file_ref",
-                        "config skills must be uploaded as tool files",
-                        status_code=400,
-                    )
-                tool_file = self._require_tool_file_source(session, tenant_id=tenant_id, file_id=update.file_ref.id)
-                sources.append((name, (tool_file.file_key, tool_file.name)))
-
-        prepared: list[tuple[str, AgentConfigSkillRefConfig | None]] = []
-        for name, source in sources:
-            if source is None:
-                prepared.append((name, None))
+        sources: tuple[_ConfigSkillUpdateSource, ...],
+    ) -> tuple[_PreparedConfigSkillUpdate, ...]:
+        prepared: list[_PreparedConfigSkillUpdate] = []
+        for source in sources:
+            if source.file_key is None or source.filename is None:
+                prepared.append(_PreparedConfigSkillUpdate(name=source.name, skill_ref=None))
                 continue
-            file_key, filename = source
-            archive_bytes = storage.load_once(file_key)
+            archive_bytes = storage.load_once(source.file_key)
             try:
                 skill_ref = self._skill_normalizer.normalize(
                     content=archive_bytes,
-                    filename=filename,
-                    requested_name=name,
+                    filename=source.filename,
+                    requested_name=source.name,
                     tenant_id=tenant_id,
                     user_id=user_id,
                 )
             except SkillPackageError as exc:
                 raise AgentConfigServiceError(exc.code, exc.message, status_code=exc.status_code) from exc
-            prepared.append((name, skill_ref))
-        return prepared
+            prepared.append(_PreparedConfigSkillUpdate(name=source.name, skill_ref=skill_ref))
+        return tuple(prepared)
 
     @staticmethod
-    def _merge_skill_updates(
+    def _apply_skill_updates(
         *,
         current: list[AgentConfigSkillRefConfig],
-        updates: list[tuple[str, AgentConfigSkillRefConfig | None]],
+        updates: tuple[_PreparedConfigSkillUpdate, ...],
     ) -> list[AgentConfigSkillRefConfig]:
         by_name = {item.name: item for item in current}
         order = [item.name for item in current]
-        for name, skill_ref in updates:
-            if skill_ref is None:
-                by_name.pop(name, None)
+        for update in updates:
+            if update.skill_ref is None:
+                by_name.pop(update.name, None)
                 continue
-            if name not in order:
-                order.append(name)
-            by_name[name] = skill_ref
+            if update.name not in order:
+                order.append(update.name)
+            by_name[update.name] = update.skill_ref
         return [by_name[name] for name in order if name in by_name]
 
     def _validate_source_ref(

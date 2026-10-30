@@ -33,13 +33,20 @@ from services.conversation_service import ConversationService
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
 
 class AgentChatAppGenerator(MessageBasedAppGenerator):
-    def __init__(self, *, execution_driver: "WorkflowRunDriver") -> None:
+    def __init__(
+        self,
+        *,
+        execution_driver: "WorkflowRunDriver",
+        knowledge_retrieval: "KnowledgeRetriever",
+    ) -> None:
         self._execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
 
     @overload
     def generate(
@@ -277,7 +284,10 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = AgentChatAppRunner(execution_driver=self._execution_driver)
+                runner = AgentChatAppRunner(
+                    execution_driver=self._execution_driver,
+                    knowledge_retrieval=self._knowledge_retrieval,
+                )
                 with session_factory.create_session() as session:
                     runner.run(
                         application_generate_entity=application_generate_entity,

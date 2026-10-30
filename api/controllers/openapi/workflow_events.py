@@ -41,7 +41,7 @@ from core.app.entities.task_entities import StreamEvent
 from core.db.session_factory import session_factory
 from core.workflow.human_input_policy import HumanInputSurface
 from models.model import AppMode
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
@@ -91,7 +91,7 @@ class OpenApiWorkflowEventsApi(Resource):
         # The event stream outlives `ctx.session`, so this route needs a maker of its
         # own — the guard's, not a fresh one bound straight to the engine.
         session_maker = session_factory.get_session_maker()
-        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
         workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
             tenant_id=app_model.tenant_id,
             run_id=require_uuid(run_id, not_found=RunNotFound),

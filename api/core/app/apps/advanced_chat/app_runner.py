@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any, cast, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -49,6 +49,10 @@ from graphon.variables.variables import Variable
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
+
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +67,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         *,
         application_generate_entity: AdvancedChatAppGenerateEntity,
         queue_manager: AppQueueManager,
+        knowledge_retrieval: "KnowledgeRetriever",
         conversation: Conversation,
         message: Message,
         dialogue_count: int,
@@ -76,6 +81,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     ):
         super().__init__(
             queue_manager=queue_manager,
+            knowledge_retrieval=knowledge_retrieval,
             execution_driver=execution_driver,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
@@ -417,6 +423,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         ]
 
         if new_variables:
+            lock_new_workflow_upload_file_references(
+                session,
+                tenant_id=self._workflow.tenant_id,
+                current_payloads=(variable.data for variable in new_variables),
+            )
             session.add_all(new_variables)
 
         return new_variables
@@ -457,6 +468,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             for var_id in missing_ids
         ]
 
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=self._workflow.tenant_id,
+            current_payloads=(variable.data for variable in new_variables),
+        )
         session.add_all(new_variables)
 
         # Return combined list

@@ -175,7 +175,6 @@
 /api/tasks/trigger_processing_tasks.py @CourTeous33
 /api/tasks/trigger_subscription_refresh_tasks.py @CourTeous33
 /api/tasks/workflow_schedule_tasks.py @CourTeous33
-/api/tasks/workflow_cfs_scheduler/ @CourTeous33
 /api/events/event_handlers/sync_plugin_trigger_when_app_created.py @CourTeous33
 /api/events/event_handlers/update_app_triggers_when_app_published_workflow_updated.py @CourTeous33
 /api/events/event_handlers/sync_workflow_schedule_when_app_published.py @CourTeous33

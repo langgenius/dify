@@ -16,13 +16,13 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRet
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata, WorkflowTaskState
 from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.rag.entities import RetrievalSourceMetadata
 from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
 from models.account import Account
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, Conversation, MessageAnnotation, MessageFile
+from services.knowledge.entities.citation import RetrievalSourceMetadata
 from tests.helpers.unit.model_factories import make_app, make_conversation
 
 

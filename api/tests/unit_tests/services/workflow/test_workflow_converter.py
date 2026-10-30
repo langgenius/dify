@@ -21,22 +21,16 @@ from core.app.app_config.entities import (
 )
 from core.helper import encrypter
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import Account, App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
+from services.errors.file import UploadFileReferenceNotFoundError
 from services.workflow import workflow_converter as converter_module
-from services.workflow.workflow_converter import WorkflowConverter
-
-try:
-    from graphon.enums import BuiltinNodeTypes
-    from graphon.model_runtime.entities.llm_entities import LLMMode
-    from graphon.model_runtime.entities.message_entities import PromptMessageRole
-    from graphon.variables.input_entities import VariableEntity, VariableEntityType
-except ModuleNotFoundError:
-    from dify_graph.enums import BuiltinNodeTypes
-    from dify_graph.model_runtime.entities.llm_entities import LLMMode
-    from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-    from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
+from services.workflow.workflow_converter import WorkflowConverter, WorkflowGraph
 
 
 @pytest.fixture
@@ -77,7 +71,7 @@ def _app_model_config(**kwargs: Any) -> AppModelConfig:
     return config
 
 
-def _build_start_graph() -> dict[str, Any]:
+def _build_start_graph() -> WorkflowGraph:
     return {
         "nodes": [
             {
@@ -471,6 +465,54 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     send_mock.assert_called_once_with(new_app, account=account, session=sqlite_session)
 
 
+def test_convert_to_workflow_revalidates_new_image_icon(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    app_model_config = AppModelConfig(app_id="source-app")
+    app_model_config.id = "config-1"
+    sqlite_session.add(app_model_config)
+    sqlite_session.flush()
+    workflow = Workflow(
+        tenant_id="tenant-1",
+        app_id="source-app",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        _features="{}",
+        created_by="account-1",
+        _environment_variables=[],
+        _conversation_variables=[],
+    )
+
+    def convert_app_model_config_to_workflow(
+        app_model: App,
+        app_model_config: AppModelConfig,
+        account_id: str,
+        session: Session,
+    ) -> Workflow:
+        del app_model, app_model_config, account_id, session
+        return workflow
+
+    monkeypatch.setattr(converter, "convert_app_model_config_to_workflow", convert_app_model_config_to_workflow)
+    app_model = _app_model(tenant_id="tenant-1", id="source-app", app_model_config_id="config-1")
+
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        converter.convert_to_workflow(
+            app_model=app_model,
+            account=_account(id="account-1"),
+            name="Converted",
+            icon_type="image",
+            icon="removed-upload",
+            icon_background="#ffffff",
+            session=sqlite_session,
+        )
+    sqlite_session.rollback()
+
+    assert sqlite_session.scalars(select(App)).all() == []
+
+
 def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_and_features(
     converter: WorkflowConverter,
     monkeypatch: pytest.MonkeyPatch,
@@ -857,7 +899,10 @@ def test_replace_template_variables_should_replace_start_and_external_references
 
 
 def test_graph_helpers_should_create_edges_append_nodes_and_choose_mode(converter: WorkflowConverter) -> None:
-    graph = {"nodes": [{"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START}}], "edges": []}
+    graph: WorkflowGraph = {
+        "nodes": [{"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START}}],
+        "edges": [],
+    }
     node = {"id": "llm", "position": None, "data": {"type": BuiltinNodeTypes.LLM}}
 
     edge = converter._create_edge("start", "llm")

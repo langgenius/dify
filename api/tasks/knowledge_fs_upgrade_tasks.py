@@ -7,6 +7,7 @@ import logging
 from celery import shared_task
 
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from services.dataset_knowledge_fs_upgrade_file_lease import cleanup_deferred_upgrade_files
 from services.dataset_knowledge_fs_upgrade_service import (
     UPGRADE_CHECKPOINT_TIME_LIMIT_SECONDS,
@@ -34,7 +35,10 @@ logger = logging.getLogger(__name__)
 def run_knowledge_fs_upgrade(self, *, job_id: str) -> None:
     """Run one checkpoint and enqueue the next only after it is committed."""
 
-    runner = KnowledgeFSUpgradeRunner(session_factory.get_session_maker())
+    runner = KnowledgeFSUpgradeRunner(
+        session_factory.get_session_maker(),
+        files=application_services().files,
+    )
     try:
         has_more = runner.run_next(job_id=job_id, celery_task_id=self.request.id)
     except KnowledgeFSUpgradeBusyError as error:

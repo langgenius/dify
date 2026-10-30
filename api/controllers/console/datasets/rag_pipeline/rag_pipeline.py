@@ -29,17 +29,19 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.logging.context import get_request_id, get_trace_id
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models.account import Account
 from models.dataset import Pipeline
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
-from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from services.knowledge.dataset_service import DatasetService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -241,9 +243,19 @@ class PublishCustomizedPipelineTemplateApi(Resource):
             if not current_user.is_dataset_editor:
                 raise Forbidden()
             try:
-                DatasetService.check_dataset_permission(dataset, current_user, session)
-            except NoPermissionError as exc:
+                application_services().knowledge.datasets.require_accessible(
+                    RequestContext(
+                        request_id=get_request_id(),
+                        trace_id=get_trace_id(),
+                        account_id=current_user.id,
+                        active_workspace_id=pipeline.tenant_id,
+                    ),
+                    dataset.id,
+                )
+            except DatasetAccessDeniedError as exc:
                 raise Forbidden(str(exc)) from exc
+            except DatasetNotFoundError as exc:
+                raise NotFound(str(exc)) from exc
 
         try:
             RagPipelineService.publish_customized_pipeline_template(

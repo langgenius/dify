@@ -9,9 +9,9 @@ import pytest
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,

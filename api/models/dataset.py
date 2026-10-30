@@ -15,12 +15,12 @@ from core.rag.entities import PreProcessingRuleKey
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from enums.creator import CreatorUserRole
 from libs.datetime_utils import ensure_naive_utc
 from libs.uuid_utils import uuidv7
 from models.base import TypeBase
 from models.enums import (
     CollectionBindingType,
-    CreatorUserRole,
     DatasetMetadataType,
     DatasetQuerySource,
     DatasetRuntimeMode,
@@ -462,22 +462,19 @@ class Document(TypeBase):
 
     @property
     def display_status(self):
-        status = None
         if self.indexing_status not in {"completed", "error"} and self.is_paused:
-            status = "paused"
-        elif self.indexing_status == "waiting":
-            status = "queuing"
-        elif self.indexing_status in {"parsing", "cleaning", "splitting", "indexing"}:
-            status = "indexing"
-        elif self.indexing_status == "error":
-            status = "error"
-        elif self.indexing_status == "completed" and not self.archived and self.enabled:
-            status = "available"
-        elif self.indexing_status == "completed" and not self.archived and not self.enabled:
-            status = "disabled"
-        elif self.indexing_status == "completed" and self.archived:
-            status = "archived"
-        return status
+            return "paused"
+        if self.indexing_status == "waiting":
+            return "queuing"
+        if self.indexing_status in {"parsing", "cleaning", "splitting", "indexing"}:
+            return "indexing"
+        if self.indexing_status == "error":
+            return "error"
+        if self.indexing_status == "completed":
+            if self.archived:
+                return "archived"
+            return "available" if self.enabled else "disabled"
+        return None
 
     @property
     def data_source_info_dict(self) -> dict[str, Any]:

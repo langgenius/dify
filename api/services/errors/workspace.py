@@ -53,6 +53,14 @@ class WorkspaceAlreadyHasOwnerError(WorkspaceApplicationError):
     """An owner cannot join a workspace that already has one."""
 
 
+class WorkspacePostCommitNotificationError(WorkspaceApplicationError):
+    """A workspace was committed, but its post-commit notification failed."""
+
+    def __init__(self, workspace_id: str, cause: Exception) -> None:
+        super().__init__(str(cause))
+        self.workspace_id = workspace_id
+
+
 class InvalidWorkspaceMemberRoleError(WorkspaceApplicationError):
     pass
 

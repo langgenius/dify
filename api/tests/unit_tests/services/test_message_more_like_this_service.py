@@ -32,6 +32,7 @@ from services.message_more_like_this_service import (
     MoreLikeThisResponse,
     MoreLikeThisSource,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @dataclass
@@ -160,7 +161,11 @@ def harness(
     with flask_app.test_request_context("/more-like-this"):
         yield _Harness(
             service=MessageMoreLikeThisService(
-                repository=repository, generator=MessageMoreLikeThisGenerator(session_factory=factory)
+                repository=repository,
+                generator=MessageMoreLikeThisGenerator(
+                    session_factory=factory,
+                    knowledge_retrieval=make_knowledge_retriever(),
+                ),
             ),
             repository=repository,
             app_id=app.id,

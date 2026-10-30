@@ -336,6 +336,31 @@ describe('JinaReader', () => {
       expect(screen.getByText('Crawl failed due to network error'))!.toBeInTheDocument()
     })
 
+    it('stops polling when the crawl is cancelled', async () => {
+      const user = userEvent.setup()
+      vi.mocked(createJinaReaderTask).mockResolvedValueOnce({
+        job_id: 'cancelled-job',
+        status: 'active',
+      })
+      vi.mocked(checkJinaReaderTaskStatus).mockResolvedValueOnce({
+        job_id: 'cancelled-job',
+        status: 'cancelled',
+        current: 0,
+        total: 1,
+        data: [],
+      })
+
+      render(<JinaReader {...createDefaultProps()} />)
+      await user.type(screen.getByRole('textbox'), 'https://cancelled-test.com')
+      await user.click(screen.getByRole('button', { name: /run/i }))
+
+      expect(
+        await screen.findByText('datasetCreation.stepOne.website.unknownError'),
+      ).toBeInTheDocument()
+      expect(checkJinaReaderTaskStatus).toHaveBeenCalledExactlyOnceWith('cancelled-job')
+      expect(sleep).not.toHaveBeenCalled()
+    })
+
     it('should handle API error during status check', async () => {
       const user = userEvent.setup()
       const mockCreateTask = createJinaReaderTask as Mock
@@ -369,10 +394,20 @@ describe('JinaReader', () => {
             resume = resolve
           }),
       )
-      vi.mocked(createJinaReaderTask).mockResolvedValueOnce({ job_id: 'limit-job' })
+      vi.mocked(createJinaReaderTask).mockResolvedValueOnce({
+        job_id: 'limit-job',
+        status: 'active',
+      })
       vi.mocked(checkJinaReaderTaskStatus)
-        .mockResolvedValueOnce({ status: 'running', current: 1, total: 100, data: [] })
         .mockResolvedValueOnce({
+          job_id: 'limit-job',
+          status: 'running',
+          current: 1,
+          total: 100,
+          data: [],
+        })
+        .mockResolvedValueOnce({
+          job_id: 'limit-job',
           status: 'completed',
           current: 1,
           total: 100,

@@ -1,7 +1,6 @@
 """Behavioral and architecture regressions for explicit knowledge reads."""
 
 import ast
-import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
@@ -13,45 +12,54 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access.scope import FileAccessScope, bind_file_access_scope, grant_upload_file_access
+from core.app.file_access.scope import (
+    FileAccessScope,
+    bind_file_access_scope,
+    get_current_file_access_scope,
+    grant_upload_file_access,
+)
 from core.tools.signature import verify_tool_file_signature
+from enums.account import TenantAccountRole
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from fields.document_fields import DocumentResponse
 from graphon.file import helpers as file_helpers
 from models import dataset as dataset_module
+from models.account import Account, TenantAccountJoin
 from models.dataset import (
-    ChildChunk,
     Dataset,
     DatasetMetadata,
     DatasetMetadataBinding,
-    DatasetProcessRule,
+    DatasetPermission,
     DatasetQuery,
     Document,
     DocumentSegment,
-    ExternalKnowledgeApis,
-    ExternalKnowledgeBindings,
     SegmentAttachmentBinding,
 )
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from models.tools import ToolFile
-from repositories.knowledge.dataset_read_repository import get_external_api_bindings_batch, load_segment_read_batch
-from repositories.knowledge.segment_read_adapter import sign_segment_content
+from repositories.knowledge.dataset_read_repository import (
+    get_dataset_for_tenant,
+    get_dataset_list_actor_role,
+    list_dataset_permission_member_ids,
+    list_datasets_by_ids,
+    list_visible_datasets,
+    list_visible_datasets_by_ids,
+)
+from repositories.knowledge.document_query_repository import load_document_read_projections
+from repositories.knowledge.retrieval_source_repository import get_authorized_retrieval_attachment_file_keys
+from repositories.knowledge.segment_query_repository import (
+    get_content_file_ids,
+    get_segments_for_document,
+    segment_content_file_ids,
+)
 from services.knowledge.dataset_read_service import (
+    format_document_read_projection,
     get_dataset_queries,
     get_document_metadata_details,
-    load_document_details,
-    load_segment_details,
 )
-
-_HIERARCHICAL_RULES = json.dumps(
-    {
-        "pre_processing_rules": [],
-        "segmentation": {"separator": "\n", "max_tokens": 500},
-        "parent_mode": "paragraph",
-        "subchunk_segmentation": {"separator": "\n", "max_tokens": 200},
-    }
-)
+from services.knowledge.segments.adapters import sign_segment_content
 
 
 def _dataset() -> Dataset:
@@ -103,6 +111,69 @@ def _upload(tenant_id: str = "tenant-1") -> UploadFile:
     )
 
 
+@pytest.mark.parametrize(
+    ("dataset_document_filters", "owner_state", "is_authorized"),
+    [
+        ({"dataset-1": None}, "current", True),
+        ({"dataset-1": ("document-1",)}, "current", True),
+        ({"dataset-1": ("other-document",)}, "current", False),
+        ({"dataset-1": ()}, "current", False),
+        ({}, "current", False),
+        ({"dataset-1": None}, "document_incomplete", False),
+        ({"dataset-1": None}, "document_disabled", False),
+        ({"dataset-1": None}, "document_archived", False),
+        ({"dataset-1": None}, "segment_incomplete", False),
+        ({"dataset-1": None}, "segment_disabled", False),
+    ],
+)
+def test_retrieval_attachment_file_keys_require_current_complete_owner_scope(
+    sqlite_session: Session,
+    dataset_document_filters: dict[str, tuple[str, ...] | None],
+    owner_state: str,
+    is_authorized: bool,
+) -> None:
+    dataset = _dataset()
+    document = _document()
+    document.indexing_status = IndexingStatus.COMPLETED
+    document.enabled = True
+    document.archived = False
+    segment = _segment("image segment")
+    segment.status = SegmentStatus.COMPLETED
+    segment.enabled = True
+    if owner_state == "document_incomplete":
+        document.indexing_status = IndexingStatus.INDEXING
+    elif owner_state == "document_disabled":
+        document.enabled = False
+    elif owner_state == "document_archived":
+        document.archived = True
+    elif owner_state == "segment_incomplete":
+        segment.status = SegmentStatus.WAITING
+    elif owner_state == "segment_disabled":
+        segment.enabled = False
+    upload = _upload()
+    sqlite_session.add_all([dataset, document, segment, upload])
+    sqlite_session.flush()
+    sqlite_session.add(
+        SegmentAttachmentBinding(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            segment_id=segment.id,
+            attachment_id=upload.id,
+        )
+    )
+    sqlite_session.flush()
+
+    result = get_authorized_retrieval_attachment_file_keys(
+        tenant_id=dataset.tenant_id,
+        attachment_ids=(upload.id,),
+        dataset_document_filters=dataset_document_filters,
+        session=sqlite_session,
+    )
+
+    assert result == ({upload.id: upload.key} if is_authorized else {})
+
+
 @contextmanager
 def _queries(session: Session) -> Generator[list[str]]:
     statements: list[str] = []
@@ -120,6 +191,22 @@ def _queries(session: Session) -> Generator[list[str]]:
         event.remove(engine, "before_cursor_execute", count)
 
 
+def _sign_authorized_segment(segment: DocumentSegment, *, session: Session) -> str:
+    upload_ids, tool_ids = segment_content_file_ids(segment.content)
+    allowed_uploads, allowed_tools = get_content_file_ids(
+        segment.tenant_id,
+        upload_ids=upload_ids,
+        tool_ids=tool_ids,
+        scope=get_current_file_access_scope(),
+        session=session,
+    )
+    return sign_segment_content(
+        segment,
+        allowed_upload_file_ids=allowed_uploads,
+        allowed_tool_file_ids=allowed_tools,
+    )
+
+
 def test_mixed_links_are_signed_in_place_and_old_parameters_are_replaced(sqlite_session: Session) -> None:
     upload = _upload()
     tool = ToolFile(
@@ -131,7 +218,7 @@ def test_mixed_links_are_signed_in_place_and_old_parameters_are_replaced(sqlite_
     segment = _segment(
         " BEFORE " + " MIDDLE ".join(path + "?timestamp=1&nonce=old&sign=old" for path in paths) + " AFTER "
     )
-    signed = sign_segment_content(segment, session=sqlite_session)
+    signed = _sign_authorized_segment(segment, session=sqlite_session)
     assert signed.startswith(" BEFORE ")
     assert signed.endswith(" AFTER ")
     urls = signed.removeprefix(" BEFORE ").removesuffix(" AFTER ").split(" MIDDLE ")
@@ -149,7 +236,7 @@ def test_mixed_links_are_signed_in_place_and_old_parameters_are_replaced(sqlite_
             assert file_helpers.verify_file_signature(upload_file_id=upload.id, **values)
     # A second pass must also yield valid URLs rather than appending stale parameters.
     segment.content = signed
-    resigned = sign_segment_content(segment, session=sqlite_session)
+    resigned = _sign_authorized_segment(segment, session=sqlite_session)
     assert resigned.count("?timestamp=") == 3
     for url in resigned.removeprefix(" BEFORE ").removesuffix(" AFTER ").split(" MIDDLE "):
         params = parse_qs(urlsplit(url).query)
@@ -167,9 +254,9 @@ def test_foreign_file_reference_never_receives_a_signature(sqlite_session: Sessi
     sqlite_session.flush()
     path = f"/files/{foreign.id}/file-preview"
     segment = _segment(path + "?timestamp=1&nonce=old&sign=old")
-    assert sign_segment_content(segment, session=sqlite_session) == path
+    assert _sign_authorized_segment(segment, session=sqlite_session) == path
     tool_path = f"/files/tools/{foreign_tool.id}.png"
-    assert sign_segment_content(_segment(tool_path + "?nonce=old&sign=old"), session=sqlite_session) == tool_path
+    assert _sign_authorized_segment(_segment(tool_path + "?nonce=old&sign=old"), session=sqlite_session) == tool_path
 
 
 def test_signing_respects_end_user_ownership_in_same_tenant(sqlite_session: Session) -> None:
@@ -181,9 +268,9 @@ def test_signing_respects_end_user_ownership_in_same_tenant(sqlite_session: Sess
         tenant_id="tenant-1", user_id="end-user-1", user_from=UserFrom.END_USER, invoke_from=InvokeFrom.WEB_APP
     )
     with bind_file_access_scope(scope):
-        assert sign_segment_content(_segment(path), session=sqlite_session) == path
+        assert _sign_authorized_segment(_segment(path), session=sqlite_session) == path
         grant_upload_file_access([upload.id])
-        assert "?timestamp=" in sign_segment_content(_segment(path), session=sqlite_session)
+        assert "?timestamp=" in _sign_authorized_segment(_segment(path), session=sqlite_session)
 
 
 def test_signing_handles_uppercase_ids_and_ignores_malformed_links(sqlite_session: Session) -> None:
@@ -191,13 +278,13 @@ def test_signing_handles_uppercase_ids_and_ignores_malformed_links(sqlite_sessio
     sqlite_session.add(upload)
     sqlite_session.flush()
     path = f"/files/{upload.id.upper()}/file-preview"
-    signed = sign_segment_content(_segment(path), session=sqlite_session)
+    signed = _sign_authorized_segment(_segment(path), session=sqlite_session)
     params = {key: values[0] for key, values in parse_qs(urlsplit(signed).query).items()}
     assert file_helpers.verify_file_signature(upload_file_id=upload.id, **params)
 
     malformed = "/files/not-a-uuid/file-preview"
     with _queries(sqlite_session) as queries:
-        assert sign_segment_content(_segment(malformed), session=sqlite_session) == malformed
+        assert _sign_authorized_segment(_segment(malformed), session=sqlite_session) == malformed
     assert queries == []
 
 
@@ -254,184 +341,19 @@ def test_document_page_load_is_bounded_and_serialization_performs_no_queries(sql
     sqlite_session.add_all([_dataset(), *documents])
     sqlite_session.flush()
     with _queries(sqlite_session) as single_queries:
-        load_document_details(documents[:1], session=sqlite_session)
+        load_document_read_projections(documents[:1], session=sqlite_session)
     with _queries(sqlite_session) as page_queries:
-        sources = load_document_details(documents, session=sqlite_session)
+        projections = load_document_read_projections(documents, session=sqlite_session)
     assert len(page_queries) == len(single_queries)
     with _queries(sqlite_session) as serialization_queries:
-        responses = [DocumentResponse.model_validate(source, from_attributes=True).model_dump() for source in sources]
+        responses = [
+            DocumentResponse.model_validate(
+                format_document_read_projection(projection), from_attributes=True
+            ).model_dump()
+            for projection in projections
+        ]
     assert len(responses) == 20
     assert serialization_queries == []
-
-
-def test_segment_page_load_is_bounded_for_hierarchical_documents(sqlite_session: Session) -> None:
-    rule = DatasetProcessRule(
-        dataset_id="dataset-1", mode=ProcessRuleMode.HIERARCHICAL, rules=_HIERARCHICAL_RULES, created_by="account-1"
-    )
-    document = _document()
-    sqlite_session.add_all([_dataset(), rule, document])
-    sqlite_session.flush()
-    document.dataset_process_rule_id = rule.id
-    segments = [
-        DocumentSegment(
-            tenant_id="tenant-1",
-            dataset_id="dataset-1",
-            document_id="document-1",
-            position=index,
-            content=f"segment {index}",
-            word_count=1,
-            tokens=1,
-            created_by="account-1",
-        )
-        for index in range(1, 21)
-    ]
-    sqlite_session.add_all(segments)
-    sqlite_session.flush()
-    for segment in segments:
-        upload = _upload()
-        sqlite_session.add(upload)
-        sqlite_session.flush()
-        sqlite_session.add_all(
-            [
-                ChildChunk(
-                    tenant_id="tenant-1",
-                    dataset_id="dataset-1",
-                    document_id="document-1",
-                    segment_id=segment.id,
-                    position=1,
-                    content="child",
-                    word_count=1,
-                    created_by="account-1",
-                ),
-                SegmentAttachmentBinding(
-                    tenant_id="tenant-1",
-                    dataset_id="dataset-1",
-                    document_id="document-1",
-                    segment_id=segment.id,
-                    attachment_id=upload.id,
-                ),
-            ]
-        )
-    sqlite_session.flush()
-    with _queries(sqlite_session) as single_queries:
-        load_segment_details(segments[:1], {}, session=sqlite_session)
-    with _queries(sqlite_session) as page_queries:
-        load_segment_details(segments, {}, session=sqlite_session)
-
-    assert len(page_queries) == len(single_queries)
-
-
-def test_segment_read_batch_assigns_relations_to_their_segments(sqlite_session: Session) -> None:
-    rule = DatasetProcessRule(
-        dataset_id="dataset-1", mode=ProcessRuleMode.HIERARCHICAL, rules=_HIERARCHICAL_RULES, created_by="account-1"
-    )
-    document = _document()
-    sqlite_session.add_all([_dataset(), rule, document])
-    sqlite_session.flush()
-    document.dataset_process_rule_id = rule.id
-
-    segment_a, segment_b = [
-        DocumentSegment(
-            tenant_id="tenant-1",
-            dataset_id="dataset-1",
-            document_id="document-1",
-            position=index,
-            content=f"segment {index}",
-            word_count=1,
-            tokens=1,
-            created_by="account-1",
-        )
-        for index in (1, 2)
-    ]
-    sqlite_session.add_all([segment_a, segment_b])
-    sqlite_session.flush()
-
-    for position in (2, 1):
-        sqlite_session.add(
-            ChildChunk(
-                tenant_id="tenant-1",
-                dataset_id="dataset-1",
-                document_id="document-1",
-                segment_id=segment_a.id,
-                position=position,
-                content=f"child {position}",
-                word_count=1,
-                created_by="account-1",
-            )
-        )
-        sqlite_session.flush()
-
-    upload_a = _upload()
-    upload_b = _upload()
-    upload_other_tenant = _upload("tenant-2")
-    sqlite_session.add_all([upload_a, upload_b, upload_other_tenant])
-    sqlite_session.flush()
-
-    sqlite_session.add_all(
-        [
-            SegmentAttachmentBinding(
-                tenant_id="tenant-1",
-                dataset_id="dataset-1",
-                document_id="document-1",
-                segment_id=segment.id,
-                attachment_id=upload.id,
-            )
-            for segment, upload in [
-                (segment_a, upload_a),
-                (segment_b, upload_b),
-                (segment_b, upload_other_tenant),
-            ]
-        ]
-    )
-    sqlite_session.flush()
-
-    batch = load_segment_read_batch([segment_a, segment_b], session=sqlite_session)
-
-    assert [chunk.position for chunk in batch.child_chunks[segment_a.id]] == [1, 2]
-    assert segment_b.id not in batch.child_chunks
-    assert [file.id for file in batch.attachments[segment_a.id]] == [upload_a.id]
-    assert [file.id for file in batch.attachments[segment_b.id]] == [upload_b.id]
-
-
-def test_external_api_bindings_are_batched_and_tenant_scoped(sqlite_session: Session) -> None:
-    dataset = _dataset()
-    apis = [
-        ExternalKnowledgeApis(
-            tenant_id="tenant-1",
-            name=f"API {i}",
-            description="",
-            settings="{}",
-            created_by="account-1",
-            updated_by=None,
-        )
-        for i in range(20)
-    ]
-    foreign_dataset = Dataset(id="dataset-foreign", tenant_id="tenant-2", name="Private", created_by="account-2")
-    bindings = [
-        ExternalKnowledgeBindings(
-            tenant_id="tenant-1",
-            external_knowledge_api_id=api.id,
-            dataset_id=dataset.id,
-            external_knowledge_id="knowledge",
-            created_by="account-1",
-        )
-        for api in apis
-    ]
-    bindings.append(
-        ExternalKnowledgeBindings(
-            tenant_id="tenant-2",
-            external_knowledge_api_id=apis[0].id,
-            dataset_id=foreign_dataset.id,
-            external_knowledge_id="foreign",
-            created_by="account-2",
-        )
-    )
-    sqlite_session.add_all([dataset, foreign_dataset, *apis, *bindings])
-    sqlite_session.flush()
-    with _queries(sqlite_session) as queries:
-        result = get_external_api_bindings_batch(apis, session=sqlite_session)
-    assert len(queries) == 1
-    assert result == {api.id: [{"id": dataset.id, "name": dataset.name}] for api in apis}
 
 
 def test_dataset_models_have_no_infrastructure_dependencies_or_relative_imports() -> None:
@@ -444,3 +366,232 @@ def test_dataset_models_have_no_infrastructure_dependencies_or_relative_imports(
             assert not any(alias.name in {"Session", "scoped_session"} for alias in node.names)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             assert ast.unparse(node.func.value) not in {"session", "db.session", "storage"}
+
+
+def test_summary_segment_read_uses_complete_owner_scope(sqlite_session: Session) -> None:
+    def segment(
+        segment_id: str,
+        *,
+        tenant_id: str = "tenant-1",
+        document_id: str = "document-1",
+        enabled: bool = True,
+        position: int = 1,
+    ) -> DocumentSegment:
+        row = DocumentSegment(
+            tenant_id=tenant_id,
+            dataset_id="dataset-1",
+            document_id=document_id,
+            position=position,
+            content="segment content",
+            word_count=2,
+            tokens=2,
+            created_by="account-1",
+            enabled=enabled,
+            status=SegmentStatus.COMPLETED,
+        )
+        row.id = segment_id
+        return row
+
+    sqlite_session.add_all(
+        [
+            segment("enabled"),
+            segment("disabled", enabled=False, position=2),
+            segment("other-document", document_id="document-2"),
+            segment("foreign", tenant_id="tenant-2"),
+        ]
+    )
+    sqlite_session.flush()
+
+    rows = get_segments_for_document(
+        sqlite_session,
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        document_id="document-1",
+        status=SegmentStatus.COMPLETED,
+        enabled=True,
+    )
+
+    assert [row.id for row in rows] == ["enabled"]
+
+
+def test_dataset_id_reads_enforce_tenant_and_resolved_scope(sqlite_session: Session) -> None:
+    own = _dataset()
+    own.id = "dataset-own"
+    own.maintainer = "actor-1"
+    allowed = _dataset()
+    allowed.id = "dataset-allowed"
+    allowed.maintainer = "actor-2"
+    foreign = Dataset(id="dataset-foreign", tenant_id="tenant-2", name="Foreign", created_by="account-2")
+    sqlite_session.add_all([own, allowed, foreign])
+    sqlite_session.flush()
+
+    rows, total = list_datasets_by_ids(
+        sqlite_session,
+        tenant_id="tenant-1",
+        dataset_ids=[foreign.id, allowed.id, own.id],
+        actor_id="actor-1",
+        accessible_dataset_ids=[allowed.id],
+        include_own_datasets=True,
+    )
+
+    assert {row.id for row in rows} == {own.id, allowed.id}
+    assert total == 2
+    assert get_dataset_for_tenant(sqlite_session, tenant_id="tenant-1", dataset_id=foreign.id) is None
+
+
+@pytest.mark.parametrize("entry", ["explicit_ids", "ordinary_list"])
+@pytest.mark.parametrize(
+    ("actor_id", "actor_role", "include_all", "expected_ids"),
+    [
+        (
+            "actor-1",
+            TenantAccountRole.NORMAL,
+            False,
+            {"all-team", "only-own", "partial-member"},
+        ),
+        (
+            "actor-1",
+            TenantAccountRole.OWNER,
+            False,
+            {"all-team", "only-own", "partial-member"},
+        ),
+        (
+            "actor-1",
+            TenantAccountRole.OWNER,
+            True,
+            {"all-team", "only-own", "only-other", "partial-member", "partial-hidden"},
+        ),
+        ("actor-1", TenantAccountRole.DATASET_OPERATOR, False, {"partial-member"}),
+        (None, None, False, {"all-team"}),
+    ],
+)
+def test_non_rbac_explicit_and_ordinary_lists_share_dataset_visibility(
+    sqlite_session: Session,
+    entry: str,
+    actor_id: str | None,
+    actor_role: TenantAccountRole | None,
+    include_all: bool,
+    expected_ids: set[str],
+) -> None:
+    datasets = [
+        Dataset(
+            id="all-team",
+            tenant_id="tenant-1",
+            name="All team",
+            created_by="account-2",
+            maintainer="account-2",
+            permission="all_team_members",
+        ),
+        Dataset(
+            id="only-own",
+            tenant_id="tenant-1",
+            name="Own private",
+            created_by="actor-1",
+            maintainer="actor-1",
+            permission="only_me",
+        ),
+        Dataset(
+            id="only-other",
+            tenant_id="tenant-1",
+            name="Other private",
+            created_by="account-2",
+            maintainer="account-2",
+            permission="only_me",
+        ),
+        Dataset(
+            id="partial-member",
+            tenant_id="tenant-1",
+            name="Shared with actor",
+            created_by="account-2",
+            maintainer="account-2",
+            permission="partial_members",
+        ),
+        Dataset(
+            id="partial-hidden",
+            tenant_id="tenant-1",
+            name="Shared with someone else",
+            created_by="account-2",
+            maintainer="account-2",
+            permission="partial_members",
+        ),
+        Dataset(
+            id="foreign",
+            tenant_id="tenant-2",
+            name="Foreign",
+            created_by="account-2",
+            maintainer="account-2",
+            permission="all_team_members",
+        ),
+    ]
+    sqlite_session.add_all(
+        [
+            *datasets,
+            DatasetPermission(tenant_id="tenant-1", dataset_id="partial-member", account_id="actor-1"),
+            DatasetPermission(tenant_id="tenant-1", dataset_id="partial-hidden", account_id="account-3"),
+        ]
+    )
+    sqlite_session.flush()
+
+    if entry == "explicit_ids":
+        rows, total = list_visible_datasets_by_ids(
+            sqlite_session,
+            tenant_id="tenant-1",
+            dataset_ids=[dataset.id for dataset in datasets],
+            actor_id=actor_id,
+            actor_role=actor_role,
+            rbac_enabled=False,
+            include_all=include_all,
+            accessible_dataset_ids=None,
+            include_own_datasets=False,
+        )
+    else:
+        rows, total = list_visible_datasets(
+            sqlite_session,
+            tenant_id="tenant-1",
+            actor_id=actor_id,
+            actor_role=actor_role,
+            rbac_enabled=False,
+            include_all=include_all,
+            accessible_dataset_ids=None,
+            include_own_datasets=False,
+            keyword=None,
+            tag_target_ids=None,
+            page=1,
+            per_page=20,
+        )
+
+    assert {row.id for row in rows} == expected_ids
+    assert total == len(expected_ids)
+
+
+def test_dataset_actor_role_and_permission_members_are_tenant_scoped(sqlite_session: Session) -> None:
+    actor = Account(name="Actor", email="actor@example.com")
+    actor.id = "actor-1"
+    owned = _dataset()
+    foreign = Dataset(id="dataset-foreign", tenant_id="tenant-2", name="Foreign", created_by="account-2")
+    sqlite_session.add_all(
+        [
+            actor,
+            TenantAccountJoin(tenant_id="tenant-1", account_id=actor.id, role=TenantAccountRole.DATASET_OPERATOR),
+            TenantAccountJoin(tenant_id="tenant-2", account_id=actor.id, role=TenantAccountRole.NORMAL),
+            owned,
+            foreign,
+            DatasetPermission(tenant_id="tenant-1", dataset_id=owned.id, account_id="member-b"),
+            DatasetPermission(tenant_id="tenant-1", dataset_id=owned.id, account_id="member-a"),
+            DatasetPermission(tenant_id="tenant-2", dataset_id=owned.id, account_id="wrong-permission-tenant"),
+            DatasetPermission(tenant_id="tenant-1", dataset_id=foreign.id, account_id="wrong-dataset-tenant"),
+        ]
+    )
+    sqlite_session.flush()
+
+    assert (
+        get_dataset_list_actor_role(sqlite_session, tenant_id="tenant-1", actor_id=actor.id)
+        == TenantAccountRole.DATASET_OPERATOR
+    )
+    assert get_dataset_list_actor_role(sqlite_session, tenant_id="tenant-1", actor_id="missing") is None
+    assert list_dataset_permission_member_ids(
+        sqlite_session,
+        tenant_id="tenant-1",
+        dataset_ids=[foreign.id, owned.id, owned.id],
+    ) == {owned.id: ("member-a", "member-b")}
+    assert list_dataset_permission_member_ids(sqlite_session, tenant_id="tenant-1", dataset_ids=[]) == {}

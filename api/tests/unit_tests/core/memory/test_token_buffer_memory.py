@@ -18,6 +18,7 @@ import models.model as model_module
 from core.app.file_access import FileAccessControllerProtocol
 from core.memory import token_buffer_memory as memory_module
 from core.memory.token_buffer_memory import TokenBufferMemory
+from enums.creator import CreatorUserRole
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
@@ -28,7 +29,7 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from models.base import TypeBase
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, Conversation, Message, MessageFile
 from models.workflow import (
     Workflow,
@@ -265,7 +266,7 @@ class TestGetHistoryPromptMessages:
         repository.get_workflow_run_by_id.return_value = workflow_run
 
         with patch.object(
-            memory_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
+            memory_module.WorkflowRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
         ):
             result = mem.get_history_prompt_messages()
 
@@ -770,7 +771,7 @@ class TestPreparedHistory:
         repository.get_workflow_run_by_id.return_value = workflow_run
 
         with patch.object(
-            memory_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
+            memory_module.WorkflowRepositoryFactory, "create_api_workflow_run_repository", return_value=repository
         ) as create_repository:
             history = TokenBufferMemory.load_history(
                 conversation=conversation, app_record=app, session=database.session, message_limit=3

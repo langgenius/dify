@@ -23,6 +23,7 @@ from core.workflow.variable_prefixes import (
     RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
@@ -43,10 +44,21 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
 from models.enums import ConversationFromSource, ConversationStatus, DraftVariableType, InvokeFrom
-from models.utils.file_input_compat import build_file_from_stored_mapping
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
-from repositories.factory import DifyAPIRepositoryFactory
-from services.file_service import FileService
+from models.utils.file_input_compat import (
+    build_file_from_stored_mapping,
+    resolve_upload_file_ids_from_serialized_file_value,
+)
+from models.workflow import (
+    Workflow,
+    WorkflowDraftVariable,
+    WorkflowDraftVariableFile,
+    is_system_variable_editable,
+)
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.entities.upload_file import FileUploadActor
+from services.file_reference_parser import trusted_upload_file_ids
+from services.file_service import UploadFileCreator
 from services.variable_truncator import VariableTruncator
 
 logger = logging.getLogger(__name__)
@@ -219,7 +231,7 @@ class WorkflowDraftVariableService:
         # Ensure the session is bound to a engine.
         assert isinstance(engine, Engine)
         session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-        self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        self._api_node_execution_repo = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
 
@@ -358,6 +370,9 @@ class WorkflowDraftVariableService:
         name: str | None = None,
         value: Segment | None = None,
     ) -> WorkflowDraftVariable:
+        variable = self._lock_variable_for_update(variable)
+        previous_value_type = variable.value_type
+        previous_value = variable.value
         if not variable.editable:
             raise UpdateNotSupportedError(f"variable not support updating, id={variable.id}")
         if name is not None:
@@ -366,14 +381,64 @@ class WorkflowDraftVariableService:
             variable.set_value(value)
         variable.last_edited_at = naive_utc_now()
         self._session.flush()
+        self._lock_new_variable_upload_files(
+            variable,
+            previous_value_type=previous_value_type,
+            previous_value=previous_value,
+        )
         return variable
 
+    def _lock_variable_for_update(self, variable: WorkflowDraftVariable) -> WorkflowDraftVariable:
+        locked = self._session.scalar(
+            select(WorkflowDraftVariable)
+            .where(WorkflowDraftVariable.id == variable.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if locked is None:
+            raise WorkflowDraftVariableError(f"draft variable not found, id={variable.id}")
+        return locked
+
+    def _lock_new_variable_upload_files(
+        self,
+        variable: WorkflowDraftVariable,
+        *,
+        previous_value_type: object,
+        previous_value: object,
+    ) -> None:
+        previous_ids = set(
+            resolve_upload_file_ids_from_serialized_file_value(
+                value_type=previous_value_type,
+                value=previous_value,
+            )
+        )
+        current_ids = set(
+            resolve_upload_file_ids_from_serialized_file_value(
+                value_type=variable.value_type,
+                value=variable.value,
+            )
+        )
+        introduced_ids = current_ids - previous_ids
+        if not introduced_ids:
+            return
+        app = self._session.get(App, variable.app_id)
+        if app is None:
+            raise WorkflowDraftVariableError(f"draft variable app not found, app_id={variable.app_id}")
+        lock_and_validate_owned_upload_files_in_session(
+            self._session,
+            tenant_id=app.tenant_id,
+            upload_file_ids=tuple(sorted(introduced_ids)),
+        )
+
     def _reset_conv_var(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
+        variable = self._lock_variable_for_update(variable)
+        previous_value_type = variable.value_type
+        previous_value = variable.value
         conv_var_by_name = {i.name: i for i in workflow.conversation_variables}
         conv_var = conv_var_by_name.get(variable.name)
 
         if conv_var is None:
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             logger.warning(
                 "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
@@ -384,17 +449,25 @@ class WorkflowDraftVariableService:
         variable.last_edited_at = None
         self._session.add(variable)
         self._session.flush()
+        self._lock_new_variable_upload_files(
+            variable,
+            previous_value_type=previous_value_type,
+            previous_value=previous_value,
+        )
         return variable
 
     def _reset_node_var_or_sys_var(
         self, workflow: Workflow, variable: WorkflowDraftVariable
     ) -> WorkflowDraftVariable | None:
+        variable = self._lock_variable_for_update(variable)
+        previous_value_type = variable.value_type
+        previous_value = variable.value
         # If a variable does not allow updating, it makes no sense to reset it.
         if not variable.editable:
             return variable
         # No execution record for this variable, delete the variable instead.
         if variable.node_execution_id is None:
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
@@ -407,7 +480,7 @@ class WorkflowDraftVariableService:
                 variable.name,
                 variable.node_execution_id,
             )
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             return None
 
@@ -436,7 +509,7 @@ class WorkflowDraftVariableService:
         # the value of the output may be `None`.
         if output_value is absent:
             # If variable not found in execution data, delete the variable
-            self._session.delete(instance=variable)
+            self.delete_variable(variable)
             self._session.flush()
             return None
         value_seg = WorkflowDraftVariable.build_segment_with_type(variable.value_type, output_value)
@@ -444,6 +517,11 @@ class WorkflowDraftVariableService:
         variable.set_value(value_seg)
         variable.last_edited_at = None  # Reset to indicate this is a reset operation
         self._session.flush()
+        self._lock_new_variable_upload_files(
+            variable,
+            previous_value_type=previous_value_type,
+            previous_value=previous_value,
+        )
         return variable
 
     def reset_variable(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
@@ -497,7 +575,6 @@ class WorkflowDraftVariableService:
             return
 
         storage.delete(upload_file.key)
-        self._session.delete(upload_file)
         self._session.delete(upload_file)
         self._session.delete(variable)
 
@@ -649,6 +726,7 @@ class WorkflowDraftVariableService:
         _batch_upsert_draft_variable(
             self._session,
             draft_conv_vars,
+            tenant_id=workflow.tenant_id,
             policy=_UpsertPolicy.IGNORE,
         )
 
@@ -661,6 +739,8 @@ class _UpsertPolicy(StrEnum):
 def _batch_upsert_draft_variable(
     session: Session,
     draft_vars: Sequence[WorkflowDraftVariable],
+    *,
+    tenant_id: str,
     policy: _UpsertPolicy = _UpsertPolicy.OVERWRITE,
 ):
     if not draft_vars:
@@ -684,6 +764,62 @@ def _batch_upsert_draft_variable(
     #
     # For these reasons, we use the SQLAlchemy query builder and rely on dialect-specific
     # insert operations instead of the ORM layer.
+
+    existing_stmt = select(WorkflowDraftVariable).where(
+        or_(
+            *(
+                and_(
+                    WorkflowDraftVariable.app_id == draft_var.app_id,
+                    WorkflowDraftVariable.user_id == draft_var.user_id,
+                    WorkflowDraftVariable.node_id == draft_var.node_id,
+                    WorkflowDraftVariable.name == draft_var.name,
+                )
+                for draft_var in draft_vars
+            )
+        )
+    )
+    existing_by_identity = {
+        (draft_var.app_id, draft_var.user_id, draft_var.node_id, draft_var.name): draft_var
+        for draft_var in session.scalars(
+            existing_stmt.order_by(
+                WorkflowDraftVariable.app_id,
+                WorkflowDraftVariable.user_id,
+                WorkflowDraftVariable.node_id,
+                WorkflowDraftVariable.name,
+            ).with_for_update()
+        )
+    }
+    introduced_upload_file_ids: set[str] = set()
+    for draft_var in draft_vars:
+        identity = (draft_var.app_id, draft_var.user_id, draft_var.node_id, draft_var.name)
+        existing = existing_by_identity.get(identity)
+        if policy == _UpsertPolicy.IGNORE and existing is not None:
+            continue
+        previous_ids = (
+            set(
+                resolve_upload_file_ids_from_serialized_file_value(
+                    value_type=existing.value_type,
+                    value=existing.value,
+                )
+            )
+            if existing is not None
+            else set()
+        )
+        current_ids = set(
+            resolve_upload_file_ids_from_serialized_file_value(
+                value_type=draft_var.value_type,
+                value=draft_var.value,
+            )
+        )
+        introduced_upload_file_ids.update(current_ids - previous_ids)
+        introduced_upload_file_ids.update(draft_var.__dict__.get("_pending_upload_file_reference_ids", ()))
+
+    if introduced_upload_file_ids:
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=tenant_id,
+            upload_file_ids=tuple(sorted(introduced_upload_file_ids)),
+        )
 
     # Use different insert statements based on database type
     if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
@@ -847,6 +983,9 @@ class DraftVariableSaver:
     # when draft variables are persisted by an asynchronous workflow execution.
     _tenant_id: str
 
+    # File-domain capability used to offload oversized variable values.
+    _files: UploadFileCreator
+
     # The application ID associated with the draft variables.
     # This should match the `Workflow.app_id` of the workflow to which the current node belongs.
     _app_id: str
@@ -878,6 +1017,7 @@ class DraftVariableSaver:
         node_type: NodeType,
         node_execution_id: str,
         user: Account,
+        files: UploadFileCreator,
         enclosing_node_id: str | None = None,
     ):
         # Important: `node_execution_id` parameter refers to the primary key (`id`) of the
@@ -890,6 +1030,7 @@ class DraftVariableSaver:
         self._node_type = node_type
         self._node_execution_id = node_execution_id
         self._user = user
+        self._files = files
         self._enclosing_node_id = enclosing_node_id
 
     def _create_dummy_output_variable(self):
@@ -1082,16 +1223,12 @@ class DraftVariableSaver:
 
         original_size = len(original_content_serialized.encode("utf-8"))
 
-        bind = self._session.get_bind()
-        assert isinstance(bind, Engine)
-        file_srv = FileService(bind)
-
-        upload_file = file_srv.upload_file(
+        upload_file = self._files.upload_file(
+            actor=FileUploadActor(id=self._user.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=self._tenant_id,
             filename=filename,
             content=original_content_serialized.encode(),
             mimetype=content_type,
-            user=self._user,
-            tenant_id=self._tenant_id,
         )
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
@@ -1104,9 +1241,14 @@ class DraftVariableSaver:
             user_id=self._user.id,
         )
         variable_file.id = str(uuidv7())
-        engine = bind = self._session.get_bind()
+        engine = self._session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=self._tenant_id,
+                upload_file_ids=(upload_file.id,),
+            )
             session.add(variable_file)
 
         return truncation_result.result, variable_file
@@ -1151,6 +1293,12 @@ class DraftVariableSaver:
                 editable=False,
                 file_id=var_file.id,
             )
+            draft_var.__dict__["_pending_upload_file_reference_ids"] = tuple(
+                {
+                    var_file.upload_file_id,
+                    *trusted_upload_file_ids(value.value),
+                }
+            )
             return draft_var
 
     def save(
@@ -1171,7 +1319,7 @@ class DraftVariableSaver:
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)
-        _batch_upsert_draft_variable(self._session, draft_vars)
+        _batch_upsert_draft_variable(self._session, draft_vars, tenant_id=self._tenant_id)
 
     @staticmethod
     def _should_variable_be_editable(node_id: str, name: str) -> bool:

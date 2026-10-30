@@ -1,17 +1,69 @@
 import uuid
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
+from repositories.knowledge.retrieval_source_repository import SQLAlchemyRetrievalRepository
+from services.knowledge.admission.application import DatasetAdmissionLimits
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest
+from services.knowledge.external.adapters import ExternalKnowledgeGateway
+from services.knowledge.external.application import ExternalDatasetRetrievalService
+from services.knowledge.retrieval.adapters import DataPostProcessorReranker, DatasetCandidateRetriever
+from services.knowledge.retrieval.application import KnowledgeRetrievalApplicationService
+from services.knowledge.retrieval.candidate_search import CandidateSearch, CandidateSearchResult
+from services.knowledge.retrieval.finalization import KnowledgeRetrievalFinalizer
+from services.knowledge.retrieval.metadata_filtering import MetadataFilterPlanner
 from tests.e2e_tests.containers.helpers import accounts as account_fixtures
 from tests.e2e_tests.containers.helpers import generate_valid_password
+
+
+class _NoopLimits:
+    def check(
+        self,
+        workspace_id: str,
+        *,
+        rate_limit: bool,
+        billing_resources: tuple[str, ...],
+        require_paid_segments: bool,
+    ) -> None:
+        pass
+
+
+def _session_factory(session: Session) -> sessionmaker[Session]:
+    return sessionmaker(bind=session.get_bind(), expire_on_commit=False)
+
+
+def _retrieval_repository(session: Session) -> SQLAlchemyRetrievalRepository:
+    return SQLAlchemyRetrievalRepository(session_factory=_session_factory(session))
+
+
+def _dataset_retrieval(
+    session: Session, *, limits: DatasetAdmissionLimits | None = None
+) -> KnowledgeRetrievalApplicationService:
+    session_factory = _session_factory(session)
+    repository = SQLAlchemyRetrievalRepository(session_factory=session_factory)
+    candidate_search = CandidateSearch(
+        internal_retrieval=DatasetCandidateRetriever(),
+        external_retrieval=ExternalDatasetRetrievalService(
+            repository=SQLAlchemyExternalKnowledgeRepository(session_factory=session_factory),
+            gateway=ExternalKnowledgeGateway(),
+        ),
+        reranker=DataPostProcessorReranker(session_factory=session_factory),
+    )
+    return KnowledgeRetrievalApplicationService(
+        repository=repository,
+        candidate_search=candidate_search,
+        metadata_filters=MetadataFilterPlanner(repository=repository),
+        finalizer=KnowledgeRetrievalFinalizer(session_factory=session_factory),
+        limits=limits or _NoopLimits(),
+    )
 
 
 class TestGetAvailableDatasetsIntegration:
@@ -69,8 +121,8 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        repository = _retrieval_repository(db_session_with_containers)
+        result = repository.list_available_datasets(tenant_id=tenant.id, dataset_ids=[dataset.id])
 
         # Assert
         assert len(result) == 1
@@ -126,8 +178,8 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        repository = _retrieval_repository(db_session_with_containers)
+        result = repository.list_available_datasets(tenant_id=tenant.id, dataset_ids=[dataset.id])
 
         # Assert
         assert len(result) == 0
@@ -180,8 +232,8 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        repository = _retrieval_repository(db_session_with_containers)
+        result = repository.list_available_datasets(tenant_id=tenant.id, dataset_ids=[dataset.id])
 
         # Assert
         assert len(result) == 0
@@ -234,8 +286,8 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        repository = _retrieval_repository(db_session_with_containers)
+        result = repository.list_available_datasets(tenant_id=tenant.id, dataset_ids=[dataset.id])
 
         # Assert
         assert len(result) == 0
@@ -278,8 +330,8 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [dataset.id])
+        repository = _retrieval_repository(db_session_with_containers)
+        result = repository.list_available_datasets(tenant_id=tenant.id, dataset_ids=[dataset.id])
 
         # Assert
         assert len(result) == 1
@@ -355,8 +407,11 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act - request from tenant1, should only get tenant1's dataset
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant1.id, [dataset1.id, dataset2.id])
+        repository = _retrieval_repository(db_session_with_containers)
+        result = repository.list_available_datasets(
+            tenant_id=tenant1.id,
+            dataset_ids=[dataset1.id, dataset2.id],
+        )
 
         # Assert
         assert len(result) == 1
@@ -382,8 +437,11 @@ class TestGetAvailableDatasetsIntegration:
         # Don't create any datasets
 
         # Act
-        dataset_retrieval = DatasetRetrieval()
-        result = dataset_retrieval._get_available_datasets(tenant.id, [str(uuid.uuid4())])
+        repository = _retrieval_repository(db_session_with_containers)
+        result = repository.list_available_datasets(
+            tenant_id=tenant.id,
+            dataset_ids=[str(uuid.uuid4())],
+        )
 
         # Assert
         assert result == []
@@ -439,9 +497,9 @@ class TestGetAvailableDatasetsIntegration:
         db_session_with_containers.commit()
 
         # Act - request only dataset 0 and 2, not dataset 1
-        dataset_retrieval = DatasetRetrieval()
+        repository = _retrieval_repository(db_session_with_containers)
         requested_ids = [datasets[0].id, datasets[2].id]
-        result = dataset_retrieval._get_available_datasets(tenant.id, requested_ids)
+        result = repository.list_available_datasets(tenant_id=tenant.id, dataset_ids=requested_ids)
 
         # Assert
         assert len(result) == 2
@@ -506,17 +564,22 @@ class TestKnowledgeRetrievalIntegration:
             top_k=5,
         )
 
-        dataset_retrieval = DatasetRetrieval()
+        dataset_retrieval = _dataset_retrieval(db_session_with_containers)
 
-        # Mock rate limit check and retrieval
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
-            with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
-                with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
-                    # Act
-                    result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
+        with patch.object(
+            CandidateSearch,
+            "search_multiple",
+            return_value=CandidateSearchResult(
+                candidates=(),
+                top_k=5,
+                queried_dataset_ids=(),
+                timer={},
+                usage=LLMUsage.empty_usage(),
+            ),
+        ):
+            result = dataset_retrieval.retrieve(request, request_metadata=None)
 
-                    # Assert
-                    assert isinstance(result, list)
+        assert result.sources == []
 
     def test_knowledge_retrieval_no_available_datasets(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -557,15 +620,11 @@ class TestKnowledgeRetrievalIntegration:
             top_k=5,
         )
 
-        dataset_retrieval = DatasetRetrieval()
+        dataset_retrieval = _dataset_retrieval(db_session_with_containers)
 
-        # Mock rate limit check
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
-            # Act
-            result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
+        result = dataset_retrieval.retrieve(request, request_metadata=None)
 
-            # Assert
-            assert result == []
+        assert result.sources == []
 
     def test_knowledge_retrieval_rate_limit_exceeded(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -605,17 +664,12 @@ class TestKnowledgeRetrievalIntegration:
             top_k=5,
         )
 
-        dataset_retrieval = DatasetRetrieval()
+        limits = create_autospec(DatasetAdmissionLimits, instance=True, spec_set=True)
+        limits.check.side_effect = Exception("Rate limit exceeded")
+        dataset_retrieval = _dataset_retrieval(db_session_with_containers, limits=limits)
 
-        # Mock rate limit check to raise exception
-        with patch.object(
-            dataset_retrieval,
-            "_check_knowledge_rate_limit",
-            side_effect=Exception("Rate limit exceeded"),
-        ):
-            # Act & Assert
-            with pytest.raises(Exception, match="Rate limit exceeded"):
-                dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
+        with pytest.raises(Exception, match="Rate limit exceeded"):
+            dataset_retrieval.retrieve(request, request_metadata=None)
 
 
 @pytest.fixture

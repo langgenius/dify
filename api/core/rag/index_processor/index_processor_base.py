@@ -1,11 +1,11 @@
-"""Abstract interface for document loader implementations."""
+"""Shared interface for document transformation and index maintenance."""
 
 import logging
 import mimetypes
 import os
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 from urllib.parse import unquote, urlparse
 
@@ -17,7 +17,6 @@ from werkzeug.http import parse_options_header
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
 from core.file import remote_fetcher
-from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
 from core.rag.splitter.fixed_text_splitter import (
@@ -25,12 +24,14 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from extensions.ext_database import db
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from models import Account, ToolFile
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
+from services.file_service import UploadFileCreator
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
@@ -44,15 +45,30 @@ class SummaryIndexSettingDict(TypedDict):
 
 
 class BaseIndexProcessor(ABC):
-    """Interface for extract files."""
+    """Transform extracted documents and maintain their indexes."""
 
-    @abstractmethod
-    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
-        raise NotImplementedError
+    def __init__(self, *, files: UploadFileCreator | None = None) -> None:
+        self._files = files
+
+    @property
+    def files(self) -> UploadFileCreator:
+        if self._files is None:
+            raise RuntimeError("file creator is required when indexing remote or tool images")
+        return self._files
 
     @abstractmethod
     def transform(
-        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+        self,
+        documents: list[Document],
+        current_user: Account | None = None,
+        *,
+        process_rule: Mapping[str, object],
+        tenant_id: str,
+        on_upload_file_created: Callable[[str], None],
+        session: Session,
+        embedding_model_instance: "ModelInstance | None" = None,
+        doc_language: str = "English",
+        preview: bool = False,
     ) -> list[Document]:
         raise NotImplementedError
 
@@ -89,13 +105,20 @@ class BaseIndexProcessor(ABC):
         with_keywords: bool = True,
         *,
         session: Session,
-        **kwargs,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def clean(
-        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        delete_summaries: bool = False,
+        delete_child_chunks: bool = False,
+        precomputed_child_node_ids: list[str] | None = None,
     ) -> None:
         raise NotImplementedError
 
@@ -153,6 +176,7 @@ class BaseIndexProcessor(ABC):
         *,
         tenant_id: str,
         session: Session,
+        on_upload_file_created: Callable[[str], None] | None = None,
     ) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
@@ -163,6 +187,7 @@ class BaseIndexProcessor(ABC):
         if not images:
             return multi_model_documents
         upload_file_id_list = []
+        created_upload_files: dict[str, UploadFileRecord] = {}
 
         for image in images:
             # Collect all upload_file_ids including duplicates to preserve occurrence count
@@ -190,14 +215,17 @@ class BaseIndexProcessor(ABC):
             if match:
                 if current_user:
                     tool_file_id = match.group(1)
-                    upload_file_id = self._download_tool_file(
+                    upload_file = self._download_tool_file(
                         tool_file_id,
                         current_user,
                         tenant_id=tenant_id,
                         session=session,
                     )
-                    if upload_file_id:
-                        upload_file_id_list.append(upload_file_id)
+                    if upload_file:
+                        if on_upload_file_created is not None:
+                            on_upload_file_created(upload_file.id)
+                        created_upload_files[upload_file.id] = upload_file
+                        upload_file_id_list.append(upload_file.id)
                 continue
             if current_user:
                 image_url = image.split(" ")[0]
@@ -209,15 +237,18 @@ class BaseIndexProcessor(ABC):
                 if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
                     logging.debug("Skipping non-HTTP image reference: %s", image_url)
                     continue
-                upload_file_id = self._download_image(image_url, current_user)
-                if upload_file_id:
-                    upload_file_id_list.append(upload_file_id)
+                upload_file = self._download_image(image_url, current_user, tenant_id=tenant_id)
+                if upload_file:
+                    if on_upload_file_created is not None:
+                        on_upload_file_created(upload_file.id)
+                    created_upload_files[upload_file.id] = upload_file
+                    upload_file_id_list.append(upload_file.id)
 
         if not upload_file_id_list:
             return multi_model_documents
 
         # Get unique IDs for database query
-        unique_upload_file_ids = list(set(upload_file_id_list))
+        unique_upload_file_ids = set(upload_file_id_list).difference(created_upload_files)
         upload_files = session.scalars(
             select(UploadFile).where(
                 UploadFile.tenant_id == tenant_id,
@@ -225,18 +256,19 @@ class BaseIndexProcessor(ABC):
             )
         ).all()
 
-        # Create a mapping from ID to UploadFile for quick lookup
-        upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
+        # Do not reload newly uploaded records through the caller's older transaction snapshot.
+        upload_file_names = {upload_file.id: upload_file.name for upload_file in upload_files}
+        upload_file_names.update((file.id, file.name) for file in created_upload_files.values())
 
         # Create a Document for each occurrence (including duplicates)
         for upload_file_id in upload_file_id_list:
-            upload_file = upload_file_map.get(upload_file_id)
-            if upload_file:
+            upload_file_name = upload_file_names.get(upload_file_id)
+            if upload_file_name is not None:
                 multi_model_documents.append(
                     AttachmentDocument(
-                        page_content=upload_file.name,
+                        page_content=upload_file_name,
                         metadata={
-                            "doc_id": upload_file.id,
+                            "doc_id": upload_file_id,
                             "doc_hash": "",
                             "document_id": document.metadata.get("document_id"),
                             "dataset_id": document.metadata.get("dataset_id"),
@@ -253,13 +285,11 @@ class BaseIndexProcessor(ABC):
         pattern = r"!\[.*?\]\((.*?)\)"
         return re.findall(pattern, text)
 
-    def _download_image(self, image_url: str, current_user: Account) -> str | None:
+    def _download_image(self, image_url: str, current_user: Account, *, tenant_id: str) -> UploadFileRecord | None:
         """
         Download the image from the URL.
         Image size must not exceed 2MB.
         """
-        from services.file_service import FileService
-
         max_image_size = dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
         download_timeout = dify_config.ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT
 
@@ -312,13 +342,14 @@ class BaseIndexProcessor(ABC):
                 logging.warning("Image from %s is empty", image_url)
                 return None
 
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = self.files.upload_file(
+                actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+                tenant_id=tenant_id,
                 filename=filename,
                 content=blob,
                 mimetype=content_type,
-                user=current_user,
             )
-            return upload_file.id
+            return upload_file
         except httpx.TimeoutException:
             logging.warning("Timeout downloading image from %s after %s seconds", image_url, download_timeout)
             return None
@@ -336,22 +367,21 @@ class BaseIndexProcessor(ABC):
         *,
         tenant_id: str,
         session: Session,
-    ) -> str | None:
+    ) -> UploadFileRecord | None:
         """
         Download the tool file from the ID.
         """
-        from services.file_service import FileService
-
         tool_file = session.scalar(
             select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id).limit(1)
         )
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)
-        upload_file = FileService(db.engine).upload_file(
+        upload_file = self.files.upload_file(
+            actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=tenant_id,
             filename=tool_file.name,
             content=blob,
             mimetype=tool_file.mimetype,
-            user=current_user,
         )
-        return upload_file.id
+        return upload_file

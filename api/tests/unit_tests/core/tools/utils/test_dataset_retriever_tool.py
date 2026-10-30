@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -11,10 +11,11 @@ from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from models.model import AppMode
+from services.knowledge.entities.retrieval import RetrievableDataset
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 
 def _retrieve_config() -> DatasetRetrieveConfigEntity:
@@ -31,32 +32,24 @@ def _hit_callback() -> DatasetIndexToolCallbackHandler:
             app_mode=AppMode.CHAT,
             message_id="message",
         )
-    return DatasetIndexToolCallbackHandler(
-        queue_manager=queue_manager, app_id="app", message_id="message", user_id="u", invoke_from=InvokeFrom.DEBUGGER
-    )
+    return DatasetIndexToolCallbackHandler(queue_manager=queue_manager)
 
 
-def _retrieval_tool() -> RetrievalTool:
-    return RetrievalTool(
-        name="dataset_tool",
-        description="desc",
-        tenant_id="tenant",
-        dataset_id="d1",
-        retrieve_config=_retrieve_config(),
-        inputs={},
-        return_resource=False,
-        retriever_from="dev",
-    )
+def _knowledge_retrieval() -> Mock:
+    retrieval = create_autospec(KnowledgeRetriever, instance=True, spec_set=True)
+    retrieval.list_datasets.return_value = [RetrievableDataset(dataset_id="d1", name="Dataset", description="desc")]
+    return retrieval
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_get_dataset_tools_returns_empty_for_empty_dataset_ids(sqlite_session: Session) -> None:
+def test_get_dataset_tools_returns_empty_for_empty_dataset_ids() -> None:
     # Arrange
     retrieve_config = _retrieve_config()
+    knowledge_retrieval = _knowledge_retrieval()
 
     # Act
     tools = DatasetRetrieverTool.get_dataset_tools(
-        session=sqlite_session,
+        knowledge_retrieval=knowledge_retrieval,
+        app_id="app",
         tenant_id="tenant",
         dataset_ids=[],
         retrieve_config=retrieve_config,
@@ -71,14 +64,15 @@ def test_get_dataset_tools_returns_empty_for_empty_dataset_ids(sqlite_session: S
     assert tools == []
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_get_dataset_tools_returns_empty_for_missing_retrieve_config(sqlite_session: Session) -> None:
+def test_get_dataset_tools_returns_empty_for_missing_retrieve_config() -> None:
     # Arrange
     dataset_ids = ["d1"]
+    knowledge_retrieval = _knowledge_retrieval()
 
     # Act
     tools = DatasetRetrieverTool.get_dataset_tools(
-        session=sqlite_session,
+        knowledge_retrieval=knowledge_retrieval,
+        app_id="app",
         tenant_id="tenant",
         dataset_ids=dataset_ids,
         retrieve_config=None,  # type: ignore[arg-type]
@@ -93,53 +87,56 @@ def test_get_dataset_tools_returns_empty_for_missing_retrieve_config(sqlite_sess
     assert tools == []
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_get_dataset_tools_builds_tool_and_restores_strategy(sqlite_session: Session) -> None:
+def test_get_dataset_tools_builds_tool_without_mutating_strategy() -> None:
     # Arrange
     retrieve_config = _retrieve_config()
-    retrieval_tool = _retrieval_tool()
+    knowledge_retrieval = _knowledge_retrieval()
 
     # Act
-    with patch.object(DatasetRetrieval, "to_dataset_retriever_tool", return_value=[retrieval_tool]):
-        tools = DatasetRetrieverTool.get_dataset_tools(
-            session=sqlite_session,
-            tenant_id="tenant",
-            dataset_ids=["d1"],
-            retrieve_config=retrieve_config,
-            return_resource=True,
-            invoke_from=InvokeFrom.DEBUGGER,
-            hit_callback=_hit_callback(),
-            user_id="u",
-            inputs={"x": 1},
-        )
+    tools = DatasetRetrieverTool.get_dataset_tools(
+        knowledge_retrieval=knowledge_retrieval,
+        app_id="app",
+        tenant_id="tenant",
+        dataset_ids=["d1"],
+        retrieve_config=retrieve_config,
+        return_resource=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+        hit_callback=_hit_callback(),
+        user_id="u",
+        inputs={"x": 1},
+    )
 
     # Assert
     assert len(tools) == 1
-    assert tools[0].entity.identity.name == "dataset_tool"
+    assert tools[0].entity.identity.name == "dataset_d1"
     assert retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE
+    knowledge_retrieval.list_datasets.assert_called_once_with(tenant_id="tenant", dataset_ids=["d1"])
+    assert tools[0].retrieval_tool.knowledge_retrieval is knowledge_retrieval
+    assert tools[0].retrieval_tool.metadata_inputs == {"x": "1"}
 
 
-def _build_dataset_tool(sqlite_session: Session) -> tuple[DatasetRetrieverTool, RetrievalTool]:
-    retrieval_tool = _retrieval_tool()
-    with patch.object(DatasetRetrieval, "to_dataset_retriever_tool", return_value=[retrieval_tool]):
-        tools = DatasetRetrieverTool.get_dataset_tools(
-            session=sqlite_session,
-            tenant_id="tenant",
-            dataset_ids=["d1"],
-            retrieve_config=_retrieve_config(),
-            return_resource=False,
-            invoke_from=InvokeFrom.DEBUGGER,
-            hit_callback=_hit_callback(),
-            user_id="u",
-            inputs={},
-        )
+def _build_dataset_tool() -> tuple[DatasetRetrieverTool, RetrievalTool]:
+    knowledge_retrieval = _knowledge_retrieval()
+    tools = DatasetRetrieverTool.get_dataset_tools(
+        knowledge_retrieval=knowledge_retrieval,
+        app_id="app",
+        tenant_id="tenant",
+        dataset_ids=["d1"],
+        retrieve_config=_retrieve_config(),
+        return_resource=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        hit_callback=_hit_callback(),
+        user_id="u",
+        inputs={},
+    )
+    retrieval_tool = tools[0].retrieval_tool
+    assert retrieval_tool.knowledge_retrieval is knowledge_retrieval
     return tools[0], retrieval_tool
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_runtime_parameters_shape(sqlite_session: Session) -> None:
+def test_runtime_parameters_shape() -> None:
     # Arrange
-    tool, _ = _build_dataset_tool(sqlite_session)
+    tool, _ = _build_dataset_tool()
 
     # Act
     params = tool.get_runtime_parameters()
@@ -152,7 +149,7 @@ def test_runtime_parameters_shape(sqlite_session: Session) -> None:
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_empty_query_behavior(sqlite_session: Session) -> None:
     # Arrange
-    tool, _ = _build_dataset_tool(sqlite_session)
+    tool, _ = _build_dataset_tool()
 
     # Act
     empty_query = list(tool.invoke(session=sqlite_session, user_id="u", tool_parameters={}))
@@ -165,7 +162,7 @@ def test_empty_query_behavior(sqlite_session: Session) -> None:
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_query_invocation_result(sqlite_session: Session) -> None:
     # Arrange
-    tool, _ = _build_dataset_tool(sqlite_session)
+    tool, _ = _build_dataset_tool()
 
     # Act
     with patch.object(RetrievalTool, "_run", return_value="result:hello") as retrieve:
@@ -174,13 +171,12 @@ def test_query_invocation_result(sqlite_session: Session) -> None:
     # Assert
     assert len(result) == 1
     assert result[0].message.text == "result:hello"
-    retrieve.assert_called_once_with(sqlite_session, "hello")
+    retrieve.assert_called_once_with("hello")
 
 
-@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_validate_credentials(sqlite_session: Session) -> None:
+def test_validate_credentials() -> None:
     # Arrange
-    tool, _ = _build_dataset_tool(sqlite_session)
+    tool, _ = _build_dataset_tool()
 
     # Act
     result = tool.validate_credentials(credentials={}, parameters={}, format_only=False)

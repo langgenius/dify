@@ -4,7 +4,6 @@ import time
 import click
 from celery import shared_task
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -14,8 +13,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from repositories.annotation_import_job_repository import annotation_import_job_owner_key
+from repositories.knowledge.dataset_read_repository import get_dataset_collection_binding
 from services.annotation_import_service import AnnotationImportRecord
-from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +64,13 @@ def batch_import_annotations_task(
                 )
 
                 if app_annotation_setting:
-                    dataset_collection_binding = (
-                        DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            app_annotation_setting.collection_binding_id, session, "annotation"
-                        )
+                    dataset_collection_binding = get_dataset_collection_binding(
+                        session,
+                        binding_id=app_annotation_setting.collection_binding_id,
+                        collection_type="annotation",
                     )
                     if not dataset_collection_binding:
-                        raise NotFound("App annotation setting not found")
+                        raise ValueError("App annotation setting not found")
                     dataset = Dataset(
                         id=app_id,
                         tenant_id=tenant_id,

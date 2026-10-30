@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from dataclasses import dataclass
 
 import pytest
 from flask import Flask
@@ -13,12 +14,26 @@ from extensions.ext_database import db
 from models import App
 
 
+@dataclass(frozen=True)
+class _AppGeneration:
+    generate: Callable[..., object]
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    app_generation: _AppGeneration
+
+
+def _services_with_generator(generate: Callable[..., object]) -> _ApplicationServices:
+    return _ApplicationServices(app_generation=_AppGeneration(generate=generate))
+
+
 def test_chat_run_reaches_the_generator(
     flask_app: Flask, auth_headers, app_in_workspace, monkeypatch: pytest.MonkeyPatch
 ):
     captured = {}
 
-    def _fake_generate(*, app_model, user, args, invoke_from, streaming):
+    def _fake_generate(*, app_model, user, args, invoke_from, session, streaming):
         captured["mode"] = app_model.mode
         captured["args"] = args
         captured["invoke_from"] = invoke_from
@@ -33,7 +48,10 @@ def test_chat_run_reaches_the_generator(
             "created_at": 0,
         }
 
-    monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService.generate", staticmethod(_fake_generate))
+    monkeypatch.setattr(
+        "controllers.openapi.app_run.application_services",
+        lambda: _services_with_generator(_fake_generate),
+    )
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}/chat:run",
@@ -107,7 +125,7 @@ def test_completion_run_reaches_the_generator(
 
     captured = {}
 
-    def _fake_generate(*, app_model, user, args, invoke_from, streaming):
+    def _fake_generate(*, app_model, user, args, invoke_from, session, streaming):
         captured["mode"] = app_model.mode
         captured["args"] = args
         return {
@@ -120,7 +138,10 @@ def test_completion_run_reaches_the_generator(
             "created_at": 0,
         }
 
-    monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService.generate", staticmethod(_fake_generate))
+    monkeypatch.setattr(
+        "controllers.openapi.app_run.application_services",
+        lambda: _services_with_generator(_fake_generate),
+    )
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app.id}/completion:run",
@@ -148,14 +169,17 @@ def test_workflow_run_reaches_the_generator(
 ):
     app = app_with_mode("workflow")
 
-    def _fake_generate(*, app_model, user, args, invoke_from, streaming):
+    def _fake_generate(*, app_model, user, args, invoke_from, session, streaming):
         return {
             "workflow_run_id": "wfr",
             "task_id": "t",
             "data": {"id": "wf-d", "workflow_id": "wf", "status": "succeeded"},
         }
 
-    monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService.generate", staticmethod(_fake_generate))
+    monkeypatch.setattr(
+        "controllers.openapi.app_run.application_services",
+        lambda: _services_with_generator(_fake_generate),
+    )
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app.id}/workflow:run",
@@ -230,8 +254,8 @@ def test_run_streaming_returns_event_stream(
         yield 'event: message\ndata: {"x": 1}\n\n'
 
     monkeypatch.setattr(
-        "controllers.openapi.app_run.AppGenerateService.generate",
-        staticmethod(lambda **kw: _stream()),
+        "controllers.openapi.app_run.application_services",
+        lambda: _services_with_generator(lambda **_kwargs: _stream()),
     )
 
     client = flask_app.test_client()

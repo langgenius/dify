@@ -9,12 +9,12 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required, with_current_user
+from extensions.application_services.rag_pipeline import build_rag_pipeline_service
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
-from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class DatasourceContentPreviewPayload(BaseModel):
@@ -43,7 +43,7 @@ class DataSourceContentPreviewApi(Resource):
 
         inputs = req_data.inputs
         datasource_type = req_data.datasource_type
-        rag_pipeline_service = RagPipelineService(db.session())
+        rag_pipeline_service = build_rag_pipeline_service(session=db.session())
         preview_content = rag_pipeline_service.run_datasource_node_preview(
             pipeline=pipeline,
             node_id=node_id,

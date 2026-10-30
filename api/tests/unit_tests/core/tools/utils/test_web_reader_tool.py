@@ -4,7 +4,6 @@ import pytest
 
 from core.tools.utils.web_reader_tool import (
     extract_using_readabilipy,
-    get_image_upload_file_ids,
     get_url,
     page_result,
 )
@@ -46,7 +45,7 @@ def stub_support_types(monkeypatch: pytest.MonkeyPatch):
     import core.tools.utils.web_reader_tool as mod
 
     # e.g. binary types supported by ExtractProcessor
-    monkeypatch.setattr(mod.extract_processor, "SUPPORT_URL_CONTENT_TYPES", ["application/pdf", "text/plain"])
+    monkeypatch.setattr(mod, "SUPPORT_URL_CONTENT_TYPES", ["application/pdf", "text/plain"])
     return mod
 
 
@@ -325,30 +324,3 @@ def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.Mon
     assert article.title == ""
     assert article.author == ""
     assert article.text == ""
-
-
-# ---------------------------
-# Tests: get_image_upload_file_ids
-# ---------------------------
-def test_get_image_upload_file_ids():
-    # should extract id from https + file-preview
-    content = "![image](https://example.com/a/b/files/abc123/file-preview)"
-    assert get_image_upload_file_ids(content) == ["abc123"]
-
-    # should extract id from http + image-preview
-    content = "![image](http://host/files/xyz789/image-preview)"
-    assert get_image_upload_file_ids(content) == ["xyz789"]
-
-    # should not match invalid scheme 'htt://'
-    content = "![image](htt://host/files/bad/file-preview)"
-    assert get_image_upload_file_ids(content) == []
-
-    # should extract multiple ids in order
-    content = """
-    some text
-    ![image](https://h/files/id1/file-preview)
-    middle
-    ![image](http://h/files/id2/image-preview)
-    end
-    """
-    assert get_image_upload_file_ids(content) == ["id1", "id2"]

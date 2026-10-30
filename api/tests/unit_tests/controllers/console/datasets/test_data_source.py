@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import ast
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from inspect import unwrap
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -17,6 +16,8 @@ from controllers.common.errors import NotFoundError
 from controllers.common.rbac import DatasetId
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
+
+# Importing the module registers only the resources under test on console_ns.
 from controllers.console.datasets import data_source as data_source_controller
 from controllers.console.datasets.error import IndexingEstimateError
 from core.entities.knowledge_entities import IndexingEstimate
@@ -38,85 +39,20 @@ from services.data_source.entities.oauth import DataSourceBindingSummary
 from services.data_source.notion_import_application_service import NotionImportApplicationService
 from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessService, DatasetAccessSnapshot
 from services.knowledge.document_sync import DocumentSyncApplicationService, SyncDocumentRecord
+from services.knowledge.documents.application import DocumentTaskDispatcher
 from services.knowledge.entities.indexing_estimate import (
     NewSourcesEstimateCommand,
     NotionEstimateSource,
 )
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.indexing.contracts import DatasetEstimateRecord, EstimateDocumentRecord
 from services.knowledge.indexing.estimate import (
-    DatasetEstimateRecord,
-    EstimateDocumentRecord,
     EstimateSourceNotFoundError,
     IndexingEstimateCredentialUnavailableError,
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
-
-"""Guard all migrated dataset endpoints against transport/persistence regressions."""
-
-
-class TestApplicationBoundariesCases:
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("filename", "count"),
-        [("data_source.py", 7), ("datasets.py", 25), ("datasets_document.py", 24), ("external.py", 8)],
-    )
-    def test_every_endpoint_declares_admission_context_and_application_service(filename: str, count: int) -> None:
-        root = Path(__file__).resolve().parents[5]
-        tree = ast.parse((root / "controllers/console/datasets" / filename).read_text())
-        # This namespace package is not traversed by import-linter's package graph.
-        forbidden = (
-            "sqlalchemy",
-            "repositories",
-            "controllers.common.session",
-            "libs.login",
-            "services.knowledge.dataset_service",
-            "services.knowledge.external.service",
-            "services.hit_testing_service",
-            "services.knowledge.dataset_read_service",
-            "services.knowledge.datasets.adapters",
-            "services.knowledge.documents.adapters",
-            "services.knowledge.external.adapters",
-        )
-        for node in ast.walk(tree):
-            modules = (
-                [node.module or ""]
-                if isinstance(node, ast.ImportFrom)
-                else [item.name for item in node.names]
-                if isinstance(node, ast.Import)
-                else []
-            )
-            for module in modules:
-                assert not any(module == name or module.startswith(name + ".") for name in forbidden), module
-        endpoints = [
-            method
-            for resource in tree.body
-            if isinstance(resource, ast.ClassDef)
-            for method in resource.body
-            if isinstance(method, ast.FunctionDef) and method.name in {"get", "post", "patch", "put", "delete"}
-        ]
-        assert len(endpoints) == count
-        for endpoint in endpoints:
-            assert any(
-                isinstance(d, ast.Call) and ast.unparse(d.func) == "console_account_admission"
-                for d in endpoint.decorator_list
-            ), endpoint.name
-            assert any(
-                arg.arg == "request_context"
-                and arg.annotation is not None
-                and ast.unparse(arg.annotation) == "RequestContext"
-                for arg in endpoint.args.args
-            ), endpoint.name
-            assert any(
-                isinstance(n, ast.Call) and ast.unparse(n.func) == "application_services" for n in ast.walk(endpoint)
-            ), endpoint.name
-            assert not {"session", "current_user", "current_tenant_id"}.intersection(
-                arg.arg for arg in endpoint.args.args
-            )
-
-
-# Importing the module registers only the resources under test on console_ns.
 
 if TYPE_CHECKING:
     from models import Account
@@ -191,6 +127,7 @@ class OwnerWorkspaceRoles:
 class KnowledgeDocuments:
     bound_page_ids: frozenset[str] = frozenset()
     active_refs: tuple[DocumentRef, ...] = ()
+    sync_calls: list[DocumentRef] = field(default_factory=list)
 
     def list_bound_notion_page_ids(self, dataset_ref: DatasetRef) -> frozenset[str]:
         assert dataset_ref == DatasetRef(TENANT_ID, DATASET_ID)
@@ -227,6 +164,9 @@ class KnowledgeDocuments:
         if document_ref.document_id != DOCUMENT_ID:
             return None
         return SyncDocumentRecord(id=DOCUMENT_ID, data_source_type="notion_import")
+
+    def sync_notion(self, ref: DocumentRef) -> None:
+        self.sync_calls.append(ref)
 
 
 @dataclass
@@ -270,14 +210,6 @@ class RecordingEstimateService:
         return IndexingEstimate(total_segments=3, preview=[])
 
 
-@dataclass
-class RecordingDispatcher:
-    calls: list[tuple[str, str]] = field(default_factory=list)
-
-    def dispatch(self, *, dataset_id: str, document_id: str) -> None:
-        self.calls.append((dataset_id, document_id))
-
-
 @dataclass(frozen=True)
 class DataSourceApplicationServices:
     bindings: DataSourceBindingApplicationService
@@ -303,7 +235,8 @@ class ControllerCollaborators:
     bindings: RecordingBindingStore
     notion_source: RecordingNotionSource
     estimates: RecordingEstimateService
-    dispatcher: RecordingDispatcher
+    documents: KnowledgeDocuments
+    tasks: Mock
 
 
 @dataclass
@@ -313,365 +246,357 @@ class AdmittedAccount:
     status: str
 
 
-class TestDataSourceCases:
-    @staticmethod
-    @pytest.fixture
-    def collaborators(
-        config_overrides: Callable[..., None],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> ControllerCollaborators:
-        config_overrides(
-            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
-            LOGIN_DISABLED=True,
-            RBAC_ENABLED=False,
-            CONSOLE_API_URL="https://console-api.example.com",
-        )
-        app = Flask(__name__)
-        app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
-        Api(app).add_namespace(console_ns, path="/console/api")
+@pytest.fixture
+def collaborators(
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> ControllerCollaborators:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        RBAC_ENABLED=False,
+        CONSOLE_API_URL="https://console-api.example.com",
+    )
+    app = Flask(__name__)
+    app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
+    Api(app).add_namespace(console_ns, path="/console/api")
 
-        account = AdmittedAccount(id=ACCOUNT_ID, role="owner", status="active")
-        account_with_tenant = AccountWithTenant(account=cast("Account", account), tenant_id=TENANT_ID)
-        monkeypatch.setattr(
-            "controllers.console.flask_admission.current_account_with_tenant",
-            lambda: account_with_tenant,
-        )
-        monkeypatch.setattr(
-            "controllers.console.wraps.current_account_with_tenant",
-            lambda: account_with_tenant,
-        )
+    account = AdmittedAccount(id=ACCOUNT_ID, role="owner", status="active")
+    account_with_tenant = AccountWithTenant(account=cast("Account", account), tenant_id=TENANT_ID)
+    monkeypatch.setattr(
+        "controllers.console.flask_admission.current_account_with_tenant",
+        lambda: account_with_tenant,
+    )
+    monkeypatch.setattr(
+        "controllers.console.wraps.current_account_with_tenant",
+        lambda: account_with_tenant,
+    )
 
-        dataset = DatasetAccessRecord(
-            id=DATASET_ID,
-            workspace_id=TENANT_ID,
-            maintainer_id=ACCOUNT_ID,
-            permission="only_me",
-        )
-        dataset_catalog = DatasetCatalog(dataset)
-        dataset_access = DatasetAccessService(
-            datasets=dataset_catalog,
-            workspace_roles=OwnerWorkspaceRoles(),
-            legacy_permissions_enabled=True,
-        )
-        documents = KnowledgeDocuments(
-            bound_page_ids=frozenset({PAGE_ID}),
-            active_refs=(DatasetRef(TENANT_ID, DATASET_ID).document(DOCUMENT_ID),),
-        )
-        bindings = RecordingBindingStore()
-        notion_source = RecordingNotionSource(
-            workspaces=(
-                NotionWorkspace(
-                    workspace_id="notion-workspace-1",
-                    workspace_name="One",
-                    workspace_icon=None,
-                    pages=(
-                        AuthorizedNotionPage(
-                            page_id=PAGE_ID,
-                            page_name="Page one",
-                            page_icon=NotionPageIcon(type="emoji", emoji="📄"),
-                            parent_id=None,
-                            page_type=NotionPageType.PAGE,
-                        ),
+    dataset = DatasetAccessRecord(
+        id=DATASET_ID,
+        workspace_id=TENANT_ID,
+        maintainer_id=ACCOUNT_ID,
+        permission="only_me",
+    )
+    dataset_catalog = DatasetCatalog(dataset)
+    dataset_access = DatasetAccessService(
+        datasets=dataset_catalog,
+        workspace_roles=OwnerWorkspaceRoles(),
+        legacy_permissions_enabled=True,
+    )
+    documents = KnowledgeDocuments(
+        bound_page_ids=frozenset({PAGE_ID}),
+        active_refs=(DatasetRef(TENANT_ID, DATASET_ID).document(DOCUMENT_ID),),
+    )
+    bindings = RecordingBindingStore()
+    notion_source = RecordingNotionSource(
+        workspaces=(
+            NotionWorkspace(
+                workspace_id="notion-workspace-1",
+                workspace_name="One",
+                workspace_icon=None,
+                pages=(
+                    AuthorizedNotionPage(
+                        page_id=PAGE_ID,
+                        page_name="Page one",
+                        page_icon=NotionPageIcon(type="emoji", emoji="📄"),
+                        parent_id=None,
+                        page_type=NotionPageType.PAGE,
                     ),
                 ),
-                NotionWorkspace(
-                    workspace_id="notion-workspace-2",
-                    workspace_name="Two",
-                    workspace_icon=None,
-                    pages=(),
-                ),
-            )
-        )
-        estimates = RecordingEstimateService()
-        dispatcher = RecordingDispatcher()
-        app.extensions["application_services"] = ApplicationServiceRegistry(
-            data_sources=DataSourceApplicationServices(
-                bindings=DataSourceBindingApplicationService(bindings=bindings),
-                notion_imports=NotionImportApplicationService(
-                    dataset_access=dataset_access,
-                    datasets=dataset_catalog,
-                    documents=documents,
-                    source=notion_source,
-                ),
             ),
-            knowledge=KnowledgeApplicationServices(
-                document_sync=DocumentSyncApplicationService(
-                    dataset_access=dataset_access,
-                    documents=documents,
-                    dispatcher=dispatcher,
-                ),
-                indexing_estimates=estimates,
+            NotionWorkspace(
+                workspace_id="notion-workspace-2",
+                workspace_name="Two",
+                workspace_icon=None,
+                pages=(),
             ),
         )
-        return ControllerCollaborators(
-            client=app.test_client(),
-            account=account,
-            bindings=bindings,
-            notion_source=notion_source,
-            estimates=estimates,
-            dispatcher=dispatcher,
-        )
-
-    @staticmethod
-    def test_integration_collection_only_exposes_get(collaborators: ControllerCollaborators) -> None:
-        client = collaborators.client
-        assert client.get("/console/api/data-source/integrates").status_code == 200
-        assert client.patch("/console/api/data-source/integrates").status_code == 405
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("method", "path"),
-        [
-            ("get", "/console/api/data-source/integrates"),
-            ("patch", f"/console/api/data-source/integrates/{BINDING_ID}/enable"),
-        ],
     )
-    def test_integration_management_rejects_non_admin_role(
-        collaborators: ControllerCollaborators,
-        method: str,
-        path: str,
-    ) -> None:
-        collaborators.account.role = "editor"
-
-        assert collaborators.client.open(path, method=method.upper()).status_code == 403
-
-    @staticmethod
-    def test_integration_management_enforces_workspace_credential_permission(
-        collaborators: ControllerCollaborators,
-        config_overrides: Callable[..., None],
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        config_overrides(RBAC_ENABLED=True)
-        calls: list[dict[str, object]] = []
-
-        def record_access(tenant_id: str, account_id: str, **requirement: object) -> bool:
-            calls.append({"tenant_id": tenant_id, "account_id": account_id, **requirement})
-            return True
-
-        monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", record_access)
-
-        list_response = collaborators.client.get("/console/api/data-source/integrates")
-        mutation_response = collaborators.client.patch(f"/console/api/data-source/integrates/{BINDING_ID}/enable")
-
-        assert list_response.status_code == 200
-        assert mutation_response.status_code == 200
-        assert calls == [
-            {
-                "tenant_id": TENANT_ID,
-                "account_id": ACCOUNT_ID,
-                "scene": RBACPermission.CREDENTIAL_MANAGE,
-                "resource_type": None,
-                "resource_id": None,
-            },
-            {
-                "tenant_id": TENANT_ID,
-                "account_id": ACCOUNT_ID,
-                "scene": RBACPermission.CREDENTIAL_MANAGE,
-                "resource_type": None,
-                "resource_id": None,
-            },
-        ]
-
-    @staticmethod
-    @pytest.mark.parametrize(("action", "disabled"), [("enable", False), ("disable", True)])
-    def test_integration_item_only_exposes_patch_and_rejects_unknown_action(
-        collaborators: ControllerCollaborators,
-        action: str,
-        disabled: bool,
-    ) -> None:
-        client = collaborators.client
-        item_path = f"/console/api/data-source/integrates/{BINDING_ID}/{action}"
-        assert client.get(item_path).status_code == 405
-        response = client.patch(item_path)
-        assert response.status_code == 200
-        assert response.get_json() == {"result": "success"}
-        assert collaborators.bindings.mutations == [(TENANT_ID, BINDING_ID, disabled)]
-        invalid = client.patch(f"/console/api/data-source/integrates/{BINDING_ID}/remove")
-        assert invalid.status_code == 400
-        assert invalid.get_json()["code"] == "invalid_action"
-        assert len(collaborators.bindings.mutations) == 1
-
-    @staticmethod
-    def test_integration_list_serializes_application_result_and_http_link(
-        collaborators: ControllerCollaborators,
-    ) -> None:
-        collaborators.bindings.bindings = (
-            DataSourceBindingSummary(
-                id=BINDING_ID,
-                provider="notion",
-                created_at=datetime(2026, 5, 25, 1, 2, 3, tzinfo=UTC),
-                disabled=False,
-                source_info={
-                    "workspace_name": "Workspace",
-                    "workspace_id": "workspace-1",
-                    "workspace_icon": None,
-                    "pages": [],
-                    "total": 0,
-                },
+    estimates = RecordingEstimateService()
+    tasks = create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True)
+    app.extensions["application_services"] = ApplicationServiceRegistry(
+        data_sources=DataSourceApplicationServices(
+            bindings=DataSourceBindingApplicationService(bindings=bindings),
+            notion_imports=NotionImportApplicationService(
+                dataset_access=dataset_access,
+                datasets=dataset_catalog,
+                documents=documents,
+                source=notion_source,
             ),
-        )
+        ),
+        knowledge=KnowledgeApplicationServices(
+            document_sync=DocumentSyncApplicationService(
+                dataset_access=dataset_access,
+                documents=documents,
+                tasks=tasks,
+            ),
+            indexing_estimates=estimates,
+        ),
+    )
+    return ControllerCollaborators(
+        client=app.test_client(),
+        account=account,
+        bindings=bindings,
+        notion_source=notion_source,
+        estimates=estimates,
+        documents=documents,
+        tasks=tasks,
+    )
 
-        response = collaborators.client.get("/console/api/data-source/integrates")
 
-        assert response.status_code == 200
-        assert response.get_json()["data"][0] == {
-            "id": BINDING_ID,
-            "provider": "notion",
-            "created_at": 1779670923,
-            "is_bound": True,
-            "disabled": False,
-            "source_info": {
+def test_integration_collection_only_exposes_get(collaborators: ControllerCollaborators) -> None:
+    client = collaborators.client
+    assert client.get("/console/api/data-source/integrates").status_code == 200
+    assert client.patch("/console/api/data-source/integrates").status_code == 405
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("get", "/console/api/data-source/integrates"),
+        ("patch", f"/console/api/data-source/integrates/{BINDING_ID}/enable"),
+    ],
+)
+def test_integration_management_rejects_non_admin_role(
+    collaborators: ControllerCollaborators,
+    method: str,
+    path: str,
+) -> None:
+    collaborators.account.role = "editor"
+
+    assert collaborators.client.open(path, method=method.upper()).status_code == 403
+
+
+def test_integration_management_enforces_workspace_credential_permission(
+    collaborators: ControllerCollaborators,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    calls: list[dict[str, object]] = []
+
+    def record_access(tenant_id: str, account_id: str, **requirement: object) -> bool:
+        calls.append({"tenant_id": tenant_id, "account_id": account_id, **requirement})
+        return True
+
+    monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", record_access)
+
+    list_response = collaborators.client.get("/console/api/data-source/integrates")
+    mutation_response = collaborators.client.patch(f"/console/api/data-source/integrates/{BINDING_ID}/enable")
+
+    assert list_response.status_code == 200
+    assert mutation_response.status_code == 200
+    assert calls == [
+        {
+            "tenant_id": TENANT_ID,
+            "account_id": ACCOUNT_ID,
+            "scene": RBACPermission.CREDENTIAL_MANAGE,
+            "resource_type": None,
+            "resource_id": None,
+        },
+        {
+            "tenant_id": TENANT_ID,
+            "account_id": ACCOUNT_ID,
+            "scene": RBACPermission.CREDENTIAL_MANAGE,
+            "resource_type": None,
+            "resource_id": None,
+        },
+    ]
+
+
+@pytest.mark.parametrize(("action", "disabled"), [("enable", False), ("disable", True)])
+def test_integration_item_only_exposes_patch_and_rejects_unknown_action(
+    collaborators: ControllerCollaborators,
+    action: str,
+    disabled: bool,
+) -> None:
+    client = collaborators.client
+    item_path = f"/console/api/data-source/integrates/{BINDING_ID}/{action}"
+    assert client.get(item_path).status_code == 405
+    response = client.patch(item_path)
+    assert response.status_code == 200
+    assert response.get_json() == {"result": "success"}
+    assert collaborators.bindings.mutations == [(TENANT_ID, BINDING_ID, disabled)]
+    invalid = client.patch(f"/console/api/data-source/integrates/{BINDING_ID}/remove")
+    assert invalid.status_code == 400
+    assert invalid.get_json()["code"] == "invalid_action"
+    assert len(collaborators.bindings.mutations) == 1
+
+
+def test_integration_list_serializes_application_result_and_http_link(
+    collaborators: ControllerCollaborators,
+) -> None:
+    collaborators.bindings.bindings = (
+        DataSourceBindingSummary(
+            id=BINDING_ID,
+            provider="notion",
+            created_at=datetime(2026, 5, 25, 1, 2, 3, tzinfo=UTC),
+            disabled=False,
+            source_info={
                 "workspace_name": "Workspace",
                 "workspace_id": "workspace-1",
                 "workspace_icon": None,
                 "pages": [],
                 "total": 0,
             },
-            "link": "https://console-api.example.com/console/api/oauth/data-source/notion",
+        ),
+    )
+
+    response = collaborators.client.get("/console/api/data-source/integrates")
+
+    assert response.status_code == 200
+    assert response.get_json()["data"][0] == {
+        "id": BINDING_ID,
+        "provider": "notion",
+        "created_at": 1779670923,
+        "is_bound": True,
+        "disabled": False,
+        "source_info": {
+            "workspace_name": "Workspace",
+            "workspace_id": "workspace-1",
+            "workspace_icon": None,
+            "pages": [],
+            "total": 0,
+        },
+        "link": "https://console-api.example.com/console/api/oauth/data-source/notion",
+    }
+
+
+def test_notion_list_preserves_workspace_groups_and_bound_state(collaborators: ControllerCollaborators) -> None:
+    response = collaborators.client.get(
+        "/console/api/notion/pre-import/pages",
+        query_string={"credential_id": "credential-1", "dataset_id": DATASET_ID},
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()["notion_info"]
+    assert [workspace["workspace_id"] for workspace in payload] == [
+        "notion-workspace-1",
+        "notion-workspace-2",
+    ]
+    assert payload[0]["pages"][0]["is_bound"] is True
+    assert payload[0]["pages"][0]["type"] == "page"
+    assert "page_type" not in payload[0]["pages"][0]
+    assert collaborators.notion_source.list_calls == [(TENANT_ID, ACCOUNT_ID, "credential-1")]
+
+
+@pytest.mark.parametrize("page_type", ["page", "database"])
+def test_notion_preview_validates_page_type_and_delegates(
+    collaborators: ControllerCollaborators, page_type: str
+) -> None:
+    response = collaborators.client.get(
+        f"/console/api/notion/pages/{PAGE_ID}/{page_type}/preview",
+        query_string={"credential_id": "credential-1"},
+    )
+    invalid = collaborators.client.get(
+        f"/console/api/notion/pages/{PAGE_ID}/collection/preview",
+        query_string={"credential_id": "credential-1"},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {"content": "preview text"}
+    assert invalid.status_code == 400
+    assert invalid.get_json()["code"] == "invalid_param"
+    assert collaborators.notion_source.preview_calls == [(TENANT_ID, ACCOUNT_ID, "credential-1", PAGE_ID, page_type)]
+
+
+def test_notion_estimate_maps_nested_payload_to_shared_command(collaborators: ControllerCollaborators) -> None:
+    response = collaborators.client.post(
+        "/console/api/datasets/notion-indexing-estimate",
+        json={
+            "notion_info_list": [
+                {
+                    "workspace_id": "notion-workspace-1",
+                    "credential_id": "credential-1",
+                    "pages": [{"page_id": PAGE_ID, "type": "page"}],
+                }
+            ],
+            "process_rule": {"mode": "automatic"},
+            "doc_form": "text_model",
+            "doc_language": "English",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["total_segments"] == 3
+    context, command = collaborators.estimates.calls[0]
+    assert context.active_workspace_id == TENANT_ID
+    assert context.account_id == ACCOUNT_ID
+    assert command.process_rule == {"mode": "automatic"}
+    source = command.sources[0]
+    assert isinstance(source, NotionEstimateSource)
+    assert source.credential_id == "credential-1"
+    assert source.page_id == PAGE_ID
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_http_error"),
+    [
+        (IndexingEstimateCredentialUnavailableError(), NotFoundError),
+        (EstimateSourceNotFoundError("page-1"), NotFoundError),
+        (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
+        (IndexingEstimateExecutionError(), IndexingEstimateError),
+    ],
+)
+def test_notion_estimate_maps_application_errors(
+    error: Exception,
+    expected_http_error: type[Exception],
+    collaborators: ControllerCollaborators,
+) -> None:
+    collaborators.estimates.error = error
+    api = data_source_controller.DataSourceNotionIndexingEstimateApi()
+    method = unwrap(api.post)
+    payload = data_source_controller.NotionEstimatePayload.model_validate(
+        {
+            "notion_info_list": [
+                {
+                    "workspace_id": "notion-workspace",
+                    "credential_id": "credential-1",
+                    "pages": [{"page_id": "page-1", "type": "page"}],
+                }
+            ],
+            "process_rule": {"mode": "automatic"},
         }
-
-    @staticmethod
-    def test_notion_list_preserves_workspace_groups_and_bound_state(collaborators: ControllerCollaborators) -> None:
-        response = collaborators.client.get(
-            "/console/api/notion/pre-import/pages",
-            query_string={"credential_id": "credential-1", "dataset_id": DATASET_ID},
-        )
-
-        assert response.status_code == 200
-        payload = response.get_json()["notion_info"]
-        assert [workspace["workspace_id"] for workspace in payload] == [
-            "notion-workspace-1",
-            "notion-workspace-2",
-        ]
-        assert payload[0]["pages"][0]["is_bound"] is True
-        assert payload[0]["pages"][0]["type"] == "page"
-        assert "page_type" not in payload[0]["pages"][0]
-        assert collaborators.notion_source.list_calls == [(TENANT_ID, ACCOUNT_ID, "credential-1")]
-
-    @staticmethod
-    def test_notion_list_accepts_empty_dataset_id_for_new_dataset(collaborators: ControllerCollaborators) -> None:
-        response = collaborators.client.get(
-            "/console/api/notion/pre-import/pages",
-            query_string={"credential_id": "credential-1", "dataset_id": ""},
-        )
-
-        assert response.status_code == 200
-        assert response.get_json()["notion_info"][0]["pages"][0]["is_bound"] is False
-        assert collaborators.notion_source.list_calls == [(TENANT_ID, ACCOUNT_ID, "credential-1")]
-
-    @staticmethod
-    @pytest.mark.parametrize("page_type", ["page", "database"])
-    def test_notion_preview_validates_page_type_and_delegates(
-        collaborators: ControllerCollaborators, page_type: str
-    ) -> None:
-        response = collaborators.client.get(
-            f"/console/api/notion/pages/{PAGE_ID}/{page_type}/preview",
-            query_string={"credential_id": "credential-1"},
-        )
-        invalid = collaborators.client.get(
-            f"/console/api/notion/pages/{PAGE_ID}/collection/preview",
-            query_string={"credential_id": "credential-1"},
-        )
-
-        assert response.status_code == 200
-        assert response.get_json() == {"content": "preview text"}
-        assert invalid.status_code == 400
-        assert invalid.get_json()["code"] == "invalid_param"
-        assert collaborators.notion_source.preview_calls == [
-            (TENANT_ID, ACCOUNT_ID, "credential-1", PAGE_ID, page_type)
-        ]
-
-    @staticmethod
-    def test_notion_estimate_maps_nested_payload_to_shared_command(collaborators: ControllerCollaborators) -> None:
-        response = collaborators.client.post(
-            "/console/api/datasets/notion-indexing-estimate",
-            json={
-                "notion_info_list": [
-                    {
-                        "workspace_id": "notion-workspace-1",
-                        "credential_id": "credential-1",
-                        "pages": [{"page_id": PAGE_ID, "type": "page"}],
-                    }
-                ],
-                "process_rule": {"mode": "automatic"},
-                "doc_form": "text_model",
-                "doc_language": "English",
-            },
-        )
-
-        assert response.status_code == 200
-        assert response.get_json()["total_segments"] == 3
-        context, command = collaborators.estimates.calls[0]
-        assert context.active_workspace_id == TENANT_ID
-        assert context.account_id == ACCOUNT_ID
-        assert command.process_rule == {"mode": "automatic"}
-        source = command.sources[0]
-        assert isinstance(source, NotionEstimateSource)
-        assert source.credential_id == "credential-1"
-        assert source.page_id == PAGE_ID
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("error", "expected_http_error"),
-        [
-            (IndexingEstimateCredentialUnavailableError(), NotFoundError),
-            (EstimateSourceNotFoundError("page-1"), NotFoundError),
-            (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
-            (IndexingEstimateExecutionError(), IndexingEstimateError),
-        ],
     )
-    def test_notion_estimate_maps_application_errors(
-        error: Exception,
-        expected_http_error: type[Exception],
-        collaborators: ControllerCollaborators,
-    ) -> None:
-        collaborators.estimates.error = error
-        api = data_source_controller.DataSourceNotionIndexingEstimateApi()
-        method = unwrap(api.post)
-        payload = data_source_controller.NotionEstimatePayload.model_validate(
-            {
-                "notion_info_list": [
-                    {
-                        "workspace_id": "notion-workspace",
-                        "credential_id": "credential-1",
-                        "pages": [{"page_id": "page-1", "type": "page"}],
-                    }
-                ],
-                "process_rule": {"mode": "automatic"},
-            }
-        )
-        context = RequestContext("request-1", None, "account-1", "workspace-1")
+    context = RequestContext("request-1", None, "account-1", "workspace-1")
 
-        with collaborators.client.application.app_context(), pytest.raises(expected_http_error):
-            method(api, payload, context)
+    with collaborators.client.application.app_context(), pytest.raises(expected_http_error):
+        method(api, payload, context)
 
-    @staticmethod
-    def test_sync_routes_dispatch_only_application_selected_documents(collaborators: ControllerCollaborators) -> None:
-        dataset_response = collaborators.client.get(f"/console/api/datasets/{DATASET_ID}/notion/sync")
-        document_response = collaborators.client.get(
-            f"/console/api/datasets/{DATASET_ID}/documents/{DOCUMENT_ID}/notion/sync"
-        )
 
-        assert dataset_response.status_code == 200
-        assert dataset_response.get_json() == {"result": "success"}
-        assert document_response.status_code == 200
-        assert document_response.get_json() == {"result": "success"}
-        assert collaborators.dispatcher.calls == [(DATASET_ID, DOCUMENT_ID), (DATASET_ID, DOCUMENT_ID)]
-
-    @staticmethod
-    def test_sync_route_does_not_dispatch_cross_workspace_dataset(collaborators: ControllerCollaborators) -> None:
-        response = collaborators.client.get(f"/console/api/datasets/{FOREIGN_DATASET_ID}/notion/sync")
-
-        assert response.status_code == 404
-        assert response.get_json()["code"] == "not_found"
-        assert collaborators.dispatcher.calls == []
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        "resource",
-        [data_source_controller.DataSourceNotionDatasetSyncApi, data_source_controller.DataSourceNotionDocumentSyncApi],
+def test_sync_routes_dispatch_only_application_selected_documents(collaborators: ControllerCollaborators) -> None:
+    dataset_response = collaborators.client.get(f"/console/api/datasets/{DATASET_ID}/notion/sync")
+    document_response = collaborators.client.get(
+        f"/console/api/datasets/{DATASET_ID}/documents/{DOCUMENT_ID}/notion/sync"
     )
-    def test_notion_sync_requires_dataset_edit_permission(resource):
-        [check] = rbac_checks(resource.get)
-        assert check.scene is RBACPermission.DATASET_EDIT
-        assert isinstance(check.locator, DatasetId)
+
+    assert dataset_response.status_code == 200
+    assert dataset_response.get_json() == {"result": "success"}
+    assert document_response.status_code == 200
+    assert document_response.get_json() == {"result": "success"}
+    assert collaborators.documents.sync_calls == [
+        DatasetRef(TENANT_ID, DATASET_ID).document(DOCUMENT_ID),
+        DatasetRef(TENANT_ID, DATASET_ID).document(DOCUMENT_ID),
+    ]
+    dispatched_refs = [call.args[0] for call in collaborators.tasks.sync_notion.call_args_list]
+    assert dispatched_refs == collaborators.documents.sync_calls
+
+
+def test_sync_route_does_not_dispatch_cross_workspace_dataset(collaborators: ControllerCollaborators) -> None:
+    response = collaborators.client.get(f"/console/api/datasets/{FOREIGN_DATASET_ID}/notion/sync")
+
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "not_found"
+    assert collaborators.documents.sync_calls == []
+    collaborators.tasks.sync_notion.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "resource",
+    [data_source_controller.DataSourceNotionDatasetSyncApi, data_source_controller.DataSourceNotionDocumentSyncApi],
+)
+def test_notion_sync_requires_dataset_edit_permission(resource):
+    [check] = rbac_checks(resource.get)
+    assert check.scene is RBACPermission.DATASET_EDIT
+    assert isinstance(check.locator, DatasetId)

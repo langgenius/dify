@@ -29,6 +29,7 @@ from libs.stream import close_stream
 from models.model import AppMode, AppModelConfigDict
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from services.entities.message_entities import MessageAccount, MessageActor
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.message_more_like_this_service import (
     MoreLikeThisFile,
     MoreLikeThisResponse,
@@ -65,8 +66,9 @@ class _MoreLikeThisEventStream:
 
 
 class MessageMoreLikeThisGenerator:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(self, *, session_factory: sessionmaker[Session], knowledge_retrieval: KnowledgeRetriever) -> None:
         self._session_factory = session_factory
+        self._knowledge_retrieval = knowledge_retrieval
         self._file_access_controller = DatabaseFileAccessController()
 
     def generate(
@@ -127,7 +129,9 @@ class MessageMoreLikeThisGenerator:
                 invoke_from=invoke_from,
                 extras={},
             )
-            response = CompletionAppGenerator().generate_from_entity(entity, session_factory=self._session_factory)
+            response = CompletionAppGenerator(knowledge_retrieval=self._knowledge_retrieval).generate_from_entity(
+                entity, session_factory=self._session_factory
+            )
             return response if isinstance(response, Mapping) else _MoreLikeThisEventStream(response)
 
 

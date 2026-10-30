@@ -1,32 +1,29 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.orm import Session, sessionmaker
 
-from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from core.rag.extractor.notion_extractor import NotionExtractor
-from extensions.application_services.data_sources import build_data_source_credentials
 from services.data_source.credential_gateway import (
     DatasourceCredentialNotFoundError,
     DatasourceCredentialRefreshError,
 )
 from services.data_source.entities.notion_import import NotionPageType
+from services.data_source.website_crawl_cache import website_crawl_provider_instance_id
+from services.extraction.contracts import DatasourceType, UploadFileExtractionInput
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
     FileSourceAdapter,
     NotionSourceResolver,
     WebsiteSourceAdapter,
 )
+from services.knowledge.indexing.contracts import StoredSource
 from services.knowledge.indexing.errors import (
     IndexingInputSourceError,
     SourceCredentialUnavailableError,
     UnsupportedStoredSourceError,
 )
-from services.knowledge.indexing.estimate import StoredSource
-from services.knowledge.resource_scope import DatasetRef
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -118,6 +115,7 @@ def test_datasource_adapters_resolve_file_website_and_notion_inputs() -> None:
             "website_crawl",
             {
                 "provider": "firecrawl",
+                "provider_instance_id": website_crawl_provider_instance_id(provider="firecrawl"),
                 "job_id": "job-1",
                 "url": "https://example.com",
                 "mode": "crawl",
@@ -141,10 +139,72 @@ def test_datasource_adapters_resolve_file_website_and_notion_inputs() -> None:
     assert file_extraction.upload_file == upload
     assert uploads.calls == [("workspace-1", ("file-1",))]
     assert website_extraction.website_info is not None
-    assert website_extraction.website_info.tenant_id == "workspace-1"
+    assert website_extraction.website_info.job_ref.tenant_id == "workspace-1"
     assert website_extraction.website_info.only_main_content is True
     assert notion_extraction.notion_info is not None
     assert notion_extraction.notion_info.notion_access_token == "stored-secret"
+
+
+@pytest.mark.parametrize("mode", ["crawl", "scrape"])
+def test_stored_jina_single_page_source_accepts_empty_job_id(mode: str) -> None:
+    resolver = CompositeStoredSourceResolver(adapters={"website_crawl": WebsiteSourceAdapter()})
+
+    extraction = resolver.resolve(
+        _source(
+            "website_crawl",
+            {
+                "provider": "jinareader",
+                "provider_instance_id": website_crawl_provider_instance_id(provider="jinareader"),
+                "job_id": "",
+                "url": "https://example.com/single-page",
+                "mode": mode,
+            },
+        )
+    )
+
+    assert extraction.website_info is not None
+    assert extraction.website_info.job_ref.provider == "jinareader"
+    assert extraction.website_info.job_ref.job_id == ""
+    assert extraction.website_info.mode == mode
+
+
+@pytest.mark.parametrize("provider", ["firecrawl", "watercrawl"])
+def test_async_website_crawl_source_still_requires_job_id(provider: str) -> None:
+    resolver = CompositeStoredSourceResolver(adapters={"website_crawl": WebsiteSourceAdapter()})
+
+    with pytest.raises(IndexingInputSourceError, match="job_id"):
+        resolver.resolve(
+            _source(
+                "website_crawl",
+                {
+                    "provider": provider,
+                    "job_id": "",
+                    "url": "https://example.com",
+                    "mode": "crawl",
+                },
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    ("provider", "mode", "field"),
+    [("unknown", "crawl", "provider"), ("jinareader", "unknown", "mode")],
+)
+def test_stored_website_source_rejects_unsupported_provider_or_mode(provider: str, mode: str, field: str) -> None:
+    resolver = CompositeStoredSourceResolver(adapters={"website_crawl": WebsiteSourceAdapter()})
+
+    with pytest.raises(IndexingInputSourceError, match=field):
+        resolver.resolve(
+            _source(
+                "website_crawl",
+                {
+                    "provider": provider,
+                    "job_id": "job-1",
+                    "url": "https://example.com",
+                    "mode": mode,
+                },
+            )
+        )
 
 
 def test_stored_notion_resolution_uses_trusted_document_owner_chain() -> None:
@@ -184,70 +244,65 @@ def test_stored_notion_resolution_uses_trusted_document_owner_chain() -> None:
     [
         (None, {"integration_secret": "default-secret"}, None, "environment-secret"),
         ("credential-1", {"integration_secret": "saved-secret"}, None, "saved-secret"),
-        ("deleted-credential", {}, DatasourceCredentialNotFoundError(), "environment-secret"),
-        ("credential-1", {}, DatasourceCredentialRefreshError("credential-1"), "environment-secret"),
-        ("credential-1", {}, None, "environment-secret"),
-        ("credential-1", {"integration_secret": ""}, None, "environment-secret"),
-        ("credential-1", {"integration_secret": 42}, None, "environment-secret"),
+        ("deleted-credential", {}, DatasourceCredentialNotFoundError(), None),
+        ("credential-1", {}, DatasourceCredentialRefreshError("credential-1"), None),
+        ("credential-1", {}, ValueError("decrypt failed"), None),
+        ("credential-1", {}, None, None),
+        ("credential-1", {"integration_secret": ""}, None, None),
+        ("credential-1", {"integration_secret": 42}, None, None),
+        ("", {}, None, None),
     ],
-    ids=["legacy", "saved", "deleted", "refresh-failed", "missing-token", "empty-token", "invalid-token"],
+    ids=[
+        "legacy",
+        "saved",
+        "deleted",
+        "refresh-failed",
+        "decrypt-failed",
+        "missing-token",
+        "empty-token",
+        "invalid-token",
+        "explicit-empty-id",
+    ],
 )
 @pytest.mark.parametrize("integration_token", ["environment-secret", None, ""])
-def test_stored_notion_preview_and_indexing_use_same_integration(
-    sqlite_session_factory: sessionmaker[Session],
+def test_stored_notion_preview_and_indexing_fall_back_only_for_legacy_sources(
     monkeypatch: pytest.MonkeyPatch,
     credential_id: str | None,
     credentials: dict[str, object],
     error: Exception | None,
-    expected_token: str,
+    expected_token: str | None,
     integration_token: str | None,
 ) -> None:
     apply_config_overrides(monkeypatch, NOTION_INTEGRATION_TOKEN=integration_token)
     stored = RecordingStoredCredentials(credentials, error=error)
     resolver = _notion_resolver(stored=stored)
-    indexing_credentials = Mock(return_value=credentials, side_effect=error)
-    providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
-    monkeypatch.setattr(
-        providers,
-        "get_datasource_credentials",
-        indexing_credentials,
-    )
-    source = _source(
-        "notion_import",
-        {
-            "credential_id": credential_id,
-            "notion_workspace_id": "notion-workspace-1",
-            "notion_page_id": "notion-page-1",
-            "type": "page",
-        },
-    )
+    source_info: dict[str, object] = {
+        "notion_workspace_id": "notion-workspace-1",
+        "notion_page_id": "notion-page-1",
+        "type": "page",
+    }
+    if credential_id is not None:
+        source_info["credential_id"] = credential_id
+    source = _source("notion_import", source_info)
 
-    def indexing_extractor() -> NotionExtractor:
-        return NotionExtractor(
-            notion_workspace_id="notion-workspace-1",
-            notion_obj_id="notion-page-1",
-            notion_page_type="page",
-            tenant_id="workspace-1",
-            credential_id=credential_id,
-            notion_token_loader=lambda: providers.get_stored_notion_access_token(
-                tenant_id="workspace-1", credential_id=credential_id
-            ),
-        )
-
-    if expected_token == "environment-secret" and not integration_token:
+    if expected_token is None or (credential_id is None and not integration_token):
         with pytest.raises(SourceCredentialUnavailableError):
             resolver.resolve(source)
-        with pytest.raises(ValueError, match="Must specify `integration_token`"):
-            indexing_extractor()
     else:
-        preview = resolver.resolve(source)
-        extractor = indexing_extractor()
-        assert preview.notion_info is not None
-        assert preview.notion_info.notion_access_token == extractor._notion_access_token == expected_token
+        resolved = resolver.resolve(source)
+        assert resolved.notion_info is not None
+        token = resolved.notion_info.notion_access_token
+        assert isinstance(token, str)
+        assert token == expected_token
+        extractor = NotionExtractor(
+            notion_obj_id=resolved.notion_info.notion_obj_id,
+            notion_page_type=resolved.notion_info.notion_page_type,
+            notion_access_token=token,
+        )
+        assert extractor._notion_access_token == expected_token
 
-    expected_ids: list[str] = [credential_id] if credential_id else []
+    expected_ids: list[str] = [credential_id] if credential_id is not None else []
     assert [call["credential_id"] for call in stored.calls] == expected_ids
-    assert [call.kwargs["credential_id"] for call in indexing_credentials.call_args_list] == expected_ids
 
 
 def test_notion_resolution_falls_back_to_configured_integration_token() -> None:
@@ -267,6 +322,27 @@ def test_notion_resolution_falls_back_to_configured_integration_token() -> None:
 
     assert extraction.notion_info is not None
     assert extraction.notion_info.notion_access_token == "environment-secret"
+
+
+@pytest.mark.parametrize("credential_id", [None, 42])
+def test_stored_notion_explicit_invalid_credential_id_cannot_use_legacy_fallback(credential_id: object) -> None:
+    stored = RecordingStoredCredentials({"integration_secret": "stored-secret"})
+    resolver = _notion_resolver(stored=stored, integration_token="environment-secret")
+
+    with pytest.raises(SourceCredentialUnavailableError):
+        resolver.resolve(
+            _source(
+                "notion_import",
+                {
+                    "credential_id": credential_id,
+                    "notion_workspace_id": "notion-workspace-1",
+                    "notion_page_id": "notion-page-1",
+                    "type": "page",
+                },
+            )
+        )
+
+    assert stored.calls == []
 
 
 def test_new_notion_selection_uses_actor_scoped_credential() -> None:
@@ -315,29 +391,3 @@ def test_invalid_or_unknown_sources_are_rejected_at_the_adapter_boundary() -> No
         )
     with pytest.raises(UnsupportedStoredSourceError, match="mystery"):
         resolver.resolve(_source("mystery", {}))
-
-
-def test_formal_notion_extraction_carries_source_update_scope_but_preview_does_not() -> None:
-    source = _source(
-        "notion_import",
-        {
-            "credential_id": "credential-1",
-            "notion_workspace_id": "notion-workspace-1",
-            "notion_page_id": "notion-page-1",
-            "type": "page",
-        },
-    )
-    resolver = CompositeStoredSourceResolver(adapters={"notion_import": _notion_resolver()})
-    preview = resolver.resolve(source)
-    formal = resolver.resolve_for_indexing(source)
-    assert preview.notion_info is not None
-    assert formal.notion_info is not None
-    assert preview.notion_info.document is None
-    document = formal.notion_info.document
-    assert document is not None
-    assert (document.tenant_id, document.dataset_id, document.id) == (
-        source.document_ref.dataset.tenant_id,
-        source.document_ref.dataset.dataset_id,
-        source.document_ref.document_id,
-    )
-    assert document.data_source_info_dict == source.source_info

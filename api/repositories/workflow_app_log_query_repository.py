@@ -7,10 +7,10 @@ from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session, aliased, sessionmaker
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import escape_like_pattern
 from models import Account, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowRun
-from models.enums import CreatorUserRole
 from models.trigger import WorkflowTriggerLog
 from services.workflow_app_log_query_service import (
     WorkflowAppLogAccount,

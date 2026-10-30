@@ -39,7 +39,6 @@ from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.engine.command import AbortCommand
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.enums import WorkflowType as _paused_workflow_stop_WorkflowType
 from libs.broadcast_channel.redis.pubsub_channel import Topic
 from models import EndUser
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -50,6 +49,7 @@ from models.workflow import WorkflowType as ModelWorkflowType
 from models.workflow import WorkflowType as _legacy_workflow_task_recovery_WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskControlService, AppTaskService, WorkflowStopOutcome
+from services.file_adapters import build_file_service
 
 """Injected workflow cancellation preserves both transport mechanisms."""
 
@@ -1128,7 +1128,7 @@ class TestPausedWorkflowStopCases:
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=_paused_workflow_stop_WorkflowType.WORKFLOW,
+            type=ModelWorkflowType.WORKFLOW,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.PAUSED,
@@ -1154,6 +1154,7 @@ class TestPausedWorkflowStopCases:
                 user=EndUser(id="user-1"),
                 app_id=node_app,
                 triggered_from=origin,
+                files=build_file_service(session_factory=sqlite_session_factory),
             ).save(
                 WorkflowNodeExecution(
                     id=f"node-{node_app}",
@@ -1262,7 +1263,7 @@ class TestPausedWorkflowStopCases:
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=_paused_workflow_stop_WorkflowType.WORKFLOW,
+            type=ModelWorkflowType.WORKFLOW,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.PAUSED,
@@ -1316,7 +1317,7 @@ class TestPausedWorkflowStopCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id=task_id,
-            type=_paused_workflow_stop_WorkflowType.WORKFLOW,
+            type=ModelWorkflowType.WORKFLOW,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.RUNNING,

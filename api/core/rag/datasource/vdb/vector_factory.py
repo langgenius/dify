@@ -8,7 +8,6 @@ from typing import Any, override
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.model_manager import ModelManager
 from core.rag.datasource.vdb.vector_backend_registry import get_vector_factory_class
 from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
@@ -21,7 +20,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.dataset import Dataset, Whitelist
+from models.dataset import Dataset
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -160,23 +159,9 @@ class Vector:
 
     @staticmethod
     def resolve_vector_type(dataset: Dataset, *, session: Session) -> str:
-        vector_type = dify_config.VECTOR_STORE
+        from repositories.knowledge.dataset_read_repository import resolve_dataset_vector_type
 
-        if dataset.index_struct_dict:
-            vector_type = dataset.index_struct_dict["type"]
-        else:
-            if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
-                stmt = select(Whitelist).where(
-                    Whitelist.tenant_id == dataset.tenant_id, Whitelist.category == "vector_db"
-                )
-                whitelist = session.scalars(stmt).one_or_none()
-                if whitelist:
-                    vector_type = VectorType.TIDB_ON_QDRANT
-
-        if not vector_type:
-            raise ValueError("Vector store must be specified.")
-
-        return vector_type
+        return resolve_dataset_vector_type(dataset, session=session)
 
     def _init_vector(self, *, session: Session) -> BaseVector:
         vector_type = self.resolve_vector_type(self._dataset, session=session)
@@ -217,9 +202,29 @@ class Vector:
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
     def create_multimodal(
-        self, file_documents: list | None = None, *, upload_files: Mapping[str, UploadFile] | None = None, **kwargs
+        self,
+        file_documents: list | None = None,
+        *,
+        upload_file_keys: Mapping[str, str] | None = None,
+        **kwargs,
     ):
         if file_documents:
+            deduplicated_documents: list[Document] = []
+            seen_attachment_ids: set[str] = set()
+            for document in file_documents:
+                attachment_id = str(document.metadata["doc_id"])
+                if attachment_id in seen_attachment_ids:
+                    continue
+                seen_attachment_ids.add(attachment_id)
+                deduplicated_documents.append(document)
+            # Attachment vectors use the physical upload id as their
+            # dataset-wide identity. A segment can therefore publish an id
+            # that another segment (or a prior enable attempt) already wrote.
+            # Reuse the backend existence check before embedding and inserting
+            # so providers with insert-only create methods remain idempotent.
+            file_documents = self._filter_duplicate_texts(deduplicated_documents)
+            if not file_documents:
+                return
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)
             batch_size = 1000
@@ -230,26 +235,26 @@ class Vector:
                 logger.info("Processing batch %s/%s (%s files)", i // batch_size + 1, total_batches, len(batch))
 
                 # Batch query all upload files to avoid N+1 queries
-                attachment_ids = [doc.metadata["doc_id"] for doc in batch]
-                upload_file_map: Mapping[str, UploadFile]
-                if upload_files is None:
+                attachment_ids = [str(doc.metadata["doc_id"]) for doc in batch]
+                file_keys: Mapping[str, str]
+                if upload_file_keys is None:
                     if self._session is None:
                         raise ValueError("Upload files must be loaded before indexing without a database session")
                     stmt = select(UploadFile).where(
                         UploadFile.id.in_(attachment_ids), UploadFile.tenant_id == self._dataset.tenant_id
                     )
-                    upload_file_map = {str(f.id): f for f in self._session.scalars(stmt).all()}
+                    file_keys = {str(f.id): f.key for f in self._session.scalars(stmt).all()}
                 else:
-                    upload_file_map = upload_files
+                    file_keys = upload_file_keys
 
                 file_base64_list = []
                 real_batch = []
                 for document in batch:
-                    attachment_id = document.metadata["doc_id"]
+                    attachment_id = str(document.metadata["doc_id"])
                     doc_type = document.metadata["doc_type"]
-                    upload_file = upload_file_map.get(attachment_id)
-                    if upload_file:
-                        blob = storage.load_once(upload_file.key)
+                    file_key = file_keys.get(attachment_id)
+                    if file_key is not None:
+                        blob = storage.load_once(file_key)
                         file_base64_str = base64.b64encode(blob).decode()
                         file_base64_list.append(
                             {
@@ -259,11 +264,28 @@ class Vector:
                             }
                         )
                         real_batch.append(document)
+                if not real_batch:
+                    continue
                 batch_embeddings = self._embeddings.embed_multimodal_documents(file_base64_list)
                 logger.info(
                     "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
                 )
-                self._vector_processor.create(texts=real_batch, embeddings=batch_embeddings, **kwargs)
+                # Attachment vectors are physically shared by every current
+                # binding in the dataset. Persist the physical attachment ID
+                # as their canonical document identity instead of leaking the
+                # logical document that happened to publish the vector first.
+                backend_batch = [
+                    document.model_copy(
+                        update={
+                            "metadata": {
+                                **document.metadata,
+                                "document_id": str(document.metadata["doc_id"]),
+                            }
+                        }
+                    )
+                    for document in real_batch
+                ]
+                self._vector_processor.create(texts=backend_batch, embeddings=batch_embeddings, **kwargs)
             logger.info("Embedding %s files took %s s", len(file_documents), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
@@ -296,14 +318,9 @@ class Vector:
     def _search_by_vector_traced(self, query_vector: list[float], **kwargs) -> list[Document]:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
-    def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        if self._session is None:
-            raise ValueError("File search requires a database session")
-        upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
-
-        if not upload_file:
-            return []
-        blob = storage.load_once(upload_file.key)
+    def search_by_file(self, *, file_id: str, file_key: str, **kwargs: Any) -> list[Document]:
+        """Search with an attachment resolved and authorized before provider I/O."""
+        blob = storage.load_once(file_key)
         file_base64_str = base64.b64encode(blob).decode()
         multimodal_vector = self._embeddings.embed_multimodal_query(
             {

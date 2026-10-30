@@ -21,6 +21,7 @@ from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import FileInput, ResolvedForm, UserAction
 from core.human_input_v2.shared.values import AccountId, NormalizedEmail, RecipientId, TenantId
 from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.enums import FileTransferMethod, FileType
@@ -28,7 +29,7 @@ from graphon.variables.segments import FileSegment
 from libs.datetime_utils import naive_utc_now
 from libs.external_api import ExternalApi
 from models.account import TenantAccountJoin, TenantAccountRole
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm
 from models.model import UploadFile
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
@@ -45,7 +46,7 @@ from repositories.human_input_v2.recipient_repository import (
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
-from services.file_service import FileService
+from services.file_adapters import build_file_service
 from services.human_input_file_upload_service import HumanInputUploadToken, InvalidUploadTokenError
 from services.human_input_v2.file_upload_service import V2_UPLOAD_TOKEN_PREFIX, HumanInputV2FileUploadService
 from services.human_input_v2.submission_service import (
@@ -151,7 +152,7 @@ def approval(
                 token_hash=hashlib.sha256(token.encode()).hexdigest(),
             ),
         )
-    files = FileService(sqlite_session_factory)
+    files = build_file_service(session_factory=sqlite_session_factory)
     service = HumanInputV2FileUploadService(
         session_factory=sqlite_session_factory, files=files, remote_files=RemoteFileService(files=files)
     )

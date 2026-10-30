@@ -3419,6 +3419,20 @@ export const zHumanInputFormSubmissionData = z.object({
 export const zExecutionContentType = z.enum(['human_input'])
 
 /**
+ * AttachmentInfoDict
+ *
+ * Published attachment metadata; MIME type may be null for legacy uploads.
+ */
+export const zAttachmentInfoDict = z.object({
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  name: z.string(),
+  size: z.int(),
+  source_url: z.string(),
+})
+
+/**
  * KnowledgeFsCitation
  *
  * Immutable evidence identity; no signed URLs, tokens or storage keys.
@@ -3447,13 +3461,13 @@ export const zRetrievalSourceMetadata = z.object({
   data_source_type: z.string().nullish(),
   dataset_id: z.string().nullish(),
   dataset_name: z.string().nullish(),
-  doc_metadata: z.record(z.string(), z.unknown()).nullish(),
+  doc_metadata: z.record(z.string(), zJsonValue).nullish(),
   document_asset_id: z.string().nullish(),
   document_id: z.string().nullish(),
   document_name: z.string().nullish(),
   document_revision: z.int().nullish(),
   document_version: z.int().nullish(),
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z.array(zAttachmentInfoDict).nullish(),
   hit_count: z.int().nullish(),
   index_node_hash: z.string().nullish(),
   knowledge_fs_citation: zKnowledgeFsCitation.nullish(),

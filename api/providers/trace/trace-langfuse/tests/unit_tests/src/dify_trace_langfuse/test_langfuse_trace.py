@@ -223,7 +223,7 @@ class TestLangfuseTraceCases:
 
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo
-        monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
+        monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.WorkflowRepositoryFactory", mock_factory)
 
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
@@ -297,7 +297,7 @@ class TestLangfuseTraceCases:
         repo.get_by_workflow_execution.return_value = []
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo
-        monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
+        monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.WorkflowRepositoryFactory", mock_factory)
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
         trace_instance.add_trace = MagicMock()
@@ -764,7 +764,7 @@ class TestLangfuseTraceCases:
         repo.get_by_workflow_execution.return_value = [node]
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo
-        monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
+        monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.WorkflowRepositoryFactory", mock_factory)
         monkeypatch.setattr(
             "dify_trace_langfuse.langfuse_trace.db",
             SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
@@ -893,7 +893,7 @@ class TestLangfuseTraceCasesUnitTests:
                 patch.object(trace, "get_service_account_with_tenant", return_value=MagicMock()),
                 patch("dify_trace_langfuse.langfuse_trace.db", MagicMock()),
                 patch(
-                    "dify_trace_langfuse.langfuse_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                    "dify_trace_langfuse.langfuse_trace.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
                     return_value=repository,
                 ),
             ):

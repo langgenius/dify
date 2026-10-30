@@ -15,9 +15,11 @@ from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
+from libs.login import current_account_with_tenant
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.auth.resource_access_token_contracts import (
+    ResourceAccessTokenForbiddenError,
     ResourceAccessTokenResource,
     ResourceAccessTokenRow,
 )
@@ -94,6 +96,13 @@ register_response_schema_models(
 _OWNER_ROLES = frozenset({TenantAccountRole.OWNER})
 
 
+def _require_token_management() -> None:
+    # Machine credentials remain owner-only even when RBAC replaces legacy
+    # admission role checks. No delegated token-management permission exists.
+    if current_account_with_tenant().account.role != TenantAccountRole.OWNER:
+        raise ResourceAccessTokenForbiddenError("Only workspace owners may manage resource access tokens.")
+
+
 def _dump_rows(rows: tuple[ResourceAccessTokenRow, ...]) -> list[dict[str, object]]:
     return [
         dump_response(
@@ -117,6 +126,7 @@ class ResourceAccessTokenListApi(Resource):
         context: RequestContext,
     ) -> dict[str, object]:
         with resource_access_token_errors():
+            _require_token_management()
             rows = application_services().resource_access_tokens.list_rows(
                 context,
                 page=query.page,
@@ -150,6 +160,7 @@ class ResourceAccessTokenListApi(Resource):
         context: RequestContext,
     ) -> tuple[dict[str, object], int]:
         with resource_access_token_errors():
+            _require_token_management()
             result = application_services().resource_access_tokens.create(
                 context,
                 name=payload.name,
@@ -181,6 +192,7 @@ class ResourceAccessTokenApi(Resource):
         token_id: UUID,
     ) -> dict[str, object]:
         with resource_access_token_errors():
+            _require_token_management()
             rows = application_services().resource_access_tokens.update(
                 context,
                 token_id=str(token_id),
@@ -213,6 +225,7 @@ class ResourceAccessTokenRelationApi(Resource):
         relation_id: UUID,
     ) -> tuple[str, int]:
         with resource_access_token_errors():
+            _require_token_management()
             application_services().resource_access_tokens.delete_relation(
                 context,
                 token_id=str(token_id),

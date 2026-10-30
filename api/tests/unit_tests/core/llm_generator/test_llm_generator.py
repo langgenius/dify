@@ -19,12 +19,13 @@ from core.model_manager import ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
 from core.workflow.generator import tool_catalogue as tool_catalogue_module
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.dataset import Dataset
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Message
 from models.workflow import (
     Workflow,

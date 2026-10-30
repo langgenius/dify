@@ -217,7 +217,7 @@ class TestOpikTraceCases:
 
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo
-        monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
+        monkeypatch.setattr("dify_trace_opik.opik_trace.WorkflowRepositoryFactory", mock_factory)
 
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
@@ -277,7 +277,7 @@ class TestOpikTraceCases:
         repo.get_by_workflow_execution.return_value = []
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo
-        monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
+        monkeypatch.setattr("dify_trace_opik.opik_trace.WorkflowRepositoryFactory", mock_factory)
         monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
 
         trace_instance.add_trace = MagicMock()
@@ -706,7 +706,7 @@ class TestOpikTraceCases:
         repo.get_by_workflow_execution.return_value = [node]
         mock_factory = MagicMock()
         mock_factory.create_workflow_node_execution_repository.return_value = repo
-        monkeypatch.setattr("dify_trace_opik.opik_trace.DifyCoreRepositoryFactory", mock_factory)
+        monkeypatch.setattr("dify_trace_opik.opik_trace.WorkflowRepositoryFactory", mock_factory)
         monkeypatch.setattr(
             "dify_trace_opik.opik_trace.db",
             SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
@@ -860,7 +860,7 @@ class TestOpikTraceCasesUnitTests:
                 patch("dify_trace_opik.opik_trace.db") as mock_db,
                 patch("dify_trace_opik.opik_trace.sessionmaker"),
                 patch(
-                    "dify_trace_opik.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                    "dify_trace_opik.opik_trace.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
                     return_value=fake_repo,
                 ),
             ):
@@ -991,7 +991,7 @@ class TestOpikTraceCasesUnitTests:
                 patch("dify_trace_opik.opik_trace.db") as mock_db,
                 patch("dify_trace_opik.opik_trace.sessionmaker"),
                 patch(
-                    "dify_trace_opik.opik_trace.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                    "dify_trace_opik.opik_trace.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
                     return_value=fake_repo,
                 ),
             ):

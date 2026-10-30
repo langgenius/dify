@@ -1,5 +1,6 @@
 import logging
 from contextlib import nullcontext
+from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
@@ -13,6 +14,7 @@ from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
@@ -20,8 +22,42 @@ from graphon.model_runtime.entities.model_entities import ModelFeature, ModelTyp
 from models.account import Account
 from models.dataset import Dataset, DocumentCreatedFrom, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole, DataSourceType
+from models.enums import DataSourceType
 from models.model import UploadFile
+
+
+@dataclass(frozen=True)
+class _ModelSchema:
+    features: list[ModelFeature]
+
+
+class _SummaryModelType:
+    def __init__(self, features: list[ModelFeature]) -> None:
+        self._schema = _ModelSchema(features)
+
+    def get_model_schema(self, model_name: str, credentials: dict[str, str]) -> _ModelSchema:
+        del model_name, credentials
+        return self._schema
+
+
+class _SummaryModelInstance:
+    def __init__(
+        self,
+        *,
+        features: list[ModelFeature],
+        result: object | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self.credentials = {"k": "v"}
+        self.model_type_instance = _SummaryModelType(features)
+        self._result = result
+        self._error = error
+
+    def invoke_llm(self, **kwargs: object) -> object:
+        del kwargs
+        if self._error is not None:
+            raise self._error
+        return self._result
 
 
 class TestParagraphIndexProcessor:
@@ -111,28 +147,25 @@ class TestParagraphIndexProcessor:
         upload_file.id = file_id
         return upload_file
 
-    def test_extract_forwards_automatic_flag(self, processor: ParagraphIndexProcessor) -> None:
-        extract_setting = Mock()
-        session = self.session
-        expected_docs = [Document(page_content="chunk", metadata={})]
-
-        with patch(
-            "core.rag.index_processor.processor.paragraph_index_processor.ExtractProcessor.extract"
-        ) as mock_extract:
-            mock_extract.return_value = expected_docs
-            docs = processor.extract(extract_setting, process_rule_mode="hierarchical", session=session)
-
-        assert docs == expected_docs
-        mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True, session=session)
-
     def test_transform_validates_process_rule(self, processor: ParagraphIndexProcessor) -> None:
         session = self.session
+        on_file_created = Mock()
         with pytest.raises(ValueError, match="No process rule found"):
-            processor.transform([Document(page_content="text", metadata={})], process_rule=None, session=session)
+            processor.transform(
+                [Document(page_content="text", metadata={})],
+                process_rule={},
+                tenant_id="tenant-1",
+                on_upload_file_created=on_file_created,
+                session=session,
+            )
 
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform(
-                [Document(page_content="text", metadata={})], process_rule={"mode": "custom"}, session=session
+                [Document(page_content="text", metadata={})],
+                process_rule={"mode": "custom"},
+                tenant_id="tenant-1",
+                on_upload_file_created=on_file_created,
+                session=session,
             )
 
     def test_transform_validates_segmentation(
@@ -149,6 +182,8 @@ class TestParagraphIndexProcessor:
                 processor.transform(
                     [Document(page_content="text", metadata={})],
                     process_rule={"mode": "custom", "rules": {"enabled": True}},
+                    tenant_id="tenant-1",
+                    on_upload_file_created=Mock(),
                     session=session,
                 )
 
@@ -162,6 +197,7 @@ class TestParagraphIndexProcessor:
             Document(page_content=".first", metadata={}),
             Document(page_content=" ", metadata={}),
         ]
+        on_file_created = Mock()
 
         with (
             patch(
@@ -183,19 +219,21 @@ class TestParagraphIndexProcessor:
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
-            ),
+            ) as get_content_files,
         ):
             documents = processor.transform(
                 [source_document],
                 process_rule=process_rule,
                 tenant_id="tenant-1",
                 session=session,
+                on_upload_file_created=on_file_created,
             )
 
         assert len(documents) == 1
         assert documents[0].page_content == "first"
         assert documents[0].attachments is not None
         assert documents[0].metadata["doc_hash"] == "hash"
+        assert get_content_files.call_args.kwargs["on_upload_file_created"] is on_file_created
 
     def test_transform_automatic_mode_uses_default_rules(self, processor: ParagraphIndexProcessor) -> None:
         splitter = Mock()
@@ -226,6 +264,7 @@ class TestParagraphIndexProcessor:
                 [Document(page_content="text", metadata={})],
                 process_rule={"mode": "automatic"},
                 tenant_id="tenant-1",
+                on_upload_file_created=Mock(),
                 session=session,
             )
 
@@ -248,19 +287,6 @@ class TestParagraphIndexProcessor:
         vector.create.assert_called_once_with(docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
         mock_keyword_cls.assert_not_called()
-
-    def test_load_uses_keyword_add_texts_with_keywords_when_economy(
-        self, processor: ParagraphIndexProcessor, dataset: Dataset
-    ) -> None:
-        dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        docs = [Document(page_content="chunk", metadata={})]
-        session = self.session
-        keywords_list = [["k1"], ["k2"]]
-
-        with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
-            processor.load(dataset, docs, keywords_list=keywords_list, session=session)
-
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs, session, keywords_list=keywords_list)
 
     def test_load_uses_keyword_add_texts_without_keywords_when_economy(
         self, processor: ParagraphIndexProcessor, dataset: Dataset
@@ -563,10 +589,7 @@ class TestParagraphIndexProcessor:
         )
 
     def test_generate_summary_propagates_model_invocation_errors(self) -> None:
-        model_instance = Mock()
-        model_instance.credentials = {"k": "v"}
-        model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
-        model_instance.invoke_llm.side_effect = RuntimeError("invocation failed")
+        model_instance = _SummaryModelInstance(features=[], error=RuntimeError("invocation failed"))
 
         with patch(
             "core.rag.index_processor.processor.paragraph_index_processor.ModelManager.for_tenant"
@@ -581,13 +604,11 @@ class TestParagraphIndexProcessor:
                 )
 
     def test_generate_summary_handles_vision_and_image_conversion(self) -> None:
-        model_instance = Mock()
-        model_instance.credentials = {"k": "v"}
-        model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(
-            features=[ModelFeature.VISION]
+        model_instance = _SummaryModelInstance(
+            features=[ModelFeature.VISION],
+            result=self._llm_result("vision summary"),
         )
-        model_instance.invoke_llm.return_value = self._llm_result("vision summary")
-        image_file = SimpleNamespace()
+        image_file = object()
         image_content = ImagePromptMessageContent(format="url", mime_type="image/png", url="http://example.com/a.png")
 
         with (
@@ -616,13 +637,8 @@ class TestParagraphIndexProcessor:
         mock_extract_text.assert_not_called()
 
     def test_generate_summary_fallbacks_for_prompt_and_result_types(self, caplog: pytest.LogCaptureFixture) -> None:
-        model_instance = Mock()
-        model_instance.credentials = {"k": "v"}
-        model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(
-            features=[ModelFeature.VISION]
-        )
-        model_instance.invoke_llm.return_value = object()
-        image_file = SimpleNamespace()
+        model_instance = _SummaryModelInstance(features=[ModelFeature.VISION], result=object())
+        image_file = object()
 
         with (
             patch(

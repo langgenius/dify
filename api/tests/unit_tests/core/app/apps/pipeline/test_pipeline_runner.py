@@ -13,6 +13,7 @@ Primary collaborators include ``PipelineRunner``,
 
 import json
 from collections.abc import Generator
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy import event
@@ -25,6 +26,7 @@ from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
+from core.workflow.nodes.knowledge_index.protocols import SummaryIndexServiceProtocol
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.graph import Graph
@@ -35,7 +37,9 @@ from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.file_adapters import build_file_service
 from tests.helpers.unit.model_factories import make_dataset, make_document, make_end_user, make_workflow
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -134,6 +138,7 @@ def isolate_queue_redis(monkeypatch: pytest.MonkeyPatch) -> None:
 def _build_runner(
     app_generate_entity: RagPipelineGenerateEntity, sqlite_engine: Engine, workflow: Workflow
 ) -> PipelineRunner:
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     return PipelineRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=PipelineQueueManager(
@@ -145,7 +150,10 @@ def _build_runner(
         variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow,
         system_user_id="sys",
-        documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
+        documents=SQLAlchemyDocumentRepository(session_factory=sessions),
+        knowledge_retrieval=make_knowledge_retriever(),
+        summary_index_service=create_autospec(SummaryIndexServiceProtocol, instance=True, spec_set=True),
+        files=build_file_service(session_factory=sessions),
     )
 
 

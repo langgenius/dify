@@ -2,11 +2,11 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from models.model import UploadFile
+from services.extraction.contracts import UploadFileExtractionInput
 
 
 def _query_files(session: Session, *, workspace_id: str, file_ids: Sequence[str]) -> dict[str, UploadFile]:
@@ -43,13 +43,11 @@ class SQLAlchemyKnowledgeUploadRepository:
         with self._session_factory() as session:
             return _query_files(session, workspace_id=workspace_id, file_ids=file_ids)
 
+    def get_existing_file_ids(self, *, workspace_id: str, file_ids: Sequence[str]) -> frozenset[str]:
+        if not file_ids:
+            return frozenset()
+        return frozenset(self.get_files(workspace_id=workspace_id, file_ids=file_ids))
+
     def get_file_name(self, *, workspace_id: str, upload_file_id: str) -> str | None:
         upload = self.get_files(workspace_id=workspace_id, file_ids=(upload_file_id,)).get(upload_file_id)
         return upload.name if upload is not None else None
-
-    def delete_files(self, *, workspace_id: str, file_ids: Sequence[str]) -> None:
-        """Remove preview records after their storage cleanup has finished."""
-        if not file_ids:
-            return
-        with self._session_factory.begin() as session:
-            session.execute(delete(UploadFile).where(UploadFile.tenant_id == workspace_id, UploadFile.id.in_(file_ids)))
