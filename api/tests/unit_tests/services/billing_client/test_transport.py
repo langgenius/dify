@@ -152,6 +152,28 @@ def test_migrated_reads_reject_missing_required_fields(
         )
 
 
+@pytest.mark.parametrize(
+    ("method", "path", "response_model"),
+    [
+        ("GET", "/quota/info", billing.QuotaGetInfoReply),
+        ("POST", "/quota/reserve", billing.QuotaReserveReply),
+        ("POST", "/quota/commit", billing.QuotaCommitReply),
+        ("POST", "/quota/release", billing.QuotaReleaseReply),
+        ("GET", "/quota/balance", billing.QuotaGetBalanceReply),
+        ("POST", "/quota/consume-capped", billing.QuotaConsumeCappedReply),
+    ],
+)
+def test_quota_responses_reject_missing_required_fields(
+    respond_with: RespondWith, method: transport.HTTPMethod, path: str, response_model: type[BillingModel]
+) -> None:
+    respond_with(httpx.Response(200, json={}))
+
+    with pytest.raises(BillingUpstreamInvalidResponseError):
+        transport.request(
+            Upstream.BILLING_QUOTA, method, path, response_model=response_model, path_params={}, params={}, body=None
+        )
+
+
 def test_invalid_body_is_an_invalid_response_once_enforced(
     respond_with: RespondWith, monkeypatch: pytest.MonkeyPatch
 ) -> None:

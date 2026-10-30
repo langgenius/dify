@@ -9,8 +9,9 @@ Response validation is observed before it is enforced. For a path not in
 `ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
 (reported to Sentry) and rebuilt from the raw payload: fields that validate are coerced,
 the rest keep their raw value, and missing fields read as `None`. Migrated single-response
-reads are enforced before their results reach business decisions. Batch subscription plans
-remain observed here; `BillingService.get_plan_bulk` validates each item before returning it.
+reads and quota operations are enforced before their results reach business decisions.
+Batch subscription plans remain observed here; `BillingService.get_plan_bulk` validates
+each item before returning it.
 """
 
 import json
@@ -41,6 +42,12 @@ ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
         "/subscription/cleanup/whitelist",
         "/model-provider/payment-link",
         "/invoices",
+        "/quota/info",
+        "/quota/reserve",
+        "/quota/commit",
+        "/quota/release",
+        "/quota/balance",
+        "/quota/consume-capped",
     }
 )
 
