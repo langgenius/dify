@@ -5,7 +5,7 @@ unit tests do not replace that backend or claim to cover successful LLM calls.
 """
 
 from collections.abc import Callable, Iterator
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import httpx
@@ -248,7 +248,10 @@ def test_configured_model_is_resolved_once_before_successful_invocation(monkeypa
         return manager
 
     monkeypatch.setattr(ModelManager, "for_tenant", classmethod(resolve_manager))
-    invocation = Mock(return_value=_suggested_questions_result('["Next question?"]'))
+    invocation = create_autospec(
+        configured.invoke_llm,
+        return_value=_suggested_questions_result('["Next question?"]'),
+    )
     monkeypatch.setattr(configured, "invoke_llm", invocation)
 
     prepared = SuggestedQuestionsGenerator._prepare_model(

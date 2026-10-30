@@ -1612,23 +1612,29 @@ def test_resume_path_runs_worker_with_runtime_state(
     sqlite_session.commit()
     runtime_state = _runtime_state()
 
-    queue_manager = MagicMock()
+    queue_manager = object()
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.WorkflowAppQueueManager",
-        MagicMock(return_value=queue_manager),
+        lambda **_kwargs: queue_manager,
     )
 
-    monkeypatch.setattr(generator, "_handle_response", MagicMock(return_value="raw-response"))
+    monkeypatch.setattr(generator, "_handle_response", lambda **_kwargs: "raw-response")
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.WorkflowAppGenerateResponseConverter.convert",
-        MagicMock(side_effect=lambda response, invoke_from: response),
+        lambda response, invoke_from: response,
     )
 
     db_session = sqlite_session_factory()
     monkeypatch.setattr(app_generator_module.db, "session", db_session)
 
-    runner_instance = MagicMock()
-    runner_instance.prepare.return_value = None
+    class RecordingRunner:
+        def __init__(self) -> None:
+            self.prepare_calls = 0
+
+        def prepare(self) -> None:
+            self.prepare_calls += 1
+
+    runner_instance = RecordingRunner()
 
     def runner_ctor(**kwargs):
         assert kwargs["graph_runtime_state"] is runtime_state
@@ -1639,7 +1645,7 @@ def test_resume_path_runs_worker_with_runtime_state(
 
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.WorkflowAppRunner",
-        MagicMock(side_effect=runner_ctor),
+        runner_ctor,
     )
 
     worker_lifecycle: dict[str, object] = {}
@@ -1683,4 +1689,4 @@ def test_resume_path_runs_worker_with_runtime_state(
     assert result == "raw-response"
     assert worker_lifecycle["joined"] is True
     assert worker_lifecycle["join_timeout"] == 300
-    runner_instance.prepare.assert_called_once()
+    assert runner_instance.prepare_calls == 1

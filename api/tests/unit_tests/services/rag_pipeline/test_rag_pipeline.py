@@ -37,8 +37,9 @@ from models.dataset import (
     PipelineRecommendedPlugin,
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
@@ -46,8 +47,11 @@ from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo,
 from services.errors.file import UploadFileReferenceNotFoundError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow.persistence import WorkflowNodeExecutionRepository
+from services.workflow_draft_variable_service import DraftVariableSaver
 from services.workflow_ref_service import WorkflowRef
 
 
@@ -1162,20 +1166,20 @@ class TestRagPipelineServiceCases:
         mocker.patch.object(rag_pipeline_service.service, "_handle_node_run_result", return_value=execution)
 
         # Mock Repository
-        mock_repo_instance = mocker.Mock()
+        mock_repo_instance = create_autospec(WorkflowNodeExecutionRepository, instance=True, spec_set=True)
         mocker.patch(
             "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             return_value=mock_repo_instance,
         )
-        mock_db_exec = mocker.Mock()
+        mock_db_exec = create_autospec(WorkflowNodeExecutionModel, instance=True, spec_set=True)
         mock_db_exec.node_id = "node-1"
         mock_db_exec.node_type = "datasource"
-        rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
-            get_execution_by_id=mocker.Mock(return_value=mock_db_exec)
-        )
+        node_execution_reader = create_autospec(DifyAPIWorkflowNodeExecutionRepository, instance=True, spec_set=True)
+        node_execution_reader.get_execution_by_id.return_value = mock_db_exec
+        rag_pipeline_service.service._node_execution_service_repo = node_execution_reader
 
         # Mock DraftVariableSaver
-        mock_saver_instance = mocker.Mock()
+        mock_saver_instance = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
         mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mock_saver_instance)
 
         # 2. Run test
@@ -1312,16 +1316,22 @@ class TestRagPipelineServiceCases:
             rag_pipeline_service.service, "_handle_node_run_result", return_value=execution
         )
         single_step_run = mocker.patch("services.rag_pipeline.rag_pipeline.WorkflowEntry.single_step_run")
+        mocker.patch.object(
+            rag_pipeline_service.service,
+            "_knowledge_retrieval",
+            return_value=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+        )
 
-        repo = mocker.Mock()
+        repo = create_autospec(WorkflowNodeExecutionRepository, instance=True, spec_set=True)
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             return_value=repo,
         )
-        rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
-            get_execution_by_id=mocker.Mock(return_value="db")
-        )
-        mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mocker.Mock())
+        node_execution_reader = create_autospec(DifyAPIWorkflowNodeExecutionRepository, instance=True, spec_set=True)
+        node_execution_reader.get_execution_by_id.return_value = "db"
+        rag_pipeline_service.service._node_execution_service_repo = node_execution_reader
+        saver = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
+        mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=saver)
         rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {}, account)
 
         getter = handle_node_run_result.call_args.kwargs["getter"]
@@ -1349,15 +1359,15 @@ class TestRagPipelineServiceCases:
         execution = SimpleNamespace(id="exec-1", node_id="node-1", node_type="llm", process_data={}, outputs={})
         mocker.patch.object(rag_pipeline_service.service, "_handle_node_run_result", return_value=execution)
 
-        repo = mocker.Mock()
+        repo = create_autospec(WorkflowNodeExecutionRepository, instance=True, spec_set=True)
         mocker.patch(
-            "services.rag_pipeline.rag_pipeline.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
             return_value=repo,
         )
-        rag_pipeline_service.service._node_execution_service_repo = mocker.Mock(
-            get_execution_by_id=mocker.Mock(return_value="db")
-        )
-        saver = mocker.Mock()
+        node_execution_reader = create_autospec(DifyAPIWorkflowNodeExecutionRepository, instance=True, spec_set=True)
+        node_execution_reader.get_execution_by_id.return_value = "db"
+        rag_pipeline_service.service._node_execution_service_repo = node_execution_reader
+        saver = create_autospec(DraftVariableSaver, instance=True, spec_set=True)
         mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=saver)
 
         result = rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {"q": "x"}, account)

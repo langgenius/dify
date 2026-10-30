@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, Mock, create_autospec
@@ -8,7 +9,7 @@ from pytest_mock import MockerFixture
 
 from enums import CloudPlan, DeploymentEdition
 from enums.creator import CreatorUserRole
-from services.entities.upload_file import FileUploadActor
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
 from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from tests.helpers.unit.config_override import config_overrides_context
@@ -124,7 +125,7 @@ def test_send_to_direct_queue_calls_task_func_delay(proxy: RagPipelineTaskProxy)
 def test_send_to_tenant_queue_pushes_when_task_key_exists(proxy: RagPipelineTaskProxy) -> None:
     queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
     queue.get_task_key.return_value = "existing-key"
-    task_func = Mock()
+    task_func = create_autospec(Signature, instance=True, spec_set=True)
 
     proxy._send_to_tenant_queue("file-1", cast(Signature[object], task_func))
 
@@ -135,7 +136,7 @@ def test_send_to_tenant_queue_pushes_when_task_key_exists(proxy: RagPipelineTask
 def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(proxy: RagPipelineTaskProxy) -> None:
     queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
     queue.get_task_key.return_value = None
-    task_func = Mock()
+    task_func = create_autospec(Signature, instance=True, spec_set=True)
 
     proxy._send_to_tenant_queue("file-1", cast(Signature[object], task_func))
 
@@ -150,7 +151,23 @@ def test_upload_invoke_entities_returns_file_id(
     proxy: RagPipelineTaskProxy,
     file_service: MagicMock,
 ) -> None:
-    file_service.upload_text.return_value = SimpleNamespace(id="uploaded-file-1")
+    file_service.upload_text.return_value = UploadFileRecord(
+        id="uploaded-file-1",
+        tenant_id="tenant-1",
+        storage_type="local",
+        key="rag_pipeline_invoke_entities.json",
+        name="rag_pipeline_invoke_entities.json",
+        size=17,
+        extension="json",
+        mime_type="application/json",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime(2026, 1, 1),
+        hash=None,
+        source_url="",
+        used=True,
+        used_by="user-1",
+    )
 
     result = proxy._upload_invoke_entities()
 

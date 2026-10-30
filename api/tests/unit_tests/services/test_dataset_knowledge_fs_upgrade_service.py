@@ -5,7 +5,6 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import patch
 
@@ -78,6 +77,13 @@ from tests.helpers.unit.services.knowledge_fs_services_a_fakes import CallRecord
 
 _TENANT_ID = "00000000-0000-0000-0000-000000000001"
 _ACCOUNT_ID = "00000000-0000-0000-0000-000000000002"
+
+
+@dataclass(frozen=True, slots=True)
+class _ApplicationServicesStub:
+    files: FileService
+
+
 _DATASET_ID = "00000000-0000-0000-0000-000000000003"
 _CONTROL_SPACE_ID = "00000000-0000-0000-0000-000000000004"
 _UPLOAD_FILE_ID = "00000000-0000-0000-0000-000000000005"
@@ -2327,7 +2333,7 @@ def test_final_reconciliation_publication_failure_is_recovered_after_parent_succ
         with (
             patch(
                 "tasks.knowledge_fs_upgrade_tasks.application_services",
-                return_value=SimpleNamespace(files=cast(FileService, object())),
+                return_value=_ApplicationServicesStub(files=cast(FileService, object())),
             ),
             patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async", side_effect=OSError("broker down")),
         ):
