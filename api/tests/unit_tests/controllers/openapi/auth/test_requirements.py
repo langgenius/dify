@@ -46,6 +46,7 @@ from controllers.openapi.auth.requirements import (
     CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
+    CheckScopeEarly,
     CheckSkillEnabled,
     CheckSubject,
     CheckWebAppAuthEnterprise,
@@ -400,6 +401,7 @@ class Trait(StrEnum):
     """
 
     APP_SCOPED = auto()
+    AGENT_SCOPED = auto()
     ACCOUNT_PRIMARY = auto()
     EXTERNAL_REACHABLE = auto()
     ENTERPRISE_ONLY = auto()
@@ -415,6 +417,10 @@ class Case(StrEnum):
     LOW_ROLE = auto()
     APP_API_DISABLED = auto()
     UNKNOWN_APP = auto()
+    NON_MEMBER_AND_APP_API_DISABLED = auto()
+    NON_MEMBER_AND_UNKNOWN_APP = auto()
+    INSUFFICIENT_SCOPE_AND_APP_API_DISABLED = auto()
+    INSUFFICIENT_SCOPE_AND_UNKNOWN_APP = auto()
     FOREIGN_WORKSPACE_QUERY = auto()
     EDITION_NOT_ENTERPRISE = auto()
     LICENSE_INVALID = auto()
@@ -709,19 +715,19 @@ ROUTES: tuple[Route, ...] = (
         "agents.describe",
         "GET",
         "/workspaces/{workspace_id}/agents/{agent_id}",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.AGENT_SCOPED}),
     ),
     Route(
         "agent_run.run",
         "POST",
         "/workspaces/{workspace_id}/agents/{agent_id}:run",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.AGENT_SCOPED}),
     ),
     Route(
         "agent_run.test",
         "POST",
         "/workspaces/{workspace_id}/agents/{agent_id}:test",
-        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.AGENT_SCOPED}),
     ),
     Route(
         "app_dsl.import",
@@ -1123,6 +1129,10 @@ CASE_REQUIRES: dict[Case, frozenset[Trait]] = {
     Case.LOW_ROLE: frozenset({Trait.ACCOUNT_PRIMARY}),
     Case.APP_API_DISABLED: frozenset({Trait.APP_SCOPED}),
     Case.UNKNOWN_APP: frozenset({Trait.APP_SCOPED}),
+    Case.NON_MEMBER_AND_APP_API_DISABLED: frozenset({Trait.AGENT_SCOPED}),
+    Case.NON_MEMBER_AND_UNKNOWN_APP: frozenset({Trait.AGENT_SCOPED}),
+    Case.INSUFFICIENT_SCOPE_AND_APP_API_DISABLED: frozenset({Trait.AGENT_SCOPED}),
+    Case.INSUFFICIENT_SCOPE_AND_UNKNOWN_APP: frozenset({Trait.AGENT_SCOPED}),
     Case.FOREIGN_WORKSPACE_QUERY: frozenset({Trait.APP_SCOPED}),
     Case.EDITION_NOT_ENTERPRISE: frozenset({Trait.ENTERPRISE_ONLY}),
     Case.LICENSE_INVALID: frozenset(),
@@ -1155,6 +1165,12 @@ SCENARIOS: dict[Case, Scenario] = {
     Case.LOW_ROLE: Scenario(bearer=Bearer.ACCOUNT_LOW_ROLE),
     Case.APP_API_DISABLED: Scenario(bearer=Bearer.PRIMARY, app_api_enabled=False),
     Case.UNKNOWN_APP: Scenario(bearer=Bearer.PRIMARY, unknown_app=True),
+    Case.NON_MEMBER_AND_APP_API_DISABLED: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER, app_api_enabled=False),
+    Case.NON_MEMBER_AND_UNKNOWN_APP: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER, unknown_app=True),
+    Case.INSUFFICIENT_SCOPE_AND_APP_API_DISABLED: Scenario(
+        bearer=Bearer.PRIMARY, narrow_scopes=True, app_api_enabled=False
+    ),
+    Case.INSUFFICIENT_SCOPE_AND_UNKNOWN_APP: Scenario(bearer=Bearer.PRIMARY, narrow_scopes=True, unknown_app=True),
     Case.FOREIGN_WORKSPACE_QUERY: Scenario(bearer=Bearer.PRIMARY, foreign_workspace_query=True),
     Case.EDITION_NOT_ENTERPRISE: Scenario(bearer=Bearer.PRIMARY, edition=DeploymentEdition.COMMUNITY),
     Case.LICENSE_INVALID: Scenario(bearer=Bearer.PRIMARY, license_status=LicenseStatus.EXPIRED),
@@ -1347,6 +1363,16 @@ _ACCOUNT_EDITOR_APP: dict[Case, Expect] = {
     Case.RBAC_ON_LOW_ROLE: ADMIT,
 }
 
+_AGENT_ROUTE_ANSWERS: dict[Case, Expect] = {
+    Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT,
+    Case.NON_MEMBER_AND_APP_API_DISABLED: DENY_NON_MEMBER,
+    Case.NON_MEMBER_AND_UNKNOWN_APP: DENY_NON_MEMBER,
+    Case.INSUFFICIENT_SCOPE_AND_APP_API_DISABLED: DENY_SCOPE,
+    Case.INSUFFICIENT_SCOPE_AND_UNKNOWN_APP: DENY_SCOPE,
+}
+"""On an agent route the workspace and the scope come from the request, so neither a
+non-member nor a token without the scope learns whether the Agent exists or has its Service API on."""
+
 _ACCOUNT_READER_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_READER_APP, Case.APP_API_DISABLED: ADMIT}
 _ACCOUNT_EDITOR_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_EDITOR_APP, Case.APP_API_DISABLED: ADMIT}
 
@@ -1381,7 +1407,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "agents.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
-    "agents.describe": {**_ACCOUNT_READER_APP, Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT},
+    "agents.describe": {**_ACCOUNT_READER_APP, **_AGENT_ROUTE_ANSWERS},
     "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1403,12 +1429,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_dsl.package_export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
-    "agent_run.run": {
-        **_DUAL_SUBJECT_RUN,
-        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
-        Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT,
-    },
-    "agent_run.test": {**_ACCOUNT_EDITOR_APP, Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT},
+    "agent_run.run": {**_DUAL_SUBJECT_RUN, Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT, **_AGENT_ROUTE_ANSWERS},
+    "agent_run.test": {**_ACCOUNT_EDITOR_APP, **_AGENT_ROUTE_ANSWERS},
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.describe": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.nodes": dict(_ACCOUNT_READER_APP),
@@ -1677,17 +1699,17 @@ def _settings_req(
 
 _REQ_AGENT_RUN = (
     CheckSubject(allowed=_ACCOUNT),
-    CheckAppApiEnabled(),
     CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_RUN),
+    CheckScopeEarly(Scope.APPS_RUN),
+    CheckAppApiEnabled(),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckAppAccess(),
 )
 _REQ_AGENT_DESCRIBE = (
     CheckSubject(allowed=_ACCOUNT),
-    CheckAppApiEnabled(),
     CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_READ),
+    CheckScopeEarly(Scope.APPS_READ),
+    CheckAppApiEnabled(),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
 )
 _REQ_AGENT_TEST = (*_REQ_AGENT_RUN[:-1], CheckWorkspaceRole(_EDITOR_UP))

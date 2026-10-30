@@ -20,7 +20,7 @@ from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
     CheckRBACPermission,
-    CheckScope,
+    CheckScopeEarly,
     CheckSubject,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
@@ -28,28 +28,35 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from core.app.entities.app_invoke_entities import InvokeFrom
 
+# Membership and scope are asked before `CheckAppApiEnabled` loads the Agent, so a caller
+# who may not use the workspace learns nothing about which Agents it holds.
 _AGENT_RUN_GUARDS: Final = (
     CheckSubject(allowed=(AccountSubject,)),
-    CheckAppApiEnabled(),
     CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_RUN),
+    CheckScopeEarly(Scope.APPS_RUN),
+    CheckAppApiEnabled(),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckAppAccess(),
 )
 _AGENT_TEST_GUARDS: Final = (
     CheckSubject(allowed=(AccountSubject,)),
-    CheckAppApiEnabled(),
     CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_RUN),
+    CheckScopeEarly(Scope.APPS_RUN),
+    CheckAppApiEnabled(),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckWorkspaceRole(EDITOR_ROLES),
 )
 
 
+def agent_target(workspace_id: str, agent_id: str) -> dict[str, str]:
+    """The path parameters that address an Agent, as the `input` of a hint to another Agent op."""
+    return {"workspace_id": workspace_id, "agent_id": agent_id}
+
+
 def _run_agent(
     ctx: Context, workspace_id: str, agent_id: str, body: AgentRunPayload, *, op: str, invoke_from: InvokeFrom
 ) -> Response:
-    target = {"workspace_id": workspace_id, "agent_id": agent_id}
+    target = agent_target(workspace_id, agent_id)
     try:
         stream = _stream(ctx, _generate_args(ctx, body), invoke_from)
     except AgentNotPublished as error:

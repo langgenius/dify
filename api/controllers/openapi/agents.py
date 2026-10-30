@@ -5,7 +5,6 @@ from __future__ import annotations
 from http import HTTPStatus
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
@@ -25,12 +24,13 @@ from controllers.openapi._models import (
     AppDescribeQuery,
     Hint,
 )
-from controllers.openapi.agent_run import AgentRunApi, AgentTestApi
+from controllers.openapi.agent_run import AgentRunApi, AgentTestApi, agent_target
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
     CheckScope,
+    CheckScopeEarly,
     CheckSubject,
     CheckWorkspaceMember,
 )
@@ -39,7 +39,6 @@ from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import AppParametersDict
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
-from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService, RosterAgentEntry
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 
@@ -115,24 +114,20 @@ class AgentDescribeApi(Resource):
         ),
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
-            CheckAppApiEnabled(),
             CheckWorkspaceMember(),
-            CheckScope(Scope.APPS_READ),
+            CheckScopeEarly(Scope.APPS_READ),
+            CheckAppApiEnabled(),
             CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
         ),
         query=AppDescribeQuery,
         returns=(HTTPStatus.OK, AgentDescribeResponse, "Agent description"),
     )
     def get(self, ctx: Context, workspace_id: str, agent_id: str, *, query: AppDescribeQuery):
-        try:
-            entry = AgentRosterService(ctx.session).describe_openapi_roster_agent(
-                tenant_id=ctx.workspace.id, app=ctx.app
-            )
-        except AgentNotFoundError as error:
-            raise NotFound("agent not found") from error
-
+        entry = AgentRosterService(ctx.session).describe_openapi_roster_agent(
+            tenant_id=ctx.workspace.id, agent_id=agent_id, app=ctx.app
+        )
         parameters = _published_parameters(ctx.app.id)
-        target = {"workspace_id": workspace_id, "agent_id": agent_id}
+        target = agent_target(workspace_id, agent_id)
         response = AgentDescribeResponse()
         if wants_block(query.fields, "info"):
             response.info = _describe_info(entry)

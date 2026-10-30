@@ -982,11 +982,13 @@ class AgentRosterService:
         ]
         return entries, pagination.total
 
-    def describe_openapi_roster_agent(self, *, tenant_id: str, app: App) -> RosterAgentEntry:
-        """One Agent App's roster entry, read-only like the list."""
-        agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=str(app.id))
-        if agent is None:
-            raise AgentNotFoundError()
+    def describe_openapi_roster_agent(self, *, tenant_id: str, agent_id: str, app: App) -> RosterAgentEntry:
+        """One Agent App's roster entry, read-only like the list.
+
+        The Agent is read by its own id: `Agent.app_id` is not unique, so the
+        app cannot name it.
+        """
+        agent = self._get_app_backed_agent(tenant_id=tenant_id, agent_id=agent_id)
         published = self.load_active_config_is_published_by_agent_id(tenant_id=tenant_id, agents=[agent])
         return self._roster_entry(app, agent, published[agent.id])
 
@@ -1043,14 +1045,7 @@ class AgentRosterService:
         )
         return AgentSoulConfig.model_validate(version.config_snapshot_dict)
 
-    def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
-        """Resolve the Agent App hidden behind an app-backed Agent id.
-
-        The public /agent route uses Agent ids, while the runtime and legacy app
-        APIs still operate on App ids internally. Only app-backed roster Agents
-        are accepted here; workflow-only Agents and historical standalone roster
-        Agents are not Agent App resources.
-        """
+    def _get_app_backed_agent(self, *, tenant_id: str, agent_id: str) -> Agent:
         agent = self._session.scalar(
             select(Agent)
             .where(
@@ -1065,6 +1060,17 @@ class AgentRosterService:
         )
         if agent is None or agent.app_id is None:
             raise AgentNotFoundError()
+        return agent
+
+    def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve the Agent App hidden behind an app-backed Agent id.
+
+        The public /agent route uses Agent ids, while the runtime and legacy app
+        APIs still operate on App ids internally. Only app-backed roster Agents
+        are accepted here; workflow-only Agents and historical standalone roster
+        Agents are not Agent App resources.
+        """
+        agent = self._get_app_backed_agent(tenant_id=tenant_id, agent_id=agent_id)
 
         app = self._session.scalar(
             select(App)
