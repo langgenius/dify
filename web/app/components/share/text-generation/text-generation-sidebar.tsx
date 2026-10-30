@@ -153,7 +153,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           isPC ? 'p-8 pb-0' : 'p-4 pb-0',
         )}
       >
-        {!isInstalledApp && <MyAppsLink className="w-full shrink-0" />}
+        {!isInstalledApp && <MyAppsLink className="w-full shrink-0 ps-0" />}
         {showWorkflowLayout ? (
           <div className="flex flex-col gap-3">
             <AppIcon
