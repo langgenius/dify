@@ -527,6 +527,11 @@ export type ConversationWithSummaryPagination = {
   total: number
 }
 
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
+}
+
 export type ConversationDetail = {
   admin_feedback_stats?: FeedbackStat | null
   annotated: boolean
@@ -6112,8 +6117,11 @@ export type GetAppsByAppIdChatConversationsData = {
 }
 
 export type GetAppsByAppIdChatConversationsErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -6138,8 +6146,9 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdErrors = {
+  401: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | ConversationNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6164,8 +6173,9 @@ export type GetAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdChatConversationsByConversationIdErrors = {
+  401: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | ConversationNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6285,8 +6295,11 @@ export type GetAppsByAppIdCompletionConversationsData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsErrors = {
+  400: ErrorResponse
+  401: ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -6311,8 +6324,9 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdErrors = {
+  401: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | ConversationNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6337,8 +6351,9 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdErrors = {
+  401: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | ConversationNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

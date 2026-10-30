@@ -1061,6 +1061,19 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:console-conversation-controller-boundary]
+name = Console conversation controllers reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.conversation
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    services.conversation_service
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:billing-application-boundary]
 name = Billing application services and ports are framework and infrastructure neutral
 type = forbidden

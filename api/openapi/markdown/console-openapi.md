@@ -2840,7 +2840,7 @@ Transcript audio to text for chat messages
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations
-Get chat conversations with pagination, filtering and summary
+Get chat conversations with pagination and filtering
 
 #### Parameters
 
@@ -2860,8 +2860,11 @@ Get chat conversations with pagination, filtering and summary
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationWithSummaryPagination](#conversationwithsummarypagination)<br> |
+| 400 | Invalid date range | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -2879,8 +2882,9 @@ Delete a chat conversation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -2898,8 +2902,9 @@ Get chat conversation details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationDetail](#conversationdetail)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-messages
@@ -2983,8 +2988,11 @@ Get completion conversations with pagination and filtering
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationPagination](#conversationpagination)<br> |
+| 400 | Invalid date range | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/completion-conversations/{conversation_id}
@@ -3002,8 +3010,9 @@ Delete a completion conversation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/completion-conversations/{conversation_id}
@@ -3021,8 +3030,9 @@ Get completion conversation details with messages
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationMessageDetail](#conversationmessagedetail)<br> |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/completion-messages
@@ -22915,11 +22925,11 @@ A name is required when automatic naming is disabled.
 
 #### ConversationNotFoundError
 
-The conversation was not found for this account and app.
+The conversation was not found for this user and app.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ConversationNotFoundError |  | The conversation was not found for this account and app. |  |
+| ConversationNotFoundError |  | The conversation was not found for this user and app. |  |
 
 #### ConversationPagination
 

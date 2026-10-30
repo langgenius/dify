@@ -19,6 +19,7 @@ import {
   zBadRequestError,
   zBindingFileDownloadUnavailableError,
   zCompletionRequestError,
+  zConversationNotFoundError,
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
   zForbiddenError,
@@ -1735,7 +1736,10 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdChatConversationsByConversationIdPath }))
   .output(zDeleteAppsByAppIdChatConversationsByConversationIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  })
 
 /**
  * Get chat conversation details
@@ -1751,7 +1755,10 @@ export const get24 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdChatConversationsByConversationIdPath }))
   .output(zGetAppsByAppIdChatConversationsByConversationIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  })
 
 export const byConversationId = {
   delete: delete5,
@@ -1759,11 +1766,11 @@ export const byConversationId = {
 }
 
 /**
- * Get chat conversations with pagination, filtering and summary
+ * Get chat conversations with pagination and filtering
  */
 export const get25 = oc
   .route({
-    description: 'Get chat conversations with pagination, filtering and summary',
+    description: 'Get chat conversations with pagination and filtering',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdChatConversations',
@@ -1886,7 +1893,10 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdCompletionConversationsByConversationIdPath }))
   .output(zDeleteAppsByAppIdCompletionConversationsByConversationIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  })
 
 /**
  * Get completion conversation details with messages
@@ -1902,7 +1912,10 @@ export const get28 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdCompletionConversationsByConversationIdPath }))
   .output(zGetAppsByAppIdCompletionConversationsByConversationIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  })
 
 export const byConversationId2 = {
   delete: delete6,
