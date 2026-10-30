@@ -2,22 +2,54 @@
 
 Reuses the pooled client, auth header, and connection retry of `services.billing_service`.
 Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
-any other non-200 status or a body that fails model validation raises
+any other non-200 status or an enforced response that fails model validation raises
 `BillingUpstreamInvalidResponseError`.
+
+Response validation is observed before it is enforced. For a path not in
+`ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
+(reported to Sentry) and rebuilt from the raw payload: fields that validate are coerced,
+the rest keep their raw value, and missing fields read as `None`. Migrated single-response
+reads and quota operations are enforced before their results reach business decisions.
+Batch subscription plans remain observed here; `BillingService.get_plan_bulk` validates
+each item before returning it.
 """
 
+import json
+import logging
 import os
+import types
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Literal
+from functools import cache
+from typing import Any, Literal, Union, get_args, get_origin
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from core.helper.http_client_pooling import get_pooled_http_client
 from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+
+logger = logging.getLogger(__name__)
+
+ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
+    {
+        "/subscription/info",
+        "/subscription/vector-space",
+        "/subscription/knowledge-rate-limit",
+        "/subscription/payment-link",
+        "/subscription/cleanup/whitelist",
+        "/model-provider/payment-link",
+        "/invoices",
+        "/quota/info",
+        "/quota/reserve",
+        "/quota/commit",
+        "/quota/release",
+        "/quota/balance",
+        "/quota/consume-capped",
+    }
+)
 
 type HTTPMethod = Literal["GET", "POST", "PUT", "DELETE"]
 type QueryValue = str | int | float | bool | list[str]
@@ -78,9 +110,9 @@ def request[ResponseT: BillingModel](
 ) -> ResponseT:
     resolved_path = path.format_map({name: quote(value, safe="") for name, value in path_params.items()})
     url = f"{_base_url(upstream)}{resolved_path}"
-    json = body.model_dump(mode="json") if body is not None else None
+    request_json = body.model_dump(mode="json") if body is not None else None
     try:
-        response = _send(method, url, params=params, json=json)
+        response = _send(method, url, params=params, json=request_json)
     except httpx.RequestError as error:
         raise BillingUpstreamUnavailableError(f"{method} {path} failed") from error
 
@@ -90,7 +122,50 @@ def request[ResponseT: BillingModel](
             raise BillingUpstreamUnavailableError(message)
         raise BillingUpstreamInvalidResponseError(message)
 
+    invalid_body = f"{method} {path} returned an invalid body"
     try:
-        return response_model.model_validate_json(response.content)
+        payload = json.loads(response.content)
+    except ValueError as error:
+        raise BillingUpstreamInvalidResponseError(invalid_body) from error
+    try:
+        return response_model.model_validate(payload)
     except ValidationError as error:
-        raise BillingUpstreamInvalidResponseError(f"{method} {path} returned an invalid body") from error
+        if path in ENFORCED_RESPONSE_PATHS or not isinstance(payload, dict):
+            raise BillingUpstreamInvalidResponseError(invalid_body) from error
+        logger.exception("Billing response failed validation: %s %s", method, path)
+        return _salvage_model(response_model, payload)
+
+
+def _salvage_model[ModelT: BillingModel](model: type[ModelT], payload: Mapping[str, Any]) -> ModelT:
+    values: dict[str, Any] = {}
+    for name, field in model.model_fields.items():
+        wire_name = field.alias or name
+        raw = payload.get(wire_name, payload.get(name))
+        values[name] = _salvage_value(field.annotation, raw)
+    return model.model_construct(**values)
+
+
+def _salvage_value(annotation: Any, raw: object) -> object:
+    if raw is None:
+        return None
+    origin = get_origin(annotation)
+    if origin in (Union, types.UnionType):
+        annotation = next(arg for arg in get_args(annotation) if arg is not type(None))
+        origin = get_origin(annotation)
+    if isinstance(annotation, type) and issubclass(annotation, BillingModel) and isinstance(raw, Mapping):
+        return _salvage_model(annotation, raw)
+    if origin is dict and isinstance(raw, Mapping):
+        value_type = get_args(annotation)[1]
+        return {key: _salvage_value(value_type, value) for key, value in raw.items()}
+    if origin is list and isinstance(raw, list):
+        item_type = get_args(annotation)[0]
+        return [_salvage_value(item_type, item) for item in raw]
+    try:
+        return _adapter(annotation).validate_python(raw)
+    except ValidationError:
+        return raw
+
+
+@cache
+def _adapter(annotation: Any) -> TypeAdapter[Any]:
+    return TypeAdapter(annotation)

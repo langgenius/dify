@@ -72,7 +72,7 @@ export type LicenseLimitationModel = {
 }
 
 export type SubscriptionModel = {
-  interval: string
+  interval: '' | 'month' | 'year'
   plan: CloudPlan
 }
 
