@@ -64,7 +64,6 @@ import {
   zUploadTokenRequiredError,
   zWebFormRateLimitExceededError,
   zWebLoginUnavailableError,
-  zWebappResourcesChangedError,
 } from './zod.gen.ts'
 import {
   zDeleteConnectionsByConnectionIdPath,
@@ -290,7 +289,6 @@ export const post3 = oc
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
-    webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
   })
 
 export const chatMessages = {

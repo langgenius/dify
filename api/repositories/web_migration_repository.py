@@ -3,7 +3,6 @@
 from itertools import batched
 
 import sqlalchemy as sa
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.public_runtime import published_app_filter
@@ -101,7 +100,6 @@ class WebMigrationRepository:
                 tenant_id=guest.tenant_id,
                 app_id=guest.app_id,
                 end_user_id=guest.end_user_id,
-                exclusive=True,
             )
             if original is None or original.type != EndUserType.BROWSER or original.account_id is not None:
                 raise ConnectionIdentityError()
@@ -275,13 +273,12 @@ class WebMigrationRepository:
                     .values(from_end_user_id=target.id)
                     .execution_options(synchronize_session=False)
                 )
-                result = session.execute(
+                session.execute(
                     sa.update(Conversation)
                     .where(*guest_history_roots(guest), Conversation.id.in_(locked_ids))
                     .values(from_end_user_id=target.id)
                     .execution_options(synchronize_session=False)
                 )
-                assert isinstance(result, CursorResult)
             # Only the small final default-set mutation needs the target identity's
             # exclusive lock. Keep it out of the potentially large history/file transfer.
             target = lock_end_user(
@@ -289,7 +286,6 @@ class WebMigrationRepository:
                 tenant_id=guest.tenant_id,
                 app_id=app.id,
                 end_user_id=account_end_user_id,
-                exclusive=True,
             )
             if target is None or target.type != EndUserType.BROWSER or target.account_id != account.account_id:
                 raise ConnectionIdentityError()

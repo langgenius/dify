@@ -276,14 +276,12 @@ class EndUserConnectionRepository:
                     tenant_id=context.tenant_id,
                     app_id=context.app_id,
                     end_user_id=context.end_user_id,
-                    exclusive=not shared,
                 )
             except EndUserBusyError as error:
                 raise ConnectionConflictError() from error
             if actor is None or actor.account_id != context.account_id:
                 raise ConnectionIdentityError()
-            if not shared:
-                stmt = stmt.with_for_update()
+            stmt = stmt.with_for_update()
         elif lock and (not shared or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED):
             stmt = stmt.with_for_update()
         app = session.scalar(stmt)

@@ -33,7 +33,6 @@ from controllers.web.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
-    WebExecutionResourcesChangedHTTPError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
@@ -49,7 +48,6 @@ from libs import helper
 from libs.external_api import error_responses
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
-from repositories.entities.web_execution import WebExecutionResourcesChangedError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.conversation_service import ConversationService
@@ -246,7 +244,6 @@ class ChatApi(WebApiResource):
         ConnectionRevisionChangedHTTPError,
         AgentNotPublishedError,
         AppUnavailableError,
-        WebExecutionResourcesChangedHTTPError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
         NotChatAppError,
@@ -306,8 +303,6 @@ class ChatApi(WebApiResource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except WebExecutionResourcesChangedError as error:
-            raise WebExecutionResourcesChangedHTTPError() from error
         except ConnectionError as error:
             raise_connection_error(error)
         except services.errors.conversation.ConversationNotExistsError as caught_error:

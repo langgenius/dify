@@ -15,39 +15,11 @@ from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, Site, UploadFile
 from models.tools import ToolFile
-from repositories.conversation_access import require_web_message_access
-from repositories.end_user_execution_lock import lock_end_user
 from repositories.entities.web_execution import EndUserBusyError
 from repositories.web_migration_repository import WebMigrationRepository
 from services.web_migration_service import MigrationCounts
 from tests.helpers.end_user_api_key import PROVIDER, make_harness
 from tests.helpers.unit.model_factories import make_upload_file
-
-
-@pytest.mark.timeout(15)
-def test_message_access_does_not_wait_for_migration_identity_lock(db_session_with_containers: Session) -> None:
-    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
-    harness = make_harness(sessions)
-    context = harness.context
-    with sessions.begin() as migration, sessions.begin() as execution:
-        assert (
-            lock_end_user(
-                migration,
-                tenant_id=context.tenant_id,
-                app_id=context.app_id,
-                end_user_id=context.end_user_id,
-                exclusive=True,
-            )
-            is not None
-        )
-        actor = require_web_message_access(
-            execution,
-            tenant_id=context.tenant_id,
-            app_id=context.app_id,
-            end_user_id=context.end_user_id,
-            conversation_id=None,
-        )
-        assert actor.id == context.end_user_id
 
 
 @pytest.mark.parametrize("same_account", [False, True])

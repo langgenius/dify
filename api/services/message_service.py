@@ -212,7 +212,7 @@ class MessageService:
                 app_model=app_model, user=user, conversation_id=conversation_id, session=session
             )
 
-            stmt = stmt.where(Message.conversation_id == conversation.id, message_owner_scope(app_model.id, user))
+            stmt = stmt.where(Message.conversation_id == conversation.id)
 
         # Check if include_ids is not None and not empty to avoid WHERE false condition
         if include_ids is not None:

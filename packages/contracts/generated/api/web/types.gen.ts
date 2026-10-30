@@ -1575,11 +1575,6 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
-export type WebappResourcesChangedError = ErrorResponse & {
-  code: 'webapp_resources_changed'
-  status: 409
-}
-
 export type WorkflowRunPayload = {
   connection_revision?: string | null
   connections?: {
@@ -1721,7 +1716,6 @@ export type PostChatMessagesErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
-    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

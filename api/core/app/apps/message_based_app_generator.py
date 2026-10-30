@@ -48,10 +48,6 @@ from models.enums import (
 )
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_access
-from repositories.web_execution_file_access import (
-    execution_file_references,
-    require_execution_file_ownership,
-)
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -187,7 +183,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
             ):
                 try:
-                    actor = require_web_message_access(
+                    require_web_message_access(
                         session,
                         tenant_id=app_config.tenant_id,
                         app_id=app_config.app_id,
@@ -196,17 +192,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     )
                 except ConversationAccessDeniedError as exc:
                     raise ConversationNotExistsError() from exc
-                uploads, tools = execution_file_references(
-                    (application_generate_entity.inputs, application_generate_entity.files)
-                )
-                require_execution_file_ownership(
-                    session,
-                    tenant_id=app_config.tenant_id,
-                    app_id=app_config.app_id,
-                    user=actor,
-                    upload_ids=uploads,
-                    tool_ids=tools,
-                )
             if not conversation:
                 conversation = Conversation(
                     app_id=app_config.app_id,

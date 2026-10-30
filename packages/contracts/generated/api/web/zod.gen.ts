@@ -2400,18 +2400,6 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
- * WebappResourcesChangedError
- *
- * Web App resources changed before execution. Refresh and retry.
- */
-export const zWebappResourcesChangedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('webapp_resources_changed'),
-    status: z.literal(409),
-  }),
-)
-
-/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({

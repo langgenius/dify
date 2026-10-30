@@ -727,25 +727,22 @@ class TestAppGeneratorExtraCases:
             app = _persist_app(sqlite_session)
             workflow = _persist_workflow(sqlite_session)
             user = _persist_end_user(sqlite_session)
-            app.enable_site = True
-            sqlite_session.commit()
             worker_thread = Mock()
             worker_thread.is_alive.return_value = False
             app_config = WorkflowUIBasedAppConfig(
-                tenant_id=app.tenant_id,
-                app_id=app.id,
+                tenant_id="tenant",
+                app_id="app",
                 app_mode=AppMode.WORKFLOW,
                 additional_features=AppAdditionalFeatures(),
                 variables=[],
-                workflow_id=workflow.id,
+                workflow_id="workflow-id",
             )
             application_generate_entity = WorkflowAppGenerateEntity.model_construct(
                 task_id="task",
                 app_config=app_config,
                 inputs={},
                 files=[],
-                user_id=user.id,
-                workflow_execution_id="00000000-0000-0000-0000-000000000123",
+                user_id="user",
                 stream=True,
                 invoke_from=InvokeFrom.WEB_APP,
                 extras={},

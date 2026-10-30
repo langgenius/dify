@@ -52,19 +52,16 @@ def message_actor_scope(app_id: str, *, end_user_id: str | None, account_id: str
 
 
 def message_owner_scope(app_id: str, user: Account | EndUser | None) -> sa.ColumnElement[bool]:
-    return sa.and_(
-        Message.app_id == app_id,
-        sa.exists(
-            sa.select(Conversation.id).where(
-                Conversation.id == Message.conversation_id, *conversation_owner_scope(app_id, user)
-            )
-        ).correlate(Message),
+    return message_actor_scope(
+        app_id,
+        end_user_id=user.id if isinstance(user, EndUser) else None,
+        account_id=user.id if isinstance(user, Account) else None,
     )
 
 
 def require_web_message_access(
     session: Session, *, tenant_id: str, app_id: str, end_user_id: str, conversation_id: str | None
-) -> EndUser:
+) -> None:
     """Validate the current Web conversation owner before creating a message."""
     app = session.scalar(
         sa.select(App.id).where(
@@ -86,7 +83,6 @@ def require_web_message_access(
         is None
     ):
         raise ConversationAccessDeniedError("Conversation ownership changed")
-    return actor
 
 
 def may_read_conversation_run(
