@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import type { UserActionButtonType } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render as rtlRender, screen } from '@testing-library/react'
+import { act, render as rtlRender, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { createDeferred } from '@/test/deferred'
 import { withSelectorKey } from '@/test/i18n-mock'
 import FormContentPreview, { FormContentPreviewTrigger } from '../form-content-preview'
 
@@ -179,6 +180,31 @@ describe('FormContentPreview', () => {
     expect(screen.queryByText('Local draft')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'operation.retry' }))
     expect(await screen.findByText('Retried preview')).toBeInTheDocument()
+  })
+
+  it('announces pending preview content without placing the Close action inside its status', async () => {
+    const user = userEvent.setup()
+    const response = createDeferred<{ form_content: string; inputs: []; actions: [] }>()
+    mockPreview.mockReturnValue(response.promise)
+    render(
+      <FormContentPreviewTrigger
+        nodeId="node-1"
+        content="Draft"
+        formInputs={[]}
+        userActions={[]}
+      />,
+    )
+    const status = screen.getByRole('status')
+    expect(status).toBeEmptyDOMElement()
+    await user.click(screen.getByRole('button', { name: 'nodes.humanInput.formContent.preview' }))
+    expect(status).toHaveTextContent('loading')
+    expect(within(status).queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'operation.close' })).toBeEnabled()
+    await act(async () =>
+      response.resolve({ form_content: 'Ready preview', inputs: [], actions: [] }),
+    )
+    expect(await screen.findByText('Ready preview')).toBeInTheDocument()
+    expect(status).toBeEmptyDOMElement()
   })
   it('uses historical props for a read-only V2 preview without fetching the current draft', () => {
     render(

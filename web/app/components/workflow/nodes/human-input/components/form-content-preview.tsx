@@ -10,8 +10,8 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
+import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
@@ -194,6 +194,9 @@ const ServerPreviewTrigger = ({ nodeId }: PreviewTriggerProps & { nodeId: string
   }
   return (
     <>
+      <p role="status" className="sr-only">
+        {open && preview.isPending ? t(($) => $.loading, { ns: 'common' }) : ''}
+      </p>
       <PreviewButton open={open} onClick={toggle} buttonRef={buttonRef} />
       {open &&
         (preview.data ? (
@@ -211,7 +214,10 @@ const ServerPreviewTrigger = ({ nodeId }: PreviewTriggerProps & { nodeId: string
                     : t(($) => $.error, { ns: 'common' })}
                 </p>
               ) : (
-                <LoadingPlaceholder className="h-20 w-full" />
+                <SkeletonContainer aria-hidden className="grow">
+                  <SkeletonRectangle className="h-4 w-1/3" />
+                  <SkeletonRectangle className="h-16 w-full" />
+                </SkeletonContainer>
               )}
               <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}

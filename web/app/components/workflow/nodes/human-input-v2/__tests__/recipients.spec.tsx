@@ -237,6 +237,35 @@ describe('recipient selection through generated queries', () => {
     await waitFor(() => expect(field()).toHaveFocus())
   })
 
+  it('does not retain another contact as the preview target when highlighting a special recipient', async () => {
+    const user = userEvent.setup()
+    renderContactOwner(<Harness />)
+    await openPicker(user)
+    await screen.findByRole('option', { name: /Evan Zhang/ })
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+    const initiator = screen.getByRole('option', {
+      name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+    })
+    expect(field()).toHaveAttribute('aria-activedescendant', initiator.id)
+    await user.tab()
+    const info = screen.getByRole('button', { name: 'contacts.details.title' })
+    expect(info).toHaveAttribute('aria-disabled', 'true')
+    expect(info).not.toHaveAccessibleDescription(/Evan Zhang|Amanda Lin/)
+  })
+
+  it('clears contact details when keyboard navigation returns to an initiator chip', async () => {
+    const user = userEvent.setup()
+    renderContactOwner(
+      <Harness initial={[{ type: 'contact', contact_id: contact.id }, { type: 'initiator' }]} />,
+    )
+    await openPicker(user)
+    await screen.findByRole('option', { name: /Amanda Lin/ })
+    await user.keyboard('{ArrowDown}{Escape}{ArrowLeft}')
+    const info = screen.getByRole('button', { name: 'contacts.details.title' })
+    expect(info).toHaveAttribute('aria-disabled', 'true')
+    expect(info).not.toHaveAccessibleDescription(/Evan Zhang|Amanda Lin/)
+  })
+
   it('allows keyboard access to source filters without entering the result list', async () => {
     const user = userEvent.setup()
     renderContactOwner(<Harness />)
@@ -266,21 +295,34 @@ describe('recipient selection through generated queries', () => {
 
   it('keeps configured contact chips neutral while lookup is pending or fails', async () => {
     let fail!: (error: Error) => void
+    const observe = vi.fn()
+    const contactId = '01a18af0-7d52-795b-b6a0-b96bdd8a119f'
     contactApi.batch.mockImplementation(
       () =>
         new Promise((_, reject) => {
           fail = reject
         }),
     )
-    renderContactOwner(<Harness initial={[{ type: 'contact', contact_id: contact.id }]} />)
+    renderContactOwner(
+      <Harness initial={[{ type: 'contact', contact_id: contactId }]} observe={observe} />,
+    )
     await waitFor(() => expect(contactApi.batch).toHaveBeenCalled())
+    const pendingChip = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.loading')
+    expect(pendingChip).not.toHaveAttribute('aria-invalid', 'true')
+    expect(pendingChip).toHaveAccessibleDescription(contactId)
+    expect(within(pendingChip).getByText(contactId)).toHaveClass('sr-only')
     expect(
       screen.queryByText('workflow.nodes.humanInputV2.error.recipientInvalid'),
     ).not.toBeInTheDocument()
     await act(async () => fail(new Error('offline')))
+    const failedChip = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.loadError')
+    expect(failedChip).not.toHaveAttribute('aria-invalid', 'true')
+    expect(failedChip).toHaveAccessibleDescription(contactId)
+    expect(within(failedChip).getByText(contactId)).toHaveClass('sr-only')
     expect(
       screen.queryByText('workflow.nodes.humanInputV2.error.recipientInvalid'),
     ).not.toBeInTheDocument()
+    expect(observe).not.toHaveBeenCalled()
   })
 
   it('marks an authoritatively deleted contact invalid without dropping the configured recipient', async () => {
@@ -292,6 +334,9 @@ describe('recipient selection through generated queries', () => {
     expect(
       await screen.findByText('workflow.nodes.humanInputV2.error.recipientInvalid'),
     ).toBeInTheDocument()
+    const deletedChip = screen.getByLabelText('contacts.details.notFound')
+    expect(deletedChip).toHaveAttribute('aria-invalid', 'true')
+    expect(deletedChip).toHaveAccessibleDescription(/deleted/)
     expect(observe).not.toHaveBeenCalled()
   })
 

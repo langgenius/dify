@@ -134,7 +134,17 @@ const RecipientsContent = ({
         case 'contact':
           return contactMap.has(recipient.contact_id)
             ? getContactLabel(contactMap.get(recipient.contact_id)!)
-            : recipient.contact_id
+            : resolved.isSuccess
+              ? t(($) => $['details.notFound'], { ns: 'contacts' })
+              : t(
+                  ($) =>
+                    $[
+                      resolved.isError
+                        ? 'nodes.humanInputV2.recipients.loadError'
+                        : 'nodes.humanInputV2.recipients.loading'
+                    ],
+                  { ns: 'workflow' },
+                )
         case 'initiator':
           return t(($) => $['nodes.humanInputV2.recipients.type.initiator'], { ns: 'workflow' })
         case 'all_workspace_contacts':
@@ -198,7 +208,18 @@ const RecipientsContent = ({
       getLabel: (item) => item.label,
     })
     return { selectedItems, results, itemMap, items }
-  }, [search.data, resolved.data, value, activeSource, query, availableNodes, t, workspace.name])
+  }, [
+    search.data,
+    resolved.data,
+    resolved.isSuccess,
+    resolved.isError,
+    value,
+    activeSource,
+    query,
+    availableNodes,
+    t,
+    workspace.name,
+  ])
   const selectedContacts = selectedItems.flatMap((item) => (item.contact ? [item.contact] : []))
   const selectedKeys = selectedItems.map((item) => item.key)
   const previewConflict =
@@ -281,8 +302,7 @@ const RecipientsContent = ({
         }}
         onItemHighlighted={(key) => {
           setHighlighted(key)
-          const contact = key ? itemMap.get(key)?.contact : undefined
-          if (contact) setPreviewContact(contact)
+          if (key !== undefined) setPreviewContact(itemMap.get(key)?.contact)
         }}
         onValueChange={(next, details) => {
           if (readonly || details.reason === 'escape-key') {
@@ -340,7 +360,7 @@ const RecipientsContent = ({
                     <ComboboxChip
                       key={item.key}
                       onFocus={() => {
-                        if (item.contact) setPreviewContact(item.contact)
+                        setPreviewContact(item.contact)
                       }}
                       aria-label={item.label}
                       aria-description={
@@ -351,7 +371,16 @@ const RecipientsContent = ({
                             })
                       }
                       aria-invalid={invalid || undefined}
-                      aria-describedby={invalid ? `${nodeId}-invalid-${index}` : undefined}
+                      aria-describedby={
+                        [
+                          invalid ? `${nodeId}-invalid-${index}` : undefined,
+                          recipient.type === 'contact' && !item.contact
+                            ? `${nodeId}-contact-${index}`
+                            : undefined,
+                        ]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
                       className="rounded-full aria-invalid:bg-state-destructive-hover aria-invalid:text-text-destructive data-[recipient-type=all_workspace_contacts]:bg-util-colors-indigo-indigo-100 data-[recipient-type=all_workspace_contacts]:text-util-colors-indigo-indigo-700 data-[recipient-type=dynamic_email]:bg-util-colors-blue-blue-50 data-[recipient-type=dynamic_email]:text-text-accent data-[recipient-type=initiator]:bg-util-colors-indigo-indigo-100 data-[recipient-type=initiator]:text-util-colors-indigo-indigo-700"
                       data-recipient-type={recipient.type}
                     >
@@ -410,6 +439,11 @@ const RecipientsContent = ({
                       {invalid && (
                         <span id={`${nodeId}-invalid-${index}`} className="sr-only">
                           {invalidMessage}
+                        </span>
+                      )}
+                      {recipient.type === 'contact' && !item.contact && (
+                        <span id={`${nodeId}-contact-${index}`} className="sr-only">
+                          {recipient.contact_id}
                         </span>
                       )}
                       {item.contact && (
