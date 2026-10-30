@@ -124,6 +124,7 @@ from models.dify_builder import (
     DifyBuilderSession,
     DifyBuilderSessionCommit,
     DifyBuilderTestInput,
+    DifyBuilderWorkflowWriter,
 )
 from models.enums import PermissionEnum
 from models.model import App, AppMode, DifySetup
@@ -153,8 +154,8 @@ from services.tools.builtin_tools_manage_service import BuilderCredentialRuntime
 from services.workflow_runtime import node_factory
 from tasks import dify_builder_advance_task
 from tasks.dify_builder_advance_task import advance_session
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import advance_builder_context
-from tests.test_containers_integration_tests.core.workflow.test_builder_real_call_consent_persistence import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import advance_builder_context
+from tests.e2e_tests.containers.core.workflow.test_builder_real_call_consent_persistence import (
     MIGRATED_TABLES,
     PLUGIN,
     PROVIDER,
@@ -162,11 +163,11 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_real_cal
     SYNTHETIC_ARTIFACT,
     SYNTHETIC_AUDIT,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_real_call_consent_persistence import (
+from tests.e2e_tests.containers.core.workflow.test_builder_real_call_consent_persistence import (
     migrated_builder_tables as migrated_builder_tables,  # noqa: PLC0414 - shared autouse migration fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import configure
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import configure
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
 
@@ -2513,7 +2514,19 @@ def _stranded(gmail: Gmail, deliveries: list[Delivery]) -> ConsentReceipt:
     """A reserved command whose delivery never ran and whose dispatch lease expired."""
     stranded = gmail.execute(gmail.confirmed())
     assert len(deliveries) == 1
-    session_lock.release(gmail.session_id, deliveries[0][3])
+    token = deliveries[0][3]
+    # This fixture models dispatch expiry, including its durable SQL owner.
+    # Redis loss alone deliberately leaves the workflow writer unavailable.
+    with gmail.factory.begin() as sql:
+        writer = sql.scalar(
+            select(DifyBuilderWorkflowWriter).where(
+                DifyBuilderWorkflowWriter.session_id == gmail.session_id,
+                DifyBuilderWorkflowWriter.token == token,
+            )
+        )
+        assert writer is not None
+        writer.expires_at = naive_utc_now() - timedelta(days=1)
+    session_lock.release(gmail.session_id, token)
     assert gmail.lease() is None
     gmail.make_stale()
     return stranded
@@ -3131,9 +3144,9 @@ def console(gmail: Gmail, monkeypatch: pytest.MonkeyPatch) -> Iterator[ConsoleHa
     original_acquire, original_exists = session_lock.acquire, session_lock.exists
     original_release = session_lock.release
 
-    def acquire(session_id: str) -> str | None:
+    def acquire(session_id: str, *, generation: int | None = None) -> str | None:
         gmail.boundary.mark("lease_acquire")
-        return original_acquire(session_id)
+        return original_acquire(session_id, generation=generation)
 
     def exists(session_id: str) -> bool:
         gmail.boundary.mark("lease_exists")
