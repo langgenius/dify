@@ -1970,6 +1970,7 @@
         "icon_type": "body",
         "name": "body",
         "package": "file",
+        "preserve_agent_bindings": "body",
         "workspace_id": "path"
       },
       "deprecated": false,
@@ -1984,6 +1985,7 @@
           "icon_type": {},
           "name": {},
           "package": {},
+          "preserve_agent_bindings": {},
           "workspace_id": {}
         },
         "required": ["workspace_id", "package"]

@@ -46,6 +46,7 @@ from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
     RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
     WorkspaceSkillNotFoundError,
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
@@ -753,6 +754,30 @@ class TestWorkflowPackageServiceCases:
         assert {rows["node-1"].binding_type, rows["node-2"].binding_type} == {WorkflowAgentBindingType.INLINE_AGENT}
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("package", "node_ids"),
+        [
+            pytest.param(_roster_export, ["node-3"], id="with-inline-agents"),
+            pytest.param(
+                lambda _session, _storage: _roster_archive(
+                    {"binding_type": "roster_agent", "agent_id": "a"}
+                ).getvalue(),
+                ["node-1"],
+                id="roster-only",
+            ),
+        ],
+    )
+    def test_reader_refuses_roster_references_unless_accepted(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        package: Callable[[Session, _MemoryStorage], bytes],
+        node_ids: list[str],
+    ) -> None:
+        with pytest.raises(RosterReferenceNotAcceptedError) as exc_info:
+            AppPackageService().read_package(io.BytesIO(package(sqlite_session, storage)))
+        assert exc_info.value.node_ids == node_ids
+
+    @staticmethod
     def test_unresolvable_roster_reference_fails_the_import(sqlite_session: Session, storage: _MemoryStorage) -> None:
         content = _roster_export(sqlite_session, storage)
 
@@ -1016,7 +1041,9 @@ def _roster_archive(binding: dict[str, object], agent_job: dict[str, object] | N
             "workflow": {"graph": {"nodes": [{"id": "node-1", "data": node_data}], "edges": []}},
         }
     )
-    with AppPackageService().export(dsl=dsl, name="Roster", workflow_tools=[]) as package:
+    with AppPackageService().export(
+        dsl=dsl, name="Roster", accept_roster_references=True, workflow_tools=[]
+    ) as package:
         return io.BytesIO(package.archive.read())
 
 

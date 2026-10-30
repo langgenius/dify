@@ -308,6 +308,7 @@ export const zAppPackageImportPayload = z.object({
       ]),
     ),
   ]),
+  preserve_agent_bindings: z.boolean().optional().default(false),
 })
 
 /**

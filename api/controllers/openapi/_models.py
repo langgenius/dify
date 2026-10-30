@@ -651,6 +651,14 @@ class AppPackageImportPayload(BaseModel):
     )
     app_id: UUIDStr | None = Field(None, description=_OVERWRITTEN_APP_DESCRIPTION)
     draft_hash: str | None = Field(None, description=_IMPORT_DRAFT_HASH_DESCRIPTION)
+    preserve_agent_bindings: bool = Field(
+        False,
+        description=(
+            "true: keep the package's links to roster Agents and workspace skills, for a package exported "
+            "for editing and uploaded back to the same workspace. false: import every packaged Agent and "
+            "skill as a copy, for a full export; a package that links roster Agents is refused."
+        ),
+    )
     name: str | None = Field(None, description="Override the app name from the DSL")
     description: str | None = Field(None, description="Override the app description from the DSL")
     icon_type: str | None = Field(None)
