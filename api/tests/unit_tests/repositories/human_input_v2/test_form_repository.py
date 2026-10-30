@@ -326,9 +326,8 @@ def test_malformed_stored_submission_is_not_treated_as_waiting(form_engine: Engi
     form = _create(form_engine)
     with Session(form_engine) as session, session.begin():
         session.execute(sa.update(HumanInputForm).where(HumanInputForm.id == form.id).values({field: value}))
-    with Session(form_engine) as session:
-        with pytest.raises(ValidationError):
-            SQLAlchemyFormRepository(session, _TENANT, _APP).get_form_by_id(form.id)
+    with Session(form_engine) as session, pytest.raises(ValidationError):
+        SQLAlchemyFormRepository(session, _TENANT, _APP).get_form_by_id(form.id)
 
 
 def test_concurrent_runtime_creation_returns_one_form(form_engine: Engine) -> None:

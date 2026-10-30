@@ -276,9 +276,8 @@ def test_update_rejects_invalid_next_version_before_mutation_sql(channel_engine:
 
     event.listen(channel_engine, "before_cursor_execute", capture)
     try:
-        with Session(channel_engine) as session:
-            with pytest.raises(ValueError, match="increment by one"):
-                _writer(session, "workspace").update(current, expected_config_version=1)
+        with Session(channel_engine) as session, pytest.raises(ValueError, match="increment by one"):
+            _writer(session, "workspace").update(current, expected_config_version=1)
     finally:
         event.remove(channel_engine, "before_cursor_execute", capture)
 
@@ -303,9 +302,8 @@ def test_update_reports_wrong_id_and_stale_version_without_mutation(
     current = _channel(1)
     _commit_channel(channel_engine, "workspace", current)
 
-    with Session(channel_engine) as session:
-        with pytest.raises(StaleIMChannelWriteError):
-            _writer(session, "workspace").update(candidate, expected_config_version=expected_version)
+    with Session(channel_engine) as session, pytest.raises(StaleIMChannelWriteError):
+        _writer(session, "workspace").update(candidate, expected_config_version=expected_version)
 
     with Session(channel_engine) as session:
         assert _reader(session, "workspace").get() == current
@@ -358,14 +356,16 @@ def test_replace_rejects_invalid_replacement_before_mutation_sql(
 
     event.listen(channel_engine, "before_cursor_execute", capture)
     try:
-        with Session(channel_engine) as session:
-            with pytest.raises(
+        with (
+            Session(channel_engine) as session,
+            pytest.raises(
                 ValueError,
                 match=(
                     "replacement IM Channel must use a different ID|initial IM Channel configuration version must be 1"
                 ),
-            ):
-                _writer(session, "workspace").replace(current.id, 1, replacement)
+            ),
+        ):
+            _writer(session, "workspace").replace(current.id, 1, replacement)
     finally:
         event.remove(channel_engine, "before_cursor_execute", capture)
 
@@ -427,9 +427,8 @@ def test_create_classifies_only_owner_slot_collision_as_already_configured(chann
     current = _channel(1)
     _commit_channel(channel_engine, "workspace", current)
 
-    with Session(channel_engine) as session:
-        with pytest.raises(IMChannelAlreadyConfiguredError):
-            _writer(session, "workspace").create(_channel(2))
+    with Session(channel_engine) as session, pytest.raises(IMChannelAlreadyConfiguredError):
+        _writer(session, "workspace").create(_channel(2))
 
     with Session(channel_engine) as session:
         with pytest.raises(IntegrityError) as captured:
@@ -449,9 +448,8 @@ def test_create_rejects_noninitial_version_before_insert_sql(
 
     event.listen(channel_engine, "before_cursor_execute", capture)
     try:
-        with Session(channel_engine) as session:
-            with pytest.raises(ValueError, match="version must be 1"):
-                _writer(session, "workspace").create(_channel(1, version=config_version))
+        with Session(channel_engine) as session, pytest.raises(ValueError, match="version must be 1"):
+            _writer(session, "workspace").create(_channel(1, version=config_version))
     finally:
         event.remove(channel_engine, "before_cursor_execute", capture)
 

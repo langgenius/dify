@@ -31,9 +31,8 @@ class SQLAlchemyWorkspaceMemberEmailLookup:
                 Account.status == AccountStatus.ACTIVE,
             )
         )
-        with self._session_factory() as session:
-            with session.no_autoflush:
-                rows = session.execute(statement).all()
+        with self._session_factory() as session, session.no_autoflush:
+            rows = session.execute(statement).all()
 
         member_emails: list[ResolvedMemberEmail] = []
         for account_id, email in rows:
