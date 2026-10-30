@@ -1,3 +1,4 @@
+import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
 import type { FC, ReactNode, Ref } from 'react'
 import type { Theme } from '../embedded-chatbot/theme/theme'
 import type { ChatConfig, ChatItem, OnFeedback, OnRegenerate, OnSend } from '../types'
@@ -32,6 +33,11 @@ export type ChatProps = {
   noChatInput?: boolean
   showRegenerate?: boolean
   onSend?: OnSend
+  onGenerativeUIStateChange?: (
+    messageId: string,
+    blockId: string,
+    state: NonNullable<OpenUIContentBlock['form_state']>,
+  ) => Promise<void>
   inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
   onRegenerate?: OnRegenerate
@@ -96,6 +102,7 @@ const Chat: FC<ChatProps> = ({
   appData,
   config,
   onSend,
+  onGenerativeUIStateChange,
   inputs,
   inputsForm,
   onRegenerate,
@@ -186,11 +193,13 @@ const Chat: FC<ChatProps> = ({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
+      inputDisabled={inputDisabled}
       onOpenLog={onOpenLog}
       canOpenLog={canOpenLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
       onSend={onSend}
+      onGenerativeUIStateChange={onGenerativeUIStateChange}
       onRegenerate={onRegenerate}
       showRegenerate={showRegenerate}
       onAnnotationAdded={onAnnotationAdded}

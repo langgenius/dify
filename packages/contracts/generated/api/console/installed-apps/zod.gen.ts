@@ -383,6 +383,30 @@ export const zMessageCursorNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * MessageNotFoundError
+ *
+ * The message was not found for this account and app.
+ */
+export const zMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * OpenuiBlockNotReadyError
+ *
+ * Only completed OpenUI blocks accept form state.
+ */
+export const zOpenuiBlockNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('openui_block_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
@@ -399,18 +423,6 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
   z.object({
     code: z.literal('message_feedback_rating_required'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * MessageNotFoundError
- *
- * The message was not found for this account and app.
- */
-export const zMessageNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('message_not_found'),
-    status: z.literal(404),
   }),
 )
 
@@ -562,6 +574,15 @@ export const zConversationInfiniteScrollPagination = z.object({
   data: z.array(zSimpleConversation),
   has_more: z.boolean(),
   limit: z.int(),
+})
+
+export const zJsonValue = z.unknown()
+
+/**
+ * OpenUIStatePayload
+ */
+export const zOpenUiStatePayload = z.object({
+  form_state: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -1036,6 +1057,41 @@ export const zSavedMessageInfiniteScrollPagination = z.object({
   limit: z.int(),
 })
 
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1').default('dify-ui-v1'),
+  sequence: z.int().gte(0).default(0),
+  source: z.string().default(''),
+  status: zOpenUiContentStatus.default('streaming'),
+  text_offset: z.int().gte(0).default(0),
+  type: z.literal('openui').default('openui'),
+})
+
+/**
+ * OpenUIStateResponse
+ */
+export const zOpenUiStateResponse = z.object({
+  block: zOpenUiContentBlock,
+})
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
+})
+
 /**
  * ExecutionContentType
  */
@@ -1092,20 +1148,6 @@ export const zRetrieverResource = z.object({
   summary: z.string().nullish(),
   title: z.string().nullish(),
   word_count: z.int().nullish(),
-})
-
-export const zJsonValue = z.unknown()
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -1256,6 +1298,7 @@ export const zExploreMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
@@ -1330,6 +1373,7 @@ export const zExploreMessageListItemWritable = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
@@ -1527,6 +1571,22 @@ export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
  */
 export const zGetInstalledAppsByInstalledAppIdMessagesResponse =
   zExploreMessageInfiniteScrollPagination
+
+export const zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateBody =
+  zOpenUiStatePayload
+
+export const zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStatePath =
+  z.object({
+    block_id: z.string(),
+    installed_app_id: z.uuid(),
+    message_id: z.uuid(),
+  })
+
+/**
+ * Draft saved
+ */
+export const zPutInstalledAppsByInstalledAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  zOpenUiStateResponse
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody =
   zMessageFeedbackPayload

@@ -1,4 +1,6 @@
 allowBuilds:
+  # OpenUI ships built artifacts; its postinstall only collects telemetry.
+  '@openuidev/lang-core': false
   '@parcel/watcher': false
   # i18next-resources-for-ts uses the published SWC native binaries.
   '@swc/core': false
@@ -101,6 +103,8 @@ catalog:
   '@mediabunny/mp3-encoder': 1.61.6
   '@monaco-editor/react': 4.7.0
   '@napi-rs/keyring': 1.3.0
+  '@openuidev/lang-core': 1.0.2
+  '@openuidev/react-lang': 1.0.2
   '@orpc/client': 1.15.7
   '@orpc/contract': 1.15.7
   '@orpc/openapi-client': 1.15.7

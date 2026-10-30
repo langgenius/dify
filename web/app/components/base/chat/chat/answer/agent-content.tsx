@@ -7,6 +7,7 @@ import Thought from '@/app/components/base/chat/chat/thought'
 import { FileList } from '@/app/components/base/file-uploader'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { Markdown } from '@/app/components/base/markdown'
+import { OrderedResponseContent } from './ordered-response-content'
 
 type AgentContentProps = {
   item: ChatItem
@@ -18,17 +19,24 @@ const AgentContent: FC<AgentContentProps> = ({ item, responding, content }) => {
 
   if (annotation?.logAnnotation) {
     return (
-      <Markdown
-        content={annotation?.logAnnotation.content || ''}
-        data-testid="agent-content-markdown"
-      />
+      <>
+        <Markdown
+          content={annotation?.logAnnotation.content || ''}
+          data-testid="agent-content-markdown"
+        />
+        <OrderedResponseContent item={item} content="" renderText={() => null} />
+      </>
     )
   }
 
   return (
     <div data-testid="agent-content-container">
       {content ? (
-        <Markdown content={content} data-testid="agent-content-markdown" />
+        <OrderedResponseContent
+          item={item}
+          content={content}
+          renderText={(text) => <Markdown content={text} data-testid="agent-content-markdown" />}
+        />
       ) : (
         agent_thoughts?.map((thought, index) => (
           <div key={index} className="px-2 py-1" data-testid="agent-thought-item">
@@ -60,6 +68,7 @@ const AgentContent: FC<AgentContentProps> = ({ item, responding, content }) => {
           </div>
         ))
       )}
+      {!content && <OrderedResponseContent item={item} content="" renderText={() => null} />}
     </div>
   )
 }

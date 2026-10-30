@@ -28,6 +28,7 @@ import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import ConfigPrompt from './components/config-prompt'
+import GenerativeUIConfig from './components/generative-ui-config'
 import PanelMemorySection from './components/panel-memory-section'
 import PanelOutputSection from './components/panel-output-section'
 import ReasoningFormatConfig from './components/reasoning-format-config'
@@ -86,6 +87,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     handleStructureOutputChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    handleGenerativeUIChange,
   } = useConfig(id, data)
 
   const isProviderRequired =
@@ -369,6 +371,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
         />
 
         {/* Reasoning Format */}
+        {isChatflow && (
+          <GenerativeUIConfig
+            enabled={!!inputs.generative_ui_enabled}
+            structuredOutputEnabled={!!inputs.structured_output_enabled}
+            readOnly={readOnly}
+            onChange={handleGenerativeUIChange}
+          />
+        )}
         <ReasoningFormatConfig
           // Default to tagged for backward compatibility
           value={inputs.reasoning_format || 'tagged'}

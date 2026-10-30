@@ -3,10 +3,10 @@ import logging
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Thread
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -61,6 +61,7 @@ from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
+    MessageContentStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
@@ -83,6 +84,12 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
+from libs.generative_ui import (
+    OpenUIContentBlock,
+    OpenUIStreamParser,
+    encode_openui_update,
+    extract_openui_prose,
+)
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
 from models.execution_extra_content import HumanInputContent
@@ -97,6 +104,7 @@ class WorkflowSnapshot:
     id: str
     tenant_id: str
     features_dict: Mapping[str, Any]
+    generative_ui_nodes: frozenset[str] = frozenset()
 
     @classmethod
     def from_workflow(cls, workflow: Workflow) -> "WorkflowSnapshot":
@@ -104,6 +112,11 @@ class WorkflowSnapshot:
             id=workflow.id,
             tenant_id=workflow.tenant_id,
             features_dict=dict(workflow.features_dict),
+            generative_ui_nodes=frozenset(
+                node["id"]
+                for node in workflow.graph_dict.get("nodes", [])
+                if node["data"].get("type") == "llm" and node["data"].get("generative_ui_enabled", False)
+            ),
         )
 
 
@@ -127,6 +140,7 @@ class MessageSnapshot:
     created_at: datetime
     status: MessageStatus
     answer: str
+    content_blocks: tuple[OpenUIContentBlock, ...] = field(default_factory=tuple)
 
     @classmethod
     def from_message(cls, message: Message) -> "MessageSnapshot":
@@ -136,6 +150,10 @@ class MessageSnapshot:
             created_at=message.created_at,
             status=message.status,
             answer=message.answer,
+            content_blocks=tuple(
+                OpenUIContentBlock.model_validate(block)
+                for block in message.message_metadata_dict.get("content_blocks", [])
+            ),
         )
 
 
@@ -191,6 +209,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         self._task_state = WorkflowTaskState()
+        self._generative_ui_nodes = workflow.generative_ui_nodes
+        self._generative_ui_parsers: dict[tuple[str, str | None], OpenUIStreamParser] = {}
+        self._generative_ui_suppressed = False
         self._seed_task_state_from_message(message)
         self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity, task_state=self._task_state
@@ -213,6 +234,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._seed_graph_runtime_state_from_queue_manager()
 
     def _seed_task_state_from_message(self, message: MessageSnapshot) -> None:
+        self._task_state.metadata.content_blocks = list(message.content_blocks)
         if message.status == MessageStatus.PAUSED and message.answer:
             self._task_state.answer = message.answer
 
@@ -427,9 +449,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle ping events."""
         yield self._base_task_pipeline.ping_stream_response()
 
-    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
+    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle error events."""
+        yield from self._finish_generative_ui("error")
         with self._database_session() as session:
+            self._persist_generative_ui_blocks(session)
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
         yield self._base_task_pipeline.error_to_stream_response(err)
 
@@ -534,15 +558,51 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle text chunk events."""
+        """Route explicitly configured UI producer output into independent content blocks."""
         delta_text = event.text
         if delta_text is None:
             return
 
-        # Handle output moderation chunk
-        should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-        if should_direct_answer:
+        selector = event.from_variable_selector
+        producer = selector[0] if selector else None
+        if producer in self._generative_ui_nodes:
+            assert producer is not None
+            producer_execution = (producer, event.node_execution_id)
+            parser = self._generative_ui_parsers.get(producer_execution)
+            if parser is None:
+                parser = OpenUIStreamParser(
+                    f"{self._message_id}:{producer}:{event.node_execution_id}:{len(self._task_state.metadata.content_blocks)}"
+                )
+                self._generative_ui_parsers[producer_execution] = parser
+            parts = parser.feed(delta_text)
+            if event.is_final:
+                parts.extend(parser.finish("completed"))
+            for part in parts:
+                if isinstance(part, OpenUIContentBlock):
+                    if not self._generative_ui_suppressed:
+                        yield self._openui_to_stream_response(part)
+                else:
+                    if self._handle_output_moderation_chunk(part):
+                        return
+                    text_event = event.model_copy(update={"text": part})
+                    yield from self._handle_plain_text_chunk(
+                        text_event,
+                        tts_publisher=tts_publisher,
+                        queue_message=queue_message.model_copy(update={"event": text_event}) if queue_message else None,
+                    )
             return
+        if self._handle_output_moderation_chunk(delta_text):
+            return
+        yield from self._handle_plain_text_chunk(event, tts_publisher=tts_publisher, queue_message=queue_message)
+
+    def _handle_plain_text_chunk(
+        self,
+        event: QueueTextChunkEvent,
+        *,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
+    ) -> Generator[StreamResponse]:
+        delta_text = event.text
 
         current_time = time.perf_counter()
         if self._task_state.first_token_time is None and delta_text.strip():
@@ -560,6 +620,43 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         yield self._message_cycle_manager.message_to_stream_response(
             answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
         )
+
+    def _openui_to_stream_response(self, block: OpenUIContentBlock) -> MessageContentStreamResponse:
+        """Place new blocks against prose shared by all producers and answer templates."""
+        blocks = self._task_state.metadata.content_blocks
+        previous: OpenUIContentBlock | None = None
+        for index, current in enumerate(blocks):
+            if current.id == block.id:
+                previous = current
+                block = block.model_copy(update={"text_offset": current.text_offset})
+                blocks[index] = block
+                break
+        else:
+            block = block.model_copy(update={"text_offset": len(self._task_state.answer)})
+            blocks.append(block)
+        return MessageContentStreamResponse(
+            task_id=self._application_generate_entity.task_id, data=encode_openui_update(block, previous)
+        )
+
+    def _finish_generative_ui(self, status: Literal["completed", "cancelled", "error"]) -> Generator[StreamResponse]:
+        for parser in self._generative_ui_parsers.values():
+            for part in parser.finish(status):
+                if isinstance(part, OpenUIContentBlock):
+                    if not self._generative_ui_suppressed:
+                        yield self._openui_to_stream_response(part)
+                else:
+                    yield from self._handle_plain_text_chunk(QueueTextChunkEvent(text=part))
+
+    def _persist_generative_ui_blocks(self, session: Session) -> None:
+        if not self._generative_ui_parsers:
+            return
+        message = self._get_message(session=session)
+        metadata = message.message_metadata_dict
+        metadata["content_blocks"] = [
+            block.model_dump(mode="json") for block in self._task_state.metadata.content_blocks
+        ]
+        message.message_metadata = json.dumps(metadata)
+        message.answer = self._task_state.answer
 
     def _handle_reasoning_chunk_event(self, event: QueueReasoningChunkEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle out-of-band reasoning chunk events.
@@ -701,6 +798,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle workflow paused events."""
+        # Producers have stopped when the workflow pauses. Resolve pending closing
+        # fences before publishing the pause or persisting a resumable message.
+        yield from self._finish_generative_ui("completed")
         validated_state = self._ensure_graph_runtime_initialized()
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
@@ -743,6 +843,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle workflow failed events."""
+        yield from self._finish_generative_ui("error")
         _ = trace_manager
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
@@ -757,6 +858,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         with self._database_session() as session:
+            self._persist_generative_ui_blocks(session)
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))
             err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
 
@@ -772,6 +874,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle stop events."""
+        yield from self._finish_generative_ui("cancelled")
         _ = trace_manager
         resolved_state = None
         if self._workflow_run_id:
@@ -812,12 +915,18 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle advanced chat message end events."""
+        yield from self._finish_generative_ui("completed")
         resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
 
         output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
-            self._task_state.answer
+            self._task_state.answer,
+            extra_texts=[block.source for block in self._task_state.metadata.content_blocks],
         )
-        if output_moderation_answer:
+        if output_moderation_answer is not None:
+            self._task_state.metadata.content_blocks.clear()
+            if self._generative_ui_nodes:
+                self._generative_ui_suppressed = True
+                output_moderation_answer = extract_openui_prose(output_moderation_answer)
             self._task_state.answer = output_moderation_answer
             yield self._message_cycle_manager.message_replace_to_stream_response(
                 answer=output_moderation_answer,
@@ -847,7 +956,16 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_message_replace_event(self, event: QueueMessageReplaceEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle message replace events."""
-        yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text, reason=event.reason)
+        replacement = event.text
+        if (
+            self._generative_ui_nodes
+            and event.reason == QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
+        ):
+            self._generative_ui_suppressed = True
+            self._task_state.metadata.content_blocks.clear()
+            replacement = extract_openui_prose(replacement)
+            self._task_state.answer = replacement
+        yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement, reason=event.reason)
 
     def _handle_human_input_form_filled_event(
         self, event: QueueHumanInputFormFilledEvent, **kwargs
@@ -1128,6 +1246,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """
         if self._base_task_pipeline.output_moderation_handler:
             if self._base_task_pipeline.output_moderation_handler.should_direct_output():
+                self._generative_ui_suppressed = True
+                self._task_state.metadata.content_blocks.clear()
                 self._task_state.answer = self._base_task_pipeline.output_moderation_handler.get_final_output()
                 self._base_task_pipeline.queue_manager.publish(
                     QueueTextChunkEvent(text=self._task_state.answer), PublishFrom.TASK_PIPELINE

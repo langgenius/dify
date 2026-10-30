@@ -538,6 +538,36 @@ export type NotWorkflowAppError = ErrorResponse & {
   status: 400
 }
 
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  text_offset: number
+  type: 'openui'
+}
+
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
+
+export type OpenUiStatePayload = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+}
+
+export type OpenUiStateResponse = {
+  block: OpenUiContentBlock
+}
+
+export type OpenuiBlockNotReadyError = ErrorResponse & {
+  code: 'openui_block_not_ready'
+  status: 409
+}
+
 export type ParagraphInputConfig = {
   default?: StringSource | null
   output_variable_name: string
@@ -1209,6 +1239,7 @@ export type WebMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -1312,6 +1343,7 @@ export type WebMessageListItemWritable = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -1980,6 +2012,31 @@ export type GetMessagesResponses = {
 }
 
 export type GetMessagesResponse = GetMessagesResponses[keyof GetMessagesResponses]
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateData = {
+  body: OpenUiStatePayload
+  path: {
+    block_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/messages/{message_id}/content-blocks/{block_id}/state'
+}
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateErrors = {
+  409: OpenuiBlockNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateError =
+  PutMessagesByMessageIdContentBlocksByBlockIdStateErrors[keyof PutMessagesByMessageIdContentBlocksByBlockIdStateErrors]
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateResponses = {
+  200: OpenUiStateResponse
+}
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  PutMessagesByMessageIdContentBlocksByBlockIdStateResponses[keyof PutMessagesByMessageIdContentBlocksByBlockIdStateResponses]
 
 export type PostMessagesByMessageIdFeedbacksData = {
   body: MessageFeedbackPayload

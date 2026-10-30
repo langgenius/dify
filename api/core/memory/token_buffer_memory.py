@@ -21,6 +21,7 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from libs.generative_ui import OpenUIContentBlock, restore_openui_content
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
@@ -213,6 +214,8 @@ class TokenBufferMemory:
         ``None`` for message_limit uses the existing 500-message ceiling. A missing
         app keeps text-only legacy history available; workflow attachments still
         require the app. An omitted workflow repository uses the configured factory.
+        Completed UI source preserves assistant facts for follow-up questions;
+        unsent form drafts are excluded from model history.
         """
         # fetch limited messages, and return reversed
         # Load only the columns used to rebuild history. Message.message stores the full prompt of each turn,
@@ -225,6 +228,7 @@ class TokenBufferMemory:
                     Message.parent_message_id,
                     Message.query,
                     Message.answer,
+                    Message.message_metadata,
                     Message.answer_tokens,
                     Message.workflow_run_id,
                     Message.created_at,
@@ -299,9 +303,15 @@ class TokenBufferMemory:
                 if user_files or assistant_files
                 else None
             )
+            ui_blocks = [
+                block
+                for data in message.message_metadata_dict.get("content_blocks", [])
+                if (block := OpenUIContentBlock.model_validate(data)).status == "completed"
+            ]
+            assistant_text = restore_openui_content(message.answer, ui_blocks)
             for files, text_content, is_user_message in (
                 (user_files, message.query, True),
-                (assistant_files, message.answer, False),
+                (assistant_files, assistant_text, False),
             ):
                 prompts.append(
                     cls._prepare_prompt(

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
+import queue
 from contextlib import nullcontext
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest import mock
 
@@ -18,8 +20,12 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     MessageSnapshot,
     WorkflowSnapshot,
 )
+from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
+    MessageQueueMessage,
     QueueAdvancedChatMessageEndEvent,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
@@ -49,15 +55,21 @@ from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
     AnnotationReply,
     AnnotationReplyAccount,
+    ErrorStreamResponse,
     HumanInputRequiredResponse,
     MessageAudioStreamResponse,
+    MessageContentStreamResponse,
     MessageEndStreamResponse,
+    MessageReplaceStreamResponse,
+    MessageStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
     StreamEvent,
+    WorkflowPauseStreamResponse,
 )
-from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from core.workflow.nodes.human_input.entities import UserActionConfig
+from core.base.tts.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.output_moderation import ModerationRule, OutputModeration
+from core.workflow.nodes.human_input.entities import FormDefinition, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowType
@@ -65,13 +77,38 @@ from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentDelta
 from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
+from models.human_input import HumanInputForm
 from models.model import AppMode, EndUser, Message, MessageFile
-from models.workflow import WorkflowRun
+from models.workflow import Workflow, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tests.workflow_test_utils import build_test_variable_pool
+
+
+def test_workflow_snapshot_selects_only_llm_nodes_with_generative_ui_enabled() -> None:
+    workflow = Workflow(
+        id="workflow-1",
+        tenant_id="tenant-1",
+        _features="{}",
+        graph=json.dumps(
+            {
+                "nodes": [
+                    {"id": "start", "data": {"type": "start"}},
+                    {"id": "ui-producer", "data": {"type": "llm", "generative_ui_enabled": True}},
+                    {"id": "disabled-producer", "data": {"type": "llm", "generative_ui_enabled": False}},
+                    {"id": "plain-producer", "data": {"type": "llm"}},
+                ],
+                "edges": [],
+            }
+        ),
+    )
+
+    snapshot = WorkflowSnapshot.from_workflow(workflow)
+
+    assert snapshot.generative_ui_nodes == frozenset({"ui-producer"})
 
 
 def _build_generate_entity() -> AdvancedChatAppGenerateEntity:
@@ -97,6 +134,7 @@ def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
     pipeline._workflow_run_id = "run-1"
     pipeline._message_id = "message-1"
     pipeline._workflow_tenant_id = "tenant-1"
+    pipeline._generative_ui_parsers = {}
     return pipeline
 
 
@@ -1210,7 +1248,7 @@ class TestAdvancedChatGenerateTaskPipeline:
             ),
             start_at=0.0,
         )
-        pipeline._base_task_pipeline.handle_output_moderation_when_task_finished = lambda answer: "safe"
+        pipeline._base_task_pipeline.handle_output_moderation_when_task_finished = lambda answer, extra_texts: "safe"
         pipeline._message_cycle_manager.message_replace_to_stream_response = lambda **kwargs: "replace"
         pipeline._message_end_to_stream_response = lambda: "end"
 
@@ -1243,3 +1281,353 @@ class TestAdvancedChatGenerateTaskPipeline:
         )
 
         assert list(pipeline._dispatch_event(event)) == ["failed"]
+
+
+def _build_generative_ui_pipeline(
+    message: Message, queue_manager: MessageBasedAppQueueManager
+) -> AdvancedChatAppGenerateTaskPipeline:
+    return AdvancedChatAppGenerateTaskPipeline(
+        application_generate_entity=_build_generate_entity(),
+        workflow=WorkflowSnapshot(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            features_dict={},
+            generative_ui_nodes=frozenset({"ui-producer"}),
+        ),
+        queue_manager=queue_manager,
+        conversation=ConversationSnapshot(id=message.conversation_id, mode=AppMode.ADVANCED_CHAT),
+        message=MessageSnapshot.from_message(message),
+        user=EndUser(id="user-1", tenant_id="tenant-1", type="session", session_id="session-1"),
+        stream=True,
+        dialogue_count=1,
+        draft_var_saver_factory=lambda **kwargs: NoopDraftVariableSaver(),
+    )
+
+
+class TestChatflowGenerativeUI:
+    @pytest.fixture
+    def pipeline(
+        self, agent_queue_manager: MessageBasedAppQueueManager, sqlite_session: Session
+    ) -> AdvancedChatAppGenerateTaskPipeline:
+        return _build_generative_ui_pipeline(_persist_message(sqlite_session), agent_queue_manager)
+
+    @pytest.mark.usefixtures("agent_runtime_app")
+    @pytest.mark.parametrize(("closing_fence", "status"), [("```", "completed"), ("", "error")])
+    def test_pause_persists_terminal_ui_before_human_input_and_resume(
+        self,
+        pipeline: AdvancedChatAppGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        sqlite_session: Session,
+        closing_fence: str,
+        status: str,
+    ) -> None:
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="workflow-1",
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-1")),
+            start_at=0.0,
+        )
+        run = WorkflowRun(
+            id="run-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            task_id="task-1",
+            type=ModelWorkflowType(WorkflowType.CHAT),
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            version="1",
+            status=WorkflowExecutionStatus.PAUSED,
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="user-1",
+        )
+        expiration_time = naive_utc_now() + timedelta(hours=1)
+        definition = FormDefinition(
+            form_content="Approve the results",
+            rendered_content="Approve the results",
+            inputs=[],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
+            expiration_time=expiration_time,
+            node_title="Approval",
+            display_in_ui=True,
+        )
+        form = HumanInputForm(
+            id="form-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id=run.id,
+            node_id="human-input",
+            form_definition=definition.model_dump_json(),
+            rendered_content=definition.rendered_content,
+            expiration_time=expiration_time,
+        )
+        sqlite_session.add_all([run, form])
+        sqlite_session.commit()
+        list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))
+        source = 'root = Stack([details])\ndetails = Text("Result")\n'
+        list(
+            pipeline._handle_text_chunk_event(
+                QueueTextChunkEvent(
+                    text=f"Summary\n```openui\n{source}{closing_fence}",
+                    from_variable_selector=["ui-producer", "text"],
+                )
+            )
+        )
+        assert pipeline._task_state.metadata.content_blocks[0].status == "streaming"
+        reason = HumanInputRequired(
+            form_id=form.id,
+            form_content=definition.form_content,
+            inputs=definition.inputs,
+            actions=definition.user_actions,
+            node_id=form.node_id,
+            node_title=definition.node_title,
+            resolved_default_values={},
+        )
+
+        responses = list(
+            pipeline._handle_workflow_paused_event(
+                QueueWorkflowPausedEvent(reasons=[reason], outputs={}, paused_nodes=[form.node_id])
+            )
+        )
+
+        terminal = responses[0]
+        assert isinstance(terminal, MessageContentStreamResponse)
+        assert isinstance(terminal.data, OpenUIContentBlock)
+        assert terminal.data.status == status
+        assert terminal.data.source == source
+        assert isinstance(responses[1], HumanInputRequiredResponse)
+        assert isinstance(responses[2], WorkflowPauseStreamResponse)
+        sqlite_session.expire_all()
+        message = sqlite_session.get(Message, pipeline._message_id)
+        assert message is not None
+        assert message.status == MessageStatus.PAUSED
+        assert message.answer == "Summary\n"
+        assert message.message_metadata_dict["content_blocks"] == [terminal.data.model_dump(mode="json")]
+
+        resumed = _build_generative_ui_pipeline(message, agent_queue_manager)
+        resumed._graph_runtime_state = pipeline._graph_runtime_state
+        list(resumed._handle_workflow_started_event(QueueWorkflowStartedEvent()))
+        completed_responses = list(resumed._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent(outputs={})))
+
+        end = completed_responses[0]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == [terminal.data.model_dump(mode="json")]
+        sqlite_session.refresh(message)
+        assert message.status == MessageStatus.NORMAL
+        assert message.message_metadata_dict["content_blocks"] == [terminal.data.model_dump(mode="json")]
+
+    def test_stream_sends_deltas_and_retains_complete_persisted_blocks(
+        self, pipeline: AdvancedChatAppGenerateTaskPipeline, sqlite_session: Session
+    ) -> None:
+        source = 'root = Stack([details])\ndetails = Text("' + "Revenue " * 100 + '")\n'
+        text = f"```openui\n{source}```"
+        responses = []
+        for offset in range(0, len(text), 20):
+            responses.extend(
+                pipeline._handle_text_chunk_event(
+                    QueueTextChunkEvent(text=text[offset : offset + 20], from_variable_selector=["ui-producer", "text"])
+                )
+            )
+        responses.extend(pipeline._finish_generative_ui("completed"))
+
+        blocks = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
+        assert isinstance(blocks[0], OpenUIContentBlock)
+        assert isinstance(blocks[1], OpenUIContentDelta)
+        assert blocks[1].base_sequence == blocks[0].sequence
+        terminal = blocks[-1]
+        assert isinstance(terminal, OpenUIContentBlock)
+        assert terminal.source == source
+        assert terminal.status == "completed"
+        assert sum(
+            len(block.source_delta if isinstance(block, OpenUIContentDelta) else block.source) for block in blocks
+        ) <= 2 * len(source)
+        pipeline._save_message(session=sqlite_session)
+        sqlite_session.commit()
+        message = sqlite_session.get(Message, pipeline._message_id)
+        assert message is not None
+        assert message.message_metadata_dict["content_blocks"] == [terminal.model_dump(mode="json")]
+
+    @pytest.mark.parametrize("selector", [["plain-producer", "text"], None])
+    def test_only_enabled_producer_separates_ui_from_plain_answer_and_speech(
+        self, pipeline: AdvancedChatAppGenerateTaskPipeline, selector: list[str] | None
+    ) -> None:
+        source = '```openui\nroot = Card("Result")\n```\n'
+        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
+        publisher._msg_queue = queue.Queue()
+        responses = []
+        for text, producer in [("Summary.\n" + source, ["ui-producer", "text"]), (source, selector)]:
+            event = QueueTextChunkEvent(text=text, from_variable_selector=producer)
+            message = MessageQueueMessage(
+                task_id="task-1",
+                app_mode=AppMode.ADVANCED_CHAT,
+                conversation_id="conv-id",
+                message_id="message-id",
+                event=event,
+            )
+            responses.extend(pipeline._handle_text_chunk_event(event, tts_publisher=publisher, queue_message=message))
+
+        blocks = [response.data for response in responses if isinstance(response, MessageContentStreamResponse)]
+        assert len(blocks) == 1
+        assert isinstance(blocks[0], OpenUIContentBlock)
+        assert blocks[0].source == 'root = Card("Result")\n'
+        assert blocks[0].status == "completed"
+        assert pipeline._task_state.answer == "Summary.\n" + source
+        assert "".join(response.answer for response in responses if isinstance(response, MessageStreamResponse)) == (
+            "Summary.\n" + source
+        )
+        published = [publisher._msg_queue.get_nowait(), publisher._msg_queue.get_nowait()]
+        assert publisher._msg_queue.empty()
+        assert all(message is not None and isinstance(message.event, QueueTextChunkEvent) for message in published)
+        assert [
+            message.event.text
+            for message in published
+            if message is not None and isinstance(message.event, QueueTextChunkEvent)
+        ] == ["Summary.\n", source]
+
+    def test_error_persists_unfinished_ui_with_plain_answer(
+        self, pipeline: AdvancedChatAppGenerateTaskPipeline, sqlite_session: Session
+    ) -> None:
+        list(
+            pipeline._handle_text_chunk_event(
+                QueueTextChunkEvent(
+                    text='Summary.\n```openui\nroot = Card("Partial")',
+                    from_variable_selector=["ui-producer", "text"],
+                )
+            )
+        )
+
+        responses = list(pipeline._handle_error_event(QueueErrorEvent(error=ValueError("generation failed"))))
+
+        assert isinstance(responses[0], MessageContentStreamResponse)
+        assert isinstance(responses[0].data, OpenUIContentBlock)
+        assert responses[0].data.status == "error"
+        assert isinstance(responses[-1], ErrorStreamResponse)
+        sqlite_session.expire_all()
+        message = sqlite_session.get(Message, "message-id")
+        assert message is not None
+        assert message.status == MessageStatus.ERROR
+        assert message.answer == "Summary.\n"
+        assert message.message_metadata_dict["content_blocks"] == [responses[0].data.model_dump(mode="json")]
+
+    def test_reasoning_with_openui_fence_does_not_create_ui_content(
+        self, pipeline: AdvancedChatAppGenerateTaskPipeline
+    ) -> None:
+        reasoning = 'Considering a UI:\n```openui\nroot = Card("Reasoning only")\n```\n'
+        event = QueueReasoningChunkEvent(reasoning=reasoning, from_node_id="ui-producer", is_final=True)
+
+        responses = list(pipeline._dispatch_event(event))
+
+        assert len(responses) == 1
+        assert isinstance(responses[0], ReasoningChunkStreamResponse)
+        assert responses[0].data.reasoning == reasoning
+        assert responses[0].data.node_id == "ui-producer"
+        assert responses[0].data.is_final is True
+        assert pipeline._task_state.answer == ""
+        assert pipeline._task_state.metadata.content_blocks == []
+        assert pipeline._generative_ui_parsers == {}
+
+    @pytest.mark.parametrize("closing_fence", ["```\n", ""])
+    def test_direct_output_moderation_clears_ui_when_stop_precedes_replacement(
+        self,
+        pipeline: AdvancedChatAppGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        sqlite_session: Session,
+        closing_fence: str,
+    ) -> None:
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="workflow-1",
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-1")),
+            start_at=0.0,
+        )
+        list(pipeline._handle_workflow_started_event(QueueWorkflowStartedEvent()))
+        initial_responses = list(
+            pipeline._handle_text_chunk_event(
+                QueueTextChunkEvent(
+                    text=f'Original.\n```openui\nroot = Card("Result")\n{closing_fence}',
+                    from_variable_selector=["ui-producer", "text"],
+                )
+            )
+        )
+        assert any(isinstance(response, MessageContentStreamResponse) for response in initial_responses)
+        pipeline._base_task_pipeline.output_moderation_handler = OutputModeration(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            rule=ModerationRule(type="keywords", config={}),
+            queue_manager=agent_queue_manager,
+            final_output="Redacted.",
+        )
+
+        assert list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="More output."))) == []
+        agent_queue_manager.publish(
+            QueueMessageReplaceEvent(
+                text="Redacted.",
+                reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
+            ),
+            PublishFrom.TASK_PIPELINE,
+        )
+        responses = list(pipeline._process_stream_response())
+
+        assert not any(
+            isinstance(response, (MessageContentStreamResponse, MessageReplaceStreamResponse)) for response in responses
+        )
+        end = responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == []
+        sqlite_session.expire_all()
+        message = sqlite_session.get(Message, pipeline._message_id)
+        assert message is not None
+        assert message.answer == "Redacted."
+        assert message.message_metadata_dict["content_blocks"] == []
+
+    def test_moderation_replacement_suppresses_current_and_later_ui_blocks(
+        self,
+        pipeline: AdvancedChatAppGenerateTaskPipeline,
+        agent_queue_manager: MessageBasedAppQueueManager,
+        sqlite_session: Session,
+    ) -> None:
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="workflow-1",
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-1")),
+            start_at=0.0,
+        )
+        for event in [
+            QueueTextChunkEvent(
+                text='Original.\n```openui\nroot = Card("Partial', from_variable_selector=["ui-producer", "text"]
+            ),
+            QueueMessageReplaceEvent(
+                text='Redacted.\n```openui\nroot = Card("Replacement UI")\n```\n',
+                reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
+            ),
+            QueueTextChunkEvent(
+                text='")\n```\nFollowing prose.\n```openui\nroot = Card("Later UI")\n```\nDone.',
+                from_variable_selector=["ui-producer", "text"],
+            ),
+            QueueAdvancedChatMessageEndEvent(),
+        ]:
+            agent_queue_manager.publish(event, PublishFrom.TASK_PIPELINE)
+        publisher = AppGeneratorTTSPublisher.__new__(AppGeneratorTTSPublisher)
+        publisher._msg_queue = queue.Queue()
+
+        responses = list(pipeline._process_stream_response(tts_publisher=publisher))
+
+        replacement_index = next(
+            index for index, response in enumerate(responses) if isinstance(response, MessageReplaceStreamResponse)
+        )
+        replacement = responses[replacement_index]
+        assert isinstance(replacement, MessageReplaceStreamResponse)
+        assert replacement.answer == "Redacted.\n"
+        assert replacement.reason == "output_moderation"
+        assert any(isinstance(response, MessageContentStreamResponse) for response in responses[:replacement_index])
+        assert not any(isinstance(response, MessageContentStreamResponse) for response in responses[replacement_index:])
+        end = responses[-1]
+        assert isinstance(end, MessageEndStreamResponse)
+        assert end.metadata["content_blocks"] == []
+        sqlite_session.expire_all()
+        message = sqlite_session.get(Message, "message-id")
+        assert message is not None
+        assert message.answer == "Redacted.\nFollowing prose.\nDone."
+        assert message.message_metadata_dict["content_blocks"] == []
+        speech = []
+        while not publisher._msg_queue.empty():
+            published = publisher._msg_queue.get_nowait()
+            if published is not None and isinstance(published.event, QueueTextChunkEvent):
+                speech.append(published.event.text)
+        assert "".join(speech) == "Original.\nFollowing prose.\nDone."

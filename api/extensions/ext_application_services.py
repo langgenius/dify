@@ -74,6 +74,7 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
+from repositories.generative_ui_state_repository import SQLAlchemyOpenUIStateRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
@@ -155,6 +156,7 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
+from services.generative_ui_state_service import OpenUIStateService
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
@@ -336,6 +338,7 @@ class ApplicationServices:
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
     message_feedbacks: MessageFeedbackService
+    openui_states: OpenUIStateService
     message_queries: MessageQueryService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
@@ -748,6 +751,7 @@ def build_application_services(
             remote_files=remote_file_service,
         ),
         message_feedbacks=MessageFeedbackService(repository=messages),
+        openui_states=OpenUIStateService(repository=SQLAlchemyOpenUIStateRepository(database_client)),
         message_queries=MessageQueryService(
             messages=messages,
             files=MessageFileResolver(),

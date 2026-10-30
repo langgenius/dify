@@ -9,6 +9,7 @@ import type {
 } from 'reactflow'
 import type { BlockDefaultValue } from '../block-selector/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LLMNodeType } from '../nodes/llm/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
@@ -2138,6 +2139,8 @@ export const useNodesInteractions = () => {
       nodesToPaste.forEach((node) => {
         if (memoryNodeTypes.includes(getNodeCatalogType(node.data)) && 'memory' in node.data)
           delete node.data.memory
+        if (node.data.type === BlockEnum.LLM)
+          delete (node.data as LLMNodeType).generative_ui_enabled
       })
     }
 

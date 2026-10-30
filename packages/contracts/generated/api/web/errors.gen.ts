@@ -274,6 +274,14 @@ const zNotWorkflowAppError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zOpenuiBlockNotReadyError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('openui_block_not_ready'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zPasswordMismatchError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -574,6 +582,10 @@ export const post15Errors = {
 export const post16Errors = {
   account_banned: { status: 400, data: zAccountBannedError },
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
+}
+
+export const putErrors = {
+  openui_block_not_ready: { status: 409, data: zOpenuiBlockNotReadyError },
 }
 
 export const post18Errors = {

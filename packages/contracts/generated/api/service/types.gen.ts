@@ -3330,6 +3330,7 @@ export type MessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -3445,6 +3446,21 @@ export type NotWorkflowAppError = ErrorResponse & {
   code: 'not_workflow_app'
   status: 400
 }
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  text_offset: number
+  type: 'openui'
+}
+
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
 
 export type OptionalServiceApiUserPayload = {
   user?: string
@@ -4538,6 +4554,7 @@ export type MessageListItemWritable = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
+  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null

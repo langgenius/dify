@@ -1,6 +1,7 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
+import type { ChatProps } from '@/app/components/base/chat/chat'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
@@ -13,6 +14,7 @@ import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { saveGenerativeUIState } from '@/features/generative-ui/state-client'
 import {
   AppSourceType,
   fetchChatList,
@@ -84,6 +86,7 @@ const ChatWrapper = () => {
   const {
     chatList,
     handleSend,
+    handleContentBlockStateSaved,
     handleStop,
     handleSwitchSibling,
     prepareHumanInputSubmission,
@@ -206,6 +209,20 @@ const ChatWrapper = () => {
     setPrevConversationId(currentConversationId)
     if (!currentConversationId) setHasSent(false)
   }
+
+  const handleGenerativeUIStateChange: NonNullable<ChatProps['onGenerativeUIStateChange']> =
+    useCallback(
+      async (messageId, blockId, state) => {
+        const result = await saveGenerativeUIState(
+          isInstalledApp ? { kind: 'installed-app', installedAppId: appId! } : { kind: 'webapp' },
+          messageId,
+          blockId,
+          state,
+        )
+        handleContentBlockStateSaved(messageId, result.block)
+      },
+      [appId, isInstalledApp, handleContentBlockStateSaved],
+    )
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
@@ -433,6 +450,7 @@ const ChatWrapper = () => {
         chatFooterClassName="pb-4"
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
+        onGenerativeUIStateChange={handleGenerativeUIStateChange}
         inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}

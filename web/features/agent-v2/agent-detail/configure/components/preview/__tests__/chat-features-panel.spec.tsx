@@ -58,6 +58,32 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
 }
 
 describe('AgentChatFeaturesPanel', () => {
+  it('saves generative UI in the Agent draft and preserves it when the feature panel reopens', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    const { store } = renderPanel({})
+
+    await user.click(screen.getByRole('switch', { name: 'appDebug.generativeUI.title' }))
+    expect(store.get(agentComposerAppFeaturesAtom)?.generative_ui).toEqual({ enabled: true })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('switch')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Open features' }))
+    expect(screen.getByRole('switch', { name: 'appDebug.generativeUI.title' })).toBeChecked()
+  })
+
+  it('displays the published generative UI setting without changing the editable draft', () => {
+    const { store } = renderPanel(
+      { generative_ui: { enabled: true } },
+      { generative_ui: { enabled: false } },
+      true,
+    )
+
+    const control = screen.getByRole('switch', { name: 'appDebug.generativeUI.title' })
+    expect(control).toBeChecked()
+    expect(control).toHaveAttribute('aria-disabled', 'true')
+    expect(store.get(agentComposerAppFeaturesAtom)?.generative_ui).toEqual({ enabled: false })
+  })
+
   it('keeps a newly saved opener enabled before the server snapshot catches up', async () => {
     const user = userEvent.setup({ skipHover: true })
     const { updateSnapshot, store } = renderPanel({ opening_statement: '' })
