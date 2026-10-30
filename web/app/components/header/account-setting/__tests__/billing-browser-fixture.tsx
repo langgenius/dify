@@ -62,7 +62,7 @@ export async function renderBillingSettings() {
   await expect.element(dialog.getByRole('button', { name: 'Close' })).toHaveFocus()
 
   // A regular member sees these destinations before the scrollable panel.
-  for (const name of ['Members', 'Billing', 'Customization', 'Preferences']) {
+  for (const name of ['Members', 'Billing', 'Customization', 'Usage & Limits', 'Preferences']) {
     await userEvent.tab()
     await expect.element(dialog.getByRole('button', { name })).toHaveFocus()
   }

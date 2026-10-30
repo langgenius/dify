@@ -65,6 +65,7 @@ def test_summary_uses_context_identity_and_credit_snapshot(
         "role": "editor",
         "plan": plan,
         "credits": remaining,
+        "max_active_requests": 0,
     }
     store.get_for_account.assert_called_once_with("workspace", "account")
 
@@ -75,6 +76,24 @@ def test_archived_workspace_does_not_read_billing(dependencies: tuple[WorkspaceS
     with pytest.raises(WorkspaceArchivedError):
         service.current_summary(CONTEXT)
     features.get_effective_credit_pool.assert_not_called()
+
+
+def test_summary_includes_concurrency_limit(dependencies: tuple[WorkspaceService, Mock, Mock, Mock]) -> None:
+    service, store, features, _ = dependencies
+    store.get_for_account.return_value = replace(WORKSPACE, max_active_requests=7)
+    features.get_effective_credit_pool.return_value = EffectiveCreditPool()
+    assert service.current_summary(CONTEXT)["max_active_requests"] == 7
+
+
+def test_settings_update_uses_context_identity(dependencies: tuple[WorkspaceService, Mock, Mock, Mock]) -> None:
+    service, store, _, _ = dependencies
+    store.update_settings.return_value = replace(WORKSPACE, max_active_requests=12)
+    result = service.update_settings(CONTEXT, 12)
+    assert result["name"] == "Test"
+    assert result["max_active_requests"] == 12
+    store.update_settings.assert_called_once_with(
+        workspace_id="workspace", account_id="account", max_active_requests=12
+    )
 
 
 def test_missing_workspace(dependencies: tuple[WorkspaceService, Mock, Mock, Mock]) -> None:

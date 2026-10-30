@@ -611,6 +611,7 @@ describe('Human Input v2 Recipients', () => {
         role,
         plan: null,
         credits: null,
+        max_active_requests: 0,
       } satisfies CurrentWorkspaceSummaryResponse)
       const store = createStore()
       store.set(queryClientAtom, queryClient)
