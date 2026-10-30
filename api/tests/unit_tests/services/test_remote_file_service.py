@@ -432,12 +432,14 @@ def test_upload_rejects_oversized_media_before_get(
         headers={"Content-Length": str(len(content))},
     )
     get_response = httpx.Response(200, request=httpx.Request("GET", url), content=content)
-    with patch(
-        "services.remote_file_service.remote_fetcher.make_request",
-        side_effect=[head_response, get_response],
-    ) as make_request:
-        with pytest.raises(FileTooLargeError):
-            remote_file_service.upload_from_url(url=url, user=_account())
+    with (
+        patch(
+            "services.remote_file_service.remote_fetcher.make_request",
+            side_effect=[head_response, get_response],
+        ) as make_request,
+        pytest.raises(FileTooLargeError),
+    ):
+        remote_file_service.upload_from_url(url=url, user=_account())
 
     make_request.assert_called_once_with("HEAD", url=url)
 

@@ -660,9 +660,9 @@ class TestAccountsCases:
             with (
                 app.test_request_context("/account/init", json=payload),
                 patch.object(account_services.initialization, "initialize", initialize),
+                pytest.raises(AccountAlreadyInitedError),
             ):
-                with pytest.raises(AccountAlreadyInitedError):
-                    method(api, AccountInitPayload.model_validate(payload), request_context)
+                method(api, AccountInitPayload.model_validate(payload), request_context)
 
         def test_init_missing_invitation_code_is_mapped(self, app: Flask, account_services: AccountServices):
             api = AccountInitApi()
@@ -682,9 +682,9 @@ class TestAccountsCases:
             with (
                 app.test_request_context("/account/init", json=payload),
                 patch.object(account_services.initialization, "initialize", initialize),
+                pytest.raises(MissingInvitationCodeRequestError) as exc_info,
             ):
-                with pytest.raises(MissingInvitationCodeRequestError) as exc_info:
-                    method(api, AccountInitPayload.model_validate(payload), request_context)
+                method(api, AccountInitPayload.model_validate(payload), request_context)
 
             assert exc_info.value.data == {
                 "code": "missing_invitation_code",
@@ -835,9 +835,9 @@ class TestAccountsCases:
             with (
                 app.test_request_context(f"/account/avatar?avatar={file_id}"),
                 patch.object(account_services.avatar, "resolve", resolve_avatar),
+                pytest.raises(NotFound),
             ):
-                with pytest.raises(NotFound):
-                    method(api, AccountAvatarQuery(avatar=file_id), request_context)
+                method(api, AccountAvatarQuery(avatar=file_id), request_context)
 
         def test_get_avatar_missing_query_returns_unprocessable_entity(self, app: Flask):
             account = make_account()
@@ -854,9 +854,9 @@ class TestAccountsCases:
                     "controllers.console.flask_admission.current_account_with_tenant",
                     return_value=AccountWithTenant(account=account, tenant_id="workspace-1"),
                 ),
+                pytest.raises(UnprocessableEntity) as exc_info,
             ):
-                with pytest.raises(UnprocessableEntity) as exc_info:
-                    AccountAvatarApi().get()
+                AccountAvatarApi().get()
 
             assert exc_info.value.code == 422
 
@@ -877,9 +877,9 @@ class TestAccountsCases:
                     "controllers.console.flask_admission.current_account_with_tenant",
                     return_value=AccountWithTenant(account=account, tenant_id="workspace-1"),
                 ),
+                pytest.raises(UnprocessableEntity) as exc_info,
             ):
-                with pytest.raises(UnprocessableEntity) as exc_info:
-                    AccountProfileApi().patch()
+                AccountProfileApi().patch()
 
             assert exc_info.value.code == 422
 
@@ -937,9 +937,9 @@ class TestAccountsCases:
             with (
                 app.test_request_context("/", json=payload),
                 patch.object(account_services.password, "change", change_password),
+                pytest.raises(CurrentPasswordIncorrectError),
             ):
-                with pytest.raises(CurrentPasswordIncorrectError):
-                    method(api, AccountPasswordPayload.model_validate(payload), request_context)
+                method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
         def test_password_policy_error_is_mapped(self, app: Flask, account_services: AccountServices):
             api = AccountPasswordApi()
@@ -964,9 +964,9 @@ class TestAccountsCases:
             with (
                 app.test_request_context("/", json=payload),
                 patch.object(account_services.password, "change", change_password),
+                pytest.raises(InvalidAccountPasswordRequestError) as exc_info,
             ):
-                with pytest.raises(InvalidAccountPasswordRequestError) as exc_info:
-                    method(api, AccountPasswordPayload.model_validate(payload), request_context)
+                method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
             assert exc_info.value.data == {
                 "code": "invalid_account_password",
@@ -1043,9 +1043,9 @@ class TestAccountsCases:
             with (
                 app.test_request_context("/", json=payload),
                 patch.object(account_services.deletion, "request_deletion", request_deletion),
+                pytest.raises(InvalidAccountDeletionCodeError),
             ):
-                with pytest.raises(InvalidAccountDeletionCodeError):
-                    method(api, AccountDeletePayload.model_validate(payload), request_context)
+                method(api, AccountDeletePayload.model_validate(payload), request_context)
 
         def test_delete_verify_maps_rate_limit(self, app: Flask, account_services: AccountServices):
             api = AccountDeleteVerifyApi()
@@ -1110,9 +1110,9 @@ class TestAccountsCases:
                     return_value=payload,
                 ),
                 patch.object(account_services.change_email, "verify_code", verify_code),
+                pytest.raises(EmailCodeError),
             ):
-                with pytest.raises(EmailCodeError):
-                    method(api, ChangeEmailValidityPayload.model_validate(payload), request_context)
+                method(api, ChangeEmailValidityPayload.model_validate(payload), request_context)
 
         def test_reset_email_already_used(self, app: Flask, account_services: AccountServices):
             api = ChangeEmailResetApi()
@@ -1137,9 +1137,9 @@ class TestAccountsCases:
                     return_value=payload,
                 ),
                 patch.object(account_services.change_email, "reset", reset_email),
+                pytest.raises(EmailAlreadyInUseError),
             ):
-                with pytest.raises(EmailAlreadyInUseError):
-                    method(api, ChangeEmailResetPayload.model_validate(payload), request_context)
+                method(api, ChangeEmailResetPayload.model_validate(payload), request_context)
 
     class TestCheckEmailUniqueApi:
         def test_email_unique_success(self, app: Flask, account_services: AccountServices):
@@ -1179,9 +1179,9 @@ class TestAccountsCases:
                     return_value=payload,
                 ),
                 patch.object(account_services.change_email, "ensure_available", ensure_available),
+                pytest.raises(AccountInFreezeError),
             ):
-                with pytest.raises(AccountInFreezeError):
-                    method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())
+                method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())
 
         def test_email_domain_is_suspended(self, app: Flask, account_services: AccountServices):
             api = CheckEmailUnique()
@@ -1199,6 +1199,6 @@ class TestAccountsCases:
                     return_value=payload,
                 ),
                 patch.object(account_services.change_email, "ensure_available", ensure_available),
+                pytest.raises(EmailDomainSuspendedError),
             ):
-                with pytest.raises(EmailDomainSuspendedError):
-                    method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())
+                method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())
