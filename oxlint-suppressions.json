@@ -2777,11 +2777,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/external-api/external-knowledge-api-card/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
