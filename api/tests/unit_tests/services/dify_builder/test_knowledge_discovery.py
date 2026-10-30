@@ -2,8 +2,7 @@
 
 from dataclasses import replace
 from datetime import datetime
-from typing import override
-from unittest.mock import Mock
+from typing import NoReturn, override
 
 import pytest
 
@@ -76,7 +75,12 @@ def test_only_dataset_is_recommended_as_nonexecuting_preference(monkeypatch: pyt
 
 def test_knowledge_confirmation_is_metadata_only_and_never_replans(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: inventory(include_model=True))
-    planner = Mock(side_effect=AssertionError("Knowledge preferences must not replan an executable substitute"))
+    calls: list[object] = []
+
+    def planner(*args: object, **kwargs: object) -> NoReturn:
+        calls.append((args, kwargs))
+        raise AssertionError("Knowledge preferences must not replan an executable substitute")
+
     monkeypatch.setattr(build, "propose_plan_v1", planner)
     result = build.reconcile_resource_plan(
         object(),
@@ -91,7 +95,7 @@ def test_knowledge_confirmation_is_metadata_only_and_never_replans(monkeypatch: 
     assert result.used_resource_ids == []
     assert result.discovery_resource_ids == [KNOWLEDGE]
     assert result.items == PLAN.items
-    planner.assert_not_called()
+    assert calls == []
 
 
 @pytest.mark.parametrize(("use", "missing"), [("not_allowed", False), ("allowed", True)])
@@ -102,9 +106,13 @@ def test_revoked_or_missing_selected_knowledge_refuses_entire_selection(
     if missing:
         inv = replace(inv, datasets=[])
     monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: inv)
-    monkeypatch.setattr(
-        build, "propose_plan_v1", Mock(side_effect=AssertionError("Unverified IDs cannot reach cognition"))
-    )
+    calls: list[object] = []
+
+    def planner(*args: object, **kwargs: object) -> NoReturn:
+        calls.append((args, kwargs))
+        raise AssertionError("Unverified IDs cannot reach cognition")
+
+    monkeypatch.setattr(build, "propose_plan_v1", planner)
     assert (
         build.reconcile_resource_plan(
             object(),
@@ -117,6 +125,7 @@ def test_revoked_or_missing_selected_knowledge_refuses_entire_selection(
         )
         is None
     )
+    assert calls == []
 
 
 def confirm(
@@ -189,12 +198,17 @@ def test_metadata_confirmation_does_not_even_resolve_a_cognition_model(monkeypat
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
     monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: inventory())
-    resolver = Mock(side_effect=AssertionError("Metadata-only confirmation must not resolve a model"))
+    calls: list[object] = []
+
+    def resolver() -> NoReturn:
+        calls.append("resolve")
+        raise AssertionError("Metadata-only confirmation must not resolve a model")
+
     agent = LlmBuilderAgent("tenant", account_id="actor", model_resolver_fn=resolver)
     result = agent.reconcile_resource_plan(PLAN, [KNOWLEDGE], goal_text="Select knowledge only", requirements={})
     assert result is not None
     assert result.discovery_resource_ids == [KNOWLEDGE]
-    resolver.assert_not_called()
+    assert calls == []
 
 
 def test_source_failure_never_uses_a_retained_dataset_as_authority(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -212,14 +226,19 @@ def test_real_agent_and_handler_wait_without_any_workflow_or_model_side_effect(m
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
     monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: inventory())
-    agent = LlmBuilderAgent(
-        "tenant", account_id="actor", model_resolver_fn=Mock(side_effect=AssertionError("No model call"))
-    )
+    calls: list[object] = []
+
+    def resolver() -> NoReturn:
+        calls.append("resolve")
+        raise AssertionError("No model call")
+
+    agent = LlmBuilderAgent("tenant", account_id="actor", model_resolver_fn=resolver)
     result, ctx, _, items = confirm(agent, offered=[KNOWLEDGE], ids=[KNOWLEDGE])
     assert result.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
     assert ctx.resource_selection["knowledge_preferences"] == [KNOWLEDGE]
     assert not ctx.checkpoint_id
     assert not any(item.kind == "plan" for item in items)
+    assert calls == []
 
 
 def test_real_discovery_card_persists_its_exact_knowledge_allowlist() -> None:
