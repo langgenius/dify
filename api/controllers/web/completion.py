@@ -134,8 +134,6 @@ register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultRespon
 class CompletionApi(WebApiResource):
     @error_responses(
         AppUnavailableError,
-        EndUserBusyHTTPError,
-        WebExecutionResourcesChangedHTTPError,
         CompletionRequestError,
         NotCompletionAppError,
         ProviderModelCurrentlyNotSupportError,
@@ -178,10 +176,6 @@ class CompletionApi(WebApiResource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except EndUserBusyError as error:
-            raise EndUserBusyHTTPError() from error
-        except WebExecutionResourcesChangedError as error:
-            raise WebExecutionResourcesChangedHTTPError() from error
         except services.errors.conversation.ConversationNotExistsError as caught_error:
             raise NotFound("Conversation Not Exists.") from caught_error
         except services.errors.conversation.ConversationCompletedError as caught_error:

@@ -12,7 +12,7 @@ from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowRun
-from repositories.conversation_file_access import execution_file_references
+from repositories.web_execution_file_access import execution_file_references
 from repositories.web_workflow_admission_repository import WebWorkflowAdmissionRepository
 
 type WebWorkflowEntity = AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity
@@ -90,7 +90,7 @@ def web_workflow_launch(
         if resume:
             _finish_incomplete(entity)
         else:
-            repository.reject_pending_message(
+            repository.fail_unstarted_message(
                 tenant_id=run.tenant_id,
                 app_id=run.app_id,
                 end_user_id=run.created_by,

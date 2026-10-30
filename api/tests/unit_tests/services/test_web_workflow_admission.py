@@ -259,7 +259,14 @@ def test_paused_run_can_resume_without_recreating_history(admission: Admission) 
 def test_disabled_migration_capability_keeps_the_existing_launch_path(
     admission: Admission, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from services import web_workflow_admission
+
     monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", False)
+
+    def unexpected_database_access() -> None:
+        pytest.fail("Disabled Account Passport must bypass admission persistence and locks")
+
+    monkeypatch.setattr(web_workflow_admission.session_factory, "get_session_maker", unexpected_database_access)
     with (
         web_workflow_launch(
             admission.entity,
@@ -274,7 +281,7 @@ def test_disabled_migration_capability_keeps_the_existing_launch_path(
             assert session.get(WorkflowRun, admission.entity.workflow_execution_id) is None
 
 
-def test_failed_admission_releases_chatflows_pending_message(admission: Admission) -> None:
+def test_failed_admission_marks_unstarted_message_as_error(admission: Admission) -> None:
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
     from models.enums import ConversationFromSource, MessageStatus
     from models.model import Conversation, Message

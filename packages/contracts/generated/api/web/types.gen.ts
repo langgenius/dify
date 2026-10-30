@@ -1786,7 +1786,6 @@ export type PostCompletionMessagesErrors = {
     | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
-  409: EndUserBusyError | WebappResourcesChangedError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2746,7 +2745,6 @@ export type GetMessagesByMessageIdMoreLikeThisErrors = {
   401: ErrorResponse
   403: AppMoreLikeThisDisabledError | ErrorResponse
   404: ErrorResponse
-  409: EndUserBusyError | WebappResourcesChangedError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2781,7 +2779,6 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
   404: ErrorResponse
-  409: EndUserBusyError | WebappResourcesChangedError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

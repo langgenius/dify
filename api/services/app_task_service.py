@@ -354,18 +354,6 @@ class AppTaskService:
                 owner=(role, user_id),
             )
             return
-        if invoke_from == InvokeFrom.WEB_APP:
-            from services.web_message_task_control import stop_web_message_task
-
-            stop_web_message_task(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                task_id=task_id,
-                end_user_id=user_id,
-                session_factory=sessionmaker(db.engine),
-                redis=redis_client,
-            )
-            return
         AppTaskControlService(redis_client=redis_client).stop_task(
             task_id=task_id,
             invoke_from=invoke_from,

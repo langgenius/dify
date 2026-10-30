@@ -157,9 +157,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         #
         # For implementation reference, see the `_parse_file` function and
         # `DraftWorkflowNodeRunApi` class which handle this properly.
-        with self._bind_file_access_scope(
-            tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from, conversation=conversation
-        ):
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args.get("files") or []
             file_extra_config = FileUploadConfigManager.convert(effective_model_config_dict)
             if file_extra_config:

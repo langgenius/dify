@@ -7,6 +7,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
@@ -348,7 +349,12 @@ class MessageService:
         query = select(Message).where(
             Message.id == message_id, Message.app_id == app_model.id, message_owner_scope(app_model.id, user)
         )
-        if lock:
+        if (
+            lock
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and isinstance(user, EndUser)
+            and app_model.mode == AppMode.ADVANCED_CHAT
+        ):
             query = (
                 query.join(Conversation, Conversation.id == Message.conversation_id)
                 .where(*conversation_owner_scope(app_model.id, user))

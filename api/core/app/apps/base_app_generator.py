@@ -13,7 +13,7 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -26,12 +26,7 @@ from services.workflow_draft_variable_service import DraftVariableSaver as Draft
 if TYPE_CHECKING:
     from graphon.variables.input_entities import VariableEntity
 
-from extensions.application_services.web_history import (
-    bind_conversation_file_scope,
-    web_workflow_launch,
-    web_workflow_worker,
-)
-from models.model import Conversation
+from extensions.application_services.web_execution import web_workflow_launch, web_workflow_worker
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +114,6 @@ class BaseAppGenerator:
         tenant_id: str,
         user: Account | EndUser,
         invoke_from: InvokeFrom,
-        conversation: Conversation | None = None,
     ) -> AbstractContextManager[None]:
         """Bind request-scoped file ownership markers for downstream file lookups."""
 
@@ -128,15 +122,13 @@ class BaseAppGenerator:
             return nullcontext()
 
         user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
-        return bind_conversation_file_scope(
+        return bind_file_access_scope(
             FileAccessScope(
                 tenant_id=tenant_id,
                 user_id=user_id,
                 user_from=user_from,
                 invoke_from=invoke_from,
-            ),
-            conversation=conversation,
-            user=user,
+            )
         )
 
     def _prepare_user_inputs(

@@ -15,7 +15,6 @@ from models.enums import (
     EndUserType,
     FeedbackFromSource,
     InvokeFrom,
-    MessageStatus,
 )
 from models.model import App, AppMode, Conversation, EndUser, Message, MessageFeedback, Site, UploadFile
 from models.tools import ToolFile
@@ -27,8 +26,7 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionIdentityError
 from services.web_migration_service import GuestMigrationSource, MigrationCounts, MigrationRunInProgressError
 
-# The new Agent runtime needs its own session/sandbox handoff before it can participate.
-_MIGRATION_APP_MODES = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION)
+_MIGRATION_APP_MODES = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)
 
 
 def guest_history_roots(guest: WebConnectionContext) -> tuple[sa.ColumnElement[bool], ...]:
@@ -92,23 +90,6 @@ class WebMigrationRepository:
 
     @staticmethod
     def _require_idle_runs(session: Session, guest: WebConnectionContext) -> None:
-        # The pending message is the durable acceptance marker before variables/Run initialization.
-        pending = sa.exists(
-            sa.select(Message.id)
-            .join(Conversation, Conversation.id == Message.conversation_id)
-            .where(
-                Message.app_id == guest.app_id,
-                *guest_history_roots(guest),
-                Message.from_end_user_id == guest.end_user_id,
-                Message.workflow_run_id.is_not(None),
-                Message.status != MessageStatus.ERROR,
-                ~sa.exists(sa.select(WorkflowRun.id).where(WorkflowRun.id == Message.workflow_run_id)).correlate(
-                    Message
-                ),
-            )
-        )
-        if session.scalar(sa.select(pending)):
-            raise MigrationRunInProgressError()
         active = sa.exists(
             sa.select(WorkflowRun.id).where(
                 WorkflowRun.tenant_id == guest.tenant_id,

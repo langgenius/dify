@@ -13,8 +13,6 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueWorkflowPausedEvent,
 )
-from extensions.application_services.web_history import index_web_message_task
-from extensions.ext_redis import redis_client
 from models.model import AppMode
 
 
@@ -27,8 +25,6 @@ class MessageBasedAppQueueManager(AppQueueManager):
         self._conversation_id = str(conversation_id)
         self._app_mode = app_mode
         self._message_id = str(message_id)
-        if invoke_from == InvokeFrom.WEB_APP:
-            index_web_message_task(task_id, self._message_id, user_id, redis=redis_client)
 
     @override
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):

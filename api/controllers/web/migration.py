@@ -50,7 +50,7 @@ class ConnectionClaimSuccessResponse(ResponseModel):
     app_code: str
     access_token: str
     claimed_conversations: int = Field(
-        ge=0, description="Chat conversations transferred; excludes Completion bookkeeping"
+        ge=0, description="Chat conversations transferred for supported Workflow/Chatflow Apps"
     )
     claimed_connections: int = Field(
         ge=0, description="Number transferred by this item; zero when no Guest Connections remain"
@@ -152,7 +152,6 @@ class ConnectionClaimApi(Resource):
         "An unavailable preflight dependency returns 503; neither failure starts a transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
         "Every Passport transfers all Connections, files, conversations and personal state atomically. "
-        "Pending execution acceptance must finish starting before migration. "
         "All unfinished Guest runs must complete or be cancelled before migration. "
         "Concurrent admission or migration for the same identity reports end_user_busy without waiting. "
         "Success includes the App code, Account App Passport and both transferred resource counts. "
@@ -224,9 +223,7 @@ class ClaimablePassportResponse(ResponseModel):
     index: int = Field(ge=0, description="Index of the candidate in the request's passports list")
     app_code: str
     app_name: str
-    conversation_count: int = Field(
-        ge=0, description="Remaining user-facing Chat conversations; Workflow normally has zero"
-    )
+    conversation_count: int = Field(ge=0, description="Remaining Chatflow conversations; Workflow normally has zero")
     connection_count: int = Field(
         ge=0, description="Current Guest Connection count; does not determine Passport eligibility"
     )
@@ -248,8 +245,8 @@ class ClaimablePassportsApi(Resource):
         "Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. "
         "Unavailable, disabled and unpublished Web Apps are filtered out. "
         "Zero-Connection Guest Passports are included. "
-        "Supports Workflow, Chatflow and classic Chat/AgentChat/Completion; the new Agent runtime is excluded. "
-        "conversation_count counts chat history; Workflow has none and Completion bookkeeping is not counted. "
+        "Supports Workflow and Chatflow only; other App modes are omitted. "
+        "conversation_count counts Chatflow history; Workflow normally has none. "
         "connection_count counts all currently Guest-owned Connections, including ones needing reconnection. "
         "This is advisory: actual Claim rechecks ownership and Account App admission."
     )

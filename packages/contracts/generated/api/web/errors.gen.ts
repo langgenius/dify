@@ -595,12 +595,10 @@ export const post4Errors = { not_completion_app: { status: 400, data: zNotComple
 export const post5Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
-  end_user_busy: { status: 409, data: zEndUserBusyError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_completion_app: { status: 400, data: zNotCompletionAppError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
 }
 
 export const getErrors = {
@@ -819,12 +817,10 @@ export const post20Errors = {
 export const get11Errors = {
   app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
-  end_user_busy: { status: 409, data: zEndUserBusyError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_completion_app: { status: 400, data: zNotCompletionAppError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
 }
 
 export const get12Errors = {
@@ -833,12 +829,10 @@ export const get12Errors = {
     data: zAppSuggestedQuestionsAfterAnswerDisabledError,
   },
   completion_request_error: { status: 400, data: zCompletionRequestError },
-  end_user_busy: { status: 409, data: zEndUserBusyError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_chat_app: { status: 400, data: zNotChatAppError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
 }
 
 export const get13Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }

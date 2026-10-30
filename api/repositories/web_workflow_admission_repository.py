@@ -13,17 +13,17 @@ from models.enums import AppStatus, ConversationFromSource, CreatorUserRole, End
 from models.model import App, Conversation, Message
 from models.workflow import Workflow, WorkflowRun
 from repositories.conversation_access import conversation_owner_scope
-from repositories.conversation_file_access import require_execution_file_ownership
 from repositories.end_user_execution_lock import lock_end_user, translate_end_user_lock_errors
 from repositories.entities.web_execution import EndUserBusyError, WebExecutionResourcesChangedError
+from repositories.web_execution_file_access import require_execution_file_ownership
 
 
 class WebWorkflowAdmissionRepository:
     def __init__(self, sessions: sessionmaker[Session]) -> None:
         self._sessions = sessions
 
-    def reject_pending_message(self, *, tenant_id: str, app_id: str, end_user_id: str, run_id: str) -> None:
-        """An admission failure must release Chatflow's pre-Run acceptance marker."""
+    def fail_unstarted_message(self, *, tenant_id: str, app_id: str, end_user_id: str, run_id: str) -> None:
+        """Record failure for an accepted chat message whose execution was never admitted."""
         with self._sessions.begin() as session:
             session.execute(
                 sa.update(Message)
@@ -103,7 +103,6 @@ class WebWorkflowAdmissionRepository:
                 tenant_id=run.tenant_id,
                 app_id=run.app_id,
                 user=user,
-                conversation_id=conversation_id,
                 upload_ids=upload_ids,
                 tool_ids=tool_ids,
             )

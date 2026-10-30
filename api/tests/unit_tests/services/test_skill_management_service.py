@@ -83,7 +83,6 @@ class _FakeToolFileManager(ToolFileManager):
         file_binary: bytes,
         mimetype: str,
         filename: str | None = None,
-        message_id: str | None = None,
     ) -> ToolFile:
         tool_file = ToolFile(
             user_id=user_id,
@@ -1649,7 +1648,6 @@ def test_publish_archive_contains_synced_skill_md() -> None:
             file_binary: bytes,
             mimetype: str,
             filename: str | None = None,
-            message_id: str | None = None,
         ) -> ToolFile:
             captured["archive"] = file_binary
             return super().create_file_by_raw(
@@ -1659,7 +1657,6 @@ def test_publish_archive_contains_synced_skill_md() -> None:
                 file_binary=file_binary,
                 mimetype=mimetype,
                 filename=filename,
-                message_id=message_id,
             )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
@@ -1693,7 +1690,6 @@ def test_list_versions_includes_publisher_name_and_version_detail_files() -> Non
             file_binary: bytes,
             mimetype: str,
             filename: str | None = None,
-            message_id: str | None = None,
         ) -> ToolFile:
             captured["archive"] = file_binary
             return super().create_file_by_raw(
@@ -1703,7 +1699,6 @@ def test_list_versions_includes_publisher_name_and_version_detail_files() -> Non
                 file_binary=file_binary,
                 mimetype=mimetype,
                 filename=filename,
-                message_id=message_id,
             )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
@@ -2521,7 +2516,6 @@ def test_duplicate_skill_copies_current_draft_without_history() -> None:
             file_binary: bytes,
             mimetype: str,
             filename: str | None = None,
-            message_id: str | None = None,
         ) -> ToolFile:
             captured["archive"] = file_binary
             return super().create_file_by_raw(
@@ -2531,7 +2525,6 @@ def test_duplicate_skill_copies_current_draft_without_history() -> None:
                 file_binary=file_binary,
                 mimetype=mimetype,
                 filename=filename,
-                message_id=message_id,
             )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
@@ -2951,7 +2944,6 @@ def test_publish_and_export_include_binary_tool_files() -> None:
             file_binary: bytes,
             mimetype: str,
             filename: str | None = None,
-            message_id: str | None = None,
         ) -> ToolFile:
             captured["archive"] = file_binary
             return super().create_file_by_raw(
@@ -2961,7 +2953,6 @@ def test_publish_and_export_include_binary_tool_files() -> None:
                 file_binary=file_binary,
                 mimetype=mimetype,
                 filename=filename,
-                message_id=message_id,
             )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())
@@ -3019,7 +3010,6 @@ def test_restore_version_replaces_draft_without_publishing() -> None:
             file_binary: bytes,
             mimetype: str,
             filename: str | None = None,
-            message_id: str | None = None,
         ) -> ToolFile:
             captured.append(file_binary)
             return super().create_file_by_raw(
@@ -3029,7 +3019,6 @@ def test_restore_version_replaces_draft_without_publishing() -> None:
                 file_binary=file_binary,
                 mimetype=mimetype,
                 filename=filename,
-                message_id=message_id,
             )
 
     service = SkillManagementService(tool_file_manager=CapturingToolFileManager())

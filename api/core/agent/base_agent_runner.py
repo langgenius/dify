@@ -46,7 +46,6 @@ from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
-from repositories.conversation_access import execution_history_scope
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -386,12 +385,7 @@ class BaseAgentRunner(AppRunner):
             (
                 session.execute(
                     select(Message)
-                    .where(
-                        Message.conversation_id == self.message.conversation_id,
-                        execution_history_scope(
-                            self.message.app_id, self.message.conversation_id, self.message.from_end_user_id
-                        ),
-                    )
+                    .where(Message.conversation_id == self.message.conversation_id)
                     .order_by(Message.created_at.desc())
                 )
             )

@@ -28,7 +28,6 @@ from core.app.entities.task_entities import (
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
 )
-from core.app.file_access import get_current_file_access_scope, grant_tool_file_access, grant_upload_file_access
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
@@ -49,8 +48,7 @@ from models.enums import (
 )
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from repositories.conversation_access import ConversationAccessDeniedError, lock_web_message_acceptance
-from repositories.conversation_file_access import (
-    conversation_file_grants,
+from repositories.web_execution_file_access import (
     execution_file_references,
     require_execution_file_ownership,
 )
@@ -184,7 +182,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         created_new_conversation = conversation is None
         try:
             if (
-                application_generate_entity.invoke_from == InvokeFrom.WEB_APP
+                isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+                and application_generate_entity.invoke_from == InvokeFrom.WEB_APP
                 and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
             ):
                 try:
@@ -205,7 +204,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     tenant_id=app_config.tenant_id,
                     app_id=app_config.app_id,
                     user=actor,
-                    conversation_id=conversation.id if conversation is not None else None,
                     upload_ids=uploads,
                     tool_ids=tools,
                 )
@@ -297,27 +295,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 initialize_conversation_connections(
                     session, application_generate_entity.connection_context, conversation
                 )
-
-            if (
-                application_generate_entity.invoke_from == InvokeFrom.WEB_APP
-                and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
-                and not isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
-                and get_current_file_access_scope()
-            ):
-                # Classic chat has no WorkflowRun busy marker. Capture only its accepted
-                # immutable file references while the migration/acceptance locks are held.
-                actor = session.get(EndUser, end_user_id)
-                assert actor is not None
-                session.flush()
-                grants = conversation_file_grants(
-                    session,
-                    tenant_id=app_config.tenant_id,
-                    app_id=app_config.app_id,
-                    conversation_id=conversation.id,
-                    user=actor,
-                )
-                grant_upload_file_access(grants.uploads)
-                grant_tool_file_access(grants.tools)
 
             session.commit()
 

@@ -189,9 +189,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         #
         # For implementation reference, see the `_parse_file` function and
         # `DraftWorkflowNodeRunApi` class which handle this properly.
-        with self._bind_file_access_scope(
-            tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from, conversation=conversation
-        ):
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args["files"] if args.get("files") else []
             file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
             if file_extra_config:
@@ -552,7 +550,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             tenant_id=application_generate_entity.app_config.tenant_id,
             user=user,
             invoke_from=invoke_from,
-            conversation=conversation,
         ):
             is_first_conversation = conversation is None
 

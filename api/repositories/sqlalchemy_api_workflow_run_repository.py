@@ -74,7 +74,6 @@ from repositories.api_workflow_run_repository import (
     RunsWithRelatedCountsDict,
     WorkflowRunCleanupRef,
 )
-from repositories.conversation_access import end_user_run_scope
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -1286,11 +1285,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             .limit(limit)
         )
         if owner is not None:
-            stmt = stmt.where(
-                end_user_run_scope(app_id, owner[1])
-                if owner[0] == CreatorUserRole.END_USER
-                else and_(WorkflowRun.created_by_role == owner[0], WorkflowRun.created_by == owner[1])
-            )
+            stmt = stmt.where(WorkflowRun.created_by_role == owner[0], WorkflowRun.created_by == owner[1])
         if after_id is not None:
             stmt = stmt.where(WorkflowPause.id > after_id)
         with self._session_maker() as session:
@@ -1431,19 +1426,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             workflow_run = session.scalar(stmt)
             if workflow_run is None:
                 return None
-            if owner is not None:
-                authorized = (
-                    session.scalar(
-                        select(WorkflowRun.id).where(
-                            WorkflowRun.id == workflow_run.id, end_user_run_scope(app_id, owner[1])
-                        )
-                    )
-                    is not None
-                    if owner[0] == CreatorUserRole.END_USER
-                    else (workflow_run.created_by_role, workflow_run.created_by) == owner
-                )
-                if not authorized:
-                    raise WorkflowTaskOwnerMismatchError()
+            if owner is not None and (workflow_run.created_by_role, workflow_run.created_by) != owner:
+                raise WorkflowTaskOwnerMismatchError()
             if workflow_run.status == WorkflowExecutionStatus.STOPPED and workflow_run.stop_requested_at is not None:
                 # A retry can finish publishing history/SSE if the external
                 # history backend failed after the durable stop committed.

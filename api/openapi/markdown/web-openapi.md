@@ -89,7 +89,6 @@ Create a completion message for text generation applications.
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -872,7 +871,6 @@ Generate a new completion similar to an existing message (completion apps only).
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -894,7 +892,6 @@ Get suggested follow-up questions after a message (chat apps only).
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found or Conversation Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -915,7 +912,7 @@ Retrieve the metadata for a specific app.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Every Passport transfers all Connections, files, conversations and personal state atomically. Pending execution acceptance must finish starting before migration. All unfinished Guest runs must complete or be cancelled before migration. Concurrent admission or migration for the same identity reports end_user_busy without waiting. Success includes the App code, Account App Passport and both transferred resource counts. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Every Passport transfers all Connections, files, conversations and personal state atomically. All unfinished Guest runs must complete or be cancelled before migration. Concurrent admission or migration for the same identity reports end_user_busy without waiting. Success includes the App code, Account App Passport and both transferred resource counts. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -934,7 +931,7 @@ Claim up to 50 anonymous browser Passports across Web Apps for one authenticated
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claimable-passports
-Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow, Chatflow and classic Chat/AgentChat/Completion; the new Agent runtime is excluded. conversation_count counts chat history; Workflow has none and Completion bookkeeping is not counted. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
 
 #### Request Body
 
@@ -1516,7 +1513,7 @@ Button styles for user actions.
 | app_code | string |  | Yes |
 | app_name | string |  | Yes |
 | connection_count | integer | Current Guest Connection count; does not determine Passport eligibility | Yes |
-| conversation_count | integer | Remaining user-facing Chat conversations; Workflow normally has zero | Yes |
+| conversation_count | integer | Remaining Chatflow conversations; Workflow normally has zero | Yes |
 | index | integer | Index of the candidate in the request's passports list | Yes |
 
 #### ClaimablePassportsPayload
@@ -1598,7 +1595,7 @@ Guest migration preflight failed. No resources were transferred.
 | access_token | string |  | Yes |
 | app_code | string |  | Yes |
 | claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
-| claimed_conversations | integer | Chat conversations transferred; excludes Completion bookkeeping | Yes |
+| claimed_conversations | integer | Chat conversations transferred for supported Workflow/Chatflow Apps | Yes |
 | index | integer |  | Yes |
 | status | string |  | Yes |
 

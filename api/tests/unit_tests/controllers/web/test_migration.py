@@ -1156,9 +1156,8 @@ def persist_migration_history(harness: ClaimHarness, owner: WebConnectionContext
 
 
 def test_full_passport_claim_preserves_provenance_and_transfers_history_access(harness: ClaimHarness) -> None:
-    from graphon.enums import WorkflowExecutionStatus
     from models.enums import CreatorUserRole
-    from models.model import Message, MessageFeedback
+    from models.model import MessageFeedback
     from models.web import PinnedConversation, SavedMessage
     from models.workflow import WorkflowRun
     from repositories.conversation_access import (
@@ -1166,7 +1165,6 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
         lock_web_message_acceptance,
         may_read_conversation_run,
     )
-    from repositories.conversation_file_access import conversation_file_grants
     from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
     from services.app_ref_service import AppRef, MessageRef
     from services.audio_service import AudioService
@@ -1229,12 +1227,6 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
         assert not may_read_conversation_run(
             session, app_id=app.id, user=guest, run_id=run_id, original_end_user_id=guest.id
         )
-        assert conversation_file_grants(
-            session, tenant_id=app.tenant_id, app_id=app.id, conversation_id=conversation_id, user=account
-        ).uploads == {upload_id}
-        assert not conversation_file_grants(
-            session, tenant_id=app.tenant_id, app_id=app.id, conversation_id=conversation_id, user=guest
-        ).uploads
         with pytest.raises(ConversationAccessDeniedError):
             lock_web_message_acceptance(
                 session, tenant_id=app.tenant_id, app_id=app.id, end_user_id=guest.id, conversation_id=conversation_id
@@ -1256,18 +1248,6 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
         assert run is not None
         assert run.created_by_role == CreatorUserRole.END_USER
         assert run.created_by == guest.id
-    # Completion belongs to the accepted producer, even after the live owner changes.
-    with base.sessions.begin() as session:
-        session.execute(sa.update(Message).where(Message.id == message_id).values(answer="late completion"))
-        session.execute(
-            sa.update(WorkflowRun).where(WorkflowRun.id == run_id).values(status=WorkflowExecutionStatus.SUCCEEDED)
-        )
-    with base.sessions() as session:
-        app = session.get(App, base.context.app_id)
-        account = session.get(EndUser, harness.account.end_user_id)
-        assert app is not None
-        assert account is not None
-        assert MessageService.get_message(app, account, message_id, session=session).answer == "late completion"
     saved = SQLAlchemySavedMessageRepository(session_factory=base.sessions)
     assert (
         saved.pagination_by_last_id(
@@ -1347,168 +1327,21 @@ def test_full_claim_rejects_resource_selection(harness: ClaimHarness) -> None:
     assert response.status_code == 422
 
 
-def test_migrated_task_control_and_history_do_not_follow_original_actor(
-    harness: ClaimHarness, redis_transport: tuple[RedisClientWrapper, MagicMock]
-) -> None:
-    from models.model import Message
-    from repositories.conversation_access import execution_history_scope
-    from services.web_message_task_control import index_web_message_task, stop_web_message_task
-
-    base = harness.oauth.base
-    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
-    task_id = str(uuid4())
-    redis, commands = redis_transport
-    records: dict[str, bytes] = {}
-
-    def wire(command: str, *args: object, **_kwargs: object) -> object:
-        key = str(args[0])
-        if command == "GET":
-            return records.get(key)
-        if command == "SETEX":
-            records[key] = str(args[2]).encode()
-            return True
-        raise AssertionError(command)
-
-    commands.side_effect = wire
-    index_web_message_task(task_id, message_id, base.context.end_user_id, redis=redis)
-    assert harness.claim().get_json()["data"][0]["claimed_conversations"] == 1
-    with base.sessions.begin() as session:
-        private = Message(
-            app_id=base.context.app_id,
-            conversation_id=conversation_id,
-            query="Account private message",
-            message="",
-            answer="private answer",
-            from_source=ConversationFromSource.API,
-            from_end_user_id=harness.account.end_user_id,
-            from_account_id=None,
-            invoke_from=InvokeFrom.WEB_APP,
-        )
-        session.add(private)
-        session.flush()
-        private_id = private.id
-    assert not stop_web_message_task(
-        tenant_id=base.context.tenant_id,
-        app_id=base.context.app_id,
-        task_id=task_id,
-        end_user_id=base.context.end_user_id,
-        session_factory=base.sessions,
-        redis=redis,
-    )
-    assert stop_web_message_task(
-        tenant_id=base.context.tenant_id,
-        app_id=base.context.app_id,
-        task_id=task_id,
-        end_user_id=harness.account.end_user_id,
-        session_factory=base.sessions,
-        redis=redis,
-    )
-    with base.sessions() as session:
-        former_history = set(
-            session.scalars(
-                sa.select(Message.id).where(
-                    Message.conversation_id == conversation_id,
-                    execution_history_scope(base.context.app_id, conversation_id, base.context.end_user_id),
-                )
-            )
-        )
-        current_history = set(
-            session.scalars(
-                sa.select(Message.id).where(
-                    Message.conversation_id == conversation_id,
-                    execution_history_scope(base.context.app_id, conversation_id, harness.account.end_user_id),
-                )
-            )
-        )
-    assert former_history == {message_id}
-    assert current_history == {message_id, private_id}
-
-
-def test_published_classic_chat_is_not_restricted_by_connection_app_modes(harness: ClaimHarness) -> None:
-    from models.model import AppModelConfig
-
-    base = harness.oauth.base
-    conversation_id, _, _, _ = persist_migration_history(harness, base.context)
-    with base.sessions.begin() as session:
-        config = AppModelConfig(app_id=base.context.app_id)
-        session.add(config)
-        session.flush()
-        session.execute(
-            sa.update(App)
-            .where(App.id == base.context.app_id)
-            .values(mode=AppMode.CHAT, workflow_id=None, app_model_config_id=config.id)
-        )
-        session.execute(sa.update(Conversation).where(Conversation.id == conversation_id).values(mode=AppMode.CHAT))
-    preview = harness.client.post("/api/migration/claimable-passports", json={"passports": [harness.guest_passport]})
-    assert preview.get_json()["data"][0]["conversation_count"] == 1
-    result = harness.claim().get_json()["data"][0]
-    assert result["status"] == "success"
-    assert (result["claimed_connections"], result["claimed_conversations"]) == (0, 1)
-
-
-def test_history_file_grants_exclude_unrelated_actors_and_tenants(harness: ClaimHarness) -> None:
-    from models.enums import CreatorUserRole
-    from repositories.conversation_file_access import conversation_file_grants
-    from tests.helpers.unit.model_factories import make_upload_file
-
-    base = harness.oauth.base
-    conversation_id, _, _, own_id = persist_migration_history(harness, base.context)
-    with base.sessions.begin() as session:
-        wrong_actor = make_upload_file(
-            tenant_id=base.context.tenant_id, created_by_role=CreatorUserRole.END_USER, created_by=str(uuid4())
-        )
-        wrong_tenant = make_upload_file(
-            tenant_id=str(uuid4()), created_by_role=CreatorUserRole.END_USER, created_by=base.context.end_user_id
-        )
-        wrong_role = make_upload_file(
-            tenant_id=base.context.tenant_id,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=base.context.end_user_id,
-        )
-        session.add_all([wrong_actor, wrong_tenant, wrong_role])
-        session.flush()
-        conversation = session.get(Conversation, conversation_id)
-        assert conversation is not None
-        conversation._inputs = {
-            "files": [
-                {"transfer_method": "local_file", "upload_file_id": file_id}
-                for file_id in (own_id, wrong_actor.id, wrong_tenant.id, wrong_role.id)
-            ]
-        }
-    assert harness.claim().get_json()["data"][0]["claimed_conversations"] == 1
-    with base.sessions() as session:
-        account = session.get(EndUser, harness.account.end_user_id)
-        assert account is not None
-        grants = conversation_file_grants(
-            session,
-            tenant_id=base.context.tenant_id,
-            app_id=base.context.app_id,
-            conversation_id=conversation_id,
-            user=account,
-        )
-        assert grants.uploads == {own_id}
-
-
 @pytest.mark.parametrize("with_connections", [False, True])
-@pytest.mark.parametrize("state", ["starting", "running", "paused"])
+@pytest.mark.parametrize("state", ["running", "paused"])
 def test_guest_runs_wait_for_completion(harness: ClaimHarness, with_connections: bool, state: str) -> None:
     from graphon.enums import WorkflowExecutionStatus
-    from models.enums import MessageStatus
-    from models.model import Message
     from models.workflow import WorkflowRun
 
     base = harness.oauth.base
     connection = base.service.create_api_key(base.context, base.command()) if with_connections else None
     conversation_id, message_id, run_id, _ = persist_migration_history(harness, base.context)
     with base.sessions.begin() as session:
-        if state == "starting":
-            session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == run_id))
-        else:
-            session.execute(
-                sa.update(WorkflowRun)
-                .where(WorkflowRun.id == run_id)
-                .values(status=WorkflowExecutionStatus(state), finished_at=None)
-            )
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(status=WorkflowExecutionStatus(state), finished_at=None)
+        )
     response = harness.claim()
     assert response.status_code == 400
     assert response.get_json()["details"]["failures"][0]["error"]["code"] == "migration_run_in_progress"
@@ -1519,14 +1352,11 @@ def test_guest_runs_wait_for_completion(harness: ClaimHarness, with_connections:
             session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
             == base.context.end_user_id
         )
-        if state == "starting":
-            session.execute(sa.update(Message).where(Message.id == message_id).values(status=MessageStatus.ERROR))
-        else:
-            session.execute(
-                sa.update(WorkflowRun)
-                .where(WorkflowRun.id == run_id)
-                .values(status=WorkflowExecutionStatus.SUCCEEDED, finished_at=datetime.now(UTC))
-            )
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(status=WorkflowExecutionStatus.SUCCEEDED, finished_at=datetime.now(UTC))
+        )
     result = harness.claim().get_json()["data"][0]
     assert (result["claimed_connections"], result["claimed_conversations"]) == (int(with_connections), 1)
 
@@ -1564,7 +1394,7 @@ def test_claim_rechecks_run_started_after_preflight(harness: ClaimHarness) -> No
         )
 
 
-def test_migrated_files_are_account_owned_without_history_grants(harness: ClaimHarness) -> None:
+def test_claim_transfers_persistent_file_ownership(harness: ClaimHarness) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom as AppInvokeFrom
     from core.app.entities.app_invoke_entities import UserFrom
     from core.app.file_access import DatabaseFileAccessController, FileAccessScope
@@ -1627,96 +1457,6 @@ def test_migrated_files_are_account_owned_without_history_grants(harness: ClaimH
     assert harness.claim().get_json()["data"][0]["claimed_conversations"] == 0
 
 
-def test_completion_bookkeeping_is_transferred_without_counting_chat_history(harness: ClaimHarness) -> None:
-    from models.model import AppModelConfig
-    from models.web import SavedMessage
-
-    base = harness.oauth.base
-    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
-    with base.sessions.begin() as session:
-        config = AppModelConfig(app_id=base.context.app_id)
-        session.add(config)
-        session.flush()
-        session.execute(
-            sa.update(App)
-            .where(App.id == base.context.app_id)
-            .values(mode=AppMode.COMPLETION, workflow_id=None, app_model_config_id=config.id)
-        )
-        session.execute(
-            sa.update(Conversation).where(Conversation.id == conversation_id).values(mode=AppMode.COMPLETION)
-        )
-    preview = harness.client.post("/api/migration/claimable-passports", json={"passports": [harness.guest_passport]})
-    assert preview.get_json()["data"][0]["conversation_count"] == 0
-    result = harness.claim().get_json()["data"][0]
-    assert result["status"] == "success"
-    assert result["claimed_conversations"] == 0
-    with base.sessions() as session:
-        assert (
-            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
-            == harness.account.end_user_id
-        )
-        assert (
-            session.scalar(sa.select(SavedMessage.created_by).where(SavedMessage.message_id == message_id))
-            == harness.account.end_user_id
-        )
-
-
-def test_late_tool_files_follow_migrated_conversation_owner(
-    harness: ClaimHarness, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from core.tools import tool_file_manager
-    from repositories.conversation_file_access import message_file_conversation_id
-
-    base = harness.oauth.base
-    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
-    assert harness.claim().status_code == 200
-    monkeypatch.setattr(tool_file_manager.session_factory, "create_session", base.sessions)
-    monkeypatch.setattr(tool_file_manager.storage, "save", lambda _key, _content: None)
-    with base.sessions() as session:
-        assert (
-            message_file_conversation_id(
-                session, tenant_id=base.context.tenant_id, message_id=message_id, user_id=base.context.end_user_id
-            )
-            == conversation_id
-        )
-        assert (
-            message_file_conversation_id(
-                session, tenant_id=str(uuid4()), message_id=message_id, user_id=base.context.end_user_id
-            )
-            is None
-        )
-    manager = tool_file_manager.ToolFileManager()
-    late = manager.create_file_by_raw(
-        tenant_id=base.context.tenant_id,
-        user_id=base.context.end_user_id,
-        conversation_id=None,
-        message_id=message_id,
-        file_binary=b"late result",
-        mimetype="text/plain",
-    )
-    assert late.user_id == harness.account.end_user_id
-    assert late.conversation_id == conversation_id
-    # A source without an accepted message in this conversation cannot inherit its target owner.
-    with base.sessions.begin() as session:
-        unrelated = EndUser(
-            tenant_id=base.context.tenant_id,
-            app_id=base.context.app_id,
-            type=EndUserType.BROWSER,
-            session_id=str(uuid4()),
-        )
-        session.add(unrelated)
-        session.flush()
-        unrelated_id = unrelated.id
-    foreign = manager.create_file_by_raw(
-        tenant_id=base.context.tenant_id,
-        user_id=unrelated_id,
-        conversation_id=conversation_id,
-        file_binary=b"unrelated",
-        mimetype="text/plain",
-    )
-    assert foreign.user_id == unrelated_id
-
-
 def test_claim_transfers_choices_without_transferring_app_authorization(harness: ClaimHarness) -> None:
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
@@ -1731,3 +1471,85 @@ def test_claim_transfers_choices_without_transferring_app_authorization(harness:
     assert service.get(harness.account, None).reauthorization_required
     save_choices(harness, harness.account, selected.id)
     assert not service.get(harness.account, None).reauthorization_required
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.AGENT])
+def test_migration_excludes_app_modes_without_supported_run_tracking(harness: ClaimHarness, mode: AppMode) -> None:
+    from models.end_user_connection import EndUserConnection
+    from models.model import AppModelConfig
+
+    base = harness.oauth.base
+    connection = base.service.create_api_key(base.context, base.command())
+    with base.sessions.begin() as session:
+        config = AppModelConfig(app_id=base.context.app_id)
+        session.add(config)
+        session.flush()
+        session.execute(
+            sa.update(App).where(App.id == base.context.app_id).values(mode=mode, app_model_config_id=config.id)
+        )
+    response = harness.client.post("/api/migration/claimable-passports", json={"passports": [harness.guest_passport]})
+    assert response.status_code == 200
+    assert response.get_json()["data"] == []
+    assert harness.claim().status_code == 400
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(EndUserConnection.end_user_id).where(EndUserConnection.id == connection.id))
+            == base.context.end_user_id
+        )
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_history_write_locks_are_skipped_without_account_login(
+    harness: ClaimHarness, monkeypatch: pytest.MonkeyPatch, enabled: bool
+) -> None:
+    from sqlalchemy.dialects import postgresql
+    from sqlalchemy.orm import ORMExecuteState
+
+    from configs import dify_config
+    from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
+    from services.conversation_service import ConversationService
+    from services.message_service import MessageService
+    from services.saved_message_service import SavedMessageActor
+
+    base = harness.oauth.base
+    conversation_id, message_id, _, _ = persist_migration_history(harness, base.context)
+    monkeypatch.setattr(dify_config, "WEBAPP_ACCOUNT_PASSPORT_ENABLED", enabled)
+    statements: list[str] = []
+
+    def record(state: ORMExecuteState) -> None:
+        if isinstance(state.statement, sa.sql.Select):
+            statements.append(str(state.statement.compile(dialect=postgresql.dialect())))
+
+    event.listen(Session, "do_orm_execute", record)
+    try:
+        with base.sessions() as session:
+            app = session.get(App, base.context.app_id)
+            guest = session.get(EndUser, base.context.end_user_id)
+            assert app is not None
+            assert guest is not None
+            ConversationService.get_conversation(app, conversation_id, guest, session=session, lock=True)
+            MessageService.get_message(app, guest, message_id, session=session, lock=True)
+        saved = SQLAlchemySavedMessageRepository(session_factory=base.sessions)
+        saved.delete(
+            app_id=base.context.app_id,
+            actor=SavedMessageActor.end_user(base.context.end_user_id),
+            message_id=message_id,
+        )
+        saved.save(
+            app_id=base.context.app_id,
+            actor=SavedMessageActor.end_user(base.context.end_user_id),
+            message_id=message_id,
+        )
+    finally:
+        event.remove(Session, "do_orm_execute", record)
+    assert any("FOR UPDATE" in statement for statement in statements) is enabled
+
+
+def test_preparation_without_an_admitted_run_does_not_block_claim(harness: ClaimHarness) -> None:
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    _, _, run_id, _ = persist_migration_history(harness, base.context)
+    with base.sessions.begin() as session:
+        session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == run_id))
+    assert harness.claim().status_code == 200

@@ -49,7 +49,6 @@ from graphon.variables.variables import Variable
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
-from repositories.conversation_access import lock_execution_history
 
 logger = logging.getLogger(__name__)
 
@@ -378,14 +377,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         :return: List of conversation variables ready for use
         """
         with create_session() as session, session.begin():
-            if self.application_generate_entity.invoke_from == InvokeFrom.WEB_APP:
-                lock_execution_history(
-                    session,
-                    tenant_id=self._workflow.tenant_id,
-                    app_id=self.conversation.app_id,
-                    conversation_id=self.conversation.id,
-                    end_user_id=self.application_generate_entity.user_id,
-                )
             existing_variables = self._load_existing_conversation_variables(session)
 
             if not existing_variables:

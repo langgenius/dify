@@ -15,7 +15,7 @@ from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
-from models.model import App, Conversation, EndUser, Message
+from models.model import App, AppMode, Conversation, EndUser, Message
 from repositories.conversation_access import conversation_owner_scope, message_owner_scope
 from repositories.conversation_lifecycle import retire_conversation
 from services.errors.conversation import (
@@ -133,7 +133,12 @@ class ConversationService:
         else:
             if name is None:
                 raise ValueError("name is required when auto_generate is false")
-            conversation = cls.get_conversation(app_model, conversation_id, user, session=session, lock=True)
+            if (
+                dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                and isinstance(user, EndUser)
+                and app_model.mode == AppMode.ADVANCED_CHAT
+            ):
+                conversation = cls.get_conversation(app_model, conversation_id, user, session=session, lock=True)
             conversation.name = name
             conversation.updated_at = naive_utc_now()
             session.commit()
@@ -171,7 +176,11 @@ class ConversationService:
                 query=message.query,
                 app_mode=app_model.mode,
             )
-        if user is not None:
+        if (
+            dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and isinstance(user, EndUser)
+            and app_model.mode == AppMode.ADVANCED_CHAT
+        ):
             conversation = cls.get_conversation(app_model, conversation.id, user, session=session, lock=True)
         if generated_name is not None:
             conversation.name = generated_name
@@ -199,7 +208,12 @@ class ConversationService:
         query = select(Conversation).where(
             Conversation.id == conversation_id, *conversation_owner_scope(app_model.id, user)
         )
-        if lock:
+        if (
+            lock
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and isinstance(user, EndUser)
+            and app_model.mode == AppMode.ADVANCED_CHAT
+        ):
             query = query.with_for_update()
         conversation = session.scalar(query.limit(1))
 
