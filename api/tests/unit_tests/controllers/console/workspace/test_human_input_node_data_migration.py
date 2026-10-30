@@ -588,7 +588,9 @@ def test_endpoint_preserves_auth_scope_decorators_and_rejects_before_service(
     )
     monkeypatch.setattr(wraps_module.dify_config, "RBAC_ENABLED", False)
 
-    edit_wrapped_handler = NodeDataMigrationAPI.post.__wrapped__.__wrapped__.__wrapped__
+    edit_wrapped_handler = NodeDataMigrationAPI.post
+    for _ in range(3):
+        edit_wrapped_handler = vars(edit_wrapped_handler)["__wrapped__"]
     with app.test_request_context(method="POST"), pytest.raises(Forbidden):
         edit_wrapped_handler(NodeDataMigrationAPI())
 
