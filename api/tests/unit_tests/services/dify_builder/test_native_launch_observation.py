@@ -39,3 +39,17 @@ def test_handled_metadata_failure_cannot_label_an_unrelated_later_error() -> Non
                 raise ConnectionRefusedError("private")
         assert observation.resource_for(caught.value) == ("model", "provider", "model")
         assert observation.resource_for(ValueError("unrelated input error")) is None
+
+
+def test_known_but_invalid_failure_node_does_not_attribute_other_same_provider_nodes() -> None:
+    import pytest
+
+    from services.dify_builder.native_launch_observation import observe_resource
+
+    graph = {"nodes": [{"id": "other", "data": {"type": "tool", "provider_id": "provider", "tool_name": "action"}}]}
+    observation = NativeLaunchObservation()
+    with observation.track():
+        with pytest.raises(ValueError, match="private") as caught:
+            with observe_resource("tool", "provider", "action", node_id="invalid node"):
+                raise ValueError("private")
+    assert observation.node_ids_for(caught.value, graph) == ()
