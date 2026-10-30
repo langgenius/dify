@@ -1044,13 +1044,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert set(files_by_id) == {"mf-1", "mf-2", "mf-3"}
 
             remote_file = files_by_id["mf-1"]
-            assert remote_file["transfer_method"] == FileTransferMethod.REMOTE_URL.value
+            assert remote_file["transfer_method"] == FileTransferMethod.REMOTE_URL
             assert remote_file["url"] == "http://example.com/a.png"
             assert remote_file["filename"] == "a.png"
             assert remote_file["remote_url"] == "http://example.com/a.png"
 
             local_file = files_by_id["mf-2"]
-            assert local_file["transfer_method"] == FileTransferMethod.LOCAL_FILE.value
+            assert local_file["transfer_method"] == FileTransferMethod.LOCAL_FILE
             assert local_file["url"] == "signed-url"
             assert local_file["filename"] == "local.png"
             assert local_file["mime_type"] == "image/png"
@@ -1059,7 +1059,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert local_file["upload_file_id"] == "upload-1"
 
             tool_file = files_by_id["mf-3"]
-            assert tool_file["transfer_method"] == FileTransferMethod.TOOL_FILE.value
+            assert tool_file["transfer_method"] == FileTransferMethod.TOOL_FILE
             assert tool_file["type"] == FileType.CUSTOM.value
             assert tool_file["url"] == "signed-tool"
             assert signed_upload_file_ids == ["upload-1"]
