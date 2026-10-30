@@ -24,7 +24,7 @@ invocations retain their previous execution and settlement owners.
    Source model types come from installed provider schemas, not the legacy
    environment parser's LLM placeholder. Missing or ambiguous schemas fail
    closed. Explicit deployment/base-model bindings retain their declared type.
-   Source schema digest, LLM mode, applicable paid/trial pools, type-specific
+   Source schema digest, LLM mode, original paid/trial provenance, type-specific
    operations and embedding dimensions remain mandatory compatibility gates.
 5. Use the same mapping registry on Core API and workers. Multiple revisions may
    coexist in the existing JSON array: uniqueness is scoped to
@@ -194,11 +194,22 @@ manifest, or the tenant's frozen mapping revision.
 
 The Billing preparation contracts separately authorize unexpired paid tenants
 under `paid-legacy-v1` and eligible legacy-free tenants under `free-legacy-v1`.
-An additional provider's PAID/TRIAL selection must remain within the tenant's
-migration eligibility and exact mapped pools; global hosting flags alone do not
-grant paid entitlement or issue money. Both mapped pools settle against the same
-managed Tokener organization, not an old credit balance. Availability metadata
-is not a grant. Independent FREE/unlimited quotas retain their existing behavior.
+After route publication, both cohorts use the same Tokener balance model policy:
+the union of enabled finite server HOSTED PAID/TRIAL models intersected with the
+tenant's frozen reviewed mappings and verified source schemas. Historical
+`current_quota_type` and mapping `pool_types` remain source/settlement provenance,
+not post-migration plan/model ACLs. Logical quota labels and zero-value metadata
+do not grant money. A subscription upgrade/downgrade does not rewrite the frozen
+mapping revision, source ownership or manifest. Insufficient balance is a Tokener
+error; never fall back to old credits or an unrelated key.
+
+This union requires an active route (or previously activated cancelled route)
+and the actual persisted Tokener profile in one tenant-scoped projection.
+Claimed/preparing/blocked states do not gain a new model entry, and existing
+processing/in-flight fences remain. Independent provider FREE and originally
+unlimited owners, explicit BYOK and unmigrated tenants retain their prior rules.
+The same source schema/digest/mode/type/operations and installed-target-version
+gates apply to prepared existing providers and providers added later.
 
 For an additional provider, the server admits SYSTEM shared-credit models only
 after checking enabled hosting policy, a verified Marketplace installation, the
@@ -211,8 +222,16 @@ must not break unrelated providers or explicit BYOK configurations.
 Publish a complete reviewed revision **before** selecting it for a migration,
 including supported providers that may be installed later. Retain historical
 revisions unchanged. A new registry revision does not silently expand an already
-migrated tenant's contract. An exact model name in a catalog is necessary but
-does not establish parameter, media, tool-call, or embedding compatibility.
+migrated tenant's contract. A source schema is mandatory but need not come from
+a static catalog: for a provider advertising customizable models, only exact
+frozen mapped candidates admitted by server hosting policy may perform a real
+UID-bound source schema lookup. Verified results are retained in private
+per-configuration evidence shared by availability, UI listing and invocation;
+the original provider catalog and user configuration are never rewritten.
+One failed candidate remains unavailable without removing verified static or
+other models, affecting BYOK, or creating negative capability evidence. No
+mapping means no dynamic lookup. A schema alone still does not establish media,
+tool-call, parameter, or embedding compatibility.
 
 Acceptance must distinguish these scenarios for every production credits model:
 
@@ -321,8 +340,20 @@ other-revision evidence preserve old hashes. Publish only with a new reviewed
 revision; never rewrite a prepared/active revision. Runtime routing does not
 consult this evidence and retains its original errors and no-fallback behavior.
 
-This negative evidence does not fix the separate positive dynamic-source gap
-for newly installed additional providers: existing additional-provider gates
-require installed static schemas. Mixed providers may dynamically resolve a
-non-catalog SYSTEM model; that requires a separate exact-mapping/schema
-admission design and must not be reported as covered by this mechanism.
+Negative evidence is never positive authorization. The separate published-route
+dynamic discovery path above requires an exact reviewed mapping and successful
+real source schema verification; it does not use negative declarations as a
+reason to admit a model. Offline tests of either mechanism are not runtime E2E.
+
+## Opt-in source TTS voice semantics
+
+New reviewed mappings may opt into `tts_source_voice_v1` revision `1` for the
+exact audited OpenAI source package/model. Preparation and invocation both
+verify the real source UID, schema digest, complete voices/default and rules
+digest. The source rules digest is frozen into the preparation inventory and
+the immutable invocation plan; target catalog defaults are not rewritten.
+Only this opt-in contract normalizes an empty/invalid voice to the source's
+default (or first source voice), preserving valid explicit voices. The actual
+source runtime dispatch UID must match the contract. Legacy `identity_v1`,
+native Tokener and explicit BYOK retain their existing behavior. No daemon
+business rule or automatic model alias is added.

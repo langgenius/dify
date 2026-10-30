@@ -26,6 +26,7 @@ from core.entities.provider_entities import (
     ModelSettings,
     ProviderQuotaType,
     QuotaUnit,
+    RestrictModel,
 )
 from core.hosting_configuration import FreeHostingQuota, HostingProvider, PaidHostingQuota, TrialHostingQuota
 from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
@@ -35,7 +36,7 @@ from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.base import TypeBase
 from models.provider import (
@@ -1523,6 +1524,7 @@ def provider_case(mocker: MockerFixture) -> Iterator[ProviderCase]:
     preferences: dict[str, SimpleNamespace] = {}
     state: dict[str, object] = {
         "phase": "active",
+        "persisted_model_billing_source": "tokener",
         "model_mapping_version": "old",
         "route_epoch": 3,
         "source_ownership": {},
@@ -1601,6 +1603,148 @@ def test_new_provider_without_rows_can_route_without_rewriting_financial_state(p
     provider_case.get_pool.assert_not_called()
 
 
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("previous_pool", ["paid", "trial"])
+def test_published_balance_unifies_hosted_models_without_mutating_history(
+    provider_case: ProviderCase, existing: bool, previous_pool: str
+) -> None:
+    paid, trial = schema("paid-only"), schema("trial-only")
+    provider_case.provider.models = [paid, trial]
+    provider_case.hosting[provider_case.provider.provider].quotas = [
+        PaidHostingQuota(restrict_models=[RestrictModel(model=paid.model, model_type=ModelType.LLM)]),
+        TrialHostingQuota(restrict_models=[RestrictModel(model=trial.model, model_type=ModelType.LLM)]),
+    ]
+    if existing:
+        provider_case.state["source_ownership"] = {
+            provider_case.provider.provider: {
+                "current_quota_type": previous_pool,
+                "quotas": {previous_pool: {"unmetered": False}},
+            },
+        }
+    provider_case.state["manifest"] = {"immutable": "original-funded-slots"}
+    before = deepcopy(provider_case.state)
+    registry = [mapping(paid, pool_types=["paid"]), mapping(trial, pool_types=["trial"])]
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps(registry)):
+        configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert configuration is not None
+        for quota in configuration.system_configuration.quota_configurations:
+            assert {r.model for r in quota.restrict_models} == {"paid-only", "trial-only"}
+            assert (quota.quota_limit, quota.quota_used, quota.is_valid) == (0, 0, False)
+        assert configuration.system_configuration.credentials is None
+        assert {model.model for model in configuration.get_provider_models()} == {"paid-only", "trial-only"}
+        for model in ("paid-only", "trial-only"):
+            credentials = configuration.get_current_credentials(ModelType.LLM, model)
+            assert isinstance(credentials, RoutedModelCredentials)
+            assert credentials.plan.mapping_revision == "old"
+    assert provider_case.state == before
+    provider_case.get_pool.assert_not_called()
+    provider_case.init_records.assert_not_called()
+    assert not provider_case.preferences
+
+
+@pytest.mark.parametrize("profile", [None, "legacy_message_credits", "invalid"])
+def test_phase_without_persisted_tokener_profile_cannot_obtain_managed_route(
+    provider_case: ProviderCase, profile: str | None
+) -> None:
+    provider_case.state["persisted_model_billing_source"] = profile
+    configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert configuration is not None
+    with pytest.raises(ModelRouteUnavailable):
+        configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize(
+    "case", ["valid", "rpc_error", "wrong_identity", "digest", "operations", "byok", "changed_uid"]
+)
+def test_published_dynamic_schema_uses_bound_gateway_without_mutating_catalog(
+    provider_case: ProviderCase, mocker: MockerFixture, existing: bool, case: str
+) -> None:
+    from core.plugin.impl.model import PluginModelClient
+    from core.plugin.impl.model_runtime import PluginModelRuntime
+    from core.plugin.plugin_service import PluginService
+
+    source = schema("dynamic")
+    provider_case.provider.configurate_methods.append(ConfigurateMethod.CUSTOMIZABLE_MODEL)
+    if existing:
+        provider_case.state["source_ownership"] = {
+            provider_case.provider.provider: {"current_quota_type": "trial", "quotas": {"trial": {"unmetered": False}}},
+        }
+    source_before = provider_case.provider.model_dump()
+    state_before = deepcopy(provider_case.state)
+    hosting = provider_case.hosting[provider_case.provider.provider]
+    hosting.quotas = [
+        PaidHostingQuota(
+            restrict_models=[
+                RestrictModel(model=model, model_type=ModelType.LLM)
+                for model in ("gpt-4o", "dynamic", "unmapped-dynamic")
+            ]
+        )
+    ]
+    original_credentials = deepcopy(hosting.credentials)
+    candidate = mapping(source, pool_types=["trial"])
+    if case == "digest":
+        candidate["source_schema_digest"] = "sha256:" + "c" * 64
+    elif case == "operations":
+        candidate["operations"] = ["model/schema"]
+    if case == "byok":
+        provider_case.preferences[provider_case.provider.provider] = SimpleNamespace(
+            preferred_provider_type=ProviderType.CUSTOM
+        )
+    gateway = Mock(spec=PluginModelClient)
+    calls: list[dict[str, object]] = []
+
+    def resolve(**kwargs: object) -> AIModelEntity:
+        credentials = kwargs["credentials"]
+        assert isinstance(credentials, dict)
+        calls.append({**kwargs, "credentials": dict(credentials)})
+        if case in {"rpc_error", "byok"}:
+            raise RuntimeError("source lookup unavailable")
+        return schema("wrong") if case == "wrong_identity" else source
+
+    gateway.get_model_schema.side_effect = resolve
+    runtime = PluginModelRuntime(TENANT_ID, None, gateway, PluginService)
+    runtime.bind_provider_schema(provider_case.provider)
+    provider_case.manager._model_runtime = runtime
+    mocker.patch("core.plugin.impl.model_runtime.redis_client.get", return_value=None)
+    mocker.patch("core.plugin.impl.model_runtime.redis_client.setex")
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([mapping(), candidate])):
+        configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert configuration is not None
+        if case == "operations":
+            assert calls == []
+        else:
+            assert len(calls) == 1
+            assert calls[0]["plugin_unique_identifier"] == provider_case.provider.plugin_unique_identifier
+            assert calls[0]["model"] == "dynamic"
+            assert calls[0]["model_type"] == "llm"
+            assert calls[0]["credentials"] == original_credentials
+        if case == "byok":
+            assert configuration.using_provider_type == ProviderType.CUSTOM
+            assert configuration.get_current_credentials(ModelType.LLM, "dynamic") == {"api_key": "USER_SECRET"}
+        else:
+            assert isinstance(configuration.get_current_credentials(ModelType.LLM, "gpt-4o"), RoutedModelCredentials)
+            if case == "changed_uid":
+                configuration.provider = configuration.provider.model_copy(
+                    update={"plugin_unique_identifier": "changed"}
+                )
+            if case == "valid":
+                assert isinstance(
+                    configuration.get_current_credentials(ModelType.LLM, "dynamic"), RoutedModelCredentials
+                )
+                assert "dynamic" in {model.model for model in configuration.get_provider_models()}
+                source.model = "mutated-after-discovery"
+                assert configuration.system_configuration._tokener_source_schemas[0].model == "dynamic"
+            else:
+                with pytest.raises(ModelRouteUnmapped):
+                    configuration.get_current_credentials(ModelType.LLM, "dynamic")
+        assert "_tokener_source_schemas" not in configuration.system_configuration.model_dump()
+        assert {model.model for model in provider_case.provider.models} == {"gpt-4o"}
+    assert provider_case.provider.model_dump() == source_before
+    assert provider_case.state == state_before
+    assert hosting.credentials == original_credentials
+
+
 def test_unmapped_provider_is_local_and_explicit_byok_still_works(provider_case: ProviderCase) -> None:
     unmapped = provider_case.provider.model_copy(deep=True, update={"provider": "langgenius/anthropic/anthropic"})
     provider_case.providers.append(unmapped)
@@ -1659,10 +1803,17 @@ def test_new_hosted_default_does_not_change_other_provider_selection(
     elif hosting_kind == "unverified":
         mocker.patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=False)
     elif hosting_kind == "existing":
-        provider_case.state["source_ownership"] = {provider_case.provider.provider: {"current_quota_type": "paid"}}
+        provider_case.state["source_ownership"] = {
+            provider_case.provider.provider: {"current_quota_type": "paid", "quotas": {"paid": {"unmetered": False}}}
+        }
     with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON="[]"):
         configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
         assert configuration is not None
+        if hosting_kind == "existing":
+            assert configuration.using_provider_type == ProviderType.SYSTEM
+            with pytest.raises(ModelRouteUnmapped):
+                configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+            return
         assert configuration.using_provider_type == ProviderType.CUSTOM
         assert configuration.get_current_credentials(ModelType.LLM, "gpt-4o") == {"api_key": "USER_SECRET"}
 

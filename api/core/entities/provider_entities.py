@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum, auto
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from core.entities.parameter_entities import (
     AppSelectorScope,
@@ -12,7 +12,7 @@ from core.entities.parameter_entities import (
     ToolSelectorScope,
 )
 from core.tools.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 
 class ProviderQuotaType(StrEnum):
@@ -89,6 +89,10 @@ class SystemConfiguration(BaseModel):
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
     credentials: dict[str, Any] | None = Field(default=None)
+    # Request-scoped, server-verified schema evidence, never serialized as
+    # provider configuration or persisted into the source catalog.
+    _tokener_source_schemas: tuple[AIModelEntity, ...] = PrivateAttr(default=())
+    _tokener_source_plugin_unique_identifier: str | None = PrivateAttr(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):

@@ -23,14 +23,18 @@ from core.entities.provider_entities import (
 )
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider_ids import ModelProviderID
 from services.entities.model_billing_mapping import ModelMapping
+from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
 from services.model_billing_retirement_policy import ModelRetirementPolicy, resolve_retirement_policy
 from services.model_billing_source_capability_policy import SourceCapabilityDeclaration
 from services.model_billing_source_capability_policy import (
     resolve_source_capability_policy as resolve_source_capability_policy,  # noqa: PLC0414
 )
+from services.model_billing_tts_adapter import TTSVoiceContract as TTSVoiceContract  # noqa: PLC0414
+from services.model_billing_tts_adapter import build_tts_voice_contract as build_tts_voice_contract  # noqa: PLC0414
+from services.model_billing_tts_adapter import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
 
 type SourceIdentity = tuple[ModelType, str]
 type MappingIdentity = tuple[str, ModelType, str]
@@ -47,22 +51,49 @@ def migration_policy_allows_empty_sources(eligibility_policy_version: str | None
     return eligibility_policy_version == "free-legacy-v1"
 
 
-def model_schema_digest(schema: AIModelEntity) -> str:
-    """Hash the same complete source contract during preparation and late admission."""
-    return (
-        "sha256:"
-        + hashlib.sha256(
-            json.dumps(
-                schema.model_dump(mode="json"), sort_keys=True, separators=(",", ":"), ensure_ascii=False
-            ).encode()
-        ).hexdigest()
-    )
-
-
 def provider_has_prepared_ownership(provider: str, state: dict[str, Any]) -> bool:
     """Only a missing key is a new provider; malformed provenance is never upgraded."""
     ownership = state.get("source_ownership")
     return not isinstance(ownership, dict) or str(ModelProviderID(provider)) in ownership
+
+
+def uses_published_tokener_balance(state: dict[str, Any] | None) -> bool:
+    """Only a published route plus the persisted cohort removes old pool ACLs."""
+    return bool(
+        state
+        and state.get("persisted_model_billing_source") == "tokener"
+        and (
+            state.get("phase") == "active"
+            or state.get("phase") == "cancelled"
+            and state.get("ever_activated") is True
+            and state.get("claimed_at") is not None
+        )
+    )
+
+
+def validate_prepared_provider_provenance(provider: str, state: dict[str, Any]) -> None:
+    """Validate historical facts without treating their chosen pool as an ACL."""
+    ownership = state.get("source_ownership")
+    if not isinstance(ownership, dict):
+        raise ValueError("Invalid source ownership")
+    provider_id = str(ModelProviderID(provider))
+    if provider_id not in ownership:
+        return
+    record = ownership[provider_id]
+    if not isinstance(record, dict) or record.get("current_quota_type") not in {"paid", "trial", "free"}:
+        raise ValueError("Invalid source ownership")
+    quotas = record.get("quotas")
+    if (
+        not isinstance(quotas, dict)
+        or record["current_quota_type"] not in quotas
+        or any(
+            name not in {"paid", "trial", "free"}
+            or not isinstance(quota, dict)
+            or not isinstance(quota.get("unmetered"), bool)
+            for name, quota in quotas.items()
+        )
+    ):
+        raise ValueError("Invalid source ownership")
 
 
 def has_finite_hosted_credit_pool(hosting: HostingProvider) -> bool:
@@ -94,15 +125,88 @@ def additional_model_is_authorized(
         for schema in installed_models
         if (schema.model_type, schema.model) == (mapping.source.model_type, mapping.source.model)
     ]
+    return len(schemas) == 1 and source_schema_matches_mapping(schemas[0], mapping)
+
+
+def source_schema_matches_mapping(schema: AIModelEntity, mapping: ModelMapping) -> bool:
     return (
-        len(schemas) == 1
-        and model_schema_digest(schemas[0]) == mapping.source_schema_digest
+        (schema.model_type, schema.model) == (mapping.source.model_type, mapping.source.model)
+        and model_schema_digest(schema) == mapping.source_schema_digest
         and mapping_has_required_operations(mapping)
         and (
-            mapping.source.model_type != ModelType.LLM
-            or schemas[0].model_properties.get(ModelPropertyKey.MODE) == mapping.source.mode
+            schema.model_type != ModelType.LLM
+            or schema.model_properties.get(ModelPropertyKey.MODE) == mapping.source.mode
         )
     )
+
+
+def managed_source_schemas(system: SystemConfiguration, provider: ProviderEntity) -> tuple[AIModelEntity, ...]:
+    """Return catalog plus only evidence bound to the same source installation."""
+    selected = next(
+        (quota for quota in system.quota_configurations if quota.quota_type == system.current_quota_type), None
+    )
+    extra = (
+        system._tokener_source_schemas
+        if selected is not None
+        and selected.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
+        and selected.quota_limit != -1
+        and selected.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
+        and system._tokener_source_plugin_unique_identifier is not None
+        and system._tokener_source_plugin_unique_identifier == getattr(provider, "plugin_unique_identifier", None)
+        else ()
+    )
+    return (*provider.models, *extra)
+
+
+@dataclass(frozen=True)
+class HostedSourceSchemaCandidate:
+    mapping: ModelMapping
+    # None preserves original provider credentials, rather than inventing a deployment.
+    base_model_name: str | None
+
+
+def mapped_dynamic_source_candidates(
+    *, provider: ProviderEntity, hosting: HostingProvider, raw_registry: str, revision: str
+) -> tuple[HostedSourceSchemaCandidate, ...]:
+    """Plan bounded source lookups; this policy never performs RPC or inference."""
+    if (
+        not hosting.enabled
+        or hosting.quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
+        or ConfigurateMethod.CUSTOMIZABLE_MODEL not in provider.configurate_methods
+    ):
+        return ()
+    try:
+        registry = mappings_for_revision(raw_registry, revision)
+    except ValueError:
+        return ()
+    installed = {(schema.model_type, schema.model) for schema in provider.models}
+    candidates = []
+    for (provider_id, kind, model), rule in registry.items():
+        if (
+            provider_id != str(ModelProviderID(provider.provider))
+            or (kind, model) in installed
+            or kind not in provider.supported_model_types
+            or not mapping_has_required_operations(rule)
+        ):
+            continue
+        bindings: set[str | None] = set()
+        for pool in hosting.quotas:
+            if pool.quota_type not in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL} or (
+                isinstance(pool, TrialHostingQuota) and pool.quota_limit == -1
+            ):
+                continue
+            if not pool.restrict_models:
+                bindings.add(None)
+            for restricted in pool.restrict_models:
+                if restricted.model == model and (
+                    restricted.model_type == kind
+                    or restricted.model_type == ModelType.LLM
+                    and restricted.base_model_name is None
+                ):
+                    bindings.add(restricted.base_model_name)
+        if len(bindings) == 1:
+            candidates.append(HostedSourceSchemaCandidate(rule, next(iter(bindings))))
+    return tuple(candidates)
 
 
 def mapping_has_required_operations(mapping: ModelMapping) -> bool:
@@ -134,6 +238,30 @@ class HostedCompatibilityAvailability:
     current_quota_type: ProviderQuotaType
 
 
+def published_original_quotas(
+    provider: str, quotas: Sequence[QuotaConfiguration], state: dict[str, Any]
+) -> tuple[list[QuotaConfiguration], ProviderQuotaType | None]:
+    """Close old finite balances while preserving original independent owners."""
+    validate_prepared_provider_provenance(provider, state)
+    record = state["source_ownership"].get(str(ModelProviderID(provider)))
+    owned_quotas = record["quotas"] if record is not None else {}
+    result = []
+    for original in quotas:
+        quota = original.model_copy(deep=True)
+        if quota.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}:
+            unmetered = owned_quotas.get(quota.quota_type.value, {}).get("unmetered", quota.quota_limit == -1)
+            quota.quota_limit = -1 if unmetered else 0
+            quota.quota_used = 0
+            quota.is_valid = bool(unmetered)
+        result.append(quota)
+    preserve = None
+    if record is not None:
+        selected = ProviderQuotaType(record["current_quota_type"])
+        if selected == ProviderQuotaType.FREE or owned_quotas[selected.value]["unmetered"]:
+            preserve = selected
+    return result, preserve
+
+
 def additional_hosted_availability(
     *,
     provider: str,
@@ -142,8 +270,10 @@ def additional_hosted_availability(
     original_quotas: Sequence[QuotaConfiguration],
     raw_registry: str,
     revision: str,
+    published_balance: bool = False,
+    preserve_independent_pool: ProviderQuotaType | None = None,
 ) -> HostedCompatibilityAvailability | None:
-    """Admit a newly installed trusted provider using explicit, frozen contracts.
+    """Build trusted hosted availability using explicit, frozen contracts.
 
     The caller must verify Marketplace provenance and the installed signature.
     No old wallet or migration manifest is changed. Each finite pool exposes
@@ -152,6 +282,9 @@ def additional_hosted_availability(
     authorize a model. Invalid or absent contracts make this provider unavailable
     without preventing an unrelated provider or an explicit BYOK from loading.
     Independent provider-free and originally unlimited quota semantics survive.
+    Published balance mode serves both prepared and additional providers: finite
+    PAID/TRIAL hosting lists are one model set, not legacy wallet entitlements.
+    False retains the pre-publication per-pool behavior without expanding it.
     """
     if not hosting.enabled:
         return None
@@ -180,7 +313,8 @@ def additional_hosted_availability(
                 rule = registry.get((provider_id, schema.model_type, schema.model))
                 if (
                     rule is None
-                    or pool.quota_type not in rule.pool_types
+                    or not published_balance
+                    and pool.quota_type not in rule.pool_types
                     or not mapping_has_required_operations(rule)
                     or model_schema_digest(schema) != rule.source_schema_digest
                     or schema.model_type == ModelType.LLM
@@ -206,6 +340,23 @@ def additional_hosted_availability(
                         restrict_models=restrictions,
                     )
                 )
+    if published_balance:
+        union = {
+            (restricted.model_type, restricted.model): restricted
+            for quota in quotas
+            if quota.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL} and quota.quota_limit != -1
+            for restricted in quota.restrict_models
+        }
+        for quota in quotas:
+            if quota.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL} and quota.quota_limit != -1:
+                quota.restrict_models = [union[identity] for identity in sorted(union)]
+        if preserve_independent_pool is not None and any(
+            quota.quota_type == preserve_independent_pool
+            and quota.is_valid
+            and (quota.quota_type == ProviderQuotaType.FREE or quota.quota_limit == -1)
+            for quota in quotas
+        ):
+            return HostedCompatibilityAvailability(quotas, preserve_independent_pool)
     # Preserve the ordinary paid > free > trial selection if a real preexisting
     # row is valid. In particular a free pool must not displace an available
     # paid pool, and an originally unlimited pool must never become billable.

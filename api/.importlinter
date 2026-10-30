@@ -1339,6 +1339,23 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:model-billing-source-tts-adapter-boundary]
+name = Source TTS voice adapter is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_tts_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:model-billing-free-migration-controller-boundary]
 name = Migration control transport reaches persistence through application owners
 type = forbidden

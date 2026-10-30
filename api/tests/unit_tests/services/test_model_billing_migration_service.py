@@ -1298,6 +1298,7 @@ def test_routing_projection_does_not_materialize_control_status(
         "provisioned_binding",
         "source_ownership",
         "ever_activated",
+        "persisted_model_billing_source",
     }
     assert state["phase"] == "prepared"
 

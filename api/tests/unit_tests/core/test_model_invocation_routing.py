@@ -411,15 +411,24 @@ def configuration(
     limit: int = 100,
     provider_type: ProviderType = ProviderType.SYSTEM,
 ) -> ProviderConfiguration:
+    from tests.unit_tests.services.test_model_billing_mapping_service import schema
+
     return ProviderConfiguration.model_construct(
         tenant_id=plan().tenant_id,
-        provider=ProviderEntity.model_construct(provider="langgenius/openai/openai", models=[]),
+        provider=ProviderEntity.model_construct(provider="langgenius/openai/openai", models=[schema()]),
         using_provider_type=provider_type,
         system_configuration=SystemConfiguration(
             enabled=True,
             current_quota_type=pool,
             quota_configurations=[
-                QuotaConfiguration(quota_type=pool, quota_unit=unit, quota_limit=limit, quota_used=100, is_valid=False)
+                QuotaConfiguration(
+                    quota_type=pool,
+                    quota_unit=unit,
+                    quota_limit=limit,
+                    quota_used=100,
+                    is_valid=False,
+                    restrict_models=[RestrictModel(model="gpt-4o", model_type=ModelType.LLM)],
+                )
             ],
         ),
     )
@@ -472,7 +481,10 @@ def test_byok_free_unmetered_do_not_query_migration_or_redirect(
 
 
 def test_active_missing_mapping_fails_without_legacy_fallback(mocker: MockerFixture) -> None:
-    mocker.patch("core.model_invocation_routing.migration_routing_state", return_value={"phase": "active"})
+    mocker.patch(
+        "core.model_invocation_routing.migration_routing_state",
+        return_value={"phase": "active", "persisted_model_billing_source": "tokener"},
+    )
     mocker.patch("core.model_invocation_routing.model_mappings", return_value={})
     with pytest.raises(ModelRouteUnmapped):
         routed_credentials(configuration(), ModelType.LLM, "gpt-4o")
@@ -937,6 +949,89 @@ def test_plain_dict_cannot_construct_trusted_route_capability() -> None:
         LegacyModelCredentials({"api_key": "key"}, {"route_epoch": 0})
 
 
+@pytest.mark.parametrize("case", ["valid", "identity", "wrong_uid", "wrong_rules"])
+def test_tts_route_and_preparation_bind_the_same_verified_source_contract(
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    from core.model_invocation_routing import migration_inventory
+    from core.plugin.entities.plugin import PluginInstallationSource
+    from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, system
+    from tests.unit_tests.services.test_model_billing_tts_adapter import contract_for, source_schema
+
+    source = source_schema()
+    contract = contract_for(source)
+    record = mapping(source, revision="voice-v1", target=source.model)
+    if case != "identity":
+        record["parameter_adapter"] = {
+            "id": contract.adapter_id,
+            "revision": contract.algorithm_revision,
+            "rules_digest": "sha256:" + "f" * 64 if case == "wrong_rules" else contract.rules_digest,
+        }
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([record]),
+        TOKENER_LEGACY_RETIRED_MODELS_JSON="[]",
+        TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON="[]",
+    )
+    provider = ProviderConfiguration(
+        tenant_id=plan().tenant_id,
+        provider=PluginModelProviderDeclaration(
+            provider=contract.source_provider,
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.TTS],
+            configurate_methods=[],
+            models=[source],
+            installation_source=PluginInstallationSource.Marketplace,
+            plugin_unique_identifier="wrong" if case == "wrong_uid" else contract.source_plugin_unique_identifier,
+        ),
+        preferred_provider_type=ProviderType.SYSTEM,
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=system([RestrictModel(model=source.model, model_type=ModelType.TTS)]),
+        custom_configuration=CustomConfiguration(provider=None),
+        model_settings=[],
+    )
+    configurations = ProviderConfigurations(tenant_id=provider.tenant_id)
+    configurations.configurations[contract.source_provider] = provider
+    manager = InventoryProviderManager(configurations)
+    mocker.patch("core.plugin.impl.model_runtime_factory.create_plugin_provider_manager", return_value=manager)
+    mocker.patch(
+        "core.model_invocation_routing.migration_routing_state",
+        return_value={
+            "phase": "active",
+            "persisted_model_billing_source": "tokener",
+            "route_epoch": 3,
+            "model_mapping_version": "voice-v1",
+            "preparation": credential_pin(),
+            "source_ownership": {},
+        },
+    )
+    session = Mock()
+    session.scalar.return_value = SimpleNamespace(
+        status="ready",
+        provider_credential_id=plan().credential_id,
+        plugin_unique_identifier=plan().plugin_unique_identifier,
+    )
+    mocker.patch("core.model_invocation_routing.session_factory.create_session", return_value=nullcontext(session))
+    if case in {"wrong_uid", "wrong_rules"}:
+        with pytest.raises(ModelRouteUnmapped):
+            migration_inventory(provider.tenant_id, "voice-v1")
+        with pytest.raises(ModelRouteUnmapped):
+            routed_credentials(provider, ModelType.TTS, source.model)
+        session.scalar.assert_not_called()
+        return
+    inventory = migration_inventory(provider.tenant_id, "voice-v1")
+    credentials = routed_credentials(provider, ModelType.TTS, source.model)
+    assert credentials is not None
+    if case == "identity":
+        assert credentials.plan.tts_voice_contract is None
+        assert "source_adapter_rules_digest" not in inventory["models"][0]
+    else:
+        assert credentials.plan.tts_voice_contract == contract
+        assert inventory["models"][0]["source_adapter_rules_digest"] == contract.rules_digest
+        assert credentials.plan.cache_identity != replace(credentials.plan, tts_voice_contract=None).cache_identity
+
+
 def test_llm_inventory_is_real_strict_canonical_json_without_null_dimension(mocker: MockerFixture) -> None:
     import hashlib
 
@@ -964,6 +1059,7 @@ def test_llm_inventory_is_real_strict_canonical_json_without_null_dimension(mock
         mapping_revision="fixture-v1",
         pool_types=["paid"],
         source_schema_digest=digest,
+        parameter_adapter=SimpleNamespace(id="identity_v1"),
         operations=plan().operations,
         source=SimpleNamespace(mode="chat"),
         target=SimpleNamespace(model="fixture-target"),
@@ -1001,9 +1097,12 @@ def test_migration_lookup_failure_is_sanitized_and_never_opens_legacy(mocker: Mo
 @pytest.mark.parametrize("ever_activated", [False, True])
 def test_cancelled_route_requires_explicit_activation(mocker: MockerFixture, ever_activated: bool) -> None:
     from core.model_invocation_routing import migration_display_status
+    from services.entities.model_billing_mapping import ModelMapping
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
 
     state = {
         "phase": "cancelled",
+        "persisted_model_billing_source": "tokener",
         "claimed_at": "2026-09-28T00:00:00Z",
         "ever_activated": ever_activated,
         "route_epoch": 3,
@@ -1016,11 +1115,8 @@ def test_cancelled_route_requires_explicit_activation(mocker: MockerFixture, eve
     mocker.patch(
         "core.model_invocation_routing.model_mappings",
         return_value={
-            (plan().logical_provider, ModelType.LLM, "gpt-4o"): SimpleNamespace(
-                pool_types=["paid"],
-                mapping_revision="fixture-v1",
-                operations=list(plan().operations),
-                target=SimpleNamespace(model="fixture-target"),
+            (plan().logical_provider, ModelType.LLM, "gpt-4o"): ModelMapping.model_validate(
+                mapping(schema(), revision="fixture-v1", target="fixture-target", pool_types=["paid"])
             ),
         },
     )

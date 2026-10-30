@@ -1798,9 +1798,11 @@ class ProviderConfiguration(BaseModel):
         :param model_setting_map: model setting map
         :return:
         """
+        from core.model_invocation_routing import managed_source_schemas
+
         provider_models = []
         for model_type in model_types:
-            for m in provider_schema.models:
+            for m in managed_source_schemas(self.system_configuration, provider_schema):
                 if m.model_type != model_type:
                     continue
                 if model and m.model != model:

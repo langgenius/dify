@@ -35,18 +35,22 @@ from services.entities.model_billing_mapping import MappingTarget as MappingTarg
 from services.entities.model_billing_mapping import ModelMapping as ModelMapping  # noqa: PLC0414
 from services.entities.model_billing_mapping import ParameterAdapter as ParameterAdapter  # noqa: PLC0414
 from services.model_billing_mapping_service import (
+    TTSVoiceContract,
     additional_model_is_authorized,
+    build_tts_voice_contract,
     hosted_migration_sources,
+    managed_source_schemas,
     mapping_supports_installed_plugin,
     mappings_for_revision,
     migration_policy_allows_empty_sources,
     model_schema_digest,
     partition_hosted_migration_sources,
     partition_known_unavailable_sources,
-    provider_has_prepared_ownership,
     resolve_source_capability_policy,
     retirement_policy_for_revision,
+    uses_published_tokener_balance,
 )
+from services.model_billing_mapping_service import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
 
 if TYPE_CHECKING:
     from core.entities.provider_configuration import ProviderConfiguration
@@ -182,6 +186,7 @@ class FrozenModelInvocation:
     target_model: str
     operations: tuple[str, ...]
     settlement_backend: str = "tokener"
+    tts_voice_contract: TTSVoiceContract | None = None
 
     @property
     def cache_identity(self) -> str:
@@ -195,6 +200,15 @@ class FrozenModelInvocation:
             self.target_model,
             self.model_type.value,
         ]
+        if self.tts_voice_contract is not None:
+            identity.extend(
+                [
+                    self.tts_voice_contract.adapter_id,
+                    self.tts_voice_contract.source_plugin_unique_identifier,
+                    self.tts_voice_contract.source_schema_digest,
+                    self.tts_voice_contract.rules_digest,
+                ]
+            )
         return hashlib.sha256(json.dumps(identity, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -304,6 +318,7 @@ def validate_invocation_admission(
         or (state.get("phase") == "cancelled" and not state.get("ever_activated"))
         or int(state["route_epoch"]) != binding.route_epoch
         or state.get("model_mapping_version") != credentials.plan.mapping_revision
+        or not uses_published_tokener_balance(state)
     ):
         raise ModelInvocationReprepare
 
@@ -325,22 +340,47 @@ def routed_credentials(
         or (state.get("phase") == "cancelled" and not state.get("ever_activated"))
     ):
         raise ModelMigrationProcessing
+    if not uses_published_tokener_balance(state):
+        # A phase flag alone is not publication authority. Never expand model
+        # access or reopen a legacy credential while the persisted cohort is missing.
+        raise ModelRouteUnavailable
     provider = str(ModelProviderID(configuration.provider.provider))
     mapping_version = state.get("model_mapping_version")
     if not isinstance(mapping_version, str):
         raise ModelRouteUnmapped
     mapping = model_mappings(mapping_version).get((provider, model_type, model))
-    if mapping is None or configuration.system_configuration.current_quota_type not in mapping.pool_types:
+    if mapping is None:
         raise ModelRouteUnmapped
     if state.get("model_mapping_version") != mapping.mapping_revision:
         raise ModelRouteUnmapped
-    additional_provider = not provider_has_prepared_ownership(provider, state)
-    if additional_provider and not additional_model_is_authorized(
+    source_schemas = managed_source_schemas(configuration.system_configuration, configuration.provider)
+    if not additional_model_is_authorized(
         system=configuration.system_configuration,
-        installed_models=configuration.provider.models,
+        installed_models=source_schemas,
         mapping=mapping,
     ):
         raise ModelRouteUnmapped
+    tts_voice_contract = None
+    if mapping.parameter_adapter.id != "identity_v1":
+        matching_sources = [
+            schema for schema in source_schemas if (schema.model_type, schema.model) == (model_type, model)
+        ]
+        source_uid = getattr(configuration.provider, "plugin_unique_identifier", None)
+        if len(matching_sources) != 1 or not isinstance(source_uid, str):
+            raise ModelRouteUnmapped
+        try:
+            tts_voice_contract = build_tts_voice_contract(
+                adapter_id=mapping.parameter_adapter.id,
+                adapter_revision=mapping.parameter_adapter.revision,
+                expected_rules_digest=mapping.parameter_adapter.rules_digest,
+                source_provider=provider,
+                source_model=model,
+                source_plugin_unique_identifier=source_uid,
+                source_schema=matching_sources[0],
+                expected_source_schema_digest=mapping.source_schema_digest,
+            )
+        except ValueError:
+            raise ModelRouteUnmapped from None
     with session_factory.create_session() as session:
         integration = session.scalar(
             select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == configuration.tenant_id)
@@ -352,7 +392,7 @@ def routed_credentials(
             or not integration.plugin_unique_identifier
         ):
             raise ModelRouteUnavailable
-        if additional_provider and not mapping_supports_installed_plugin(mapping, integration.plugin_unique_identifier):
+        if not mapping_supports_installed_plugin(mapping, integration.plugin_unique_identifier):
             raise ModelRouteUnavailable
         expected_credential_fingerprint = _pinned_credential_fingerprint(
             state,
@@ -372,6 +412,7 @@ def routed_credentials(
             plugin_unique_identifier=integration.plugin_unique_identifier,
             target_model=mapping.target.model,
             operations=tuple(mapping.operations),
+            tts_voice_contract=tts_voice_contract,
         )
     return RoutedModelCredentials(plan)
 
@@ -657,6 +698,26 @@ def migration_inventory(
             }
             if model_type == ModelType.TEXT_EMBEDDING:
                 item["embedding_dimensions"] = embedding_dimensions_contract(source_schema)
+            if rule.parameter_adapter.id != "identity_v1":
+                source_uid = getattr(configuration.provider, "plugin_unique_identifier", None)
+                if not isinstance(source_uid, str):
+                    raise ModelRouteUnmapped
+                try:
+                    contract = build_tts_voice_contract(
+                        adapter_id=rule.parameter_adapter.id,
+                        adapter_revision=rule.parameter_adapter.revision,
+                        expected_rules_digest=rule.parameter_adapter.rules_digest,
+                        source_provider=str(source_id),
+                        source_model=model,
+                        source_plugin_unique_identifier=source_uid,
+                        source_schema=source_schema,
+                        expected_source_schema_digest=rule.source_schema_digest,
+                    )
+                except ValueError:
+                    raise ModelRouteUnmapped from None
+                if contract is None:
+                    raise ModelRouteUnmapped
+                item["source_adapter_rules_digest"] = contract.rules_digest
             inventory.append(item)
     if (
         not inventory

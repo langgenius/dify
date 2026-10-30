@@ -30,7 +30,9 @@ from services.model_billing_mapping_service import (
     model_schema_digest,
     partition_hosted_migration_sources,
     provider_has_prepared_ownership,
+    published_original_quotas,
     retirement_policy_for_revision,
+    uses_published_tokener_balance,
 )
 
 
@@ -47,6 +49,83 @@ def schema(model: str = "gpt-4o", model_type: ModelType = ModelType.LLM) -> AIMo
         model_type=model_type,
         fetch_from=FetchFrom.PREDEFINED_MODEL,
         model_properties={ModelPropertyKey.MODE: "chat"} if model_type == ModelType.LLM else {},
+    )
+
+
+@pytest.mark.parametrize(
+    ("selected", "unmetered", "free_valid"), [("free", False, True), ("free", False, False), ("trial", True, True)]
+)
+def test_published_balance_preserves_independent_owner_not_old_shared_wallet(
+    selected: str, unmetered: bool, free_valid: bool
+) -> None:
+    from core.hosting_configuration import FreeHostingQuota
+
+    original = [
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.PAID,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=200,
+            quota_used=0,
+            is_valid=True,
+        ),
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.FREE,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=20,
+            quota_used=0 if free_valid else 20,
+            is_valid=free_valid,
+        ),
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.TRIAL,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=200,
+            quota_used=0,
+            is_valid=True,
+        ),
+    ]
+    state = {
+        "source_ownership": {
+            "langgenius/openai/openai": {
+                "current_quota_type": selected,
+                "quotas": {
+                    "paid": {"unmetered": False},
+                    "trial": {"unmetered": unmetered},
+                    "free": {"unmetered": False},
+                },
+            }
+        }
+    }
+    before = deepcopy(state)
+    normalized, preserved = published_original_quotas("langgenius/openai/openai", original, state)
+    assert normalized[0].quota_limit == 0
+    assert normalized[0].is_valid is False
+    assert original[0].quota_limit == 200
+    assert original[0].is_valid is True
+    result = additional_hosted_availability(
+        provider="langgenius/openai/openai",
+        hosting=HostingProvider(
+            enabled=True,
+            quota_unit=QuotaUnit.CREDITS,
+            quotas=[PaidHostingQuota(), TrialHostingQuota(), FreeHostingQuota()],
+        ),
+        installed_models=[schema()],
+        original_quotas=normalized,
+        raw_registry=json.dumps([mapping()]),
+        revision="old",
+        published_balance=True,
+        preserve_independent_pool=preserved,
+    )
+    assert result is not None
+    assert result.current_quota_type == (
+        ProviderQuotaType.TRIAL if unmetered else ProviderQuotaType.FREE if free_valid else ProviderQuotaType.PAID
+    )
+    assert state == before
+
+
+@pytest.mark.parametrize("phase", ["preparing", "prepared", "claimed", "granting", "activating", "blocked"])
+def test_prepublish_phase_never_enables_balance_model_union(phase: str) -> None:
+    assert not uses_published_tokener_balance(
+        {"phase": phase, "persisted_model_billing_source": "tokener", "ever_activated": True}
     )
 
 
@@ -696,6 +775,7 @@ def test_active_tenant_selects_its_own_revision_and_freezes_it(mocker: MockerFix
     )
     state = {
         "phase": "active",
+        "persisted_model_billing_source": "tokener",
         "model_mapping_version": revision,
         "route_epoch": 1,
         "preparation": {
@@ -713,8 +793,8 @@ def test_active_tenant_selects_its_own_revision_and_freezes_it(mocker: MockerFix
     mocker.patch("core.model_invocation_routing.session_factory.create_session", return_value=nullcontext(session))
     config = Mock(
         tenant_id="tenant",
-        provider=SimpleNamespace(provider="openai"),
-        system_configuration=system(),
+        provider=SimpleNamespace(provider="openai", models=[schema()]),
+        system_configuration=system([RestrictModel(model="gpt-4o", model_type=ModelType.LLM)]),
         using_provider_type=ProviderType.SYSTEM,
     )
     credentials = routed_credentials(config, ModelType.LLM, "gpt-4o")
@@ -736,7 +816,7 @@ def test_active_revision_missing_cannot_fall_forward_to_new(mocker: MockerFixtur
     mocker.patch.object(dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps([mapping(revision="new")]))
     mocker.patch(
         "core.model_invocation_routing.migration_routing_state",
-        return_value={"phase": "active", "model_mapping_version": "old"},
+        return_value={"phase": "active", "model_mapping_version": "old", "persisted_model_billing_source": "tokener"},
     )
     session = mocker.patch("core.model_invocation_routing.session_factory.create_session")
     with pytest.raises(ModelRouteUnmapped):

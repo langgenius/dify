@@ -718,6 +718,7 @@ class ProviderManager:
         from services.model_billing_mapping_service import (
             has_finite_hosted_credit_pool,
             provider_has_prepared_ownership,
+            uses_published_tokener_balance,
         )
 
         routing_state = migration_routing_state(tenant_id)
@@ -775,7 +776,10 @@ class ProviderManager:
                 not preferred_provider_type_record
                 and compatibility_route
                 and routing_state is not None
-                and not provider_has_prepared_ownership(provider_name, routing_state)
+                and (
+                    uses_published_tokener_balance(routing_state)
+                    or not provider_has_prepared_ownership(provider_name, routing_state)
+                )
                 and provider_hosting is not None
                 and has_finite_hosted_credit_pool(provider_hosting)
                 and isinstance(provider_entity, PluginModelProviderDeclaration)
@@ -1566,7 +1570,12 @@ class ProviderManager:
         )
         from services.model_billing_mapping_service import (
             additional_hosted_availability,
+            has_finite_hosted_credit_pool,
+            mapped_dynamic_source_candidates,
             provider_has_prepared_ownership,
+            published_original_quotas,
+            source_schema_matches_mapping,
+            uses_published_tokener_balance,
         )
 
         routing_state = migration_routing_state(tenant_id)
@@ -1678,14 +1687,55 @@ class ProviderManager:
             and routing_state is not None
             and not provider_has_prepared_ownership(provider_entity.provider, routing_state)
         )
-        if additional_provider:
+        published_balance = uses_published_tokener_balance(routing_state) and has_finite_hosted_credit_pool(
+            provider_hosting_configuration
+        )
+        preserve_independent_pool = None
+        if published_balance and routing_state is not None:
+            try:
+                quota_configurations, preserve_independent_pool = published_original_quotas(
+                    provider_entity.provider, quota_configurations, routing_state
+                )
+            except ValueError:
+                from core.model_invocation_routing import ModelRouteUnavailable
+
+                raise ModelRouteUnavailable from None
+        resolved_source_schemas = []
+        if published_balance and routing_state is not None:
+            for candidate in mapped_dynamic_source_candidates(
+                provider=provider_entity,
+                hosting=provider_hosting_configuration,
+                raw_registry=dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON,
+                revision=routing_state.get("model_mapping_version", ""),
+            ):
+                source_credentials = dict(provider_hosting_configuration.credentials or {})
+                if candidate.base_model_name is not None:
+                    source_credentials["base_model_name"] = candidate.base_model_name
+                try:
+                    source_schema = self._model_runtime.get_model_schema(
+                        provider=provider_entity.provider,
+                        model_type=candidate.mapping.source.model_type,
+                        model=candidate.mapping.source.model,
+                        credentials=source_credentials,
+                    )
+                    if source_schema is not None and source_schema_matches_mapping(source_schema, candidate.mapping):
+                        resolved_source_schemas.append(source_schema.model_copy(deep=True))
+                except Exception:
+                    # This candidate remains unavailable, not proven unsupported.
+                    # Never discard verified static/other models or leak the key.
+                    continue
+                finally:
+                    source_credentials.clear()
+        if additional_provider or published_balance:
             availability = additional_hosted_availability(
                 provider=provider_entity.provider,
                 hosting=provider_hosting_configuration,
-                installed_models=provider_entity.models,
+                installed_models=[*provider_entity.models, *resolved_source_schemas],
                 original_quotas=quota_configurations,
                 raw_registry=dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON,
                 revision=routing_state.get("model_mapping_version", "") if routing_state is not None else "",
+                published_balance=published_balance,
+                preserve_independent_pool=preserve_independent_pool,
             )
             if availability is None:
                 return SystemConfiguration(enabled=False)
@@ -1699,7 +1749,7 @@ class ProviderManager:
             current_quota_type = self._choice_current_using_quota_type(quota_configurations)
 
         current_using_credentials = provider_hosting_configuration.credentials
-        if additional_provider and any(
+        if (additional_provider or published_balance) and any(
             quota.quota_type == current_quota_type
             and quota.quota_type != ProviderQuotaType.FREE
             and quota.quota_limit != -1
@@ -1755,12 +1805,15 @@ class ProviderManager:
                 current_using_credentials = {}
                 quota_configurations = []
 
-        return SystemConfiguration(
+        result = SystemConfiguration(
             enabled=True,
             current_quota_type=current_quota_type,
             quota_configurations=quota_configurations,
             credentials=current_using_credentials,
         )
+        result._tokener_source_schemas = tuple(resolved_source_schemas)
+        result._tokener_source_plugin_unique_identifier = plugin_provider_entity.plugin_unique_identifier
+        return result
 
     @staticmethod
     def _choice_current_using_quota_type(quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
