@@ -254,3 +254,45 @@ def test_generated_configured_tool_preserves_authorized_selection_and_user_descr
     assert config["credential_id"] == credential.id
     assert config["desc"] == "User description: notify the support channel."
     assert draft_tools.forbidden == []
+
+
+@pytest.mark.parametrize("lookup_failed", [False, True])
+def test_tool_setup_failure_retains_exact_node_and_bounded_reason(
+    draft_tools: DraftToolInventory, lookup_failed: bool
+) -> None:
+    from core.tools.errors import ToolProviderCredentialValidationError
+    from services.dify_builder.native_launch_observation import NativeLaunchObservation, begin_preparation
+    from services.dify_builder.trace_diagnostics import failure_reason
+    from services.tools.draft_tool_setup import admit_draft_tool_setup
+
+    if lookup_failed:
+        with draft_tools.engine.begin() as connection:
+            connection.execute(text("DROP TABLE tool_builtin_providers"))
+    graph = {
+        "nodes": [
+            {"id": "first", "data": {"type": "tool", "provider_id": AUTH_PROVIDER, "tool_name": "post"}},
+            {"id": "second", "data": {"type": "tool", "provider_id": AUTH_PROVIDER, "tool_name": "post"}},
+        ]
+    }
+    observation = NativeLaunchObservation()
+    with observation.track():
+        begin_preparation()
+        with pytest.raises(ToolProviderCredentialValidationError) as caught:
+            admit_draft_tool_setup(tenant_id=TENANT_ID, graph=graph, actor_id=ACCOUNT_A)
+    assert observation.resource_for(caught.value) == ("tool", AUTH_PROVIDER, "post")
+    assert observation.node_ids_for(caught.value, graph) == ("first",)
+    assert failure_reason(caught.value) == (
+        "authorization_lookup_failed" if lookup_failed else "credential_unavailable"
+    )
+    assert draft_tools.forbidden == []
+
+
+def test_credentialless_tool_remains_usable_without_credential_metadata_table(draft_tools: DraftToolInventory) -> None:
+    from services.tools.draft_tool_setup import admit_draft_tool_setup
+    from tests.unit_tests.services.dify_builder.draft_tool_inventory import FREE_PROVIDER
+
+    with draft_tools.engine.begin() as connection:
+        connection.execute(text("DROP TABLE tool_builtin_providers"))
+    graph = {"nodes": [{"id": "free", "data": {"type": "tool", "provider_id": FREE_PROVIDER, "tool_name": "echo"}}]}
+    admit_draft_tool_setup(tenant_id=TENANT_ID, graph=graph, actor_id=ACCOUNT_A)
+    assert draft_tools.forbidden == []

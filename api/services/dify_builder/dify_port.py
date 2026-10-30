@@ -1854,7 +1854,9 @@ class WorkflowServiceDifyPort:
         pending_pause_event = None
         preparation_failure = None
         failed_resource = None
-        from services.dify_builder.native_launch_observation import NativeLaunchObservation, resource_node_ids
+        failed_node_ids = ()
+        recognized_resource_errors: dict[str, str] = {}
+        from services.dify_builder.native_launch_observation import NativeLaunchObservation
 
         if launch:
             observation = NativeLaunchObservation()
@@ -1938,12 +1940,17 @@ class WorkflowServiceDifyPort:
                         if native_id:
                             self._bind_full_native_id(reservation.id, native_id)
                             stream_run_id = native_id
+                        from services.dify_builder.execution_messages import sanitize_resource_failure_event
+
+                        presentation_payload = sanitize_resource_failure_event(
+                            payload, graph=graph, recognized_errors=recognized_resource_errors
+                        )
                         if on_workflow_event is not None:
                             if agent_context is not None and payload.get("event") == "workflow_paused":
                                 pending_pause_event = payload
                             else:
-                                on_workflow_event(payload)
-                        node_event = node_event_from_stream_chunk(payload)
+                                on_workflow_event(presentation_payload)
+                        node_event = node_event_from_stream_chunk(presentation_payload)
                         if node_event is not None:
                             on_event(node_event)
                             continue
@@ -1957,7 +1964,14 @@ class WorkflowServiceDifyPort:
                 if observation.failed_before_dispatch:
                     preparation_failure = trace_diagnostics.failure_reason(exc)
                     failed_resource = observation.resource_for(exc)
-                    trace_diagnostics.report("native_preparation_failed", error=exc)
+                    failed_node_ids = observation.node_ids_for(exc, graph)
+                    trace_diagnostics.report(
+                        "native_preparation_failed",
+                        error=exc,
+                        provider=failed_resource[1] if failed_resource else None,
+                        model=failed_resource[2] if failed_resource and failed_resource[0] == "model" else None,
+                        node_id=failed_node_ids[0] if len(failed_node_ids) == 1 else None,
+                    )
                 else:
                     trace_diagnostics.report("native_outcome_unknown", error=exc)
                 # A dispatch/stream exception cannot prove that no effect ran.
@@ -2041,9 +2055,11 @@ class WorkflowServiceDifyPort:
             )
         determinate = bool(run.dify_run_id) and run.status in {"succeeded", "failed"}
         prepared_failure = preparation_failure is not None and not run.dify_run_id
-        from services.dify_builder.native_runtime_failure import plugin_service_failure
+        from services.dify_builder.native_runtime_failure import native_resource_failure
 
-        runtime_failure = plugin_service_failure(run, native_graph) if isinstance(native_graph, Mapping) else None
+        runtime_failure = (
+            native_resource_failure(run, native_graph) if determinate and isinstance(native_graph, Mapping) else None
+        )
         run.verification.execution_evidence = ExecutionEvidenceSummary(
             request_id=reservation.id,
             policy_version="builder-confirmed-run-v1",
@@ -2062,21 +2078,14 @@ class WorkflowServiceDifyPort:
             sandbox_profile="native",
             native_run_id=run.dify_run_id or None,
             failure_resource=failed_resource if prepared_failure else runtime_failure[0] if runtime_failure else None,
-            failure_node_ids=(
-                resource_node_ids(graph, failed_resource)
-                if prepared_failure
-                else runtime_failure[1]
-                if runtime_failure
-                else ()
-            ),
+            failure_node_ids=(failed_node_ids if prepared_failure else runtime_failure[1] if runtime_failure else ()),
             failure_phase="preparation" if prepared_failure else "execution" if runtime_failure else None,
-            failure_reason=preparation_failure
-            if prepared_failure
-            else "service_unavailable"
-            if runtime_failure
-            else None,
+            failure_reason=preparation_failure if prepared_failure else runtime_failure[2] if runtime_failure else None,
         )
         bound = self._bind_run(result, app_id, actor, before_revision, before_graph_revision, restricted=False)
+        from services.dify_builder.execution_messages import sanitize_observed_failure
+
+        bound = sanitize_observed_failure(bound)
         # Pending attempts keep the original revision/mock facts for a later
         # native-row recovery. A terminal snapshot survives a lost Builder CAS.
         if determinate or prepared_failure:

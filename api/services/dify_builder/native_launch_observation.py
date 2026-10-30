@@ -19,6 +19,8 @@ class NativeLaunchObservation:
     preparing: bool = False
     dispatched: bool = False
     failure_resource: FailureResource | None = None
+    failure_node_id: str | None = None
+    _resource_node_observed: bool = field(default=False, repr=False)
     _resource_error: Exception | None = field(default=None, repr=False)
 
     def resource_for(self, error: Exception) -> FailureResource | None:
@@ -30,6 +32,14 @@ class NativeLaunchObservation:
                 return self.failure_resource
             current = current.__cause__ or current.__context__
         return None
+
+    def node_ids_for(self, error: Exception, graph: dict) -> tuple[str, ...]:
+        resource = self.resource_for(error)
+        if resource is None:
+            return ()
+        if self._resource_node_observed:
+            return (self.failure_node_id,) if self.failure_node_id in resource_node_ids(graph, resource) else ()
+        return resource_node_ids(graph, resource)
 
     @contextmanager
     def track(self) -> Generator[None]:
@@ -62,11 +72,13 @@ def mark_dispatched() -> None:
 
 
 def _public_id(value: str) -> bool:
-    return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_./:@+-]{0,127}", value))
+    return "://" not in value and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_./:@+-]{0,127}", value))
 
 
 @contextmanager
-def observe_resource(kind: Literal["model", "tool"], provider: str, name: str = "") -> Generator[None]:
+def observe_resource(
+    kind: Literal["model", "tool"], provider: str, name: str = "", *, node_id: object = None
+) -> Generator[None]:
     """Attribute only a failed metadata read, never successful earlier reads."""
     try:
         yield
@@ -87,6 +99,8 @@ def observe_resource(kind: Literal["model", "tool"], provider: str, name: str = 
                 )
         if observation is not None and _public_id(provider) and (not name or _public_id(name)):
             observation.failure_resource = (kind, provider, name)
+            observation._resource_node_observed = node_id is not None
+            observation.failure_node_id = node_id if isinstance(node_id, str) and _public_id(node_id) else None
             observation._resource_error = exc
         raise
 
