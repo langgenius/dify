@@ -3,7 +3,8 @@
 Reuses the pooled client, auth header, and connection retry of `services.billing_service`.
 Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
 any other non-200 status or an enforced response that fails model validation raises
-`BillingUpstreamInvalidResponseError`.
+`BillingUpstreamInvalidResponseError`. For a non-200 status, the error carries the status
+code and the parsed Kratos error body, so callers can branch on its `reason`.
 
 Response validation is observed before it is enforced. For a path not in
 `ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
@@ -28,8 +29,13 @@ import httpx
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
-from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UpstreamErrorBody,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +55,12 @@ ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
         "/quota/release",
         "/quota/balance",
         "/quota/consume-capped",
+        # Network access replies already required validation and gate access control.
+        "/tenants/{tenant_id}/network-access-groups",
+        "/tenants/{tenant_id}/network-access-groups/{group_id}",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group/status",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group-binding",
     }
 )
 
@@ -70,6 +82,7 @@ class Upstream(StrEnum):
     BILLING = "billing"
     BILLING_QUOTA = "billing_quota"
     SAAS = "saas"
+    NETWORK_ACCESS = "network_access"
 
 
 class BillingModel(BaseModel):
@@ -82,6 +95,8 @@ def _base_url(upstream: Upstream) -> str:
     billing_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     if upstream == Upstream.BILLING_QUOTA:
         return os.environ.get("BILLING_QUOTA_API_URL") or billing_url
+    if upstream == Upstream.NETWORK_ACCESS:
+        return (dify_config.NETWORK_ACCESS_API_URL.strip() or billing_url).rstrip("/")
     return billing_url
 
 
@@ -119,9 +134,10 @@ def request[ResponseT: BillingModel](
 
     if response.status_code != httpx.codes.OK:
         message = f"{method} {path} returned {response.status_code}"
-        if response.status_code in _UNAVAILABLE_STATUSES or response.status_code >= 500:
-            raise BillingUpstreamUnavailableError(message)
-        raise BillingUpstreamInvalidResponseError(message)
+        status_code, error_body = response.status_code, _error_body(response)
+        if status_code in _UNAVAILABLE_STATUSES or status_code >= 500:
+            raise BillingUpstreamUnavailableError(message, status_code=status_code, body=error_body)
+        raise BillingUpstreamInvalidResponseError(message, status_code=status_code, body=error_body)
 
     invalid_body = f"{method} {path} returned an invalid body"
     try:
@@ -135,6 +151,13 @@ def request[ResponseT: BillingModel](
             raise BillingUpstreamInvalidResponseError(invalid_body) from error
         logger.exception("Billing response failed validation: %s %s", method, path)
         return _salvage_model(response_model, payload)
+
+
+def _error_body(response: httpx.Response) -> UpstreamErrorBody | None:
+    try:
+        return UpstreamErrorBody.model_validate_json(response.content)
+    except ValidationError:
+        return None
 
 
 def _salvage_model[ModelT: BillingModel](model: type[ModelT], payload: Mapping[str, Any]) -> ModelT:

@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "a0b548cf3020d490a8b7fad21dfbb66b72fa0ed6",
+  "x-dify-saas-commit": "16c5186fecc57e802bf69673f58093bf0dcb77c2",
   "paths": {
     "/v1/subscription/info": {
       "get": {

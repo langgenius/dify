@@ -36,6 +36,7 @@ def _source_spec() -> generator.JsonObject:
                         "members": {"$ref": f"{PREFIX}Quota"},
                         "usage_unknown": {"type": "boolean", "nullable": True},
                         "tags": {"type": "array", "items": {"type": "string"}},
+                        "renewed_at": {"type": "string", "format": "date-time"},
                     },
                 },
                 "dify.saas.api.billing.Quota": {"type": "object", "properties": {"limit": {"type": "integer"}}},
@@ -74,7 +75,7 @@ def test_snapshot_marks_presence_from_protojson_rules() -> None:
     ]
 
     # Proto3 optional fields are omitted when unset, so only they stay out of required.
-    assert schema["required"] == ["plan", "paid_period_end", "members", "tags"]
+    assert schema["required"] == ["plan", "paid_period_end", "members", "tags", "renewed_at"]
     assert schema["properties"]["members"] == {"allOf": [{"$ref": "#/components/schemas/Quota"}], "nullable": True}
     assert "nullable" not in schema["properties"]["plan"]
 
@@ -89,8 +90,22 @@ def test_rendered_module_types_fields_and_operations() -> None:
     assert "paid_period_end: int\n" in source
     assert "members: Quota | None\n" in source
     assert "usage_unknown: bool | None = None\n" in source
+    assert "renewed_at: datetime\n" in source
     assert "def subscription_get_subscription_info() -> GetSubscriptionInfoReply:" in source
     assert '"/subscription/info",' in source
+
+
+def test_long_operation_docstring_is_wrapped() -> None:
+    allowed = generator.AllowedOperation("GET", f"/v1/subscription/{'x' * 80}", "BILLING")
+    operation = {
+        "operationId": "BillingSubscription_GetSubscriptionInfo",
+        "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Reply"}}}}},
+    }
+
+    lines = generator.render_operation("billing", allowed, operation)
+
+    assert lines[1] == f'    """GET {allowed.path}\n\n    BillingSubscription_GetSubscriptionInfo\n    """'
+    assert all(len(line) <= generator.LINE_LENGTH for line in "\n".join(lines).splitlines())
 
 
 @pytest.mark.usefixtures("subscription_info_only")
@@ -102,7 +117,7 @@ def test_upstream_required_message_field_is_non_null() -> None:
     schema = snapshot["components"]["schemas"]["GetSubscriptionInfoReply"]
 
     assert schema["properties"]["members"] == {"$ref": "#/components/schemas/Quota"}
-    assert schema["required"] == ["plan", "paid_period_end", "members", "tags"]
+    assert schema["required"] == ["plan", "paid_period_end", "members", "tags", "renewed_at"]
     assert "members: Quota\n" in generator.render_module("billing", snapshot)
 
 
