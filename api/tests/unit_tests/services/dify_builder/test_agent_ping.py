@@ -1,10 +1,10 @@
-from types import SimpleNamespace
-
 import pytest
 
 from core.dify_builder.models import Inputs
+from core.model_manager import ModelInstance
 from extensions.application_services import dify_builder_cognition_policy as policy
 from services.dify_builder.agent import ping
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 MC = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {"temperature": 0.0, "stop": ["x"]}}
 
@@ -12,11 +12,11 @@ MC = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params
 def test_ping_success(monkeypatch: pytest.MonkeyPatch) -> None:
     captured = {}
 
-    instance = SimpleNamespace(provider="openai", model_name="gpt-4o")
+    instance = make_model_instance(provider="openai", model="gpt-4o")
 
     def fake_resolve(
         tenant_id: str, model_config: Inputs | None, *, account_id: str, app_id: str | None
-    ) -> SimpleNamespace:
+    ) -> ModelInstance:
         assert (tenant_id, model_config, account_id, app_id) == ("t1", MC, "account", None)
         return instance
 
@@ -44,9 +44,9 @@ def test_ping_success(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_ping_default_model_no_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    def resolve(tenant_id: str, model_config: Inputs | None, *, account_id: str, app_id: str | None) -> SimpleNamespace:
+    def resolve(tenant_id: str, model_config: Inputs | None, *, account_id: str, app_id: str | None) -> ModelInstance:
         assert (tenant_id, model_config, account_id, app_id) == ("t1", None, "account", None)
-        return SimpleNamespace(provider="anthropic", model_name="claude-sonnet-5")
+        return make_model_instance(provider="anthropic", model="claude-sonnet-5")
 
     monkeypatch.setattr(policy, "guarded_cognition_model", resolve)
     monkeypatch.setattr(
