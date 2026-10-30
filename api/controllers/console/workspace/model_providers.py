@@ -238,7 +238,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
@@ -263,7 +263,7 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            raise ValueError(str(ex)) from ex
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -400,10 +400,10 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
         # pyrefly: ignore [deprecated]
-        data = BillingService.get_model_provider_payment_link(
+        link = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,
             account_id=current_user.id,
             prefilled_email=current_user.email,
         )
-        return dump_response(ModelProviderPaymentCheckoutUrlResponse, data)
+        return dump_response(ModelProviderPaymentCheckoutUrlResponse, {"payment_link": link.url})

@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Разрешение на доступ",
   "accessRule.actions": "Действия",
-  "accessRule.addMemberAria": "Добавить {{name}}",
   "accessRule.addMembersTitle": "Добавить участников",
   "accessRule.agentDescription": "Управляйте доступом к этому агенту и правами пользователей.",
   "accessRule.agentTitle": "Набор прав агента",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "По правам роли",
   "accessRule.deleteDescription": "Это правило доступа будет безвозвратно удалено и исключено из списка авторизации ресурса.",
   "accessRule.deleteTitle": "Удалить \"{{name}}\"?",
-  "accessRule.deleted": "Правило доступа успешно удалено",
   "accessRule.exceptionPermissionFor": "Исключение из прав для {{name}}",
   "accessRule.expandSection": "Развернуть {{title}}",
   "accessRule.maintainer": "Сопровождающий",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" назначена {{count}} участникам. Хотите, чтобы копия новой роли включала тех же участников?",
   "role.copyMembersLoading": "Загрузка назначений участников...",
   "role.copyMembersTitle": "Скопировать назначения участников?",
-  "role.created": "Роль успешно создана",
   "role.deleteDescription": "Эта роль будет безвозвратно удалена и исключена из всех участников и правил доступа, которые ее используют.",
   "role.deleteTitle": "Удалить \"{{name}}\"?",
-  "role.deleted": "Роль успешно удалена",
-  "role.duplicated": "Роль успешно продублирована",
   "role.groups.builtin": "Системные роли",
   "role.groups.custom": "Пользовательские роли",
   "role.loading": "Загрузка ролей...",
@@ -104,7 +99,6 @@
   "role.noDescription": "Без описания",
   "role.noMatchingRoles": "Нет подходящих ролей",
   "role.searchPlaceholder": "Поиск ролей...",
-  "role.updated": "Роль успешно обновлена",
   "role.workspaceRoles.description": "Создавайте роли и определяйте, что каждая роль может делать в этом рабочем пространстве.",
   "role.workspaceRoles.title": "Роли рабочего пространства"
 }

@@ -5,7 +5,7 @@ import ssl
 import sys
 from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Protocol, Union, cast, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 import redis
 from redis import RedisError
@@ -46,6 +46,17 @@ class _ScriptRegistrar(Protocol):
     def register_script(self, script: str) -> Callable[..., Any]: ...
 
 
+_INCR_IF_EXISTS_LUA = """
+-- Exactly 1 key and no arguments.
+-- KEYS[1]: Existing integer counter key, including the deployment prefix.
+-- Returns the incremented integer, or nil (Lua false) if the key is missing.
+-- INCR preserves TTL; checking existence atomically avoids recreating an
+-- expired/deleted counter without an expiry.
+if redis.call('EXISTS', KEYS[1]) == 0 then return false end
+return redis.call('INCR', KEYS[1])
+"""
+
+
 class RedisClientWrapper:
     """
     A wrapper class for the Redis client that addresses the issue where the global
@@ -67,12 +78,12 @@ class RedisClientWrapper:
                            if the client is not initialized.
     """
 
-    _client: Union[redis.Redis, RedisCluster, None]
+    _client: redis.Redis | RedisCluster | None
 
     def __init__(self) -> None:
         self._client = None
 
-    def initialize(self, client: Union[redis.Redis, RedisCluster]) -> None:
+    def initialize(self, client: redis.Redis | RedisCluster) -> None:
         if self._client is None:
             self._client = client
 
@@ -149,6 +160,9 @@ class RedisClientWrapper:
     def ttl(self, name: str | bytes) -> Any:
         return self._require_client().ttl(_serialize_redis_name_arg(name, self._get_prefix()))
 
+    def pttl(self, name: str | bytes) -> Any:
+        return self._require_client().pttl(_serialize_redis_name_arg(name, self._get_prefix()))
+
     def getdel(self, name: str | bytes) -> Any:
         return self._require_client().getdel(_serialize_redis_name_arg(name, self._get_prefix()))
 
@@ -172,6 +186,13 @@ class RedisClientWrapper:
 
     def hset(self, name: str | bytes, *args: Any, **kwargs: Any) -> Any:
         return self._require_client().hset(_serialize_redis_name_arg(name, self._get_prefix()), *args, **kwargs)
+
+    def incr_if_exists(self, name: str) -> int | None:
+        """Increment an existing integer counter, preserving TTL; return None if absent."""
+        count = self.eval(_INCR_IF_EXISTS_LUA, 1, _serialize_redis_name(name, self._get_prefix()))
+        if count is not None and not isinstance(count, int):
+            raise ValueError("Invalid Redis counter response")
+        return count
 
     def hgetall(self, name: str | bytes) -> Any:
         return self._require_client().hgetall(_serialize_redis_name_arg(name, self._get_prefix()))
@@ -210,6 +231,9 @@ class RedisClientWrapper:
             lt=lt,
         )
 
+    def zrem(self, name: str | bytes, *values: str | bytes | int | float) -> Any:
+        return self._require_client().zrem(_serialize_redis_name_arg(name, self._get_prefix()), *values)
+
     def zremrangebyscore(self, name: str | bytes, min: float | str, max: float | str) -> Any:
         return self._require_client().zremrangebyscore(_serialize_redis_name_arg(name, self._get_prefix()), min, max)
 
@@ -218,6 +242,11 @@ class RedisClientWrapper:
 
     def pubsub(self) -> PubSub:
         return self._require_client().pubsub()
+
+    def eval(self, script: str, numkeys: int, *args: str | int) -> Any:
+        # Lua callers supply physical names, matching the historically delegated API.
+        # Redis script responses are dynamically shaped at this SDK boundary.
+        return self._require_client().execute_command("EVAL", script, numkeys, *args)
 
     def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
         return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)
@@ -293,7 +322,7 @@ class RedisBaseParamsDict(TypedDict):
     socket_keepalive_options: dict[int, int]
 
 
-def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
+def _get_ssl_configuration() -> tuple[type[Connection | SSLConnection], dict[str, Any]]:
     """Get SSL configuration for Redis connection."""
     if not dify_config.REDIS_USE_SSL:
         return Connection, {}
@@ -410,7 +439,7 @@ def _parse_redis_nodes(value: str) -> list[tuple[str, int]]:
     return nodes
 
 
-def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
+def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> redis.Redis | RedisCluster:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
         raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
@@ -443,7 +472,7 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
     return master
 
 
-def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
+def _create_cluster_client() -> redis.Redis | RedisCluster:
     """Create Redis cluster client."""
     if not dify_config.REDIS_CLUSTERS:
         raise ValueError("REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True")
@@ -463,7 +492,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     return cluster
 
 
-def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
+def _create_standalone_client(redis_params: RedisBaseParamsDict) -> redis.Redis | RedisCluster:
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
 

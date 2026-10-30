@@ -22,6 +22,9 @@ class DifyHITLEventType(StrEnum):
 
 
 class HumanInputRequired(BaseModel):
+    # The referenced form determines its storage owner; this is not an entity version.
+    # Clients use it to choose the matching submission API.
+    form_version: Literal["1", "2"] = "1"
     TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     form_content: str

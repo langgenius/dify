@@ -13,9 +13,7 @@ import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { login } from '@/service/common'
-import { consoleQuery } from '@/service/console'
-import { setWebAppAccessToken } from '@/service/webapp-auth'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -52,15 +50,8 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
       }
       if (isInvite)
         loginData.invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
-      const res = await login({
-        url: '/login',
-        body: loginData,
-      })
+      const res = await consoleClient.login.post({ body: loginData })
       if (res.result === 'success') {
-        if (res?.data?.access_token) {
-          // Track login success event
-          setWebAppAccessToken(res.data.access_token)
-        }
         trackEvent('user_login_success', {
           method: 'email_password',
           is_invite: isInvite,

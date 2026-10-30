@@ -1,14 +1,21 @@
 import json
+from datetime import datetime
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.dialects import mysql, postgresql, sqlite
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.credential_permission import CredentialPermission, CredentialType
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, PermissionEnum
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
-from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
+from repositories.data_source.credential_repository import (
+    SQLAlchemyDatasourceCredentialRepository,
+    _update_datasource_credentials_if_unchanged,
+)
 from services.data_source.entities.credential import DatasourceCredentialRecord
 
 
@@ -104,6 +111,33 @@ def _notion_source(*, workspace_id: str, credential_id: str | None) -> tuple[Dat
         created_by="owner-1",
     )
     return dataset, document
+
+
+@pytest.mark.parametrize("source_info", ["{", "[]"])
+def test_stored_document_with_invalid_source_info_cannot_select_credential(
+    sqlite_session_factory: sessionmaker[Session], source_info: str
+) -> None:
+    repository = SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        credential = _provider()
+        session.add(credential)
+        session.flush()
+        credential_id = credential.id
+        dataset, document = _notion_source(workspace_id="workspace-1", credential_id=credential_id)
+        document.data_source_info = source_info
+        session.add_all([dataset, document])
+
+    assert (
+        repository.get_for_stored_document(
+            workspace_id="workspace-1",
+            dataset_id="dataset-1",
+            document_id="document-1",
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+        )
+        is None
+    )
 
 
 def test_get_visible_scopes_workspace_provider_plugin_and_actor(
@@ -338,6 +372,45 @@ def test_update_if_unchanged_persists_refreshed_snapshot(
         assert stored.encrypted_credentials == {"integration_secret": "new"}
         assert stored.expires_at == 100
         assert stored.updated_at >= record.updated_at
+
+
+@pytest.mark.parametrize(
+    ("dialect", "expected_fragment"),
+    [
+        (mysql.dialect(), "encrypted_credentials = CAST(%s AS JSON)"),
+        (postgresql.dialect(), "::JSONB"),
+        (sqlite.dialect(), "encrypted_credentials = ?"),
+    ],
+    ids=["mysql", "postgresql", "sqlite"],
+)
+def test_update_if_unchanged_compiles_json_comparison_for_dialect(dialect: Dialect, expected_fragment: str) -> None:
+    session = create_autospec(Session, instance=True, spec_set=True)
+    session.get_bind.return_value.dialect.name = dialect.name
+    session.execute.return_value.rowcount = 1
+    record = DatasourceCredentialRecord(
+        id="credential-1",
+        workspace_id="workspace-1",
+        owner_id="owner-1",
+        name="Notion",
+        provider="notion_datasource",
+        plugin_id="langgenius/notion_datasource",
+        auth_type="oauth2",
+        encrypted_credentials={"integration_secret": "encrypted"},
+        expires_at=-1,
+        updated_at=datetime(2026, 1, 1),
+    )
+
+    assert _update_datasource_credentials_if_unchanged(
+        session,
+        record=record,
+        encrypted_credentials={"integration_secret": "new"},
+        expires_at=100,
+    )
+
+    statement = session.execute.call_args.args[0]
+    compiled = str(statement.compile(dialect=dialect))
+    assert expected_fragment in compiled
+    assert ("CAST(" in compiled) is (dialect.name == "mysql")
 
 
 def test_get_for_stored_document_reconstructs_complete_owner_chain(

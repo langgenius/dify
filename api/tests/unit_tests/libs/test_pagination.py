@@ -10,11 +10,11 @@ class TestPaginatedResultPages:
         # Parity with Flask-SQLAlchemy's Pagination.pages, which PaginatedResult
         # was introduced to replace as a drop-in (#38280): an empty result set
         # has zero pages, not one.
-        result = PaginatedResult[object](items=[], total=0, page=1, per_page=20)
+        result = PaginatedResult(items=list[object](), total=0, page=1, per_page=20)
         assert result.pages == 0
 
     def test_has_next_is_false_for_empty_result(self) -> None:
-        result = PaginatedResult[object](items=[], total=0, page=1, per_page=20)
+        result = PaginatedResult(items=list[object](), total=0, page=1, per_page=20)
         assert result.has_next is False
 
     @pytest.mark.parametrize(
@@ -32,7 +32,7 @@ class TestPaginatedResultPages:
         assert result.pages == expected_pages == math.ceil(total / per_page)
 
     def test_pages_is_zero_when_per_page_is_zero(self) -> None:
-        result = PaginatedResult[object](items=[], total=0, page=1, per_page=0)
+        result = PaginatedResult(items=list[object](), total=0, page=1, per_page=0)
         assert result.pages == 0
 
 

@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IconPickerValue } from '.'
 import { useState } from 'react'
-import { IconPickerDialog } from '.'
+import { IconPicker, IconPickerContent, IconPickerIcon, IconPickerTrigger } from '.'
 
 const meta = {
-  title: 'Base/Data Entry/IconPickerDialog',
-  component: IconPickerDialog,
+  title: 'Base/Data Entry/IconPicker',
+  component: IconPicker,
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -23,24 +23,22 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof IconPickerDialog>
+} satisfies Meta<typeof IconPicker>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-const IconPickerDialogDemo = () => {
-  const [open, setOpen] = useState(false)
-  const [selection, setSelection] = useState<IconPickerValue | null>(null)
+const IconPickerDemo = () => {
+  const [selection, setSelection] = useState<IconPickerValue>()
 
   return (
     <div className="flex min-h-80 flex-col items-start gap-4 px-6 py-8 md:px-12">
-      <button
-        type="button"
-        className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
-        onClick={() => setOpen(true)}
-      >
-        Choose icon…
-      </button>
+      <IconPicker value={selection} onValueChange={setSelection}>
+        <IconPickerTrigger aria-label="Choose icon" className="cursor-pointer rounded-[10px]">
+          <IconPickerIcon size="large" />
+        </IconPickerTrigger>
+        <IconPickerContent />
+      </IconPicker>
 
       <div className="rounded-lg border border-divider-subtle bg-components-panel-bg p-4 text-sm text-text-secondary shadow-sm">
         <div className="font-medium text-text-primary">Selection preview</div>
@@ -48,36 +46,30 @@ const IconPickerDialogDemo = () => {
           {selection ? JSON.stringify(selection, null, 2) : 'No icon selected yet.'}
         </pre>
       </div>
-
-      <IconPickerDialog open={open} onOpenChange={setOpen} onConfirm={setSelection} />
     </div>
   )
 }
 
 export const Playground: Story = {
   args: {
-    open: false,
-    onOpenChange: () => {},
-    onConfirm: () => {},
+    onValueChange: () => {},
+    children: null,
   },
-  render: () => <IconPickerDialogDemo />,
+  render: () => <IconPickerDemo />,
   parameters: {
     docs: {
       source: {
         language: 'tsx',
         code: `
-const [open, setOpen] = useState(false)
-const [selection, setSelection] = useState<IconPickerValue | null>(null)
+const [selection, setSelection] = useState<IconPickerValue>()
 
 return (
-  <>
-    <button onClick={() => setOpen(true)}>Choose icon…</button>
-    <IconPickerDialog
-      open={open}
-      onOpenChange={setOpen}
-      onConfirm={setSelection}
-    />
-  </>
+  <IconPicker value={selection} onValueChange={setSelection}>
+    <IconPickerTrigger aria-label="Choose icon">
+      <IconPickerIcon size="large" />
+    </IconPickerTrigger>
+    <IconPickerContent />
+  </IconPicker>
 )
         `.trim(),
       },

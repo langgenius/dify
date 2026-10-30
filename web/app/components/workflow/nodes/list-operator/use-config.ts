@@ -1,9 +1,11 @@
 import type { ValueSelector, Var } from '../../types'
 import type { Condition, Limit, ListFilterNodeType, OrderBy } from './types'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import {
   canFilterVariable,
@@ -23,7 +25,7 @@ import {
 
 const useConfig = (id: string, payload: ListFilterNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const store = useStoreApi()
   const { getBeforeNodesInSameBranch } = useWorkflow()
@@ -50,7 +52,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
         parentNode: isInIteration ? iterationNode : loopNode,
         valueSelector: variable || inputs.variable || [],
         availableNodes,
-        isChatMode,
+        isChatflow,
         isConstant: false,
       })
       const itemVarType = getItemVarType(varType)
@@ -60,7 +62,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       availableNodes,
       getCurrentVariableType,
       inputs.variable,
-      isChatMode,
+      isChatflow,
       isInIteration,
       iterationNode,
       loopNode,

@@ -1,32 +1,9 @@
 import type { VariableAssignerNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import Node from '../node'
-
-type MockNodeGroupItemProps = {
-  item: {
-    groupEnabled: boolean
-    targetHandleId: string
-    title: string
-    type: VarType
-    variables: string[][]
-    variableAssignerNodeId: string
-  }
-}
-
-const mockNodeGroupItemRender = vi.hoisted(() => vi.fn())
-
-vi.mock('../components/node-group-item', () => ({
-  __esModule: true,
-  default: (props: MockNodeGroupItemProps) => {
-    mockNodeGroupItemRender(props)
-    return (
-      <div>
-        {`${props.item.title}:${props.item.targetHandleId}:${props.item.type}:${props.item.variables.map((variable) => variable.join('.')).join('|')}`}
-      </div>
-    )
-  },
-}))
+import { renderAssigner as renderWorkflowFlowComponent } from './test-helpers'
 
 const createData = (
   overrides: Partial<VariableAssignerNodeType> = {},
@@ -68,43 +45,38 @@ const baseNodeProps = {
   dragHandle: '.drag-handle',
 }
 
-describe('variable-assigner/node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('renders grouped node cards when aggregation is enabled', () => {
-    render(<Node {...baseNodeProps} data={createData()} />)
-
-    expect(screen.getByText('Group1:group-1:string:source-node.groupVar')).toBeInTheDocument()
-    expect(screen.getByText('Group2:group-2:number:')).toBeInTheDocument()
-    expect(mockNodeGroupItemRender).toHaveBeenCalledTimes(2)
-  })
-
-  it('renders a single root group when aggregation is disabled', () => {
-    render(
-      <Node
-        {...baseNodeProps}
-        data={createData({
-          advanced_settings: {
-            group_enabled: false,
-            groups: [],
+const renderNode = (data: VariableAssignerNodeType) =>
+  renderWorkflowFlowComponent(<Node {...baseNodeProps} data={data} />, {
+    nodes: [
+      createNode({ id: 'assigner-node', data }),
+      createNode({
+        id: 'source-node',
+        data: {
+          title: 'Source',
+          type: BlockEnum.Code,
+          outputs: {
+            rootVar: { type: VarType.string },
+            groupVar: { type: VarType.string },
           },
-        })}
-      />,
-    )
-
-    expect(
-      screen.getByText('workflow.nodes.variableAssigner.title:target:string:source-node.rootVar'),
-    ).toBeInTheDocument()
-    expect(mockNodeGroupItemRender).toHaveBeenCalledWith(
-      expect.objectContaining({
-        item: expect.objectContaining({
-          groupEnabled: false,
-          targetHandleId: 'target',
-          variableAssignerNodeId: 'assigner-node',
-        }),
+        },
       }),
-    )
+    ],
+    edges: [],
   })
+
+it('renders each group with its own variables and shows an unset group', async () => {
+  renderNode(createData())
+  expect(await screen.findByText('Group1')).toBeInTheDocument()
+  expect(screen.getByText('Group2')).toBeInTheDocument()
+  expect(screen.getByText('groupVar')).toBeInTheDocument()
+  expect(screen.queryByText('rootVar')).not.toBeInTheDocument()
+  expect(screen.getByText('workflowLogic.nodes.variableAssigner.varNotSet')).toBeInTheDocument()
+})
+
+it('uses root variables when grouping is disabled', async () => {
+  renderNode(createData({ advanced_settings: { group_enabled: false, groups: [] } }))
+  expect(await screen.findByText('workflow.nodes.variableAssigner.title')).toBeInTheDocument()
+  expect(screen.getByText('rootVar')).toBeInTheDocument()
+  expect(screen.queryByText('Group1')).not.toBeInTheDocument()
+  expect(screen.queryByText('groupVar')).not.toBeInTheDocument()
 })

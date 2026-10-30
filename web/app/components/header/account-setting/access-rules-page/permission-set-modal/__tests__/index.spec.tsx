@@ -104,29 +104,6 @@ describe('PermissionSetModal', () => {
 
   // Rendering keeps the form fields and permission picker available inside the modal.
   describe('Rendering', () => {
-    it('should render create mode with app permission catalog', () => {
-      renderModal(
-        <PermissionSetModal
-          open
-          mode="create"
-          resourceType="app"
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
-      )
-
-      expect(
-        screen.getByText('permission.permissionSet.modal.create.app.title'),
-      ).toBeInTheDocument()
-      expect(screen.getByLabelText(/permission\.permissionSet\.nameLabel/)).toBeInTheDocument()
-      expect(screen.getByLabelText('permission.permissionSet.descriptionLabel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /Translated app permissions/ })).toHaveAttribute(
-        'aria-expanded',
-        'true',
-      )
-      expect(screen.getByText(/app\.acl\.edit/)).toBeInTheDocument()
-    })
-
     it('should render the complete app ACL permission catalog', async () => {
       renderModal(
         <PermissionSetModal
@@ -139,7 +116,9 @@ describe('PermissionSetModal', () => {
       )
 
       for (const permissionKey of expectedAppACLPermissionKeys)
-        expect(await screen.findByText(getPermissionKeyMatcher(permissionKey))).toBeInTheDocument()
+        expect(
+          await screen.findByRole('checkbox', { name: getPermissionKeyMatcher(permissionKey) }),
+        ).toBeInTheDocument()
     })
 
     it('should render dataset permission catalog when resource type is dataset', () => {
@@ -282,6 +261,7 @@ describe('PermissionSetModal', () => {
   })
 
   it('keeps the form open and preserves input after a failed save', async () => {
+    const user = userEvent.setup()
     const close = vi.fn()
     const submit = vi.fn().mockRejectedValue(new Error('Unavailable'))
     renderModal(
@@ -293,11 +273,11 @@ describe('PermissionSetModal', () => {
         onSubmit={submit}
       />,
     )
-    await userEvent.type(
+    await user.type(
       screen.getByRole('textbox', { name: /permissionSet.nameLabel/ }),
       'Agent reviewers',
     )
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed'),
     )

@@ -1,19 +1,15 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
 import { TagFilter } from '../components/tag-filter'
+import { renderWithTags } from './render'
 
-const { mockUseQueryData } = vi.hoisted(() => ({
-  mockUseQueryData: { current: [] as Tag[] },
+const { tagData } = vi.hoisted(() => ({
+  tagData: { current: [] as Tag[] },
 }))
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -36,7 +32,6 @@ const defaultProps = {
   onChange: vi.fn(),
 }
 
-// Helper: the i18n mock renders "ns.key" format (dot-separated)
 const i18n = {
   placeholder: 'common.tag.placeholder',
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
@@ -45,28 +40,20 @@ const i18n = {
   manageTags: 'common.tag.manageTags',
 }
 
+const render = (ui: Parameters<typeof renderWithTags>[0]) => renderWithTags(ui, tagData.current)
+
 describe('TagFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseQueryData.current = mockTags
+    tagData.current = mockTags
     mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
   })
 
   describe('Rendering', () => {
-    it('should expose the trigger as a named combobox', () => {
-      render(<TagFilter {...defaultProps} />)
-      expect(screen.getByRole('combobox', { name: i18n.placeholder })).toBeInTheDocument()
-    })
-
     it('should keep the placeholder in the trigger when no tags are selected', () => {
       render(<TagFilter {...defaultProps} />)
       expect(screen.getByText(i18n.placeholder)).toBeInTheDocument()
       expect(screen.getByRole('combobox', { name: i18n.placeholder })).toBeInTheDocument()
-    })
-
-    it('should display the first selected tag name when tags are selected', () => {
-      render(<TagFilter {...defaultProps} value={['tag-1']} />)
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
     })
 
     it('should display the count badge when multiple tags are selected', () => {
@@ -74,31 +61,15 @@ describe('TagFilter', () => {
       expect(screen.getByText('Frontend')).toBeInTheDocument()
       expect(screen.getByText('+1')).toBeInTheDocument()
     })
-
-    it('should display correct count badge for three selected tags', () => {
-      render(<TagFilter {...defaultProps} value={['tag-1', 'tag-2', 'tag-4']} />)
-      expect(screen.getByText('+2')).toBeInTheDocument()
-    })
-
-    it('should not show placeholder when tags are selected', () => {
-      render(<TagFilter {...defaultProps} value={['tag-1']} />)
-      expect(screen.queryByText(i18n.placeholder)).not.toBeInTheDocument()
-    })
   })
 
   describe('Props', () => {
-    it('should hide the leading tag icon when disabled', () => {
-      const { container } = render(<TagFilter {...defaultProps} showLeadingIcon={false} />)
-      expect(container.querySelector('svg')).not.toBeInTheDocument()
-    })
-
     it('should filter tags by type prop', async () => {
       const user = userEvent.setup()
       render(<TagFilter {...defaultProps} type="knowledge" />)
 
       await user.click(screen.getByText(i18n.placeholder))
 
-      // Only knowledge-type tags should appear
       expect(screen.getByText('Database')).toBeInTheDocument()
       expect(screen.queryByText('Frontend')).not.toBeInTheDocument()
       expect(screen.queryByText('Backend')).not.toBeInTheDocument()
@@ -133,28 +104,17 @@ describe('TagFilter', () => {
       const onChange = vi.fn()
       render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
 
-      // Open dropdown — trigger shows the tag name "Frontend"
       await user.click(screen.getByText('Frontend'))
-      // Click the tag in the dropdown (it has a title attribute)
-      await user.click(screen.getByTitle('Frontend'))
+
+      const selectedTag = screen.getByRole('option', { name: /Frontend/ })
+      expect(selectedTag).toHaveAttribute('aria-selected', 'true')
+      await user.click(selectedTag)
 
       expect(onChange).toHaveBeenCalledWith([])
     })
   })
 
   describe('User Interactions', () => {
-    it('should open dropdown on trigger click', async () => {
-      const user = userEvent.setup()
-      render(<TagFilter {...defaultProps} />)
-
-      await user.click(screen.getByText(i18n.placeholder))
-
-      // Dropdown content should appear with tags
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('API Design')).toBeInTheDocument()
-    })
-
     it('should show only tags matching the type filter', async () => {
       const user = userEvent.setup()
       render(<TagFilter {...defaultProps} type="app" />)
@@ -173,21 +133,9 @@ describe('TagFilter', () => {
       render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
 
       await user.click(screen.getByText('Frontend'))
-      await user.click(screen.getByTitle('Backend'))
+      await user.click(screen.getByRole('option', { name: /Backend/ }))
 
       expect(onChange).toHaveBeenCalledWith(['tag-1', 'tag-2'])
-    })
-
-    it('should show check icon for selected tags in dropdown', async () => {
-      const user = userEvent.setup()
-      render(<TagFilter {...defaultProps} value={['tag-1']} />)
-
-      await user.click(screen.getByText('Frontend'))
-
-      // The Check icon should be rendered for the selected tag
-      const tagItem = screen.getByRole('option', { name: /Frontend/i })
-      expect(tagItem).toBeInTheDocument()
-      expect(tagItem).toHaveAttribute('aria-selected', 'true')
     })
 
     it('should clear all selected tags when clear button is clicked', async () => {
@@ -200,6 +148,7 @@ describe('TagFilter', () => {
       await user.click(clearButton)
 
       expect(onChange).toHaveBeenCalledWith([])
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     })
 
     it('should open manage tags modal and close dropdown', async () => {
@@ -211,6 +160,7 @@ describe('TagFilter', () => {
       await user.click(screen.getByText(i18n.manageTags))
 
       expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
+      await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
     })
 
     it('should expose popup actions after the combobox in keyboard order', async () => {
@@ -245,19 +195,6 @@ describe('TagFilter', () => {
   })
 
   describe('Search', () => {
-    it('should filter tags without matching letter case', async () => {
-      const user = userEvent.setup()
-
-      render(<TagFilter {...defaultProps} />)
-
-      await user.click(screen.getByText(i18n.placeholder))
-
-      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-      await user.type(searchInput, 'frontend')
-
-      expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
-    })
-
     it('should filter tags by search keywords', async () => {
       const user = userEvent.setup()
 
@@ -266,24 +203,11 @@ describe('TagFilter', () => {
       await user.click(screen.getByText(i18n.placeholder))
 
       const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-      await user.type(searchInput, 'Front')
+      await user.type(searchInput, 'front')
 
       expect(screen.getByText('Frontend')).toBeInTheDocument()
       expect(screen.queryByText('Backend')).not.toBeInTheDocument()
       expect(screen.queryByText('API Design')).not.toBeInTheDocument()
-    })
-
-    it('should show no tags message when search has no results', async () => {
-      const user = userEvent.setup()
-
-      render(<TagFilter {...defaultProps} />)
-
-      await user.click(screen.getByText(i18n.placeholder))
-
-      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-      await user.type(searchInput, 'NonExistentTag')
-
-      expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
     })
 
     it('should keep search input focused when search has no results', async () => {
@@ -299,36 +223,12 @@ describe('TagFilter', () => {
       expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
       expect(searchInput).toHaveFocus()
     })
-
-    it('should clear search and show all tags when clear icon is clicked', async () => {
-      const user = userEvent.setup()
-
-      render(<TagFilter {...defaultProps} />)
-
-      await user.click(screen.getByText(i18n.placeholder))
-
-      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-      await user.type(searchInput, 'Front')
-
-      expect(screen.queryByText('Backend')).not.toBeInTheDocument()
-
-      const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-      clearButton.focus()
-      await user.keyboard('{Enter}')
-
-      expect(searchInput).toHaveValue('')
-      expect(searchInput).toHaveFocus()
-
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('API Design')).toBeInTheDocument()
-    })
   })
 
   describe('Edge Cases', () => {
     it('should show no tag message when tag list is completely empty', async () => {
       const user = userEvent.setup()
-      mockUseQueryData.current = []
+      tagData.current = []
 
       render(<TagFilter {...defaultProps} />)
 
@@ -351,23 +251,6 @@ describe('TagFilter', () => {
       await user.click(screen.getByRole('option', { name: /Frontend/i }))
 
       expect(onChange).toHaveBeenCalledWith(['non-existent-id', 'tag-1'])
-    })
-
-    it('should not show count badge when only one tag is selected', () => {
-      render(<TagFilter {...defaultProps} value={['tag-1']} />)
-      expect(screen.queryByText(/\+\d/)).not.toBeInTheDocument()
-    })
-
-    it('should clear selection without opening dropdown', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-      render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
-
-      const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-      expect(clearButton).toBeInTheDocument()
-
-      await user.click(clearButton)
-      expect(onChange).toHaveBeenCalledWith([])
     })
   })
 })

@@ -1,3 +1,4 @@
+import contextlib
 import json
 import re
 from typing import Any
@@ -42,11 +43,9 @@ class WorkflowVariablesConfigManager:
         """
         json_schema = variable.get("json_schema")
         if isinstance(json_schema, str):
-            try:
+            # Leave as-is; Pydantic validation will surface the error.
+            with contextlib.suppress(json.JSONDecodeError, TypeError):
                 variable["json_schema"] = json.loads(json_schema)
-            except (json.JSONDecodeError, TypeError):
-                # Leave as-is; Pydantic validation will surface the error.
-                pass
 
     @classmethod
     def convert_rag_pipeline_variable(cls, workflow: Workflow, start_node_id: str) -> list[RagPipelineVariableEntity]:

@@ -293,6 +293,13 @@ class CeleryConfig(DatabaseConfig):
         default=None,
     )
 
+    CELERY_BROKER_VISIBILITY_TIMEOUT: PositiveInt | None = Field(
+        default=None,
+        description=(
+            "Redis/Sentinel unacknowledged delivery visibility in seconds; set identically on all Celery processes."
+        ),
+    )
+
     CELERY_USE_SENTINEL: bool | None = Field(
         description="Whether to use Redis Sentinel for high availability.",
         default=False,

@@ -113,15 +113,12 @@ class RemoteFileService:
             raise RemoteFileInvalidResponseError("The remote response contains an invalid filename")
 
         if not self._files.is_file_size_within_limit(
-            extension=file_info.extension,
+            extension=file_info.extension.lstrip(".").lower(),
             file_size=file_info.size,
         ):
             raise FileTooLargeError()
 
-        if response.request.method == "GET":
-            content = response.content
-        else:
-            content = self._fetch_content(url=url)
+        content = response.content if response.request.method == "GET" else self._fetch_content(url=url)
 
         upload_file = self._files.upload_file(
             filename=file_info.filename,

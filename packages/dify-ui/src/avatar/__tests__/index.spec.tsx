@@ -1,76 +1,63 @@
 import { render } from 'vitest-browser-react'
-import { Avatar } from '..'
+import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } from '..'
 
 const avatarDataUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
-function stubImageLoader() {
-  const originalImage = window.Image
-  const images: HTMLImageElement[] = []
+it('shares the group size through wrappers and keeps explicit avatar sizes', async () => {
+  const screen = await render(
+    <AvatarGroup size="sm">
+      <button type="button" aria-label="Open Alice">
+        <Avatar aria-hidden="true">
+          <AvatarFallback>A</AvatarFallback>
+        </Avatar>
+      </button>
+      <Avatar size="xs" role="img" aria-label="Bob">
+        <AvatarFallback>B</AvatarFallback>
+      </Avatar>
+      <AvatarGroupCount role="img" aria-label="2 more people">
+        +2
+      </AvatarGroupCount>
+    </AvatarGroup>,
+  )
 
-  function TestImage(_width?: number, _height?: number): HTMLImageElement {
-    const image = {
-      complete: false,
-      crossOrigin: null,
-      naturalWidth: 0,
-      onerror: null,
-      onload: null,
-      referrerPolicy: '',
-      sizes: '',
-      src: '',
-      srcset: '',
-    } as unknown as HTMLImageElement
-    images.push(image)
-    return image
-  }
+  const button = screen.getByRole('button', { name: 'Open Alice' }).element()
+  const fallback = screen.getByText('A').element()
+  const avatar = fallback.parentElement!
+  expect(avatar.getBoundingClientRect().width).toBe(24)
+  expect(fallback.getBoundingClientRect().width).toBe(24)
+  expect(getComputedStyle(button).borderWidth).toBe('0px')
+  expect(getComputedStyle(button).boxShadow).toBe('none')
+  expect(getComputedStyle(avatar).boxShadow).not.toBe('none')
+  expect(screen.getByRole('img', { name: 'Bob' }).element().getBoundingClientRect().width).toBe(20)
+  expect(
+    screen.getByRole('img', { name: '2 more people' }).element().getBoundingClientRect().width,
+  ).toBe(24)
+})
 
-  Object.defineProperty(window, 'Image', {
-    configurable: true,
-    value: TestImage,
-    writable: true,
+it('keeps a failed mounted image from covering the fallback and displays its replacement', async () => {
+  const screen = await render(
+    <Avatar role="img" aria-label="Alice">
+      <AvatarFallback>A</AvatarFallback>
+      <AvatarImage keepMounted src="data:image/png;base64,broken" alt="" />
+    </Avatar>,
+  )
+
+  await expect.element(screen.getByText('A')).toBeVisible()
+  const image = screen.container.querySelector('img')!
+  await vi.waitFor(() => {
+    expect(image).not.toBeVisible()
+    expect(image.getBoundingClientRect().width).toBeGreaterThan(0)
   })
+  await expect.element(screen.getByRole('img', { name: 'Alice' })).toBeVisible()
 
-  return {
-    images,
-    restore: () => {
-      window.Image = originalImage
-    },
-  }
-}
+  await screen.rerender(
+    <Avatar role="img" aria-label="Alice">
+      <AvatarFallback>A</AvatarFallback>
+      <AvatarImage keepMounted src={avatarDataUrl} alt="" />
+    </Avatar>,
+  )
 
-describe('Avatar', () => {
-  describe('Rendering', () => {
-    it('should render fallback with uppercase initial when avatar is null', async () => {
-      const screen = await render(<Avatar name="alice" avatar={null} />)
-
-      expect(screen.container.querySelector('img')).not.toBeInTheDocument()
-      await expect.element(screen.getByText('A')).toBeInTheDocument()
-    })
-  })
-
-  describe('onLoadingStatusChange', () => {
-    it('should show fallback until the image loads and forward status changes', async () => {
-      const { images, restore } = stubImageLoader()
-      const onStatusChange = vi.fn()
-
-      try {
-        const screen = await render(
-          <Avatar name="John" avatar={avatarDataUrl} onLoadingStatusChange={onStatusChange} />,
-        )
-
-        await expect.element(screen.getByText('J')).toBeVisible()
-        await vi.waitFor(() => {
-          expect(onStatusChange).toHaveBeenCalledWith('loading')
-        })
-
-        images.at(-1)?.onload?.(new Event('load'))
-
-        await vi.waitFor(() => {
-          expect(onStatusChange).toHaveBeenCalledWith('loaded')
-        })
-        await expect.element(screen.getByRole('img', { name: 'John' })).toBeVisible()
-      } finally {
-        restore()
-      }
-    })
-  })
+  await vi.waitFor(() => expect(image).toBeVisible())
+  await expect.element(screen.getByText('A')).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('img', { name: 'Alice' })).toBeVisible()
 })

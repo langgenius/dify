@@ -1,6 +1,7 @@
 import type { CodeNodeType, OutputVar } from '../../code/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { useDebounceFn } from 'ahooks'
+import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -77,12 +78,13 @@ function useOutputVarList<T>({
           oldNameRecord.current[id] = outputKeyOrders[changedIndex!]!
         renameInspectNameWithDebounce(id, newKey)
       } else if (changedIndex === undefined) {
-        const varId = nodesWithInspectVars
-          .find((node) => node.nodeId === id)
-          ?.vars.find((varItem) => {
-            return varItem.name === Object.keys(newVars)[0]
-          })?.id
-        if (varId) deleteInspectVar(id, varId)
+        const previousVars = (inputs as Record<string, OutputVar>)[varKey]
+        const inspectVars = nodesWithInspectVars.find((node) => node.nodeId === id)?.vars ?? []
+        for (const [name, output] of Object.entries(newVars)) {
+          if (isEqual(previousVars?.[name], output)) continue
+          const inspectVar = inspectVars.find((variable) => variable.name === name)
+          if (inspectVar) deleteInspectVar(id, inspectVar.id)
+        }
       }
     },
     [

@@ -1,11 +1,12 @@
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -14,7 +15,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -26,6 +27,7 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
@@ -41,10 +43,6 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
-import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
-import { usePublishWorkflow } from '@/service/use-workflow'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
 
@@ -74,7 +72,7 @@ export function Popup({
   const { datasetId } = useParams()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((s) => s.mutateDatasetRes)
   const { data: currentUserId } = useSuspenseQuery({
@@ -86,7 +84,9 @@ export function Popup({
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions(),
+  )
   const workflowStore = useWorkflowStore()
   const { data: isAllowPublishAsCustomKnowledgePipelineTemplate } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -108,11 +108,6 @@ export function Popup({
   const showConfirm = onShowConfirm ?? showLocalConfirm
   const hideConfirm = onHideConfirm ?? hideLocalConfirm
   const [publishing, { setFalse: hidePublishing, setTrue: showPublishing }] = useBoolean(false)
-  const invalidPublishedPipelineInfo = useInvalid([
-    ...publishedPipelineInfoQueryKeyPrefix,
-    pipelineId,
-  ])
-  const invalidDatasetList = useInvalidDatasetList()
   const handleHideConfirm = useCallback(() => {
     hideConfirm()
     onRequestClose?.()
@@ -131,9 +126,7 @@ export function Popup({
           startedPublishing = true
           showPublishing()
           const res = await publishWorkflow({
-            url: `/rag/pipelines/${pipelineId}/workflows/publish`,
-            title: params?.title || '',
-            releaseNotes: params?.releaseNotes || '',
+            params: { pipeline_id: pipelineId },
           })
           setPublished(true)
           trackEvent('app_published_time', {
@@ -165,8 +158,6 @@ export function Popup({
             )
             workflowStore.getState().setPublishedAt(res.created_at)
             mutateDatasetRes?.()
-            invalidPublishedPipelineInfo()
-            invalidDatasetList()
           }
         }
       } catch {
@@ -189,8 +180,6 @@ export function Popup({
       t,
       workflowStore,
       mutateDatasetRes,
-      invalidPublishedPipelineInfo,
-      invalidDatasetList,
       hidePublishing,
       handleHideConfirm,
     ],
@@ -359,25 +348,26 @@ export function Popup({
       </div>
       <AlertDialog open={confirmVisible} onOpenChange={(open) => !open && handleHideConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              title={t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-            >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['common.confirmPublishContent'], { ns: 'pipeline' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={publishing} onClick={() => void handlePublish()}>
+            <AlertDialogConfirmButton
+              tone="default"
+              disabled={publishing}
+              onClick={() => void handlePublish()}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

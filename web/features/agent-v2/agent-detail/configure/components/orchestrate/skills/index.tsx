@@ -9,13 +9,7 @@ import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   keepPreviousData,
@@ -37,11 +31,7 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import {
-  getSkillErrorCode,
-  getSkillErrorDetailString,
-  normalizeSkillError,
-} from '@/features/skills/error'
+import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -400,36 +390,36 @@ function WorkspaceAgentSkillItem({
           {skill.name}
         </span>
       </Link>
-      <DropdownMenu
+      <Menu
         modal={false}
         onOpenChange={(open) => {
           if (!open) setIsRemoveHighlighted(false)
         }}
       >
-        <DropdownMenuTrigger
+        <MenuTrigger
           aria-label={t(($) => $['agentDetail.configure.skills.moreActions'], {
             name: displayName,
           })}
           className={cn(
-            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
             isRemoveHighlighted && 'text-text-destructive!',
           )}
           onClick={(event) => event.stopPropagation()}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
-          <DropdownMenuItem className="gap-2" onClick={handleOpenInLibrary}>
+        </MenuTrigger>
+        <MenuContent align="end" className="w-48">
+          <MenuItem className="gap-2" onClick={handleOpenInLibrary}>
             <span
               aria-hidden
               className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
             />
             <span>{t(($) => $['agentDetail.configure.skills.openInLibrary'])}</span>
-          </DropdownMenuItem>
+          </MenuItem>
           {canRemove && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              <MenuSeparator />
+              <MenuItem
                 data-workspace-skill-remove-action
                 className="group gap-2 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
                 onClick={() => onRemove(skill.id)}
@@ -443,11 +433,11 @@ function WorkspaceAgentSkillItem({
                   className="i-ri-delete-bin-line size-4 shrink-0 text-text-tertiary group-data-highlighted:text-text-destructive"
                 />
                 <span>{t(($) => $['agentDetail.configure.skills.removeAction'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }
@@ -525,9 +515,8 @@ export function AgentSkills() {
           },
         },
         {
-          onError: async (error) => {
-            const normalizedError = await normalizeSkillError(error)
-            const errorCode = getSkillErrorCode(normalizedError)
+          onError: (error) => {
+            const errorCode = getSkillErrorCode(error)
             if (errorCode === 'too_many_agent_skills') {
               toast.error(
                 t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
@@ -537,7 +526,7 @@ export function AgentSkills() {
             if (errorCode === 'skill_name_conflict') {
               toast.error(
                 tSkill(($) => $['skillManagement.errors.nameConflict'], {
-                  name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                  name: getSkillErrorDetailString(error, 'name') ?? '',
                 }),
               )
               return
@@ -616,7 +605,7 @@ export function AgentSkills() {
   const handleUploaded = useCallback(
     (skill: AgentSkill) => {
       upsertAgentSkill(skill)
-      promptAddCallbackRef.current?.(skill)
+      promptAddCallbackRef.current?.([skill])
       promptAddCallbackRef.current = undefined
     },
     [upsertAgentSkill],
@@ -637,11 +626,13 @@ export function AgentSkills() {
       }
 
       replaceWorkspaceSkillBindings([...boundSkillIds, skill.id], () => {
-        promptAddCallbackRef.current?.({
-          description: skill.description,
-          id: skill.name,
-          name: skill.display_name,
-        })
+        promptAddCallbackRef.current?.([
+          {
+            description: skill.description,
+            id: skill.name,
+            name: skill.display_name,
+          },
+        ])
         promptAddCallbackRef.current = undefined
         setAddMenuOpen(false)
         setAddMenuView('menu')
@@ -731,7 +722,7 @@ export function AgentSkills() {
                 }
               />
               <PopoverContent
-                placement="bottom-end"
+                align="end"
                 sideOffset={4}
                 className={
                   addMenuView === 'menu'

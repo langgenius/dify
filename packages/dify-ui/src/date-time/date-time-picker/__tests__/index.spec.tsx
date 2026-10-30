@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { DirectionProvider } from '../../../direction-provider'
 import {
   DateTimePicker,
   DateTimePickerContent,
@@ -59,8 +60,8 @@ it('keeps the natural calendar and month-picker height around a centered mobile 
 })
 
 it.each([
-  ['Tuesday, December 31st, 2024', 'December 2024', '2024-12-31'],
-  ['Saturday, February 1st, 2025', 'February 2025', '2025-02-01'],
+  ['31: Tuesday, December 31st, 2024', 'December 2024', '2024-12-31'],
+  ['1: Saturday, February 1st, 2025', 'February 2025', '2025-02-01'],
 ])('navigates to %s on selection and commits only on OK', async (day, month, date) => {
   const changed = vi.fn()
   const screen = await render(
@@ -88,7 +89,10 @@ it.each([
   await expect.element(screen.getByRole('grid', { name: 'January 2025' })).toBeInTheDocument()
   await screen.getByRole('button', { name: day, exact: true }).click()
   await screen.getByRole('button', { name: 'OK' }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith(new Date(`${date}T13:30:00Z`))
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    new Date(`${date}T13:30:00Z`),
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })
 
 it.each([
@@ -123,15 +127,13 @@ it.each(['ltr', 'rtl'] as const)(
   'keeps focused time options visible after switching a height-limited %s popup',
   async (direction) => {
     const screen = await render(
-      <DateTimePicker
-        direction={direction}
-        timeZone="UTC"
-        defaultValue={new Date('2025-01-15T13:30:00Z')}
-      >
-        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
-        <DateTimePickerTrigger />
-        <DateTimePickerContent style={{ maxHeight: 210 }} />
-      </DateTimePicker>,
+      <DirectionProvider direction={direction}>
+        <DateTimePicker timeZone="UTC" defaultValue={new Date('2025-01-15T13:30:00Z')}>
+          <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
+          <DateTimePickerTrigger />
+          <DateTimePickerContent style={{ maxHeight: 210 }} />
+        </DateTimePicker>
+      </DirectionProvider>,
     )
     await screen.getByRole('button', { name: /^Meeting / }).click()
     const calendarPopup = screen.getByRole('dialog', { name: 'Meeting', exact: true }).element()
@@ -168,6 +170,29 @@ it.each(['ltr', 'rtl'] as const)(
 )
 
 describe('DateTimePicker', () => {
+  it('focuses the selected day on opening and after returning from the time view', async () => {
+    const screen = await render(
+      <DateTimePicker timeZone="UTC" defaultValue={new Date('2025-01-15T13:30:00Z')}>
+        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
+        <DateTimePickerTrigger />
+        <DateTimePickerContent />
+      </DateTimePicker>,
+    )
+    await screen.getByRole('button', { name: 'Meeting Jan 15, 2025, 1:30 PM' }).click()
+    const selectedDay = screen.getByRole('button', {
+      name: '15: Wednesday, January 15th, 2025, selected',
+    })
+    await expect.element(selectedDay).toHaveFocus()
+
+    await screen.getByRole('button', { name: 'Pick Time: 1:30 PM' }).click()
+    await expect
+      .element(screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '1' }))
+      .toHaveFocus()
+    await screen.getByRole('button', { name: 'Pick Date' }).click()
+
+    await expect.element(selectedDay).toHaveFocus()
+  })
+
   it('discards a draft on Escape and leaves the existing instant unchanged on OK', async () => {
     const original = new Date('2024-11-03T06:30:00.000Z')
     const onValueChange = vi.fn()
@@ -252,7 +277,10 @@ it.each([
         .toBeInTheDocument()
       expect(changed).not.toHaveBeenCalled()
       await screen.getByRole('button', { name: 'OK' }).click()
-      expect(changed).toHaveBeenCalledExactlyOnceWith(new Date('2026-09-28T14:23:00Z'))
+      expect(changed).toHaveBeenCalledExactlyOnceWith(
+        new Date('2026-09-28T14:23:00Z'),
+        expect.objectContaining({ reason: 'item-press' }),
+      )
       await expect
         .element(screen.getByRole('button', { name: `Meeting Sep 28, 2026, ${displayTime}` }))
         .toHaveFocus()

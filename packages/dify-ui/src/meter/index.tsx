@@ -14,7 +14,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { Meter as BaseMeter } from '@base-ui/react/meter'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Meter = BaseMeter.Root
 type MeterProps = BaseMeter.Root.Props

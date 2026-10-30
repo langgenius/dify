@@ -22,7 +22,7 @@ export const get = oc
     operationId: 'getSetup',
     path: '/setup',
     summary:
-      'Get system setup status.\n\n    NOTE: This endpoint is unauthenticated by design.\n\n    During first-time bootstrap there is no admin account yet, so frontend initialization must be\n    able to query setup progress before any login flow exists.\n\n    Only bootstrap-safe status information should be returned by this endpoint.\n    ',
+      'Get system setup status.\n\nNOTE: This endpoint is unauthenticated by design.\n\nDuring first-time bootstrap there is no admin account yet, so frontend initialization must be\nable to query setup progress before any login flow exists.\n\nOnly bootstrap-safe status information should be returned by this endpoint.\n',
     tags: ['console'],
   })
   .output(zGetSetupResponse)
@@ -43,7 +43,7 @@ export const post = oc
     path: '/setup',
     successStatus: 201,
     summary:
-      'Initialize system setup with admin account.\n\n    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.\n    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,\n    and init-password validation rather than user session authentication.\n    ',
+      'Initialize system setup with admin account.\n\nNOTE: This endpoint is unauthenticated by design for first-time bootstrap.\nAccess is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,\nand init-password validation rather than user session authentication.\n',
     tags: ['console'],
   })
   .input(z.object({ body: zPostSetupBody }))

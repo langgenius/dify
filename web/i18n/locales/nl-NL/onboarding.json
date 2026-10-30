@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "{{title}} als onvoltooid markeren",
   "stepByStepTour.minimize": "Minimaliseren",
   "stepByStepTour.progressAriaValueText": "{{completed}} van {{total}} stappen voltooid",
-  "stepByStepTour.restore": "Stapsgewijze rondleiding openen",
   "stepByStepTour.skip": "Rondleiding overslaan",
   "stepByStepTour.skipRecovery.dismiss": "Begrepen",
   "stepByStepTour.skipRecovery.label": "Hersteltip voor Step-by-step Tour",

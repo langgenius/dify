@@ -183,7 +183,9 @@ const VarList: FC<Props> = ({
                 <OperationSelector
                   value={item.operation}
                   placeholder="Operation"
-                  disabled={!item.variable_selector || item.variable_selector.length === 0}
+                  disabled={
+                    readonly || !item.variable_selector || item.variable_selector.length === 0
+                  }
                   onSelect={handleOperationChange(index, assignedVarType!)}
                   assignedVarType={assignedVarType}
                   writeModeTypes={writeModeTypes}
@@ -216,6 +218,7 @@ const VarList: FC<Props> = ({
                 <>
                   {assignedVarType === 'string' && (
                     <Textarea
+                      readOnly={readonly}
                       aria-label={
                         item.variable_selector?.join('.') ||
                         t(($) => $['nodes.assigner.setParameter'], { ns: 'workflowLogic' })
@@ -227,6 +230,7 @@ const VarList: FC<Props> = ({
                   )}
                   {assignedVarType === 'boolean' && (
                     <BoolValue
+                      disabled={readonly}
                       value={item.value as boolean}
                       onChange={(value) => handleToAssignedVarChange(index)(value)}
                     />
@@ -272,6 +276,7 @@ const VarList: FC<Props> = ({
               size="lg"
               tone="destructive"
               className="shrink-0"
+              disabled={readonly}
               onClick={handleVarRemove(index)}
             >
               <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />

@@ -1,6 +1,5 @@
 import inspect
 import logging
-import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
@@ -12,10 +11,13 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
+from controllers.common.access_response import MISSING_BEARER_MESSAGE
+from controllers.common.errors import UnauthorizedError
+from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.service_api.schema import (
     USER_FETCH_FROM_ATTR,
     USER_FORM_PARAM,
@@ -25,14 +27,22 @@ from controllers.service_api.schema import (
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
-from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App
+from models.dataset import Dataset
+from models.model import ApiToken, EndUser
 from repositories.knowledge import dataset_api_key_bindings
-from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
+from services.api_token_service import (
+    ApiTokenCache,
+    ApiTokenInvalidError,
+    CachedApiToken,
+    fetch_token_with_single_flight,
+    record_token_usage,
+)
+from services.app_service import AppService
+from services.auth.resource_access_token_contracts import is_resource_access_token
 from services.feature_service import FeatureService
+from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +84,7 @@ VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
 }
 
 
-def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
+def document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
     doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
     if fetch_user_arg is not None:
         setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
@@ -109,9 +119,25 @@ def validate_app_token[**P, R](
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
-            api_token = validate_and_get_api_token("app")
-
-            app_model = db.session.get(App, api_token.app_id)
+            # TODO: Remove these duplicate app/workspace checks when all legacy
+            # ORM App/EndUser handlers (including account-only endpoints) migrate
+            # to scalar admission. Keep resource-token routing and app policy aligned
+            # with service_api_end_user_admission until then.
+            auth_token = peek_service_api_bearer_token()
+            if auth_token and is_resource_access_token(auth_token):
+                with resource_access_token_errors():
+                    grant = application_services().resource_access_tokens.resolve_app_for_service_api(
+                        token=auth_token,
+                        requested_app_id=request.headers.get("X-Dify-App-ID"),
+                    )
+                app_model = AppService.get_app_in_workspace(
+                    tenant_id=grant.tenant_id,
+                    app_id=next(iter(grant.app_ids)),
+                    session=db.session(),
+                )
+            else:
+                api_token = validate_and_get_api_token("app")
+                app_model = AppService.get_app_by_id(api_token.app_id, session=db.session())
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -131,31 +157,9 @@ def validate_app_token[**P, R](
 
             # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
-                user_id = None
-                match fetch_user_arg.fetch_from:
-                    case WhereisUserArg.QUERY:
-                        user_id = request.args.get("user")
-                    case WhereisUserArg.JSON:
-                        user_id = request.get_json().get("user")
-                    case WhereisUserArg.FORM:
-                        user_id = request.form.get("user")
-
-                if not user_id and fetch_user_arg.required:
-                    raise ValueError("Arg user must be provided.")
-
-                if user_id:
-                    user_id = str(user_id)
-
-                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
-                    app_model.tenant_id,
-                    app_model.id,
-                    user_id,
+                kwargs["end_user"] = resolve_service_api_end_user(
+                    tenant_id=app_model.tenant_id, app_id=app_model.id, fetch_user_arg=fetch_user_arg
                 )
-                kwargs["end_user"] = end_user
-
-                # Set EndUser as current logged-in user for flask_login.current_user
-                current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
@@ -180,13 +184,35 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
-        _document_app_token_contract(decorated_view, fetch_user_arg)
+        document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
         return decorator
     else:
         return decorator(view)
+
+
+def resolve_service_api_end_user(*, tenant_id: str, app_id: str, fetch_user_arg: FetchUserArg) -> EndUser:
+    """Share user parsing, provisioning and Flask login identity across API admission paths."""
+    user_id = None
+    match fetch_user_arg.fetch_from:
+        case WhereisUserArg.QUERY:
+            user_id = request.args.get("user")
+        case WhereisUserArg.JSON:
+            user_id = request.get_json().get("user")
+        case WhereisUserArg.FORM:
+            user_id = request.form.get("user")
+
+    if not user_id and fetch_user_arg.required:
+        raise ValueError("Arg user must be provided.")
+    if user_id:
+        user_id = str(user_id)
+
+    end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(tenant_id, app_id, user_id)
+    current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
+    user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+    return end_user
 
 
 def cloud_edition_billing_resource_check[**P, R](
@@ -268,6 +294,21 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
+def check_knowledge_rate_limit(api_token: ApiToken | CachedApiToken) -> None:
+    """Enforce the cloud knowledge base request rate limit for a dataset API key's workspace.
+
+    Shared by the ``cloud_edition_billing_rate_limit_check`` decorator and the KnowledgeFS
+    service routes, which authenticate inside their own profile helper rather than through
+    a decorator. No-op unless the workspace has a knowledge rate limit (cloud billing).
+    """
+    if api_token.tenant_id is None:
+        raise Unauthorized("Tenant id is required for this token.")
+    try:
+        enforce_knowledge_rate_limit(api_token.tenant_id)
+    except KnowledgeRateLimitExceededError as error:
+        raise Forbidden(str(error)) from error
+
+
 def cloud_edition_billing_rate_limit_check[**P, R](
     resource: str,
     api_token_type: str,
@@ -276,34 +317,11 @@ def cloud_edition_billing_rate_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
+            if api_token.tenant_id is None:
+                raise Forbidden("API token is not associated with a workspace")
 
             if resource == "knowledge":
-                tenant_id = api_token.tenant_id
-                if tenant_id is None:
-                    raise Unauthorized("Tenant id is required for this token.")
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(tenant_id)
-                if knowledge_rate_limit.enabled:
-                    current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{tenant_id}"
-
-                    redis_client.zadd(key, {current_time: current_time})
-
-                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
-                    request_count = redis_client.zcard(key)
-
-                    if request_count > knowledge_rate_limit.limit:
-                        # add ratelimit record
-                        rate_limit_log = RateLimitLog(
-                            tenant_id=tenant_id,
-                            subscription_plan=knowledge_rate_limit.subscription_plan,
-                            operation="knowledge",
-                        )
-                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                            session.add(rate_limit_log)
-                        raise Forbidden(
-                            "Sorry, you have reached the knowledge base request rate limit of your subscription."
-                        )
+                check_knowledge_rate_limit(api_token)
             return view(*args, **kwargs)
 
         return decorated
@@ -321,8 +339,6 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
     @wraps(view)
     def decorated(*args: object, **kwargs: object) -> R:
-        api_token = validate_and_get_api_token("dataset")
-
         # Flask may pass URL path parameters positionally, so inspect both kwargs and args.
         dataset_id = kwargs.get("dataset_id")
 
@@ -335,17 +351,36 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             except Exception:
                 logger.exception("Failed to parse dataset_id from positional args")
 
-        # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
-        #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
-        #   N rows   -> the key is limited to exactly those datasets
-        # A bound key may only call endpoints carrying one of its dataset ids; endpoints
-        # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
-        # per request (not cached) so scope changes take effect immediately.
-        # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
-        # typed helper accepts it (runtime proxies every Session method through unchanged).
-        bound_dataset_ids = dataset_api_key_bindings.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
-        if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
-            raise Forbidden("The API key is not authorized to access this knowledge base.")
+        auth_token = peek_service_api_bearer_token()
+        if auth_token and is_resource_access_token(auth_token):
+            with resource_access_token_errors():
+                tenant_id = application_services().resource_access_tokens.resolve_tenant_for_dataset_service_api(
+                    token=auth_token,
+                    dataset_id=str(dataset_id) if dataset_id else None,
+                )
+        else:
+            api_token = validate_and_get_api_token("dataset")
+            tenant_id = api_token.tenant_id
+
+            # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
+            #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
+            #   N rows   -> the key is limited to exactly those resources
+            # Only legacy-dataset bindings count here: a key bound solely to KnowledgeFS spaces
+            # is restricted but has no reachable legacy dataset, so it is rejected. A bound key
+            # may only call endpoints carrying one of its dataset ids; endpoints without a
+            # dataset id (e.g. list/create datasets) are rejected. The scope is queried per
+            # request (not cached) so changes take effect immediately.
+            # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
+            # typed helper accepts it (runtime proxies every Session method through unchanged).
+            if tenant_id is None:
+                raise Unauthorized("Tenant id is required for this token.")
+            scope = dataset_api_key_bindings.get_active_key_scope(
+                cast(Session, db.session), api_token_id=api_token.id, tenant_id=tenant_id
+            )
+            if scope is None:
+                raise Unauthorized("API key is no longer valid.")
+            if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
+                raise Forbidden("The API key is not authorized to access this knowledge base.")
 
         if dataset_id:
             dataset_id = str(dataset_id)
@@ -353,7 +388,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 select(Dataset)
                 .where(
                     Dataset.id == dataset_id,
-                    Dataset.tenant_id == api_token.tenant_id,
+                    Dataset.tenant_id == tenant_id,
                 )
                 .limit(1)
             )
@@ -364,7 +399,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
         tenant_account_join = db.session.execute(
             select(Tenant, TenantAccountJoin).where(
-                Tenant.id == api_token.tenant_id,
+                Tenant.id == tenant_id,
                 TenantAccountJoin.tenant_id == Tenant.id,
                 TenantAccountJoin.role.in_(["owner"]),
                 Tenant.status == TenantStatus.NORMAL,
@@ -386,14 +421,14 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         if expects_bound_instance:
             if not args:
                 raise TypeError("validate_dataset_token expected a bound resource instance.")
-            return view(args[0], api_token.tenant_id, *args[1:], **kwargs)
+            return view(args[0], tenant_id, *args[1:], **kwargs)
 
-        return view(api_token.tenant_id, *args, **kwargs)
+        return view(tenant_id, *args, **kwargs)
 
     return decorated
 
 
-def validate_and_get_api_token(scope: str | None = None):
+def validate_and_get_api_token(scope: str | None = None) -> ApiToken | CachedApiToken:
     """
     Validate and get API token with Redis caching.
 
@@ -404,15 +439,7 @@ def validate_and_get_api_token(scope: str | None = None):
     The last_used_at field is updated asynchronously via Celery task
     to avoid blocking the request.
     """
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None or " " not in auth_header:
-        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
-
-    auth_scheme, auth_token = auth_header.split(None, 1)
-    auth_scheme = auth_scheme.lower()
-
-    if auth_scheme != "bearer":
-        raise Unauthorized("Authorization scheme must be 'Bearer'")
+    auth_token = extract_service_api_bearer_token()
 
     # Try to get token from cache first
     # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
@@ -421,11 +448,31 @@ def validate_and_get_api_token(scope: str | None = None):
         logger.debug("Token validation served from cache for scope: %s", scope)
         # Record usage in Redis for later batch update (no Celery task per request)
         record_token_usage(auth_token, scope)
-        return cast(ApiToken, cached_token)
+        return cached_token
 
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
-    return fetch_token_with_single_flight(auth_token, scope)
+    try:
+        return fetch_token_with_single_flight(auth_token, scope)
+    except ApiTokenInvalidError as error:
+        raise UnauthorizedError(str(error)) from error
+
+
+def extract_service_api_bearer_token() -> str:
+    auth_token = peek_service_api_bearer_token()
+    if auth_token is None:
+        raise UnauthorizedError(MISSING_BEARER_MESSAGE)
+    return auth_token
+
+
+def peek_service_api_bearer_token() -> str | None:
+    # Match the Gateway's HTTP SP/HTAB parser for both API keys and resource
+    # access tokens. Unicode whitespace must not bypass policy identity lookup.
+    auth_header = request.headers.get("Authorization") or ""
+    auth_parts = [part for part in auth_header.replace("\t", " ").split(" ") if part]
+    if len(auth_parts) != 2 or auth_parts[0].lower() != "bearer":
+        return None
+    return auth_parts[1]
 
 
 class DatasetApiResource(Resource):

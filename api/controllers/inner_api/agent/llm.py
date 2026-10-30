@@ -73,10 +73,16 @@ class AgentLLMInvokeApi(Resource):
                 status_code=400,
             ) from exc
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 for chunk in service.invoke(prepared):
-                    envelope = {"code": 0, "message": "", "data": chunk.model_dump(mode="json")}
+                    # Agent owns its history. Do not reserialize opaque request
+                    # messages through the runtime's typed PromptMessage field.
+                    envelope = {
+                        "code": 0,
+                        "message": "",
+                        "data": chunk.model_dump(mode="json", exclude={"prompt_messages"}),
+                    }
                     yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
             except GeneratorExit:
                 raise

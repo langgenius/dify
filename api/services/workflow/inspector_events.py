@@ -6,7 +6,7 @@ DB polling. This module owns the redis pub/sub channel that connects the two
 sides:
 
 * :func:`publish_node_changed` / :func:`publish_workflow_completed` —
-  invoked by :class:`core.app.workflow.layers.persistence.WorkflowPersistenceLayer`
+  invoked by :class:`services.workflow_persistence.WorkflowPersistenceLayer`
   at the very end of each handler, after the DB write has already
   succeeded. Publish failures are swallowed so the engine never trips on a
   flaky redis connection.
@@ -40,6 +40,8 @@ from collections.abc import Iterator
 from dataclasses import asdict, dataclass
 from typing import Final, Literal
 
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
 from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
@@ -71,6 +73,17 @@ def channel_for(workflow_run_id: str) -> str:
 InspectorMessageKind = Literal["node_changed", "workflow_completed"]
 
 
+class _InspectorMessagePayload(BaseModel):
+    """Pydantic schema for the on-wire pub/sub payload (strict, no type coercion)."""
+
+    model_config = ConfigDict(extra="ignore", strict=True)
+
+    kind: InspectorMessageKind
+    workflow_run_id: str = Field(min_length=1)
+    node_id: str | None = None
+    status: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class InspectorMessage:
     """Minimal delta carried across the pub/sub channel.
@@ -93,24 +106,15 @@ class InspectorMessage:
     def from_json(cls, blob: str) -> InspectorMessage | None:
         """Decode a payload, returning ``None`` for any shape we can't trust."""
         try:
-            decoded = json.loads(blob)
-        except (json.JSONDecodeError, TypeError):
+            payload = _InspectorMessagePayload.model_validate_json(blob)
+        except ValidationError:
             return None
-        if not isinstance(decoded, dict):
-            return None
-        kind = decoded.get("kind")
-        if kind not in ("node_changed", "workflow_completed"):
-            return None
-        workflow_run_id = decoded.get("workflow_run_id")
-        if not isinstance(workflow_run_id, str) or not workflow_run_id:
-            return None
-        node_id = decoded.get("node_id")
-        if node_id is not None and not isinstance(node_id, str):
-            return None
-        status = decoded.get("status")
-        if status is not None and not isinstance(status, str):
-            return None
-        return cls(kind=kind, workflow_run_id=workflow_run_id, node_id=node_id, status=status)
+        return cls(
+            kind=payload.kind,
+            workflow_run_id=payload.workflow_run_id,
+            node_id=payload.node_id,
+            status=payload.status,
+        )
 
 
 # ──────────────────────────────────────────────────────────────────────────────

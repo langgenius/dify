@@ -1,34 +1,36 @@
 'use client'
-import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
-import type { CustomConfigValueType, SiteInfo } from '@/models/share'
-import type { HumanInputFormError } from '@/service/use-share'
-import type { HumanInputResolvedValue } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import {
+  FileUploadContext,
+  useFileUploadContext,
+} from '@/app/components/base/file-uploader/upload-context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { ENABLE_HITL_IM } from '@/config'
+import FormStatusCard from '@/features/human-input/form/form-status-card'
+import LoadedFormContent from '@/features/human-input/form/loaded-form-content'
+import { normalizeLegacyHumanInputForm } from '@/features/human-input/form/normalize-legacy-definition'
+import { createLegacyFormUploadStrategy } from '@/features/human-input/public/legacy-upload'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm } from '@/service/use-share'
-import FormStatusCard from './form-status-card'
-import LoadedFormContent from './loaded-form-content'
+import LegacyLoadedFormContent from './loaded-form-content'
 import { useFormSubmit } from './use-form-submit'
-
-export type FormData = {
-  site: {
-    site: SiteInfo
-    custom_config?: Record<string, CustomConfigValueType> | null
-  }
-  form_content: string
-  inputs: FormInputItem[]
-  resolved_default_values: Record<string, HumanInputResolvedValue>
-  user_actions: UserAction[]
-  expiration_time: number
-}
 
 const FormContent = () => {
   const { t } = useTranslation(['common', 'share'])
 
   const { token } = useParams<{ token: string }>()
+  const inheritedUploadContext = useFileUploadContext()
+  const uploadContext = React.useMemo(
+    () => ({
+      ...inheritedUploadContext,
+      uploadStrategy: createLegacyFormUploadStrategy(token),
+    }),
+    [inheritedUploadContext, token],
+  )
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
   const { isSubmitting, submit, success } = useFormSubmit(token)
@@ -39,10 +41,10 @@ const FormContent = () => {
       ? formData.site.custom_config.replace_webapp_logo
       : null
 
-  const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
-  const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
-  const rateLimitExceeded =
-    (error as HumanInputFormError | null)?.code === 'web_form_rate_limit_exceeded'
+  const errorCode = error instanceof ORPCError ? error.code : undefined
+  const expired = errorCode === 'human_input_form_expired'
+  const submitted = errorCode === 'human_input_form_submitted'
+  const rateLimitExceeded = errorCode === 'web_form_rate_limit_exceeded'
   const documentTitle = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : success
@@ -114,14 +116,27 @@ const FormContent = () => {
   }
 
   return (
-    <LoadedFormContent
-      key={token}
-      formData={formData}
-      isSubmitting={isSubmitting}
-      onSubmit={submit}
-      removeWebappBrand={removeWebappBrand}
-      replaceWebappLogo={replaceWebappLogo}
-    />
+    <FileUploadContext value={uploadContext}>
+      {!ENABLE_HITL_IM ? (
+        <LegacyLoadedFormContent
+          key={token}
+          formData={formData}
+          isSubmitting={isSubmitting}
+          removeWebappBrand={removeWebappBrand}
+          replaceWebappLogo={replaceWebappLogo}
+          onSubmit={(inputs, action, formInputs) =>
+            submit(getProcessedHumanInputFormInputs(formInputs, inputs) || {}, action)
+          }
+        />
+      ) : (
+        <LoadedFormContent
+          key={token}
+          definition={normalizeLegacyHumanInputForm(formData)}
+          isSubmitting={isSubmitting}
+          onSubmit={submit}
+        />
+      )}
+    </FileUploadContext>
   )
 }
 

@@ -1,5 +1,6 @@
 'use client'
 
+import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from './routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
@@ -25,19 +26,19 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { Suspense, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
+import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
   buildIntegrationPath,
   buildMarketplaceUrlPathByIntegrationSection,
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
+import { useMarketplace } from '@/features/marketplace/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { getMarketplaceUrl } from '@/utils/var'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../step-by-step-tour/target-registry'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
@@ -52,7 +53,6 @@ import {
 
 type IntegrationsPageProps = {
   onSectionChange?: (section: IntegrationSection) => void
-  onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
   syncDocumentTitle?: boolean
 }
@@ -107,7 +107,7 @@ const DescriptionWithLearnMore = ({ children, href, label }: DescriptionWithLear
         rel="noopener noreferrer"
       >
         {label}
-        <span aria-hidden className="i-ri-external-link-line size-3" />
+        <span aria-hidden className="i-ri-external-link-line size-3 [&:dir(rtl)]:-scale-x-100" />
       </Link>
     </span>
   )
@@ -143,7 +143,6 @@ function ToolsDisclosureIcon({ className }: { className?: string }) {
 
 export default function IntegrationsPage({
   onSectionChange,
-  onSwitchToMarketplace,
   section: routeSection,
   syncDocumentTitle = false,
 }: IntegrationsPageProps) {
@@ -170,7 +169,7 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const [isNavigationOpen, setIsNavigationOpen] = useState(false)
+  const navigationDrawerActionsRef = useRef<DrawerActions>(null)
   const showInstallAction = canInstallPlugin
   const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
@@ -187,13 +186,11 @@ export default function IntegrationsPage({
   const sectionTitle = integrationHeader?.title ?? activeItem?.label ?? integrationsTitle
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
-  useEffect(() => {
-    if (!isToolSection) return undefined
-
-    const animationFrame = window.requestAnimationFrame(() => setIsToolsExpanded(true))
-
-    return () => window.cancelAnimationFrame(animationFrame)
-  }, [isToolSection])
+  const [wasToolSection, setWasToolSection] = useState(isToolSection)
+  if (wasToolSection !== isToolSection) {
+    setWasToolSection(isToolSection)
+    if (isToolSection) setIsToolsExpanded(true)
+  }
   const useFillLayout =
     section === 'provider' ||
     section === 'data-source' ||
@@ -217,6 +214,7 @@ export default function IntegrationsPage({
         <UpdateSettingDialog category={pluginSettingCategory} />
       </div>
     ) : undefined
+  const marketplace = useMarketplace()
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
   const headerDescription =
     integrationHeader?.description ??
@@ -236,20 +234,17 @@ export default function IntegrationsPage({
       headerDescription
     )
   const handleSwitchToMarketplace = () => {
-    if (onSwitchToMarketplace) {
-      onSwitchToMarketplace(marketplaceUrlPath)
-      return
-    }
+    if (!marketplace) return
 
     window.open(
-      getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }),
+      marketplace.page(marketplaceUrlPath, undefined, window.location.origin),
       '_blank',
       'noopener,noreferrer',
     )
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
-      setIsNavigationOpen(false)
+      navigationDrawerActionsRef.current?.close()
       onSectionChange(nextSection)
       return
     }
@@ -385,7 +380,7 @@ export default function IntegrationsPage({
       )}
       {isCompact ? (
         <div className="shrink-0 border-b border-divider-burn px-2 pb-2">
-          <Drawer swipeDirection="left" open={isNavigationOpen} onOpenChange={setIsNavigationOpen}>
+          <Drawer swipeDirection="left" actionsRef={navigationDrawerActionsRef}>
             <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
               <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
               <span className="truncate">
@@ -421,21 +416,22 @@ export default function IntegrationsPage({
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">
         {useFillLayout ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden max-md:overflow-visible">
-            <IntegrationSectionRenderer
-              key={section}
-              section={section}
-              title={integrationHeader?.title ?? activeItem?.label}
-              description={headerDescriptionWithLink}
-              scrollAreaLabel={scrollAreaLabel}
-              providerSearchText={providerSearchText}
-              onProviderSearchTextChange={setProviderSearchText}
-              onSwitchToMarketplace={handleSwitchToMarketplace}
-              canInstallPlugin={canInstallPlugin}
-              canDeletePlugin={canDeletePlugin}
-              isInstallPermissionLoading={isReferenceSettingLoading}
-              canUpdatePlugin={canUpdatePlugin}
-              pluginCategoryToolbarAction={pluginSettingAction}
-            />
+            <Suspense key={section} fallback={null}>
+              <IntegrationSectionRenderer
+                section={section}
+                title={integrationHeader?.title ?? activeItem?.label}
+                description={headerDescriptionWithLink}
+                scrollAreaLabel={scrollAreaLabel}
+                providerSearchText={providerSearchText}
+                onProviderSearchTextChange={setProviderSearchText}
+                onSwitchToMarketplace={handleSwitchToMarketplace}
+                canInstallPlugin={canInstallPlugin}
+                canDeletePlugin={canDeletePlugin}
+                isInstallPermissionLoading={isReferenceSettingLoading}
+                canUpdatePlugin={canUpdatePlugin}
+                pluginCategoryToolbarAction={pluginSettingAction}
+              />
+            </Suspense>
           </div>
         ) : (
           <ScrollArea className="min-h-0 flex-1 overflow-hidden">
@@ -445,20 +441,21 @@ export default function IntegrationsPage({
               role={scrollAreaLabel ? 'region' : undefined}
             >
               <ScrollAreaContent className="min-h-full">
-                <IntegrationSectionRenderer
-                  key={section}
-                  section={section}
-                  title={integrationHeader?.title ?? activeItem?.label}
-                  description={headerDescriptionWithLink}
-                  providerSearchText={providerSearchText}
-                  onProviderSearchTextChange={setProviderSearchText}
-                  onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canInstallPlugin}
-                  canDeletePlugin={canDeletePlugin}
-                  isInstallPermissionLoading={isReferenceSettingLoading}
-                  canUpdatePlugin={canUpdatePlugin}
-                  pluginCategoryToolbarAction={pluginSettingAction}
-                />
+                <Suspense key={section} fallback={null}>
+                  <IntegrationSectionRenderer
+                    section={section}
+                    title={integrationHeader?.title ?? activeItem?.label}
+                    description={headerDescriptionWithLink}
+                    providerSearchText={providerSearchText}
+                    onProviderSearchTextChange={setProviderSearchText}
+                    onSwitchToMarketplace={handleSwitchToMarketplace}
+                    canInstallPlugin={canInstallPlugin}
+                    canDeletePlugin={canDeletePlugin}
+                    isInstallPermissionLoading={isReferenceSettingLoading}
+                    canUpdatePlugin={canUpdatePlugin}
+                    pluginCategoryToolbarAction={pluginSettingAction}
+                  />
+                </Suspense>
               </ScrollAreaContent>
             </ScrollAreaViewport>
             <ScrollAreaScrollbar>

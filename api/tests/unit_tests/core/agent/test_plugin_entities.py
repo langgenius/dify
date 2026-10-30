@@ -109,7 +109,7 @@ class TestAgentStrategyParameterType:
             side_effect=ValueError("invalid"),
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="invalid"):
             enum_member.cast_value("bad")
 
 

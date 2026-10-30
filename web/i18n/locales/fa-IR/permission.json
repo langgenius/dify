@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "مجوز دسترسی",
   "accessRule.actions": "اقدامات",
-  "accessRule.addMemberAria": "افزودن {{name}}",
   "accessRule.addMembersTitle": "افزودن اعضا",
   "accessRule.agentDescription": "دسترسی کاربران به این عامل و مجوزهای آن‌ها را مدیریت کنید.",
   "accessRule.agentTitle": "مجموعه مجوز عامل",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "بر اساس مجوزهای نقش",
   "accessRule.deleteDescription": "این قانون دسترسی به طور دائمی حذف شده و از فهرست مجوزدهی منبع برداشته می‌شود.",
   "accessRule.deleteTitle": "حذف «{{name}}»؟",
-  "accessRule.deleted": "قانون دسترسی با موفقیت حذف شد",
   "accessRule.exceptionPermissionFor": "مجوز استثنا برای {{name}}",
   "accessRule.expandSection": "گسترش {{title}}",
   "accessRule.maintainer": "نگهدارنده",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "«{{name}}» به {{count}} عضو اختصاص داده شده است. آیا می‌خواهید نسخه نقش جدید همان اعضا را در بر بگیرد؟",
   "role.copyMembersLoading": "در حال بارگذاری تخصیص‌های اعضا...",
   "role.copyMembersTitle": "تخصیص‌های اعضا کپی شود؟",
-  "role.created": "نقش با موفقیت ایجاد شد",
   "role.deleteDescription": "این نقش به طور دائمی حذف شده و از هر عضو یا قانون دسترسی که از آن استفاده می‌کند برداشته می‌شود.",
   "role.deleteTitle": "حذف «{{name}}»؟",
-  "role.deleted": "نقش با موفقیت حذف شد",
-  "role.duplicated": "نقش با موفقیت تکثیر شد",
   "role.groups.builtin": "نقش‌های سیستمی",
   "role.groups.custom": "نقش‌های سفارشی",
   "role.loading": "در حال بارگذاری نقش‌ها...",
@@ -104,7 +99,6 @@
   "role.noDescription": "بدون توضیحات",
   "role.noMatchingRoles": "هیچ نقش منطبقی یافت نشد",
   "role.searchPlaceholder": "جستجوی نقش‌ها...",
-  "role.updated": "نقش با موفقیت به‌روزرسانی شد",
   "role.workspaceRoles.description": "نقش‌ها را ایجاد کنید و تعریف کنید هر نقش در این فضای کاری چه کاری می‌تواند انجام دهد.",
   "role.workspaceRoles.title": "نقش‌های فضای کاری"
 }

@@ -1,20 +1,21 @@
 'use client'
-import type { FC } from 'react'
 import type { Param } from '../../types'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import * as React from 'react'
+import type { MoreInfo } from '@/app/components/workflow/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
+import { ParameterDialog } from './update'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
 type Props = Readonly<{
   payload: Param
-  onEdit: () => void
+  readonly: boolean
+  onSave: (payload: Param, moreInfo?: MoreInfo) => void
   onDelete: () => void
 }>
 
-const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
-  const { t } = useTranslation(['workflowModels'])
+export function ParameterItem({ payload, readonly, onSave, onDelete }: Props) {
+  const { t } = useTranslation(['common', 'workflowModels'])
 
   return (
     <div className="group relative rounded-lg bg-components-input-bg-normal px-2.5 py-2 hover:shadow-xs">
@@ -40,19 +41,18 @@ const Item: FC<Props> = ({ payload, onEdit, onDelete }) => {
       <div className="mt-0.5 text-xs leading-4.5 font-normal text-text-tertiary">
         {payload.description}
       </div>
-      <div className="absolute top-0 right-0 hidden h-full w-29.75 items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-1 group-hover:flex">
-        <div className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover" onClick={onEdit}>
-          <RiEditLine className="size-4 text-text-tertiary" />
+      {!readonly && (
+        <div className="pointer-events-none absolute top-0 right-0 flex h-full w-29.75 items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-1 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+          <ParameterDialog type="edit" payload={payload} onSave={onSave} />
+          <IconButton
+            aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${payload.name}`}
+            tone="destructive"
+            onClick={onDelete}
+          >
+            <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+          </IconButton>
         </div>
-
-        <div
-          className="group shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-destructive-hover!"
-          onClick={onDelete}
-        >
-          <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
-        </div>
-      </div>
+      )}
     </div>
   )
 }
-export default React.memo(Item)

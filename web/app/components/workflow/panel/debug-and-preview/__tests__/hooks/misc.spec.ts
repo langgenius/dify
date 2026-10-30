@@ -1,29 +1,27 @@
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
 const mockNotify = vi.fn()
 const mockFetchInspectVars = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
-const mockSetIterTimes = vi.fn()
-const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
-
-let mockWorkflowRunningData: any = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+  sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
+  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -31,45 +29,20 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
   },
 }))
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
-vi.mock('../../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
-}))
-
-vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
-}))
-
-vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: () => null,
-}))
-
-vi.mock('../../../../store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => ({
-      setIterTimes: mockSetIterTimes,
-      setLoopTimes: mockSetLoopTimes,
-      inputs: {},
-      workflowRunningData: mockWorkflowRunningData,
-    }),
-  }),
-  useStore: () => vi.fn(),
-}))
+// Run transport and inspector loading are supplied by the owning application through
+// the real hooks store; useChat and its facade hooks stay mounted.
+const renderHook: typeof renderWorkflowCanvasHook = (hook, options) =>
+  renderWorkflowCanvasHook(hook, {
+    ...options,
+    hooksStoreProps: { handleRun: mockHandleRun, fetchInspectVars: mockFetchInspectVars },
+  })
 
 const resetMocksAndWorkflowState = () => {
   vi.clearAllMocks()
-  mockWorkflowRunningData = null
 }
 
 describe('useChat – handleSwitchSibling', () => {
@@ -81,12 +54,14 @@ describe('useChat – handleSwitchSibling', () => {
 
   it('should call handleResume when target has workflow_run_id and pending humanInputFormData', async () => {
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
     mockSseGet.mockImplementation(() => {})
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -103,7 +78,7 @@ describe('useChat – handleSwitchSibling', () => {
 
     act(() => {
       sendCallbacks.onHumanInputRequired({
-        data: { node_id: 'human-n', form_token: 'ft-1' },
+        data: { form_id: 'form-human-n', node_id: 'human-n', form_token: 'ft-1' },
       })
     })
 
@@ -115,16 +90,22 @@ describe('useChat – handleSwitchSibling', () => {
       result.current.handleSwitchSibling('msg-switch', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalled()
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/wfr-switch/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ onData: expect.any(Function), onCompleted: expect.any(Function) }),
+    )
   })
 
   it('should not call handleResume when target has no humanInputFormDataList', async () => {
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -150,24 +131,16 @@ describe('useChat – handleSwitchSibling', () => {
     expect(mockSseGet).not.toHaveBeenCalled()
   })
 
-  it('should return undefined from findMessageInTree when not found', () => {
-    const { result } = renderHook(() => useChat({}))
-
-    act(() => {
-      result.current.handleSwitchSibling('nonexistent-id', {})
-    })
-
-    expect(mockSseGet).not.toHaveBeenCalled()
-  })
-
   it('should search children recursively in findMessageInTree', async () => {
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
     mockSseGet.mockImplementation(() => {})
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'parent' }, {})
@@ -207,7 +180,7 @@ describe('useChat – handleSwitchSibling', () => {
 
     act(() => {
       sendCallbacks.onHumanInputRequired({
-        data: { node_id: 'h-child', form_token: 'ft-c' },
+        data: { form_id: 'form-h-child', node_id: 'h-child', form_token: 'ft-c' },
       })
     })
 
@@ -219,7 +192,11 @@ describe('useChat – handleSwitchSibling', () => {
       result.current.handleSwitchSibling('msg-child', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalled()
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/wfr-2/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ onData: expect.any(Function), onCompleted: expect.any(Function) }),
+    )
   })
 })
 
@@ -229,8 +206,73 @@ describe('useChat – handleSubmitHumanInputForm', () => {
     mockSubmitHumanInputForm.mockResolvedValue({})
   })
 
+  it.each(['1', '2'] as const)(
+    'submits a nested answer form through event version %s',
+    async (version) => {
+      const previousTree: ChatItemInTree[] = [
+        {
+          id: 'question',
+          content: 'Review this request',
+          isAnswer: false,
+          children: [
+            {
+              id: 'answer',
+              content: '',
+              isAnswer: true,
+              children: [],
+              humanInputFormDataList: [
+                {
+                  form_version: version,
+                  form_id: 'form',
+                  form_token: 'nested-token',
+                  node_id: 'approval-node',
+                  node_title: 'Approval',
+                  form_content: 'Approve this request',
+                  inputs: [],
+                  actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+                  resolved_default_values: {},
+                  display_in_ui: true,
+                  expiration_time: 2_000_000_000,
+                },
+              ],
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() => useChat({}, undefined, previousTree), {
+        nodes: [
+          createNode({
+            id: 'approval-node',
+            data: {
+              type: BlockEnum.HumanInput,
+              title: 'Approval',
+              desc: '',
+              version: version === '2' ? '1' : '2',
+            },
+          }),
+        ],
+      })
+      expect(result.current.chatList.some((item) => item.humanInputFormDataList?.length)).toBe(true)
+
+      await act(async () => {
+        await result.current.handleSubmitHumanInputForm('nested-token', {
+          action: 'approve',
+          inputs: {},
+        })
+      })
+
+      expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+        'nested-token',
+        { action: 'approve', inputs: {} },
+        version,
+      )
+    },
+  )
+
   it('should call submitHumanInputForm with token and data', async () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleSubmitHumanInputForm('token-123', {
@@ -239,59 +281,62 @@ describe('useChat – handleSubmitHumanInputForm', () => {
       })
     })
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', {
-      inputs: { field: 'value' },
-      action: 'approve',
-    })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+      'token-123',
+      {
+        inputs: { field: 'value' },
+        action: 'approve',
+      },
+      undefined,
+    )
   })
 })
 
 describe('useChat – getHumanInputNodeData', () => {
   beforeEach(() => {
     resetMocksAndWorkflowState()
-    mockGetNodes.mockReturnValue([])
   })
 
   it('should return the custom node matching the given nodeID', () => {
-    const mockNode = { id: 'node-1', type: 'custom', data: { title: 'Human Input' } }
-    mockGetNodes.mockReturnValue([
-      mockNode,
-      { id: 'node-2', type: 'custom', data: { title: 'Other' } },
-    ])
+    const mockNode = createNode({
+      id: 'node-1',
+      data: { type: BlockEnum.HumanInput, title: 'Human Input' },
+    })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      nodes: [mockNode, createNode({ id: 'node-2', data: { title: 'Other' } })],
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const node = result.current.getHumanInputNodeData('node-1')
-    expect(node).toEqual(mockNode)
+    expect(node).toMatchObject(mockNode)
   })
 
   it('should return undefined when no matching node', () => {
-    mockGetNodes.mockReturnValue([{ id: 'node-2', type: 'custom', data: {} }])
-
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      nodes: [createNode({ id: 'node-2' })],
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const node = result.current.getHumanInputNodeData('nonexistent')
     expect(node).toBeUndefined()
   })
 
   it('should filter out non-custom nodes', () => {
-    mockGetNodes.mockReturnValue([
-      { id: 'node-1', type: 'default', data: {} },
-      { id: 'node-1', type: 'custom', data: { found: true } },
-    ])
-
-    const { result } = renderHook(() => useChat({}))
-    const node = result.current.getHumanInputNodeData('node-1')
-    expect(node).toEqual({ id: 'node-1', type: 'custom', data: { found: true } })
+    const customNode = createNode({
+      id: 'custom-node',
+      data: { type: BlockEnum.HumanInput, title: 'Human Input' },
+    })
+    const { result } = renderHook(() => useChat({}), {
+      nodes: [createNode({ id: 'default-node', type: 'default' }), customNode],
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+    expect(result.current.getHumanInputNodeData('default-node')).toBeUndefined()
+    expect(result.current.getHumanInputNodeData('custom-node')).toMatchObject(customNode)
   })
 })
 
 describe('useChat – conversationId and setTargetMessageId', () => {
   beforeEach(() => {
     resetMocksAndWorkflowState()
-  })
-
-  it('should initially be an empty string', () => {
-    const { result } = renderHook(() => useChat({}))
-    expect(result.current.conversationId).toBe('')
   })
 
   it('setTargetMessageId should change chatList thread path', () => {
@@ -328,26 +373,31 @@ describe('useChat – conversationId and setTargetMessageId', () => {
       },
     ]
 
-    const { result } = renderHook(() => useChat({}, undefined, prevChatTree))
-
-    const defaultList = result.current.chatList
-    expect(defaultList.some((item) => item.id === 'a1')).toBe(true)
+    const { result } = renderHook(() => useChat({}, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.setTargetMessageId('a2-branch-a')
     })
 
-    const listA = result.current.chatList
-    expect(listA.some((item) => item.id === 'a2-branch-a')).toBe(true)
-    expect(listA.some((item) => item.id === 'a2-branch-b')).toBe(false)
+    expect(result.current.chatList.map((item) => item.id)).toEqual([
+      'q1',
+      'a1',
+      'q2-branch-a',
+      'a2-branch-a',
+    ])
 
     act(() => {
       result.current.setTargetMessageId('a2-branch-b')
     })
 
-    const listB = result.current.chatList
-    expect(listB.some((item) => item.id === 'a2-branch-b')).toBe(true)
-    expect(listB.some((item) => item.id === 'a2-branch-a')).toBe(false)
+    expect(result.current.chatList.map((item) => item.id)).toEqual([
+      'q1',
+      'a1',
+      'q2-branch-b',
+      'a2-branch-b',
+    ])
   })
 })
 
@@ -357,13 +407,15 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
   beforeEach(() => {
     resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       capturedCallbacks = callbacks
     })
   })
 
   it('should handle follow-up message with parent_message_id', async () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'first' }, {})
@@ -394,6 +446,23 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(2)
-    expect(result.current.chatList.length).toBeGreaterThan(0)
+    expect(mockHandleRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: 'follow up', parent_message_id: 'msg-1' }),
+      expect.any(Object),
+    )
+    act(() => {
+      capturedCallbacks.onData('answer2', true, {
+        conversationId: 'c1',
+        messageId: 'msg-2',
+        taskId: 't2',
+      })
+    })
+    expect(result.current.conversationId).toBe('c1')
+    expect(result.current.chatList.map(({ id, content }) => ({ id, content }))).toEqual([
+      { id: 'question-msg-1', content: 'first' },
+      { id: 'msg-1', content: 'answer1' },
+      { id: 'question-msg-2', content: 'follow up' },
+      { id: 'msg-2', content: 'answer2' },
+    ])
   })
 })

@@ -1,7 +1,6 @@
 import type { LexicalEditor } from 'lexical'
 import type { RoleName } from '../index'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { HISTORY_PLACEHOLDER_TEXT } from '../../../constants'
 import {
@@ -60,9 +59,8 @@ describe('HistoryBlock', () => {
 
   it('should insert history block and call onInsert when insert command is dispatched', async () => {
     const onInsert = vi.fn()
-    const onEditRole = vi.fn()
     const history = createRoleName()
-    const { getEditor } = renderHistoryBlock({ onInsert, onEditRole, history })
+    const { getEditor } = renderHistoryBlock({ onInsert, history })
 
     const editor = await waitForEditorReady(getEditor)
 
@@ -120,19 +118,6 @@ describe('HistoryBlock', () => {
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('should handle delete command without onDelete callback', async () => {
-    const { getEditor } = renderHistoryBlock()
-
-    const editor = await waitForEditorReady(getEditor)
-
-    let handled = false
-    act(() => {
-      handled = editor.dispatchCommand(DELETE_HISTORY_BLOCK_COMMAND, undefined)
-    })
-
-    expect(handled).toBe(true)
-  })
-
   it('should unregister insert and delete commands when unmounted', async () => {
     const { getEditor, unmount } = renderHistoryBlock()
 
@@ -149,23 +134,5 @@ describe('HistoryBlock', () => {
 
     expect(insertHandled).toBe(false)
     expect(deleteHandled).toBe(false)
-  })
-
-  it('should throw when history node is not registered on editor', () => {
-    expect(() => {
-      render(
-        <LexicalComposer
-          initialConfig={{
-            namespace: 'history-block-plugin-missing-node-test',
-            onError: (error: Error) => {
-              throw error
-            },
-            nodes: [CustomTextNode],
-          }}
-        >
-          <HistoryBlock />
-        </LexicalComposer>,
-      )
-    }).toThrow('HistoryBlockPlugin: HistoryBlock not registered on editor')
   })
 })

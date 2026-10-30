@@ -28,6 +28,7 @@ class SubjectType(StrEnum):
     # not is keyed by its external issuer instead.
     bound_to_account: bool
 
+    RESOURCE_ACCESS = ("resource_access", frozenset({Scope.WORKSPACE_READ, Scope.APPS_READ, Scope.APPS_RUN}), False)
     ACCOUNT = ("account", frozenset({Scope.FULL}), True)
     EXTERNAL_SSO = ("external_sso", frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}), False)
 
@@ -47,6 +48,7 @@ class TokenType(StrEnum):
     prefix: str
     subject: SubjectType
 
+    RESOURCE_ACCESS = ("resource_access", "sk-", SubjectType.RESOURCE_ACCESS)
     OAUTH_ACCOUNT = ("oauth_account", "dfoa_", SubjectType.ACCOUNT)
     OAUTH_EXTERNAL_SSO = ("oauth_external_sso", "dfoe_", SubjectType.EXTERNAL_SSO)
 

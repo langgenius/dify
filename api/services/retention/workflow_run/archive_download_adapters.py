@@ -6,6 +6,13 @@ from services.retention.workflow_run.archive_download_task import WorkflowRunArc
 _ARCHIVE_DOWNLOAD_MIME_TYPE = "application/zip"
 
 
+def dispatch_workflow_run_archive_deletion_task(*, tenant_id: str, year: int, month: int) -> None:
+    """Enqueue an archive-only deletion whose durable request is already committed."""
+    from tasks.workflow_run_archive_deletion_tasks import delete_workflow_run_archive_task
+
+    delete_workflow_run_archive_task.apply_async(args=(tenant_id, year, month))
+
+
 def dispatch_workflow_run_archive_download_task(
     task: WorkflowRunArchiveDownloadTask,
 ) -> None:

@@ -8,8 +8,13 @@ import type {
   WorkflowFinishedResponse,
 } from '@/types/workflow'
 import { produce } from 'immer'
-import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
+import {
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
+} from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
+import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
 
@@ -22,6 +27,7 @@ type CreateWorkflowStreamHandlersParams = {
   markEnded: () => void
   notify: Notify
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  onPaused?: (workflowRunId: string, handlers: IOtherOptions) => void
   resetRunState: () => void
   setCompletionRes: (res: string) => void
   setCurrentTaskId: Dispatch<SetStateAction<string | null>>
@@ -195,15 +201,7 @@ const updateHumanInputRequired = (
   data: NonNullable<WorkflowProcess['humanInputFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    if (!draft.humanInputFormDataList) {
-      draft.humanInputFormDataList = [data]
-    } else {
-      const currentFormIndex = draft.humanInputFormDataList.findIndex(
-        (item) => item.node_id === data.node_id,
-      )
-      if (currentFormIndex > -1) draft.humanInputFormDataList[currentFormIndex] = data
-      else draft.humanInputFormDataList.push(data)
-    }
+    updatePendingHumanInputForm(draft, data)
 
     const currentIndex = draft.tracing.findIndex((item) => item.node_id === data.node_id)
     if (currentIndex > -1) draft.tracing[currentIndex]!.status = NodeRunningStatus.Paused
@@ -215,20 +213,7 @@ const updateHumanInputFilled = (
   data: NonNullable<WorkflowProcess['humanInputFilledFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    let requiredFormData: NonNullable<WorkflowProcess['humanInputFormDataList']>[number] | undefined
-    if (draft.humanInputFormDataList?.length) {
-      const currentFormIndex = draft.humanInputFormDataList.findIndex(
-        (item) => item.node_id === data.node_id,
-      )
-      if (currentFormIndex > -1) {
-        requiredFormData = draft.humanInputFormDataList[currentFormIndex]
-        draft.humanInputFormDataList.splice(currentFormIndex, 1)
-      }
-    }
-
-    const enrichedData = enrichSubmittedHumanInputFormData(data, requiredFormData)
-    if (!draft.humanInputFilledFormDataList) draft.humanInputFilledFormDataList = [enrichedData]
-    else draft.humanInputFilledFormDataList.push(enrichedData)
+    updateFilledHumanInputForm(draft, data)
   })
 }
 
@@ -237,13 +222,7 @@ const updateHumanInputTimeout = (
   data: HumanInputFormTimeoutData,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    if (!draft.humanInputFormDataList?.length) return
-
-    const currentFormIndex = draft.humanInputFormDataList.findIndex(
-      (item) => item.node_id === data.node_id,
-    )
-    if (currentFormIndex > -1)
-      draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
+    updateHumanInputFormTimeout(draft, data)
   })
 }
 
@@ -274,6 +253,7 @@ export const createWorkflowStreamHandlers = ({
   markEnded,
   notify,
   onCompleted,
+  onPaused,
   resetRunState,
   setCompletionRes,
   setCurrentTaskId,
@@ -348,6 +328,9 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowFinished: ({ data }) => {
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
+      const localizedError = localizeKnowledgeRetrievalV2Error(data.error, (key) =>
+        t(($) => $[key], { ns: 'workflow' }),
+      )
       if (isTimedOut()) {
         const finishedStatus =
           workflowStatus === WorkflowRunningStatus.Stopped
@@ -356,7 +339,7 @@ export const createWorkflowStreamHandlers = ({
               ? WorkflowRunningStatus.Failed
               : WorkflowRunningStatus.Succeeded
         setWorkflowProcessData(
-          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, data.error),
+          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, localizedError),
         )
         notify({
           type: 'warning',
@@ -371,7 +354,7 @@ export const createWorkflowStreamHandlers = ({
           applyWorkflowFinishedState(
             getWorkflowProcessData(),
             WorkflowRunningStatus.Stopped,
-            data.error,
+            localizedError,
           ),
         )
         finishWithFailure()
@@ -379,12 +362,12 @@ export const createWorkflowStreamHandlers = ({
       }
 
       if (data.error) {
-        notify({ type: 'error', message: data.error })
+        notify({ type: 'error', message: localizedError! })
         setWorkflowProcessData(
           applyWorkflowFinishedState(
             getWorkflowProcessData(),
             WorkflowRunningStatus.Failed,
-            data.error,
+            localizedError,
           ),
         )
         finishWithFailure()
@@ -426,6 +409,11 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
+      if (onPaused) {
+        setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
+        onPaused(data.workflow_run_id, otherOptions)
+        return
+      }
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
         void sseGet(
@@ -446,11 +434,9 @@ export {
   appendParallelStart,
   appendResultText,
   applyWorkflowFinishedState,
-  applyWorkflowOutputs,
   applyWorkflowPaused,
   finishParallelTrace,
   finishWorkflowNode,
-  markNodesStopped,
   replaceResultText,
   updateHumanInputFilled,
   updateHumanInputRequired,

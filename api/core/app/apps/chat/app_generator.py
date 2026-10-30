@@ -45,7 +45,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         streaming: Literal[True],
         *,
         session: Session,
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str]: ...
 
     @overload
     def generate(
@@ -69,7 +69,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         streaming: bool,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
         self,
@@ -80,7 +80,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         """
         Generate App response.
 
@@ -238,7 +238,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager=queue_manager,
                 conversation=conversation,
                 message=message,
-                user=user,
                 stream=streaming,
             )
 

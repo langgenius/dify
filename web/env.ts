@@ -71,6 +71,7 @@ const clientSchema = {
    */
   NEXT_PUBLIC_DEPLOY_ENV: z.enum(['DEVELOPMENT', 'PRODUCTION', 'TESTING']).optional(),
   NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: coercedBoolean.default(false),
   NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
    * Surface the Agent v2 node inside Chatflow (advanced-chat) apps.
@@ -84,6 +85,11 @@ const clientSchema = {
    * "Go to Anything" command palette (Cmd/Ctrl+K).
    */
   NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
+  /**
+   * Enable HITL IM, Contacts, V2 editing, migration, and approval entry points.
+   * When disabled, keep legacy V1 workflows available without exposing V2 UI.
+   */
+  NEXT_PUBLIC_ENABLE_HITL_IM: coercedBoolean.default(false),
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
    * Default is false for security reasons to prevent conflicts with regular text
@@ -193,6 +199,10 @@ export const env = createEnv({
      * The timeout for the text generation in millisecond
      */
     TEXT_GENERATION_TIMEOUT_MS: coercedNumber.default(60000),
+    /** Ingress proof for the optional pre-render WebApp gate; never expose to the browser. */
+    WEBAPP_ACCESS_PREFLIGHT_PROXY_SECRET: z.string().optional(),
+    /** Fixed internal Gateway access-mode URL. Unset preserves self-hosted routing. */
+    WEBAPP_ACCESS_PREFLIGHT_URL: z.url().optional(),
     /**
      * The timeout for the cmd+k workflow generation in millisecond
      */
@@ -236,6 +246,9 @@ export const env = createEnv({
     NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer
       ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
+    NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN
+      : getRuntimeEnvFromBody('enableAccessToken'),
     NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
       : getRuntimeEnvFromBody('enableAgentV2'),
@@ -245,6 +258,10 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
+    NEXT_PUBLIC_ENABLE_HITL_IM: isServer
+      ? // Read at server startup rather than inlining a public env value at build time.
+        Reflect.get(process.env, 'NEXT_PUBLIC_ENABLE_HITL_IM')
+      : getRuntimeEnvFromBody('enableHitlIm'),
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
       : getRuntimeEnvFromBody('enableSingleDollarLatex'),

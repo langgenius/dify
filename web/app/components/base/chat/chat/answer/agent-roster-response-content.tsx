@@ -8,6 +8,7 @@ import { useLocale } from '#i18n'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
+import { resolveKnowledgeCitationLinks } from './knowledge-citation-links'
 
 type AgentRosterResponseContentProps = {
   item: ChatItem
@@ -217,7 +218,7 @@ function ToolActivityItem({ tool }: { tool: ToolActivity }) {
     <div className="flex w-full max-w-full min-w-0 flex-col items-start">
       {hasDetails ? (
         <Collapsible className="w-full max-w-full items-start">
-          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary outline-hidden select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary">
+          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-left system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary">
             {content}
           </CollapsibleTrigger>
           <CollapsiblePanel className="w-full max-w-full">
@@ -308,7 +309,7 @@ function AgentActivityDisclosure({
     <Collapsible className="w-full max-w-full items-start gap-1" defaultOpen={defaultOpen}>
       <CollapsibleTrigger
         aria-label={title}
-        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary outline-hidden select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary"
+        className="group/thinking flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-1 rounded-md p-1 text-left system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary"
       >
         <span>{thinking}</span>
         {duration && (
@@ -326,7 +327,10 @@ function AgentActivityDisclosure({
         <div className="flex w-full max-w-full min-w-0 flex-col gap-1 overflow-hidden">
           {entries.map((entry) =>
             entry.type === 'message' ? (
-              <ResponseMessage key={entry.key} content={entry.content} />
+              <ResponseMessage
+                key={entry.key}
+                content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
+              />
             ) : (
               <AgentActivityItem key={entry.key} thought={entry.thought} responding={responding} />
             ),
@@ -381,7 +385,10 @@ export function AgentRosterResponseContent({
         />
       )}
       {standaloneMessages.map((message) => (
-        <ResponseMessage key={message.key} content={message.content} />
+        <ResponseMessage
+          key={message.key}
+          content={resolveKnowledgeCitationLinks(message.content, item.citation)}
+        />
       ))}
     </div>
   )

@@ -1,66 +1,31 @@
 import type { DocExtractorNodeType } from '../types'
-import { render, screen } from '@testing-library/react'
-import { useNodes } from 'reactflow'
+import { screen } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useNodes: vi.fn(),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-label', () => ({
-  VariableLabelInNode: ({
-    variables,
-    nodeTitle,
-    nodeType,
-  }: {
-    variables: string[]
-    nodeTitle?: string
-    nodeType?: BlockEnum
-  }) => <div>{`${nodeTitle}:${nodeType}:${variables.join('.')}`}</div>,
-}))
-
-const mockUseNodes = vi.mocked(useNodes)
-
-const createData = (overrides: Partial<DocExtractorNodeType> = {}): DocExtractorNodeType => ({
+const data: DocExtractorNodeType = {
   title: 'Document Extractor',
   desc: '',
   type: BlockEnum.DocExtractor,
-  variable_selector: ['node-1', 'files'],
+  variable_selector: ['source', 'files'],
   is_array_file: false,
-  ...overrides,
-})
+}
 
 describe('document-extractor/node', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodes.mockReturnValue([
-      {
-        id: 'node-1',
-        data: {
-          title: 'Input Files',
-          type: BlockEnum.Start,
-        },
-      },
-    ] as ReturnType<typeof useNodes>)
-  })
-
-  it('renders nothing when no input variable is configured', () => {
-    const { container } = render(
-      <Node id="doc-node" data={createData({ variable_selector: [] })} />,
-    )
-
-    expect(container).toBeEmptyDOMElement()
-  })
-
-  it('renders the selected input variable label', () => {
-    render(<Node id="doc-node" data={createData()} />)
+  it('resolves the selected file variable to its source node in the real graph', () => {
+    renderWorkflowFlowComponent(<Node id="doc-node" data={data} />, {
+      nodes: [
+        createNode({ id: 'unrelated', data: { type: BlockEnum.Start, title: 'Unrelated input' } }),
+        createNode({ id: 'source', data: { type: BlockEnum.Start, title: 'Input Files' } }),
+      ],
+      edges: [],
+    })
 
     expect(screen.getByText('workflow.nodes.docExtractor.inputVar')).toBeInTheDocument()
-    expect(screen.getByText('Input Files:start:node-1.files')).toBeInTheDocument()
+    expect(screen.getByText('Input Files')).toBeInTheDocument()
+    expect(screen.getByText('files')).toBeInTheDocument()
+    expect(screen.queryByText('Unrelated input')).not.toBeInTheDocument()
   })
 })

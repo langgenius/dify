@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import sqlalchemy as sa
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import Select, func, select, tuple_
 from sqlalchemy.orm import Session, scoped_session
 
 from core.app.file_access import DatabaseFileAccessController
@@ -130,6 +130,85 @@ def load_document_read_batch(documents: Sequence[Document], *, session: Session)
         hit_counts={doc_id: hits for doc_id, _, hits in counts},
         process_rules=process_rules,
     )
+
+
+@dataclass(frozen=True)
+class SegmentReadBatch:
+    child_chunks: dict[str, list[ChildChunk]] = field(default_factory=dict)
+    attachments: dict[str, list[UploadFile]] = field(default_factory=dict)
+
+
+def load_segment_read_batch(segments: Sequence[DocumentSegment], *, session: Session) -> SegmentReadBatch:
+    if not segments:
+        return SegmentReadBatch()
+    document_owners = list({(s.tenant_id, s.dataset_id, s.document_id) for s in segments})
+    documents = {
+        document.id: document
+        for document in session.scalars(
+            select(Document).where(tuple_(Document.tenant_id, Document.dataset_id, Document.id).in_(document_owners))
+        )
+    }
+    rule_owners = {
+        (doc.dataset_process_rule_id, doc.dataset_id) for doc in documents.values() if doc.dataset_process_rule_id
+    }
+    process_rules = (
+        {
+            rule.id: rule
+            for rule in session.scalars(
+                select(DatasetProcessRule).where(
+                    tuple_(DatasetProcessRule.id, DatasetProcessRule.dataset_id).in_(rule_owners)
+                )
+            )
+        }
+        if rule_owners
+        else {}
+    )
+    child_document_ids: set[str] = set()
+    for document in documents.values():
+        if not document.dataset_process_rule_id:
+            continue
+        process_rule = process_rules.get(document.dataset_process_rule_id)
+        if process_rule and process_rule.mode == "hierarchical":
+            rules_dict = process_rule.rules_dict
+            if rules_dict:
+                rules = Rule.model_validate(rules_dict)
+                if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
+                    child_document_ids.add(document.id)
+
+    child_owners = [
+        (s.tenant_id, s.dataset_id, s.document_id, s.id) for s in segments if s.document_id in child_document_ids
+    ]
+    child_chunks: dict[str, list[ChildChunk]] = {}
+    if child_owners:
+        for chunk in session.scalars(
+            select(ChildChunk)
+            .where(
+                tuple_(ChildChunk.tenant_id, ChildChunk.dataset_id, ChildChunk.document_id, ChildChunk.segment_id).in_(
+                    child_owners
+                )
+            )
+            .order_by(ChildChunk.position.asc())
+        ):
+            child_chunks.setdefault(chunk.segment_id, []).append(chunk)
+
+    attachment_owners = [(s.tenant_id, s.dataset_id, s.document_id, s.id) for s in segments]
+    attachments: dict[str, list[UploadFile]] = {}
+    for segment_id, file in session.execute(
+        select(SegmentAttachmentBinding.segment_id, UploadFile)
+        .join(SegmentAttachmentBinding, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+        .where(
+            tuple_(
+                SegmentAttachmentBinding.tenant_id,
+                SegmentAttachmentBinding.dataset_id,
+                SegmentAttachmentBinding.document_id,
+                SegmentAttachmentBinding.segment_id,
+            ).in_(attachment_owners),
+            UploadFile.tenant_id == SegmentAttachmentBinding.tenant_id,
+        )
+    ):
+        attachments.setdefault(segment_id, []).append(file)
+
+    return SegmentReadBatch(child_chunks=child_chunks, attachments=attachments)
 
 
 def get_segment_content_file_ids(
@@ -322,8 +401,8 @@ def get_dataset_available_document_count(dataset: Dataset, *, session: Session) 
                 Document.dataset_id == dataset.id,
                 Document.tenant_id == dataset.tenant_id,
                 Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
             )
         )
         or 0
@@ -337,7 +416,7 @@ def get_dataset_available_segment_count(dataset: Dataset, *, session: Session) -
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.tenant_id == dataset.tenant_id,
                 DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
+                DocumentSegment.enabled.is_(True),
             )
         )
         or 0
@@ -570,9 +649,11 @@ def get_pipeline_template_creator_name(template: PipelineCustomizedTemplate, ses
 
 
 def get_pipeline_dataset(pipeline: Pipeline, session: Session | scoped_session) -> Dataset | None:
-    return session.scalar(
-        select(Dataset).where(Dataset.pipeline_id == pipeline.id, Dataset.tenant_id == pipeline.tenant_id)
-    )
+    return session.scalar(pipeline_dataset_query(pipeline.tenant_id, pipeline.id))
+
+
+def pipeline_dataset_query(workspace_id: str, pipeline_id: str) -> Select[tuple[Dataset]]:
+    return select(Dataset).where(Dataset.pipeline_id == pipeline_id, Dataset.tenant_id == workspace_id)
 
 
 @dataclass(frozen=True)
@@ -603,7 +684,6 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
     if not dataset_ids:
         return DatasetDetailPrefetch()
 
-    tenant_ids = {dataset.tenant_id for dataset in datasets}
     dataset_owners = [(dataset.tenant_id, dataset.id) for dataset in datasets]
 
     app_counts = dict(
@@ -627,8 +707,8 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
         (
             sa.and_(
                 Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
             ),
             1,
         ),

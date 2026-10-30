@@ -3,40 +3,6 @@ import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { processNodesWithoutDataSource } from '../nodes'
 
-vi.mock('@/app/components/workflow/constants', () => ({
-  CUSTOM_NODE: 'custom',
-  NODE_WIDTH_X_OFFSET: 400,
-  START_INITIAL_POSITION: { x: 100, y: 100 },
-}))
-
-vi.mock('@/app/components/workflow/nodes/data-source-empty/constants', () => ({
-  CUSTOM_DATA_SOURCE_EMPTY_NODE: 'data-source-empty',
-}))
-
-vi.mock('@/app/components/workflow/note-node/constants', () => ({
-  CUSTOM_NOTE_NODE: 'note',
-}))
-
-vi.mock('@/app/components/workflow/note-node/types', () => ({
-  NoteTheme: { blue: 'blue' },
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: ({
-    id,
-    type,
-    data,
-    position,
-  }: {
-    id: string
-    type: string
-    data: object
-    position: { x: number; y: number }
-  }) => ({
-    newNode: { id, type, data, position },
-  }),
-}))
-
 describe('processNodesWithoutDataSource', () => {
   it('should return the original nodes when a datasource node already exists', () => {
     const nodes = [
@@ -70,20 +36,20 @@ describe('processNodesWithoutDataSource', () => {
     expect(result.nodes[0]).toEqual(
       expect.objectContaining({
         id: 'data-source-empty',
-        type: 'data-source-empty',
-        position: { x: -100, y: 200 },
+        type: 'custom-data-source-empty',
+        position: { x: 0, y: 200 },
       }),
     )
     expect(result.nodes[1]).toEqual(
       expect.objectContaining({
         id: 'note',
-        type: 'note',
-        position: { x: -100, y: 300 },
+        type: 'custom-note',
+        position: { x: 0, y: 300 },
       }),
     )
     expect(result.viewport).toEqual({
-      x: 400,
-      y: -200,
+      x: 160,
+      y: 164,
       zoom: 2,
     })
   })
@@ -92,7 +58,7 @@ describe('processNodesWithoutDataSource', () => {
     const nodes = [
       {
         id: 'node-1',
-        type: 'note',
+        type: 'custom-note',
         data: { type: BlockEnum.Answer },
         position: { x: 100, y: 100 },
       },
@@ -103,4 +69,23 @@ describe('processNodesWithoutDataSource', () => {
     expect(result.nodes).toBe(nodes)
     expect(result.viewport).toBeUndefined()
   })
+})
+
+it('anchors inserted nodes to the leftmost workflow node and preserves existing nodes', () => {
+  const right = {
+    id: 'right',
+    type: 'custom',
+    data: { type: BlockEnum.KnowledgeBase },
+    position: { x: 700, y: 100 },
+  } as Node
+  const left = {
+    id: 'left',
+    type: 'custom',
+    data: { type: BlockEnum.Code },
+    position: { x: 200, y: 80 },
+  } as Node
+  const result = processNodesWithoutDataSource([right, left])
+  expect(result.nodes[0]?.position).toEqual({ x: -100, y: 80 })
+  expect(result.nodes.slice(2)).toEqual([right, left])
+  expect(result.viewport).toEqual({ x: 180, y: 202, zoom: 1 })
 })

@@ -21,8 +21,12 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
@@ -91,7 +95,6 @@ const EditCustomCollectionModal: FC<Props> = ({
     }
   }, [isEdit, payload])
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
   const setEmoji = (emoji: Emoji) => {
     const newCollection = produce(customCollection, (draft) => {
@@ -228,7 +231,7 @@ const EditCustomCollectionModal: FC<Props> = ({
             >
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <div className="shrink-0 border-b border-divider-regular py-4">
-                  <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                  <div className="flex h-6 items-center justify-between ps-6 pe-5">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {t(($) => $[`createTool.${isAdd ? 'title' : 'editTitle'}`], { ns: 'tools' })}
                     </DrawerTitle>
@@ -253,23 +256,33 @@ const EditCustomCollectionModal: FC<Props> = ({
                           className="block py-2 system-sm-medium text-text-primary"
                         >
                           {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
-                          <span className="ml-1 text-red-500">*</span>
+                          <span className="ms-1 text-red-500">*</span>
                         </label>
                         <div className="flex items-center justify-between gap-3">
-                          <IconButton
-                            aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
-                            className="size-10 rounded-[10px] p-0"
-                            onClick={() => {
-                              setShowEmojiPicker(true)
+                          <IconPicker
+                            value={{
+                              type: 'emoji',
+                              icon: emoji.content,
+                              background: emoji.background,
+                            }}
+                            onValueChange={(value) => {
+                              if (value.type !== 'emoji') return
+                              const { icon, background: icon_background } = value
+                              setEmoji({ content: icon, background: icon_background })
                             }}
                           >
-                            <AppIcon
-                              decorative
-                              size="large"
-                              icon={emoji.content}
-                              background={emoji.background}
+                            <IconPickerTrigger
+                              render={
+                                <IconButton
+                                  aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                                  className="size-10 rounded-[10px] p-0"
+                                >
+                                  <IconPickerIcon size="large" />
+                                </IconButton>
+                              }
                             />
-                          </IconButton>
+                            <IconPickerContent enableImageUpload={false} />
+                          </IconPicker>
                           <Input
                             id={providerNameInputId}
                             className="h-10 grow"
@@ -293,7 +306,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <div className="flex items-center">
                             <div className="py-2 system-sm-medium text-text-primary">
                               {t(($) => $['createTool.schema'], { ns: 'tools' })}
-                              <span className="ml-1 text-red-500">*</span>
+                              <span className="ms-1 text-red-500">*</span>
                             </div>
                             <div className="mx-2 h-3 w-px bg-divider-regular"></div>
                             <a
@@ -307,7 +320,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                               </div>
                               <span
                                 aria-hidden
-                                className="i-custom-vender-line-general-link-external-02 size-3"
+                                className="i-custom-vender-line-general-link-external-02 size-3 rtl:-scale-x-100"
                               />
                             </a>
                           </div>
@@ -315,6 +328,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         </div>
                         <Textarea
                           aria-label={t(($) => $['createTool.schema'], { ns: 'tools' })}
+                          dir="ltr"
                           className="h-60 resize-none"
                           value={schema}
                           onValueChange={(value) => setSchema(value)}
@@ -338,21 +352,21 @@ const EditCustomCollectionModal: FC<Props> = ({
                                   'border-divider-regular',
                                 )}
                               >
-                                <th className="p-2 pl-3 font-medium">
+                                <th className="p-2 ps-3 font-medium">
                                   {t(($) => $['createTool.availableTools.name'], { ns: 'tools' })}
                                 </th>
-                                <th className="w-59 p-2 pl-3 font-medium">
+                                <th className="w-59 p-2 ps-3 font-medium">
                                   {t(($) => $['createTool.availableTools.description'], {
                                     ns: 'tools',
                                   })}
                                 </th>
-                                <th className="p-2 pl-3 font-medium">
+                                <th className="p-2 ps-3 font-medium">
                                   {t(($) => $['createTool.availableTools.method'], { ns: 'tools' })}
                                 </th>
-                                <th className="p-2 pl-3 font-medium">
+                                <th className="p-2 ps-3 font-medium">
                                   {t(($) => $['createTool.availableTools.path'], { ns: 'tools' })}
                                 </th>
-                                <th className="w-13.5 p-2 pl-3 font-medium">
+                                <th className="w-13.5 p-2 ps-3 font-medium">
                                   {t(($) => $['createTool.availableTools.action'], { ns: 'tools' })}
                                 </th>
                               </tr>
@@ -363,11 +377,13 @@ const EditCustomCollectionModal: FC<Props> = ({
                                   key={index}
                                   className="border-b border-divider-regular last:border-0"
                                 >
-                                  <td className="p-2 pl-3">{item.operation_id}</td>
-                                  <td className="w-59 p-2 pl-3">{item.summary}</td>
-                                  <td className="p-2 pl-3">{item.method}</td>
-                                  <td className="p-2 pl-3">{getPath(item.server_url)}</td>
-                                  <td className="w-15.5 p-2 pl-3">
+                                  <td className="p-2 ps-3">{item.operation_id}</td>
+                                  <td className="w-59 p-2 ps-3">{item.summary}</td>
+                                  <td className="p-2 ps-3">{item.method}</td>
+                                  <td className="p-2 ps-3">
+                                    <bdi dir="ltr">{getPath(item.server_url)}</bdi>
+                                  </td>
+                                  <td className="w-15.5 p-2 ps-3">
                                     <Button
                                       size="small"
                                       onClick={() => {
@@ -394,7 +410,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                         </div>
                         <button
                           type="button"
-                          className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+                          className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-start outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
                           onClick={() => setCredentialsModalShow(true)}
                         >
                           <div className="system-xs-regular text-text-primary">
@@ -487,21 +503,6 @@ const EditCustomCollectionModal: FC<Props> = ({
                         </Button>
                       </div>
                     </div>
-                    <IconPickerDialog
-                      enableImageUpload={false}
-                      defaultValue={{
-                        type: 'emoji',
-                        icon: emoji.content,
-                        background: emoji.background,
-                      }}
-                      open={showEmojiPicker}
-                      onOpenChange={setShowEmojiPicker}
-                      onConfirm={(value) => {
-                        if (value.type !== 'emoji') return
-                        const { icon, background: icon_background } = value
-                        setEmoji({ content: icon, background: icon_background })
-                      }}
-                    />
                     {credentialsModalShow && (
                       <ConfigCredentials
                         positionCenter={isAdd}

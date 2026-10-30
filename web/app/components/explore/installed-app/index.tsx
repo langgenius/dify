@@ -1,4 +1,5 @@
 'use client'
+
 import type { AppMode } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { AppData } from '@/models/share'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -12,6 +13,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import AppUnavailable from '../../base/app-unavailable'
 import { toInstalledAppAccessMode, toInstalledAppMeta, toInstalledAppParameters } from './runtime'
 
@@ -192,7 +194,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     )
   }
   if (installedAppError) {
-    const isNotFound = installedAppError instanceof Response && installedAppError.status === 404
+    const isNotFound = isNotFoundError(installedAppError)
     return (
       <InstalledAppFrame>
         <div className="flex h-full items-center justify-center">

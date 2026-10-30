@@ -1,7 +1,8 @@
 # Please do not directly edit this file. Instead, modify the .env variables related to NGINX configuration.
 
 proxy_set_header Host $host;
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+# real_ip configuration must validate upstream proxies before replacing $remote_addr.
+proxy_set_header X-Forwarded-For $remote_addr;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-Port $server_port;
 proxy_http_version 1.1;

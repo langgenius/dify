@@ -1,11 +1,12 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -48,7 +49,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           setIsEditing(false)
           onTagsChange?.()
         },
@@ -71,7 +71,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           onTagsChange?.()
         },
         onError: () => {
@@ -90,7 +89,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
     <>
       <div
         className={cn(
-          'flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pr-1 pl-2 text-sm/5 text-text-secondary',
+          'flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 ps-2 pe-1 text-sm/5 text-text-secondary',
         )}
       >
         {!isEditing && (
@@ -152,18 +151,15 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
         onOpenChange={(open) => !open && setShowRemoveModal(false)}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              title={`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-            >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['tag.deleteTip'], { ns: 'common' })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -175,7 +171,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

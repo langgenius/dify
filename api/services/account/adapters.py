@@ -186,6 +186,18 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         return _invitation_token_adapter.validate_json(data)
 
     @override
+    def consume_membership(self, invitation: InvitationLookup) -> bool:
+        key = self._invitation_token_key(invitation.token)
+        ttl = self._redis.pttl(key)
+        if ttl <= 0:
+            return False
+        return bool(self._redis.set(self._membership_used_key(invitation.token), "1", nx=True, px=ttl))
+
+    @override
+    def is_membership_consumed(self, invitation: InvitationLookup) -> bool:
+        return self._redis.get(self._membership_used_key(invitation.token)) == b"1"
+
+    @override
     def revoke(self, invitation: InvitationLookup) -> None:
         if invitation.workspace_id is not None and invitation.email is not None:
             self._redis.delete(self._workspace_invitation_key(invitation))
@@ -195,6 +207,10 @@ class RedisInvitationTokenStore(InvitationTokenStore):
     @staticmethod
     def _invitation_token_key(token: str) -> str:
         return f"member_invite:token:{token}"
+
+    @classmethod
+    def _membership_used_key(cls, token: str) -> str:
+        return f"{cls._invitation_token_key(token)}:membership_used"
 
     @staticmethod
     def _workspace_invitation_key(invitation: InvitationLookup) -> str:
@@ -252,8 +268,8 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
 class BillingAccountEducationGateway(AccountEducationGateway):
     @override
     def verify(self, *, account_id: str) -> AccountEducationVerification:
-        result = BillingService.EducationIdentity.verify(account_id=account_id) or {}
-        return AccountEducationVerification(token=result.get("token"))
+        result = BillingService.EducationIdentity.verify(account_id=account_id)
+        return AccountEducationVerification(token=result.token)
 
     @override
     def activate(
@@ -272,26 +288,26 @@ class BillingAccountEducationGateway(AccountEducationGateway):
             institution=institution,
             role=role,
         )
-        return AccountEducationActivation(message=result["message"])
+        return AccountEducationActivation(message=result.message)
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result = BillingService.EducationIdentity.status(account_id) or {}
-        expire_at = result.get("expire_at")
+        result = BillingService.EducationIdentity.status(account_id)
+        expire_at = result.expire_at
         return AccountEducationStatus(
-            result=result.get("result"),
-            is_student=result.get("is_student"),
-            expire_at=datetime.fromisoformat(expire_at).astimezone(UTC) if isinstance(expire_at, str) else expire_at,
-            allow_refresh=result.get("allow_refresh"),
+            result=result.result,
+            is_student=result.is_student,
+            expire_at=datetime.fromisoformat(expire_at).astimezone(UTC) if expire_at else None,
+            allow_refresh=result.allow_refresh,
         )
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit)
         return AccountEducationAutocomplete(
-            data=tuple(result.get("data") or ()),
-            curr_page=result.get("curr_page"),
-            has_next=result.get("has_next"),
+            data=tuple(result.data or ()),
+            curr_page=result.curr_page,
+            has_next=result.has_next,
         )
 
 

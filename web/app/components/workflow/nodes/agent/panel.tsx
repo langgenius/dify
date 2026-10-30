@@ -22,7 +22,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     currentStrategy,
     formData,
     onFormChange,
-    isChatMode,
+    isChatflow,
     availableNodesWithParent,
     availableVars,
     readOnly,
@@ -77,7 +77,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         </MCPToolAvailabilityProvider>
       </Field>
       <div className="px-4 py-2">
-        {isChatMode && currentStrategy?.features?.includes('history-messages') && (
+        {isChatflow && currentStrategy?.features?.includes('history-messages') && (
           <>
             <Split />
             <MemoryConfig

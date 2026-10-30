@@ -13,7 +13,7 @@ from controllers.common.agent_access import (
 )
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from services.app_service import AppListParams
-from services.enterprise.rbac_service import (
+from services.rbac.contracts import (
     MyPermissionsResponse,
     ResourcePermissionKeys,
     ResourcePermissionSnapshot,
@@ -121,13 +121,12 @@ class TestResolveAgentAccessFilter:
             lambda _tenant_id, _account_id: whitelist,
         )
 
-    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    def test_default_preview_is_unrestricted(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
 
         access_filter = resolve_agent_access_filter(
             "tenant-1",
             "account-1",
-            session=unbound_session,
             permissions=_permissions(agent_default_keys=["agent.acl.preview"]),
         )
 
@@ -136,14 +135,12 @@ class TestResolveAgentAccessFilter:
     def test_collects_preview_overrides_without_default_preview(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        unbound_session: Session,
     ) -> None:
         self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=True))
 
         access_filter = resolve_agent_access_filter(
             "tenant-1",
             "account-1",
-            session=unbound_session,
             permissions=_permissions(
                 agent_overrides=[
                     ResourcePermissionKeys(
@@ -163,7 +160,6 @@ class TestResolveAgentAccessFilter:
     def test_restricted_whitelist_is_the_visibility_boundary(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        unbound_session: Session,
     ) -> None:
         self._patch_whitelist(
             monkeypatch,
@@ -173,7 +169,6 @@ class TestResolveAgentAccessFilter:
         access_filter = resolve_agent_access_filter(
             "tenant-1",
             "account-1",
-            session=unbound_session,
             permissions=_permissions(workspace_keys=["agent.acl.preview"]),
         )
 
