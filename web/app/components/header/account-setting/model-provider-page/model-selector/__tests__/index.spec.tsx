@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-billing'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
@@ -68,16 +69,19 @@ const renderWithQueryClient = (node: ReactNode) => {
       plugins: {},
     },
   )
-  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
-    remaining_credits: 100,
-    quota_used: 0,
-    quota_limit: 100,
-    is_exhausted: false,
-    is_unlimited: false,
-    exhausted_at: null,
-    next_credit_reset_date: null,
-    pool_type: 'trial',
-  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+    createModelCreditsFixture({
+      remaining_credits: 100,
+      quota_used: 0,
+      quota_limit: 100,
+      is_exhausted: false,
+      is_unlimited: false,
+      exhausted_at: null,
+      next_credit_reset_date: null,
+      pool_type: 'trial',
+    }),
+  )
   for (const model_type of ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts'] as const) {
     queryClient.setQueryData(
       consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({

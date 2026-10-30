@@ -15,6 +15,7 @@ describe('model billing rolling contracts', () => {
     })
 
     expect(result.model_billing_source).toBe('legacy_message_credits')
+    expect(result.model_billing_migration_status).toBe('none')
     expect(result.tokener_bootstrap_status ?? null).toBeNull()
   })
 
@@ -31,6 +32,7 @@ describe('model billing rolling contracts', () => {
     })
 
     expect(result.model_billing_source).toBe('legacy_message_credits')
+    expect(result.model_billing_migration_status).toBe('none')
     expect(result.tokener_bootstrap_status ?? null).toBeNull()
     expect(result.tokener_metering ?? null).toBeNull()
   })

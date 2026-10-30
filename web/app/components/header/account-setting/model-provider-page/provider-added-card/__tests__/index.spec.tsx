@@ -7,6 +7,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-billing'
 import {
   createCatalogModelFixture,
   createProviderResponseFixture,
@@ -211,6 +212,50 @@ it('directs an unconfigured provider to credentials instead of offering models',
   expect(
     screen.queryByRole('button', { name: /modelProvider.modelProvider.showModels/ }),
   ).not.toBeInTheDocument()
+})
+
+it('updates the real provider card from migration processing to active credits without showing exhaustion', async () => {
+  const { queryClient } = setup(
+    {
+      provider: createProviderSummaryFixture({
+        provider: providerId,
+        preferred_provider_type: 'system',
+        system_configuration: { enabled: true },
+      }),
+    },
+    { systemFeatures: { deployment_edition: 'CLOUD' }, trialModels: [providerId] },
+  )
+  const queryKey = consoleQuery.workspaces.current.modelProviders.credits.get.queryKey()
+  act(() => {
+    queryClient.setQueryData(
+      queryKey,
+      createModelCreditsFixture({
+        model_billing_migration_status: 'processing',
+        quota_limit: null,
+        quota_used: null,
+        remaining_credits: null,
+        is_exhausted: false,
+      }),
+    )
+  })
+  expect(await screen.findByRole('status')).toHaveTextContent('modelProvider.tokenerProcessing')
+  expect(screen.queryByText(/quotaExhausted/)).not.toBeInTheDocument()
+  act(() => {
+    queryClient.setQueryData(
+      queryKey,
+      createModelCreditsFixture({
+        model_billing_source: 'tokener',
+        model_billing_migration_status: 'active',
+        tokener_bootstrap_status: 'ready',
+        remaining_credits: null,
+        quota_used: null,
+        quota_limit: null,
+      }),
+    )
+  })
+  expect(await screen.findByText(/aiCreditsInUse/)).toBeInTheDocument()
+  expect(screen.queryByText(/tokenerProcessing/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/quotaExhausted/)).not.toBeInTheDocument()
 })
 
 it.each([

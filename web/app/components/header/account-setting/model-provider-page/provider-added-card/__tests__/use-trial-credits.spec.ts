@@ -1,6 +1,11 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { zModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import {
+  createTokenerCreditsFixture,
+  createTokenerMeteringFixture,
+} from '@/test/console/model-billing'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { useTrialCredits } from '../use-trial-credits'
@@ -34,25 +39,39 @@ const createCredits = (
   tokener_metering: null,
   ...overrides,
 })
-const renderCredits = (data?: ModelProviderCreditsResponse) => {
+const renderCredits = (
+  data?: ModelProviderCreditsResponse,
+  options: Parameters<typeof useTrialCredits>[0] = {},
+) => {
   const queryClient = createConsoleQueryClient()
   if (data)
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
-      data,
+      zModelProviderCreditsResponse.parse(data),
     )
-  return renderHookWithConsoleQuery(() => useTrialCredits(), { queryClient })
+  return renderHookWithConsoleQuery(() => useTrialCredits(options), { queryClient })
 }
 
 describe('useTrialCredits', () => {
   it('does not present migrated Tokener money as legacy credits', () => {
-    const { result } = renderCredits(createCredits({
-      model_billing_source: 'tokener', model_billing_migration_status: 'active',
-      tokener_bootstrap_status: 'ready', quota_limit: null, quota_used: null, remaining_credits: null,
-    }))
+    const { result } = renderCredits(
+      createCredits({
+        model_billing_source: 'tokener',
+        model_billing_migration_status: 'active',
+        tokener_bootstrap_status: 'ready',
+        quota_limit: null,
+        quota_used: null,
+        remaining_credits: null,
+      }),
+    )
     expect(result.current).toMatchObject({
-      modelBillingSource: 'tokener', modelBillingMigrationStatus: 'active',
-      tokenerBootstrapStatus: 'ready', credits: 0, usedCredits: 0, totalCredits: 0, isExhausted: false,
+      modelBillingSource: 'tokener',
+      modelBillingMigrationStatus: 'active',
+      tokenerBootstrapStatus: 'ready',
+      credits: 0,
+      usedCredits: 0,
+      totalCredits: 0,
+      isExhausted: false,
     })
   })
 
@@ -76,6 +95,95 @@ describe('useTrialCredits', () => {
       exhaustedAt: undefined,
       nextCreditResetDate: 1775001600,
     })
+  })
+
+  it('defaults rolling old payloads without a billing source to legacy credits', () => {
+    const { result } = renderCredits(
+      createCredits({
+        model_billing_source: undefined,
+        model_billing_migration_status: undefined,
+        tokener_bootstrap_status: undefined,
+        tokener_metering: undefined,
+      }),
+    )
+    expect(result.current).toMatchObject({
+      modelBillingSource: 'legacy_message_credits',
+      tokenerMetering: null,
+      credits: 60,
+      totalCredits: 100,
+      usedCredits: 40,
+      isExhausted: false,
+    })
+  })
+
+  it('preserves Tokener money strings and entitlement errors without converting them to credits', () => {
+    const metering = createTokenerMeteringFixture({
+      available_usd_micro: '-12',
+      entitlement_status: 'failed',
+      entitlement_error_code: 'allowance_failed',
+    })
+    const { result } = renderCredits(createTokenerCreditsFixture({ tokener_metering: metering }))
+    expect(result.current).toMatchObject({
+      modelBillingSource: 'tokener',
+      tokenerMetering: metering,
+      credits: 0,
+      usedCredits: 0,
+      totalCredits: 0,
+      isUnlimited: false,
+      isExhausted: false,
+    })
+    expect(result.current.tokenerMetering?.available_usd_micro).toBe('-12')
+  })
+
+  it('polls migration processing quickly, then switches to the Tokener metering interval', async () => {
+    vi.useFakeTimers()
+    try {
+      getCredits.mockResolvedValue(createTokenerCreditsFixture())
+      const { result, unmount } = renderCredits(
+        createCredits({
+          model_billing_migration_status: 'processing',
+        }),
+        { pollTokenerMetering: true },
+      )
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4_999)
+      })
+      expect(getCredits).not.toHaveBeenCalled()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1)
+      })
+      expect(getCredits).toHaveBeenCalledOnce()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(29_999)
+      })
+      expect(getCredits).toHaveBeenCalledOnce()
+      expect(result.current.modelBillingMigrationStatus).toBe('active')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1)
+      })
+      expect(getCredits).toHaveBeenCalledTimes(2)
+      unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it.each([
+    ['legacy polling', false, true],
+    ['Tokener without polling', true, false],
+  ] as const)('does not start a metering poll for %s', async (_label, tokener, poll) => {
+    vi.useFakeTimers()
+    try {
+      const data = tokener ? createTokenerCreditsFixture() : createCredits()
+      const { unmount } = renderCredits(data, { pollTokenerMetering: poll })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(getCredits).not.toHaveBeenCalled()
+      unmount()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('keeps cached credits visible while a background refetch is pending and updates after it settles', async () => {

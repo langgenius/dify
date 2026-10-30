@@ -1,9 +1,14 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
+import { zModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import {
+  createTokenerCreditsFixture,
+  createTokenerMeteringFixture,
+} from '@/test/console/model-billing'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import QuotaPanel from '../quota-panel'
@@ -80,7 +85,7 @@ const renderQuotaPanel = (ui: ReactElement) => {
   if (credits)
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
-      credits,
+      zModelProviderCreditsResponse.parse(credits),
     )
   return renderWithConsoleQuery(ui, { queryClient, trialModels: mockTrialModels ?? [] })
 }
@@ -132,8 +137,11 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 describe('QuotaPanel', () => {
   it('shows migration processing instead of exhausted legacy quota', () => {
     credits = createCredits({
-      model_billing_migration_status: 'processing', quota_limit: null, quota_used: null,
-      remaining_credits: null, is_exhausted: false,
+      model_billing_migration_status: 'processing',
+      quota_limit: null,
+      quota_used: null,
+      remaining_credits: null,
+      is_exhausted: false,
     })
     renderQuotaPanel(<QuotaPanel providers={[]} />)
     expect(screen.getByRole('status')).toHaveTextContent('modelProvider.tokenerProcessing')
@@ -142,8 +150,12 @@ describe('QuotaPanel', () => {
 
   it('shows a Tokener setup state instead of a zero legacy balance', () => {
     credits = createCredits({
-      model_billing_source: 'tokener', model_billing_migration_status: 'active',
-      tokener_bootstrap_status: 'pending', quota_limit: null, quota_used: null, remaining_credits: null,
+      model_billing_source: 'tokener',
+      model_billing_migration_status: 'active',
+      tokener_bootstrap_status: 'pending',
+      quota_limit: null,
+      quota_used: null,
+      remaining_credits: null,
     })
     renderQuotaPanel(<QuotaPanel providers={[]} />)
     expect(screen.getByRole('status')).toHaveTextContent('modelProvider.tokenerUsagePending')
@@ -181,6 +193,154 @@ describe('QuotaPanel', () => {
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  })
+
+  it('shows Tokener balance and monthly usage without legacy credit or reset labels', () => {
+    credits = createTokenerCreditsFixture()
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(screen.getByRole('group', { name: /tokenerUsageLabel/ })).toBeInTheDocument()
+    expect(screen.getByText('$12.50')).toBeInTheDocument()
+    expect(screen.getByText('$3.75')).toBeInTheDocument()
+    expect(screen.getByText('42')).toBeInTheDocument()
+    expect(screen.getByText(/tokenerBilledThisMonth/)).toBeInTheDocument()
+    expect(screen.getByText(/tokenerRequestsThisMonth/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /tokenerUsageTip/ })).toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.quotaLabel/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
+  })
+
+  const allowance = {
+    window_id: 'invoice-period-1',
+    source_ref: 'invoice-1',
+    amount_usd_micro: '59000000',
+    available_usd_micro: '20000000',
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: '2026-10-01T00:00:00Z',
+  }
+
+  it('shows an active allowance separately without adding it to the wallet balance', () => {
+    credits = createTokenerCreditsFixture({
+      tokener_metering: createTokenerMeteringFixture({ entitlement_status: 'active', allowance }),
+    })
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(screen.getByText('$12.50')).toBeInTheDocument()
+    expect(screen.getByText('$59.00')).toBeInTheDocument()
+    expect(screen.getByText('$20.00')).toBeInTheDocument()
+    expect(screen.getByText(/tokenerAllowanceTotal/)).toBeInTheDocument()
+    expect(screen.getByText(/tokenerAllowanceRemaining/)).toBeInTheDocument()
+    expect(screen.getByText(/2026-09-01 – 2026-10-01/)).toBeInTheDocument()
+    expect(screen.queryByText('$71.50')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['processing', 'tokenerEntitlementProcessing'],
+    ['retrying', 'tokenerEntitlementRetrying'],
+    ['failed', 'tokenerEntitlementFailed'],
+  ] as const)('shows %s without treating an unapplied allowance as available', (status, key) => {
+    credits = createTokenerCreditsFixture({
+      tokener_metering: createTokenerMeteringFixture({
+        entitlement_status: status,
+        entitlement_error_code: status === 'failed' ? 'allowance_failed' : null,
+        allowance,
+      }),
+    })
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(screen.getByRole('status')).toHaveTextContent(key)
+    expect(screen.getByText('$12.50')).toBeInTheDocument()
+    expect(screen.queryByText('$59.00')).not.toBeInTheDocument()
+    expect(screen.queryByText(/tokenerAllowanceTotal/)).not.toBeInTheDocument()
+    expect(screen.queryByText('allowance_failed')).not.toBeInTheDocument()
+  })
+
+  it('keeps a negative balance visible when monthly usage is unavailable', () => {
+    credits = createTokenerCreditsFixture({
+      tokener_metering: createTokenerMeteringFixture({
+        available_usd_micro: '-1500000',
+        usage_generated_at: null,
+        current_month: {
+          status: 'unavailable',
+          start_date: '2026-09-01',
+          end_date: '2026-09-03',
+          error_code: 'metering_unavailable',
+        },
+      }),
+    })
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(screen.getByText('-$1.50')).toBeInTheDocument()
+    expect(screen.getByText(/tokenerMonthlyUsageUnavailable/)).toBeInTheDocument()
+    expect(screen.queryByText('$0.00')).not.toBeInTheDocument()
+    expect(screen.queryByText(/tokenerRequestsThisMonth/)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['1000000', '$1.00'],
+    ['999988', '$0.999988'],
+    ['12', '$0.000012'],
+    ['-12', '-$0.000012'],
+  ])('preserves the micro-USD balance %s without rounding it to cents', (amount, display) => {
+    credits = createTokenerCreditsFixture({
+      tokener_metering: createTokenerMeteringFixture({ available_usd_micro: amount }),
+    })
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(screen.getByText(display)).toBeInTheDocument()
+  })
+
+  it('keeps decimal request counts exact beyond the JavaScript safe integer range', () => {
+    credits = createTokenerCreditsFixture({
+      tokener_metering: createTokenerMeteringFixture({
+        current_month: {
+          status: 'available',
+          start_date: '2026-09-01',
+          end_date: '2026-09-03',
+          billed_usd_micro: '3750000',
+          request_count: '9007199254740993',
+        },
+      }),
+    })
+    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    expect(
+      screen.getByText(new Intl.NumberFormat().format(9_007_199_254_740_993n)),
+    ).toBeInTheDocument()
+  })
+
+  it.each([
+    ['failed', 'tokenerUsageSetupFailed'],
+    ['ready', 'tokenerUsageUnavailable'],
+    [null, 'tokenerUsageUnavailable'],
+  ] as const)(
+    'distinguishes %s setup from a zero balance when metering is absent',
+    (status, key) => {
+      credits = createTokenerCreditsFixture({
+        tokener_bootstrap_status: status,
+        tokener_metering: null,
+      })
+      renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+      expect(screen.getByRole('status')).toHaveTextContent(key)
+      expect(screen.queryByText('$0.00')).not.toBeInTheDocument()
+    },
+  )
+
+  it('keeps cached Tokener balance during a failed refetch and updates after a successful retry', async () => {
+    credits = createTokenerCreditsFixture()
+    getCredits.mockRejectedValueOnce(new Error('Metering unavailable'))
+    const { queryClient } = renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    const queryKey = consoleQuery.workspaces.current.modelProviders.credits.get.queryKey()
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey })
+    })
+    await waitFor(() => expect(getCredits).toHaveBeenCalledOnce())
+    expect(screen.getByText('$12.50')).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    getCredits.mockResolvedValueOnce(
+      createTokenerCreditsFixture({
+        tokener_metering: createTokenerMeteringFixture({ available_usd_micro: '11500000' }),
+      }),
+    )
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey })
+    })
+    expect(await screen.findByText('$11.50')).toBeInTheDocument()
+    expect(screen.queryByText('$12.50')).not.toBeInTheDocument()
   })
 
   it('should show used credits, total credits, and reset date', () => {

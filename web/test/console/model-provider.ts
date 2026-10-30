@@ -73,6 +73,8 @@ export const createModelCreditsFixture = (): Awaited<
   exhausted_at: null,
   next_credit_reset_date: null,
   pool_type: 'trial',
+  model_billing_source: 'legacy_message_credits',
+  model_billing_migration_status: 'none',
 })
 
 /** Query metadata used by real model selectors and their consuming forms. */

@@ -7,6 +7,7 @@ import { Popover } from '@langgenius/dify-ui/popover'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-billing'
 import { createProviderSummaryFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
@@ -43,16 +44,19 @@ const renderComponent = (node: ReactElement) => {
       },
     )
   }
-  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
-    pool_type: 'trial',
-    quota_limit: 100,
-    quota_used: exhausted ? 100 : 40,
-    remaining_credits: exhausted ? 0 : 60,
-    is_unlimited: false,
-    is_exhausted: exhausted,
-    exhausted_at: null,
-    next_credit_reset_date: null,
-  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+    createModelCreditsFixture({
+      pool_type: 'trial',
+      quota_limit: 100,
+      quota_used: exhausted ? 100 : 40,
+      remaining_credits: exhausted ? 0 : 60,
+      is_unlimited: false,
+      is_exhausted: exhausted,
+      exhausted_at: null,
+      next_credit_reset_date: null,
+    }),
+  )
   return renderWithConsoleQuery(node, {
     queryClient,
     systemFeatures: { deployment_edition: 'CLOUD' },

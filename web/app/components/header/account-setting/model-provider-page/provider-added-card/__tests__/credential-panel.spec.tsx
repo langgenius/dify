@@ -1,9 +1,14 @@
+import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../../declarations'
-import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import {
+  zModelProviderCreditsResponse,
+  zProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
 import { useQuery } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-billing'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -19,20 +24,15 @@ import {
 } from '../../declarations'
 import CredentialPanel from '../credential-panel'
 
-const { mockToastNotify, mockTrialCredits, getProviders, getModels, mockChangePriorityFn } =
-  vi.hoisted(() => ({
+const { mockToastNotify, getCredits, getProviders, getModels, mockChangePriorityFn } = vi.hoisted(
+  () => ({
     mockToastNotify: vi.fn(),
     getProviders: vi.fn(),
     getModels: vi.fn(),
-    mockTrialCredits: {
-      credits: 100,
-      totalCredits: 10_000,
-      isExhausted: false,
-      isLoading: false,
-      nextCreditResetDate: undefined,
-    },
+    getCredits: vi.fn(),
     mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
-  }))
+  }),
+)
 
 vi.mock('@/app/notifications', () => ({
   default: { notify: mockToastNotify },
@@ -51,6 +51,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.modelProviders.summary.get': getProviders,
+      'workspaces.current.modelProviders.credits.get': getCredits,
       'workspaces.current.models.modelTypes.byModelType.get': getModels,
       'workspaces.current.modelProviders.byProvider.preferredProviderType.post': (input) =>
         mockChangePriorityFn(input),
@@ -58,9 +59,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('../use-trial-credits', () => ({
-  useTrialCredits: () => mockTrialCredits,
-}))
+let credits: ModelProviderCreditsResponse
 
 // Credential editing is covered in the auth flow; retain the real dropdown and priority controls.
 vi.mock('../../model-auth/hooks', async (importOriginal) => ({
@@ -131,6 +130,10 @@ function CatalogConsumer() {
 }
 const renderWithQueryClient = (provider: ModelProvider, observeCatalog = false) => {
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+    zModelProviderCreditsResponse.parse(credits),
+  )
   if (observeCatalog) {
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
@@ -160,23 +163,44 @@ describe('CredentialPanel', () => {
     getProviders.mockResolvedValue(providerCatalog('custom'))
     getModels.mockResolvedValue(modelCatalog('API key model'))
     mockChangePriorityFn.mockReset().mockResolvedValue({ result: 'success' })
-    Object.assign(mockTrialCredits, {
-      credits: 100,
-      totalCredits: 10_000,
-      isExhausted: false,
-      isLoading: false,
-    })
+    getCredits.mockReset().mockImplementation(() => new Promise(() => {}))
+    credits = createModelCreditsFixture({ remaining_credits: 100, quota_limit: 10_000 })
   })
 
   describe('Text label variants', () => {
+    it('shows migration processing instead of automatically falling back to a personal key', () => {
+      credits = createModelCreditsFixture({
+        model_billing_migration_status: 'processing',
+        remaining_credits: null,
+        quota_limit: null,
+        quota_used: null,
+        is_exhausted: false,
+      })
+      renderWithQueryClient(createProvider())
+      expect(screen.getByRole('status')).toHaveTextContent('modelProvider.tokenerProcessing')
+      expect(screen.queryByText('test-credential')).not.toBeInTheDocument()
+      expect(screen.queryByText(/quotaExhausted/)).not.toBeInTheDocument()
+      expect(mockChangePriorityFn).not.toHaveBeenCalled()
+    })
+
+    it('keeps an explicitly selected personal key usable while credits migration is processing', () => {
+      credits = createModelCreditsFixture({ model_billing_migration_status: 'processing' })
+      renderWithQueryClient(
+        createProvider({ preferred_provider_type: PreferredProviderTypeEnum.custom }),
+      )
+      expect(screen.getByText('test-credential')).toBeInTheDocument()
+      expect(screen.queryByText(/tokenerProcessing/)).not.toBeInTheDocument()
+      expect(mockChangePriorityFn).not.toHaveBeenCalled()
+    })
+
     it('should show "AI credits in use" for credits-active variant', () => {
       renderWithQueryClient(createProvider())
       expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()
     })
 
     it('should show "Credits exhausted" for credits-exhausted variant (no credentials)', () => {
-      mockTrialCredits.isExhausted = true
-      mockTrialCredits.credits = 0
+      credits.is_exhausted = true
+      credits.remaining_credits = 0
       renderWithQueryClient(
         createProvider({
           custom_configuration: {
@@ -189,7 +213,7 @@ describe('CredentialPanel', () => {
     })
 
     it('should show "No available usage" for no-usage variant (exhausted + credential unauthorized)', () => {
-      mockTrialCredits.isExhausted = true
+      credits.is_exhausted = true
       renderWithQueryClient(
         createProvider({
           custom_configuration: {
@@ -234,7 +258,7 @@ describe('CredentialPanel', () => {
 
   describe('Status label variants', () => {
     it('should show credential name for api-fallback (exhausted + authorized key)', () => {
-      mockTrialCredits.isExhausted = true
+      credits.is_exhausted = true
       renderWithQueryClient(createProvider())
       expect(screen.getByText('test-credential')).toBeInTheDocument()
     })
@@ -249,7 +273,7 @@ describe('CredentialPanel', () => {
     })
 
     it('should show unavailable credential name for api-unavailable (exhausted + named unauthorized key)', () => {
-      mockTrialCredits.isExhausted = true
+      credits.is_exhausted = true
       renderWithQueryClient(
         createProvider({
           preferred_provider_type: PreferredProviderTypeEnum.custom,

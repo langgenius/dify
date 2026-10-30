@@ -6,6 +6,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { describe, expect, it } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { createModelCreditsFixture } from '@/test/console/model-billing'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import SummaryIndexSetting from '../summary-index-setting'
 
@@ -59,7 +60,7 @@ const renderSettings = (props: Props) => {
   )
   queryClient.setQueryData(
     consoleQuery.workspaces.current.modelProviders.credits.get.queryOptions().queryKey,
-    {
+    createModelCreditsFixture({
       remaining_credits: 0,
       is_unlimited: false,
       is_exhausted: true,
@@ -68,7 +69,7 @@ const renderSettings = (props: Props) => {
       pool_type: null,
       quota_limit: 0,
       quota_used: 0,
-    },
+    }),
   )
   queryClient.setQueryData(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({

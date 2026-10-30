@@ -1,3 +1,4 @@
+import { zTenantInfoResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -72,7 +73,7 @@ describe('EditWorkspaceContent', () => {
     })
     vi.mocked(consoleClient.workspaces.info.post).mockResolvedValue({
       result: 'success',
-      tenant: { id: 'workspace-id' },
+      tenant: zTenantInfoResponse.parse({ id: 'workspace-id' }),
     })
 
     renderModal()
