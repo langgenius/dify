@@ -175,6 +175,32 @@ class TestQAIndexProcessor:
         assert result == []
         mock_format.assert_not_called()
 
+    def test_transform_preview_empty_documents_returns_empty_result(
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
+    ) -> None:
+        session = sqlite_session
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.qa_index_processor.Rule.model_validate", return_value=self._rules()
+            ),
+            patch.object(processor, "_get_splitter", return_value=Mock()),
+            patch.object(processor, "_format_qa_document") as mock_format,
+            patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
+        ):
+            mock_current_app._get_current_object = Mock(return_value=fake_flask_app)
+            result = processor.transform(
+                [],
+                process_rule=process_rule,
+                preview=True,
+                tenant_id="tenant-1",
+                doc_language="English",
+                session=session,
+            )
+
+        assert result == []
+        mock_format.assert_not_called()
+
     def test_transform_non_preview_uses_thread_batches(
         self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
     ) -> None:
