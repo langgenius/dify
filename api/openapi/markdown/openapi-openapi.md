@@ -1378,7 +1378,7 @@ Upload a file to use as an input variable when running the app
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | name | query | Filter by a name substring | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| published | query | true lists Agents whose latest edits are published; false lists Agents never published or edited since their last publish | No | boolean |
+| published | query | true lists Agents that have a published version a run can use; false lists Agents that have none yet | No | boolean |
 | workspace_id | path |  | Yes | string |
 
 #### Responses
@@ -2423,10 +2423,10 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | app_id | string |  | Yes |
 | description | string |  | Yes |
 | name | string |  | Yes |
-| published | boolean | true when the Agent has a published version and no edits since | Yes |
+| published | boolean | true when the Agent has a published version a run can use, even if its draft was edited since | Yes |
 | role | string |  | Yes |
 | service_api_enabled | boolean |  | Yes |
-| updated_at | string |  | No |
+| updated_at | string |  | Yes |
 
 #### AgentDescribeResponse
 
@@ -2444,7 +2444,7 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | limit | integer, <br>**Default:** 20 |  | No |
 | name | string | Filter by a name substring | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| published | boolean | true lists Agents whose latest edits are published; false lists Agents never published or edited since their last publish | No |
+| published | boolean | true lists Agents that have a published version a run can use; false lists Agents that have none yet | No |
 
 #### AgentListResponse
 
@@ -2465,9 +2465,9 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | app_id | string |  | Yes |
 | description | string |  | Yes |
 | name | string |  | Yes |
-| published | boolean | true when the Agent has a published version and no edits since | Yes |
+| published | boolean | true when the Agent has a published version a run can use, even if its draft was edited since | Yes |
 | role | string |  | Yes |
-| updated_at | string |  | No |
+| updated_at | string |  | Yes |
 
 #### AgentRunPayload
 

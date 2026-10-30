@@ -138,7 +138,7 @@ export const zAgentDescribeInfo = z.object({
   published: z.boolean(),
   role: z.string(),
   service_api_enabled: z.boolean(),
-  updated_at: z.string().nullish(),
+  updated_at: z.string(),
 })
 
 /**
@@ -161,7 +161,7 @@ export const zAgentListRow = z.object({
   name: z.string(),
   published: z.boolean(),
   role: z.string(),
-  updated_at: z.string().nullish(),
+  updated_at: z.string(),
 })
 
 /**
