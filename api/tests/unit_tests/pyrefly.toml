@@ -333,7 +333,6 @@ project-excludes = [
   "libs/test_flask_utils.py",
   "libs/test_helper.py",
   "libs/test_login.py",
-  "../e2e_tests/contracts/libs/test_pandas.py",
   "libs/test_token.py",
   "migrations/versions/test_2025_07_02_2332-1c9ba48be8e4_add_uuidv7_function_in_sql.py",
   "models/test_account.py",
