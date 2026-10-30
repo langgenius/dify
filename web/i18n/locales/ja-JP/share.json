@@ -49,6 +49,7 @@
   "generation.tabs.saved": "保存済み",
   "generation.title": "AI 文章作成",
   "humanInput.completed": "このリクエストは他の場所で処理されたようです。",
+  "humanInput.currentAccount": "現在のアカウント：{{name}}",
   "humanInput.expirationTimeNowOrFuture": "このアクションは{{relativeTime}}に期限切れになります。",
   "humanInput.expired": "このリクエストは期限切れのようです。",
   "humanInput.expiredTip": "このアクションは期限切れです。",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "入力が記録されました。",
   "humanInput.sorry": "申し訳ございません!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "アカウントを切り替える",
   "humanInput.thanks": "ありがとうございます!",
+  "humanInput.unavailableDescription": "リンクが利用できないか、ログイン中のアカウントに対応していない可能性があります。受信した通知からフォームを開くか、アカウントを切り替えてください。",
+  "humanInput.unavailableTitle": "このフォームを開けません",
   "login.backToHome": "ホームに戻る"
 }

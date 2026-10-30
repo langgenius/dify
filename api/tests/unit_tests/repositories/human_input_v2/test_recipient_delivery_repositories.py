@@ -1,0 +1,805 @@
+"""Persistence acceptance contracts for recipients, deliveries, and send history."""
+
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
+from sqlite3 import Connection as SQLiteConnection
+from threading import Barrier, Event
+from uuid import uuid4
+
+import pytest
+import sqlalchemy as sa
+from pydantic import JsonValue, ValidationError
+from sqlalchemy import event
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound, OperationalError
+from sqlalchemy.orm import Session
+from sqlalchemy.pool import ConnectionPoolEntry
+
+from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
+from core.human_input_v2.shared.values import ContactId, IMBindingId, NormalizedEmail, RecipientId, TenantId
+from core.workflow.nodes.human_input_v2.entities import (
+    AllWorkspaceContacts,
+    Contact,
+    DynamicEmail,
+    Initiator,
+    OnetimeEmail,
+)
+from models.human_input_v2 import (
+    HumanInputDelivery,
+    HumanInputDeliveryAttempt,
+    HumanInputRecipient,
+    RecipientSnapshot,
+    RecipientSources,
+    RecipientSubjectType,
+)
+from repositories.human_input_v2.delivery_attempt_repository import DeliveryAttemptCreateParams, DeliveryStatus
+from repositories.human_input_v2.delivery_repository import (
+    DeliveryCreateParams,
+    EmailTargetSnapshot,
+    IMMessageType,
+    IMUserTargetSnapshot,
+    InitiatorSnapshot,
+    SubmissionAuthType,
+    TargetSnapshot,
+)
+from repositories.human_input_v2.recipient_repository import (
+    ContactRecipientSubject,
+    EmailRecipientSubject,
+    EndUserRecipientSubject,
+    Recipient,
+    RecipientCreateParams,
+)
+from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
+from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
+from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+
+_TENANT = TenantId("00000000-0000-0000-0000-000000000001")
+_FORM = "00000000-0000-0000-0000-000000000002"
+_CONTACT = ContactId("00000000-0000-0000-0000-000000000003")
+_BINDING = IMBindingId("00000000-0000-0000-0000-000000000004")
+_HASH = "a" * 64
+
+
+@pytest.mark.parametrize("message_type", ["card", "link"])
+def test_im_snapshot_preserves_the_chosen_message_type(message_type: str) -> None:
+    snapshot = IMUserTargetSnapshot.model_validate(
+        {
+            "im_provider": IMProvider.SLACK,
+            "im_tenant_id": "team",
+            "im_provider_user_id": "user",
+            "im_binding_id": _BINDING,
+            "message_type": message_type,
+        }
+    )
+    assert snapshot.model_dump(mode="json")["message_type"] == message_type
+
+
+@pytest.mark.parametrize("binding_fields", [{}, {"im_binding_id": None}])
+def test_im_snapshot_requires_binding_id(binding_fields: dict[str, JsonValue]) -> None:
+    with pytest.raises(ValidationError, match="im_binding_id"):
+        IMUserTargetSnapshot.model_validate(
+            {
+                "im_provider": IMProvider.SLACK,
+                "im_tenant_id": "team",
+                "im_provider_user_id": "user",
+                "message_type": "card",
+                **binding_fields,
+            }
+        )
+
+
+@pytest.mark.parametrize("message_fields", [{}, {"message_type": None}])
+def test_im_snapshot_requires_message_type(message_fields: dict[str, JsonValue]) -> None:
+    with pytest.raises(ValidationError, match="message_type"):
+        IMUserTargetSnapshot.model_validate(
+            {
+                "im_provider": IMProvider.SLACK,
+                "im_tenant_id": "team",
+                "im_provider_user_id": "user",
+                "im_binding_id": _BINDING,
+                **message_fields,
+            }
+        )
+
+
+def test_initiator_snapshot_preserves_protected_token_without_exposing_it_in_repr() -> None:
+    snapshot = InitiatorSnapshot.model_validate({"protected_form_token": "encrypted-token"})
+    assert snapshot.model_dump(mode="json")["protected_form_token"] == "encrypted-token"
+    assert "encrypted-token" not in repr(snapshot)
+
+
+@pytest.mark.parametrize("token_fields", [{}, {"protected_form_token": None}])
+def test_initiator_snapshot_requires_protected_token(token_fields: dict[str, JsonValue]) -> None:
+    with pytest.raises(ValidationError, match="protected_form_token"):
+        InitiatorSnapshot.model_validate(token_fields)
+
+
+@pytest.fixture
+def delivery_engine(sqlite_engine: Engine) -> Engine:
+    engine = sqlite_engine
+
+    # Use real outer transactions, including before the first SAVEPOINT.
+    @event.listens_for(engine, "connect")
+    def configure_transaction(connection: SQLiteConnection, _record: ConnectionPoolEntry) -> None:
+        connection.isolation_level = None
+
+    @event.listens_for(engine, "begin")
+    def begin_transaction(connection: Connection) -> None:
+        connection.exec_driver_sql("BEGIN")
+
+    return engine
+
+
+def _recipient_params() -> RecipientCreateParams:
+    return RecipientCreateParams(
+        subject=ContactRecipientSubject(_CONTACT),
+        sources=(Contact(contact_id=_CONTACT), AllWorkspaceContacts()),
+        name="Original Contact",
+    )
+
+
+def _delivery_params(recipient_id: RecipientId) -> DeliveryCreateParams:
+    return DeliveryCreateParams(
+        recipient_id=recipient_id,
+        token_hash=_HASH,
+        auth_type=SubmissionAuthType.EMAIL_OTP,
+        target_snapshot=EmailTargetSnapshot(email_address="shared@example.com"),
+    )
+
+
+def _im_params(recipient_id: RecipientId, message_type: IMMessageType) -> DeliveryCreateParams:
+    return DeliveryCreateParams(
+        recipient_id=recipient_id,
+        token_hash=_HASH,
+        auth_type=SubmissionAuthType.IM,
+        target_snapshot=IMUserTargetSnapshot(
+            im_provider=IMProvider.SLACK,
+            im_tenant_id="team",
+            im_provider_user_id="user",
+            im_binding_id=_BINDING,
+            message_type=message_type,
+        ),
+    )
+
+
+@pytest.mark.parametrize("message_type", [IMMessageType.CARD, IMMessageType.LINK])
+def test_im_locator_round_trips_independently_of_attempts_and_cannot_be_replaced(
+    delivery_engine: Engine, message_type: IMMessageType
+) -> None:
+    recipient = _create_recipient(delivery_engine)
+    locator = MessageLocator("opaque-accepted-message")
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        delivery = repo.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_im_params(recipient.id, message_type))
+        assert isinstance(delivery.target_snapshot, IMUserTargetSnapshot)
+        assert delivery.target_snapshot.message_locator is None
+        assert repo.list_deliveries(tenant_id=_TENANT, form_id=_FORM) == (delivery,)
+        accepted = repo.set_im_message_locator(
+            tenant_id=_TENANT, form_id=_FORM, delivery_id=delivery.id, message_locator=locator
+        )
+        assert accepted is not None
+        assert isinstance(accepted.target_snapshot, IMUserTargetSnapshot)
+        assert accepted.target_snapshot.message_locator == locator
+        assert accepted.target_snapshot.im_provider_user_id == "user"
+        assert accepted.target_snapshot.im_binding_id == _BINDING
+        assert accepted.target_snapshot.im_tenant_id == "team"
+        assert (
+            repo.set_im_message_locator(
+                tenant_id=_TENANT, form_id=_FORM, delivery_id=delivery.id, message_locator=locator
+            )
+            == accepted
+        )
+        with pytest.raises(ValueError, match="different message locator"):
+            repo.set_im_message_locator(
+                tenant_id=_TENANT,
+                form_id=_FORM,
+                delivery_id=delivery.id,
+                message_locator=MessageLocator("another-card"),
+            )
+        SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM).record_attempt(delivery.id, _attempt_params())
+    with Session(delivery_engine) as session:
+        repo = SQLAlchemyDeliveryRepository(session)
+        reloaded = repo.get_delivery_by_token_hash(_HASH)
+        assert reloaded is not None
+        assert isinstance(reloaded.target_snapshot, IMUserTargetSnapshot)
+        assert reloaded.target_snapshot.message_type == message_type
+        assert reloaded.target_snapshot.im_binding_id == _BINDING
+        assert reloaded.target_snapshot.message_locator == locator
+        assert repo.get_delivery(tenant_id=_TENANT, form_id=_FORM, delivery_id=delivery.id) == reloaded
+        assert repo.list_deliveries(tenant_id=_TENANT, form_id=_FORM) == (reloaded,)
+
+
+@pytest.mark.parametrize("wrong_owner", ["tenant", "form", "delivery"])
+def test_card_locator_assignment_preserves_owner_scope(delivery_engine: Engine, wrong_owner: str) -> None:
+    recipient = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        delivery = repo.create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=_im_params(recipient.id, IMMessageType.CARD)
+        )
+        assert (
+            repo.set_im_message_locator(
+                tenant_id=TenantId(str(uuid4())) if wrong_owner == "tenant" else _TENANT,
+                form_id=str(uuid4()) if wrong_owner == "form" else _FORM,
+                delivery_id=str(uuid4()) if wrong_owner == "delivery" else delivery.id,
+                message_locator=MessageLocator("opaque-card"),
+            )
+            is None
+        )
+        reloaded = repo.get_delivery_by_token_hash(_HASH)
+        assert reloaded is not None
+        assert isinstance(reloaded.target_snapshot, IMUserTargetSnapshot)
+        assert reloaded.target_snapshot.message_locator is None
+
+
+@pytest.mark.parametrize("target", ["email", "initiator"])
+def test_non_im_deliveries_reject_message_locator_assignment(delivery_engine: Engine, target: str) -> None:
+    recipient = _create_recipient(delivery_engine)
+    params = _delivery_params(recipient.id)
+    if target == "initiator":
+        params = replace(params, target_snapshot=InitiatorSnapshot(protected_form_token="protected"))
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        delivery = repo.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=params)
+        with pytest.raises(ValueError, match="Only an IM delivery"):
+            repo.set_im_message_locator(
+                tenant_id=_TENANT, form_id=_FORM, delivery_id=delivery.id, message_locator=MessageLocator("opaque-card")
+            )
+
+
+def test_card_identity_and_send_result_follow_the_callers_rollback(delivery_engine: Engine) -> None:
+    recipient = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session, session.begin():
+        delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=_im_params(recipient.id, IMMessageType.CARD)
+        )
+    with Session(delivery_engine) as session:
+        SQLAlchemyDeliveryRepository(session).set_im_message_locator(
+            tenant_id=_TENANT,
+            form_id=_FORM,
+            delivery_id=delivery.id,
+            message_locator=MessageLocator("accepted-but-rolled-back"),
+        )
+        SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM).record_attempt(
+            delivery.id, DeliveryAttemptCreateParams(DeliveryStatus.SUCCEEDED, None, {"accepted": True})
+        )
+        session.rollback()
+    with Session(delivery_engine) as session:
+        record = session.get(HumanInputDelivery, delivery.id)
+        assert record is not None
+        assert isinstance(record.target_snapshot, IMUserTargetSnapshot)
+        assert record.target_snapshot.message_locator is None
+        assert session.scalar(sa.select(HumanInputDeliveryAttempt.id)) is None
+
+
+def _attempt_params() -> DeliveryAttemptCreateParams:
+    return DeliveryAttemptCreateParams(
+        status=DeliveryStatus.FAILED,
+        error_message="Provider timed out",
+        response={"code": 504, "retryable": True, "metadata": {"request_id": "first"}, "receipt": None},
+    )
+
+
+def _create_recipient(engine: Engine, params: RecipientCreateParams | None = None) -> Recipient:
+    with Session(engine) as session, session.begin():
+        return SQLAlchemyRecipientRepository(session, _TENANT, _FORM).create_recipients(
+            [params or _recipient_params()]
+        )[0]
+
+
+def test_recipients_round_trip_all_subjects_and_provenance_without_resolution(delivery_engine: Engine) -> None:
+    email_sources = (
+        DynamicEmail(selector=["upstream", "emails"]),
+        OnetimeEmail(email="shared@example.com"),
+        Initiator(),
+    )
+    params = [
+        _recipient_params(),
+        RecipientCreateParams(EmailRecipientSubject(NormalizedEmail("shared@example.com")), email_sources, None),
+        RecipientCreateParams(EndUserRecipientSubject(_CONTACT), (Initiator(),), None),
+        replace(_recipient_params(), subject=ContactRecipientSubject(ContactId(str(uuid4())))),
+    ]
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyRecipientRepository(session, _TENANT, _FORM)
+        recipients = repo.create_recipients(params)
+        assert [item.subject for item in recipients] == [item.subject for item in params]
+        assert len({item.id for item in recipients}) == len(params)
+        assert repo.create_recipients([]) == ()
+    with Session(delivery_engine) as session:
+        repo = SQLAlchemyRecipientRepository(session, _TENANT, _FORM)
+        assert repo.list_recipients() == tuple(sorted(recipients, key=lambda item: item.id))
+        for recipient, param in zip(recipients, params, strict=True):
+            assert repo.get_recipient(recipient.id) == recipient
+            assert recipient.sources == param.sources
+            assert recipient.name == param.name
+            assert recipient.created_at.tzinfo is None
+            assert recipient.updated_at == recipient.created_at
+        assert repo.get_recipient(RecipientId(str(uuid4()))) is None
+
+
+def test_retries_preserve_existing_ids_names_sources_and_timestamps(delivery_engine: Engine) -> None:
+    original = _create_recipient(delivery_engine)
+    historical_id = RecipientId(str(uuid4()))
+    with delivery_engine.begin() as connection:
+        connection.execute(
+            sa.update(HumanInputRecipient)
+            .where(HumanInputRecipient.id == original.id)
+            .values({HumanInputRecipient.id: historical_id, HumanInputRecipient.updated_at: original.updated_at})
+        )
+    historical = replace(original, id=historical_id)
+    extra = replace(_recipient_params(), subject=EndUserRecipientSubject(str(uuid4())), name=None)
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyRecipientRepository(session, _TENANT, _FORM)
+        retry = replace(_recipient_params(), sources=(Initiator(),), name="Changed Contact")
+        created = repo.create_recipients([extra, retry])
+        assert created[1] == historical
+        assert repo.create_recipients([retry]) == (historical,)
+        assert len(repo.list_recipients()) == 2
+
+
+def test_caller_retries_concurrent_recipient_initialization(delivery_engine: Engine) -> None:
+    barrier = Barrier(2)
+    committed = Event()
+    second = replace(_recipient_params(), subject=EndUserRecipientSubject(str(uuid4())), name=None)
+
+    def create(reverse: bool) -> tuple[Recipient, ...]:
+        params = [replace(_recipient_params(), name=f"Writer {reverse}"), second]
+        if reverse:
+            params.reverse()
+        barrier.wait(timeout=5)
+        try:
+            with Session(delivery_engine) as session, session.begin():
+                recipients = SQLAlchemyRecipientRepository(session, _TENANT, _FORM).create_recipients(params)
+        except (IntegrityError, OperationalError) as error:
+            # SQLite may reject a concurrent read-to-write upgrade before the
+            # unique constraint is checked. Retry only after the winner commits.
+            if isinstance(error, OperationalError) and "database is locked" not in str(error):
+                raise
+            assert committed.wait(timeout=10)
+            with Session(delivery_engine) as session, session.begin():
+                return SQLAlchemyRecipientRepository(session, _TENANT, _FORM).create_recipients(params)
+        committed.set()
+        return recipients
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(create, False)
+        second_result = executor.submit(create, True)
+        forward = first.result(timeout=15)
+        backward = second_result.result(timeout=15)
+    assert forward == tuple(reversed(backward))
+    with Session(delivery_engine) as session:
+        assert len(SQLAlchemyRecipientRepository(session, _TENANT, _FORM).list_recipients()) == 2
+
+
+@pytest.mark.parametrize("tenant", [_TENANT, TenantId("00000000-0000-0000-0000-000000000004")])
+def test_database_rejects_duplicate_subjects_in_the_same_form(delivery_engine: Engine, tenant: TenantId) -> None:
+    original = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session:
+        session.add(
+            HumanInputRecipient(
+                tenant_id=tenant,
+                form_id=_FORM,
+                subject_type=RecipientSubjectType.CONTACT,
+                subject_value=_CONTACT,
+                sources=RecipientSources(root=[]),
+                snapshot=RecipientSnapshot(name="Duplicate"),
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.flush()
+        session.rollback()
+    with Session(delivery_engine) as session:
+        assert SQLAlchemyRecipientRepository(session, _TENANT, _FORM).list_recipients() == (original,)
+
+
+def test_same_subject_can_participate_in_different_forms(delivery_engine: Engine) -> None:
+    original = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session, session.begin():
+        other = SQLAlchemyRecipientRepository(session, _TENANT, str(uuid4())).create_recipients([_recipient_params()])[
+            0
+        ]
+        assert other.id != original.id
+        assert other.subject == original.subject
+
+
+def test_failed_batch_is_rolled_back_by_the_caller_transaction(delivery_engine: Engine) -> None:
+    with delivery_engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TRIGGER reject_recipient BEFORE INSERT ON hitlv2_recipients "
+            "WHEN NEW.subject_value = 'reject' BEGIN SELECT RAISE(ABORT, 'recipient rejected'); END"
+        )
+    with Session(delivery_engine) as session:
+        repo = SQLAlchemyRecipientRepository(session, _TENANT, _FORM)
+        repo.create_recipients([_recipient_params()])
+        params = [
+            RecipientCreateParams(ContactRecipientSubject(ContactId("accepted")), (), "Accepted"),
+            RecipientCreateParams(EndUserRecipientSubject("reject"), (), None),
+        ]
+        with pytest.raises(IntegrityError, match="recipient rejected"):
+            repo.create_recipients(params)
+        assert not session.is_active
+        session.rollback()
+    with Session(delivery_engine) as session:
+        assert SQLAlchemyRecipientRepository(session, _TENANT, _FORM).list_recipients() == ()
+
+
+@pytest.mark.parametrize(
+    ("target", "authentication"),
+    [
+        (EmailTargetSnapshot(email_address="shared@example.com"), SubmissionAuthType.EMAIL_OTP),
+        (InitiatorSnapshot(protected_form_token="encrypted-token"), SubmissionAuthType.CONSOLE),
+        (InitiatorSnapshot(protected_form_token="encrypted-token"), SubmissionAuthType.WEB_APP),
+        *[
+            (
+                IMUserTargetSnapshot(
+                    im_provider=provider,
+                    im_tenant_id="provider-tenant",
+                    im_provider_user_id="provider-user",
+                    im_binding_id=_BINDING,
+                    message_type=IMMessageType.CARD,
+                ),
+                SubmissionAuthType.IM,
+            )
+            for provider in IMProvider
+        ],
+    ],
+)
+def test_delivery_round_trips_frozen_access_data(
+    delivery_engine: Engine, target: TargetSnapshot, authentication: SubmissionAuthType
+) -> None:
+    recipient = _create_recipient(delivery_engine)
+    params = replace(_delivery_params(recipient.id), target_snapshot=target, auth_type=authentication)
+    with Session(delivery_engine) as session, session.begin():
+        delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=params
+        )
+        assert delivery is not None
+        assert delivery.recipient_id == recipient.id
+        assert delivery.target_snapshot == target
+        assert delivery.auth_type == authentication
+        assert delivery.token_hash == _HASH
+        assert delivery.created_at.tzinfo is None
+        assert delivery.updated_at == delivery.created_at
+    with Session(delivery_engine) as session:
+        repo = SQLAlchemyDeliveryRepository(session)
+        assert repo.get_delivery_by_token_hash(_HASH) == delivery
+        assert repo.get_delivery_by_token_hash(_HASH.upper()) is None
+        assert repo.get_delivery(tenant_id=_TENANT, form_id=_FORM, delivery_id=delivery.id) == delivery
+        assert repo.get_delivery(tenant_id=_TENANT, form_id=_FORM, delivery_id=str(uuid4())) is None
+        assert repo.list_deliveries(tenant_id=_TENANT, form_id=_FORM) == (delivery,)
+        assert (
+            session.scalar(sa.select(HumanInputDelivery.target_type).where(HumanInputDelivery.id == delivery.id))
+            == target.type
+        )
+
+
+def test_deliveries_keep_distinct_recipients_sharing_an_endpoint_and_reject_ambiguous_hashes(
+    delivery_engine: Engine,
+) -> None:
+    recipient = _create_recipient(delivery_engine)
+    other = _create_recipient(
+        delivery_engine, replace(_recipient_params(), subject=ContactRecipientSubject(ContactId(str(uuid4()))))
+    )
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        first = repo.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id))
+        second = repo.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(other.id))
+        third = repo.create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=replace(_delivery_params(recipient.id), token_hash="b" * 64)
+        )
+        assert first is not None
+        assert second is not None
+        assert third is not None
+        assert len({first.id, second.id, third.id}) == 3
+        assert repo.list_deliveries(tenant_id=_TENANT, form_id=_FORM) == tuple(
+            sorted((first, second, third), key=lambda delivery: delivery.id)
+        )
+        persisted_recipients = (
+            session.execute(sa.select(HumanInputDelivery.id, HumanInputDelivery.recipient_id)).tuples().all()
+        )
+        assert dict(persisted_recipients) == {
+            first.id: recipient.id,
+            second.id: other.id,
+            third.id: recipient.id,
+        }
+        assert repo.get_delivery_by_token_hash("b" * 64) == third
+        with pytest.raises(MultipleResultsFound):
+            repo.get_delivery_by_token_hash(_HASH)
+
+
+@pytest.mark.parametrize(
+    ("tenant", "form"),
+    [
+        (TenantId("00000000-0000-0000-0000-000000000004"), _FORM),
+        (_TENANT, "00000000-0000-0000-0000-000000000005"),
+    ],
+)
+def test_owner_scoped_writes_and_global_token_lookup(delivery_engine: Engine, tenant: TenantId, form: str) -> None:
+    recipient = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session, session.begin():
+        delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id)
+        )
+        assert delivery is not None
+        attempt = SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM).record_attempt(
+            delivery.id, _attempt_params()
+        )
+        assert attempt is not None
+        recipients = SQLAlchemyRecipientRepository(session, tenant, form)
+        deliveries = SQLAlchemyDeliveryRepository(session)
+        attempts = SQLAlchemyDeliveryAttemptRepository(session, tenant, form)
+        assert recipients.list_recipients() == ()
+        assert recipients.get_recipient(recipient.id) is None
+        assert deliveries.get_delivery_by_token_hash(_HASH) == delivery
+        assert deliveries.get_delivery(tenant_id=tenant, form_id=form, delivery_id=delivery.id) is None
+        assert deliveries.list_deliveries(tenant_id=tenant, form_id=form) == ()
+        assert attempts.record_attempt(delivery.id, _attempt_params()) is None
+        assert session.scalars(sa.select(HumanInputDeliveryAttempt.id)).all() == [attempt.id]
+        other_form = str(uuid4())
+        other = SQLAlchemyRecipientRepository(session, tenant, other_form).create_recipients([_recipient_params()])[0]
+        assert other.id != recipient.id
+        own_delivery = deliveries.create_delivery(
+            tenant_id=tenant,
+            form_id=other_form,
+            params=replace(_delivery_params(other.id), token_hash="b" * 64),
+        )
+        assert own_delivery is not None
+        assert own_delivery.tenant_id == tenant
+        assert own_delivery.form_id == other_form
+        assert deliveries.get_delivery_by_token_hash("b" * 64) == own_delivery
+        assert deliveries.get_delivery_by_token_hash(_HASH) == delivery
+        assert deliveries.list_deliveries(tenant_id=_TENANT, form_id=_FORM) == (delivery,)
+        assert deliveries.list_deliveries(tenant_id=tenant, form_id=other_form) == (own_delivery,)
+        assert (
+            deliveries.create_delivery(tenant_id=tenant, form_id=other_form, params=_delivery_params(other.id))
+            is not None
+        )
+        with pytest.raises(MultipleResultsFound):
+            deliveries.get_delivery_by_token_hash(_HASH)
+    with Session(delivery_engine) as session:
+        assert SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash("b" * 64) == own_delivery
+
+
+def test_delivery_creation_trusts_caller_supplied_recipient(delivery_engine: Engine) -> None:
+    recipient_id = RecipientId(str(uuid4()))
+    with Session(delivery_engine) as session, session.begin():
+        deliveries = SQLAlchemyDeliveryRepository(session)
+        delivery = deliveries.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient_id))
+        assert delivery is not None
+        assert delivery.recipient_id == recipient_id
+        assert delivery.tenant_id == _TENANT
+        assert delivery.form_id == _FORM
+    with Session(delivery_engine) as session:
+        assert SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(_HASH) == delivery
+
+
+def test_missing_delivery_does_not_create_attempt(delivery_engine: Engine) -> None:
+    with Session(delivery_engine) as session, session.begin():
+        attempts = SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM)
+        assert attempts.record_attempt(str(uuid4()), _attempt_params()) is None
+        assert session.scalar(sa.select(HumanInputDeliveryAttempt.id)) is None
+
+
+def test_retry_and_resend_append_history_without_changing_delivery(delivery_engine: Engine) -> None:
+    recipient = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session, session.begin():
+        deliveries = SQLAlchemyDeliveryRepository(session)
+        delivery = deliveries.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id))
+        assert delivery is not None
+        attempts = SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM)
+        first = attempts.record_attempt(delivery.id, _attempt_params())
+        success = DeliveryAttemptCreateParams(DeliveryStatus.SUCCEEDED, None, {"receipt": "provider-accepted"})
+        retry = attempts.record_attempt(delivery.id, success)
+        resend = attempts.record_attempt(delivery.id, success)
+        assert first is not None
+        assert retry is not None
+        assert resend is not None
+        assert len({first.id, retry.id, resend.id}) == 3
+        assert first.response == _attempt_params().response
+        assert first.error_message == _attempt_params().error_message
+        assert first.status == DeliveryStatus.FAILED
+        assert retry.status == DeliveryStatus.SUCCEEDED
+        assert retry.error_message is None
+        assert first.created_at.tzinfo is None
+        assert first.updated_at == first.created_at
+        assert deliveries.get_delivery_by_token_hash(_HASH) == delivery
+    with Session(delivery_engine) as session:
+        history = {record.id: record for record in session.scalars(sa.select(HumanInputDeliveryAttempt))}
+        assert set(history) == {first.id, retry.id, resend.id}
+        for expected in (first, retry, resend):
+            record = history[expected.id]
+            assert (record.tenant_id, record.form_id, record.delivery_id) == (_TENANT, _FORM, delivery.id)
+            assert record.status == expected.status
+            assert record.error_message == expected.error_message
+            assert record.response.root == expected.response
+            assert record.created_at == expected.created_at
+            assert record.updated_at == expected.updated_at
+
+
+def test_caller_can_roll_back_all_three_repositories_atomically(delivery_engine: Engine) -> None:
+    with Session(delivery_engine) as session:
+        recipient = SQLAlchemyRecipientRepository(session, _TENANT, _FORM).create_recipients([_recipient_params()])[0]
+        delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id)
+        )
+        assert delivery is not None
+        assert (
+            SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM).record_attempt(delivery.id, _attempt_params())
+            is not None
+        )
+        session.rollback()
+    with Session(delivery_engine) as session:
+        assert SQLAlchemyRecipientRepository(session, _TENANT, _FORM).list_recipients() == ()
+        assert session.scalar(sa.select(HumanInputDelivery.id)) is None
+        assert session.scalar(sa.select(HumanInputDeliveryAttempt.id)) is None
+
+
+def test_repository_operations_do_not_flush_unrelated_pending_caller_work(delivery_engine: Engine) -> None:
+    with Session(delivery_engine) as session:
+        pending = HumanInputRecipient(
+            tenant_id=_TENANT,
+            form_id=_FORM,
+            subject_type=RecipientSubjectType.END_USER,
+            subject_value="pending",
+            sources=RecipientSources(root=[]),
+            snapshot=RecipientSnapshot(),
+        )
+        session.add(pending)
+        recipients = SQLAlchemyRecipientRepository(session, _TENANT, _FORM)
+        recipient = recipients.create_recipients([_recipient_params()])[0]
+        deliveries = SQLAlchemyDeliveryRepository(session)
+        delivery = deliveries.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id))
+        assert delivery is not None
+        attempts = SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM)
+        assert attempts.record_attempt(delivery.id, _attempt_params()) is not None
+        assert recipients.list_recipients() == (recipient,)
+        assert deliveries.get_delivery_by_token_hash(_HASH) == delivery
+        assert (
+            session.scalar(
+                sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt).execution_options(autoflush=False)
+            )
+            == 1
+        )
+        assert pending in session.new
+        session.rollback()
+
+
+def test_mutating_supplied_or_returned_json_does_not_rewrite_persisted_history(delivery_engine: Engine) -> None:
+    source = DynamicEmail(selector=["node", "email"])
+    params = replace(_recipient_params(), sources=(source,))
+    with Session(delivery_engine) as session, session.begin():
+        recipients = SQLAlchemyRecipientRepository(session, _TENANT, _FORM)
+        recipient = recipients.create_recipients([params])[0]
+        source.selector = ["changed", "selector"]
+        assert recipient.sources == (DynamicEmail(selector=["node", "email"]),)
+        delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id)
+        )
+        assert delivery is not None
+        attempts = SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM)
+        metadata: dict[str, JsonValue] = {"request_id": "original"}
+        response: dict[str, JsonValue] = {"metadata": metadata}
+        attempt = attempts.record_attempt(
+            delivery.id, DeliveryAttemptCreateParams(DeliveryStatus.SUCCEEDED, None, response)
+        )
+        assert attempt is not None
+        metadata["request_id"] = "mutated"
+        assert attempt.response == {"metadata": {"request_id": "original"}}
+        returned_source = recipient.sources[0]
+        assert isinstance(returned_source, DynamicEmail)
+        returned_source.selector = ["changed", "again"]
+        reloaded = recipients.get_recipient(recipient.id)
+        assert reloaded is not None
+        assert reloaded.sources == (DynamicEmail(selector=["node", "email"]),)
+    with Session(delivery_engine) as session:
+        persisted_attempt = session.get(HumanInputDeliveryAttempt, attempt.id)
+        assert persisted_attempt is not None
+        assert persisted_attempt.response.root == {"metadata": {"request_id": "original"}}
+
+
+@pytest.mark.parametrize(
+    ("table", "column", "payload"),
+    [
+        ("hitlv2_recipients", "sources", '[{"type":"unknown"}]'),
+        ("hitlv2_recipients", "snapshot", '{"name":42}'),
+        ("hitlv2_deliveries", "target_snapshot", '{"type":"email","email_address":"invalid"}'),
+        ("hitlv2_delivery_attempts", "response", "[]"),
+    ],
+)
+def test_malformed_persisted_json_is_rejected_at_the_storage_boundary(
+    delivery_engine: Engine, table: str, column: str, payload: str
+) -> None:
+    recipient = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session, session.begin():
+        delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id)
+        )
+        assert delivery is not None
+        attempt = SQLAlchemyDeliveryAttemptRepository(session, _TENANT, _FORM).record_attempt(
+            delivery.id, _attempt_params()
+        )
+        assert attempt is not None
+    with delivery_engine.begin() as connection:
+        connection.execute(sa.text(f"UPDATE {table} SET {column} = :payload"), {"payload": payload})
+    with Session(delivery_engine) as session:
+        if table == "hitlv2_recipients":
+            with pytest.raises(ValidationError):
+                SQLAlchemyRecipientRepository(session, _TENANT, _FORM).get_recipient(recipient.id)
+        elif table == "hitlv2_deliveries":
+            with pytest.raises(ValidationError):
+                SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(_HASH)
+        else:
+            with pytest.raises(ValidationError):
+                session.get(HumanInputDeliveryAttempt, attempt.id)
+
+
+def test_initiator_delivery_lookup_is_scoped_to_form_and_tenant(delivery_engine: Engine) -> None:
+    recipient = _create_recipient(delivery_engine)
+    initiator = _create_recipient(
+        delivery_engine, replace(_recipient_params(), subject=EndUserRecipientSubject(str(uuid4())))
+    )
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM) is None
+        repo.create_delivery(tenant_id=_TENANT, form_id=_FORM, params=_delivery_params(recipient.id))
+        repo.create_delivery(
+            tenant_id=_TENANT,
+            form_id=_FORM,
+            params=replace(
+                _delivery_params(recipient.id),
+                target_snapshot=IMUserTargetSnapshot(
+                    im_provider=IMProvider.SLACK,
+                    im_tenant_id="team",
+                    im_provider_user_id="user",
+                    im_binding_id=_BINDING,
+                    message_type=IMMessageType.CARD,
+                ),
+                auth_type=SubmissionAuthType.IM,
+            ),
+        )
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM) is None
+        delivery = repo.create_delivery(
+            tenant_id=_TENANT,
+            form_id=_FORM,
+            params=replace(
+                _delivery_params(initiator.id),
+                target_snapshot=InitiatorSnapshot(protected_form_token="encrypted-initiator-token"),
+                auth_type=SubmissionAuthType.WEB_APP,
+            ),
+        )
+    with Session(delivery_engine) as session:
+        repo = SQLAlchemyDeliveryRepository(session)
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM) == delivery
+        assert repo.get_initiator_delivery(tenant_id=TenantId(str(uuid4())), form_id=_FORM) is None
+        assert repo.get_initiator_delivery(tenant_id=_TENANT, form_id=str(uuid4())) is None
+
+
+@pytest.mark.parametrize("same_recipient", [False, True])
+def test_initiator_delivery_lookup_rejects_multiple_entries_for_the_form(
+    delivery_engine: Engine, same_recipient: bool
+) -> None:
+    recipient = _create_recipient(delivery_engine)
+    other = (
+        recipient
+        if same_recipient
+        else _create_recipient(
+            delivery_engine, replace(_recipient_params(), subject=EndUserRecipientSubject(str(uuid4())))
+        )
+    )
+    with Session(delivery_engine) as session, session.begin():
+        repo = SQLAlchemyDeliveryRepository(session)
+        for candidate in (recipient, other):
+            repo.create_delivery(
+                tenant_id=_TENANT,
+                form_id=_FORM,
+                params=replace(
+                    _delivery_params(candidate.id),
+                    target_snapshot=InitiatorSnapshot(protected_form_token="encrypted-token"),
+                    auth_type=SubmissionAuthType.CONSOLE,
+                ),
+            )
+    with Session(delivery_engine) as session, pytest.raises(MultipleResultsFound):
+        SQLAlchemyDeliveryRepository(session).get_initiator_delivery(tenant_id=_TENANT, form_id=_FORM)

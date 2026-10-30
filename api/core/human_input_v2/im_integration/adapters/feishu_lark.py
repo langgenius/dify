@@ -1,0 +1,1983 @@
+"""Shared Feishu/Lark adapter implementation.
+
+Provider credentials and capability protocols live beside this implementation
+under the adapter-owned package. Feishu and Lark wrappers share every behavior
+except their typed credential, provider discriminator, and official SDK domain.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+import binascii
+import hashlib
+import hmac
+import json
+import logging
+import threading
+from collections import deque
+from collections.abc import Awaitable, Callable, Mapping
+from concurrent.futures import Future
+from contextvars import ContextVar
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from string import punctuation
+from typing import ClassVar, Literal, Never, Protocol, override, runtime_checkable
+from urllib.parse import parse_qs, urlsplit
+
+import lark_oapi as lark
+from cryptography.hazmat.primitives import padding as symmetric_padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from lark_oapi.api import auth, contact, im, tenant
+from lark_oapi.channel import FeishuChannel, TransportConfig
+from lark_oapi.core.exception import AccessTokenException, ObtainAccessTokenException
+from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger, P2CardActionTriggerResponse
+from lark_oapi.ws import client as sdk_ws_client_module
+from pydantic import AliasPath, BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
+from requests.exceptions import Timeout as RequestsTimeout
+from websockets.asyncio.client import ClientConnection
+
+from core.human_input import ButtonStyle
+from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.avatar import read_avatars
+from core.human_input_v2.im_integration.adapters.credentials import (
+    FeishuCredentials,
+    LarkCredentials,
+    _FeishuLarkCredentials,
+)
+from core.human_input_v2.im_integration.adapters.entities import (
+    AuthenticatedIMEvent,
+    CardAssessment,
+    CorrelationToken,
+    CredentialTestFailure,
+    CredentialTestFailureKind,
+    CredentialTestSuccess,
+    CredentialTestTimeoutError,
+    Directory,
+    DirectoryEntry,
+    DirectoryReadFailure,
+    DynamicCardMessagingError,
+    EventAcceptance,
+    IMCardEvent,
+    IMCardEventDecodeResult,
+    IMCardEventDecodingError,
+    IMEventIngressKind,
+    IMProviderError,
+    IMStreamStartError,
+    IMStreamStopError,
+    MessageAccepted,
+    MessageSendingError,
+    MessageSendingResult,
+    ProviderUserId,
+    ReplacementError,
+    ReplacementErrorKind,
+    StaticCardIntent,
+    UnrecognizedIMEvent,
+    WebhookRequest,
+    WebhookResponse,
+)
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator, _Base64JSONLocatorPayload
+from core.human_input_v2.im_integration.adapters.protocols import (
+    IMCardEventDecoder,
+    IMDirectory,
+    IMDynamicCardMessaging,
+    IMEventConsumer,
+    IMMessaging,
+    IMWebhookHandler,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+)
+
+logger = logging.getLogger(__name__)
+
+_FEISHU_DOMAIN = "https://open.feishu.cn"
+_LARK_DOMAIN = "https://open.larksuite.com"
+_DIRECTORY_PAGE_SIZE = 50
+type _DepartmentIdType = Literal["department_id", "open_department_id"]
+type _FeishuLarkProvider = Literal[IMProvider.FEISHU, IMProvider.LARK]
+
+
+@dataclass(frozen=True, slots=True)
+class _DepartmentIdentity:
+    value: str
+    id_type: _DepartmentIdType
+
+
+_ROOT_DEPARTMENT = _DepartmentIdentity("0", "department_id")
+_AUTHENTICATION_REJECTED_CODES = frozenset((10014, 99991663, 99991664, 99991665))
+_STALE_MESSAGE_CODES = frozenset((230001, 230011, 230020))
+_JSON_RESPONSE_HEADERS = (("Content-Type", "application/json"),)
+_STREAM_READY_TIMEOUT_SECONDS = 30.0
+_STREAM_CLOSE_TIMEOUT_SECONDS = 5.0
+_MILLISECONDS_PER_SECOND = 1_000
+_MICROSECONDS_PER_SECOND = 1_000_000
+_MILLISECOND_TIMESTAMP_DIGITS = 13
+_MICROSECOND_TIMESTAMP_DIGITS = 16
+
+
+def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) -> None:
+    """Log only static diagnostics, never the active Provider exception."""
+
+    logger.error(message, extra=extra)
+
+
+class _SDKGateway(Protocol):
+    """Narrow synchronous boundary over official generated SDK resources.
+
+    Omitting request options delegates authentication to the SDK token lifecycle.
+    """
+
+    def request_tenant_access_token(self) -> str: ...
+
+    def query_tenant(self, *, request_option: lark.RequestOption | None = None) -> Mapping[str, object]: ...
+
+    def list_scope(
+        self, page_token: str | None, *, request_option: lark.RequestOption | None = None
+    ) -> Mapping[str, object]: ...
+
+    def list_departments(
+        self,
+        department: _DepartmentIdentity,
+        page_token: str | None,
+        *,
+        request_option: lark.RequestOption | None = None,
+    ) -> Mapping[str, object]: ...
+
+    def list_users(self, department: _DepartmentIdentity, page_token: str | None) -> Mapping[str, object]: ...
+
+    def create_message(self, receive_id: str, msg_type: str, content: str) -> Mapping[str, object]: ...
+
+    def patch_message(self, message_id: str, content: str) -> Mapping[str, object]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _SDKEventEnvelope:
+    native_payload: str
+    provider_tenant_id: str
+    event_id: str | None
+    event_type: str | None
+    occurred_at: datetime | None
+
+
+type _StreamDeliveryCallback = Callable[[_SDKEventEnvelope, Callable[[], None]], None]
+
+
+@runtime_checkable
+class _SDKWireWriter(Protocol):
+    _write_message: Callable[[bytes], Awaitable[None]]
+
+
+class _OfficialSDKGateway(_SDKGateway):
+    """Translate official SDK response objects into validation-local mappings."""
+
+    def __init__(self, credentials: _FeishuLarkCredentials, domain: str) -> None:
+        client = (
+            lark.Client.builder()
+            .app_id(credentials.app_id)
+            .app_secret(credentials.app_secret)
+            .domain(domain)
+            .enable_set_token(True)
+            .log_level(lark.LogLevel.ERROR)
+            .build()
+        )
+        tenant_service = client.tenant
+        contact_service = client.contact
+        im_service = client.im
+        if tenant_service is None or contact_service is None or im_service is None:
+            raise RuntimeError("official SDK client did not initialize required services")
+        self._tenant_service = tenant_service
+        self._contact_service = contact_service
+        self._im_service = im_service
+        self._client = client
+        self._credentials = credentials
+
+    @override
+    def request_tenant_access_token(self) -> str:
+        """Authenticate submitted credentials without consulting the SDK token cache."""
+
+        auth_service = self._client.auth
+        if auth_service is None:
+            raise IMProviderError("official SDK client did not initialize authentication")
+        body = (
+            auth.v3.InternalTenantAccessTokenRequestBody.builder()
+            .app_id(self._credentials.app_id)
+            .app_secret(self._credentials.app_secret)
+            .build()
+        )
+        request = auth.v3.InternalTenantAccessTokenRequest.builder().request_body(body).build()
+        response = auth_service.v3.tenant_access_token.internal(request)
+        raw = response.raw
+        if raw is None or raw.content is None or raw.status_code is None:
+            raise IMProviderError("provider token response is empty")
+        token_response = _TenantAccessTokenResponse.model_validate_json(raw.content)
+        if token_response.code is None:
+            raise IMProviderError("provider token response did not confirm authentication")
+        if token_response.code != 0:
+            raise AccessTokenException(raw.status_code, token_response.code, "credential test rejected", "")
+        if token_response.tenant_access_token is None:
+            raise IMProviderError("provider token response did not provide an access token")
+
+        return token_response.tenant_access_token
+
+    @override
+    def query_tenant(self, *, request_option: lark.RequestOption | None = None) -> Mapping[str, object]:
+        request = tenant.v2.QueryTenantRequest.builder().build()
+        return _sdk_response_mapping(self._tenant_service.v2.tenant.query(request, request_option))
+
+    @override
+    def list_scope(
+        self, page_token: str | None, *, request_option: lark.RequestOption | None = None
+    ) -> Mapping[str, object]:
+        builder = (
+            contact.v3.ListScopeRequest.builder()
+            .page_size(_DIRECTORY_PAGE_SIZE)
+            .department_id_type("department_id")
+            .user_id_type("union_id")
+        )
+        if page_token is not None:
+            builder = builder.page_token(page_token)
+        return _sdk_response_mapping(self._contact_service.v3.scope.list(builder.build(), request_option))
+
+    @override
+    def list_departments(
+        self,
+        department: _DepartmentIdentity,
+        page_token: str | None,
+        *,
+        request_option: lark.RequestOption | None = None,
+    ) -> Mapping[str, object]:
+        builder = (
+            contact.v3.ChildrenDepartmentRequest.builder()
+            .department_id_type(department.id_type)
+            .user_id_type("union_id")
+            .fetch_child(False)
+            .page_size(_DIRECTORY_PAGE_SIZE)
+        )
+        if page_token is not None:
+            builder = builder.page_token(page_token)
+        request = builder.build()
+        request.paths["department_id"] = department.value
+        return _sdk_response_mapping(self._contact_service.v3.department.children(request, request_option))
+
+    @override
+    def list_users(self, department: _DepartmentIdentity, page_token: str | None) -> Mapping[str, object]:
+        builder = (
+            contact.v3.FindByDepartmentUserRequest.builder()
+            .department_id(department.value)
+            .department_id_type(department.id_type)
+            .user_id_type("union_id")
+            .page_size(_DIRECTORY_PAGE_SIZE)
+        )
+        if page_token is not None:
+            builder = builder.page_token(page_token)
+        return _sdk_response_mapping(self._contact_service.v3.user.find_by_department(builder.build()))
+
+    @override
+    def create_message(self, receive_id: str, msg_type: str, content: str) -> Mapping[str, object]:
+        body = (
+            im.v1.CreateMessageRequestBody.builder().receive_id(receive_id).msg_type(msg_type).content(content).build()
+        )
+        request = im.v1.CreateMessageRequest.builder().receive_id_type("union_id").request_body(body).build()
+        return _sdk_response_mapping(self._im_service.v1.message.create(request))
+
+    @override
+    def patch_message(self, message_id: str, content: str) -> Mapping[str, object]:
+        body = im.v1.PatchMessageRequestBody.builder().content(content).build()
+        request = im.v1.PatchMessageRequest.builder().message_id(message_id).request_body(body).build()
+        return _sdk_response_mapping(self._im_service.v1.message.patch(request))
+
+
+def _create_sdk_gateway(
+    credentials: _FeishuLarkCredentials,
+    domain: str,
+) -> _SDKGateway:
+    return _OfficialSDKGateway(credentials, domain)
+
+
+class _PerClientSDKWSClient(sdk_ws_client_module.Client):
+    """Bind the official SDK transport lifecycle to one client-owned loop.
+
+    The 1.7.2 SDK hard-codes a module-level loop in ``start()``, ``_connect()``,
+    and ``_receive_message_loop()``. It exposes no loop injection point, so
+    this compatibility seam preserves the official handshake, frame handling,
+    and reconnect implementation while replacing only those three scheduling
+    decisions. The exact SDK version and these private shapes are protected by
+    boundary tests.
+    """
+
+    _conn: ClientConnection | None
+
+    def __init__(
+        self,
+        *,
+        credentials: _FeishuLarkCredentials,
+        domain: str,
+        event_handler: lark.EventDispatcherHandler,
+    ) -> None:
+        self._dify_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._dify_loop)
+        try:
+            super().__init__(
+                credentials.app_id,
+                credentials.app_secret,
+                log_level=lark.LogLevel.ERROR,
+                event_handler=event_handler,
+                domain=domain,
+                auto_reconnect=False,
+                extra_ua_tags=["channel"],
+            )
+        except Exception:
+            self._dify_loop.close()
+            raise
+        self._dify_lifecycle_lock = threading.Lock()
+        self._dify_stopping = False
+
+    @override
+    def start(self) -> None:
+        with self._dify_lifecycle_lock:
+            if self._dify_stopping:
+                self._close_owned_loop()
+                return
+        try:
+            try:
+                self._dify_loop.run_until_complete(self._connect())
+            except Exception:
+                self._dify_loop.run_until_complete(self._disconnect())
+                raise
+            self._dify_loop.create_task(self._ping_loop())
+            self._dify_loop.run_forever()
+        finally:
+            self._close_owned_loop()
+
+    @override
+    async def _connect(self) -> None:
+        await self._lock.acquire()
+        try:
+            if self._conn is not None:
+                return
+            connection_url = self._get_conn_url()
+            parsed_url = urlsplit(connection_url)
+            query = parse_qs(parsed_url.query)
+            connection_id = query[sdk_ws_client_module.DEVICE_ID][0]
+            service_id = query[sdk_ws_client_module.SERVICE_ID][0]
+
+            connection = await sdk_ws_client_module.websockets.connect(connection_url, proxy=None)
+            self._conn = connection
+            self._conn_url = connection_url
+            self._conn_id = connection_id
+            self._service_id = service_id
+            self._dify_loop.create_task(self._receive_message_loop())
+        except sdk_ws_client_module.InvalidHandshake as exc:
+            sdk_ws_client_module._parse_ws_conn_exception(exc)
+        finally:
+            self._lock.release()
+
+    @override
+    async def _receive_message_loop(self) -> None:
+        try:
+            while True:
+                connection = self._conn
+                if connection is None:
+                    raise sdk_ws_client_module.ConnectionClosedException("connection is closed")
+                message = await connection.recv()
+                if not isinstance(message, bytes):
+                    raise sdk_ws_client_module.ConnectionClosedException("received a non-binary SDK frame")
+                self._dify_loop.create_task(self._handle_message(message))
+        except Exception:
+            await self._disconnect()
+            if self._dify_stopping:
+                return
+            if self._auto_reconnect:
+                await self._reconnect()
+                return
+            raise
+
+    def stop(self) -> None:
+        with self._dify_lifecycle_lock:
+            self._dify_stopping = True
+        if self._dify_loop.is_closed():
+            return
+        if self._dify_loop.is_running():
+            disconnect = asyncio.run_coroutine_threadsafe(self._disconnect(), self._dify_loop)
+            try:
+                disconnect.result(timeout=_STREAM_CLOSE_TIMEOUT_SECONDS)
+            finally:
+                self._dify_loop.call_soon_threadsafe(self._dify_loop.stop)
+            return
+        self._dify_loop.run_until_complete(self._disconnect())
+
+    def _close_owned_loop(self) -> None:
+        pending_tasks = asyncio.all_tasks(self._dify_loop)
+        for task in pending_tasks:
+            task.cancel()
+        if pending_tasks:
+            self._dify_loop.run_until_complete(asyncio.gather(*pending_tasks, return_exceptions=True))
+        self._dify_loop.run_until_complete(self._dify_loop.shutdown_asyncgens())
+        self._dify_loop.run_until_complete(self._dify_loop.shutdown_default_executor())
+        self._dify_loop.close()
+        asyncio.set_event_loop(None)
+
+
+class _SynchronousEventChannel(FeishuChannel):
+    """Official lifecycle wrapper with a synchronous responsibility callback.
+
+    ``FeishuChannel`` exposes ready/stop semantics but its built-in dispatcher
+    schedules user callbacks after the SDK has already chosen an ACK. The SDK
+    does not expose public dispatcher injection or wire-write completion hooks,
+    so the contained compatibility seams below keep the official transport
+    while making consumer responsibility and completed ACK writes observable.
+    Their SDK compatibility is protected by focused boundary tests.
+    """
+
+    _ws_client: sdk_ws_client_module.Client | None
+
+    def __init__(
+        self,
+        *,
+        credentials: _FeishuLarkCredentials,
+        domain: str,
+        callback: _StreamDeliveryCallback,
+    ) -> None:
+        self._dify_credentials = credentials
+        self._dify_callback = callback
+        self._wire_ack_condition = threading.Condition()
+        self._pending_wire_acks: set[threading.Event] = set()
+        self._current_wire_ack: ContextVar[threading.Event | None] = ContextVar(
+            "feishu_lark_current_wire_ack",
+            default=None,
+        )
+        self._wire_ack_tracking_enabled = False
+        self._wire_ack_hook_installed = threading.Event()
+        self._transport_lifecycle_lock = threading.Lock()
+        self._transport_stop_requested = threading.Event()
+        super().__init__(
+            app_id=credentials.app_id,
+            app_secret=credentials.app_secret,
+            encrypt_key=credentials.encrypt_key,
+            verification_token=credentials.verification_token,
+            domain=domain,
+            log_level=lark.LogLevel.ERROR,
+            # The high-level SDK channel owns dispatcher/background concerns;
+            # the per-client compatibility transport below owns the WS loop.
+            transport=TransportConfig(kind="webhook", auto_reconnect=False),
+        )
+
+    @override
+    async def connect_until_ready(self, *, timeout: float | None = 30.0) -> None:
+        self._wire_ack_tracking_enabled = True
+        running_loop = asyncio.get_running_loop()
+        start_future = running_loop.run_in_executor(None, self.start)
+        deadline = None if timeout is None else running_loop.time() + timeout
+        try:
+            while not start_future.done():
+                ws_client = self._ws_client
+                if ws_client is not None and ws_client._conn is not None:
+                    self._install_wire_ack_hook(ws_client)
+                    return
+                if deadline is not None and running_loop.time() >= deadline:
+                    self.stop()
+                    raise TimeoutError("official SDK stream did not become ready before the deadline")
+                await asyncio.sleep(0.01)
+            await start_future
+            raise RuntimeError("official SDK stream exited before becoming ready")
+        finally:
+            self._wire_ack_hook_installed.set()
+
+    @override
+    def start(self) -> None:
+        super().start()
+        self._ready_flag = False
+        with self._transport_lifecycle_lock:
+            if self._transport_stop_requested.is_set():
+                return
+            dispatcher = self._dispatcher
+            if dispatcher is None:
+                raise RuntimeError("official SDK channel did not initialize its event dispatcher")
+            ws_client = _PerClientSDKWSClient(
+                credentials=self._dify_credentials,
+                domain=self._config.domain,
+                event_handler=dispatcher,
+            )
+            self._ws_client = ws_client
+        ws_client.start()
+
+    @override
+    def stop(self, *, join_timeout: float = 5.0) -> None:
+        self._transport_stop_requested.set()
+        with self._transport_lifecycle_lock:
+            ws_client = self._ws_client
+            if isinstance(ws_client, _PerClientSDKWSClient):
+                self._ws_client = None
+        close_error: Exception | None = None
+        if isinstance(ws_client, _PerClientSDKWSClient):
+            try:
+                ws_client.stop()
+            except Exception as exc:
+                close_error = exc
+        super().stop(join_timeout=join_timeout)
+        if close_error is not None:
+            raise close_error
+
+    def _install_wire_ack_hook(self, ws_client: object) -> None:
+        if not isinstance(ws_client, _SDKWireWriter):
+            raise RuntimeError("official SDK WebSocket client does not expose the expected write seam")
+        original_write = ws_client._write_message
+
+        async def write_message(data: bytes) -> None:
+            delivery = self._current_wire_ack.get()
+            try:
+                await original_write(data)
+            finally:
+                if delivery is not None:
+                    with self._wire_ack_condition:
+                        self._pending_wire_acks.discard(delivery)
+                        delivery.set()
+                        self._wire_ack_condition.notify_all()
+                    self._current_wire_ack.set(None)
+
+        ws_client._write_message = write_message
+        self._wire_ack_hook_installed.set()
+
+    def wait_for_pending_wire_acks(self) -> None:
+        with self._wire_ack_condition:
+            while self._pending_wire_acks:
+                self._wire_ack_condition.wait()
+
+    @override
+    def _build_dispatcher(self):
+        builder = lark.EventDispatcherHandler.builder(
+            self._dify_credentials.encrypt_key or "",
+            self._dify_credentials.verification_token or "",
+            lark.LogLevel.ERROR,
+        )
+        return builder.register_p2_card_action_trigger(self._on_card_action).build()
+
+    def _on_card_action(self, event: P2CardActionTrigger) -> P2CardActionTriggerResponse:
+        self._dispatch(event)
+        return P2CardActionTriggerResponse({})
+
+    def _dispatch(self, event: P2CardActionTrigger) -> None:
+        if self._wire_ack_tracking_enabled:
+            self._wire_ack_hook_installed.wait()
+            delivery = threading.Event()
+            with self._wire_ack_condition:
+                self._pending_wire_acks.add(delivery)
+            self._current_wire_ack.set(delivery)
+
+        acknowledged = False
+
+        def acknowledge() -> None:
+            nonlocal acknowledged
+            acknowledged = True
+
+        self._dify_callback(_sdk_event_envelope(event), acknowledge)
+        if not acknowledged:
+            raise RuntimeError("event responsibility was not accepted")
+
+
+class _OfficialSDKStreamClient:
+    def __init__(
+        self,
+        credentials: _FeishuLarkCredentials,
+        domain: str,
+        callback: _StreamDeliveryCallback,
+    ) -> None:
+        self._channel = _SynchronousEventChannel(
+            credentials=credentials,
+            domain=domain,
+            callback=callback,
+        )
+        self._loop = asyncio.new_event_loop()
+        self._loop_ready = threading.Event()
+        self._loop_thread: threading.Thread | None = None
+        self._lifecycle_lock = threading.Lock()
+        self._connect_future: Future[None] | None = None
+        self._stopped = False
+
+    def start(self) -> None:
+        with self._lifecycle_lock:
+            if self._stopped:
+                raise RuntimeError("official SDK stream client was stopped before startup completed")
+            if self._loop_thread is None:
+                self._loop_thread = threading.Thread(
+                    target=self._run_loop,
+                    name="feishu-lark-sdk-stream",
+                    daemon=True,
+                )
+                self._loop_thread.start()
+
+        self._loop_ready.wait()
+        with self._lifecycle_lock:
+            if self._stopped:
+                raise RuntimeError("official SDK stream client was stopped before startup completed")
+            future = asyncio.run_coroutine_threadsafe(
+                self._channel.connect_until_ready(timeout=_STREAM_READY_TIMEOUT_SECONDS),
+                self._loop,
+            )
+            self._connect_future = future
+        future.result()
+
+    def stop(self) -> None:
+        with self._lifecycle_lock:
+            if self._stopped:
+                return
+            self._stopped = True
+            loop_thread = self._loop_thread
+            connect_future = self._connect_future
+
+        try:
+            self._channel.wait_for_pending_wire_acks()
+        finally:
+            try:
+                self._channel.stop()
+            finally:
+                if connect_future is not None and not connect_future.done():
+                    connect_future.cancel()
+                if loop_thread is None:
+                    self._loop.close()
+                else:
+                    self._loop.call_soon_threadsafe(self._loop.stop)
+                    if loop_thread is not threading.current_thread():
+                        loop_thread.join()
+
+    def _run_loop(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        self._loop_ready.set()
+        try:
+            self._loop.run_forever()
+        finally:
+            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+            self._loop.run_until_complete(self._loop.shutdown_default_executor())
+            self._loop.close()
+
+
+def _create_sdk_stream_client(
+    credentials: _FeishuLarkCredentials,
+    domain: str,
+    callback: _StreamDeliveryCallback,
+) -> _OfficialSDKStreamClient:
+    return _OfficialSDKStreamClient(credentials, domain, callback)
+
+
+class _ExternalResponseModel(BaseModel):
+    model_config = ConfigDict(extra="ignore", hide_input_in_errors=True, strict=True)
+
+
+class _Tenant(_ExternalResponseModel):
+    tenant_key: str | None = Field(default=None, min_length=1)
+
+
+class _TenantData(_ExternalResponseModel):
+    tenant: _Tenant
+
+
+class _PermissionViolation(_ExternalResponseModel):
+    type: str | None = None
+    subject: str
+
+
+class _PermissionErrorDetails(_ExternalResponseModel):
+    permission_violations: list[_PermissionViolation] = Field(default_factory=list)
+
+
+class _HTTPResponseMetadata(_ExternalResponseModel):
+    status_code: int | None = None
+
+
+class _CredentialResponse(_ExternalResponseModel):
+    code: int | None = None
+    error: JsonValue = None
+    raw: _HTTPResponseMetadata | None = None
+
+
+class _TenantAccessTokenResponse(_CredentialResponse):
+    tenant_access_token: str | None = Field(default=None, min_length=1, pattern=r"\S", repr=False)
+
+
+def _credential_rejection(response: _CredentialResponse, reason: str) -> CredentialTestFailure:
+    try:
+        details = _PermissionErrorDetails.model_validate(response.error)
+    except ValidationError:
+        missing_permissions = ()
+    else:
+        missing_permissions = tuple(
+            sorted(
+                {
+                    violation.subject
+                    for violation in details.permission_violations
+                    if violation.type == "action" and violation.subject
+                }
+            )
+        )
+    kind = CredentialTestFailureKind.UNKNOWN
+    if response.code in _AUTHENTICATION_REJECTED_CODES:
+        kind = CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    elif missing_permissions:
+        kind = CredentialTestFailureKind.PERMISSION_DENIED
+    provider_error_code = str(response.code) if response.code is not None else None
+    return CredentialTestFailure(
+        kind,
+        reason,
+        provider_error_code,
+        missing_permissions,
+        http_status=response.raw.status_code if response.raw is not None else None,
+    )
+
+
+class _TenantResponse(_CredentialResponse):
+    data: _TenantData | None = None
+
+
+class _ScopeData(_ExternalResponseModel):
+    department_ids: list[str] = Field(default_factory=list)
+    user_ids: list[str] = Field(default_factory=list)
+    has_more: bool = Field(strict=True)
+    page_token: str | None = Field(default=None, strict=True)
+
+
+class _ScopeResponse(_CredentialResponse):
+    data: _ScopeData | None = None
+
+
+class _DirectoryUser(_ExternalResponseModel):
+    union_id: str = Field(min_length=1)
+    name: str | None = None
+    email: str | None = None
+    enterprise_email: str | None = None
+    avatar_url: str | None = Field(default=None, validation_alias=AliasPath("avatar", "avatar_240"))
+
+    @field_validator("avatar_url")
+    @classmethod
+    def _normalize_avatar_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class _DirectoryDepartment(_ExternalResponseModel):
+    department_id: str | None = None
+    open_department_id: str | None = None
+
+
+class _UserPageData(_ExternalResponseModel):
+    items: list[_DirectoryUser] = Field(default_factory=list)
+    has_more: bool = Field(strict=True)
+    page_token: str | None = Field(default=None, strict=True)
+
+
+class _UserPageResponse(_ExternalResponseModel):
+    code: int
+    data: _UserPageData | None = None
+
+
+class _DepartmentPageData(_ExternalResponseModel):
+    items: list[_DirectoryDepartment] = Field(default_factory=list)
+    has_more: bool = Field(strict=True)
+    page_token: str | None = Field(default=None, strict=True)
+
+
+class _DepartmentPageResponse(_CredentialResponse):
+    data: _DepartmentPageData | None = None
+
+
+class _MessageData(_ExternalResponseModel):
+    message_id: str = Field(min_length=1)
+
+
+class _MessageResponse(_ExternalResponseModel):
+    code: int
+    data: _MessageData | None = None
+
+
+class _PatchResponse(_ExternalResponseModel):
+    code: int
+
+
+class _EncryptedWebhookEnvelope(_ExternalResponseModel):
+    encrypt: str = Field(min_length=1)
+
+
+class _WebhookChallenge(_ExternalResponseModel):
+    type: Literal["url_verification"]
+    token: str | None = None
+    challenge: str
+
+
+class _WebhookEventHeader(_ExternalResponseModel):
+    token: str | None = None
+    tenant_key: str = Field(min_length=1)
+    event_id: str | None = None
+    event_type: str | None = None
+    create_time: str | None = None
+
+
+class _WebhookEventEnvelope(_ExternalResponseModel):
+    schema_version: str = Field(alias="schema")
+    header: _WebhookEventHeader
+
+
+_FEISHU_LARK_DIFY_ACTION_MARKER = "__dify.human_input.action"
+
+
+@dataclass(frozen=True, slots=True)
+class _MSFeishuLarkCardCodec(IMCardEventDecoder):
+    """Own the credential-free Feishu/Lark card wire contract."""
+
+    _FORM_NAME = "__dify.human_input"
+    _CALLBACK_EVENT_TYPE = "card.action.trigger"
+    _CALLBACK_SCHEMA_VERSION = 1
+    _MAX_CARD_SIZE_BYTES = 30 * 1024
+    _SUPPORTED_PROVIDERS = frozenset((IMProvider.FEISHU, IMProvider.LARK))
+    _SUPPORTED_ACTION_STYLES = frozenset((ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT))
+    _ACTION_MARKER = _FEISHU_LARK_DIFY_ACTION_MARKER
+    _JSON_OBJECT_ADAPTER: ClassVar[TypeAdapter[dict[str, JsonValue]]] = TypeAdapter(
+        dict[str, JsonValue],
+        config=ConfigDict(strict=True, allow_inf_nan=False),
+    )
+
+    class _CallbackModel(BaseModel):
+        model_config = ConfigDict(
+            allow_inf_nan=False,
+            extra="ignore",
+            frozen=True,
+            hide_input_in_errors=True,
+            strict=True,
+        )
+
+    class _CallbackHeader(_CallbackModel):
+        event_type: Literal["card.action.trigger"]
+
+    class _CallbackOperator(_CallbackModel):
+        union_id: str = Field(min_length=1)
+
+        @field_validator("union_id")
+        @classmethod
+        def _require_non_blank_union_id(cls, value: str) -> str:
+            if not value.strip():
+                raise ValueError("Feishu/Lark callback union identifier is empty.")
+            return value
+
+    class _ButtonMetadata(BaseModel):
+        model_config = ConfigDict(
+            extra="forbid",
+            frozen=True,
+            hide_input_in_errors=True,
+            strict=True,
+        )
+
+        version: Literal[1]
+        action_id: str = Field(min_length=1)
+        correlation_token: str
+
+        @field_validator("action_id")
+        @classmethod
+        def _require_non_blank_action_id(cls, value: str) -> str:
+            if not value.strip():
+                raise ValueError("Feishu/Lark callback action identifier is empty.")
+            return value
+
+    class _ButtonValue(BaseModel):
+        model_config = ConfigDict(
+            extra="forbid",
+            frozen=True,
+            hide_input_in_errors=True,
+            strict=True,
+        )
+
+        # Mypy requires a literal alias for Pydantic's dataclass transform.
+        dify_action: _MSFeishuLarkCardCodec._ButtonMetadata = Field(alias="__dify.human_input.action")
+
+    class _CallbackAction(_CallbackModel):
+        tag: Literal["button"]
+        name: str = Field(min_length=1)
+        value: _MSFeishuLarkCardCodec._ButtonValue
+        # Feishu/Lark omit form_value when the card has no input components.
+        form_value: dict[str, JsonValue] = Field(default_factory=dict)
+
+        @field_validator("name")
+        @classmethod
+        def _require_non_blank_action_name(cls, value: str) -> str:
+            if not value.strip():
+                raise ValueError("Feishu/Lark callback action name is empty.")
+            return value
+
+    class _CallbackEvent(_CallbackModel):
+        operator: _MSFeishuLarkCardCodec._CallbackOperator
+        action: _MSFeishuLarkCardCodec._CallbackAction
+
+    class _SubmissionCallback(_CallbackModel):
+        schema_version: Literal["2.0"] = Field(alias="schema")
+        header: _MSFeishuLarkCardCodec._CallbackHeader
+        event: _MSFeishuLarkCardCodec._CallbackEvent
+
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
+        reason = self._unrepresentable_reason(intent)
+        if reason is not None:
+            return CardAssessment(False, reason)
+        return CardAssessment(True)
+
+    def encode(
+        self,
+        intent: ResolvedForm,
+        correlation_token: CorrelationToken,
+    ) -> Mapping[str, JsonValue]:
+        reason = self._unrepresentable_reason(intent)
+        if reason is not None:
+            raise DynamicCardMessagingError(reason)
+        card = self._render_card(intent, correlation_token)
+        if self._serialized_card_size(card) > self._MAX_CARD_SIZE_BYTES:
+            raise DynamicCardMessagingError("Feishu/Lark cannot preserve a card beyond the Provider payload limit.")
+        return card
+
+    @override
+    def decode(self, event: AuthenticatedIMEvent) -> IMCardEventDecodeResult:
+        if event.provider not in self._SUPPORTED_PROVIDERS or event.event_type != self._CALLBACK_EVENT_TYPE:
+            return UnrecognizedIMEvent()
+
+        callback = self._decode_ingress_callback(event.ingress_kind, event.payload)
+        if callback is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event payload is invalid.")
+        action_value = self._recognition_action_value(callback)
+        if action_value is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event schema is invalid.")
+        if self._ACTION_MARKER not in action_value:
+            return UnrecognizedIMEvent()
+
+        submission = self._validate_submission(callback)
+        if submission is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event schema is invalid.")
+        metadata = submission.event.action.value.dify_action
+        if submission.event.action.name != metadata.action_id:
+            raise IMCardEventDecodingError("Feishu/Lark card event schema is invalid.")
+        return IMCardEvent(
+            provider_user_id=ProviderUserId(submission.event.operator.union_id),
+            action_id=metadata.action_id,
+            inputs=submission.event.action.form_value,
+            correlation_token=CorrelationToken(metadata.correlation_token),
+        )
+
+    @classmethod
+    def _decode_json_object(cls, serialized_callback: str) -> dict[str, JsonValue] | None:
+        try:
+            decoded_callback: JsonValue = json.loads(
+                serialized_callback,
+                parse_constant=cls._reject_non_standard_json_constant,
+            )
+        except (json.JSONDecodeError, ValueError, RecursionError):
+            return None
+        try:
+            return cls._JSON_OBJECT_ADAPTER.validate_python(decoded_callback, strict=True)
+        except ValidationError:
+            return None
+
+    @classmethod
+    def _decode_ingress_callback(
+        cls,
+        ingress_kind: IMEventIngressKind,
+        serialized_callback: str,
+    ) -> dict[str, JsonValue] | None:
+        if ingress_kind is IMEventIngressKind.WEBHOOK:
+            return cls._decode_json_object(serialized_callback)
+        if ingress_kind is IMEventIngressKind.STREAM:
+            return cls._decode_json_object(serialized_callback)
+        return None
+
+    @classmethod
+    def _recognition_action_value(cls, callback: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
+        if callback.get("schema") != "2.0":
+            return None
+        header = callback.get("header")
+        callback_event = callback.get("event")
+        if not isinstance(header, dict) or header.get("event_type") != cls._CALLBACK_EVENT_TYPE:
+            return None
+        if not isinstance(callback_event, dict):
+            return None
+        action = callback_event.get("action")
+        if not isinstance(action, dict):
+            return None
+        action_value = action.get("value")
+        if not isinstance(action_value, dict):
+            return {}
+        return action_value
+
+    @classmethod
+    def _validate_submission(cls, callback: dict[str, JsonValue]) -> _SubmissionCallback | None:
+        try:
+            return cls._SubmissionCallback.model_validate(callback)
+        except ValidationError:
+            return None
+
+    @classmethod
+    def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
+        if not intent.parts and not intent.actions:
+            return "Feishu/Lark cannot preserve an empty card."
+
+        input_names: set[str] = set()
+        for block in intent.parts:
+            match block:
+                case MarkdownFragment(text=text):
+                    if not text:
+                        return "Feishu/Lark cannot preserve an empty Markdown block."
+                    continue
+                case FileInput() | FileListInput():
+                    return "Feishu/Lark cards cannot represent file inputs."
+                case ParagraphInput(output_variable_name=input_name):
+                    pass
+                case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                    if not options or any(not option for option in options):
+                        return "Feishu/Lark cannot preserve one select option."
+                    if len(options) != len(set(options)):
+                        return "Feishu/Lark cannot preserve duplicate select options."
+                    if default_value is not None and default_value not in options:
+                        return "Feishu/Lark cannot preserve one select input default."
+            if input_name in input_names:
+                return "Feishu/Lark cannot preserve duplicate card input identifiers."
+            input_names.add(input_name)
+
+        if any(action.button_style not in cls._SUPPORTED_ACTION_STYLES for action in intent.actions):
+            return "Feishu/Lark cannot preserve one card action style."
+        assessment_card = cls._render_card(intent, CorrelationToken(""))
+        if cls._serialized_card_size(assessment_card) > cls._MAX_CARD_SIZE_BYTES:
+            return "Feishu/Lark cannot preserve a card beyond the Provider payload limit."
+        return None
+
+    @classmethod
+    def _render_card(
+        cls,
+        intent: ResolvedForm,
+        correlation_token: CorrelationToken,
+    ) -> dict[str, JsonValue]:
+        rendered_elements: list[JsonValue] = []
+        for block in intent.parts:
+            if isinstance(block, MarkdownFragment):
+                rendered_elements.append({"tag": "markdown", "content": block.text})
+                continue
+            placeholder: dict[str, JsonValue] = {
+                "tag": "plain_text",
+                "content": block.output_variable_name,
+            }
+            if isinstance(block, ParagraphInput):
+                input_element: dict[str, JsonValue] = {
+                    "tag": "input",
+                    "name": block.output_variable_name,
+                    "input_type": "multiline_text",
+                    "width": "fill",
+                    "required": True,
+                    "label": placeholder,
+                    "placeholder": placeholder,
+                }
+                if block.default_value is not None:
+                    input_element["default_value"] = block.default_value
+                rendered_elements.append(input_element)
+                continue
+            if isinstance(block, SelectInput):
+                select_element: dict[str, JsonValue] = {
+                    "tag": "select_static",
+                    "name": block.output_variable_name,
+                    "required": True,
+                    "placeholder": placeholder,
+                    "options": [
+                        {
+                            "text": {"tag": "plain_text", "content": option},
+                            "value": option,
+                        }
+                        for option in block.options
+                    ],
+                }
+                if block.default_value is not None:
+                    select_element["initial_option"] = block.default_value
+                rendered_elements.append(select_element)
+                continue
+            raise DynamicCardMessagingError("Feishu/Lark cards cannot represent file inputs.")
+
+        if intent.actions:
+            columns: list[JsonValue] = []
+            for action in intent.actions:
+                if action.button_style is ButtonStyle.PRIMARY:
+                    button_type = "primary_filled"
+                elif action.button_style is ButtonStyle.ACCENT:
+                    button_type = "danger_filled"
+                else:
+                    button_type = "default"
+                columns.append(
+                    {
+                        "tag": "column",
+                        "width": "auto",
+                        "elements": [
+                            {
+                                "tag": "button",
+                                "name": action.id,
+                                "type": button_type,
+                                "text": {"tag": "plain_text", "content": action.title},
+                                "form_action_type": "submit",
+                                "behaviors": [
+                                    {
+                                        "type": "callback",
+                                        "value": {
+                                            cls._ACTION_MARKER: {
+                                                "version": cls._CALLBACK_SCHEMA_VERSION,
+                                                "action_id": action.id,
+                                                "correlation_token": str(correlation_token),
+                                            }
+                                        },
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                )
+            rendered_elements.append(
+                {
+                    "tag": "column_set",
+                    "flex_mode": "none",
+                    "horizontal_spacing": "8px",
+                    "horizontal_align": "left",
+                    "columns": columns,
+                }
+            )
+
+        requires_form = any(not isinstance(block, MarkdownFragment) for block in intent.parts) or bool(intent.actions)
+        body_elements: list[JsonValue]
+        if requires_form:
+            body_elements = [{"tag": "form", "name": cls._FORM_NAME, "elements": rendered_elements}]
+        else:
+            body_elements = rendered_elements
+        card: dict[str, JsonValue] = {
+            "schema": "2.0",
+            "config": {"update_multi": True},
+            "body": {"direction": "vertical", "elements": body_elements},
+        }
+        if intent.title:
+            card["header"] = {"title": {"tag": "plain_text", "content": intent.title}}
+        return card
+
+    @staticmethod
+    def _serialized_card_size(card: Mapping[str, JsonValue]) -> int:
+        serialized_card = json.dumps(
+            card,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
+        return len(serialized_card.encode())
+
+    @staticmethod
+    def _reject_non_standard_json_constant(_serialized_constant: str) -> Never:
+        raise ValueError("non-standard JSON constant")
+
+
+_MS_FEISHU_LARK_CARD_CODEC = _MSFeishuLarkCardCodec()
+
+
+class _FeishuLarkLocatorPayload(_Base64JSONLocatorPayload):
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True, strict=True)
+
+    # version of the locator
+    v: Literal[1]
+    # provider of the locator
+    p: _FeishuLarkProvider
+    # Feishu/Lark message identifier used to update the card:
+    # Feishu: https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/patch
+    # Lark: https://open.larksuite.com/document/server-docs/im-v1/message-card/patch
+    message_id: str = Field(min_length=1, pattern=r"\S")
+
+
+class _FeishuLarkDirectory(IMDirectory):
+    def __init__(self, gateway: _SDKGateway, provider: _FeishuLarkProvider) -> None:
+        self._gateway = gateway
+        self._provider = provider
+
+    @override
+    def read_directory(self) -> Directory | DirectoryReadFailure:
+        try:
+            return self._read_complete_directory()
+        except Exception:
+            _log_safe_error("Feishu/Lark directory read failed", extra={"im_provider": self._provider.value})
+            return DirectoryReadFailure(f"{_provider_name(self._provider)} directory could not be read completely.")
+
+    def _read_complete_directory(self) -> Directory:
+        users: list[_DirectoryUser] = []
+        seen_users: set[str] = set()
+        seen_departments = {_ROOT_DEPARTMENT}
+        pending_departments = deque((_ROOT_DEPARTMENT,))
+
+        while pending_departments:
+            department = pending_departments.popleft()
+            for user in self._read_users(department):
+                if user.union_id in seen_users:
+                    continue
+                seen_users.add(user.union_id)
+                users.append(user)
+            for child in self._read_child_departments(department):
+                if child in seen_departments:
+                    continue
+                seen_departments.add(child)
+                pending_departments.append(child)
+        avatars = read_avatars([user.avatar_url for user in users])
+        return Directory(
+            tuple(
+                DirectoryEntry(
+                    provider_user_id=ProviderUserId(user.union_id),
+                    display_name=_optional_string(user.name),
+                    email=_optional_string(user.enterprise_email) or _optional_string(user.email),
+                    avatar=avatar,
+                )
+                for user, avatar in zip(users, avatars, strict=True)
+            )
+        )
+
+    def _read_users(self, department: _DepartmentIdentity) -> tuple[_DirectoryUser, ...]:
+        users: list[_DirectoryUser] = []
+        page_token: str | None = None
+        seen_tokens: set[str] = set()
+        while True:
+            response = _UserPageResponse.model_validate(self._gateway.list_users(department, page_token))
+            if response.code != 0 or response.data is None:
+                raise ValueError("directory user page was rejected")
+            users.extend(response.data.items)
+            page_token = _next_page_token(response.data.has_more, response.data.page_token, seen_tokens)
+            if page_token is None:
+                return tuple(users)
+
+    def _read_child_departments(self, parent_department: _DepartmentIdentity) -> tuple[_DepartmentIdentity, ...]:
+        department_ids: list[_DepartmentIdentity] = []
+        page_token: str | None = None
+        seen_tokens: set[str] = set()
+        while True:
+            response = _DepartmentPageResponse.model_validate(
+                self._gateway.list_departments(parent_department, page_token)
+            )
+            if response.code != 0 or response.data is None:
+                raise ValueError("directory department page was rejected")
+            for child_department in response.data.items:
+                child = _department_identity(child_department)
+                if child is None:
+                    raise ValueError("directory department identity is unavailable")
+                department_ids.append(child)
+            page_token = _next_page_token(response.data.has_more, response.data.page_token, seen_tokens)
+            if page_token is None:
+                return tuple(department_ids)
+
+
+class _FeishuLarkMessaging(IMMessaging):
+    def __init__(
+        self,
+        gateway: _SDKGateway,
+        credentials: _FeishuLarkCredentials,
+        provider: _FeishuLarkProvider,
+    ) -> None:
+        self._gateway = gateway
+        self._credentials = credentials
+        self._provider = provider
+
+    @override
+    def send_text(
+        self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
+    ) -> MessageSendingResult:
+        try:
+            elements: list[dict[str, str]] = []
+            if subject:
+                escaped_subject = "".join(
+                    f"\\{character}" if character in punctuation else character for character in subject
+                )
+                elements.append({"tag": "markdown", "content": f"# {escaped_subject}"})
+            elements.append({"tag": "markdown", "content": body})
+            card = {"schema": "2.0", "body": {"elements": elements}}
+            content = json.dumps(card, ensure_ascii=False, separators=(",", ":"))
+            response = _MessageResponse.model_validate(
+                self._gateway.create_message(str(provider_user_id), "interactive", content)
+            )
+        except Exception:
+            _log_safe_error(
+                "Feishu/Lark text message acceptance is unknown", extra={"im_provider": self._provider.value}
+            )
+            return MessageSendingError(f"{_provider_name(self._provider)} message acceptance could not be confirmed.")
+        if response.code != 0 or response.data is None:
+            return MessageSendingError(f"{_provider_name(self._provider)} message acceptance could not be confirmed.")
+        return MessageAccepted(
+            MessageLocator(
+                _FeishuLarkLocatorPayload(
+                    v=1,
+                    p=self._provider,
+                    message_id=response.data.message_id,
+                ).encode()
+            )
+        )
+
+
+class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
+    def __init__(
+        self,
+        gateway: _SDKGateway,
+        credentials: _FeishuLarkCredentials,
+        provider: _FeishuLarkProvider,
+    ) -> None:
+        self._gateway = gateway
+        self._credentials = credentials
+        self._provider = provider
+
+    @override
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
+        return _MS_FEISHU_LARK_CARD_CODEC.assess(intent)
+
+    @override
+    def send_card(
+        self,
+        provider_user_id: ProviderUserId,
+        intent: ResolvedForm,
+        correlation_token: CorrelationToken,
+    ) -> MessageSendingResult:
+        encoded_card = _MS_FEISHU_LARK_CARD_CODEC.encode(intent, correlation_token)
+        content = json.dumps(encoded_card, ensure_ascii=False, separators=(",", ":"))
+        failure = MessageSendingError(f"{_provider_name(self._provider)} card acceptance could not be confirmed.")
+        try:
+            provider_response = self._gateway.create_message(str(provider_user_id), "interactive", content)
+        except Exception:
+            _log_safe_error(
+                "Feishu/Lark card acceptance failed at create-message stage",
+                extra={"im_provider": self._provider.value},
+            )
+            return failure
+        try:
+            response = _MessageResponse.model_validate(provider_response)
+        except ValidationError:
+            _log_safe_error(
+                "Feishu/Lark card acceptance failed at response-validation stage",
+                extra={"im_provider": self._provider.value},
+            )
+            return failure
+        if response.code != 0:
+            _log_safe_error(
+                "Feishu/Lark card acceptance failed at provider-response stage",
+                extra={"im_provider": self._provider.value},
+            )
+            return failure
+        if response.data is None:
+            _log_safe_error(
+                "Feishu/Lark card acceptance failed at response-validation stage",
+                extra={"im_provider": self._provider.value},
+            )
+            return failure
+        return MessageAccepted(
+            MessageLocator(
+                _FeishuLarkLocatorPayload(
+                    v=1,
+                    p=self._provider,
+                    message_id=response.data.message_id,
+                ).encode()
+            )
+        )
+
+    @override
+    def replace_with_static(
+        self,
+        locator: MessageLocator,
+        intent: StaticCardIntent,
+    ) -> ReplacementError | None:
+        try:
+            decoded_locator = _FeishuLarkLocatorPayload.decode(str(locator))
+        except (ValueError, binascii.Error, ValidationError):
+            return ReplacementError(
+                ReplacementErrorKind.INVALID_REFERENCE,
+                f"The {_provider_name(self._provider)} message reference is invalid.",
+            )
+        if decoded_locator.p is not self._provider:
+            return ReplacementError(
+                ReplacementErrorKind.INVALID_REFERENCE,
+                f"The {_provider_name(self._provider)} message reference is invalid.",
+            )
+        static_card = {
+            "schema": "2.0",
+            "body": {"elements": [{"tag": "markdown", "content": intent.rendered_content}]},
+        }
+        content = json.dumps(static_card, ensure_ascii=False, separators=(",", ":"))
+        try:
+            response = _PatchResponse.model_validate(self._gateway.patch_message(decoded_locator.message_id, content))
+        except Exception:
+            _log_safe_error("Feishu/Lark card replacement is unknown", extra={"im_provider": self._provider.value})
+            return ReplacementError(
+                ReplacementErrorKind.UNKNOWN,
+                f"{_provider_name(self._provider)} replacement acceptance is unknown.",
+            )
+        if response.code in _STALE_MESSAGE_CODES:
+            return ReplacementError(
+                ReplacementErrorKind.STALE_REFERENCE,
+                f"The referenced {_provider_name(self._provider)} card is no longer replaceable.",
+            )
+        if response.code != 0:
+            return ReplacementError(
+                ReplacementErrorKind.UNKNOWN,
+                f"{_provider_name(self._provider)} replacement acceptance is unknown.",
+            )
+        return None
+
+
+class _FeishuLarkWebhookHandler(IMWebhookHandler):
+    """Concurrent webhook boundary honoring optional provider authentication."""
+
+    def __init__(
+        self,
+        gateway: _SDKGateway,
+        credentials: _FeishuLarkCredentials,
+        provider: _FeishuLarkProvider,
+        consumer: IMEventConsumer,
+    ) -> None:
+        self._gateway = gateway
+        self._verification_token = credentials.verification_token
+        self._encrypt_key = credentials.encrypt_key
+        self._provider = provider
+        self._consumer = consumer
+
+    @override
+    def handle(self, request: WebhookRequest) -> WebhookResponse:
+        if request.method != "POST":
+            return _webhook_response(405, {"code": 1})
+        decoded_request = self._decode_request(request)
+        if decoded_request is None:
+            return _webhook_response(401, {"code": 1})
+        decoded, encrypted, native_payload = decoded_request
+
+        if decoded.get("type") == "url_verification":
+            try:
+                challenge = _WebhookChallenge.model_validate(decoded)
+            except ValidationError:
+                return _webhook_response(400, {"code": 1})
+            if not self._challenge_matches_configuration(challenge.token, decrypted=encrypted):
+                return _webhook_response(401, {"code": 1})
+            return _webhook_response(200, {"challenge": challenge.challenge})
+
+        try:
+            envelope = _WebhookEventEnvelope.model_validate(decoded)
+        except ValidationError:
+            return _webhook_response(400, {"code": 1})
+        if not self._verification_token_matches(envelope.header.token):
+            return _webhook_response(401, {"code": 1})
+        try:
+            provider_tenant_id = _query_tenant_id(self._gateway)
+        except Exception:
+            _log_safe_error("Feishu/Lark Webhook tenant validation failed", extra={"im_provider": self._provider.value})
+            return _webhook_response(503, {"code": 1})
+        if provider_tenant_id != envelope.header.tenant_key:
+            return _webhook_response(401, {"code": 1})
+        event = AuthenticatedIMEvent(
+            provider=self._provider,
+            provider_tenant_id=provider_tenant_id,
+            event_id=_optional_string(envelope.header.event_id),
+            event_type=_optional_string(envelope.header.event_type),
+            occurred_at=_webhook_occurred_at(envelope.header.create_time),
+            received_at=request.received_at,
+            ingress_kind=IMEventIngressKind.WEBHOOK,
+            payload=native_payload,
+        )
+        try:
+            acceptance = self._consumer.accept(event, request_ip_address=request.request_ip_address)
+        except Exception:
+            _log_safe_error(
+                "Feishu/Lark Webhook consumer failed",
+                extra={"im_provider": self._provider.value, "provider_tenant_id": provider_tenant_id},
+            )
+            return _webhook_response(503, {"code": 1})
+        if acceptance is not EventAcceptance.ACCEPTED:
+            return _webhook_response(503, {"code": 1})
+        return _webhook_response(200, {"code": 0})
+
+    def _decode_request(
+        self,
+        request: WebhookRequest,
+    ) -> tuple[dict[str, object], bool, str] | None:
+        # Authentication must parse Provider JSON for challenge, token, signature,
+        # and tenant checks. The separate native string is never reconstructed;
+        # it is persisted exactly so only the codec normalizes card callback facts.
+        try:
+            outer = _decode_json_object(request.body)
+            encrypted = outer.get("encrypt")
+            if encrypted is None:
+                native_payload = request.body.decode()
+                decoded = outer
+            else:
+                if self._encrypt_key is None:
+                    return None
+                envelope = _EncryptedWebhookEnvelope.model_validate(outer)
+                plaintext = _decrypt_webhook_payload(envelope.encrypt, self._encrypt_key)
+                native_payload = plaintext.decode()
+                decoded = _decode_json_object(plaintext)
+        except (ValueError, ValidationError, UnicodeDecodeError, binascii.Error):
+            return None
+        # The official SDK authenticates URL verification with the body token and requires signatures only for events.
+        if decoded.get("type") == "url_verification":
+            return decoded, encrypted is not None, native_payload
+        if self._encrypt_key is not None:
+            if _valid_webhook_signature(request, self._encrypt_key) is None:
+                return None
+        return decoded, encrypted is not None, native_payload
+
+    def _verification_token_matches(self, token: str | None) -> bool:
+        return self._verification_token is None or (
+            token is not None and hmac.compare_digest(token, self._verification_token)
+        )
+
+    def _challenge_matches_configuration(self, token: str | None, *, decrypted: bool) -> bool:
+        if self._verification_token is None:
+            return decrypted or self._encrypt_key is None
+        return token is not None and hmac.compare_digest(token, self._verification_token)
+
+
+class _FeishuLarkEventStream:
+    """One-shot stream owning its callback gate, drain, ACK, and SDK client."""
+
+    def __init__(
+        self,
+        *,
+        credentials: _FeishuLarkCredentials,
+        provider: _FeishuLarkProvider,
+        domain: str,
+        consumer: IMEventConsumer,
+    ) -> None:
+        self._credentials = credentials
+        self._provider = provider
+        self._domain = domain
+        self._consumer = consumer
+        self._condition = threading.Condition()
+        self._start_claimed = False
+        self._start_in_progress = False
+        self._state: Literal["idle", "starting", "running", "stopping", "stopped", "failed"] = "idle"
+        self._accepting_callbacks = False
+        self._in_flight_callbacks = 0
+        self._client: _OfficialSDKStreamClient | None = None
+        self._close_claimed = False
+        self._close_done = False
+        self._close_failed = False
+
+    def start(self) -> None:
+        with self._condition:
+            if self._start_claimed:
+                raise IMStreamStartError(
+                    f"This {_provider_name(self._provider)} event stream has already been started."
+                )
+            self._start_claimed = True
+            self._start_in_progress = True
+            self._state = "starting"
+            self._accepting_callbacks = True
+
+        try:
+            client = _create_sdk_stream_client(self._credentials, self._domain, self._handle_delivery)
+            with self._condition:
+                self._client = client
+                self._condition.notify_all()
+                if self._state != "starting":
+                    raise RuntimeError("stream start was cancelled")
+            client.start()
+            with self._condition:
+                if self._state != "starting":
+                    raise RuntimeError("stream start was cancelled")
+                self._state = "running"
+                self._start_in_progress = False
+                self._condition.notify_all()
+            return
+        except Exception:
+            self._finish_failed_start()
+            raise IMStreamStartError(
+                f"The {_provider_name(self._provider)} event stream could not be started."
+            ) from None
+
+    def stop(self) -> None:
+        with self._condition:
+            if self._state == "stopped":
+                self._raise_if_close_failed()
+                return
+            if self._state == "stopping":
+                while self._state != "stopped":
+                    self._condition.wait()
+                self._raise_if_close_failed()
+                return
+            if self._state == "idle":
+                self._start_claimed = True
+            self._state = "stopping"
+            self._accepting_callbacks = False
+            while self._in_flight_callbacks:
+                self._condition.wait()
+            while self._client is None and self._start_in_progress:
+                self._condition.wait()
+            client = self._claim_client_close()
+
+        if client is not None:
+            self._close_client(client)
+        with self._condition:
+            # A failed start may own the close, so both terminal states must be
+            # published before stop exposes the synchronous lifecycle boundary.
+            while self._start_in_progress or not self._close_done:
+                self._condition.wait()
+            self._state = "stopped"
+            self._condition.notify_all()
+            self._raise_if_close_failed()
+
+    def _finish_failed_start(self) -> None:
+        with self._condition:
+            self._accepting_callbacks = False
+            if self._state != "stopping":
+                self._state = "failed"
+            while self._in_flight_callbacks:
+                self._condition.wait()
+            client = self._claim_client_close()
+            self._start_in_progress = False
+            self._condition.notify_all()
+        if client is not None:
+            self._close_client(client)
+        else:
+            with self._condition:
+                while self._close_claimed and not self._close_done:
+                    self._condition.wait()
+
+    def _claim_client_close(self) -> _OfficialSDKStreamClient | None:
+        if self._close_claimed or self._client is None:
+            if self._client is None and not self._start_in_progress:
+                self._close_done = True
+                self._condition.notify_all()
+            return None
+        self._close_claimed = True
+        return self._client
+
+    def _close_client(self, client: _OfficialSDKStreamClient) -> None:
+        close_failed = False
+        try:
+            client.stop()
+        except Exception:
+            close_failed = True
+            _log_safe_error("Feishu/Lark stream close failed", extra={"im_provider": self._provider.value})
+        finally:
+            with self._condition:
+                self._close_failed = close_failed
+                self._close_done = True
+                self._condition.notify_all()
+
+    def _raise_if_close_failed(self) -> None:
+        if self._close_failed:
+            raise IMStreamStopError(f"The {_provider_name(self._provider)} event stream could not be stopped.")
+
+    def _handle_delivery(self, sdk_event: _SDKEventEnvelope, acknowledge: Callable[[], None]) -> None:
+        with self._condition:
+            if not self._accepting_callbacks or self._state not in {"starting", "running"}:
+                return
+            self._in_flight_callbacks += 1
+        try:
+            event = AuthenticatedIMEvent(
+                provider=self._provider,
+                provider_tenant_id=sdk_event.provider_tenant_id,
+                event_id=sdk_event.event_id,
+                event_type=sdk_event.event_type,
+                occurred_at=sdk_event.occurred_at,
+                received_at=datetime.now(tz=UTC).replace(tzinfo=None),
+                ingress_kind=IMEventIngressKind.STREAM,
+                payload=sdk_event.native_payload,
+            )
+            acceptance = self._consumer.accept(event)
+            if acceptance is EventAcceptance.ACCEPTED:
+                acknowledge()
+        except Exception:
+            _log_safe_error("Feishu/Lark stream callback failed", extra={"im_provider": self._provider.value})
+        finally:
+            with self._condition:
+                self._in_flight_callbacks -= 1
+                self._condition.notify_all()
+
+
+class _FeishuLarkIMProviderAdapter:
+    """Externally serialized composition root shared by both wrappers."""
+
+    def __init__(
+        self,
+        credentials: _FeishuLarkCredentials,
+        provider: _FeishuLarkProvider,
+        domain: str,
+    ) -> None:
+        self._credentials = credentials
+        self._provider = provider
+        self._domain = domain
+        self._gateway = _create_sdk_gateway(credentials, domain)
+        self._directory = _FeishuLarkDirectory(self._gateway, provider)
+        self._messaging = _FeishuLarkMessaging(self._gateway, credentials, provider)
+        self._dynamic_card_messaging = _FeishuLarkDynamicCardMessaging(self._gateway, credentials, provider)
+        self._closed = False
+
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder:
+        return _MS_FEISHU_LARK_CARD_CODEC
+
+    @property
+    def provider(self) -> IMProvider:
+        self._ensure_open()
+        return self._provider
+
+    def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        try:
+            return self._test_credentials()
+        except (AccessTokenException, ObtainAccessTokenException) as error:
+            return _credential_rejection(
+                _CredentialResponse(
+                    code=error.code,
+                    raw=_HTTPResponseMetadata(status_code=error.status_code)
+                    if isinstance(error, AccessTokenException)
+                    else None,
+                ),
+                f"{_provider_name(self._provider)} rejected the credential test.",
+            )
+        except (TimeoutError, RequestsTimeout) as error:
+            raise CredentialTestTimeoutError() from error
+
+    def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        self._ensure_open()
+        access_token = self._gateway.request_tenant_access_token()
+        request_option = lark.RequestOption.builder().tenant_access_token(access_token).build()
+        tenant_payload = self._gateway.query_tenant(request_option=request_option)
+        tenant_envelope = _CredentialResponse.model_validate(tenant_payload)
+        if tenant_envelope.code != 0:
+            return _credential_rejection(
+                tenant_envelope, f"{_provider_name(self._provider)} rejected the credential test."
+            )
+        tenant_response = _TenantResponse.model_validate(tenant_payload)
+        if tenant_response.data is None or tenant_response.data.tenant.tenant_key is None:
+            raise IMProviderError(f"{_provider_name(self._provider)} did not provide a stable tenant identity.")
+        scope_failure = self._validate_complete_scope(request_option)
+        if scope_failure is not None:
+            return scope_failure
+        department_failure = self._validate_root_department_access(request_option)
+        if department_failure is not None:
+            return department_failure
+        return CredentialTestSuccess(self._provider, tenant_response.data.tenant.tenant_key)
+
+    def _validate_complete_scope(self, request_option: lark.RequestOption) -> CredentialTestFailure | None:
+        page_token: str | None = None
+        seen_tokens: set[str] = set()
+        while True:
+            scope_payload = self._gateway.list_scope(page_token, request_option=request_option)
+            scope_envelope = _CredentialResponse.model_validate(scope_payload)
+            if scope_envelope.code != 0:
+                return _credential_rejection(
+                    scope_envelope, f"{_provider_name(self._provider)} baseline permissions could not be confirmed."
+                )
+            response = _ScopeResponse.model_validate(scope_payload)
+            if response.data is None:
+                raise IMProviderError("directory scope page was rejected")
+            page_token = _next_page_token(response.data.has_more, response.data.page_token, seen_tokens)
+            if page_token is None:
+                return None
+
+    def _validate_root_department_access(self, request_option: lark.RequestOption) -> CredentialTestFailure | None:
+        department_payload = self._gateway.list_departments(_ROOT_DEPARTMENT, None, request_option=request_option)
+        department_envelope = _CredentialResponse.model_validate(department_payload)
+        if department_envelope.code != 0:
+            return _credential_rejection(
+                department_envelope, f"{_provider_name(self._provider)} baseline permissions could not be confirmed."
+            )
+        response = _DepartmentPageResponse.model_validate(department_payload)
+        if response.data is None:
+            raise IMProviderError("root department access was rejected")
+        for department in response.data.items:
+            if _department_identity(department) is None:
+                raise IMProviderError("root department response contains an invalid identity")
+        _next_page_token(response.data.has_more, response.data.page_token, set())
+        return None
+
+    @property
+    def directory(self) -> IMDirectory:
+        self._ensure_open()
+        return self._directory
+
+    @property
+    def messaging(self) -> IMMessaging:
+        self._ensure_open()
+        return self._messaging
+
+    @property
+    def dynamic_card_messaging(self) -> IMDynamicCardMessaging:
+        self._ensure_open()
+        return self._dynamic_card_messaging
+
+    def create_webhook_handler(self, consumer: IMEventConsumer) -> IMWebhookHandler:
+        self._ensure_open()
+        return _FeishuLarkWebhookHandler(
+            _create_sdk_gateway(self._credentials, self._domain),
+            self._credentials,
+            self._provider,
+            consumer,
+        )
+
+    def create_stream_handler(self, consumer: IMEventConsumer) -> _FeishuLarkEventStream:
+        self._ensure_open()
+        return _FeishuLarkEventStream(
+            credentials=self._credentials,
+            provider=self._provider,
+            domain=self._domain,
+            consumer=consumer,
+        )
+
+    def close(self) -> None:
+        self._closed = True
+
+    def _ensure_open(self) -> None:
+        if self._closed:
+            raise RuntimeError(f"{_provider_name(self._provider)} adapter is closed")
+
+
+class FeishuIMProviderAdapter(_FeishuLarkIMProviderAdapter):
+    """Thin typed Feishu wrapper over the shared implementation."""
+
+    def __init__(self, credentials: FeishuCredentials) -> None:
+        if not isinstance(credentials, FeishuCredentials):
+            raise TypeError("Feishu adapter requires resolved Feishu credentials")
+        super().__init__(credentials, IMProvider.FEISHU, _FEISHU_DOMAIN)
+
+
+class LarkIMProviderAdapter(_FeishuLarkIMProviderAdapter):
+    """Thin typed Lark wrapper over the shared implementation."""
+
+    def __init__(self, credentials: LarkCredentials) -> None:
+        if not isinstance(credentials, LarkCredentials):
+            raise TypeError("Lark adapter requires resolved Lark credentials")
+        super().__init__(credentials, IMProvider.LARK, _LARK_DOMAIN)
+
+
+def _query_tenant_id(gateway: _SDKGateway) -> str:
+    response = _TenantResponse.model_validate(gateway.query_tenant())
+    if response.code != 0 or response.data is None or response.data.tenant.tenant_key is None:
+        raise ValueError("stable tenant identity is unavailable")
+    return response.data.tenant.tenant_key
+
+
+def _valid_webhook_signature(request: WebhookRequest, encrypt_key: str) -> bytes | None:
+    timestamps = _header_values(request.headers, "x-lark-request-timestamp")
+    nonces = _header_values(request.headers, "x-lark-request-nonce")
+    signatures = _header_values(request.headers, "x-lark-signature")
+    if len(timestamps) != 1 or len(nonces) != 1 or len(signatures) != 1:
+        return None
+    # The Provider SDK treats timestamp and nonce as opaque signature material.
+    # The verified digest is also the replay identity so ambiguous field boundaries
+    # cannot produce multiple claims for the same authenticated signature material.
+    signed = timestamps[0].encode() + nonces[0].encode() + encrypt_key.encode() + request.body
+    digest = hashlib.sha256(signed).digest()
+    if not hmac.compare_digest(signatures[0], digest.hex()):
+        return None
+    return digest
+
+
+def _decrypt_webhook_payload(encrypted: str, encrypt_key: str) -> bytes:
+    encrypted_bytes = base64.b64decode(encrypted, validate=True)
+    block_size = algorithms.AES.block_size // 8
+    if len(encrypted_bytes) < block_size * 2 or len(encrypted_bytes) % block_size:
+        raise ValueError("invalid encrypted Webhook payload")
+    iv = encrypted_bytes[:block_size]
+    decryptor = Cipher(algorithms.AES(hashlib.sha256(encrypt_key.encode()).digest()), modes.CBC(iv)).decryptor()
+    padded = decryptor.update(encrypted_bytes[block_size:]) + decryptor.finalize()
+    unpadder = symmetric_padding.PKCS7(algorithms.AES.block_size).unpadder()
+    return unpadder.update(padded) + unpadder.finalize()
+
+
+def _decode_json_object(body: bytes) -> dict[str, object]:
+    decoded = json.loads(body)
+    if not isinstance(decoded, dict) or any(not isinstance(key, str) for key in decoded):
+        raise ValueError("Webhook payload is not a JSON object")
+    return decoded
+
+
+def _webhook_occurred_at(create_time: str | None) -> datetime | None:
+    if create_time is None:
+        return None
+    try:
+        timestamp = int(create_time)
+        if len(create_time) == _MICROSECOND_TIMESTAMP_DIGITS:
+            units_per_second = _MICROSECONDS_PER_SECOND
+        elif len(create_time) == _MILLISECOND_TIMESTAMP_DIGITS:
+            units_per_second = _MILLISECONDS_PER_SECOND
+        else:
+            return None
+        seconds, subsecond_units = divmod(timestamp, units_per_second)
+        microseconds = subsecond_units * (_MICROSECONDS_PER_SECOND // units_per_second)
+        return datetime.fromtimestamp(seconds, tz=UTC).replace(microsecond=microseconds, tzinfo=None)
+    except (OSError, OverflowError, ValueError):
+        return None
+
+
+def _webhook_response(status_code: int, body: Mapping[str, object]) -> WebhookResponse:
+    return WebhookResponse(
+        status_code=status_code,
+        headers=_JSON_RESPONSE_HEADERS,
+        body=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode(),
+    )
+
+
+def _header_values(headers: tuple[tuple[str, str], ...], target: str) -> tuple[str, ...]:
+    return tuple(value for name, value in headers if name.casefold() == target)
+
+
+def _next_page_token(has_more: bool, page_token: str | None, seen_tokens: set[str]) -> str | None:
+    if not has_more:
+        return None
+    if page_token is None or not page_token.strip() or page_token in seen_tokens:
+        raise IMProviderError("invalid pagination")
+    seen_tokens.add(page_token)
+    return page_token
+
+
+def _optional_string(value: str | None) -> str | None:
+    if value is None or not value.strip():
+        return None
+    return value
+
+
+def _department_identity(department: _DirectoryDepartment) -> _DepartmentIdentity | None:
+    department_id = _optional_string(department.department_id)
+    if department_id is not None:
+        return _DepartmentIdentity(department_id, "department_id")
+    open_department_id = _optional_string(department.open_department_id)
+    if open_department_id is not None:
+        return _DepartmentIdentity(open_department_id, "open_department_id")
+    return None
+
+
+def _sdk_response_mapping(response: object) -> Mapping[str, object]:
+    serialized = lark.JSON.marshal(response)
+    if serialized is None:
+        raise IMProviderError("SDK response is empty")
+    decoded = json.loads(serialized)
+    if not isinstance(decoded, dict) or any(not isinstance(key, str) for key in decoded):
+        raise IMProviderError("SDK response is not a JSON object")
+    return decoded
+
+
+def _sdk_event_mapping(event: object) -> Mapping[str, object]:
+    serialized = lark.JSON.marshal(event)
+    if serialized is None:
+        raise ValueError("SDK event is empty")
+    decoded = json.loads(serialized)
+    if not isinstance(decoded, dict) or any(not isinstance(key, str) for key in decoded):
+        raise ValueError("SDK event is not a JSON object")
+    return decoded
+
+
+def _sdk_event_envelope(event: P2CardActionTrigger) -> _SDKEventEnvelope:
+    serialized = lark.JSON.marshal(event)
+    if serialized is None:
+        raise ValueError("SDK event is empty")
+    header = event.header
+    if header is None:
+        raise ValueError("SDK event header is empty")
+    provider_tenant_id = _optional_string(header.tenant_key)
+    if provider_tenant_id is None:
+        raise ValueError("SDK event tenant identifier is empty")
+    return _SDKEventEnvelope(
+        native_payload=serialized,
+        provider_tenant_id=provider_tenant_id,
+        event_id=_optional_string(header.event_id),
+        event_type=_optional_string(header.event_type),
+        occurred_at=_webhook_occurred_at(header.create_time),
+    )
+
+
+def _provider_name(provider: IMProvider) -> str:
+    return "Feishu" if provider is IMProvider.FEISHU else "Lark"

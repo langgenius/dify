@@ -1,12 +1,7 @@
 'use client'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -142,8 +137,8 @@ export function SegmentAdd({
           {t(($) => $['list.action.addButton'], { ns: 'datasetDocuments' })}
         </span>
       </button>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           aria-label={t(($) => $['list.action.batchAdd'], { ns: 'datasetDocuments' })}
           disabled={embedding || isPlanUnavailable}
           className={cn(
@@ -151,16 +146,13 @@ export function SegmentAdd({
           )}
         >
           <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="min-w-30">
-          <DropdownMenuItem
-            className="system-md-regular"
-            onClick={() => openSegmentDialog(showBatchModal)}
-          >
+        </MenuTrigger>
+        <MenuContent align="end" className="min-w-30">
+          <MenuItem className="system-md-regular" onClick={() => openSegmentDialog(showBatchModal)}>
             {t(($) => $['list.action.batchAdd'], { ns: 'datasetDocuments' })}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuItem>
+        </MenuContent>
+      </Menu>
       {isPlanUpgradeModalOpen && (
         <PlanUpgradeModal
           show

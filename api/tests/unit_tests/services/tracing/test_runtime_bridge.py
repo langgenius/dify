@@ -33,7 +33,6 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.enums import WorkflowType as _workflow_tool_tracing_boundary_WorkflowType
 from graphon.runtime import VariablePool
 from models.agent import (
     Agent,
@@ -189,12 +188,12 @@ def workflow(
             triggered_from=_application_trace_handoff_WorkflowRunTriggeredFrom.APP_RUN,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=identifier("owner"),
-            created_at=now,
             finished_at=now + timedelta(seconds=2),
             elapsed_time=2,
             total_tokens=0,
             total_steps=0,
         )
+        row.created_at = now
         session.add(row)
     trace_run = (
         case.collection.repository.start(
@@ -404,42 +403,41 @@ class TestApplicationTraceHandoffCases:
                 usage: dict[str, int] = (
                     {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15} if kind == "llm" else {}
                 )
-                session.add(
-                    WorkflowNodeExecutionModel(
-                        id=node_id,
-                        node_execution_id=node_id,
-                        tenant_id=row.tenant_id,
-                        app_id=row.app_id,
-                        workflow_id=row.workflow_id,
-                        workflow_run_id=row.id,
-                        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-                        index=index,
-                        node_id=kind,
-                        node_type=kind,
-                        title=kind,
-                        inputs="{}",
-                        outputs="{}",
-                        process_data=json.dumps(
-                            {
-                                "model_mode": "chat",
-                                "model_name": "ordinary-model",
-                                "model_provider": "openai",
-                                "usage": usage,
-                            }
-                        )
-                        if kind == "llm"
-                        else "{}",
-                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                        elapsed_time=1,
-                        execution_metadata=json.dumps(
-                            {"total_tokens": 15 if kind == "llm" else 10, "total_price": "0.02", "currency": "USD"}
-                        ),
-                        created_at=row.created_at,
-                        finished_at=row.finished_at,
-                        created_by=owner,
-                        created_by_role=CreatorUserRole.ACCOUNT,
+                node_record = WorkflowNodeExecutionModel(
+                    id=node_id,
+                    node_execution_id=node_id,
+                    tenant_id=row.tenant_id,
+                    app_id=row.app_id,
+                    workflow_id=row.workflow_id,
+                    workflow_run_id=row.id,
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                    index=index,
+                    node_id=kind,
+                    node_type=kind,
+                    title=kind,
+                    inputs="{}",
+                    outputs="{}",
+                    process_data=json.dumps(
+                        {
+                            "model_mode": "chat",
+                            "model_name": "ordinary-model",
+                            "model_provider": "openai",
+                            "usage": usage,
+                        }
                     )
+                    if kind == "llm"
+                    else "{}",
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    elapsed_time=1,
+                    execution_metadata=json.dumps(
+                        {"total_tokens": 15 if kind == "llm" else 10, "total_price": "0.02", "currency": "USD"}
+                    ),
+                    finished_at=row.finished_at,
+                    created_by=owner,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                 )
+                node_record.created_at = row.created_at
+                session.add(node_record)
         invocation = case.collection.repository.invocation(
             run_id=managed.id,
             agent_id=identifier("agent"),
@@ -920,58 +918,56 @@ def _workflow_tool_tracing_boundary_seed(
                     tracing_config={"project_url": "https://tracing.test/" + app},
                 )
             )
-        session.add(
-            WorkflowRun(
-                id=ids["run"],
-                tenant_id=ids["tenant"],
-                app_id=ids["root"],
-                workflow_id=ids["root_workflow"],
-                type=_workflow_tool_tracing_boundary_WorkflowType.WORKFLOW,
-                triggered_from=_workflow_tool_tracing_boundary_WorkflowRunTriggeredFrom.APP_RUN,
-                version="1",
-                graph=json.dumps(root_graph),
-                inputs="{}",
-                status=WorkflowExecutionStatus.SUCCEEDED,
-                created_by=ids["actor"],
-                created_by_role=CreatorUserRole.ACCOUNT,
-                created_at=now,
-                finished_at=now + timedelta(seconds=3),
-            )
+        workflow_record = WorkflowRun(
+            id=ids["run"],
+            tenant_id=ids["tenant"],
+            app_id=ids["root"],
+            workflow_id=ids["root_workflow"],
+            type=_application_trace_handoff_WorkflowType.WORKFLOW,
+            triggered_from=_workflow_tool_tracing_boundary_WorkflowRunTriggeredFrom.APP_RUN,
+            version="1",
+            graph=json.dumps(root_graph),
+            inputs="{}",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            created_by=ids["actor"],
+            created_by_role=CreatorUserRole.ACCOUNT,
+            finished_at=now + timedelta(seconds=3),
         )
+        workflow_record.created_at = now
+        session.add(workflow_record)
         for key, node_type in [("root_agent", "agent"), ("root_tool", "tool"), ("child", "agent")]:
             child = key == "child"
             app = "source" if child else "root"
-            session.add(
-                WorkflowNodeExecutionModel(
-                    id=ids[key],
-                    tenant_id=ids["tenant"],
-                    app_id=ids[app],
-                    workflow_id=ids[app + "_workflow"],
-                    workflow_run_id=ids["run"],
-                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
-                    if child
-                    else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-                    triggered_from_workflow_id=ids["root_workflow"] if child else None,
-                    triggered_from_node_execution_id=ids["root_tool"] if child else None,
-                    node_execution_id=ids[key],
-                    index=1,
-                    node_id=key,
-                    node_type=node_type,
-                    title=key,
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    created_by=ids["actor"],
-                    created_by_role=CreatorUserRole.ACCOUNT,
-                    created_at=now,
-                    finished_at=now + timedelta(seconds=2),
-                    inputs="{}",
-                    outputs="{}",
-                    process_data=json.dumps(
-                        {"workflow_tool_root_app_id": ids["root"], "workflow_tool_invocation_id": "tool-call"}
-                    )
-                    if child
-                    else "{}",
+            node_record = WorkflowNodeExecutionModel(
+                id=ids[key],
+                tenant_id=ids["tenant"],
+                app_id=ids[app],
+                workflow_id=ids[app + "_workflow"],
+                workflow_run_id=ids["run"],
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+                if child
+                else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                triggered_from_workflow_id=ids["root_workflow"] if child else None,
+                triggered_from_node_execution_id=ids["root_tool"] if child else None,
+                node_execution_id=ids[key],
+                index=1,
+                node_id=key,
+                node_type=node_type,
+                title=key,
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                created_by=ids["actor"],
+                created_by_role=CreatorUserRole.ACCOUNT,
+                finished_at=now + timedelta(seconds=2),
+                inputs="{}",
+                outputs="{}",
+                process_data=json.dumps(
+                    {"workflow_tool_root_app_id": ids["root"], "workflow_tool_invocation_id": "tool-call"}
                 )
+                if child
+                else "{}",
             )
+            node_record.created_at = now
+            session.add(node_record)
     service = ApplicationTracingService(ApplicationTraceRepository(sessions))
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     monkeypatch.setattr(runtime_bridge, "_service", lambda: service)

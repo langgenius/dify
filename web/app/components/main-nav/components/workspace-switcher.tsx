@@ -3,15 +3,15 @@
 import type { TenantListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -73,8 +73,8 @@ function WorkspaceSwitchControls({
             {t(($) => $['userProfile.workspace'], { ns: 'common' })}
           </span>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             disabled={disabled}
             className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
             render={
@@ -85,25 +85,28 @@ function WorkspaceSwitchControls({
               </IconButton>
             }
           />
-          <DropdownMenuContent className="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]">
-            <DropdownMenuRadioGroup<WorkspaceSort> value={sort} onValueChange={onSortChange}>
+          <MenuContent
+            align="end"
+            className="w-40 bg-components-panel-bg-blur! backdrop-blur-[5px]"
+          >
+            <MenuRadioGroup<WorkspaceSort> value={sort} onValueChange={onSortChange}>
               {sortOptions.map((option) => (
-                <DropdownMenuRadioItem<WorkspaceSort>
+                <MenuRadioItem<WorkspaceSort>
                   key={option.value}
                   value={option.value}
-                  className="mx-0 h-8 gap-1 px-2 py-1"
+                  className="h-8 gap-1 px-2 py-1"
                 >
                   <span className="flex size-4 shrink-0 items-center justify-center">
-                    <DropdownMenuRadioItemIndicator className="ms-0" />
+                    <MenuRadioItemIndicator className="ms-0" />
                   </span>
                   <span className="min-w-0 flex-1 truncate px-1 system-md-regular text-text-secondary">
                     {option.label}
                   </span>
-                </DropdownMenuRadioItem>
+                </MenuRadioItem>
               ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </MenuRadioGroup>
+          </MenuContent>
+        </Menu>
         <CollapsibleTrigger
           disabled={disabled}
           className="text-text-secondary data-panel-open:bg-state-base-hover"

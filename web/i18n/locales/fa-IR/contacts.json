@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "مخاطبان انتخاب‌شده برای همیشه از این فضای کاری حذف می‌شوند. این عمل قابل بازگشت نیست.",
+  "directory.removalTitle": "مخاطبان حذف شوند؟",
+  "imPlatform.bindingDialog.clearSavedCredential": "پاک کردن مقدار ذخیره‌شده",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "این مقدار ذخیره‌شده هنگام ذخیره پاک خواهد شد.",
+  "imPlatform.bindingDialog.replacementRequired": "این اطلاعات ورود به یک مستأجر IM دیگر تعلق دارد و نمی‌توان آن را مستقیماً ذخیره کرد. برای تغییر مستأجر باید کانال IM فعلی جایگزین شود؛ این کار همهٔ پیوندهای خودکار و دستی IM را پاک می‌کند. پس از جایگزینی، مخاطبان را دوباره همگام‌سازی کنید.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "پیکربندی ذخیره شد، اما جزئیات آن بارگیری نشد. این پنجره را ببندید و دوباره باز کنید.",
+  "imPlatform.bindingDialog.undoClearCredential": "لغو پاک کردن"
+}

@@ -1,18 +1,19 @@
 import type { KnowledgeRetrievalV2NodeType } from '../types'
-import { renderHook } from '@testing-library/react'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { act } from '@testing-library/react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   ComparisonOperator,
   LogicalOperator,
+  MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import useSingleRunFormParams from '../use-single-run-form-params'
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: vi.fn(),
-}))
-
-const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
 
 const createData = (
   overrides: Partial<KnowledgeRetrievalV2NodeType> = {},
@@ -27,36 +28,75 @@ const createData = (
   ...overrides,
 })
 
-describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseAvailableVarList.mockReturnValue({
-      availableNodes: [],
-      availableNodesWithParent: [],
-      availableVars: [
-        {
-          nodeId: 'start',
-          title: 'Start',
-          vars: [{ variable: 'images', type: VarType.arrayFile }],
-        },
-      ],
-    })
+const setup = (
+  payload = createData(),
+  initialValues: Record<string, unknown> = {},
+  getInputVars: Parameters<typeof useSingleRunFormParams>[0]['getInputVars'] = () => [],
+) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
-
-  it('builds an image form whenever an attachment selector is configured', () => {
-    const setRunInputData = vi.fn()
-    const current = { query: 'find this diagram', queryAttachment: ['file-1'] }
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  return renderWorkflowCanvasHook(
+    () => {
+      const [runInputData, setRunInputData] = useState(initialValues)
+      const runInputDataRef = useRef(runInputData)
+      useLayoutEffect(() => {
+        runInputDataRef.current = runInputData
+      }, [runInputData])
+      return useSingleRunFormParams({
         id: 'retrieval-1',
-        payload: createData(),
-        runInputData: current,
-        runInputDataRef: { current },
-        getInputVars: () => [],
+        payload,
+        runInputData,
+        runInputDataRef,
         setRunInputData,
+        getInputVars,
         toVarInputs: () => [],
-      }),
-    )
+      })
+    },
+    {
+      queryClient,
+      nodes: [
+        createNode({
+          id: 'start',
+          data: {
+            type: BlockEnum.Start,
+            title: 'Start',
+            variables: [
+              { variable: 'query', label: 'Query', type: InputVarType.textInput, required: false },
+              {
+                variable: 'department',
+                label: 'Department',
+                type: InputVarType.textInput,
+                required: false,
+              },
+              {
+                variable: 'images',
+                label: 'Images',
+                type: InputVarType.multiFiles,
+                required: false,
+              },
+            ],
+          },
+        }),
+        createNode({ id: 'retrieval-1', data: payload }),
+      ],
+      edges: [createEdge({ source: 'start', target: 'retrieval-1' })],
+    },
+  )
+}
+
+describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
+  it('builds an image form whenever an attachment selector is configured', () => {
+    const { result } = setup(createData(), {
+      query: 'find this diagram',
+      queryAttachment: ['file-1'],
+    })
 
     expect(result.current.forms).toHaveLength(2)
     expect(result.current.forms[1]!.inputs).toEqual([
@@ -67,11 +107,9 @@ describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
       }),
     ])
 
-    result.current.forms[1]!.onChange({ queryAttachment: ['file-2'] })
-    expect(setRunInputData).toHaveBeenCalledWith({
-      query: 'find this diagram',
-      queryAttachment: ['file-2'],
-    })
+    act(() => result.current.forms[1]!.onChange({ queryAttachment: ['file-2'] }))
+    expect(result.current.forms[1]!.values).toEqual({ queryAttachment: ['file-2'] })
+    expect(result.current.forms[0]!.values).toEqual({ query: 'find this diagram' })
     expect(result.current.getDependentVars()).toEqual([
       ['start', 'query'],
       ['start', 'images'],
@@ -80,25 +118,14 @@ describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
   })
 
   it('omits the image form when the node has no attachment selector', () => {
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'retrieval-1',
-        payload: createData({ query_attachment_selector: [] }),
-        runInputData: {},
-        runInputDataRef: { current: {} },
-        getInputVars: () => [],
-        setRunInputData: vi.fn(),
-        toVarInputs: () => [],
-      }),
-    )
+    const { result } = setup(createData({ query_attachment_selector: [] }))
 
     expect(result.current.forms).toHaveLength(1)
   })
 
   it('exposes metadata filter variables as single-run inputs and dependencies', () => {
-    const setRunInputData = vi.fn()
     const current = { query: 'policy', '#start.department#': 'sales' }
-    const getInputVars = vi.fn((texts: string[]) =>
+    const getInputVars = (texts: string[]) =>
       texts.includes('{{#start.department#}}')
         ? [
             {
@@ -108,31 +135,25 @@ describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
               required: true,
             },
           ]
-        : [],
-    )
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'retrieval-1',
-        payload: createData({
-          query_attachment_selector: [],
-          metadata_filtering_conditions: {
-            logical_operator: LogicalOperator.and,
-            conditions: [
-              {
-                id: 'condition-1',
-                name: 'department',
-                comparison_operator: ComparisonOperator.is,
-                value: '{{#start.department#}}',
-              },
-            ],
-          },
-        }),
-        runInputData: current,
-        runInputDataRef: { current },
-        getInputVars,
-        setRunInputData,
-        toVarInputs: () => [],
+        : []
+    const { result } = setup(
+      createData({
+        query_attachment_selector: [],
+        metadata_filtering_mode: MetadataFilteringModeEnum.manual,
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition-1',
+              name: 'department',
+              comparison_operator: ComparisonOperator.is,
+              value: '{{#start.department#}}',
+            },
+          ],
+        },
       }),
+      current,
+      getInputVars,
     )
 
     expect(result.current.forms).toHaveLength(2)
@@ -142,11 +163,8 @@ describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
     expect(result.current.forms[1]!.values).toEqual({ '#start.department#': 'sales' })
     expect(result.current.getDependentVars()).toContainEqual(['start', 'department'])
 
-    result.current.forms[1]!.onChange({ '#start.department#': 'support' })
-    expect(setRunInputData).toHaveBeenCalledWith({
-      '#start.department#': 'support',
-      query: 'policy',
-      queryAttachment: undefined,
-    })
+    act(() => result.current.forms[1]!.onChange({ '#start.department#': 'support' }))
+    expect(result.current.forms[1]!.values).toEqual({ '#start.department#': 'support' })
+    expect(result.current.forms[0]!.values).toEqual({ query: 'policy' })
   })
 })

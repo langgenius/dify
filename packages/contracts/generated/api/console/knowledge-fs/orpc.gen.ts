@@ -377,11 +377,11 @@ export const wellKnown = {
 }
 
 /**
- * Get which Agent Knowledge Base surfaces this deployment offers
+ * Get which Agent Knowledge Base capabilities this deployment offers
  */
 export const get2 = oc
   .route({
-    description: 'Get which Agent Knowledge Base surfaces this deployment offers',
+    description: 'Get which Agent Knowledge Base capabilities this deployment offers',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getKnowledgeFsFeatures',

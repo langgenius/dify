@@ -27,6 +27,7 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
+import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'
@@ -71,7 +72,11 @@ const toRetrievalConfig = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRet
     top_k: config?.top_k ?? DATASET_DEFAULT.top_k,
     score_threshold: config?.score_threshold ?? undefined,
     reranking_mode: config?.reranking_mode,
-    reranking_enable: config?.reranking_enable ?? false,
+    // The shared workflow helper stores weighted score with reranking disabled, but the
+    // runtime only post-processes multi-dataset results when reranking is enabled.
+    reranking_enable:
+      config?.reranking_mode === RerankingModeEnum.WeightedScore ||
+      (config?.reranking_enable ?? false),
     reranking_model: config?.reranking_model,
     weights: config?.weights,
   }
@@ -165,7 +170,8 @@ const toKnowledgeRetrievalFormState = (config?: AgentSoulConfig): AgentKnowledge
       singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
       metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ??
         MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
-      metadataFilteringConditions: knowledgeSet.metadata_filtering?.conditions as
+      // The API sends null when no conditions are saved; form defaults only replace undefined.
+      metadataFilteringConditions: (knowledgeSet.metadata_filtering?.conditions ?? undefined) as
         | MetadataFilteringConditions
         | undefined,
       metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
@@ -555,7 +561,7 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
     name: file.name,
     icon: getFileIconType(file.name, file.mime_type ?? undefined),
     fileId: file.file_id,
-    isMissing: isConfigReferenceMissing(file) || undefined,
+    ...(isConfigReferenceMissing(file) ? { isMissing: true } : {}),
     configName: file.name,
     size: file.size ?? undefined,
     hash: file.hash ?? undefined,
