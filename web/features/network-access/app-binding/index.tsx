@@ -36,7 +36,7 @@ import {
   getProtectedAccessPoints,
   trackNetworkAccessEvent,
 } from '@/features/network-access/analytics'
-import { getNetworkAccessErrorStatus } from '@/features/network-access/errors'
+import { hasNetworkAccessErrorCode } from '@/features/network-access/errors'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
@@ -179,11 +179,17 @@ function AccessControlSession({
   )
   const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
 
-  const bindingErrorStatus = getNetworkAccessErrorStatus(bindingQuery.error)
   const hideForUnsupportedApp =
     canFetchNetworkAccess &&
     Boolean(appId) &&
-    (bindingErrorStatus === 400 || bindingErrorStatus === 403 || bindingErrorStatus === 404)
+    hasNetworkAccessErrorCode(
+      bindingQuery.error,
+      'network_access_unsupported_app_mode',
+      'network_access_role_denied',
+      'network_access_forbidden',
+      'network_access_not_entitled',
+      'app_not_found',
+    )
 
   if (!canFetchNetworkAccess) return null
   if (hideForUnsupportedApp) return null
@@ -365,7 +371,7 @@ function AccessControlSession({
             onSuccess?.()
           },
           onError: (error) => {
-            if (getNetworkAccessErrorStatus(error) !== 409) return
+            if (!hasNetworkAccessErrorCode(error, 'network_access_version_conflict')) return
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
                 input: { params: { app_id: appId } },
@@ -382,12 +388,12 @@ function AccessControlSession({
           if (analytics)
             trackNetworkAccessEvent('access_control_save', { ...analytics, result: 'success' })
         },
-        async (error: unknown) => {
+        (error: unknown) => {
           if (analytics)
             trackNetworkAccessEvent('access_control_save', {
               ...analytics,
               result: 'failed',
-              fail_reason: await getAccessControlFailReason(error),
+              fail_reason: getAccessControlFailReason(error),
             })
         },
       )
@@ -663,11 +669,11 @@ function AccessControlSession({
                     result: 'success',
                     policy_id: data.group.id,
                   }),
-                async (error: unknown) =>
+                (error: unknown) =>
                   trackNetworkAccessEvent('ip_policy_save', {
                     ...analytics,
                     result: 'failed',
-                    fail_reason: await getIpPolicyFailReason(error),
+                    fail_reason: getIpPolicyFailReason(error),
                   }),
               )
           }}

@@ -15,8 +15,10 @@ from enums import CloudPlan
 from machinery.context import RequestContext
 from services.billing_client import billing
 from services.errors.billing import (
+    BillingUpstreamError,
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    UnknownErrorReason,
 )
 
 
@@ -127,3 +129,40 @@ class TestBillingPortal:
             "message": "We couldn't complete this request. Please try again. If the problem persists, contact support.",
             "status": 502,
         }
+
+    @pytest.mark.parametrize(
+        ("error", "expected"),
+        [
+            (BillingUpstreamInvalidResponseError(status_code=400, reason="MISSING_PLAN"), BillingOperationFailedError),
+            (
+                BillingUpstreamUnavailableError(status_code=500, reason="CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"),
+                BillingUnavailableError,
+            ),
+            (BillingUpstreamUnavailableError(status_code=429, reason="REQUEST_IN_PROGRESS"), BillingUnavailableError),
+            (
+                BillingUpstreamInvalidResponseError(status_code=409, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")),
+                BillingOperationFailedError,
+            ),
+            (
+                BillingUpstreamUnavailableError(status_code=503, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")),
+                BillingUnavailableError,
+            ),
+        ],
+    )
+    def test_get_subscription_maps_every_reason_to_a_generic_billing_error(
+        self,
+        app: Flask,
+        request_context: RequestContext,
+        billing_portal: MagicMock,
+        error: BillingUpstreamError[billing.ErrorReason],
+        expected: type[Exception],
+    ) -> None:
+        resource = Subscription()
+        billing_portal.get_subscription.side_effect = error
+
+        with app.test_request_context("/billing/subscription"), pytest.raises(expected) as exc_info:
+            unwrap(resource.get)(
+                resource, SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month"), request_context
+            )
+
+        assert exc_info.value.__cause__ is error

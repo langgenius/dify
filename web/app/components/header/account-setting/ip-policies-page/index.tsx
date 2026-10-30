@@ -24,7 +24,7 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { getIpPolicyFailReason, trackNetworkAccessEvent } from '@/features/network-access/analytics'
-import { getNetworkAccessErrorStatus } from '@/features/network-access/errors'
+import { hasNetworkAccessErrorCode } from '@/features/network-access/errors'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
@@ -311,11 +311,11 @@ export default function IpPoliciesPage() {
               entry_count: payload.allowed_cidrs.length,
               validation_error_types: [...dialogState.analytics.validationErrors],
             }
-            const trackFailure = async (error: unknown) => {
+            const trackFailure = (error: unknown) => {
               trackNetworkAccessEvent('ip_policy_save', {
                 ...analytics,
                 result: 'failed',
-                fail_reason: await getIpPolicyFailReason(error),
+                fail_reason: getIpPolicyFailReason(error),
               })
             }
             if (selectedGroup) {
@@ -335,7 +335,8 @@ export default function IpPoliciesPage() {
                       if (dialogSessionRef.current === session) openDialog(null)
                     },
                     onError: (error) => {
-                      if (getNetworkAccessErrorStatus(error) !== 409) return
+                      if (!hasNetworkAccessErrorCode(error, 'network_access_version_conflict'))
+                        return
                       void refreshGroupsAfterConflict(selectedGroup.id, session)
                     },
                   },

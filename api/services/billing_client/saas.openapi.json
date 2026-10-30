@@ -786,6 +786,61 @@
           "accountId"
         ]
       },
+      "Error": {
+        "required": [
+          "code",
+          "reason",
+          "message",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "HTTP status code.",
+            "format": "int32"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/ErrorReason"
+          },
+          "message": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Error body returned with every non-2xx response."
+      },
+      "ErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "INVALID_ARGUMENT",
+          "INTERNAL_ERROR",
+          "INVALID_NETWORK_ACCESS_INPUT",
+          "TENANT_NOT_FOUND",
+          "NETWORK_ACCESS_GROUP_NOT_FOUND",
+          "APP_NOT_FOUND",
+          "NETWORK_ACCESS_APP_STILL_EXISTS",
+          "TENANT_ARCHIVED",
+          "NETWORK_ACCESS_FORBIDDEN",
+          "NETWORK_ACCESS_NOT_ENTITLED",
+          "NETWORK_ACCESS_VERSION_CONFLICT",
+          "NETWORK_ACCESS_GROUP_NAME_CONFLICT",
+          "NETWORK_ACCESS_GROUP_BOUND",
+          "NETWORK_ACCESS_CACHE_UNAVAILABLE"
+        ],
+        "type": "string",
+        "description": "Values of dify.saas.api.saas.ErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
       "GetAccountNotificationReply": {
         "type": "object",
         "properties": {

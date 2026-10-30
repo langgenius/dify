@@ -4,6 +4,8 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zAccountNotLinkTenantError,
+  zBillingOperationFailedError,
+  zBillingUnavailableError,
   zCannotOperateSelfError,
   zCannotTransferOwnerToSelfError,
   zCurrentWorkspaceArchivedError,
@@ -20,10 +22,19 @@ import {
   zLimitExceededError,
   zMemberNotFoundError,
   zMemberNotInTenantError,
+  zNetworkAccessForbiddenError,
+  zNetworkAccessGroupBoundError,
+  zNetworkAccessGroupNameConflictError,
+  zNetworkAccessGroupNotFoundError,
+  zNetworkAccessInvalidInputError,
+  zNetworkAccessNotEntitledError,
+  zNetworkAccessRoleDeniedError,
+  zNetworkAccessVersionConflictError,
   zNoFileUploadedError,
   zNotOwnerError,
   zOwnerTransferLimitError,
   zOwnerTransferRateLimitExceededError,
+  zPaidPlanRequiredError,
   zPluginError,
   zRoleAlreadyAssignedError,
   zTooManyFilesError,
@@ -2536,6 +2547,7 @@ export const get35 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponse)
+  .errors({ network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError } })
 
 export const currentIp = {
   get: get35,
@@ -2551,6 +2563,14 @@ export const get36 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpPath }))
   .output(zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  })
 
 export const checkCurrentIp = {
   get: get36,
@@ -2571,6 +2591,17 @@ export const delete12 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_bound: { status: 409, data: zNetworkAccessGroupBoundError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const get37 = oc
   .route({
@@ -2582,6 +2613,14 @@ export const get37 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdPath }))
   .output(zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  })
 
 export const put9 = oc
   .route({
@@ -2598,6 +2637,18 @@ export const put9 = oc
     }),
   )
   .output(zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const byGroupId = {
   delete: delete12,
@@ -2615,6 +2666,13 @@ export const get38 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentNetworkAccessGroupsResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  })
 
 export const post38 = oc
   .route({
@@ -2627,6 +2685,16 @@ export const post38 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentNetworkAccessGroupsBody }))
   .output(zPostWorkspacesCurrentNetworkAccessGroupsResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+    network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const networkAccessGroups = {
   get: get38,

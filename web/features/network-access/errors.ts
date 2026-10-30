@@ -1,14 +1,33 @@
-export function getNetworkAccessErrorStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (typeof error === 'object' && error !== null) {
-    if ('status' in error && typeof error.status === 'number') return error.status
-    if (
-      'response' in error &&
-      typeof error.response === 'object' &&
-      error.response !== null &&
-      'status' in error.response &&
-      typeof error.response.status === 'number'
-    )
-      return error.response.status
-  }
+import type {
+  AppNotFoundError,
+  NetworkAccessUnsupportedAppModeError,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  NetworkAccessForbiddenError,
+  NetworkAccessGroupNameConflictError,
+  NetworkAccessNotEntitledError,
+  NetworkAccessRoleDeniedError,
+  NetworkAccessVersionConflictError,
+  PaidPlanRequiredError,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { isDefinedError, ORPCError } from '@orpc/client'
+
+type NetworkAccessErrorCode = (
+  | AppNotFoundError
+  | NetworkAccessForbiddenError
+  | NetworkAccessGroupNameConflictError
+  | NetworkAccessNotEntitledError
+  | NetworkAccessRoleDeniedError
+  | NetworkAccessUnsupportedAppModeError
+  | NetworkAccessVersionConflictError
+  | PaidPlanRequiredError
+)['code']
+
+export function hasNetworkAccessErrorCode(
+  error: unknown,
+  ...codes: NetworkAccessErrorCode[]
+): boolean {
+  return (
+    error instanceof ORPCError && isDefinedError(error) && codes.some((code) => code === error.code)
+  )
 }

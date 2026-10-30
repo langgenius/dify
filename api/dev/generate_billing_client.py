@@ -1,8 +1,9 @@
 """Snapshot the billing and saas OpenAPI specs and generate the typed client in `services/billing_client`.
 
 The snapshot is the generation input, so CI can regenerate and diff without the private dify-saas
-checkout. Only operations on `ALLOWED_OPERATIONS` and the schemas they reach are snapshotted:
-dify is public, and every other dify-saas endpoint stays out of this repository.
+checkout. Only operations on `ALLOWED_OPERATIONS`, the schemas they reach, and each service's
+`ERROR_SCHEMAS` are snapshotted: dify is public, and every other dify-saas endpoint stays out of
+this repository.
 
     uv run --project api --dev python api/dev/generate_billing_client.py                  # snapshot + generate
     uv run --project api --dev python api/dev/generate_billing_client.py --from-snapshot  # generate only
@@ -56,6 +57,7 @@ SNAPSHOT_COMMIT_KEY = "x-dify-saas-commit"
 HTTP_METHODS = ("get", "post", "put", "delete", "patch")
 LINE_LENGTH = 120
 BASE_MODEL_ATTRIBUTES = frozenset(dir(BaseModel))
+ERROR_SCHEMAS = ("Error", "ErrorReason")
 
 
 @dataclass(frozen=True)
@@ -213,8 +215,11 @@ def build_snapshot(service: Service, source: JsonObject, commit: str) -> JsonObj
         name.removeprefix(prefix): _rewrite_refs(schema, prefix)
         for name, schema in source.get("components", {}).get("schemas", {}).items()
     }
+    for name in ERROR_SCHEMAS:
+        if name not in source_schemas:
+            raise GenerationError(f"{service}: error schema {prefix}{name} is not in the dify-saas spec")
     reachable: set[str] = set()
-    pending = _ref_names(paths)
+    pending = _ref_names(paths) | set(ERROR_SCHEMAS)
     while pending:
         name = pending.pop()
         if name in reachable:
@@ -342,6 +347,30 @@ def model_order(schemas: dict[str, JsonObject]) -> list[str]:
     return ordered
 
 
+def check_error_body(schema: JsonObject) -> None:
+    properties: dict[str, JsonObject] = schema.get("properties", {})
+    expected = {
+        "code": {"type": "integer", "format": "int32"},
+        "reason": {"$ref": "#/components/schemas/ErrorReason"},
+        "message": {"type": "string"},
+        "metadata": {"type": "object", "additionalProperties": {"type": "string"}},
+    }
+    actual = {
+        name: {key: value for key, value in field.items() if key != "description"} for name, field in properties.items()
+    }
+    if actual != expected:
+        raise GenerationError(f"Error is now {json.dumps(actual)}; update UpstreamErrorBody and the transport")
+
+
+def render_schema(name: str, schema: JsonObject) -> list[str]:
+    if name == "Error":
+        check_error_body(schema)
+        return []
+    if "enum" in schema:
+        return [f"type {name} = {python_type(schema, name)}"]
+    return render_model(name, schema)
+
+
 def render_model(name: str, schema: JsonObject) -> list[str]:
     if schema.get("type") != "object":
         raise GenerationError(f"schema {name}: only object schemas can be top-level models")
@@ -409,6 +438,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
         f"        {json.dumps(allowed.method)},",
         f"        {json.dumps(template)},",
         f"        response_model={response},",
+        "        error_reason=ErrorReason,",
         f"        path_params={{{', '.join(path_params)}}},",
         f"        params={{{', '.join(query_params)}}},",
         f"        body={body},",
@@ -418,7 +448,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
 
 def render_module(service: Service, snapshot: JsonObject) -> str:
     schemas: dict[str, JsonObject] = snapshot["components"]["schemas"]
-    blocks = [render_model(name, schemas[name]) for name in model_order(schemas)]
+    blocks = [block for name in model_order(schemas) if (block := render_schema(name, schemas[name]))]
     for allowed in ALLOWED_OPERATIONS[service]:
         operation = snapshot["paths"][allowed.path][allowed.method.lower()]
         blocks.append(render_operation(service, allowed, operation))

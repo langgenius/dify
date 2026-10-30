@@ -5,7 +5,10 @@ call `request`; ruff's banned-api rule (TID251) rejects both anywhere else.
 Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
 any other non-200 status or an enforced response that fails model validation raises
 `BillingUpstreamInvalidResponseError`. For a non-200 status, the error carries the status
-code and the parsed Kratos error body, so callers can branch on its `reason`.
+code, the parsed Kratos error body, and its reason typed by the service's generated
+`ErrorReason`. A reason outside it is kept as `UnknownErrorReason` and logged with
+`logger.error` (reported to Sentry): the service shipped a reason before this client was
+regenerated. Callers map reasons to their own errors; this module branches on none.
 
 Response validation is observed before it is enforced. For a path not in
 `ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
@@ -18,11 +21,12 @@ each item before returning it.
 
 import json
 import logging
+import re
 import types
 from collections.abc import Mapping
 from enum import StrEnum
 from functools import cache
-from typing import Any, Literal, Union, get_args, get_origin
+from typing import Any, Literal, TypeAliasType, Union, get_args, get_origin
 from urllib.parse import quote
 
 import httpx
@@ -34,6 +38,7 @@ from core.helper.http_client_pooling import get_pooled_http_client
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    UnknownErrorReason,
     UpstreamErrorBody,
 )
 
@@ -79,6 +84,7 @@ _http_client: httpx.Client = get_pooled_http_client(
 )
 
 _UNAVAILABLE_STATUSES = frozenset({httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS})
+_NON_REASON_CHARACTERS = re.compile(r"[^A-Z0-9_]")
 
 
 class Upstream(StrEnum):
@@ -123,6 +129,7 @@ def request[ResponseT: BillingModel](
     path: str,
     *,
     response_model: type[ResponseT],
+    error_reason: TypeAliasType,
     path_params: Mapping[str, str],
     params: Mapping[str, QueryValue],
     body: BillingModel | None,
@@ -137,10 +144,11 @@ def request[ResponseT: BillingModel](
 
     if response.status_code != httpx.codes.OK:
         message = f"{method} {path} returned {response.status_code}"
-        status_code, error_body = response.status_code, _error_body(response)
+        status_code = response.status_code
+        error_body, reason = _error_details(response, error_reason, upstream, method, path)
         if status_code in _UNAVAILABLE_STATUSES or status_code >= 500:
-            raise BillingUpstreamUnavailableError(message, status_code=status_code, body=error_body)
-        raise BillingUpstreamInvalidResponseError(message, status_code=status_code, body=error_body)
+            raise BillingUpstreamUnavailableError(message, status_code=status_code, body=error_body, reason=reason)
+        raise BillingUpstreamInvalidResponseError(message, status_code=status_code, body=error_body, reason=reason)
 
     invalid_body = f"{method} {path} returned an invalid body"
     try:
@@ -156,11 +164,33 @@ def request[ResponseT: BillingModel](
         return _salvage_model(response_model, payload)
 
 
-def _error_body(response: httpx.Response) -> UpstreamErrorBody | None:
+def _error_details(
+    response: httpx.Response, error_reason: TypeAliasType, upstream: Upstream, method: HTTPMethod, path: str
+) -> tuple[UpstreamErrorBody | None, str | UnknownErrorReason | None]:
     try:
-        return UpstreamErrorBody.model_validate_json(response.content)
-    except ValidationError:
-        return None
+        payload = json.loads(response.content)
+    except ValueError:
+        return None, None
+    if not isinstance(payload, dict):
+        return None, None
+    body, reason = UpstreamErrorBody.model_validate(payload), payload.get("reason")
+    if not isinstance(reason, str):
+        return body, None
+    if reason in _known_reasons(error_reason):
+        return body, reason
+    logger.error(
+        "Unknown %s error reason %s from %s %s; regenerate the billing client",
+        upstream,
+        _NON_REASON_CHARACTERS.sub("", reason)[:64],
+        method,
+        path,
+    )
+    return body, UnknownErrorReason(reason)
+
+
+@cache
+def _known_reasons(error_reason: TypeAliasType) -> frozenset[str]:
+    return frozenset(get_args(error_reason.__value__))
 
 
 def _salvage_model[ModelT: BillingModel](model: type[ModelT], payload: Mapping[str, Any]) -> ModelT:
