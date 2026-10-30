@@ -181,6 +181,21 @@ def test_agent_run_payload_dumps_without_a_workspace():
     assert "workspace_id" not in dumped
 
 
+_CHAT_FIELDS = ["conversation_id", "auto_generate_name", "inputs", "files", "attachments", "workspace_id", "query"]
+
+
+@pytest.mark.parametrize(
+    ("model", "fields"),
+    [
+        pytest.param(ChatRunPayload, _CHAT_FIELDS, id="chat"),
+        pytest.param(AdvancedChatRunPayload, ["workflow_id", *_CHAT_FIELDS], id="advanced_chat"),
+    ],
+)
+def test_chat_payloads_keep_their_field_order(model: type[BaseModel], fields: list[str]):
+    """The field order is the order of the op's input schema in the generated catalog and doc."""
+    assert list(model.model_fields) == fields
+
+
 def test_chat_payload_normalizes_conversation_id():
     assert ChatRunPayload(inputs={}, query="hi", conversation_id="   ").conversation_id is None
     cid = str(uuid.uuid4())
