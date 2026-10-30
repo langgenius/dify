@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
 from libs.exception import BaseHTTPException
@@ -57,6 +59,16 @@ class InvalidRosterAgentPackageError(BaseHTTPException):
     error_code = "invalid_roster_agent_package"
     description = "The Roster Agent package is invalid."
     code = 400
+
+
+class WorkspaceSkillNotFoundError(InvalidRosterAgentPackageError):
+    """A package links its Agents to workspace Skills by name, and these names are not in the workspace."""
+
+    error_code = "workspace_skill_not_found"
+
+    def __init__(self, names: Sequence[str]) -> None:
+        self.names = list(names)
+        super().__init__(f"Workspace Skills are not in this workspace: {', '.join(self.names)}.")
 
 
 class RosterAgentPackageTooLargeError(BaseHTTPException):

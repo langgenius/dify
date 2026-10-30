@@ -51,7 +51,11 @@ from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext, RequestContext
-from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
+from services.agent.errors import (
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageTooLargeError,
+    WorkspaceSkillNotFoundError,
+)
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportMode, ImportStatus
@@ -221,13 +225,14 @@ class AppPackageImportApi(Resource):
     """Import an app from a ``.ifpkg`` package: one file, or the unpacked folder with one part per file.
 
     Provide ``app_id`` to overwrite an existing workflow or advanced-chat app; omit it to create a new app.
-    Roster Agent nodes keep their links to the workspace's Agents. The root app's YAML goes through the
-    same checks as ``import.console_app.dsl``: 409 ``draft_changed`` when ``draft_hash`` no longer matches
-    the draft, 422 ``dsl_invalid`` when the graph has errors.
+    Roster Agent nodes keep their links to the workspace's Agents, and inline Agents keep their links to
+    the workspace's skills. The root app's YAML goes through the same checks as ``import.console_app.dsl``:
+    409 ``draft_changed`` when ``draft_hash`` no longer matches the draft, 422 ``dsl_invalid`` when the
+    graph has errors.
 
     Returns 202 when the DSL version requires an explicit confirmation step; confirm it with the imports
-    :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read, and 413 for one
-    over this server's limits.
+    :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read or that links a
+    skill this workspace does not have (each one is in details), and 413 for one over this server's limits.
     """
 
     @endpoint(
@@ -266,6 +271,22 @@ class AppPackageImportApi(Resource):
                         ctx, mode=ImportMode.YAML_CONTENT, source=dsl, app_id=body.app_id, draft_hash=body.draft_hash
                     ),
                 )
+            except WorkspaceSkillNotFoundError as exc:
+                raise AppPackageInvalid(
+                    exc.description,
+                    hint=(
+                        "Import each missing skill into the Skill Hub first, "
+                        "or export the app with preserve_agent_bindings=false to bundle a copy."
+                    ),
+                    details=[
+                        ErrorDetail(
+                            type=exc.error_code,
+                            loc=["workspace_skills", name],
+                            msg=f'Workspace Skill "{name}" is not in this workspace.',
+                        )
+                        for name in exc.names
+                    ],
+                ) from exc
             except InvalidRosterAgentPackageError as exc:
                 raise AppPackageInvalid(exc.description) from exc
             except RosterAgentPackageTooLargeError as exc:
@@ -395,8 +416,9 @@ class AppDslExportApi(Resource):
 class AppPackageExportApi(Resource):
     """Download an app as a ``.ifpkg`` package (a zip), from its draft or one published version.
 
-    By default roster Agent nodes export as references and only inline Agents are packaged.
-    Pass ``preserve_agent_bindings=false`` to package every Agent, to move the app to another workspace.
+    By default roster Agent nodes export as references and only inline Agents are packaged, linked to
+    their workspace skills. Pass ``preserve_agent_bindings=false`` to package every Agent with a copy of
+    each workspace skill, to move the app to another workspace.
     """
 
     @endpoint(

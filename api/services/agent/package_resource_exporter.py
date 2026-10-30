@@ -17,7 +17,7 @@ from configs import dify_config
 from constants import IMAGE_EXTENSIONS
 from extensions.ext_storage import storage
 from models.agent import Agent
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentConfigSkillRefConfig, AgentSoulConfig
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.dsl_entities import AgentPackage, AgentPackageWorkspaceSkill, make_portable_agent_package
@@ -121,8 +121,12 @@ class AgentPackageResourceExporter:
             icons.append(PackageIcon(id=path.split(".")[0], path=path, size=size, sha256=digest))
         return icons, total_size
 
-    def collect_workspace_skills(self) -> None:
-        """Resolve legacy Skill metadata after the caller closes its database read session."""
+    def collect_workspace_skills(self, *, as_copies: bool = False) -> None:
+        """Resolve legacy Skill metadata after the caller closes its database read session.
+
+        Each workspace Skill is packaged as a link to that Skill. With ``as_copies`` it is packaged as an
+        Agent-owned config Skill instead, so the import does not depend on the target workspace's Skills.
+        """
         for ref, (tenant_id, agent_id, snapshot_id, include_draft) in self._workspace_sources.items():
             package = self.packages[ref]
             archives = SkillManagementService().list_runtime_agent_skill_archives(
@@ -145,10 +149,17 @@ class AgentPackageResourceExporter:
                         path=f"{resource_id}.zip",
                         storage_key=archive.storage_key,
                         id=resource_id,
-                        scope="workspace",
+                        scope="agent_config" if as_copies else "workspace",
                         name=archive.name,
                     )
                 )
+                if as_copies:
+                    package.soul.config_skills.append(
+                        AgentConfigSkillRefConfig(
+                            name=archive.name, description=archive.description, file_id=resource_id
+                        )
+                    )
+                    continue
                 package.workspace_skills.append(
                     AgentPackageWorkspaceSkill(
                         name=archive.name,

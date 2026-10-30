@@ -82,6 +82,7 @@ class AgentPackageResourceImporter:
         agent_package: AgentPackage,
         tenant_id: str,
         account_id: str,
+        link_workspace_skills: bool = False,
     ) -> tuple[AgentPackage, list[DslImportWarning]]:
         return self.materialize_resources(
             read_member=lambda path, limit: self._reader.read_member_bytes(archive, path, max_bytes=limit),
@@ -90,6 +91,7 @@ class AgentPackageResourceImporter:
             agent_package=agent_package,
             tenant_id=tenant_id,
             account_id=account_id,
+            link_workspace_skills=link_workspace_skills,
         )
 
     def materialize_resources(
@@ -101,8 +103,13 @@ class AgentPackageResourceImporter:
         agent_package: AgentPackage,
         tenant_id: str,
         account_id: str,
+        link_workspace_skills: bool = False,
     ) -> tuple[AgentPackage, list[DslImportWarning]]:
-        """Materialize portable references from archive members or local resource bytes."""
+        """Materialize portable references from archive members or local resource bytes.
+
+        With ``link_workspace_skills`` the package's workspace Skills stay links, which the import binds to
+        the same-named Skills of the target workspace; their packaged zips are not copied.
+        """
         files: list[ToolFile | UploadFile] = []
         warnings: list[DslImportWarning] = []
         soul_data = agent_package.soul.model_dump(mode="json")
@@ -115,7 +122,10 @@ class AgentPackageResourceImporter:
 
         skill_descriptions = {item.name: item.description for item in agent_package.workspace_skills}
         skill_descriptions.update({item.name: item.description for item in agent_package.soul.config_skills})
-        for skill_resource in resources.skills:
+        skill_resources = resources.skills
+        if link_workspace_skills:
+            skill_resources = [item for item in resources.skills if item.scope != "workspace"]
+        for skill_resource in skill_resources:
             target_ref = skill_refs_by_package_id.get(skill_resource.id)
             if target_ref is None:
                 target_ref = {}
@@ -227,6 +237,8 @@ class AgentPackageResourceImporter:
         soul = AgentSoulConfig.model_validate(soul_data)
         with session_factory.create_session() as session, session.begin():
             session.add_all(files)
+        if link_workspace_skills:
+            return agent_package.model_copy(update={"soul": soul}), warnings
         # Localized Skills must not bind to same-named Skills in the target workspace.
         return agent_package.model_copy(update={"soul": soul, "workspace_skills": []}), warnings
 

@@ -12,7 +12,7 @@ from uuid import uuid4
 
 import pytest
 import yaml
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
@@ -46,6 +46,7 @@ from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageExportFailedError,
     RosterAgentPackageTooLargeError,
+    WorkspaceSkillNotFoundError,
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
@@ -787,6 +788,191 @@ class TestWorkflowPackageServiceCases:
         row = _bindings_by_node(sqlite_session, confirmed.app_id)["node-3"]
         assert row.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
         assert row.agent_id == "roster-agent-1"
+
+
+def _publish_skill(
+    session: Session, storage: _MemoryStorage, skill: Skill, marker: str, *, version_number: int
+) -> None:
+    """Publish a source-workspace Skill version whose SKILL.md carries ``marker``."""
+    archive = _tool_file(session, storage, f"tools/{skill.name}-{version_number}.zip", _skill(skill.name, marker))
+    version = SkillVersion(
+        id=str(uuid4()),
+        skill_id=skill.id,
+        version_number=version_number,
+        version_name=f"{version_number}.0",
+        publish_note="",
+        manifest=SkillVersionManifest(name=skill.name, display_name=skill.display_name, description=marker, files=[]),
+        archive_tool_file_id=archive.id,
+        archive_size=archive.size,
+        hash_code=f"{skill.name}-{version_number}",
+        published_by="account-1",
+    )
+    skill.latest_published_version_id = version.id
+    session.add_all([skill, version])
+    session.commit()
+
+
+def _workspace_skill(name: str, *, tenant_id: str = "tenant-2", skill_id: str | None = None) -> Skill:
+    return Skill(
+        id=skill_id or str(uuid4()),
+        tenant_id=tenant_id,
+        name=name,
+        display_name=name.title(),
+        description=name,
+        created_by="account-1",
+        updated_by="account-1",
+    )
+
+
+def _bind_second_workspace_skill(session: Session, storage: _MemoryStorage) -> None:
+    """Bind a published workspace Skill named ``second`` to the second source Agent."""
+    skill = _workspace_skill("second", tenant_id="tenant-1")
+    _publish_skill(session, storage, skill, "Second skill", version_number=1)
+    session.add(
+        AgentSkillBindingSnapshot(
+            tenant_id="tenant-1",
+            agent_id="source-agent-2",
+            config_snapshot_id="source-snapshot-2",
+            skill_id=skill.id,
+            priority=1,
+            created_by="account-1",
+        )
+    )
+    session.commit()
+
+
+def _skill_section(content: bytes) -> tuple[list[tuple[str, str]], list[tuple[str, int]], list[str]]:
+    """The first Agent's linked workspace Skill zips (name, digest) and notes (name, priority), and config Skills."""
+    data, manifest = _read_export(content)
+    resources = AppPackageManifest.model_validate(manifest).agent_resources["agent_1"]
+    package = AgentPackage.model_validate(cast(dict[str, object], data["agent_packages"])["agent_1"])
+    return (
+        [(item.name, item.sha256) for item in resources.skills if item.scope == "workspace"],
+        [(item.name, item.priority) for item in package.workspace_skills],
+        [item.name for item in package.soul.config_skills],
+    )
+
+
+def _export(app: App, *, preserve_agent_bindings: bool) -> bytes:
+    with AppPackageService().export_app(
+        may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=preserve_agent_bindings
+    ) as exported:
+        return exported.archive.read()
+
+
+class TestWorkspaceSkillLinkCases:
+    """``preserve_agent_bindings`` keeps an inline Agent's workspace Skills linked; without it each is a copy."""
+
+    @staticmethod
+    @pytest.fixture
+    def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
+        return _package_storage(monkeypatch, sqlite_engine)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("preserve_agent_bindings", "linked", "notes", "config_skills"),
+        [
+            (True, ["workspace"], [("workspace", 0)], ["research"]),
+            (False, [], [], ["research", "workspace"]),
+        ],
+    )
+    def test_export_links_or_copies_workspace_skills(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        preserve_agent_bindings: bool,
+        linked: list[str],
+        notes: list[tuple[str, int]],
+        config_skills: list[str],
+    ) -> None:
+        content = _export(_source(sqlite_session, storage), preserve_agent_bindings=preserve_agent_bindings)
+
+        linked_zips, exported_notes, exported_config_skills = _skill_section(content)
+        assert ([name for name, _digest in linked_zips], exported_notes, exported_config_skills) == (
+            linked,
+            notes,
+            config_skills,
+        )
+        prepared = AppPackageService().read_package(io.BytesIO(content))
+        assert prepared is not None
+        prepared.close()
+
+    @staticmethod
+    @pytest.mark.parametrize("preserve_agent_bindings", [True, False])
+    def test_export_writes_the_latest_published_skill(
+        sqlite_session: Session, storage: _MemoryStorage, preserve_agent_bindings: bool
+    ) -> None:
+        app = _source(sqlite_session, storage)
+        skill = sqlite_session.get(Skill, "source-workspace-skill")
+        assert skill is not None
+        _publish_skill(sqlite_session, storage, skill, "Edited in the Skill Hub", version_number=2)
+
+        content = _export(app, preserve_agent_bindings=preserve_agent_bindings)
+
+        _data, manifest = _read_export(content)
+        resources = AppPackageManifest.model_validate(manifest).agent_resources["agent_1"]
+        [path] = [item.path for item in resources.skills if item.name == "workspace"]
+        with zipfile.ZipFile(io.BytesIO(content)) as archive, zipfile.ZipFile(io.BytesIO(archive.read(path))) as nested:
+            assert b"Edited in the Skill Hub" in nested.read("SKILL.md")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("preserve_agent_bindings", "links", "config_skills"),
+        [
+            (True, [("target-workspace-skill", 3)], ["research"]),
+            (False, [], ["research", "workspace"]),
+        ],
+    )
+    def test_import_links_workspace_skills_only_when_preserving_bindings(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        preserve_agent_bindings: bool,
+        links: list[tuple[str, int]],
+        config_skills: list[str],
+    ) -> None:
+        app = _source(sqlite_session, storage)
+        sqlite_session.execute(update(AgentSkillBindingSnapshot).values(priority=3))
+        sqlite_session.add(_workspace_skill("workspace", skill_id="target-workspace-skill"))
+        sqlite_session.commit()
+        content = _export(app, preserve_agent_bindings=True)
+
+        result = _import(sqlite_session, content, preserve_agent_bindings=preserve_agent_bindings)
+
+        assert result.status == ImportStatus.COMPLETED, result.error
+        binding = _bindings_by_node(sqlite_session, result.app_id)["node-1"]
+        snapshot = sqlite_session.get(AgentConfigSnapshot, binding.current_snapshot_id)
+        assert snapshot is not None
+        draft_links = sqlite_session.scalars(
+            select(AgentSkillBinding).where(AgentSkillBinding.agent_id == binding.agent_id)
+        ).all()
+        snapshot_links = sqlite_session.scalars(
+            select(AgentSkillBindingSnapshot).where(AgentSkillBindingSnapshot.config_snapshot_id == snapshot.id)
+        ).all()
+        assert [(row.skill_id, row.priority) for row in draft_links] == links
+        assert [(row.skill_id, row.priority) for row in snapshot_links] == links
+        soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        assert [item.name for item in soul.config_skills] == config_skills
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("present", "missing"),
+        [([], ["second", "workspace"]), (["workspace"], ["second"])],
+    )
+    def test_linking_check_names_every_missing_skill(
+        sqlite_session: Session, storage: _MemoryStorage, present: list[str], missing: list[str]
+    ) -> None:
+        app = _source(sqlite_session, storage)
+        _bind_second_workspace_skill(sqlite_session, storage)
+        sqlite_session.add_all([_workspace_skill(name) for name in present])
+        sqlite_session.commit()
+        prepared = AppPackageService().read_package(
+            io.BytesIO(_export(app, preserve_agent_bindings=True)), accept_roster_references=True
+        )
+        assert prepared is not None
+
+        with prepared, pytest.raises(WorkspaceSkillNotFoundError) as exc_info:
+            prepared.require_workspace_skills(tenant_id="tenant-2")
+
+        assert exc_info.value.names == missing
 
 
 """Ordinary App packages preserve DSLs and enforce container integrity."""

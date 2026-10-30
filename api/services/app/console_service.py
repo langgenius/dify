@@ -248,8 +248,8 @@ class ConsoleAppService:
         """Import an App from params or from an uploaded package.
 
         ``preserve_agent_bindings`` and ``prepare_dsl`` apply to an App package passed as ``source``:
-        the first keeps its roster Agent links, the second rewrites or refuses the root App's YAML
-        before anything is created.
+        the first keeps its roster Agent and workspace Skill links, the second rewrites or refuses the
+        root App's YAML before anything is created.
         """
         if source is not None:
             return self._import_package(
@@ -300,6 +300,8 @@ class ConsoleAppService:
         package = self._transfers.read_app_package(source, accept_roster_references=preserve_agent_bindings)
         if package is not None:
             with closing(package):
+                if preserve_agent_bindings:
+                    package.require_workspace_skills(tenant_id=context.active_workspace_id)
                 dsl = prepare_dsl(package.dsl) if prepare_dsl is not None else package.dsl
                 if package.workflow_tools:
                     return self._import_with_workflow_tools(
