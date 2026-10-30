@@ -40,6 +40,7 @@ from core.workflow.node_runtime import (
     DifyToolFileManager,
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
+    build_knowledge_fs_node_dependencies,
 )
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
@@ -54,6 +55,7 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
@@ -77,6 +79,11 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolProviderType
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
+from services.human_input_v2.composition import WorkflowHumanInputRuntime
+from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
+    KnowledgeFSAutomaticMetadataFilterExtractor,
+)
+from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -128,6 +135,7 @@ def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
     _import_node_package("graphon.nodes")
     _import_node_package("core.workflow.nodes")
+    _import_node_package("services.knowledge_fs.knowledge_retrieval_v2")
 
 
 def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
@@ -491,12 +499,18 @@ class DifyNodeFactory(NodeFactory):
                 "file_manager": self._http_request_file_manager,
                 "file_reference_factory": self._file_reference_factory,
             },
-            BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "hitl_callback": self._build_human_input_callback(
-                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
-                    execution_id_getter=lambda: node.execution_id if node is not None else None,
-                ),
-            },
+            BuiltinNodeTypes.HUMAN_INPUT: lambda: (
+                {
+                    "human_input_runtime": WorkflowHumanInputRuntime(self._dify_context),
+                }
+                if node_class is HumanInputV2Node
+                else {
+                    "hitl_callback": self._build_human_input_callback(
+                        node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
+                        execution_id_getter=lambda: node.execution_id if node is not None else None,
+                    ),
+                }
+            ),
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=resolved_node_data,
@@ -536,6 +550,13 @@ class DifyNodeFactory(NodeFactory):
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: lambda: {
+                **build_knowledge_fs_node_dependencies(),
+                "metadata_filter_extractor": KnowledgeFSAutomaticMetadataFilterExtractor(
+                    credentials_provider=self._llm_credentials_provider,
+                    model_factory=self._llm_model_factory,
+                ),
+            },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)

@@ -554,6 +554,9 @@ describe('app-publisher sections', () => {
       'href',
       '/app/workflow-app/deploy',
     )
+    for (const name of [/common\.openWebApp\b/, /appMenus\.accessPoint\b/, /appMenus\.deploy\b/]) {
+      expect(screen.getByRole('link', { name })).toHaveAttribute('target', '_blank')
+    }
 
     const marketplaceAction = screen.getByRole('button', {
       name: /common\.publishToMarketplace\b/,

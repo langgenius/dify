@@ -7,12 +7,13 @@ import queue
 import threading
 import time
 from collections.abc import Generator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.app.entities.task_entities import (
@@ -37,7 +38,6 @@ from core.workflow.human_input_policy import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
-    DifyHITLEventType,
     HumanInputRequired,
     PauseReason,
 )
@@ -55,6 +55,7 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_task_service import AppTaskService
+from services.workflow_pause_service import WorkflowPauseSnapshot, load_workflow_pause_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,13 @@ class MessageContext:
     message_id: str
     created_at: int
     answer: str | None = None
+
+
+@dataclass(frozen=True)
+class _LegacyFormSnapshot:
+    dispositions_by_form_id: Mapping[str, FormDisposition]
+    expiration_times_by_form_id: Mapping[str, int]
+    display_in_ui_by_form_id: Mapping[str, bool]
 
 
 @dataclass
@@ -188,17 +196,26 @@ def build_workflow_event_stream(
             try:
                 task_id = _resolve_task_id(resumption_context, buffer_state, workflow_run.id)
 
-                snapshot_events = _build_snapshot_events(
-                    workflow_run=workflow_run,
-                    node_snapshots=node_snapshots,
-                    task_id=task_id,
-                    message_context=message_context,
-                    pause_entity=pause_entity,
-                    resumption_context=resumption_context,
-                    session_maker=session_maker,
-                    human_input_surface=human_input_surface,
-                    node_executions=node_executions,
-                )
+                if workflow_run.status == WorkflowExecutionStatus.PAUSED and pause_entity is not None:
+                    snapshot_events = _build_paused_snapshot_events(
+                        workflow_run=workflow_run,
+                        node_snapshots=node_snapshots,
+                        task_id=task_id,
+                        message_context=message_context,
+                        node_executions=node_executions,
+                        pause_entity=pause_entity,
+                        resumption_context=resumption_context,
+                        session_maker=session_maker,
+                        human_input_surface=human_input_surface,
+                    )
+                else:
+                    snapshot_events = _build_snapshot_events(
+                        workflow_run=workflow_run,
+                        node_snapshots=node_snapshots,
+                        task_id=task_id,
+                        message_context=message_context,
+                        node_executions=node_executions,
+                    )
 
                 for event in snapshot_events:
                     last_msg_time = time.time()
@@ -337,14 +354,9 @@ def _build_snapshot_events(
     node_snapshots: Sequence[WorkflowNodeExecutionSnapshot],
     task_id: str,
     message_context: MessageContext | None,
-    pause_entity: WorkflowPauseEntity | None,
-    resumption_context: WorkflowResumptionContext | None,
-    session_maker: sessionmaker[Session] | None = None,
-    human_input_surface: HumanInputSurface | None = None,
     node_executions: Mapping[str, WorkflowNodeExecutionModel],
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
-    variable_pool = _load_variable_pool_from_resumption_context(resumption_context)
 
     workflow_started = _build_workflow_started_event(
         workflow_run=workflow_run,
@@ -379,35 +391,79 @@ def _build_snapshot_events(
             _apply_message_context(node_finished, message_context)
             events.append(node_finished)
 
-    pause_reasons: list[PauseReason] = []
-    if workflow_run.status == WorkflowExecutionStatus.PAUSED and pause_entity is not None:
-        pause_reasons = _filter_open_pause_reasons(pause_entity.get_pause_reasons(), session_maker=session_maker)
+    return events
 
-    if pause_reasons:
-        for human_input_event in _build_human_input_required_events(
-            workflow_run_id=workflow_run.id,
-            task_id=task_id,
-            pause_reasons=pause_reasons,
+
+def _build_paused_snapshot_events(
+    *,
+    workflow_run: WorkflowRun,
+    node_snapshots: Sequence[WorkflowNodeExecutionSnapshot],
+    task_id: str,
+    message_context: MessageContext | None,
+    pause_entity: WorkflowPauseEntity,
+    node_executions: Mapping[str, WorkflowNodeExecutionModel],
+    resumption_context: WorkflowResumptionContext | None,
+    session_maker: sessionmaker[Session],
+    human_input_surface: HumanInputSurface | None = None,
+) -> list[Mapping[str, Any]]:
+    events = _build_snapshot_events(
+        workflow_run=workflow_run,
+        node_snapshots=node_snapshots,
+        task_id=task_id,
+        message_context=message_context,
+        node_executions=node_executions,
+    )
+    pause_snapshot = load_workflow_pause_snapshot(
+        pause_entity, session_factory=session_maker, context=resumption_context
+    )
+    open_legacy_ids = {
+        reason.form_id
+        for reason in _filter_open_pause_reasons(
+            [
+                reason
+                for reason in pause_snapshot.reasons
+                if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
+            ],
             session_maker=session_maker,
-            human_input_surface=human_input_surface,
-            variable_pool=variable_pool,
-        ):
-            _apply_message_context(human_input_event, message_context)
-            events.append(human_input_event)
-
-        pause_event = _build_pause_event(
+        )
+        if isinstance(reason, HumanInputRequired)
+    }
+    pending_reasons = tuple(
+        reason
+        for reason in pause_snapshot.reasons
+        if not isinstance(reason, HumanInputRequired)
+        or (
+            reason.form_id in open_legacy_ids
+            if reason.form_version == "1"
+            else pause_snapshot.v2_forms[reason.form_id].form.status == HumanInputFormStatus.WAITING
+        )
+    )
+    if not pending_reasons:
+        return events
+    pause_snapshot = replace(pause_snapshot, reasons=pending_reasons)
+    legacy_forms = _load_legacy_form_snapshot(
+        pause_snapshot,
+        session_maker=session_maker,
+        human_input_surface=human_input_surface,
+    )
+    pause_events = _build_human_input_required_events(
+        workflow_run_id=workflow_run.id,
+        task_id=task_id,
+        pause_snapshot=pause_snapshot,
+        legacy_forms=legacy_forms,
+    )
+    pause_events.append(
+        _build_pause_event(
             workflow_run=workflow_run,
             workflow_run_id=workflow_run.id,
             task_id=task_id,
-            pause_reasons=pause_reasons,
-            resumption_context=resumption_context,
-            session_maker=session_maker,
-            human_input_surface=human_input_surface,
+            pause_snapshot=pause_snapshot,
+            legacy_forms=legacy_forms,
         )
-        if pause_event is not None:
-            _apply_message_context(pause_event, message_context)
-            events.append(pause_event)
-
+    )
+    for event in pause_events:
+        _apply_message_context(event, message_context)
+        events.append(event)
     return events
 
 
@@ -498,21 +554,22 @@ def _filter_open_pause_reasons(
     ]
 
 
-def _build_human_input_required_events(
+def _load_legacy_form_snapshot(
+    pause_snapshot: WorkflowPauseSnapshot,
     *,
-    workflow_run_id: str,
-    task_id: str,
-    pause_reasons: Sequence[PauseReason],
-    session_maker: sessionmaker[Session] | None,
+    session_maker: sessionmaker[Session],
     human_input_surface: HumanInputSurface | None,
-    variable_pool: ReadOnlyVariablePool | None,
-) -> list[dict[str, Any]]:
-    human_input_form_ids = [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+) -> _LegacyFormSnapshot:
+    human_input_form_ids = [
+        reason.form_id
+        for reason in pause_snapshot.reasons
+        if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
+    ]
 
     expiration_times_by_form_id: dict[str, int] = {}
     display_in_ui_by_form_id: dict[str, bool] = {}
     dispositions_by_form_id: dict[str, FormDisposition] = {}
-    if human_input_form_ids and session_maker is not None:
+    if human_input_form_ids:
         stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
             HumanInputForm.id.in_(human_input_form_ids)
         )
@@ -530,14 +587,38 @@ def _build_human_input_required_events(
                 surface=human_input_surface,
             )
 
+    return _LegacyFormSnapshot(dispositions_by_form_id, expiration_times_by_form_id, display_in_ui_by_form_id)
+
+
+def _build_human_input_required_events(
+    *,
+    workflow_run_id: str,
+    task_id: str,
+    pause_snapshot: WorkflowPauseSnapshot,
+    legacy_forms: _LegacyFormSnapshot,
+) -> list[dict[str, Any]]:
+    reasons = pause_snapshot.reasons
+    v2_forms = pause_snapshot.v2_forms
+    variable_pool = pause_snapshot.runtime_state.variable_pool
     events: list[dict[str, Any]] = []
-    for reason in pause_reasons:
+    for reason in reasons:
         if not isinstance(reason, HumanInputRequired):
+            continue
+
+        if reason.form_version == "2":
+            prepared = v2_forms.get(reason.form_id)
+            if prepared is not None:
+                response = HumanInputRequiredResponse(
+                    task_id=task_id,
+                    workflow_run_id=workflow_run_id,
+                    data=WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id=reason.node_id),
+                )
+                events.append(response.model_dump(mode="json"))
             continue
 
         form_id = reason.form_id
 
-        expiration_time = expiration_times_by_form_id.get(form_id)
+        expiration_time = legacy_forms.expiration_times_by_form_id.get(form_id)
         if expiration_time is None:
             continue
 
@@ -545,19 +626,20 @@ def _build_human_input_required_events(
             reason.inputs,
             variable_pool=variable_pool,
         )
-        disposition = dispositions_by_form_id.get(form_id)
+        disposition = legacy_forms.dispositions_by_form_id.get(form_id)
 
         response = HumanInputRequiredResponse(
             task_id=task_id,
             workflow_run_id=workflow_run_id,
             data=HumanInputRequiredResponse.Data(
+                form_version=reason.form_version,
                 form_id=form_id,
                 node_id=reason.node_id,
                 node_title=reason.node_title,
                 form_content=reason.form_content,
                 inputs=resolved_inputs,
                 actions=reason.actions,
-                display_in_ui=display_in_ui_by_form_id.get(form_id, False),
+                display_in_ui=legacy_forms.display_in_ui_by_form_id.get(form_id, False),
                 form_token=disposition.form_token if disposition else None,
                 approval_channels=list(disposition.approval_channels) if disposition else [],
                 resolved_default_values=reason.resolved_default_values,
@@ -632,21 +714,15 @@ def _build_pause_event(
     workflow_run: WorkflowRun,
     workflow_run_id: str,
     task_id: str,
-    pause_reasons: Sequence[PauseReason],
-    resumption_context: WorkflowResumptionContext | None,
-    session_maker: sessionmaker[Session] | None,
-    human_input_surface: HumanInputSurface | None = None,
-) -> dict[str, Any] | None:
-    paused_nodes: list[str] = []
-    outputs: dict[str, Any] = {}
-    variable_pool: ReadOnlyVariablePool | None = None
-    if resumption_context is not None:
-        state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
-        outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
-        variable_pool = state.variable_pool
+    pause_snapshot: WorkflowPauseSnapshot,
+    legacy_forms: _LegacyFormSnapshot,
+) -> dict[str, Any]:
+    state = pause_snapshot.runtime_state
+    outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
+    variable_pool = state.variable_pool
 
     resolved_pause_reasons = resolve_human_input_pause_reason_inputs(
-        pause_reasons,
+        pause_snapshot.reasons,
         variable_pool=variable_pool,
     )
     paused_nodes = list(
@@ -654,34 +730,30 @@ def _build_pause_event(
     )
     reasons = [reason.model_dump(mode="json") for reason in resolved_pause_reasons]
     human_input_form_ids = [
-        form_id
-        for reason in reasons
-        if reason.get("TYPE") == DifyHITLEventType.HUMAN_INPUT_REQUIRED
-        for form_id in [reason.get("form_id")]
-        if isinstance(form_id, str)
+        reason.form_id
+        for reason in resolved_pause_reasons
+        if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
     ]
-    dispositions_by_form_id: dict[str, FormDisposition] = {}
-    expiration_times_by_form_id: dict[str, int] = {}
-    if human_input_form_ids and session_maker is not None:
-        with session_maker() as session:
-            dispositions_by_form_id = load_form_dispositions_by_form_id(
-                human_input_form_ids,
-                session=session,
-                surface=human_input_surface,
-            )
-            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
-                HumanInputForm.id.in_(human_input_form_ids)
-            )
-            for row in session.execute(stmt):
-                form_id, expiration_time, *_rest = row
-                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
+    if human_input_form_ids:
         # Reconnect paths must preserve the same pause-reason contract as live streams;
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(
             reasons,
-            dispositions_by_form_id=dispositions_by_form_id,
-            expiration_times_by_form_id=expiration_times_by_form_id,
+            dispositions_by_form_id=legacy_forms.dispositions_by_form_id,
+            expiration_times_by_form_id=legacy_forms.expiration_times_by_form_id,
         )
+
+    v2_forms = pause_snapshot.v2_forms
+    for reason in resolved_pause_reasons:
+        if not isinstance(reason, HumanInputRequired) or reason.form_version != "2":
+            continue
+        prepared = v2_forms.get(reason.form_id)
+        if prepared is None:
+            continue
+        presentation = WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id=reason.node_id)
+        for payload in reasons:
+            if payload.get("form_id") == reason.form_id:
+                payload.update(presentation.model_dump(mode="json"))
 
     response = WorkflowPauseStreamResponse(
         task_id=task_id,

@@ -19,6 +19,7 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
+import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -321,7 +322,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       try {
         const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
 
-        if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
+        if (response.hash)
+          workflowStore.getState().setSyncWorkflowDraftHash(response.hash, response.graph)
 
         // Handle features, variables etc.
         handleWorkflowDataUpdate(response)
@@ -539,7 +541,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         myUserId={myUserId}
         onlineUsers={onlineUsers}
       >
-        <WorkflowChildren />
+        <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
+          <WorkflowChildren />
+        </HumanInputMigrationProvider>
       </WorkflowWithInnerContext>
       {isCollaborationEnabled &&
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (

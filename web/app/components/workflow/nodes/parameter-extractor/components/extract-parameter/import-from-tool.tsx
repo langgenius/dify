@@ -94,7 +94,8 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
 
   return (
     <BlockSelector
-      placement="bottom-end"
+      side="bottom"
+      align="end"
       sideOffset={4}
       alignOffset={52}
       trigger={triggerElement}

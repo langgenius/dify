@@ -35,7 +35,7 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import AppStatus, ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.app.agent_app_repository import AgentAppRepository
@@ -53,8 +53,8 @@ from services.app.agent_app_contracts import (
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.file_request_service import DownloadFileRequestResult, FileRequestService
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_message
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_message
 
 CONTEXT = RequestContext("request-1", "trace-1", "account-1", "tenant-1")
 
@@ -113,7 +113,7 @@ def sandbox(
         tenant_id="tenant-1",
         name="Sandbox",
         mode=AppMode.ADVANCED_CHAT if kind == "advanced_chat" else AppMode.WORKFLOW if workflow else AppMode.AGENT,
-        status="normal",
+        status=AppStatus.NORMAL,
         enable_site=False,
         enable_api=False,
         max_active_requests=0,

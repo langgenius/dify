@@ -96,7 +96,7 @@ function RunSession({
     async (lifetime: RequestLifetime) => {
       const request = ++lifetime.detailRequest
       try {
-        const res = await fetchRunDetail(runDetailUrl)
+        const res = await fetchRunDetail(runDetailUrl, { silent: true })
         if (!lifetime.active || request !== lifetime.detailRequest) return
         setRunDetail(res)
         if (getResultCallback) getResultCallback(res)
@@ -117,9 +117,7 @@ function RunSession({
     async (lifetime: RequestLifetime) => {
       const request = ++lifetime.tracingRequest
       try {
-        const { data: nodeList } = await fetchTracingList({
-          url: tracingListUrl,
-        })
+        const { data: nodeList } = await fetchTracingList({ url: tracingListUrl }, { silent: true })
         if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
       } catch (err) {
         if (lifetime.active && request === lifetime.tracingRequest)
@@ -244,6 +242,9 @@ function RunSession({
               exceptionCounts={runDetail.exceptions_count}
               isListening={isListening}
               workflowRunId={runDetail.id}
+              externalTrace={
+                appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
+              }
               onOpenTracingTab={() => switchTab('TRACING')}
             />
           )}
@@ -254,6 +255,9 @@ function RunSession({
         <TabsPanel value="TRACING">
           {!loading && (
             <TracingPanel
+              externalTraceRun={
+                appId && runDetail ? { appId, workflowRunId: runDetail.id } : undefined
+              }
               key={runDetail?.id}
               className="bg-background-section-burn"
               list={list}

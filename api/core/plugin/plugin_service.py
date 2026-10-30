@@ -25,7 +25,7 @@ from threading import Lock
 from typing import Literal, Protocol
 
 import zstandard
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter
 from redis import RedisError
 from redis.exceptions import LockError
 from sqlalchemy import delete, select, update
@@ -336,7 +336,7 @@ class PluginService:
             try:
                 providers = cls._get_or_parse_plugin_model_providers_cache_payload(cached_providers)
                 return providers, True
-            except (TypeError, ValueError, ValidationError):
+            except (TypeError, ValueError):
                 logger.warning(
                     "Invalid cached plugin model providers for tenant %s; deleting cache key %s.",
                     tenant_id,

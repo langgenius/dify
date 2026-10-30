@@ -11,7 +11,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from enums import CloudPlan, DeploymentEdition
+from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.account import Tenant
@@ -45,7 +45,9 @@ from models.workflow import (
     WorkflowType,
 )
 from services import clear_free_plan_tenant_expired_logs as service_module
+from services.billing_client import billing
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
+from tests.helpers import billing_builders as builders
 
 
 @pytest.fixture(autouse=True)
@@ -177,7 +179,7 @@ def _create_workflow_node_execution(
     node_id: str = "node-1",
 ) -> WorkflowNodeExecutionModel:
     """Create a real mapped node execution returned by the repository boundary."""
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         id=execution_id,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -198,16 +200,17 @@ def _create_workflow_node_execution(
         error=None,
         elapsed_time=0.1,
         execution_metadata="{}",
-        created_at=REAL_DATETIME(2026, 1, 1),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
         finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
     )
+    execution.created_at = REAL_DATETIME(2026, 1, 1)
+    return execution
 
 
 def _create_workflow_run(run_id: str) -> WorkflowRun:
     """Create a real mapped workflow run returned by the repository boundary."""
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id=run_id,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -225,10 +228,11 @@ def _create_workflow_run(run_id: str) -> WorkflowRun:
         total_steps=1,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=REAL_DATETIME(2026, 1, 1),
         finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
         exceptions_count=0,
     )
+    workflow_run.created_at = REAL_DATETIME(2026, 1, 1)
+    return workflow_run
 
 
 def _create_related_records(message_id: str) -> list[object]:
@@ -543,12 +547,12 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(
     _configure_process_boundaries(monkeypatch, sqlite_engine)
     monkeypatch.setattr(service_module.click, "echo", MagicMock())
 
-    def fake_get_info(tenant_id: str) -> dict[str, dict[str, str]]:
+    def fake_get_info(tenant_id: str) -> billing.GetSubscriptionInfoReply:
         if tenant_id == "tenant-sandbox":
-            return {"subscription": {"plan": CloudPlan.SANDBOX}}
+            return builders.subscription_info("sandbox")
         if tenant_id == "tenant-fail":
             raise RuntimeError("billing failure")
-        return {"subscription": {"plan": "team"}}
+        return builders.subscription_info("team")
 
     monkeypatch.setattr(service_module.BillingService, "get_info", staticmethod(fake_get_info))
     process_tenant = MagicMock(side_effect=RuntimeError("cleanup failure"))

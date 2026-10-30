@@ -1,4 +1,5 @@
 import type { Plugin } from '@/app/components/plugins/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
@@ -7,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -16,11 +16,13 @@ import { consoleQuery } from '@/service/console'
 import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
+  marketplace: MarketplaceLinks
   onOpenMarketplace?: () => void
   searchText: string
   stepByStepTourTarget?: string
 }
 const InstallFromMarketplace = ({
+  marketplace,
   onOpenMarketplace,
   searchText,
   stepByStepTourTarget,
@@ -68,11 +70,21 @@ const InstallFromMarketplace = ({
     })
   }
 
-  const cardRender = useCallback((plugin: Plugin) => {
-    if (plugin.type === 'bundle') return null
+  const cardRender = useCallback(
+    (plugin: Plugin) => {
+      if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
-  }, [])
+      return (
+        <ProviderCard
+          key={plugin.plugin_id}
+          className="h-36.5"
+          marketplace={marketplace}
+          payload={plugin}
+        />
+      )
+    },
+    [marketplace],
+  )
 
   return (
     <div
@@ -90,11 +102,16 @@ const InstallFromMarketplace = ({
         <div className="flex h-5 items-center justify-between">
           <button
             type="button"
-            className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
+            className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-start system-md-semibold text-text-primary"
             onClick={handleToggle}
             aria-expanded={!collapse}
           >
-            <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
+            <span
+              className={cn(
+                'i-ri-arrow-down-s-line size-4',
+                collapse && '-rotate-90 rtl:rotate-90',
+              )}
+            />
             {t(($) => $['modelProvider.installProvider'], { ns: 'modelProvider' })}
           </button>
           <div className="flex items-center gap-1">
@@ -108,17 +125,23 @@ const InstallFromMarketplace = ({
                 onClick={onOpenMarketplace}
               >
                 {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                <span
+                  className="i-ri-arrow-right-up-line size-4 [&:dir(rtl)]:-scale-x-100"
+                  aria-hidden="true"
+                />
               </button>
             ) : (
               <Link
                 target="_blank"
                 rel="noopener noreferrer"
-                href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                href={marketplace.category(PluginCategoryEnum.model, { theme })}
                 className="inline-flex items-center system-sm-medium text-text-accent"
               >
                 {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                <span
+                  className="i-ri-arrow-right-up-line size-4 [&:dir(rtl)]:-scale-x-100"
+                  aria-hidden="true"
+                />
               </Link>
             )}
           </div>

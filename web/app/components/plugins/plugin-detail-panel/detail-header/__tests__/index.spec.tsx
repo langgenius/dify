@@ -9,7 +9,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -120,7 +120,7 @@ function setup(props: Partial<ComponentProps<typeof DetailHeader>> = {}, enableM
   render(
     <ModalContextProvider>
       <DetailHeader detail={detail} onUpdate={onUpdate} {...props} />
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
     </ModalContextProvider>,
     enableMarketplace,
   )
@@ -183,9 +183,12 @@ it('updates the selected GitHub package, refreshes model catalogs, and keeps the
   )
   await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
   expect(api.releases).toHaveBeenCalledExactlyOnceWith('https://ungh.cc/repos/owner/repo/releases')
-  expect(api.upload).toHaveBeenCalledWith({
-    body: { repo: 'owner/repo', version: 'v2.0.0', package: 'plugin.difypkg' },
-  })
+  expect(api.upload).toHaveBeenCalledWith(
+    {
+      body: { repo: 'owner/repo', version: 'v2.0.0', package: 'plugin.difypkg' },
+    },
+    { context: { silent: true } },
+  )
   expect(api.upgrade).toHaveBeenCalledWith({
     body: {
       repo: 'owner/repo',
@@ -254,10 +257,9 @@ it.each([
   { strategy: 'latest', mode: 'partial', listed: false, warning: false },
   { strategy: 'latest', mode: 'exclude', listed: true, warning: false },
   { strategy: 'latest', mode: 'exclude', listed: false, warning: true },
-  { strategy: 'latest', mode: 'all', listed: false, warning: false, marketplace: false },
 ] as const)(
   'warns before downgrading only when this plugin is eligible for automatic updates: %j',
-  async ({ strategy, mode, listed, warning, ...options }) => {
+  async ({ strategy, mode, listed, warning }) => {
     api.autoUpgrade.mockResolvedValue({
       category: 'model',
       auto_upgrade: {
@@ -268,10 +270,7 @@ it.each([
         exclude_plugins: listed ? [detail.plugin_id] : ['other-plugin'],
       },
     })
-    const { user } = setup(
-      { detail: { ...detail, source: PluginSource.marketplace } },
-      'marketplace' in options ? options.marketplace : true,
-    )
+    const { user } = setup({ detail: { ...detail, source: PluginSource.marketplace } })
     await user.click(screen.getByRole('button', { name: '1.0.0' }))
     await user.click(await screen.findByRole('menuitem', { name: /^0\.5\.0/ }))
     const dialog = await screen.findByRole(warning ? 'alertdialog' : 'dialog', {
@@ -296,6 +295,12 @@ it.each([
     expect(api.marketplaceUpgrade).not.toHaveBeenCalled()
   },
 )
+
+it('does not offer version switching when Marketplace is disabled', () => {
+  setup({ detail: { ...detail, source: PluginSource.marketplace } }, false)
+
+  expect(screen.getByRole('button', { name: '1.0.0' })).toBeDisabled()
+})
 
 it('uses the newly selected target after cancelling a downgrade', async () => {
   api.autoUpgrade.mockResolvedValue({

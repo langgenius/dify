@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { createDeferred } from '@/test/deferred'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import RenameDatasetModal from '../index'
@@ -105,10 +106,10 @@ describe('RenameDatasetModal', () => {
     })
 
   const defaultProps = {
-    show: true,
+    open: true,
     dataset: createMockDataset(),
     onSuccess: vi.fn(),
-    onClose: vi.fn(),
+    onOpenChange: vi.fn(),
   }
 
   beforeEach(() => {
@@ -116,18 +117,37 @@ describe('RenameDatasetModal', () => {
     mockUpdateDatasetSetting.mockResolvedValue(createMockDataset())
   })
 
-  describe('Rendering', () => {
-    it('should render a named dialog when show is true', () => {
-      render(<RenameDatasetModal {...defaultProps} show={true} />)
-      expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
-    })
+  it('keeps a pending rename open and preserves the draft for retry after failure', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<ReturnType<typeof createMockDataset>>()
+    mockUpdateDatasetSetting.mockReturnValueOnce(pending.promise)
+    render(<RenameDatasetModal {...defaultProps} />)
+    const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(name)
+    await user.type(name, 'Retry this rename{Enter}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+    await user.keyboard('{Escape}')
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(defaultProps.onSuccess).not.toHaveBeenCalled()
+    await act(async () => pending.reject(new Error('offline')))
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalled())
+    expect(name).toHaveValue('Retry this rename')
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
+    expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
+    expect(mockUpdateDatasetSetting).toHaveBeenCalledTimes(2)
+    expect(mockUpdateDatasetSetting).toHaveBeenLastCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ name: 'Retry this rename' }) }),
+    )
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when cancel button is clicked', async () => {
+    it('should call onOpenChange when cancel button is clicked', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
 
       const cancelButton = screen.getByText('common.operation.cancel')
       await user.click(cancelButton)
@@ -135,20 +155,20 @@ describe('RenameDatasetModal', () => {
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when close icon is clicked', async () => {
+    it('should call onOpenChange when close icon is clicked', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
 
       await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when Escape is pressed', async () => {
+    it('should call onOpenChange when Escape is pressed', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
 
       await user.keyboard('{Escape}')
 
@@ -206,7 +226,7 @@ describe('RenameDatasetModal', () => {
         })
       })
       expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
-      expect(defaultProps.onClose).toHaveBeenCalledOnce()
+      expect(defaultProps.onOpenChange).toHaveBeenCalledOnce()
     })
 
     it('should include external knowledge IDs when present', async () => {
@@ -305,9 +325,9 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+        expect(mockToast.error).toHaveBeenCalledWith('API Error')
       })
-      expect(defaultProps.onClose).not.toHaveBeenCalled()
+      expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
       expect(defaultProps.onSuccess).not.toHaveBeenCalled()
       expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
       await user.click(saveButton)
@@ -470,19 +490,6 @@ describe('RenameDatasetModal', () => {
       await act(async () => {
         resolvePromise!(createMockDataset())
       })
-    })
-  })
-
-  describe('Component Re-rendering', () => {
-    it('should handle show prop toggle', () => {
-      const { rerender } = render(<RenameDatasetModal {...defaultProps} show={true} />)
-
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
-
-      rerender(<RenameDatasetModal {...defaultProps} show={false} />)
-
-      // Modal visibility is controlled by Modal component's isShow prop
-      // The modal content may still be in DOM but hidden
     })
   })
 })

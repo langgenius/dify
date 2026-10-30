@@ -20,6 +20,7 @@ import json
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
@@ -49,7 +50,7 @@ from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from enums import DeploymentEdition
 from libs.pagination import PaginatedResult, clamp_pagination
-from models.account import Account
+from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import (
     ApiTokenType,
@@ -64,8 +65,8 @@ from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.knowledge.resource_scope import DatasetRef
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_upload_file
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -184,7 +185,11 @@ def make_serializable_document(**overrides: object) -> Document:
         "word_count": None,
     }
     attrs.update(overrides)
+    created_at = cast(datetime, attrs.pop("created_at"))
+    updated_at = cast(datetime, attrs.pop("updated_at"))
     document = Document(**attrs)
+    document.created_at = created_at
+    document.updated_at = updated_at
     document.summary_index_status = summary_index_status  # type: ignore[attr-defined]
     return document
 
@@ -1025,6 +1030,32 @@ class SQLiteControllerTest:
     def _persist_dataset(self, dataset: Dataset) -> None:
         self.session.add(dataset)
         self.session.commit()
+
+
+class TestFileDocumentAccount(SQLiteControllerTest):
+    @pytest.mark.parametrize("creator_is_member", [True, False])
+    def test_creator_attribution_requires_tenant_membership(self, service_api_identity, creator_is_member: bool):
+        creator = make_account(
+            account_id=str(uuid.uuid4()),
+            email=f"dataset-creator-{uuid.uuid4()}@example.com",
+        )
+        self.session.add(creator)
+        if creator_is_member:
+            self.session.add(
+                TenantAccountJoin(
+                    tenant_id=service_api_identity.tenant.id,
+                    account_id=creator.id,
+                    role=TenantAccountRole.NORMAL,
+                )
+            )
+        self.session.commit()
+        dataset = make_dataset(tenant_id=service_api_identity.tenant.id, created_by=creator.id)
+
+        with patch.object(document_module, "current_user", service_api_identity.account):
+            account = document_module._file_document_account(dataset, session=self.session)
+
+        assert account.id == (creator.id if creator_is_member else service_api_identity.account.id)
+        assert account.current_tenant_id == dataset.tenant_id
 
 
 class TestDocumentApiDelete(SQLiteControllerTest):
@@ -1918,6 +1949,9 @@ class TestDocumentAddByFileApiPost(SQLiteControllerTest):
             {"document": _expected_document_response(mock_document), "batch": "batch-file"},
             200,
         )
+        account = mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["account"]
+        assert isinstance(account, Account)
+        assert account.id == "user-1"
 
     @patch(
         "controllers.service_api.dataset.document.FeatureService.get_knowledge_file_size_limit",
@@ -2264,3 +2298,6 @@ class TestDocumentUpdateByFileApiPatch(SQLiteControllerTest):
             {"document": _expected_document_response(mock_document), "batch": "batch-1"},
             200,
         )
+        account = mock_doc_svc.save_document_with_dataset_id.call_args.kwargs["account"]
+        assert isinstance(account, Account)
+        assert account.id == "user-1"
