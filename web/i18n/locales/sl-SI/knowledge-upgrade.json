@@ -3,7 +3,7 @@
   "upgrade.completeTitle": "Nadgradnja je končana",
   "upgrade.contactSupport": "Obrnite se na podporo",
   "upgrade.dialogAvailability": "Po nadgradnji <strong>ostaneta na voljo tako klasična zbirka znanja kot zbirka znanja Agent</strong>",
-  "upgrade.dialogDescription": "Nadgradite to <legacy>klasično zbirko znanja</legacy> v <new>zbirko znanja Agent</new> skupaj z vsemi dokumenti, nastavitvami in povezavami aplikacij. Nato boste samodejno preusmerjeni v zbirko znanja Agent.",
+  "upgrade.dialogDescription": "Nadgradite to <legacy>klasično zbirko znanja</legacy> v <new>zbirko znanja Agent</new> skupaj z vsemi dokumenti in nastavitvami. Nato boste samodejno preusmerjeni v zbirko znanja Agent.",
   "upgrade.dialogDuration": "Traja od nekaj minut do nekaj ur, odvisno od velikosti. Napredek je prikazan na kartici zbirke znanja",
   "upgrade.dialogLinkedApps": "Povezane aplikacije med nadgradnjo še naprej pridobivajo podatke",
   "upgrade.dialogTitle": "Nadgradim v zbirko znanja Agent?",
