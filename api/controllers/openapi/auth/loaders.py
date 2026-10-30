@@ -100,6 +100,7 @@ def canonical_view_args(view_args: Mapping[str, str]) -> dict[str, str]:
     canonical = dict(view_args)
     if PathParam.AGENT_ID not in canonical:
         return canonical
+    # A malformed id is not rewritten: `_fetch_agent_app` refuses it once membership is known.
     with suppress(NotFound):
         canonical[PathParam.AGENT_ID] = require_uuid(canonical[PathParam.AGENT_ID], not_found=_AGENT_NOT_FOUND)
     return canonical
@@ -115,7 +116,7 @@ def _fetch_app_by_id(ctx: Context) -> App:
     app_id = require_uuid(_path_param(ctx, PathParam.APP_ID), not_found=_APP_NOT_FOUND)
     app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
-        raise NotFound("app not found")
+        raise _APP_NOT_FOUND()
     return app
 
 
@@ -125,7 +126,7 @@ def _fetch_agent_app(ctx: Context) -> App:
     try:
         return AgentRosterService(ctx.session).get_agent_app_model(tenant_id=str(workspace.id), agent_id=agent_id)
     except AgentNotFoundError as caught_error:
-        raise NotFound("agent not found") from caught_error
+        raise _AGENT_NOT_FOUND() from caught_error
 
 
 def _fetch_workspace(ctx: Context) -> Tenant:
