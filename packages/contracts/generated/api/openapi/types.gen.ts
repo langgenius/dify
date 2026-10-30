@@ -113,7 +113,7 @@ export type AgentDescribeInfo = {
   published: boolean
   role: string
   service_api_enabled: boolean
-  updated_at?: string | null
+  updated_at: string
 }
 
 export type AgentDescribeResponse = {
@@ -150,7 +150,7 @@ export type AgentListRow = {
   name: string
   published: boolean
   role: string
-  updated_at?: string | null
+  updated_at: string
 }
 
 export type AgentRunPayload = {
