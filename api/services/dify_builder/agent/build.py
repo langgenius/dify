@@ -63,7 +63,10 @@ def analyze_goal(
         "Ask only when an unanswered decision materially changes the requested business behavior, such as "
         "missing-input handling or notification recipients when those are required and unspecified. "
         "Do not ask the user to choose implementation choices the builder can make, such as Code versus "
-        "condition nodes, or to expose already fixed thresholds as configurable inputs. Preserve explicitly "
+        "condition nodes, installed tools or providers; resource discovery handles those later. "
+        "Do not ask for technical JSON, schema syntax or configuration that can be inferred. "
+        "Use plain, concrete labels and ordinary choices for necessary business questions. "
+        "Do not expose already fixed thresholds as configurable inputs. Preserve explicitly "
         "requested technical choices and all fixed thresholds, operators, units, outputs, and constraints "
         "verbatim in values without requiring clarification fields for them. Do not invent new requirements "
         "or reopen decisions already stated in the goal. For each necessary field, provide a sensible default "
@@ -72,8 +75,17 @@ def analyze_goal(
         'field that restates it -- no "requirement description", "goal" or "what do you want" field. '
         "Every field must ask for something the goal does not already say. "
         "Never invent a URL/endpoint, API key, token, password, or account/resource id "
-        "the goal does not state -- give such a field an empty string as its default so the "
-        f"user fills it in. {form_schema.FORM_FIELD_TYPE_GUIDANCE}"
+        "the goal does not state. Do not ask for secrets in clarification fields or include them in values; "
+        "use the existing workspace credential setup and leave a resource needing setup for later. "
+        "Missing non-secret endpoint or resource details can be left blank. "
+        "For necessary business questions use natural-language scalar controls: text, textarea, select, bool, "
+        "or number, with matching scalar field values. Keep arrays and objects in internal values for "
+        "planning without generating a field when no user decision is needed. All proposed fields are "
+        "user-editable by default. Only an internal planning default that needs no user decision may have "
+        'presentation="internal" and requires_user_decision=false; do not use these markers for user-editable '
+        "fields, even when optional. Preserve a required unanswered question rather than silently dropping it. "
+        "Use json or json_object fields for explicitly requested structured technical input, preserving its "
+        "original structure and editability, including optional inputs. "
         'Reply with ONLY JSON: {"fields": [{"key": "...", "label": "...", "type": "...", '
         '"options": ["..."]}], "values": {"<key>": <default>}}.'
     )
@@ -82,8 +94,8 @@ def analyze_goal(
             f" Write human-facing field labels, descriptions, hints, placeholders, select options, and generated "
             f"defaults in the session reply language (BCP-47: {reply_language}). Keep JSON keys, field keys, "
             "and field type enums in English. Preserve literal business values supplied in the goal, including "
-            "names, currencies, URLs, and credentials. For each select field, the default value must exactly match "
-            "one of its options."
+            "names, currencies, URLs, and resource references. For each select field, the default value must "
+            "exactly match one of its options."
         )
     else:
         system += (
@@ -104,13 +116,92 @@ def analyze_goal(
     if not isinstance(fields, list) or not isinstance(values, dict):
         trace_diagnostics.report("response_schema_invalid", fallback_used=True)
         return _degraded_form(goal_text)
-    scrubbed_values = _scrub_invented_defaults(values, goal_text)
-    answered_values = _answer_goal_restatements(fields, scrubbed_values, goal_text)
-    explained_fields = _explain_blank_fields(fields, answered_values)
+    safe_fields, safe_values = _remove_secret_questions(fields, values)
+    scrubbed_values = _scrub_invented_defaults(safe_values, goal_text)
+    answered_values = _answer_goal_restatements(safe_fields, scrubbed_values, goal_text)
+    explained_fields = _explain_blank_fields(safe_fields, answered_values)
     return {
-        "fields": form_schema.reconcile_form_fields(explained_fields, answered_values),
+        "fields": _visible_requirement_fields(
+            form_schema.reconcile_form_fields(explained_fields, answered_values), answered_values
+        ),
         "values": answered_values,
     }
+
+
+def _visible_requirement_fields(fields: list[Any], values: dict[str, Any]) -> list[Any]:
+    """Default to editable, hiding only explicitly internal structured defaults.
+
+    These cognition markers classify presentation; they grant no execution or
+    resource authority. Missing/unknown markers, required questions and absent
+    defaults preserve the existing field. This policy is scoped to Build
+    clarification; internal values and all other form surfaces remain unchanged.
+    """
+    return [
+        field
+        for field in fields
+        if not (
+            isinstance(field, dict)
+            and field.get("key") is not None
+            and field.get("presentation") == "internal"
+            and field.get("requires_user_decision") is False
+            and field.get("required") is not True
+            and isinstance(values.get(str(field["key"])), (list, dict))
+        )
+    ]
+
+
+_SECRET_QUESTION_LABEL = re.compile(
+    r"(?:api[\s_-]*key|access[\s_-]*token|auth(?:orization)?[\s_-]*header|"
+    r"password|passcode|secret|密钥|密码|口令|访问令牌|身份令牌)\s*(?:[（(][^()（）]{0,32}[)）])?[\s:：?？.。!！]*$",
+    re.IGNORECASE,
+)
+_SECRET_HEADER_KEY = re.compile(r"(?:^|[_\-.])auth(?:orization)?[_\-.]?header$", re.IGNORECASE)
+
+
+def _remove_secret_questions(fields: list[Any], values: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
+    """Keep business requirements while routing secret setup to native credentials.
+
+    The model may still return a secret question despite its instructions. Drop
+    its field and value, including secret-keyed values with no matching field.
+    Named credential references and non-secret limits/policies remain usable.
+    """
+    blocked: set[str] = set()
+    safe_fields: list[Any] = []
+    for field_spec in fields:
+        if not isinstance(field_spec, dict) or not field_spec.get("key"):
+            safe_fields.append(field_spec)
+            continue
+        key = str(field_spec["key"])
+        label = str(field_spec.get("label") or "")
+        cannot_hold_secret = (
+            field_spec.get("type") == "bool" and isinstance(values.get(key), bool) and not field_spec.get("options")
+        )
+        secret_question = (
+            user_supplied.is_credential_key(key)
+            or bool(_SECRET_HEADER_KEY.search(key))
+            or bool(_SECRET_QUESTION_LABEL.search(label))
+        )
+        if secret_question and not cannot_hold_secret:
+            blocked.add(key)
+        else:
+            safe_fields.append(field_spec)
+
+    def clean(value: Any, *, top_level: bool = False) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: clean(item)
+                for key, item in value.items()
+                if (not top_level or key not in blocked)
+                and not (
+                    (user_supplied.is_credential_key(str(key)) or _SECRET_HEADER_KEY.search(str(key)))
+                    and not isinstance(item, bool)
+                )
+            }
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+
+    return safe_fields, clean(values, top_level=True)
 
 
 def _is_invented_literal(value: Any, key: str | None, goal_text: str) -> bool:
@@ -153,8 +244,8 @@ def _scrub_invented_defaults(values: dict[str, Any], goal_text: str) -> dict[str
     ``Authorization: Bearer YOUR_API_KEY`` for a goal that named neither).
 
     The whole field is replaced with ``""`` -- even one whose default was a
-    dict -- so the user is prompted to fill it in themselves rather than the
-    workflow running against a host or secret that doesn't exist.
+    dict -- so a workflow cannot run against a host or secret that doesn't
+    exist. Secret questions are removed before this function is called.
     """
     blanked = [key for key, value in values.items() if _is_invented_literal(value, key, goal_text)]
     if not blanked:
@@ -540,6 +631,9 @@ def propose_plan_v1(
     goal_text: str = "",
     mode: str = "workflow",
     reply_language: str | None = None,
+    previous_plan: WorkflowPlan | None = None,
+    selected_resource_ids: Sequence[str] = (),
+    selected_resource_facts: Sequence[str] = (),
 ) -> WorkflowPlan | None:
     """Return an intact plan or None, with at most one schema correction.
 
@@ -553,6 +647,10 @@ def propose_plan_v1(
         "You are a Dify workflow planner. Given the original goal and confirmed requirements, "
         "propose an ordered list of concise build steps. Preserve requested actions and outputs; "
         "requirements may refine the goal, but do not silently resolve conflicting instructions. "
+        "Before resource discovery, catalogue availability is unknown. An abstract plan is not evidence "
+        "that a workspace resource is absent. Keep resource-dependent steps conditional on discovery; "
+        "do not replace the requested action with an unavailable fallback merely because no catalogue "
+        "has been supplied yet. "
         "Use native Code for exact parsing, arithmetic and validation, and Template for deterministic formatting. "
         "A conditional model preference does not require an LLM step. "
         "Preserve explicit generative or semantic behavior "
@@ -585,6 +683,31 @@ def propose_plan_v1(
         "the plan title, input and output summaries, and plan steps", reply_language=reply_language
     )
     source = _cognition_source(goal_text, requirements)
+    if previous_plan is not None:
+        source += (
+            "\n\nPREVIOUS ABSTRACT PLAN (may contain assumptions invalidated by discovery):\n"
+            + json.dumps(asdict(previous_plan), ensure_ascii=False)
+            + "\n\nCONFIRMED RESOURCE IDS:\n"
+            + json.dumps(list(selected_resource_ids), ensure_ascii=False)
+            + "\n\nCURRENT PUBLIC FACTS FOR THOSE EXACT SELECTIONS:\n"
+            + "\n".join(selected_resource_facts)
+        )
+        system += (
+            "\nReconcile the whole plan and its summaries with the confirmed resources and original constraints. "
+            "The listed public resource facts are authoritative for reference eligibility and published versions; "
+            "do not invent runtime authorization, live availability, published output schemas or dependencies. "
+            "Remove outdated no-resource fallbacks when the confirmed resource covers the requested action. "
+            "Do not merely append an id to a contradictory fallback. Use only confirmed external resources. "
+            "Selecting an extra resource does not require inventing an action: mark it unused with a reason. "
+            "In the SAME JSON reply include resource_resolution: {preserves_requirements: true, "
+            '"bindings": [{"resource_id": "exact confirmed id", "status": "used", '
+            '"step_index": 0, "step_kind": "resource_action", "action": "concrete task performed"}, '
+            '{"resource_id": "another confirmed id", "status": "unused", "reason": "why not needed"}]}. '
+            "Resolve every selection exactly once. A used binding must name its exact id in that action step, "
+            "and step_index is zero-based. A no-resource, unavailable or stop branch has step_kind=fallback, "
+            "never resource_action. Set preserves_requirements=false or status=unresolved if the plan cannot "
+            "satisfy the original constraints with current facts; that result will remain unapproved."
+        )
     user = source
     for attempt in range(2):
         try:
@@ -610,7 +733,13 @@ def propose_plan_v1(
             trace_diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
             data = None
         try:
-            return parse_plan_response(data)
+            result = parse_plan_response(data)
+            if previous_plan is not None:
+                result.used_resource_ids = _resolved_plan_resources(data, result, selected_resource_ids)
+            return result
+        except _ResourcePlanUnresolvedError:
+            trace_diagnostics.report("validation_refused", fallback_used=False)
+            return None
         except ValueError as exc:
             if isinstance(data, dict):
                 trace_diagnostics.report("response_schema_invalid", error=exc, attempt=attempt + 1)
@@ -618,6 +747,59 @@ def propose_plan_v1(
         if attempt == 0:
             user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
     return None
+
+
+class _ResourcePlanUnresolvedError(ValueError):
+    """Cognition could not reconcile the source; never force a successful retry."""
+
+
+def _resolved_plan_resources(data: object, plan: WorkflowPlan, selected_resource_ids: Sequence[str]) -> list[str]:
+    """Validate same-reply resolution, independently of free-form plan prose.
+
+    This is bounded model reasoning evidence, not permission/runtime authority.
+    In particular, an ID suffix on a fallback is insufficient, and an unused
+    extra selection cannot force an invented action into generation.
+    """
+    resolution = data.get("resource_resolution") if isinstance(data, dict) else None
+    if isinstance(resolution, dict) and resolution.get("preserves_requirements") is False:
+        raise _ResourcePlanUnresolvedError("The selected resources do not satisfy the original constraints.")
+    if not isinstance(resolution, dict) or resolution.get("preserves_requirements") is not True:
+        raise ValueError("A complete resource resolution preserving the original requirements is required.")
+    bindings = resolution.get("bindings")
+    selected = set(selected_resource_ids)
+    if not isinstance(bindings, list) or len(bindings) != len(selected):
+        raise ValueError("Resolve each exact confirmed resource once as used or unused.")
+    seen: set[str] = set()
+    used: list[str] = []
+    for binding in bindings:
+        if not isinstance(binding, dict):
+            raise ValueError("Resource bindings must be objects.")
+        rid = binding.get("resource_id")
+        if not isinstance(rid, str) or rid not in selected or rid in seen:
+            raise ValueError("A resolution names an unknown or duplicate resource identity.")
+        seen.add(rid)
+        status = binding.get("status")
+        if status == "unresolved" or binding.get("step_kind") == "fallback":
+            raise _ResourcePlanUnresolvedError("Resource resolution remains unavailable or unresolved.")
+        if status == "unused":
+            reason = binding.get("reason")
+            if not isinstance(reason, str) or not reason.strip() or binding.get("step_index") is not None:
+                raise ValueError("An unused selection needs a reason and no generated action step.")
+            continue
+        step = binding.get("step_index")
+        action = binding.get("action")
+        if (
+            status != "used"
+            or binding.get("step_kind") != "resource_action"
+            or type(step) is not int
+            or not 0 <= step < len(plan.items)
+            or rid not in plan.items[step]
+            or not isinstance(action, str)
+            or not action.strip()
+        ):
+            raise ValueError("A used selection needs a concrete resource action; fallback or unresolved is not usable.")
+        used.append(rid)
+    return used
 
 
 def discover_resources(
@@ -808,6 +990,11 @@ _GAP_SYSTEM = (
     "You check whether the original goal, confirmed requirements and workflow plan can be built "
     "from native workflow building blocks and the selected external resources listed. "
     "Respect optional and negative resource instructions; a mention "
+    "alone does not establish a required invocation. The abstract plan is not evidence of resource absence. "
+    "The listed resources are recommendations, not yet confirmed bindings. Use their actual metadata; "
+    "do not repeat an abstract plan's no-resource assumption as a fact when a listed candidate covers it. "
+    "Reference eligibility is distinct from runtime authorization; a ready candidate does not prove execution. "
+    "A remaining selection confirmation is not a missing capability. A mention "
     "alone is not a required invocation. A missing HTTP endpoint can be a required Start input "
     "provided at runtime; do not treat a missing URL alone as an unsupported capability or "
     "invent an API contract. Each resource is "
@@ -844,7 +1031,10 @@ def assess_capability_gap(
     """
     if model is None or not plan_items:
         return ""
-    listing = "\n".join(f"- {o.id} ({o.kind}, {o.readiness}): {o.label}" for o in options) or "- (none)"
+    listing = (
+        "\n".join(f"- {o.id} ({o.kind}, {o.readiness}): {o.label}" + (f"; {o.meta}" if o.meta else "") for o in options)
+        or "- (none)"
+    )
     try:
         data = llm.invoke_json(
             model,
@@ -986,6 +1176,68 @@ def bind_resources(
         if suffix not in bound[index]:
             bound[index] = bound[index] + suffix
     return bound
+
+
+def reconcile_resource_plan(
+    model,
+    tenant_id: str,
+    plan: WorkflowPlan,
+    resource_ids: list[str],
+    *,
+    account_id: str | None = None,
+    goal_text: str,
+    requirements: dict[str, Any],
+    mode: str = "workflow",
+    reply_language: str | None = None,
+) -> WorkflowPlan | None:
+    """Replace abstract assumptions after selection, using one bounded proposal.
+
+    Native identity/publication/access checks precede cognition. Model prose
+    never grants authority: the exact selections are checked again on apply.
+    Empty selections need no catalogue or model call. A failed metadata read or
+    unusable proposal returns no plan, so the handler retains its resource gate.
+    """
+    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+
+    if not resource_ids:
+        return replace(plan, items=[_TRAILING_USING_SUFFIX.sub("", item) for item in plan.items])
+    if model is None:
+        trace_diagnostics.report("provider_invocation_failed", fallback_used=False)
+        return None
+    try:
+        inv = _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids)
+        _selected_agent_resources(inv, resource_ids)
+        selected = set(resource_ids)
+        by_id = {ref.id: ref for ref in (*inv.tools, *inv.models, *inv.agents)}
+        if not selected.issubset(by_id):
+            raise ValueError("A selected resource is no longer available")
+    except CognitionPolicyDeniedError:
+        raise
+    except AgentSnapshotChanged:
+        # A stale card cannot be repaired by repeatedly confirming its old id.
+        # The handler offers explicit rediscovery, never a silent replacement.
+        raise
+    except Exception as exc:
+        trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=False)
+        return None
+    result = propose_plan_v1(
+        model,
+        requirements,
+        goal_text=goal_text,
+        tools=[ref for ref in inv.tools if ref.id in selected],
+        agents=[ref for ref in inv.agents if ref.id in selected],
+        mode=mode,
+        reply_language=reply_language,
+        previous_plan=plan,
+        selected_resource_ids=resource_ids,
+        selected_resource_facts=[
+            _discovery_line(ref.id, kind, ref)
+            for kind, refs in (("plugin", inv.tools), ("model", inv.models), ("agent", inv.agents))
+            for ref in refs
+            if ref.id in selected
+        ],
+    )
+    return result
 
 
 def _inventory_for_selection(

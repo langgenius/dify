@@ -95,7 +95,7 @@ from services.dify_builder.business_acceptance import (
 )
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.initial_draft import build_intents_for_draft
-from services.dify_builder.plan import make_plan_card, store_plan
+from services.dify_builder.plan import WorkflowPlan, make_plan_card, store_plan
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
 logger = logging.getLogger(__name__)
@@ -405,7 +405,17 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     """(waiting) On ``confirm_resources`` bind resources into plan v1 and
     snapshot the pre-build graph as the backend restore checkpoint. Transition
     to build.plan_approval."""
+    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+
     kind = action_kind(turn)
+    if kind == "rediscover_resources" and fc.resource_selection.get("refresh_required"):
+        # The user explicitly asks for current candidates. This appends a new
+        # card and returns to confirmation; it never selects a new snapshot.
+        items, next_state = _discover_and_offer_resources(env, s, fc)
+        fc.resource_selection = {}
+        return StepResult(next=next_state, context=fc, items=items)
+    if fc.resource_selection.get("refresh_required"):
+        return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc)
     if kind != "confirm_resources":
         return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc)
 
@@ -421,15 +431,39 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
         ],
     )
     progress.activate("build-bind-resources")
-    fc.checkpoint_seq = fc.next_seq
-
     resource_ids: list[str] = []
     if turn.action is not None and isinstance(turn.action.payload, dict):
         raw_ids = turn.action.payload.get("resource_ids")
         if isinstance(raw_ids, list):
             resource_ids = [r for r in raw_ids if isinstance(r, str)]
-    fc.resource_selection = {"resource_ids": resource_ids}
-    fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids)
+    try:
+        plan = env.agent.reconcile_resource_plan(
+            WorkflowPlan(fc.plan_title, fc.plan_input_summary, fc.plan_output_summary, list(fc.plan_items)),
+            resource_ids,
+            goal_text=fc.goal_text,
+            requirements=fc.requirements,
+            reply_language=fc.reply_language or None,
+        )
+    except AgentSnapshotChanged:
+        fc.resource_selection = {"refresh_required": True}
+        progress.fail_step("build-bind-resources")
+        execution = progress.finish(status="error")
+        items = append_assistant(
+            env,
+            s,
+            fc,
+            copy_text(BuilderCopyId.RESOURCES_CHANGED),
+            execution=execution,
+            turn_id=progress.operation_id,
+        )
+        return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc, items=items)
+    if plan is None:
+        return _planning_failed(env, s, fc, progress, "build-bind-resources", PcState.BUILD_RESOURCE_RECOMMENDATION)
+    store_plan(fc, plan)
+    fc.resource_selection = {
+        "resource_ids": resource_ids if plan.used_resource_ids is None else list(plan.used_resource_ids)
+    }
+    fc.checkpoint_seq = fc.next_seq
 
     progress.activate("build-create-checkpoint")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
