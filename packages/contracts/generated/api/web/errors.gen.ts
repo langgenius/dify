@@ -228,14 +228,6 @@ const zEmailSendIpLimitError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-const zEndUserBusyError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('end_user_busy'),
-      status: z.literal(409),
-    }),
-  ))()
-
 const zEndUserLoginRequiredError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -579,7 +571,6 @@ export const post3Errors = {
   connection_required: { status: 400, data: zConnectionRequiredError },
   connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-  end_user_busy: { status: 409, data: zEndUserBusyError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_chat_app: { status: 400, data: zNotChatAppError },
@@ -911,7 +902,6 @@ export const post29Errors = {
   connection_required: { status: 400, data: zConnectionRequiredError },
   connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
   credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-  end_user_busy: { status: 409, data: zEndUserBusyError },
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_workflow_app: { status: 400, data: zNotWorkflowAppError },
@@ -922,7 +912,6 @@ export const post29Errors = {
     status: 403,
     data: zTriggerWorkflowServiceModeUnavailableError,
   },
-  webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
 }
 
 export const post30Errors = { not_workflow_app: { status: 400, data: zNotWorkflowAppError } }

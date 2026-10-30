@@ -46,7 +46,7 @@ Create a chat message for conversational applications.
 | 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -912,7 +912,7 @@ Retrieve the metadata for a specific app.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent admission or migration for the same identity reports end_user_busy without waiting. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent migration or identity updates may report end_user_busy without waiting. Run discovery is best effort and may miss concurrent starts. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -1254,7 +1254,7 @@ Check if user has permission to access a web application.
 ### [POST] /workflows/run
 **Run workflow**
 
-Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
+Execute a workflow with provided inputs and files.
 
 #### Request Body
 
@@ -1271,7 +1271,7 @@ Execute a workflow with provided inputs and files. With Account Passport enabled
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[EndUserBusyError](#enduserbusyerror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -1828,14 +1828,6 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmailSendIpLimitError |  | Too many emails have been sent from this IP address recently. Please try again later. |  |
-
-#### EndUserBusyError
-
-This Web App identity is being updated. Please retry.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| EndUserBusyError |  | This Web App identity is being updated. Please retry. |  |
 
 #### EndUserConnectionCreatePayload
 

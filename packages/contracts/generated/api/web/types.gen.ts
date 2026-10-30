@@ -378,11 +378,6 @@ export type EmailSendIpLimitError = ErrorResponse & {
   status: 429
 }
 
-export type EndUserBusyError = ErrorResponse & {
-  code: 'end_user_busy'
-  status: 409
-}
-
 export type EndUserConnectionCreatePayload = {
   connection_revision: string
   credentials: {
@@ -1726,7 +1721,6 @@ export type PostChatMessagesErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
-    | EndUserBusyError
     | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
@@ -3250,8 +3244,6 @@ export type PostWorkflowsRunErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
-    | EndUserBusyError
-    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

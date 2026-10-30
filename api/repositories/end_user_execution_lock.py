@@ -1,4 +1,4 @@
-"""Short, transaction-owned identity locks for Web admission and migration."""
+"""Short, transaction-owned identity locks for Web identity updates and migration."""
 
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -28,7 +28,7 @@ def translate_end_user_lock_errors() -> Generator[None]:
 def lock_end_user(
     session: Session, *, tenant_id: str, app_id: str, end_user_id: str, exclusive: bool
 ) -> EndUser | None:
-    """Shared admissions coexist; migration takes the exclusive lock without queuing."""
+    """Lock one identity without queuing behind another identity update."""
     return session.scalar(
         select(EndUser)
         .where(EndUser.id == end_user_id, EndUser.tenant_id == tenant_id, EndUser.app_id == app_id)

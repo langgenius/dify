@@ -15,12 +15,39 @@ from models.end_user_connection import AppConnection, EndUserConnection
 from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, Site, UploadFile
 from models.tools import ToolFile
+from repositories.conversation_access import require_web_message_access
 from repositories.end_user_execution_lock import lock_end_user
 from repositories.entities.web_execution import EndUserBusyError
 from repositories.web_migration_repository import WebMigrationRepository
 from services.web_migration_service import MigrationCounts
 from tests.helpers.end_user_api_key import PROVIDER, make_harness
 from tests.helpers.unit.model_factories import make_upload_file
+
+
+@pytest.mark.timeout(15)
+def test_message_access_does_not_wait_for_migration_identity_lock(db_session_with_containers: Session) -> None:
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    harness = make_harness(sessions)
+    context = harness.context
+    with sessions.begin() as migration, sessions.begin() as execution:
+        assert (
+            lock_end_user(
+                migration,
+                tenant_id=context.tenant_id,
+                app_id=context.app_id,
+                end_user_id=context.end_user_id,
+                exclusive=True,
+            )
+            is not None
+        )
+        actor = require_web_message_access(
+            execution,
+            tenant_id=context.tenant_id,
+            app_id=context.app_id,
+            end_user_id=context.end_user_id,
+            conversation_id=None,
+        )
+        assert actor.id == context.end_user_id
 
 
 @pytest.mark.parametrize("same_account", [False, True])
@@ -133,183 +160,6 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         assert stored.from_end_user_id == winner.id
         assert session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id)) == winner.id
         assert session.scalar(sa.select(ToolFile.user_id).where(ToolFile.id == tool_id)) == winner.id
-
-
-def test_message_acceptance_is_serialized_with_passport_migration(db_session_with_containers: Session) -> None:
-    from models.model import Message
-    from repositories.conversation_access import ConversationAccessDeniedError, lock_web_message_acceptance
-
-    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
-    harness = make_harness(sessions)
-    with sessions.begin() as session:
-        guest = EndUser(
-            tenant_id=harness.context.tenant_id,
-            app_id=harness.context.app_id,
-            type=EndUserType.BROWSER,
-            session_id=str(uuid4()),
-        )
-        session.add(guest)
-        session.flush()
-        guest_id = guest.id
-        session.execute(sa.update(App).where(App.id == harness.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
-        session.add(
-            Site(
-                app_id=harness.context.app_id,
-                code="acceptance-race",
-                title="Migration",
-                default_language="en-US",
-                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-            )
-        )
-        conversation = Conversation(
-            app_id=harness.context.app_id,
-            mode=AppMode.ADVANCED_CHAT,
-            name="Guest",
-            _inputs={},
-            from_source=ConversationFromSource.API,
-            from_end_user_id=guest_id,
-            invoke_from=InvokeFrom.WEB_APP,
-        )
-        session.add(conversation)
-        session.flush()
-        conversation_id = conversation.id
-    repository = WebMigrationRepository(session_factory=sessions)
-    source = repository.get_claim_source(
-        app_code="acceptance-race", app_id=harness.context.app_id, end_user_id=guest_id
-    )
-    assert source is not None
-    barrier = Barrier(2)
-    message_id = str(uuid4())
-
-    def accept() -> bool:
-        barrier.wait(timeout=10)
-        try:
-            with sessions.begin() as session:
-                lock_web_message_acceptance(
-                    session,
-                    tenant_id=harness.context.tenant_id,
-                    app_id=harness.context.app_id,
-                    end_user_id=guest_id,
-                    conversation_id=conversation_id,
-                )
-                session.add(
-                    Message(
-                        id=message_id,
-                        app_id=harness.context.app_id,
-                        conversation_id=conversation_id,
-                        query="hello",
-                        message="",
-                        answer="",
-                        from_source=ConversationFromSource.API,
-                        from_end_user_id=guest_id,
-                        invoke_from=InvokeFrom.WEB_APP,
-                    )
-                )
-        except (ConversationAccessDeniedError, EndUserBusyError):
-            return False
-        return True
-
-    def migrate() -> MigrationCounts | None:
-        barrier.wait(timeout=10)
-        try:
-            return repository.claim_guest(source, account_end_user_id=harness.context.end_user_id)
-        except EndUserBusyError:
-            return None
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        accepted = executor.submit(accept)
-        migrated = executor.submit(migrate)
-        migration_result = migrated.result(timeout=20)
-        was_accepted = accepted.result(timeout=20)
-    if migration_result is None:
-        assert was_accepted
-        migration_result = repository.claim_guest(source, account_end_user_id=harness.context.end_user_id)
-    assert migration_result.conversations == 1
-    with sessions() as session:
-        stored = session.get(Conversation, conversation_id)
-        assert stored is not None
-        assert stored.from_end_user_id == harness.context.end_user_id
-        message = session.get(Message, message_id)
-        assert (message is not None) == was_accepted
-        if message is not None:
-            assert message.from_end_user_id == guest_id
-
-
-@pytest.mark.timeout(15)
-def test_shared_admissions_coexist_and_migration_conflicts_only_for_the_same_identity(
-    db_session_with_containers: Session,
-) -> None:
-    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
-    harness = make_harness(sessions)
-    with sessions.begin() as session:
-        other = EndUser(
-            tenant_id=harness.context.tenant_id,
-            app_id=harness.context.app_id,
-            type=EndUserType.BROWSER,
-            session_id=str(uuid4()),
-        )
-        session.add(other)
-        session.flush()
-        other_id = other.id
-    with sessions.begin() as first, sessions.begin() as second:
-        assert (
-            lock_end_user(
-                first,
-                tenant_id=harness.context.tenant_id,
-                app_id=harness.context.app_id,
-                end_user_id=harness.context.end_user_id,
-                exclusive=False,
-            )
-            is not None
-        )
-        assert (
-            lock_end_user(
-                second,
-                tenant_id=harness.context.tenant_id,
-                app_id=harness.context.app_id,
-                end_user_id=harness.context.end_user_id,
-                exclusive=False,
-            )
-            is not None
-        )
-        with pytest.raises(EndUserBusyError), sessions.begin() as migration:
-            lock_end_user(
-                migration,
-                tenant_id=harness.context.tenant_id,
-                app_id=harness.context.app_id,
-                end_user_id=harness.context.end_user_id,
-                exclusive=True,
-            )
-        with sessions.begin() as independent:
-            assert (
-                lock_end_user(
-                    independent,
-                    tenant_id=harness.context.tenant_id,
-                    app_id=harness.context.app_id,
-                    end_user_id=other_id,
-                    exclusive=True,
-                )
-                is not None
-            )
-    with sessions.begin() as migration:
-        assert (
-            lock_end_user(
-                migration,
-                tenant_id=harness.context.tenant_id,
-                app_id=harness.context.app_id,
-                end_user_id=harness.context.end_user_id,
-                exclusive=True,
-            )
-            is not None
-        )
-        with pytest.raises(EndUserBusyError), sessions.begin() as starting:
-            lock_end_user(
-                starting,
-                tenant_id=harness.context.tenant_id,
-                app_id=harness.context.app_id,
-                end_user_id=harness.context.end_user_id,
-                exclusive=False,
-            )
 
 
 @pytest.mark.timeout(30)

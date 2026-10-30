@@ -1162,8 +1162,8 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
     from models.workflow import WorkflowRun
     from repositories.conversation_access import (
         ConversationAccessDeniedError,
-        lock_web_message_acceptance,
         may_read_conversation_run,
+        require_web_message_access,
     )
     from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
     from services.app_ref_service import AppRef, MessageRef
@@ -1228,10 +1228,10 @@ def test_full_passport_claim_preserves_provenance_and_transfers_history_access(h
             session, app_id=app.id, user=guest, run_id=run_id, original_end_user_id=guest.id
         )
         with pytest.raises(ConversationAccessDeniedError):
-            lock_web_message_acceptance(
+            require_web_message_access(
                 session, tenant_id=app.tenant_id, app_id=app.id, end_user_id=guest.id, conversation_id=conversation_id
             )
-        lock_web_message_acceptance(
+        require_web_message_access(
             session, tenant_id=app.tenant_id, app_id=app.id, end_user_id=account.id, conversation_id=conversation_id
         )
         assert (

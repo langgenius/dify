@@ -26,7 +26,6 @@ import {
   zEmailCodeError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
-  zEndUserBusyError,
   zEndUserLoginRequiredError,
   zFileExtensionBlockedError,
   zFileTooLargeError,
@@ -285,7 +284,6 @@ export const post3 = oc
     connection_required: { status: 400, data: zConnectionRequiredError },
     connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-    end_user_busy: { status: 409, data: zEndUserBusyError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
@@ -1368,12 +1366,12 @@ export const meta = {
 }
 
 /**
- * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent admission or migration for the same identity reports end_user_busy without waiting. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+ * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent migration or identity updates may report end_user_busy without waiting. Run discovery is best effort and may miss concurrent starts. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
  */
 export const post23 = oc
   .route({
     description:
-      'Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent admission or migration for the same identity reports end_user_busy without waiting. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.',
+      'Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent migration or identity updates may report end_user_busy without waiting. Run discovery is best effort and may miss concurrent starts. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMigrationClaim',
@@ -1805,12 +1803,11 @@ export const workflow = {
 /**
  * Run workflow
  *
- * Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.
+ * Execute a workflow with provided inputs and files.
  */
 export const post29 = oc
   .route({
-    description:
-      'Execute a workflow with provided inputs and files. With Account Passport enabled, current resource ownership is rechecked and the Run is registered before execution. Admission can reject identity contention or resources changed since preparation. Queued failures use the existing event stream; synchronous conflicts return 409. Refresh and retry.',
+    description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowsRun',
@@ -1837,7 +1834,6 @@ export const post29 = oc
     connection_required: { status: 400, data: zConnectionRequiredError },
     connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
-    end_user_busy: { status: 409, data: zEndUserBusyError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
@@ -1848,7 +1844,6 @@ export const post29 = oc
       status: 403,
       data: zTriggerWorkflowServiceModeUnavailableError,
     },
-    webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
   })
 
 export const run = {

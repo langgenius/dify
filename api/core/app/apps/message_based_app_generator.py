@@ -47,7 +47,7 @@ from models.enums import (
     InvokeFrom as ModelInvokeFrom,
 )
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
-from repositories.conversation_access import ConversationAccessDeniedError, lock_web_message_acceptance
+from repositories.conversation_access import ConversationAccessDeniedError, require_web_message_access
 from repositories.web_execution_file_access import (
     execution_file_references,
     require_execution_file_ownership,
@@ -187,7 +187,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
             ):
                 try:
-                    actor = lock_web_message_acceptance(
+                    actor = require_web_message_access(
                         session,
                         tenant_id=app_config.tenant_id,
                         app_id=app_config.app_id,

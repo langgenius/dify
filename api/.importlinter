@@ -92,7 +92,6 @@ ignore_imports =
     # Initial selections share the new Conversation transaction through the composition root.
     core.app.apps.message_based_app_generator -> extensions.application_services.end_user_connections
     # Web workflow admission delegates to application-owned hooks.
-    core.app.apps.base_app_generator -> extensions.application_services.web_execution
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
     # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.

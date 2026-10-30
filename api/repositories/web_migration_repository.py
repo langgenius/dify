@@ -147,8 +147,8 @@ class WebMigrationRepository:
             ):
                 raise ConnectionIdentityError()
             account = WebConnectionContext(guest.tenant_id, app.id, target.id, target.account_id)
-            # Freeze the active Run IDs while the source identity is locked. A Run
-            # finishing during transfer is conservatively skipped until a later retry.
+            # Run admission is not serialized with migration. This snapshot may miss
+            # a concurrent start; a Run finishing meanwhile is skipped until retry.
             active_runs = tuple(
                 session.scalars(
                     sa.select(WorkflowRun.id).where(

@@ -725,18 +725,6 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
 )
 
 /**
- * EndUserBusyError
- *
- * This Web App identity is being updated. Please retry.
- */
-export const zEndUserBusyError = zErrorResponse.and(
-  z.object({
-    code: z.literal('end_user_busy'),
-    status: z.literal(409),
-  }),
-)
-
-/**
  * EndUserLoginRequiredError
  *
  * Sign in to use personal connections.

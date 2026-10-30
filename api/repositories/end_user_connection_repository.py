@@ -123,7 +123,7 @@ class EndUserConnectionRepository:
     def _record_revision_acceptance(
         session: Session, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
     ) -> None:
-        """Write under the caller's EndUser lock and transaction, preserving first provenance."""
+        """Preserve the first provenance when concurrent requests record acceptance."""
         lookup = sa.select(EndUserConnectionRevisionAcceptance.id).where(
             EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
             EndUserConnectionRevisionAcceptance.app_id == context.app_id,
@@ -268,7 +268,7 @@ class EndUserConnectionRepository:
                 else EndUser.account_id.is_(None),
             )
         )
-        coordinated = lock and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+        coordinated = lock and not shared and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
         if coordinated:
             try:
                 actor = lock_end_user(
@@ -284,7 +284,7 @@ class EndUserConnectionRepository:
                 raise ConnectionIdentityError()
             if not shared:
                 stmt = stmt.with_for_update()
-        elif lock:
+        elif lock and (not shared or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED):
             stmt = stmt.with_for_update()
         app = session.scalar(stmt)
         if app is None:
@@ -294,8 +294,8 @@ class EndUserConnectionRepository:
                 Account.id == context.account_id,
                 Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
             )
-            if lock:
-                account = account.with_for_update(read=coordinated and shared)
+            if lock and (not shared or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED):
+                account = account.with_for_update()
             if session.scalar(account) is None:
                 raise ConnectionIdentityError()
         return app

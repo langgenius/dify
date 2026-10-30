@@ -398,14 +398,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 },
             )
 
-            with self._web_workflow_launch(
-                application_generate_entity,
-                workflow=workflow,
-                user=user,
-                conversation_id=None,
-                resume=graph_runtime_state is not None,
-            ):
-                worker_thread.start()
+            worker_thread.start()
 
             draft_var_saver_factory = self._get_draft_var_saver_factory(
                 invoke_from,
@@ -644,10 +637,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
-        with (
-            preserve_flask_contexts(flask_app, context_vars=context),
-            self._web_workflow_worker(application_generate_entity),
-        ):
+        with preserve_flask_contexts(flask_app, context_vars=context):
             with session_factory.create_session() as session:
                 workflow = session.scalar(
                     select(Workflow).where(

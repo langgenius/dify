@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from models.account import Account
 from models.enums import AppStatus, ConversationFromSource
 from models.model import App, Conversation, EndUser, Message
-from repositories.end_user_execution_lock import lock_end_user
 
 
 class ConversationAccessDeniedError(LookupError):
@@ -63,24 +62,26 @@ def message_owner_scope(app_id: str, user: Account | EndUser | None) -> sa.Colum
     )
 
 
-def lock_web_message_acceptance(
+def require_web_message_access(
     session: Session, *, tenant_id: str, app_id: str, end_user_id: str, conversation_id: str | None
 ) -> EndUser:
-    """Serialize acceptance with migration before creating a message, without provider I/O."""
+    """Validate the current Web conversation owner before creating a message."""
     app = session.scalar(
         sa.select(App.id).where(
             App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL, App.enable_site.is_(True)
         )
     )
-    actor = lock_end_user(session, tenant_id=tenant_id, app_id=app_id, end_user_id=end_user_id, exclusive=False)
+    actor = session.scalar(
+        sa.select(EndUser).where(EndUser.id == end_user_id, EndUser.tenant_id == tenant_id, EndUser.app_id == app_id)
+    )
     if app is None or actor is None:
         raise ConversationAccessDeniedError("Conversation ownership changed")
     if (
         conversation_id is not None
         and session.scalar(
-            sa.select(Conversation.id)
-            .where(Conversation.id == conversation_id, *conversation_owner_scope(app_id, actor))
-            .with_for_update()
+            sa.select(Conversation.id).where(
+                Conversation.id == conversation_id, *conversation_owner_scope(app_id, actor)
+            )
         )
         is None
     ):
