@@ -270,6 +270,7 @@ class AppPackageImportApi(Resource):
                     params,
                     source=source,
                     preserve_agent_bindings=body.preserve_agent_bindings,
+                    refuse_roster_references=not body.preserve_agent_bindings,
                     prepare_dsl=lambda dsl: _prepared_yaml(
                         ctx, mode=ImportMode.YAML_CONTENT, source=dsl, app_id=body.app_id, draft_hash=body.draft_hash
                     ),
