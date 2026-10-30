@@ -7,8 +7,9 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask, g
 from sqlalchemy.orm import Session, scoped_session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden
 
+from controllers.common.errors import UnauthorizedError
 from controllers.service_api import wraps as wraps_module
 from controllers.service_api.wraps import (
     FetchUserArg,
@@ -27,6 +28,7 @@ from models.resource_access_token import (
     ResourceAccessTokenRelation,
     ResourceAccessTokenResourceType,
 )
+from services.api_token_service import ApiTokenInvalidError
 from services.resource_access_token_service import ResourceAccessTokenService
 
 
@@ -171,12 +173,15 @@ def _app_model(*, tenant_id: str, enable_api: bool = True) -> App:
 class TestValidateAndGetApiToken:
     def test_missing_authorization_header(self, app: Flask) -> None:
         with app.test_request_context("/", method="GET"):
-            with pytest.raises(Unauthorized, match="Authorization header must be provided"):
+            with pytest.raises(UnauthorizedError, match="Authorization header must be provided"):
                 validate_and_get_api_token("app")
 
     def test_invalid_auth_scheme(self, app: Flask) -> None:
         with app.test_request_context("/", method="GET", headers={"Authorization": "Basic token123"}):
-            with pytest.raises(Unauthorized, match="Authorization header must be provided and start with 'Bearer'"):
+            with pytest.raises(
+                UnauthorizedError,
+                match="Authorization header must be provided and start with 'Bearer'",
+            ):
                 validate_and_get_api_token("app")
 
     def test_valid_token_returns_api_token(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -196,11 +201,11 @@ class TestValidateAndGetApiToken:
         monkeypatch.setattr(wraps_module.ApiTokenCache, "get", lambda _token, _scope: None)
 
         def reject_token(_token: str, _scope: str | None) -> ApiToken:
-            raise Unauthorized("Access token is invalid")
+            raise ApiTokenInvalidError("Access token is invalid")
 
         monkeypatch.setattr(wraps_module, "fetch_token_with_single_flight", reject_token)
         with app.test_request_context("/", headers={"Authorization": "Bearer invalid_token"}):
-            with pytest.raises(Unauthorized, match="Access token is invalid"):
+            with pytest.raises(UnauthorizedError, match="Access token is invalid"):
                 validate_and_get_api_token("app")
 
 
@@ -210,7 +215,7 @@ class TestValidateAppToken:
         with (
             app.test_request_context("/", headers={"Authorization": f"Bearer{separator}dify_rt_token"}),
             patch.object(wraps_module, "application_services") as services,
-            pytest.raises(Unauthorized),
+            pytest.raises(UnauthorizedError),
         ):
             validate_app_token(lambda: "ok")()
         services.assert_not_called()

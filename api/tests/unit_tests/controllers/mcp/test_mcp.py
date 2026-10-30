@@ -14,13 +14,13 @@ from flask import Flask, Response
 from pydantic import ValidationError
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
+from tests.unit_tests.model_factories import make_end_user
 
 import controllers.mcp.mcp as module
 from models.engine import db
 from models.enums import EndUserType
 from models.model import App, AppAnnotationSetting, AppMCPServer, AppModelConfig, EndUser, IconType
 from models.workflow import Workflow, WorkflowType
-from tests.unit_tests.model_factories import make_end_user
 
 
 @pytest.fixture

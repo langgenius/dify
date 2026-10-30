@@ -1,8 +1,9 @@
 """Membership and invitation behavior across the application/persistence boundary."""
 
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
+from datetime import datetime
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -14,6 +15,7 @@ from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
+from models.human_input_v2 import HumanInputContactIdentity
 from models.model import App
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import AccountNotFoundError
@@ -41,7 +43,11 @@ from services.system_feature_service import SystemFeatureService
 from services.workspace import gateways
 from services.workspace.contracts import (
     OwnerTransferToken,
+    WorkspaceMemberRecord,
     WorkspaceMemberRemoval,
+    WorkspaceMemberRole,
+    WorkspaceMemberRoleSubject,
+    WorkspaceMemberSummary,
 )
 from services.workspace.gateways import (
     DeploymentWorkspaceMemberAccessGateway,
@@ -50,10 +56,11 @@ from services.workspace.gateways import (
 from services.workspace.member_service import (
     OwnerTransferGateway,
     WorkspaceInvitationService,
+    WorkspaceMemberQueryService,
     WorkspaceMemberService,
     WorkspaceOwnerTransferService,
 )
-from tests.unit_tests.account_domain import AccountDomain
+from tests.helpers.unit.account_domain import AccountDomain
 
 
 @pytest.fixture
@@ -1163,3 +1170,208 @@ def test_rbac_owner_lookup_failure_prevents_role_changes(
     assert replace.calls == []
     assert service.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
     assert service.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+
+
+def make_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="actor-1",
+        active_workspace_id="workspace-1",
+    )
+
+
+def make_member(
+    member_id: str,
+    *,
+    status: str = "active",
+    legacy_role: str = "normal",
+) -> WorkspaceMemberRecord:
+    created_at = datetime(2026, 1, 1)
+    return WorkspaceMemberRecord(
+        id=member_id,
+        name=f"Member {member_id}",
+        email=f"{member_id}@example.com",
+        avatar=None,
+        last_login_at=None,
+        last_active_at=created_at,
+        created_at=created_at,
+        status=status,
+        legacy_role=legacy_role,
+    )
+
+
+class RecordingMemberQuery:
+    def __init__(self, records: Sequence[WorkspaceMemberRecord]) -> None:
+        self.records = tuple(records)
+        self.workspace_ids: list[str] = []
+        self.requested_roles: list[TenantAccountRole | None] = []
+
+    def list_for_workspace(
+        self, workspace_id: str, *, role: TenantAccountRole | None = None
+    ) -> Sequence[WorkspaceMemberRecord]:
+        self.workspace_ids.append(workspace_id)
+        self.requested_roles.append(role)
+        return self.records
+
+
+class RecordingRoleResolver:
+    def __init__(self, roles: Mapping[str, Sequence[WorkspaceMemberRole]]) -> None:
+        self.roles = roles
+        self.calls: list[tuple[str, str, tuple[WorkspaceMemberRoleSubject, ...]]] = []
+        self.languages: list[str | None] = []
+
+    def resolve_many(
+        self,
+        workspace_id: str,
+        actor_account_id: str,
+        subjects: Sequence[WorkspaceMemberRoleSubject],
+        *,
+        language: str | None = None,
+    ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
+        self.calls.append((workspace_id, actor_account_id, tuple(subjects)))
+        self.languages.append(language)
+        return self.roles
+
+
+class FailingRoleResolver:
+    def resolve_many(
+        self,
+        workspace_id: str,
+        actor_account_id: str,
+        subjects: Sequence[WorkspaceMemberRoleSubject],
+        *,
+        language: str | None = None,
+    ) -> Mapping[str, Sequence[WorkspaceMemberRole]]:
+        del workspace_id, actor_account_id, subjects, language
+        raise RoleResolutionError
+
+
+class RoleResolutionError(Exception):
+    pass
+
+
+class TestWorkspaceMemberQueryServiceCases:
+    @staticmethod
+    @pytest.mark.parametrize("language", [None, "ja"])
+    def test_list_current_projects_members_and_merges_roles_by_account_id(language: str | None) -> None:
+        active = make_member("active", legacy_role="owner")
+        pending = make_member("pending", status="pending")
+        members = RecordingMemberQuery([active, pending])
+        roles = RecordingRoleResolver(
+            {
+                active.id: [
+                    WorkspaceMemberRole(id="workspace.owner", name="Owner"),
+                    WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+                ]
+            }
+        )
+        service = WorkspaceMemberQueryService(members=members, roles=roles)
+
+        result = service.list_current(make_context(), language=language)
+
+        by_id = {member.id: member for member in result}
+        assert set(by_id) == {"active", "pending"}
+        assert by_id["active"] == WorkspaceMemberSummary(
+            id=active.id,
+            name=active.name,
+            email=active.email,
+            avatar=active.avatar,
+            last_login_at=active.last_login_at,
+            last_active_at=active.last_active_at,
+            created_at=active.created_at,
+            role=active.legacy_role,
+            roles=(
+                WorkspaceMemberRole(id="workspace.owner", name="Owner"),
+                WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+            ),
+            status=active.status,
+        )
+        assert by_id["pending"].status == "pending"
+        assert by_id["pending"].roles == ()
+        assert members.workspace_ids == ["workspace-1"]
+        assert roles.languages == [language]
+        assert roles.calls == [
+            (
+                "workspace-1",
+                "actor-1",
+                (
+                    WorkspaceMemberRoleSubject(account_id=active.id, legacy_role=active.legacy_role),
+                    WorkspaceMemberRoleSubject(account_id=pending.id, legacy_role=pending.legacy_role),
+                ),
+            )
+        ]
+
+    @staticmethod
+    def test_list_current_propagates_role_resolution_failure() -> None:
+        members = RecordingMemberQuery([make_member("member-1")])
+        service = WorkspaceMemberQueryService(members=members, roles=FailingRoleResolver())
+
+        with pytest.raises(RoleResolutionError):
+            service.list_current(make_context())
+
+    @staticmethod
+    @pytest.mark.parametrize("operators_only", [True, False])
+    def test_member_listing_passes_role_filter_to_repository(operators_only: bool) -> None:
+        records = [make_member("operator", legacy_role="dataset_operator")]
+        members = RecordingMemberQuery(records)
+        roles = RecordingRoleResolver({})
+        service = WorkspaceMemberQueryService(members=members, roles=roles)
+
+        assert service.list_members("workspace-1", dataset_operators_only=operators_only) == tuple(records)
+        assert members.workspace_ids == ["workspace-1"]
+        assert members.requested_roles == [TenantAccountRole.DATASET_OPERATOR if operators_only else None]
+        assert roles.calls == []
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("count", "page", "limit", "expected_ids"),
+        [(5, 2, 2, ["2", "3"]), (5, 3, 2, ["4"]), (5, 4, 2, []), (0, 1, 20, [])],
+    )
+    def test_member_page_preserves_total_and_order(count: int, page: int, limit: int, expected_ids: list[str]) -> None:
+        members = RecordingMemberQuery([make_member(str(index)) for index in range(count)])
+        roles = RecordingRoleResolver({})
+        service = WorkspaceMemberQueryService(members=members, roles=roles)
+
+        result = service.list_page(make_context(), page=page, limit=limit)
+
+        assert result.total == count
+        assert [member.id for member in result.members] == expected_ids
+        assert members.workspace_ids == ["workspace-1"]
+        assert roles.calls == []
+
+
+@pytest.mark.parametrize("existing_member", [True, False])
+def test_membership_write_repairs_missing_contact_identity_without_replacing_it(
+    account_domain: AccountDomain,
+    members: tuple[str, str, str],
+    sqlite_session: Session,
+    existing_member: bool,
+) -> None:
+    workspace_id, _, member_id = members
+    if not existing_member:
+        membership = sqlite_session.scalars(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == workspace_id,
+                TenantAccountJoin.account_id == member_id,
+            )
+        ).one()
+        sqlite_session.delete(membership)
+        sqlite_session.commit()
+
+    assert sqlite_session.scalar(select(HumanInputContactIdentity.id)) is None
+    account_domain.workspaces.upsert_member(
+        workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.NORMAL
+    )
+    contact_id = sqlite_session.scalars(
+        select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
+    ).one()
+    account_domain.workspaces.upsert_member(
+        workspace_id=workspace_id, account_id=member_id, role=TenantAccountRole.EDITOR
+    )
+    assert (
+        sqlite_session.scalars(
+            select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == member_id)
+        ).one()
+        == contact_id
+    )

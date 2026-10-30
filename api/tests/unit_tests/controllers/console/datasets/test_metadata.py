@@ -9,6 +9,7 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from flask_restx import Api
+from services.knowledge.resource_scope import DatasetRef
 
 from controllers.common.rbac import DatasetId, RBACPermission
 from controllers.console import api as console_api
@@ -26,10 +27,9 @@ from services.enterprise.rbac_service import RBACService
 from services.errors.base import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataService
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.model_factories import make_account
 
 
 @dataclass(frozen=True)

@@ -12,6 +12,7 @@ from services.knowledge.admission.application import (
     DatasetAdmissionPolicy,
     DatasetAdmissionScopeError,
     DatasetAdmissionService,
+    DatasetApiKeyScope,
 )
 from services.knowledge.admission.limits import KnowledgeApiLimitsGateway, KnowledgeApiPaidPlanRequiredError
 from services.knowledge.dataset_access import DatasetNotFoundError
@@ -25,18 +26,22 @@ class AdmissionStore:
     status: str = "normal"
     owner: str | None = "owner"
     key_exists: bool = True
+    key_restricted: bool = False
     scope_reads: int = 0
     limit_checks: list[tuple[str, bool, tuple[str, ...], bool]] = field(default_factory=list)
 
     def get_api_enabled(self, dataset_ref: DatasetRef) -> bool | None:
         return self.datasets.get(dataset_ref)
 
-    def get_active_scope(self, workspace_id: str, api_key_id: str) -> frozenset[str] | None:
+    def get_active_scope(self, workspace_id: str, api_key_id: str) -> DatasetApiKeyScope | None:
         assert api_key_id == "key"
         self.scope_reads += 1
         if not self.key_exists or workspace_id != "workspace":
             return None
-        return frozenset(self.bindings)
+        return DatasetApiKeyScope(
+            dataset_ids=frozenset(self.bindings),
+            restricted=self.key_restricted or bool(self.bindings),
+        )
 
     def active_owner_id(self, workspace_id: str) -> str | None:
         if workspace_id != "workspace" or self.status != "normal":
@@ -134,6 +139,15 @@ def test_bound_key_cannot_call_unscoped_or_other_dataset_endpoints(dataset_id: s
 
     with pytest.raises(DatasetAdmissionScopeError, match="not authorized"):
         admit(store, dataset_id=dataset_id)
+
+    assert not store.limit_checks
+
+
+def test_key_restricted_only_to_knowledge_fs_cannot_access_legacy_datasets() -> None:
+    store = AdmissionStore(key_restricted=True)
+
+    with pytest.raises(DatasetAdmissionScopeError, match="not authorized"):
+        admit(store, dataset_id="dataset")
 
     assert not store.limit_checks
 

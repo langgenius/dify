@@ -163,7 +163,7 @@ def _invoke_generation(
     harness: _RuntimeHarness,
     *,
     streaming: bool,
-    more_like_this: bool,
+    more_like_this: bool = False,
     app_id: str | None = None,
     account_id: str | None = None,
 ) -> GenerationResponse:
@@ -191,12 +191,10 @@ def _rate_limited_stream(source: Generator[str], rate: _RateLimitExit) -> RateLi
     return RateLimitGenerator(rate_limit=cast(RateLimit, rate), generator=source, request_id="request-1")
 
 
-@pytest.mark.parametrize("more_like_this", [False, True])
 def test_runtime_loads_detached_entities_then_commits_work_and_returns_the_same_mapping(
     harness: _RuntimeHarness,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
-    more_like_this: bool,
 ) -> None:
     response: dict[str, object] = {"answer": "", "metadata": {"tokens": 0}}
 
@@ -204,8 +202,8 @@ def test_runtime_loads_detached_entities_then_commits_work_and_returns_the_same_
         session.execute(update(App).where(App.id == harness.app_id).values(name="Generated app"))
         return response
 
-    _patch_generation(monkeypatch, harness, generate, streaming=False, more_like_this=more_like_this)
-    result = _invoke_generation(harness, streaming=False, more_like_this=more_like_this)
+    _patch_generation(monkeypatch, harness, generate, streaming=False)
+    result = _invoke_generation(harness, streaming=False)
 
     assert result is response
     assert len(harness.closed_sessions) == 2
@@ -303,12 +301,10 @@ def test_more_like_this_serializes_raw_events_and_closes_source(
     assert events == ([] if finish == "close_before_iteration" else ["start", "close"])
 
 
-@pytest.mark.parametrize("more_like_this", [False, True])
 def test_streaming_preparation_errors_raise_eagerly_and_rollback_runtime_writes(
     harness: _RuntimeHarness,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
-    more_like_this: bool,
 ) -> None:
     failure = ValueError("query must be a string")
 
@@ -316,9 +312,9 @@ def test_streaming_preparation_errors_raise_eagerly_and_rollback_runtime_writes(
         session.execute(update(App).where(App.id == harness.app_id).values(name="Uncommitted app"))
         raise failure
 
-    _patch_generation(monkeypatch, harness, generate, streaming=True, more_like_this=more_like_this)
+    _patch_generation(monkeypatch, harness, generate, streaming=True)
     with pytest.raises(ValueError, match="query must be a string") as raised:
-        _invoke_generation(harness, streaming=True, more_like_this=more_like_this)
+        _invoke_generation(harness, streaming=True)
 
     assert raised.value is failure
     assert len(harness.closed_sessions) == 2
@@ -330,9 +326,8 @@ def test_streaming_preparation_errors_raise_eagerly_and_rollback_runtime_writes(
 
 
 @pytest.mark.parametrize("missing", ["app", "account"])
-@pytest.mark.parametrize("more_like_this", [False, True])
 def test_missing_runtime_entities_keep_precise_errors_and_do_not_enter_generation(
-    harness: _RuntimeHarness, monkeypatch: pytest.MonkeyPatch, missing: str, more_like_this: bool
+    harness: _RuntimeHarness, monkeypatch: pytest.MonkeyPatch, missing: str
 ) -> None:
     def unexpected_generation(**_kwargs: object) -> GenerationResponse:
         pytest.fail("Missing app or account must not reach generation")
@@ -344,7 +339,7 @@ def test_missing_runtime_entities_keep_precise_errors_and_do_not_enter_generatio
     error_type = AppDefinitionUnavailableError if missing == "app" else AccountNotFoundError
 
     with pytest.raises(error_type, match=app_id if missing == "app" else account_id):
-        _invoke_generation(harness, app_id=app_id, account_id=account_id, streaming=True, more_like_this=more_like_this)
+        _invoke_generation(harness, app_id=app_id, account_id=account_id, streaming=True)
 
     assert len(harness.closed_sessions) == 1
     assert harness.committed_sessions == []
@@ -352,14 +347,12 @@ def test_missing_runtime_entities_keep_precise_errors_and_do_not_enter_generatio
 
 @pytest.mark.parametrize("failure_phase", ["commit", "session_close"])
 @pytest.mark.parametrize("stream_close_fails", [False, True])
-@pytest.mark.parametrize("more_like_this", [False, True])
 def test_failure_before_stream_handoff_closes_stream_without_masking_primary_error(
     harness: _RuntimeHarness,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     failure_phase: str,
     stream_close_fails: bool,
-    more_like_this: bool,
 ) -> None:
     failure = RuntimeError(f"runtime {failure_phase} failed")
     rate = _RateLimitExit(failure=ValueError("stream close failed") if stream_close_fails else None)
@@ -381,9 +374,9 @@ def test_failure_before_stream_handoff_closes_stream_without_masking_primary_err
             session.info["close_failure"] = failure
         return stream
 
-    _patch_generation(monkeypatch, harness, generate, streaming=True, more_like_this=more_like_this)
+    _patch_generation(monkeypatch, harness, generate, streaming=True)
     with pytest.raises(RuntimeError) as raised:
-        _invoke_generation(harness, streaming=True, more_like_this=more_like_this)
+        _invoke_generation(harness, streaming=True)
 
     assert raised.value is failure
     assert stream.closed is True
@@ -569,7 +562,7 @@ def _seed_chat_conversation(
             app_id=app.id,
             mode=mode,
             name="Existing conversation",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=harness.account_id,
             from_end_user_id=None,

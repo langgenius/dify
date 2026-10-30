@@ -1,25 +1,13 @@
 import type { ParameterExtractorNodeType } from '../types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { act } from '@testing-library/react'
+import { useState } from 'react'
+import { renderWorkflowCanvasHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
-import useConfigVision from '../../../hooks/use-config-vision'
-import useAvailableVarList from '../../_base/hooks/use-available-var-list'
+import { createSingleRunGraphOptions } from '../../__tests__/single-run-graph-options'
 import { ParamType, ReasoningModeType } from '../types'
 import useSingleRunFormParams from '../use-single-run-form-params'
-
-vi.mock('../../../hooks/use-config-vision', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../../_base/hooks/use-available-var-list', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const mockUseConfigVision = vi.mocked(useConfigVision)
-const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
 
 const createData = (
   overrides: Partial<ParameterExtractorNodeType> = {},
@@ -32,7 +20,7 @@ const createData = (
     name: 'gpt-4o',
     mode: 'chat' as const,
     completion_params: {},
-  } as ParameterExtractorNodeType['model'],
+  },
   query: ['node-1', 'query'],
   reasoning_mode: ReasoningModeType.prompt,
   parameters: [
@@ -55,58 +43,33 @@ const createData = (
 })
 
 describe('parameter-extractor/use-single-run-form-params', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    mockUseConfigVision.mockReturnValue({
-      isVisionModel: true,
-    } as ReturnType<typeof useConfigVision>)
-    mockUseAvailableVarList.mockReturnValue({
-      availableVars: [
-        {
-          nodeId: 'node-3',
-          title: 'Vision Source',
-          vars: [
-            {
-              variable: 'image',
-              type: VarType.file,
-            },
-          ],
-        },
-      ],
-    } as unknown as ReturnType<typeof useAvailableVarList>)
-  })
-
   it('builds variable and vision single-run forms and returns dependent vars', () => {
-    const runInputDataRef = {
-      current: { query: 'hello', '#context#': 'ctx', '#files#': ['file-1'] } as Record<
-        string,
-        unknown
-      >,
-    }
-    const setRunInputData = vi.fn((next: Record<string, unknown>) => {
-      runInputDataRef.current = next
-    })
-    const getInputVars = vi.fn<() => InputVar[]>(() => [
+    const getInputVars = (): InputVar[] => [
       {
         label: 'Answer',
         variable: '#node-2.answer#',
         type: InputVarType.textInput,
         required: true,
       },
-    ])
+    ]
 
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'node-1',
-        payload: createData(),
-        runInputData: { query: 'hello', '#context#': 'ctx', '#files#': ['file-1'] },
-        runInputDataRef,
+    const payload = createData()
+    const { result } = renderHook(() => {
+      const [runInputData, setRunInputData] = useState<Record<string, unknown>>({
+        query: 'hello',
+        '#context#': 'ctx',
+        '#files#': ['file-1'],
+      })
+      return useSingleRunFormParams({
+        id: 'current-node',
+        payload,
+        runInputData,
+        runInputDataRef: { current: runInputData },
         getInputVars,
         setRunInputData,
         toVarInputs: () => [],
-      }),
-    )
+      })
+    }, createSingleRunGraphOptions(payload))
 
     expect(result.current.forms).toHaveLength(2)
     expect(result.current.forms[0]!.inputs).toEqual(
@@ -129,19 +92,12 @@ describe('parameter-extractor/use-single-run-form-params', () => {
       },
     ])
 
-    result.current.forms[0]!.onChange({ query: 'updated' })
-    result.current.forms[1]!.onChange({ '#files#': ['file-2'] })
-
-    expect(setRunInputData).toHaveBeenNthCalledWith(1, {
-      query: 'updated',
-      '#context#': 'ctx',
-      '#files#': ['file-1'],
-    })
-    expect(setRunInputData).toHaveBeenNthCalledWith(2, {
-      query: 'updated',
-      '#context#': 'ctx',
-      '#files#': ['file-2'],
-    })
+    act(() => result.current.forms[0]!.onChange({ query: 'updated' }))
+    expect(result.current.forms[0]!.values).toMatchObject({ query: 'updated' })
+    expect(result.current.forms[1]!.values).toEqual({ '#files#': ['file-1'] })
+    act(() => result.current.forms[1]!.onChange({ '#files#': ['file-2'] }))
+    expect(result.current.forms[0]!.values).toMatchObject({ query: 'updated' })
+    expect(result.current.forms[1]!.values).toEqual({ '#files#': ['file-2'] })
     expect(result.current.getDependentVars()).toEqual([
       ['node-1', 'query'],
       ['node-2', 'answer'],
@@ -153,16 +109,19 @@ describe('parameter-extractor/use-single-run-form-params', () => {
   })
 
   it('omits vision inputs and dependencies when vision is disabled', () => {
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'node-1',
-        payload: createData({ instruction: '', vision: { enabled: false } }),
-        runInputData: {},
-        runInputDataRef: { current: {} },
-        getInputVars: () => [],
-        setRunInputData: vi.fn(),
-        toVarInputs: () => [],
-      }),
+    const payload = createData({ instruction: '', vision: { enabled: false } })
+    const { result } = renderHook(
+      () =>
+        useSingleRunFormParams({
+          id: 'current-node',
+          payload,
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          getInputVars: () => [],
+          setRunInputData: vi.fn(),
+          toVarInputs: () => [],
+        }),
+      createSingleRunGraphOptions(payload),
     )
     expect(result.current.forms).toHaveLength(1)
     expect(result.current.forms[0]!.inputs.map((input) => input.variable)).toEqual(['query'])

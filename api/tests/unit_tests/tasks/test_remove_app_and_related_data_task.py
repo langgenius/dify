@@ -42,8 +42,8 @@ from tasks.remove_app_and_related_data_task import (
     _delete_workflow_agent_node_bindings,
     delete_draft_variables_batch,
 )
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_app, make_upload_file
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_app, make_upload_file
 
 
 @dataclass

@@ -79,7 +79,9 @@ class PdfExtractor(BaseExtractor):
                         finally:
                             text_page.close()
 
-                        image_content = self._extract_images(page) if self._image_writer is not None else ""
+                        image_content = ""
+                        if self._image_writer is not None:
+                            image_content = self._extract_images(page, page_number)
                         if image_content:
                             content += "\n" + image_content
 
@@ -90,12 +92,17 @@ class PdfExtractor(BaseExtractor):
             finally:
                 pdf_reader.close()
 
-    def _extract_images(self, page) -> str:
+    def _extract_images(self, page, page_number: int = 0) -> str:
         """
         Extract images from a PDF page and delegate their persistence.
 
+        Each image carries a stable page/object identity. The caller-owned
+        writer combines it with the source identity and content hash when it
+        can safely reuse a previously published image.
+
         Args:
             page: pypdfium2 page object.
+            page_number: Zero-based index of the page within the PDF.
 
         Returns:
             Markdown string containing links to the extracted images.
@@ -107,7 +114,7 @@ class PdfExtractor(BaseExtractor):
 
         try:
             image_objects = page.get_objects(filter=(pdfium_c.FPDF_PAGEOBJ_IMAGE,))
-            for obj in image_objects:
+            for obj_index, obj in enumerate(image_objects):
                 try:
                     # Extract image bytes
                     img_byte_arr = io.BytesIO()
@@ -132,7 +139,12 @@ class PdfExtractor(BaseExtractor):
                         continue
 
                     try:
-                        image = ExtractedImage(content=img_bytes, extension=image_ext, mime_type=mime_type)
+                        image = ExtractedImage(
+                            content=img_bytes,
+                            extension=image_ext,
+                            mime_type=mime_type,
+                            stable_identity=f"p{page_number}_{obj_index}",
+                        )
                         preview_url = self._image_writer.write(image).preview_url
                     except Exception as error:
                         raise _ImageWriteError(str(error)) from error

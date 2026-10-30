@@ -133,6 +133,7 @@ class IndexingEstimateAdapter:
                             files=UploadFileRepository(session_factory=self._session_factory),
                             tenant_id=setting.upload_file.tenant_id,
                             user_id=setting.upload_file.created_by,
+                            source_file_id=setting.upload_file.id,
                             storage_type=dify_config.STORAGE_TYPE,
                             files_url=dify_config.FILES_URL,
                             save_blob=storage.save,

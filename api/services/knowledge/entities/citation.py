@@ -1,3 +1,4 @@
+from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
 from pydantic import BaseModel, JsonValue
 
 from services.knowledge.entities.retrieval import AttachmentInfoDict, Source
@@ -23,6 +24,10 @@ class RetrievalSourceMetadata(BaseModel):
     title: str | None = None
     files: list[AttachmentInfoDict] | None = None
     summary: str | None = None
+    knowledge_fs_citation: KnowledgeFsCitation | None = None
+    document_asset_id: str | None = None
+    document_revision: int | None = None
+    document_version: int | None = None
 
 
 def to_retrieval_source_metadata(source: Source) -> RetrievalSourceMetadata:

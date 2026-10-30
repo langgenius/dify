@@ -23,6 +23,7 @@ from models.model import (
 from models.model import (
     Message as MessageModel,
 )
+from services.knowledge.entities.citation import RetrievalSourceMetadata
 
 type AnyJSONValue = Any
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
@@ -252,6 +253,7 @@ class AgentThought(ResponseModel):
 
 
 class MessageDetail(ResponseModel):
+    retriever_resources: list[RetrievalSourceMetadata] = Field(default_factory=list)
     id: str
     conversation_id: str
     inputs: dict[str, AnyJSONValue]

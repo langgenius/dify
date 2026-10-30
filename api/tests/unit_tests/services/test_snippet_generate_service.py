@@ -25,8 +25,8 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
+from tests.helpers.unit.model_factories import make_account, make_workflow
 from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
-from tests.unit_tests.model_factories import make_account, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

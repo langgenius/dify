@@ -17,7 +17,7 @@ from extensions.application_services.data_sources import build_website_service
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
-from models.enums import IndexingStatus
+from models.enums import DataSourceType, IndexingStatus
 from repositories.knowledge.document_repository import _get_document, _lock_document
 from services.feature_service import FeatureService
 from services.knowledge.entities.resource_scope import DatasetRef
@@ -143,7 +143,7 @@ def sync_website_document_indexing_task(
         if document is None:
             logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
             return
-        if document.data_source_type != "website_crawl":
+        if document.data_source_type != DataSourceType.WEBSITE_CRAWL:
             raise ValueError("Document is not a website document")
         if document.indexing_status not in _SYNC_ACTIVE_STATUSES:
             logger.info(

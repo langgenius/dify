@@ -169,11 +169,11 @@ def _record_trigger_failure_log(
         app_id=workflow.app_id,
         workflow_id=workflow.id,
         type=workflow.type,
-        triggered_from=WorkflowRunTriggeredFrom.PLUGIN.value,
+        triggered_from=WorkflowRunTriggeredFrom.PLUGIN,
         version=workflow.version,
         graph=workflow.graph,
         inputs=json.dumps(failure_inputs),
-        status=WorkflowExecutionStatus.FAILED.value,
+        status=WorkflowExecutionStatus.FAILED,
         outputs="{}",
         error=error_message,
         elapsed_time=0.0,
@@ -181,10 +181,10 @@ def _record_trigger_failure_log(
         total_steps=0,
         created_by_role=created_by_role,
         created_by=created_by,
-        created_at=now,
         finished_at=now,
         exceptions_count=0,
     )
+    workflow_run.created_at = now
     lock_new_workflow_upload_file_references(
         session,
         tenant_id=workflow.tenant_id,

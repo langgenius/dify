@@ -29,7 +29,7 @@ from services.entities.account_entities import (
     AccountSessionTokens,
 )
 from services.errors.workspace import WorkspacesLimitExceededError
-from tests.unit_tests.account_domain import AccountDomain
+from tests.helpers.unit.account_domain import AccountDomain
 
 
 def test_token_gateway_rejects_malformed_payload(

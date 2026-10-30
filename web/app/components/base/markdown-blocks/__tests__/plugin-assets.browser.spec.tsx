@@ -6,11 +6,17 @@ const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>(
 vi.mock('@/service/base', () => ({ request }))
 // Keep the unrelated marketplace image fallback local; all asset bytes still go
 // through the generated Console client and the browser's real image decoder.
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_API_PREFIX:
-    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7#',
-}))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX:
+        'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7#',
+    },
+  }
+})
 
 async function pngResponse(width: number, height: number) {
   const canvas = document.createElement('canvas')

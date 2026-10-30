@@ -31,7 +31,7 @@ from repositories.file.upload_file_repository import (
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.file import UploadFileReferenceNotFoundError
 from services.file_adapters import build_upload_file_reclaimer
-from tests.unit_tests.model_factories import make_account, make_app, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_app, make_upload_file
 
 
 @dataclass(eq=False, repr=False)

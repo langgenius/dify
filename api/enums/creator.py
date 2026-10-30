@@ -7,6 +7,7 @@ from typing import override
 class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
+    DATASET_API_KEY = "dataset_api_key"
 
     @classmethod
     @override

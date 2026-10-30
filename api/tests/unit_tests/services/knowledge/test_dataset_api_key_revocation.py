@@ -19,7 +19,7 @@ from models.model import ApiToken, DatasetApiTokenBinding
 from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from services.api_token_service import ApiTokenCache
-from services.knowledge.admission.application import DatasetAdmissionService
+from services.knowledge.admission.application import DatasetAdmissionService, DatasetApiKeyScope
 from services.knowledge.entities.resource_scope import DatasetRef
 
 WORKSPACE_ID = str(uuid4())
@@ -217,8 +217,12 @@ def test_active_scope_distinguishes_unbound_missing_foreign_and_wrong_type(
 
     repository = DatasetApiKeyRepository(session_factory=sqlite_session_factory)
 
-    assert repository.get_active_scope(WORKSPACE_ID, scoped_id) == frozenset({dataset_id})
-    assert repository.get_active_scope(WORKSPACE_ID, unbound_id) == frozenset()
+    assert repository.get_active_scope(WORKSPACE_ID, scoped_id) == DatasetApiKeyScope(
+        dataset_ids=frozenset({dataset_id}), restricted=True
+    )
+    assert repository.get_active_scope(WORKSPACE_ID, unbound_id) == DatasetApiKeyScope(
+        dataset_ids=frozenset(), restricted=False
+    )
     assert repository.get_active_scope(WORKSPACE_ID, str(uuid4())) is None
     assert repository.get_active_scope(WORKSPACE_ID, foreign_id) is None
     assert repository.get_active_scope(WORKSPACE_ID, wrong_type_id) is None
@@ -394,8 +398,10 @@ def test_dataset_delete_evicts_only_sole_bound_key_after_commit(
     assert keys.get_active_scope(WORKSPACE_ID, sole_id) is None
     multi_scope = keys.get_active_scope(WORKSPACE_ID, multi_id)
     assert multi_scope is not None
-    assert other_dataset_id in multi_scope
-    assert keys.get_active_scope(WORKSPACE_ID, unbound_id) == frozenset()
+    assert other_dataset_id in multi_scope.dataset_ids
+    assert keys.get_active_scope(WORKSPACE_ID, unbound_id) == DatasetApiKeyScope(
+        dataset_ids=frozenset(), restricted=False
+    )
 
 
 def test_dataset_delete_commit_failure_preserves_key_and_never_evicts_cache(

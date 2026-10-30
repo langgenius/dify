@@ -19,7 +19,7 @@ from core.errors.error import (
 )
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
@@ -146,6 +146,8 @@ class DatasetHitTestingGateway:
                 )
 
             model = request.retrieval_model or dataset.retrieval_model or _DEFAULT_RETRIEVAL_MODEL
+            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
+                model = {**model, "search_method": RetrievalMethod.KEYWORD_SEARCH}
             document_filter = None
             has_metadata_matches = True
             conditions = model.get("metadata_filtering_conditions", {})

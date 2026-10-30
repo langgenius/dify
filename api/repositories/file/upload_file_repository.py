@@ -62,6 +62,17 @@ def lock_and_validate_owned_upload_files_in_session(
     return files_by_id
 
 
+def get_upload_files_in_session(
+    session: Session, *, tenant_id: str, upload_file_ids: Sequence[str]
+) -> dict[str, UploadFile]:
+    """Load tenant-scoped rows for an owner transaction that updates file usage."""
+    ids = tuple(dict.fromkeys(str(file_id) for file_id in upload_file_ids))
+    if not ids:
+        return {}
+    files = session.scalars(select(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.id.in_(ids))).all()
+    return {file.id: file for file in files}
+
+
 class UploadFileRepository:
     """Short SQLAlchemy transactions used by the file application service."""
 
@@ -107,6 +118,19 @@ class UploadFileRepository:
                 select(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.id == file_id).limit(1)
             )
             return _to_upload_file_record(file) if file is not None else None
+
+    @staticmethod
+    def get_by_key_in_session(
+        session: Session,
+        *,
+        tenant_id: str,
+        key: str,
+    ) -> UploadFileRecord | None:
+        """Load a tenant-scoped upload by storage key in the caller's transaction."""
+        file = session.scalar(
+            select(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.key == key).limit(1)
+        )
+        return _to_upload_file_record(file) if file is not None else None
 
     def get_files(self, *, tenant_id: str, file_ids: Sequence[str]) -> dict[str, UploadFileRecord]:
         ids = tuple(dict.fromkeys(file_id for file_id in file_ids if file_id))

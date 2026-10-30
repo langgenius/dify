@@ -30,7 +30,7 @@ from tasks.duplicate_document_indexing_task import (
     normal_duplicate_document_indexing_task,
     priority_duplicate_document_indexing_task,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @dataclass

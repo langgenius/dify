@@ -13,9 +13,22 @@ from services.extraction.images import ExtractionImageWriter
 @dataclass
 class _ImageFileStore:
     calls: list[tuple[Session, UploadFileRecord]] = field(default_factory=list)
+    by_key: dict[str, UploadFileRecord] = field(default_factory=dict)
 
     def save_created_upload_file_in_session(self, session: Session, *, file: UploadFileRecord) -> None:
         self.calls.append((session, file))
+        self.by_key[file.key] = file
+
+    def get_by_key_in_session(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        key: str,
+    ) -> UploadFileRecord | None:
+        assert session is not None
+        file = self.by_key.get(key)
+        return file if file is not None and file.tenant_id == tenant_id else None
 
 
 @dataclass
@@ -38,12 +51,14 @@ def _writer(
     files: _ImageFileStore,
     save_blob: _BlobStore,
     artifacts: list[CreatedUploadArtifact],
+    source_file_id: str | None = None,
 ) -> ExtractionImageWriter:
     return ExtractionImageWriter(
         session=session,
         files=files,
         tenant_id="tenant-1",
         user_id="user-1",
+        source_file_id=source_file_id,
         storage_type="local",
         files_url="https://files.example.test/",
         save_blob=save_blob.save,
@@ -92,3 +107,31 @@ def test_writer_keeps_artifact_when_blob_result_is_unknown(sqlite_session: Sessi
     assert tuple(artifacts) == writer.created_upload_artifacts
     assert len(artifacts) == 1
     assert files.calls == []
+
+
+def test_writer_reuses_source_scoped_image_identity(sqlite_session: Session) -> None:
+    files = _ImageFileStore()
+    save_blob = _BlobStore()
+    artifacts: list[CreatedUploadArtifact] = []
+    writer = _writer(
+        session=sqlite_session,
+        files=files,
+        save_blob=save_blob,
+        artifacts=artifacts,
+        source_file_id="source-file-1",
+    )
+    image = ExtractedImage(
+        content=b"image-content",
+        extension="png",
+        mime_type="image/png",
+        stable_identity="p0_2",
+    )
+
+    first = writer.write(image)
+    second = writer.write(image)
+
+    assert first == second
+    assert len(files.calls) == 1
+    assert len(save_blob.calls) == 1
+    assert len(artifacts) == 1
+    assert files.calls[0][1].key.startswith("image_files/tenant-1/source-file-1/p0_2_")

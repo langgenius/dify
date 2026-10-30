@@ -23,6 +23,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from repositories.file.upload_file_repository import UploadFileRepository
+from services.dataset_knowledge_fs_upgrade_file_lease import reserve_upgrade_file_cleanup
 from services.file_adapters import build_upload_file_reclaimer
 from services.file_reference_parser import trusted_upload_file_ids
 from services.knowledge.indexing.adapters.cleanup import (
@@ -43,13 +44,14 @@ def _delete_unreferenced_files_in_session(
     tenant_id: str,
     file_ids: Sequence[str],
 ) -> None:
+    leased_file_ids = reserve_upgrade_file_cleanup(session, file_ids)
     session_maker = session_factory.get_session_maker()
     files = UploadFileRepository(session_factory=session_maker)
     reclaimer = build_upload_file_reclaimer(session_factory=session_maker, files=files)
     reclaimer.delete_unreferenced_files_in_session(
         session,
         tenant_id=tenant_id,
-        file_ids=file_ids,
+        file_ids=(file_id for file_id in file_ids if file_id not in leased_file_ids),
         delete_blob=storage.delete,
     )
 

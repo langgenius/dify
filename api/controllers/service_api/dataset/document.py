@@ -488,6 +488,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 content=upload.content,
                 mimetype=upload.mimetype,
                 settings=settings,
+                attribute_to_dataset_creator=True,
             )
         except Exception as error:
             _raise_document_error(error, unsupported_file_as_invalid_param=True)
@@ -567,6 +568,7 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
                 content=upload.content if upload is not None else None,
                 mimetype=upload.mimetype if upload is not None else None,
                 settings=settings,
+                attribute_to_dataset_creator=True,
             )
         except Exception as error:
             _raise_document_error(error)
@@ -891,6 +893,7 @@ class DocumentApi(DatasetApiResource):
                 content=upload.content if upload is not None else None,
                 mimetype=upload.mimetype if upload is not None else None,
                 settings=settings,
+                attribute_to_dataset_creator=True,
             )
         except Exception as error:
             _raise_document_error(error)

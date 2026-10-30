@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Callable, Generator, Mapping
+from decimal import Decimal
 from typing import cast
 
 from sqlalchemy import select
@@ -35,9 +36,9 @@ from extensions.ext_redis import get_pubsub_broadcast_channel
 from graphon.file import File, FileTransferMethod
 from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
 from libs.datetime_utils import naive_utc_now
-from models import Account
-from models.enums import ConversationFromSource, MessageFileBelongsTo
-from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from models.enums import ConversationFromSource, ConversationStatus, MessageFileBelongsTo
+from models.enums import InvokeFrom as ModelInvokeFrom
+from models.model import App, AppMode, AppModelConfig, Conversation, Message, MessageFile
 from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
@@ -67,7 +68,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-        user: Account | EndUser,
         stream: bool = False,
     ) -> (
         ChatbotAppBlockingResponse
@@ -80,7 +80,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :param conversation: conversation
         :param message: message
-        :param user: user
         :param stream: is stream
         :return:
         """
@@ -206,14 +205,14 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     model_provider=model_provider,
                     model_id=model_id,
                     override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
-                    mode=app_config.app_mode.value,
+                    mode=AppMode(app_config.app_mode.value),
                     name=conversation_name,
-                    inputs=application_generate_entity.inputs,
+                    _inputs=dict(application_generate_entity.inputs),
                     introduction=introduction,
                     system_instruction="",
                     system_instruction_tokens=0,
-                    status="normal",
-                    invoke_from=application_generate_entity.invoke_from.value,
+                    status=ConversationStatus.NORMAL,
+                    invoke_from=ModelInvokeFrom(application_generate_entity.invoke_from.value),
                     from_source=from_source,
                     from_end_user_id=end_user_id,
                     from_account_id=account_id,
@@ -231,21 +230,21 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 conversation_id=conversation.id,
-                inputs=application_generate_entity.inputs,
+                _inputs=dict(application_generate_entity.inputs),
                 query=application_generate_entity.query,
                 message="",
                 message_tokens=0,
-                message_unit_price=0,
-                message_price_unit=0,
+                message_unit_price=Decimal(0),
+                message_price_unit=Decimal(0),
                 answer="",
                 answer_tokens=0,
-                answer_unit_price=0,
-                answer_price_unit=0,
+                answer_unit_price=Decimal(0),
+                answer_price_unit=Decimal(0),
                 parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
                 provider_response_latency=0,
-                total_price=0,
+                total_price=Decimal(0),
                 currency="USD",
-                invoke_from=application_generate_entity.invoke_from.value,
+                invoke_from=ModelInvokeFrom(application_generate_entity.invoke_from.value),
                 from_source=from_source,
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,

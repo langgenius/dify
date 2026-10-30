@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
-from fields.document_fields import DocumentResponse
+from fields.document_fields import DocumentProcessRuleResponse, DocumentResponse, DocumentSourceDetailResponse
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
@@ -69,3 +69,31 @@ def test_document_detail_serializes_after_session_closes(sqlite_session: Session
     assert response["hit_count"] == 3
     assert response["doc_metadata"] == []
     assert response["error"] == "provider unavailable"
+
+
+def test_process_rule_reads_the_legacy_delimiter_as_separator() -> None:
+    rule = DocumentProcessRuleResponse.model_validate(
+        {
+            "mode": "custom",
+            "rules": {
+                "pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}],
+                "segmentation": {"delimiter": "\n\n", "max_tokens": 500},
+            },
+        }
+    )
+
+    assert rule.model_dump(mode="json") == {
+        "mode": "custom",
+        "rules": {
+            "pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}],
+            "segmentation": {"separator": "\n\n", "max_tokens": 500, "chunk_overlap": 0},
+            "parent_mode": None,
+            "subchunk_segmentation": None,
+        },
+    }
+
+
+def test_source_detail_keeps_notion_and_website_source_info() -> None:
+    detail = DocumentSourceDetailResponse.model_validate({"url": "https://example.com", "title": "Example"})
+
+    assert detail.model_dump(mode="json") == {"url": "https://example.com", "title": "Example"}

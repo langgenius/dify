@@ -31,6 +31,7 @@ from repositories.knowledge.document_query_repository import (
     list_dataset_documents,
 )
 from services.app.query_service import RelatedApps
+from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeSnapshotService, upgrade_discovery_response
 from services.enterprise import rbac_service
 from services.feature_service import FeatureService
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -41,6 +42,7 @@ from services.knowledge.datasets.contracts import (
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
@@ -60,7 +62,7 @@ def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
 
 
 def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[str, Any]:
-    result = {
+    result: dict[str, Any] = {
         "id": document.id,
         "indexing_status": document.indexing_status,
         "processing_started_at": document.processing_started_at,
@@ -116,7 +118,11 @@ class SQLAlchemyDatasetOperations:
         return {f"{model.model}:{model.provider.provider}" for model in models}
 
     def list_datasets(
-        self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None, include_own: bool
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        accessible_ids: list[str] | None,
+        include_own: bool,
     ) -> DatasetPage:
         page, limit = clamp_pagination(query.page, query.limit, 100)
         tag_target_ids = (
@@ -171,9 +177,20 @@ class SQLAlchemyDatasetOperations:
                 tenant_id=context.active_workspace_id,
                 dataset_ids=partial_ids,
             )
+            upgrade_jobs = KnowledgeFSUpgradeSnapshotService(self._sessions).get_latest_by_dataset_ids(
+                tenant_id=context.active_workspace_id,
+                dataset_ids=[item["id"] for item in data],
+                session=session,
+            )
+            knowledge_fs_enabled = get_knowledge_fs_features().enabled
             for item in data:
                 _normalize_provider(item)
                 item["partial_member_list"] = list(members.get(item["id"], ()))
+                item["knowledge_fs_upgrade"] = upgrade_discovery_response(
+                    upgrade_jobs.get(item["id"]),
+                    feature_enabled=knowledge_fs_enabled,
+                    dataset_provider=str(item["provider"]),
+                ).model_dump(mode="json")
             return {
                 "data": data,
                 "has_more": not query.ids and page * limit < total,

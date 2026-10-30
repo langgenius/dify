@@ -51,6 +51,7 @@ from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.app.file_input_defaults import grant_file_default_access
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.file_adapters import build_file_service
@@ -555,6 +556,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
+            grant_file_default_access(application_generate_entity.app_config.variables)
             is_first_conversation = conversation is None
 
             if conversation is not None and message is not None:

@@ -44,7 +44,14 @@ def test_extract_images_formats(image_bytes: bytes, expected_mime: str, expected
     result = extractor._extract_images(page)
 
     assert result == "![image](http://files.local/files/image-1/file-preview)"
-    assert writer.calls == [ExtractedImage(content=image_bytes, extension=expected_ext, mime_type=expected_mime)]
+    assert writer.calls == [
+        ExtractedImage(
+            content=image_bytes,
+            extension=expected_ext,
+            mime_type=expected_mime,
+            stable_identity="p0_0",
+        )
+    ]
 
 
 @pytest.mark.parametrize(
@@ -87,7 +94,7 @@ def test_extract_calls_extract_images_and_closes_pdf_resources(monkeypatch: pyte
         patch("core.rag.extractor.pdf_extractor.Blob.from_path", return_value=blob, autospec=True),
     ):
         extractor = pe.PdfExtractor(file_path="test.pdf", image_writer=writer)
-        monkeypatch.setattr(extractor, "_extract_images", lambda _page: "![image](img_url)")
+        monkeypatch.setattr(extractor, "_extract_images", lambda _page, _page_number: "![image](img_url)")
         documents = extractor.extract()
 
     assert documents == [
@@ -110,7 +117,14 @@ def test_extract_images_skips_parser_failure_and_keeps_valid_image() -> None:
     result = extractor._extract_images(page)
 
     assert result == "![image](http://files.local/files/image-1/file-preview)"
-    assert writer.calls == [ExtractedImage(content=jpeg_bytes, extension="jpg", mime_type="image/jpeg")]
+    assert writer.calls == [
+        ExtractedImage(
+            content=jpeg_bytes,
+            extension="jpg",
+            mime_type="image/jpeg",
+            stable_identity="p0_1",
+        )
+    ]
 
 
 def test_image_writer_failure_propagates() -> None:

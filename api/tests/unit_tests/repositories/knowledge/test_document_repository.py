@@ -3,13 +3,15 @@ from datetime import datetime
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.clean_document_task as clean_document_task_module
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from enums.account import TenantAccountRole
 from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
+from models.account import TenantAccountJoin
 from models.dataset import Dataset, DatasetProcessRule, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode
 from models.model import UploadFile
@@ -17,14 +19,16 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from services.knowledge.documents.contracts import (
     DocumentBatchCleanupJob,
     DocumentCleanupJob,
+    DocumentSourceFileNotFoundError,
     DocumentWriteConfig,
     DocumentWriteNotionPage,
     DocumentWriteNotionSource,
+    DocumentWriteProcessRule,
     DocumentWriteSource,
 )
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:
@@ -46,10 +50,10 @@ def _document(
     *,
     workspace_id: str = "workspace-1",
     dataset_id: str = "dataset-1",
-    source_type: str = DataSourceType.NOTION_IMPORT,
+    source_type: DataSourceType = DataSourceType.NOTION_IMPORT,
     enabled: bool = True,
     archived: bool = False,
-    status: str = IndexingStatus.COMPLETED,
+    status: IndexingStatus = IndexingStatus.COMPLETED,
     batch: str = "batch-1",
     doc_metadata: dict[str, object] | None = None,
     pending_file_ids: tuple[str, ...] = (),
@@ -61,7 +65,7 @@ def _document(
     )
     if pending_file_ids:
         source_info["_pending_upload_cleanup_ids"] = list(pending_file_ids)
-    return Document(
+    row = Document(
         id=document_id,
         tenant_id=workspace_id,
         dataset_id=dataset_id,
@@ -72,8 +76,6 @@ def _document(
         name=f"Document {document_id}",
         created_from=DocumentCreatedFrom.API,
         created_by="account-1",
-        created_at=datetime(2026, 1, 1),
-        updated_at=datetime(2026, 1, 1),
         indexing_status=status,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
         word_count=1,
@@ -82,6 +84,9 @@ def _document(
         is_paused=False,
         doc_metadata=doc_metadata,
     )
+    row.created_at = datetime(2026, 1, 1)
+    row.updated_at = datetime(2026, 1, 1)
+    return row
 
 
 def _upload_file(*, key: str) -> UploadFile:
@@ -920,3 +925,176 @@ def test_indexing_transitions_preserve_pause(sqlite_session_factory: sessionmake
         assert persisted_document is not None
         assert persisted_document.error is None
         assert persisted_document.data_source_info_dict["pending_last_edited_time"] == "2026-02-01T00:00:00Z"
+
+
+_CREATION_TENANT_ID = "creation-tenant"
+_CREATION_DATASET_ID = "creation-dataset"
+_CREATION_ACTOR_ID = "creation-actor"
+_CREATION_FILE_ID = "creation-file"
+
+
+def _creation_config(*, file_ids: tuple[str, ...] = (_CREATION_FILE_ID,)) -> DocumentWriteConfig:
+    return DocumentWriteConfig(
+        original_document_id=None,
+        duplicate=False,
+        indexing_technique="economy",
+        data_source=DocumentWriteSource("upload_file", file_ids=file_ids),
+        process_rule=DocumentWriteProcessRule(ProcessRuleMode.AUTOMATIC, None),
+        retrieval_model=None,
+        summary_index_setting=None,
+        doc_form="text_model",
+        doc_language="English",
+        embedding_model=None,
+        embedding_model_provider=None,
+        name=None,
+        is_multimodal=False,
+    )
+
+
+@pytest.fixture
+def creation_factory(sqlite_session_factory: sessionmaker[Session]) -> sessionmaker[Session]:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                make_tenant(tenant_id=_CREATION_TENANT_ID, name="Tenant"),
+                make_account(
+                    account_id=_CREATION_ACTOR_ID,
+                    name="Actor",
+                    email="creation-actor@example.com",
+                ),
+                TenantAccountJoin(
+                    tenant_id=_CREATION_TENANT_ID,
+                    account_id=_CREATION_ACTOR_ID,
+                    role=TenantAccountRole.OWNER,
+                    current=True,
+                ),
+                Dataset(
+                    id=_CREATION_DATASET_ID,
+                    tenant_id=_CREATION_TENANT_ID,
+                    name="Dataset",
+                    created_by=_CREATION_ACTOR_ID,
+                ),
+            ]
+        )
+    return sqlite_session_factory
+
+
+def _assert_no_creation_writes(session: Session) -> None:
+    dataset = session.get_one(Dataset, _CREATION_DATASET_ID)
+    assert dataset.data_source_type is None
+    assert dataset.indexing_technique is None
+    assert session.scalar(select(func.count()).select_from(DatasetProcessRule)) == 0
+    assert session.scalar(select(func.count()).select_from(Document)) == 0
+
+
+def test_empty_upload_file_id_is_rejected_before_creation(creation_factory: sessionmaker[Session]) -> None:
+    repository = SQLAlchemyDocumentRepository(session_factory=creation_factory)
+
+    with pytest.raises(DocumentSourceFileNotFoundError):
+        repository.persist_creation(
+            DatasetRef(_CREATION_TENANT_ID, _CREATION_DATASET_ID),
+            _creation_config(file_ids=("",)),
+            actor_id=_CREATION_ACTOR_ID,
+            initialize=False,
+            created_from=DocumentCreatedFrom.API,
+            priority=False,
+        )
+
+    with creation_factory() as observer:
+        _assert_no_creation_writes(observer)
+
+
+def test_committed_upload_from_another_session_joins_atomic_creation(
+    creation_factory: sessionmaker[Session],
+) -> None:
+    with creation_factory.begin() as uploader:
+        uploader.add(
+            make_upload_file(
+                file_id=_CREATION_FILE_ID,
+                tenant_id=_CREATION_TENANT_ID,
+                name="guide.txt",
+                created_by=_CREATION_ACTOR_ID,
+            )
+        )
+
+    result, jobs = SQLAlchemyDocumentRepository(session_factory=creation_factory).persist_creation(
+        DatasetRef(_CREATION_TENANT_ID, _CREATION_DATASET_ID),
+        _creation_config(),
+        actor_id=_CREATION_ACTOR_ID,
+        initialize=False,
+        created_from=DocumentCreatedFrom.API,
+        priority=False,
+    )
+
+    assert result.batch
+    assert [document.name for document in result.documents] == ["guide.txt"]
+    assert len(jobs.created) == 1
+    with creation_factory() as observer:
+        dataset = observer.get_one(Dataset, _CREATION_DATASET_ID)
+        assert dataset.data_source_type == "upload_file"
+        assert dataset.indexing_technique == "economy"
+        document = observer.scalar(select(Document).where(Document.dataset_id == _CREATION_DATASET_ID))
+        assert document is not None
+        assert document.id == jobs.created[0]
+        assert document.data_source_info_dict == {"upload_file_id": _CREATION_FILE_ID}
+
+
+@pytest.mark.parametrize("file_tenant", [None, "other-tenant"])
+def test_missing_or_foreign_upload_rolls_back_all_creation_writes(
+    creation_factory: sessionmaker[Session],
+    file_tenant: str | None,
+) -> None:
+    if file_tenant is not None:
+        with creation_factory.begin() as uploader:
+            uploader.add(
+                make_upload_file(
+                    file_id=_CREATION_FILE_ID,
+                    tenant_id=file_tenant,
+                    created_by=_CREATION_ACTOR_ID,
+                )
+            )
+
+    with pytest.raises(DocumentSourceFileNotFoundError, match="One or more files not found"):
+        SQLAlchemyDocumentRepository(session_factory=creation_factory).persist_creation(
+            DatasetRef(_CREATION_TENANT_ID, _CREATION_DATASET_ID),
+            _creation_config(),
+            actor_id=_CREATION_ACTOR_ID,
+            initialize=False,
+            created_from=DocumentCreatedFrom.API,
+            priority=False,
+        )
+
+    with creation_factory() as observer:
+        _assert_no_creation_writes(observer)
+
+
+def test_response_materialization_failure_rolls_back_the_creation_transaction(
+    creation_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with creation_factory.begin() as uploader:
+        uploader.add(
+            make_upload_file(
+                file_id=_CREATION_FILE_ID,
+                tenant_id=_CREATION_TENANT_ID,
+                created_by=_CREATION_ACTOR_ID,
+            )
+        )
+
+    def fail_response(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise RuntimeError("response construction failed")
+
+    monkeypatch.setattr("repositories.knowledge.document_repository._created_response", fail_response)
+
+    with pytest.raises(RuntimeError, match="response construction failed"):
+        SQLAlchemyDocumentRepository(session_factory=creation_factory).persist_creation(
+            DatasetRef(_CREATION_TENANT_ID, _CREATION_DATASET_ID),
+            _creation_config(),
+            actor_id=_CREATION_ACTOR_ID,
+            initialize=False,
+            created_from=DocumentCreatedFrom.API,
+            priority=False,
+        )
+
+    with creation_factory() as observer:
+        _assert_no_creation_writes(observer)

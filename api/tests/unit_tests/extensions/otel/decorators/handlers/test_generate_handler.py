@@ -14,7 +14,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @pytest.fixture

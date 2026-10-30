@@ -1,11 +1,11 @@
-"""Agent Soul-backed config assets for skills, files, env, and note text.
+"""Agent Soul-backed config assets for skills, files, env, note, and prompt text.
 
 This service is the single API-side control plane for Agent config assets. It
 resolves the requested config version (published snapshot, shared draft, or
 per-user build draft), reads only from ``AgentSoulConfig.config_skills``,
-``config_files``, ``env.variables``, and ``config_note``, and mutates only the
-target Soul JSON. Source file refs are tenant-scoped rather than user-scoped:
-config writes can be owned by a build-draft Account while the uploaded
+``config_files``, ``env.variables``, ``config_note``, and ``prompt.system_prompt``,
+and mutates only the target Soul JSON. Source file refs are tenant-scoped rather
+than user-scoped: config writes can be owned by a build-draft Account while the uploaded
 ``ToolFile`` came from an end-user execution context. It intentionally does not
 manage object-storage lifecycle: removing or replacing a config asset drops the
 Soul reference only.
@@ -26,7 +26,7 @@ from typing import Literal
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -152,7 +152,11 @@ class ConfigDownloadRequest:
 
 
 class AgentConfigService:
-    """Read and update Agent Soul-backed config assets for one version target."""
+    """Read and update Agent Soul-backed config assets for one version target.
+
+    Mutations lock the parent Agent before the target draft and refresh the
+    locked snapshot. Skill storage and normalization run before these locks.
+    """
 
     PREVIEW_MAX_BYTES = 64 * 1024
 
@@ -613,16 +617,14 @@ class AgentConfigService:
         filename: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with self._session_factory() as session:
-            target = self._resolve_target_in_session(
-                session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                config_version_id=config_version_id,
-                config_version_kind=config_version_kind,
-                user_id=user_id,
-            )
-            self._require_writable(target, surface=surface)
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        self._require_writable(target, surface=surface)
         try:
             skill_ref = self._skill_normalizer.normalize(
                 content=content,
@@ -641,6 +643,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
             agent_soul = target.agent_soul.model_copy(deep=True)
@@ -716,6 +719,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=AgentConfigMutationSurface.CONSOLE)
             session.refresh(target.version, with_for_update=True)
@@ -736,6 +740,53 @@ class AgentConfigService:
             file_ref = self._require_file(agent_soul, name=upload_file.name)
             return {
                 "file": self._serialize_file_item(file_ref),
+                "config_version": self._config_version_payload(target),
+            }
+
+    def push_files_for_console(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        user_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        upload_file_ids: list[str],
+    ) -> dict[str, object]:
+        """Bind a validated batch atomically, replacing same-name files in input order.
+
+        Lock the parent Agent before its draft, as every other draft writer does.
+        Read the snapshot after acquiring both locks so concurrent asset edits survive.
+        Only the batch's effective files are returned; existing unrelated files stay put.
+        """
+        if not upload_file_ids:
+            raise ValueError("upload_file_ids must not be empty")
+
+        with self._session_factory() as session:
+            prepared_files: list[AgentConfigFileRefConfig] = []
+            for file_id in upload_file_ids:
+                upload_file = self._require_console_upload_file_source(session, tenant_id=tenant_id, file_id=file_id)
+                prepared_files = self._upsert_upload_file(current=prepared_files, upload_file=upload_file)
+
+            target = self._resolve_target_in_session(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_version_id=config_version_id,
+                config_version_kind=config_version_kind,
+                user_id=user_id,
+                for_update=True,
+            )
+            self._require_writable(target, surface=AgentConfigMutationSurface.CONSOLE)
+            agent_soul = target.agent_soul.model_copy(deep=True)
+            by_name = {item.name: item for item in agent_soul.config_files}
+            by_name.update((item.name, item) for item in prepared_files)
+            agent_soul.config_files = list(by_name.values())
+            target.version.config_snapshot = agent_soul
+            session.commit()
+            target.agent_soul = agent_soul
+            return {
+                "files": [self._serialize_file_item(file_ref) for file_ref in prepared_files],
                 "config_version": self._config_version_payload(target),
             }
 
@@ -778,9 +829,9 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
-            session.refresh(target.version, with_for_update=True)
             previous_soul_payload = target.agent_soul.model_dump(mode="json")
             agent_soul = target.agent_soul.model_copy(deep=True)
             if payload.files:
@@ -881,6 +932,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
             agent_soul = target.agent_soul.model_copy(deep=True)
@@ -928,6 +980,7 @@ class AgentConfigService:
                 config_version_id=config_version_id,
                 config_version_kind=config_version_kind,
                 user_id=user_id,
+                for_update=True,
             )
             self._require_writable(target, surface=surface)
             agent_soul = target.agent_soul.model_copy(deep=True)
@@ -935,6 +988,57 @@ class AgentConfigService:
             target.version.config_snapshot = agent_soul
             session.commit()
             return {"note": agent_soul.config_note}
+
+    def get_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        user_id: str | None = None,
+    ) -> dict[str, str]:
+        """Read the saved system prompt verbatim, including unexpanded mentions."""
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        return {"prompt": target.agent_soul.prompt.system_prompt}
+
+    def update_prompt(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        user_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        prompt: str,
+    ) -> dict[str, str]:
+        """Replace only the caller's build-draft prompt; an empty string clears it.
+
+        Already-built run requests retain their prompt. Subsequent requests
+        built from this draft use the saved text and resolve its mentions.
+        """
+        with self._session_factory() as session:
+            target = self._resolve_target_in_session(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                config_version_id=config_version_id,
+                config_version_kind=config_version_kind,
+                user_id=user_id,
+                for_update=True,
+            )
+            self._require_writable(target, surface=AgentConfigMutationSurface.AGENT_STUB)
+            agent_soul = target.agent_soul.model_copy(deep=True)
+            agent_soul.prompt.system_prompt = prompt
+            target.version.config_snapshot = agent_soul
+            session.commit()
+            return {"prompt": agent_soul.prompt.system_prompt}
 
     def _resolve_target_in_session(
         self,
@@ -945,29 +1049,26 @@ class AgentConfigService:
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None,
+        for_update: bool = False,
     ) -> AgentConfigTarget:
-        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-        version: AgentConfigSnapshot | AgentConfigDraft | None
+        self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id, for_update=for_update)
+        version_query: Select[tuple[AgentConfigSnapshot]] | Select[tuple[AgentConfigDraft]]
         try:
             match config_version_kind:
                 case AgentConfigVersionKind.SNAPSHOT:
-                    version = session.scalar(
-                        select(AgentConfigSnapshot).where(
-                            AgentConfigSnapshot.tenant_id == tenant_id,
-                            AgentConfigSnapshot.agent_id == agent_id,
-                            AgentConfigSnapshot.id == config_version_id,
-                        )
+                    version_query = select(AgentConfigSnapshot).where(
+                        AgentConfigSnapshot.tenant_id == tenant_id,
+                        AgentConfigSnapshot.agent_id == agent_id,
+                        AgentConfigSnapshot.id == config_version_id,
                     )
                     writable = False
                 case AgentConfigVersionKind.DRAFT:
-                    version = session.scalar(
-                        select(AgentConfigDraft).where(
-                            AgentConfigDraft.tenant_id == tenant_id,
-                            AgentConfigDraft.agent_id == agent_id,
-                            AgentConfigDraft.id == config_version_id,
-                            AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
-                            AgentConfigDraft.account_id.is_(None),
-                        )
+                    version_query = select(AgentConfigDraft).where(
+                        AgentConfigDraft.tenant_id == tenant_id,
+                        AgentConfigDraft.agent_id == agent_id,
+                        AgentConfigDraft.id == config_version_id,
+                        AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                        AgentConfigDraft.account_id.is_(None),
                     )
                     writable = False
                 case AgentConfigVersionKind.BUILD_DRAFT:
@@ -977,18 +1078,23 @@ class AgentConfigService:
                             "user_id is required for build draft config access",
                             status_code=400,
                         )
-                    version = session.scalar(
-                        select(AgentConfigDraft).where(
-                            AgentConfigDraft.tenant_id == tenant_id,
-                            AgentConfigDraft.agent_id == agent_id,
-                            AgentConfigDraft.id == config_version_id,
-                            AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
-                            AgentConfigDraft.account_id == user_id,
-                        )
+                    version_query = select(AgentConfigDraft).where(
+                        AgentConfigDraft.tenant_id == tenant_id,
+                        AgentConfigDraft.agent_id == agent_id,
+                        AgentConfigDraft.id == config_version_id,
+                        AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+                        AgentConfigDraft.account_id == user_id,
                     )
                     writable = True
                 case _:
                     raise AgentConfigServiceError("invalid_config_version_kind", "unsupported config version kind")
+            version_query = version_query.execution_options(autoflush=False)
+            if for_update and config_version_kind != AgentConfigVersionKind.SNAPSHOT:
+                # Re-read under the lock even when this Session already loaded the draft.
+                version_query = version_query.with_for_update().execution_options(
+                    populate_existing=True, autoflush=False
+                )
+            version = session.scalar(version_query)
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
             raise AgentConfigServiceError(
@@ -1013,9 +1119,18 @@ class AgentConfigService:
         )
 
     @staticmethod
-    def _assert_agent_belongs_to_tenant(session: Session, *, tenant_id: str, agent_id: str) -> None:
+    def _assert_agent_belongs_to_tenant(
+        session: Session, *, tenant_id: str, agent_id: str, for_update: bool = False
+    ) -> None:
         try:
-            found = session.scalar(select(Agent.id).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
+            query = (
+                select(Agent)
+                .where(Agent.id == agent_id, Agent.tenant_id == tenant_id)
+                .execution_options(autoflush=False)
+            )
+            if for_update:
+                query = query.with_for_update().execution_options(populate_existing=True, autoflush=False)
+            found = session.scalar(query)
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
             raise AgentConfigServiceError(
@@ -1197,10 +1312,12 @@ class AgentConfigService:
     ) -> ToolFile:
         try:
             tool_file = session.scalar(
-                select(ToolFile).where(
+                select(ToolFile)
+                .where(
                     ToolFile.id == file_id,
                     ToolFile.tenant_id == tenant_id,
                 )
+                .execution_options(autoflush=False)
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
@@ -1219,10 +1336,12 @@ class AgentConfigService:
     def _require_console_upload_file_source(session: Session, *, tenant_id: str, file_id: str) -> UploadFile:
         try:
             upload_file = session.scalar(
-                select(UploadFile).where(
+                select(UploadFile)
+                .where(
                     UploadFile.id == file_id,
                     UploadFile.tenant_id == tenant_id,
                 )
+                .execution_options(autoflush=False)
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
@@ -1243,10 +1362,12 @@ class AgentConfigService:
     def _require_upload_file_source(session: Session, *, tenant_id: str, file_id: str) -> UploadFile:
         try:
             upload_file = session.scalar(
-                select(UploadFile).where(
+                select(UploadFile)
+                .where(
                     UploadFile.id == file_id,
                     UploadFile.tenant_id == tenant_id,
                 )
+                .execution_options(autoflush=False)
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()

@@ -6,6 +6,7 @@ from typing import override
 from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input_v2.shared import AccountId
 from models.account import (
     Account,
     AccountIntegrate,
@@ -18,6 +19,7 @@ from models.account import (
     TenantStatus,
 )
 from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository
 from services.account_email import normalize_email
@@ -198,6 +200,8 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
         account.id = creation.id
         session.add(account)
         session.flush()
+        # Keep the stable Contact identity in the caller's account transaction.
+        SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
         return account
 
     @override

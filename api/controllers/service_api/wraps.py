@@ -12,6 +12,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from controllers.common.access_response import MISSING_BEARER_MESSAGE
+from controllers.common.errors import UnauthorizedError
 from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.service_api.schema import (
     USER_FETCH_FROM_ATTR,
@@ -23,10 +24,17 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
-from models.model import ApiToken
-from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
+from models.model import ApiToken, EndUser
+from services.api_token_service import (
+    ApiTokenCache,
+    ApiTokenInvalidError,
+    CachedApiToken,
+    fetch_token_with_single_flight,
+    record_token_usage,
+)
 from services.app_service import AppService
 from services.auth.resource_access_token_contracts import is_resource_access_token
+from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +70,7 @@ DATASET_TOKEN_AUTH_RESPONSES = {
 }
 
 
-def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
+def document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
     doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
     if fetch_user_arg is not None:
         setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
@@ -129,33 +137,12 @@ def validate_app_token[**P, R](
 
             kwargs["app_model"] = app_model
 
-            # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
-                user_id = None
-                match fetch_user_arg.fetch_from:
-                    case WhereisUserArg.QUERY:
-                        user_id = request.args.get("user")
-                    case WhereisUserArg.JSON:
-                        user_id = request.get_json().get("user")
-                    case WhereisUserArg.FORM:
-                        user_id = request.form.get("user")
-
-                if not user_id and fetch_user_arg.required:
-                    raise ValueError("Arg user must be provided.")
-
-                if user_id:
-                    user_id = str(user_id)
-
-                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
-                    app_model.tenant_id,
-                    app_model.id,
-                    user_id,
+                kwargs["end_user"] = resolve_service_api_end_user(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    fetch_user_arg=fetch_user_arg,
                 )
-                kwargs["end_user"] = end_user
-
-                # Set EndUser as current logged-in user for flask_login.current_user
-                current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
@@ -180,7 +167,7 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
-        _document_app_token_contract(decorated_view, fetch_user_arg)
+        document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
@@ -189,7 +176,39 @@ def validate_app_token[**P, R](
         return decorator(view)
 
 
-def validate_and_get_api_token(scope: str | None = None):
+def resolve_service_api_end_user(*, tenant_id: str, app_id: str, fetch_user_arg: FetchUserArg) -> EndUser:
+    """Provision the requested end user and retain Flask's legacy request identity."""
+    user_id = None
+    match fetch_user_arg.fetch_from:
+        case WhereisUserArg.QUERY:
+            user_id = request.args.get("user")
+        case WhereisUserArg.JSON:
+            user_id = request.get_json().get("user")
+        case WhereisUserArg.FORM:
+            user_id = request.form.get("user")
+
+    if not user_id and fetch_user_arg.required:
+        raise ValueError("Arg user must be provided.")
+    if user_id:
+        user_id = str(user_id)
+
+    end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(tenant_id, app_id, user_id)
+    current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore[attr-defined]
+    user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore[attr-defined]
+    return end_user
+
+
+def check_knowledge_rate_limit(api_token: ApiToken | CachedApiToken) -> None:
+    """Enforce the cloud knowledge request limit for the token's workspace."""
+    if api_token.tenant_id is None:
+        raise UnauthorizedError("Tenant id is required for this token.")
+    try:
+        enforce_knowledge_rate_limit(api_token.tenant_id)
+    except KnowledgeRateLimitExceededError as error:
+        raise Forbidden(str(error)) from error
+
+
+def validate_and_get_api_token(scope: str | None = None) -> ApiToken | CachedApiToken:
     """
     Validate and get API token with Redis caching.
 
@@ -209,17 +228,20 @@ def validate_and_get_api_token(scope: str | None = None):
         logger.debug("Token validation served from cache for scope: %s", scope)
         # Record usage in Redis for later batch update (no Celery task per request)
         record_token_usage(auth_token, scope)
-        return cast(ApiToken, cached_token)
+        return cached_token
 
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
-    return fetch_token_with_single_flight(auth_token, scope)
+    try:
+        return fetch_token_with_single_flight(auth_token, scope)
+    except ApiTokenInvalidError as error:
+        raise UnauthorizedError(str(error)) from error
 
 
 def extract_service_api_bearer_token() -> str:
     auth_token = peek_service_api_bearer_token()
     if auth_token is None:
-        raise Unauthorized(MISSING_BEARER_MESSAGE)
+        raise UnauthorizedError(MISSING_BEARER_MESSAGE)
     return auth_token
 
 

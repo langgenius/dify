@@ -28,7 +28,7 @@ from services.knowledge.indexing.locks import (
     document_index_lock_name,
 )
 from tasks.retry_document_indexing_task import retry_document_indexing_task
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)

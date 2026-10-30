@@ -75,7 +75,12 @@ def process_metadata_filter_func(
 
         case "not contains":
             escaped_value = escape_like_pattern(str(value))
-            filters.append(and_(is_json_string, json_field.notlike(f"%{escaped_value}%", escape="\\")))
+            filters.append(
+                or_(
+                    json_field.is_(None),
+                    and_(is_json_string, json_field.notlike(f"%{escaped_value}%", escape="\\")),
+                )
+            )
 
         case "start with":
             escaped_value = escape_like_pattern(str(value))
@@ -95,9 +100,9 @@ def process_metadata_filter_func(
         case "is not" | "≠":
             match value:
                 case str():
-                    filters.append(and_(is_json_string, json_field != value))
+                    filters.append(or_(json_field.is_(None), and_(is_json_string, json_field != value)))
                 case int() | float():
-                    filters.append(numeric_field != numeric_comparison_value)
+                    filters.append(or_(json_field.is_(None), numeric_field != numeric_comparison_value))
 
         case "empty":
             filters.append(json_field.is_(None))
@@ -130,7 +135,8 @@ def process_metadata_filter_func(
                 filters.append(literal(condition == "not in"))
             else:
                 op = json_field.in_ if condition == "in" else json_field.notin_
-                filters.append(and_(is_json_string, op(value_list)))
+                predicate = and_(is_json_string, op(value_list))
+                filters.append(or_(json_field.is_(None), predicate) if condition == "not in" else predicate)
         case _:
             pass
 

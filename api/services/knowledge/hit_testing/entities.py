@@ -33,6 +33,7 @@ class HitTestingResult:
 class HitTestingDatasetRecord:
     provider: str
     retrieval_model: dict[str, object] | None
+    indexing_technique: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

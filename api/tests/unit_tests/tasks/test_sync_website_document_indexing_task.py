@@ -30,8 +30,8 @@ from services.knowledge.indexing.locks import (
     KnowledgeIndexingLockBusyError,
 )
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_dataset, make_document, make_upload_file
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_dataset, make_document, make_upload_file
 
 MODULE = import_module("tasks.sync_website_document_indexing_task")
 

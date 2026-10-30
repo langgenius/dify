@@ -54,6 +54,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import login_required
 from models.account import (
@@ -719,6 +720,10 @@ class PluginListInstallationsFromIdsApi(Resource):
 class PluginIconApi(Resource):
     @error_responses(PluginOperationError)
     @console_ns.doc(params=query_params_from_model(ParserIcon))
+    @console_ns.doc(
+        produces=["*/*"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["*/*"]},
+    )
     @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @model_validate(ParserIcon)
@@ -736,6 +741,10 @@ class PluginIconApi(Resource):
 class PluginAssetApi(Resource):
     @error_responses(PluginOperationError)
     @console_ns.doc(params=query_params_from_model(ParserAsset))
+    @console_ns.doc(
+        produces=["application/octet-stream"],
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/octet-stream"]},
+    )
     @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required

@@ -45,6 +45,7 @@ from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.app_task_service import AppTaskService
 from services.file_adapters import build_file_service
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
@@ -248,6 +249,7 @@ class _AppRunner:
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,

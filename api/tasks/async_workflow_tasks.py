@@ -33,6 +33,7 @@ from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWo
 from services.errors.app import WorkflowNotFoundError
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow.entities import TriggerData, WorkflowTaskData
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from tasks.app_generate.workflow_execute_task import WorkflowTriggerPublicationError, _resume_app_execution
 
@@ -322,6 +323,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData, *, knowledge_retrieval
                     app_model=app_model,
                     workflow=workflow,
                     user=user,
+                    execution_identity=build_workflow_execution_identity(user),
                     args=_build_generator_args(trigger_data),
                     invoke_from=InvokeFrom.SERVICE_API,
                     streaming=False,

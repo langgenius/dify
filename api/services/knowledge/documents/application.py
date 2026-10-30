@@ -219,6 +219,7 @@ class DocumentRepository(Protocol):
         doc_form: str,
         indexing_technique: str | None,
     ) -> DocumentCreationDataset: ...
+    def resolve_file_document_actor(self, ref: DatasetRef, *, fallback_actor_id: str) -> str: ...
     def persist_creation(
         self,
         ref: DatasetRef,
@@ -433,12 +434,13 @@ class DatasetDocumentApplicationService:
         created_from: DocumentCreatedFrom,
         priority: bool,
         initial_permission: str | None,
+        actor_id: str | None = None,
     ) -> dict[str, Any]:
         try:
             result, jobs = self._documents.persist_creation(
                 ref,
                 config,
-                actor_id=context.account_id,
+                actor_id=actor_id or context.account_id,
                 initialize=initialize,
                 created_from=created_from,
                 priority=priority,
@@ -463,6 +465,7 @@ class DatasetDocumentApplicationService:
         created_from: DocumentCreatedFrom,
         priority: bool,
         initial_permission: str | None = None,
+        actor_id: str | None = None,
     ) -> dict[str, Any]:
         # Resolve actor-selected credentials and source identities before taking
         # the dataset-wide creation lock. Credential refresh may call a remote
@@ -488,6 +491,7 @@ class DatasetDocumentApplicationService:
                     created_from=created_from,
                     priority=priority,
                     initial_permission=initial_permission,
+                    actor_id=actor_id,
                 )
         except KnowledgeIndexingLeaseLostError:
             if write_config.original_document_id:
@@ -504,6 +508,7 @@ class DatasetDocumentApplicationService:
         settings: Mapping[str, Any],
         *,
         created_from: DocumentCreatedFrom,
+        attribute_file_to_dataset_creator: bool = False,
     ) -> dict[str, Any]:
         config = validate_document_creation(KnowledgeConfig.model_validate(settings))
         snapshot = self._documents.get_creation_dataset(
@@ -514,6 +519,11 @@ class DatasetDocumentApplicationService:
         )
         environment = self._creation.load_environment(context.active_workspace_id)
         config = prepare_document_creation(snapshot, config, environment, self._creation)
+        actor_id = (
+            self._documents.resolve_file_document_actor(ref, fallback_actor_id=context.account_id)
+            if attribute_file_to_dataset_creator
+            else context.account_id
+        )
         return self._run_creation(
             context,
             ref,
@@ -521,6 +531,7 @@ class DatasetDocumentApplicationService:
             initialize=False,
             created_from=created_from,
             priority=environment.priority_indexing,
+            actor_id=actor_id,
         )
 
     def create_documents(
@@ -607,6 +618,7 @@ class DatasetDocumentApplicationService:
         content: bytes,
         mimetype: str,
         settings: Mapping[str, Any],
+        attribute_to_dataset_creator: bool = False,
     ) -> dict[str, Any]:
         ref = self._dataset(context, dataset_id)
         defaults = self._creation_defaults(ref)
@@ -627,6 +639,7 @@ class DatasetDocumentApplicationService:
             ref,
             self._with_upload(resolved, upload_id),
             created_from=DocumentCreatedFrom.API,
+            attribute_file_to_dataset_creator=attribute_to_dataset_creator,
         )
 
     def update_by_file(
@@ -639,6 +652,7 @@ class DatasetDocumentApplicationService:
         content: bytes | None,
         mimetype: str | None,
         settings: Mapping[str, Any],
+        attribute_to_dataset_creator: bool = False,
     ) -> dict[str, Any]:
         document_ref, _ = self._document(context, dataset_id, document_id)
         defaults = self._creation_defaults(document_ref.dataset)
@@ -661,6 +675,7 @@ class DatasetDocumentApplicationService:
             document_ref.dataset,
             resolved,
             created_from=DocumentCreatedFrom.API,
+            attribute_file_to_dataset_creator=attribute_to_dataset_creator,
         )
 
     def initialize_dataset(self, context: RequestContext, *, settings: Mapping[str, Any]) -> dict[str, Any]:

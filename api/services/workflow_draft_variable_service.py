@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.system_variables import SystemVariableKey
@@ -44,7 +43,7 @@ from graphon.variables.utils import dumps_with_segments
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
-from models.enums import ConversationFromSource, DraftVariableType
+from models.enums import ConversationFromSource, ConversationStatus, DraftVariableType, InvokeFrom
 from models.utils.file_input_compat import (
     build_file_from_stored_mapping,
     resolve_upload_file_ids_from_serialized_file_value,
@@ -697,11 +696,11 @@ class WorkflowDraftVariableService:
             override_model_configs=None,
             mode=app.mode,
             name="Draft Debugging Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
-            status="normal",
+            status=ConversationStatus.NORMAL,
             invoke_from=InvokeFrom.DEBUGGER,
             from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,

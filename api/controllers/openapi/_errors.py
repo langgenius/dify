@@ -71,9 +71,17 @@ class OpenApiErrorCode(StrEnum):
     MEMBER_LICENSE_EXCEEDED = "member_license_exceeded"
     HUMAN_INPUT_FORM_NOT_FOUND = "form_not_found"
     RECIPIENT_SURFACE_MISMATCH = "recipient_surface_mismatch"
+    KNOWLEDGE_FS_ACCESS_DENIED = "knowledge_fs_access_denied"
+    KNOWLEDGE_FS_CONFLICT = "knowledge_fs_conflict"
+    KNOWLEDGE_FS_INVALID_REQUEST = "knowledge_fs_invalid_request"
+    KNOWLEDGE_FS_REQUEST_REJECTED = "knowledge_fs_request_rejected"
+    KNOWLEDGE_FS_REQUEST_TOO_LARGE = "knowledge_fs_request_too_large"
+    KNOWLEDGE_FS_RESOURCE_NOT_FOUND = "knowledge_fs_resource_not_found"
+    KNOWLEDGE_FS_UNAVAILABLE = "knowledge_fs_unavailable"
     CATALOG_STALE = "catalog_stale"
     TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
     RUN_NOT_FOUND = "run_not_found"
+    RUN_NOT_STOPPABLE = "run_not_stoppable"
     VERSION_NOT_FOUND = "version_not_found"
     VERSION_NOT_RESTORABLE = "version_not_restorable"
     DRAFT_NOT_FOUND = "draft_not_found"
@@ -299,6 +307,48 @@ class RecipientSurfaceMismatch(OpenApiError):  # noqa: N818
     hint = "Action it through its channel (web app or console)."
 
 
+class KnowledgeFsInvalidRequestError(OpenApiError):
+    code = 400
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_INVALID_REQUEST
+    description = "The Agent Knowledge Base request is invalid."
+
+
+class KnowledgeFsAccessDeniedError(OpenApiError):
+    code = 403
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_ACCESS_DENIED
+    description = "Access to this Agent Knowledge Base is denied."
+
+
+class KnowledgeFsResourceNotFoundError(OpenApiError):
+    code = 404
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_RESOURCE_NOT_FOUND
+    description = "The Agent Knowledge Base or entry was not found."
+
+
+class KnowledgeFsConflictError(OpenApiError):
+    code = 409
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_CONFLICT
+    description = "The Agent Knowledge Base request conflicts with the current state."
+
+
+class KnowledgeFsRequestTooLargeError(OpenApiError):
+    code = 413
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_TOO_LARGE
+    description = "The Agent Knowledge Base request exceeds the allowed size."
+
+
+class KnowledgeFsRequestRejectedError(OpenApiError):
+    code = 422
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_REJECTED
+    description = "The Agent Knowledge Base request could not be processed."
+
+
+class KnowledgeFsUnavailableError(OpenApiError):
+    code = 503
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_UNAVAILABLE
+    description = "Agent Knowledge Base is temporarily unavailable."
+
+
 class CatalogStale(OpenApiError):  # noqa: N818
     code = 412
     error_code = OpenApiErrorCode.CATALOG_STALE
@@ -312,10 +362,24 @@ class InvalidFilePart(OpenApiError):  # noqa: N818
     description = "A request part could not be used"
 
 
+class RequestOverRouteLimits(OpenApiError):  # noqa: N818
+    code = 413
+    error_code = OpenApiErrorCode.REQUEST_TOO_LARGE
+    description = "Request is over this route's limits"
+
+
 class RunNotFound(OpenApiError):  # noqa: N818
     code = 404
     error_code = OpenApiErrorCode.RUN_NOT_FOUND
     description = "No run with this id exists for this app."
+
+
+class RunNotStoppable(OpenApiError):  # noqa: N818
+    code = 409
+    error_code = OpenApiErrorCode.RUN_NOT_STOPPABLE
+    description = (
+        "This run has already finished, or it started before runs recorded a stop id; stop it from the console."
+    )
 
 
 class VersionNotFound(OpenApiError):  # noqa: N818

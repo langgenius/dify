@@ -1,8 +1,10 @@
 """Coordinate plugin callbacks into published applications."""
 
+from __future__ import annotations
+
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,7 +15,6 @@ from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.apps.workflow_app_runner import WorkflowRunDriver
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from models import Account, TenantAccountJoin
@@ -27,6 +28,10 @@ from models.model import (
 )
 from models.workflow import Workflow
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+from services.workflow_execution_identity import build_workflow_execution_identity
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 
 class AppScopedEndUserProvisioner(Protocol):
@@ -239,6 +244,7 @@ class PluginAppInvocationService:
             app_model=app,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,

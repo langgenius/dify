@@ -491,6 +491,7 @@ class SQLAlchemySegmentRepository:
                 if items
                 else {}
             )
+            children, attachments = _segment_page_relations(session, document_ref, items)
             return SegmentPageData(
                 items=tuple(
                     _segment_data(
@@ -498,6 +499,8 @@ class SQLAlchemySegmentRepository:
                         summaries[segment.id].summary_content if segment.id in summaries else None,
                         session,
                         file_access[segment.id],
+                        child_chunks=children.get(segment.id, ()),
+                        attachments=attachments.get(segment.id, ()),
                     )
                     for segment in items
                 ),
@@ -1262,8 +1265,67 @@ def _content_file_access(segments: Sequence[DocumentSegment], session: Session) 
     }
 
 
+def _segment_page_relations(
+    session: Session,
+    document_ref: DocumentRef,
+    segments: Sequence[DocumentSegment],
+) -> tuple[dict[str, list[ChildChunk]], dict[str, list[UploadFile]]]:
+    """Load page relations in bounded queries while preserving hierarchical rules."""
+    if not segments:
+        return {}, {}
+    segment_ids = tuple(segment.id for segment in segments)
+    document = session.scalar(
+        select(Document).where(
+            Document.id == document_ref.document_id,
+            Document.dataset_id == document_ref.dataset.dataset_id,
+            Document.tenant_id == document_ref.dataset.tenant_id,
+        )
+    )
+    children: dict[str, list[ChildChunk]] = {}
+    if document is not None and document.dataset_process_rule_id:
+        process_rule = session.scalar(
+            select(DatasetProcessRule).where(
+                DatasetProcessRule.id == document.dataset_process_rule_id,
+                DatasetProcessRule.dataset_id == document_ref.dataset.dataset_id,
+            )
+        )
+        rules = process_rule.rules_dict if process_rule is not None else None
+        if (
+            process_rule is not None
+            and process_rule.mode == "hierarchical"
+            and rules
+            and rules.get("parent_mode")
+            and rules.get("parent_mode") != "full-doc"
+        ):
+            for child in session.scalars(
+                _children_query(document_ref, segment_ids).order_by(ChildChunk.position.asc())
+            ):
+                children.setdefault(child.segment_id, []).append(child)
+
+    attachments: dict[str, list[UploadFile]] = {}
+    for segment_id, upload in session.execute(
+        select(SegmentAttachmentBinding.segment_id, UploadFile)
+        .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+        .where(
+            SegmentAttachmentBinding.tenant_id == document_ref.dataset.tenant_id,
+            SegmentAttachmentBinding.dataset_id == document_ref.dataset.dataset_id,
+            SegmentAttachmentBinding.document_id == document_ref.document_id,
+            SegmentAttachmentBinding.segment_id.in_(segment_ids),
+            UploadFile.tenant_id == document_ref.dataset.tenant_id,
+        )
+    ):
+        attachments.setdefault(segment_id, []).append(upload)
+    return children, attachments
+
+
 def _segment_data(
-    segment: DocumentSegment, summary: str | None, session: Session, file_access: SegmentFileAccess
+    segment: DocumentSegment,
+    summary: str | None,
+    session: Session,
+    file_access: SegmentFileAccess,
+    *,
+    child_chunks: Sequence[ChildChunk] | None = None,
+    attachments: Sequence[UploadFile] | None = None,
 ) -> SegmentReadSnapshot:
     return SegmentReadSnapshot(
         values=asdict(segment),
@@ -1271,9 +1333,19 @@ def _segment_data(
         file_access=file_access,
         child_chunks=tuple(
             ChildChunkRecord.model_validate(child)
-            for child in get_segment_child_chunks(segment, session=session, include_full_doc=False)
+            for child in (
+                child_chunks
+                if child_chunks is not None
+                else get_segment_child_chunks(segment, session=session, include_full_doc=False)
+            )
         ),
         attachments=tuple(
+            SegmentAttachmentFile(file.id, file.name, file.size, file.extension, file.mime_type)
+            for file in attachments
+            if attachments is not None
+        )
+        if attachments is not None
+        else tuple(
             SegmentAttachmentFile(file.id, file.name, file.size, file.extension, file.mime_type)
             for file in get_segment_attachment_files(segment, session=session)
         ),

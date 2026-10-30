@@ -6,9 +6,11 @@ from core.trigger.constants import (
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
 from enums import knowledge
+from enums.creator import CreatorUserRole as _CreatorUserRole
 
 ProcessRuleMode = knowledge.ProcessRuleMode
 DocumentCreatedFrom = knowledge.DocumentCreatedFrom
+CreatorUserRole = _CreatorUserRole
 
 
 class WorkflowRunTriggeredFrom(StrEnum):
@@ -262,6 +264,7 @@ class TidbAuthBindingStatus(StrEnum):
 
     CREATING = "CREATING"
     ACTIVE = "ACTIVE"
+    FAILED = "FAILED"
 
 
 class MessageFileBelongsTo(StrEnum):
@@ -340,6 +343,13 @@ class ApiTokenType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+
+
+class ApiTokenBindingResourceType(StrEnum):
+    """Kind of knowledge base a dataset API key binding row points at."""
+
+    DATASET = "dataset"
+    KNOWLEDGE_FS_SPACE = "knowledge_fs_space"
 
 
 class PermissionEnum(StrEnum):

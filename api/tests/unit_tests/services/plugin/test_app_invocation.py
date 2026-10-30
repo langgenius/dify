@@ -18,7 +18,7 @@ from models.workflow import Workflow
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.plugin.app_invocation import PluginAppInvocationService
 from services.workflow_run_agg import WorkflowRunAgg
-from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_end_user, make_workflow
 
 
 class _Chunk(BaseModel):
@@ -443,7 +443,7 @@ class TestPluginAppInvocationService:
             type=EndUserType.BROWSER,
             session_id="browser-session",
             name="Browser user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -464,7 +464,7 @@ class TestPluginAppInvocationService:
             type=EndUserType.BROWSER,
             session_id="wecom-sender-1",
             name="External user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -482,7 +482,7 @@ class TestPluginAppInvocationService:
             type=EndUserType.BROWSER,
             session_id="browser-session",
             name="Browser user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -499,7 +499,7 @@ class TestPluginAppInvocationService:
             type=EndUserType.BROWSER,
             session_id="other-session",
             name="External user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -543,7 +543,7 @@ class TestPluginAppInvocationService:
             type=EndUserType.BROWSER,
             session_id="uid",
             name="Wrong tenant",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(other_tenant_user)
         self.session.commit()

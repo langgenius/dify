@@ -125,6 +125,7 @@ class WorkspaceMemberStore(Protocol):
         workspace_id: str,
         account_id: str,
         role: TenantAccountRole,
+        actor_account_id: str | None = None,
     ) -> WorkspaceMemberWrite: ...
 
     def remove_member(
@@ -242,6 +243,7 @@ class WorkspaceMemberService:
             workspace_id=workspace_id,
             account_id=account_id,
             role=role,
+            actor_account_id=operator_account_id,
         )
         self._access.membership_changed(membership, operator_account_id)
         return WorkspaceMembership(workspace_id, account_id, role.value)

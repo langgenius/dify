@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from libs.helper import escape_like_pattern
 from models.enums import TagType
+from models.knowledge_fs import KnowledgeFSSpaceTagBinding
 from models.model import App, Tag, TagBinding
 from models.skill import Skill
 from models.snippet import CustomizedSnippet
@@ -147,8 +148,20 @@ class TagRepository(TagStore):
         binding_join = sa.and_(TagBinding.tag_id == Tag.id, TagBinding.tenant_id == workspace_id)
         if target_ids is not None:
             binding_join = sa.and_(binding_join, TagBinding.target_id.in_(target_ids))
+        binding_count: sa.ColumnElement[int] = func.count(TagBinding.id)
+        if tag_type == TagType.KNOWLEDGE.value:
+            knowledge_fs_binding_count = (
+                select(func.count(KnowledgeFSSpaceTagBinding.id))
+                .where(
+                    KnowledgeFSSpaceTagBinding.tag_id == Tag.id,
+                    KnowledgeFSSpaceTagBinding.tenant_id == workspace_id,
+                )
+                .correlate(Tag)
+                .scalar_subquery()
+            )
+            binding_count += knowledge_fs_binding_count
         stmt = (
-            select(Tag.id, Tag.name, Tag.type, func.count(TagBinding.id))
+            select(Tag.id, Tag.name, Tag.type, binding_count.label("binding_count"))
             .outerjoin(TagBinding, binding_join)
             .where(Tag.type == tag_type, Tag.tenant_id == workspace_id)
         )
@@ -256,6 +269,16 @@ class TagRepository(TagStore):
                 )
                 or 0
             )
+            if model.type == TagType.KNOWLEDGE:
+                binding_count += (
+                    session.scalar(
+                        select(func.count(KnowledgeFSSpaceTagBinding.id)).where(
+                            KnowledgeFSSpaceTagBinding.tag_id == tag_id,
+                            KnowledgeFSSpaceTagBinding.tenant_id == workspace_id,
+                        )
+                    )
+                    or 0
+                )
             return self._summary(model, binding_count=binding_count)
 
     @override
@@ -272,6 +295,12 @@ class TagRepository(TagStore):
                 delete(TagBinding).where(
                     TagBinding.tag_id == tag_id,
                     TagBinding.tenant_id == workspace_id,
+                )
+            )
+            session.execute(
+                delete(KnowledgeFSSpaceTagBinding).where(
+                    KnowledgeFSSpaceTagBinding.tag_id == tag_id,
+                    KnowledgeFSSpaceTagBinding.tenant_id == workspace_id,
                 )
             )
             session.delete(model)

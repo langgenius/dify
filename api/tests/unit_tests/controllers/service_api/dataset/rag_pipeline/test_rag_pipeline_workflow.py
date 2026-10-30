@@ -10,9 +10,8 @@ Tests coverage for:
   PipelineRunApi, and KnowledgebasePipelineFileUploadApi
 
 Strategy:
-- Endpoint methods on these resources have no billing decorators on the method
-  itself.  ``method_decorators = [validate_dataset_token]`` is only invoked by
-  Flask-RESTx dispatch, not by direct calls, so we call methods directly.
+- Resource-level Service API admission is applied by Flask-RESTx dispatch, not
+  by direct method calls, so these endpoint tests call methods directly.
 - Dataset ownership checks run against the shared SQLite fixture; pipeline and
   upload responses use real mapped instances while external services stay mocked.
 """

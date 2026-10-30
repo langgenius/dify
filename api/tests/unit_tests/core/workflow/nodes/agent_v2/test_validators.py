@@ -22,7 +22,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.model import UploadFile
 from models.workflow import Workflow
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:
@@ -137,16 +137,13 @@ def _tool_graph(tool_data: dict) -> dict:
     }
 
 
-def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
+def test_historical_agent_version_two_is_not_validated_as_dify_agent(unbound_session: Session) -> None:
     graph = {
         "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
         "edges": [],
     }
-    session = Mock()
 
-    WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=_workflow(graph))
-
-    session.scalar.assert_not_called()
+    WorkflowAgentNodeValidator.validate_published_workflow(session=unbound_session, workflow=_workflow(graph))
 
 
 def _persist_validation_scope(

@@ -73,6 +73,11 @@ def parse_file_reference(reference: str | None) -> FileReference | None:
     if not isinstance(payload, Mapping):
         return None
 
+    if not isinstance(payload, dict):
+        # lenient fallback: a canonical prefix around a non-object payload is
+        # malformed, treat the whole input as the raw record id
+        return FileReference(record_id=reference)
+
     record_id = payload.get("record_id")
     if not isinstance(record_id, str) or not record_id:
         return None

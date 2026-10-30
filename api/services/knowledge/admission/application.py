@@ -25,13 +25,26 @@ class DatasetAdmissionScopeError(DatasetAccessDeniedError):
         Exception.__init__(self, message)
 
 
+@dataclass(frozen=True, slots=True)
+class DatasetApiKeyScope:
+    """Legacy-dataset projection of a key's complete knowledge scope.
+
+    ``restricted`` cannot be derived from ``dataset_ids`` because a key may be
+    restricted exclusively to KnowledgeFS spaces.  Such a key must not become
+    an unrestricted legacy-dataset key merely because this projection is empty.
+    """
+
+    dataset_ids: frozenset[str]
+    restricted: bool
+
+
 class DatasetAdmissionDatasets(Protocol):
     def get_api_enabled(self, dataset_ref: DatasetRef) -> bool | None: ...
 
 
 class DatasetAdmissionKeys(Protocol):
-    def get_active_scope(self, workspace_id: str, api_key_id: str) -> frozenset[str] | None:
-        """None means revoked or foreign; an empty scope means an active unrestricted key."""
+    def get_active_scope(self, workspace_id: str, api_key_id: str) -> DatasetApiKeyScope | None:
+        """None means revoked or foreign; restricted scopes may have no legacy datasets."""
         ...
 
 
@@ -85,10 +98,10 @@ class DatasetAdmissionService:
                 )
         elif api_key_id is not None:
             # Bindings are deliberately read on every request so key edits take effect immediately.
-            bound_ids = self._keys.get_active_scope(workspace_id, api_key_id)
-            if bound_ids is None:
+            key_scope = self._keys.get_active_scope(workspace_id, api_key_id)
+            if key_scope is None:
                 raise DatasetAdmissionIdentityError("The API key no longer exists.")
-            if bound_ids and (dataset_id is None or dataset_id not in bound_ids):
+            if key_scope.restricted and (dataset_id is None or dataset_id not in key_scope.dataset_ids):
                 raise DatasetAdmissionScopeError("The API key is not authorized to access this knowledge base.")
         if dataset_id is not None:
             enabled = self._datasets.get_api_enabled(DatasetRef(workspace_id, dataset_id))

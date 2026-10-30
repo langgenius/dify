@@ -30,6 +30,7 @@ class ExtractedImage:
     content: bytes
     extension: str
     mime_type: str
+    stable_identity: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

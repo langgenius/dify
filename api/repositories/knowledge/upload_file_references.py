@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from libs.datetime_utils import naive_utc_now
 from models.dataset import (
     ChildChunk,
     Dataset,
@@ -13,6 +14,12 @@ from models.dataset import (
     DocumentSegment,
     PipelineCustomizedTemplate,
     SegmentAttachmentBinding,
+)
+from models.knowledge_fs import (
+    KnowledgeFSStagedUpload,
+    KnowledgeFSUpgradeFileLease,
+    KnowledgeFSUpgradeFileLeaseStatus,
+    KnowledgeFSUpgradeJob,
 )
 from repositories.file.reference_queries import candidate_batches, payload_reference_predicate
 from services.entities.upload_file import UploadFileReferenceCandidate
@@ -56,6 +63,37 @@ def get_referenced_upload_file_ids(
             )
         )
         remaining = tuple(candidate for candidate in batch if candidate.id not in referenced)
+        if not remaining:
+            continue
+
+        referenced.update(
+            session.scalars(
+                select(KnowledgeFSStagedUpload.upload_file_id)
+                .where(
+                    KnowledgeFSStagedUpload.tenant_id == tenant_id,
+                    KnowledgeFSStagedUpload.upload_file_id.in_(tuple(candidate.id for candidate in remaining)),
+                )
+                .with_for_update(read=True, nowait=True)
+            )
+        )
+        remaining = tuple(candidate for candidate in remaining if candidate.id not in referenced)
+        if not remaining:
+            continue
+
+        referenced.update(
+            session.scalars(
+                select(KnowledgeFSUpgradeFileLease.old_upload_file_id)
+                .join(KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJob.id == KnowledgeFSUpgradeFileLease.job_id)
+                .where(
+                    KnowledgeFSUpgradeJob.tenant_id == tenant_id,
+                    KnowledgeFSUpgradeFileLease.old_upload_file_id.in_(tuple(candidate.id for candidate in remaining)),
+                    KnowledgeFSUpgradeFileLease.status == KnowledgeFSUpgradeFileLeaseStatus.ACTIVE,
+                    KnowledgeFSUpgradeFileLease.expires_at > naive_utc_now(),
+                )
+                .with_for_update(read=True, nowait=True)
+            )
+        )
+        remaining = tuple(candidate for candidate in remaining if candidate.id not in referenced)
         if not remaining:
             continue
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.dataset import Dataset
 from models.enums import ApiTokenType
-from models.model import ApiToken, DatasetApiTokenBinding
+from models.model import ApiToken
 from repositories.knowledge import dataset_api_key_bindings
 from services.auth.api_key_contracts import (
     ApiKeyLimitExceededError,
@@ -15,28 +15,25 @@ from services.auth.api_key_contracts import (
     ApiKeyRecord,
     ApiKeyResourceNotFoundError,
 )
-from services.knowledge.api_key_service import DatasetApiKeyStore, UnknownDatasetIdsError
+from services.knowledge.admission.application import DatasetApiKeyScope
+from services.knowledge.api_key_service import DatasetApiKeyStore, UnknownDatasetIdsError, UnknownKnowledgeSpaceIdsError
 
 
 class DatasetApiKeyRepository(DatasetApiKeyStore):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def get_active_scope(self, workspace_id: str, api_key_id: str) -> frozenset[str] | None:
+    def get_active_scope(self, workspace_id: str, api_key_id: str) -> DatasetApiKeyScope | None:
         """Read key existence and bindings together; revoked keys never become unrestricted."""
         with self._session_factory() as session:
-            rows = session.execute(
-                select(ApiToken.id, DatasetApiTokenBinding.dataset_id)
-                .outerjoin(DatasetApiTokenBinding, DatasetApiTokenBinding.api_token_id == ApiToken.id)
-                .where(
-                    ApiToken.id == api_key_id,
-                    ApiToken.tenant_id == workspace_id,
-                    ApiToken.type == ApiTokenType.DATASET,
-                )
-            ).all()
-            if not rows:
+            scope = dataset_api_key_bindings.get_active_key_scope(
+                session,
+                api_token_id=api_key_id,
+                tenant_id=workspace_id,
+            )
+            if scope is None:
                 return None
-            return frozenset(dataset_id for _, dataset_id in rows if dataset_id is not None)
+            return DatasetApiKeyScope(dataset_ids=scope.dataset_ids, restricted=scope.restricted)
 
     @override
     def list_keys(self, workspace_id: str, dataset_id: str) -> tuple[ApiKeyRecord, ...]:
@@ -58,18 +55,40 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
         with self._session_factory() as session:
             keys = session.scalars(self._workspace_key_query(workspace_id)).all()
             bindings = dataset_api_key_bindings.list_bindings_by_token(session, (key.id for key in keys))
-            return tuple(self._record(key, tuple(bindings.get(key.id, ()))) for key in keys)
+            return tuple(
+                self._record(key, tuple(scope.dataset_ids), tuple(scope.knowledge_space_ids))
+                for key in keys
+                for scope in (bindings.get(key.id, dataset_api_key_bindings.ApiKeyBindings()),)
+            )
 
     @override
     def create_workspace_key(
-        self, workspace_id: str, dataset_ids: tuple[str, ...], *, max_keys: int, prefix: str
+        self,
+        workspace_id: str,
+        dataset_ids: tuple[str, ...],
+        *,
+        knowledge_space_ids: tuple[str, ...] = (),
+        max_keys: int,
+        prefix: str,
     ) -> ApiKeyRecord:
         with self._session_factory.begin() as session:
             self._lock_workspace(session, workspace_id)
             unknown = dataset_api_key_bindings.find_unknown_dataset_ids(session, list(dataset_ids), workspace_id)
             if unknown:
                 raise UnknownDatasetIdsError(unknown)
-            return self._create_key(session, workspace_id, dataset_ids, max_keys=max_keys, prefix=prefix)
+            unknown_spaces = dataset_api_key_bindings.find_unknown_knowledge_space_ids(
+                session, list(knowledge_space_ids), workspace_id
+            )
+            if unknown_spaces:
+                raise UnknownKnowledgeSpaceIdsError(unknown_spaces)
+            return self._create_key(
+                session,
+                workspace_id,
+                dataset_ids,
+                knowledge_space_ids=knowledge_space_ids,
+                max_keys=max_keys,
+                prefix=prefix,
+            )
 
     @override
     def delete_workspace_key(self, workspace_id: str, key_id: str) -> ApiKeyRecord:
@@ -84,7 +103,14 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
             return record
 
     def _create_key(
-        self, session: Session, workspace_id: str, dataset_ids: tuple[str, ...], *, max_keys: int, prefix: str
+        self,
+        session: Session,
+        workspace_id: str,
+        dataset_ids: tuple[str, ...],
+        *,
+        knowledge_space_ids: tuple[str, ...] = (),
+        max_keys: int,
+        prefix: str,
     ) -> ApiKeyRecord:
         count = session.scalar(select(func.count()).select_from(self._workspace_key_query(workspace_id).subquery()))
         if count is not None and count >= max_keys:
@@ -97,7 +123,8 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
         session.add(key)
         session.flush()
         dataset_api_key_bindings.bind_datasets(session, key.id, dataset_ids)
-        return self._record(key, dataset_ids)
+        dataset_api_key_bindings.bind_knowledge_spaces(session, key.id, knowledge_space_ids)
+        return self._record(key, dataset_ids, knowledge_space_ids)
 
     @staticmethod
     def _lock_workspace(session: Session, workspace_id: str) -> None:
@@ -142,7 +169,7 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
         )
 
     @staticmethod
-    def _record(key: ApiToken, dataset_ids: tuple[str, ...]) -> ApiKeyRecord:
+    def _record(key: ApiToken, dataset_ids: tuple[str, ...], knowledge_space_ids: tuple[str, ...] = ()) -> ApiKeyRecord:
         return ApiKeyRecord(
             id=key.id,
             type=key.type,
@@ -150,4 +177,5 @@ class DatasetApiKeyRepository(DatasetApiKeyStore):
             last_used_at=key.last_used_at,
             created_at=key.created_at,
             dataset_ids=dataset_ids,
+            knowledge_space_ids=knowledge_space_ids,
         )

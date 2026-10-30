@@ -36,6 +36,7 @@ from repositories.file.upload_file_repository import (
     lock_and_validate_owned_upload_files_in_session,
 )
 from repositories.knowledge.dataset_read_repository import (
+    get_dataset_creator,
     get_dataset_doc_form,
     get_latest_dataset_process_rule,
     get_or_create_dataset_collection_binding,
@@ -914,6 +915,20 @@ class SQLAlchemyDocumentRepository:
                 dataset.embedding_model_provider,
             )
 
+    def resolve_file_document_actor(self, ref: DatasetRef, *, fallback_actor_id: str) -> str:
+        """Use the dataset creator while they remain a member; otherwise retain the admitted actor."""
+        with self._session_factory() as session:
+            dataset = _require_dataset(session, ref)
+            creator = get_dataset_creator(dataset, session=session)
+            if creator is not None:
+                creator.set_tenant_id_with_session(ref.tenant_id, session=session)
+                if creator.current_tenant_id == ref.tenant_id:
+                    return creator.id
+            fallback = _require_actor(session, tenant_id=ref.tenant_id, actor_id=fallback_actor_id)
+            if fallback.current_tenant_id != ref.tenant_id:
+                raise DocumentPersistenceDatasetNotFoundError()
+            return fallback.id
+
     def persist_creation(
         self,
         ref: DatasetRef,
@@ -1567,6 +1582,19 @@ class SQLAlchemyDocumentRepository:
             )
             assert dataset is not None
             return dataset, document
+
+    def get_indexing_dataset(self, dataset_ref: DatasetRef) -> Dataset | None:
+        """Detached dataset for index cleanup after the document row may already be gone.
+
+        None means the dataset was deleted too, so dataset cleanup owns its whole index.
+        """
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Dataset).where(
+                    Dataset.id == dataset_ref.dataset_id,
+                    Dataset.tenant_id == dataset_ref.tenant_id,
+                )
+            )
 
     def get_indexing_user(self, ref: DocumentRef) -> Account:
         with self._session_factory() as session:

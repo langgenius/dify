@@ -86,6 +86,11 @@ const clientSchema = {
    */
   NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
   /**
+   * Enable HITL IM, Contacts, V2 editing, migration, and approval entry points.
+   * When disabled, keep legacy V1 workflows available without exposing V2 UI.
+   */
+  NEXT_PUBLIC_ENABLE_HITL_IM: coercedBoolean.default(false),
+  /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
    * Default is false for security reasons to prevent conflicts with regular text
    */
@@ -253,6 +258,10 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
+    NEXT_PUBLIC_ENABLE_HITL_IM: isServer
+      ? // Read at server startup rather than inlining a public env value at build time.
+        Reflect.get(process.env, 'NEXT_PUBLIC_ENABLE_HITL_IM')
+      : getRuntimeEnvFromBody('enableHitlIm'),
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
       : getRuntimeEnvFromBody('enableSingleDollarLatex'),

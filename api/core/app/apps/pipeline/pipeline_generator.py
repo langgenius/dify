@@ -24,7 +24,7 @@ from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineDocumentStore, PipelineRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
@@ -37,6 +37,7 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.workflow.nodes.knowledge_index.protocols import SummaryIndexServiceProtocol
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -45,7 +46,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline, build_built_in_field_values
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import DataSourceType, DocumentCreatedFrom, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.data_source.provider_service import DatasourceProviderService
@@ -175,13 +176,14 @@ class PipelineGenerator(BaseAppGenerator):
                     workspace_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
                 )
+                document_created_from = DocumentCreatedFrom.RAG_PIPELINE
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
                     built_in_field_enabled=dataset.built_in_field_enabled,
                     datasource_type=datasource_type,
                     datasource_info=datasource_info,
-                    created_from="rag-pipeline",
+                    created_from=document_created_from,
                     position=position,
                     account=user,
                     batch=batch,
@@ -209,6 +211,7 @@ class PipelineGenerator(BaseAppGenerator):
                 )
                 session.add(document_pipeline_execution_log)
             application_generate_entity = RagPipelineGenerateEntity(
+                user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,
                 pipeline_config=pipeline_config,
@@ -448,6 +451,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,
@@ -551,6 +555,7 @@ class PipelineGenerator(BaseAppGenerator):
 
         # init application generate entity
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,
@@ -745,11 +750,11 @@ class PipelineGenerator(BaseAppGenerator):
         built_in_field_enabled: bool,
         datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
-        created_from: str,
+        created_from: DocumentCreatedFrom,
         position: int,
         account: Account | EndUser,
         batch: str,
-        document_form: str,
+        document_form: IndexStructureType,
     ):
         match datasource_type:
             case DatasourceProviderType.LOCAL_FILE:
@@ -762,11 +767,12 @@ class PipelineGenerator(BaseAppGenerator):
                 name = datasource_info.get("name", "untitled")
             case _:
                 raise ValueError(f"Unsupported datasource type: {datasource_type}")
+        document_data_source_type: DataSourceType = DataSourceType(datasource_type)
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=position,
-            data_source_type=datasource_type,
+            data_source_type=document_data_source_type,
             data_source_info=json.dumps(datasource_info),
             batch=batch,
             name=name,

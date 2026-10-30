@@ -4,10 +4,13 @@ from itertools import starmap
 from typing import NamedTuple
 
 from celery import shared_task
+from kombu.exceptions import OperationalError as BrokerOperationalError
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.db.session_factory import session_factory as v2_session_factory
+from core.human_input_v2.shared.values import TenantId
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_database import db
@@ -16,7 +19,10 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormExpirationRepository
 from services.human_input_service import HumanInputService
+from services.human_input_v2.form_service import handle_form_timeouts
+from tasks.app_generate.workflow_execute_task import WORKFLOW_BASED_APP_EXECUTION_QUEUE
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +33,45 @@ class _TerminalPause(NamedTuple):
     form_id: str
     status: HumanInputFormStatus
     node_id: str
+
+
+@shared_task(name="human_input_form_timeout.check_and_resume", queue="schedule_executor")
+def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
+    """Recover legacy terminal pauses and fan out independent v2 timeout tasks."""
+    _handle_legacy_human_input_timeouts(limit)
+    _enqueue_human_input_v2_timeouts(limit)
+
+
+def _enqueue_human_input_v2_timeouts(limit: int) -> None:
+    """Discover candidate runs without settling forms in the periodic task."""
+    now = naive_utc_now()
+    with v2_session_factory.create_session() as session:
+        runs = SQLAlchemyFormExpirationRepository(session).list_expired_runs(now=now, limit=limit)
+
+    for run in runs:
+        try:
+            handle_human_input_v2_timeout.apply_async(
+                kwargs={"tenant_id": run.tenant_id, "app_id": run.app_id, "workflow_run_id": run.workflow_run_id}
+            )
+        except BrokerOperationalError:
+            logger.exception(
+                "Failed to enqueue v2 timeout: tenant_id=%s app_id=%s workflow_run_id=%s",
+                run.tenant_id,
+                run.app_id,
+                run.workflow_run_id,
+            )
+
+
+@shared_task(name="human_input_v2_form_timeout.handle", queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
+def handle_human_input_v2_timeout(tenant_id: str, app_id: str, workflow_run_id: str) -> None:
+    """Settle one run using current persisted state, then enqueue resume if due."""
+    logger.info("Handling v2 timeout: tenant_id=%s app_id=%s workflow_run_id=%s", tenant_id, app_id, workflow_run_id)
+    handle_form_timeouts(
+        session_factory=v2_session_factory.get_session_maker(),
+        tenant_id=TenantId(tenant_id),
+        app_id=app_id,
+        workflow_run_id=workflow_run_id,
+    )
 
 
 def _is_global_timeout(form_model: HumanInputForm, global_timeout_seconds: int, *, now) -> bool:
@@ -144,8 +189,7 @@ def _terminal_pauses(
         return tuple(starmap(_TerminalPause, session.execute(statement).tuples()))
 
 
-@shared_task(name="human_input_form_timeout.check_and_resume", queue="schedule_executor")
-def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
+def _handle_legacy_human_input_timeouts(limit: int) -> None:
     """Mark newly expired forms and recover terminal runtime pauses."""
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)

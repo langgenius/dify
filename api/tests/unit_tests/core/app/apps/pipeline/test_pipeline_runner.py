@@ -13,7 +13,6 @@ Primary collaborators include ``PipelineRunner``,
 
 import json
 from collections.abc import Generator
-from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy import event
@@ -24,9 +23,8 @@ import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
-from core.workflow.nodes.knowledge_index.protocols import SummaryIndexServiceProtocol
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.graph import Graph
@@ -37,9 +35,7 @@ from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from services.file_service import UploadFileCreator
-from services.knowledge.retrieval.retrieval import KnowledgeRetriever
-from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -106,6 +102,7 @@ def _persist_scope(
 def _build_app_generate_entity() -> RagPipelineGenerateEntity:
     app_config = PipelineConfig(app_id="pipe", workflow_id="wf", tenant_id="tenant", app_mode=AppMode.RAG_PIPELINE)
     return RagPipelineGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         stream=True,
         app_config=app_config,
@@ -149,9 +146,6 @@ def _build_runner(
         workflow=workflow,
         system_user_id="sys",
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
-        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
-        summary_index_service=create_autospec(SummaryIndexServiceProtocol, instance=True, spec_set=True),
-        files=create_autospec(UploadFileCreator, instance=True, spec_set=True),
     )
 
 

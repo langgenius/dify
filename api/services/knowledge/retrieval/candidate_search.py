@@ -236,7 +236,14 @@ class CandidateSearch:
         if request.metadata_filtering_mode != "disabled" and dataset.provider != "external" and document_filter is None:
             return self._result([], request.top_k, (), {}, LLMUsage.empty_usage())
         model = self._retrieval_model(dataset)
-        top_k = request.top_k if request.top_k > 0 else model.get("top_k") or 4
+        configured_top_k = model.get("top_k", 4)
+        top_k = (
+            request.top_k
+            if request.top_k > 0
+            else configured_top_k
+            if isinstance(configured_top_k, int) and not isinstance(configured_top_k, bool)
+            else 4
+        )
         with measure_time() as timer:
             documents = self._retrieve_dataset(
                 dataset=dataset,
@@ -586,7 +593,11 @@ class CandidateSearch:
         effective_top_k = (
             top_k
             if override_top_k or dataset.indexing_technique == IndexTechniqueType.ECONOMY
-            else model.get("top_k") or 4
+            else (
+                configured
+                if isinstance(configured := model.get("top_k", 4), int) and not isinstance(configured, bool)
+                else 4
+            )
         )
         physical_document_ids = (
             list(document_filter.physical_document_ids)

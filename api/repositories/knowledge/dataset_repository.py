@@ -373,6 +373,7 @@ class SQLAlchemyDatasetRepository:
             return HitTestingDatasetRecord(
                 provider=str(dataset.provider),
                 retrieval_model=dict(dataset.retrieval_model) if dataset.retrieval_model else None,
+                indexing_technique=str(dataset.indexing_technique) if dataset.indexing_technique else None,
             )
 
     def record_hit_testing_query(self, actor_id: str, ref: DatasetRef, content: str) -> None:

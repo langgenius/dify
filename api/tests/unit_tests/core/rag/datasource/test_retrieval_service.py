@@ -1,0 +1,1701 @@
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from uuid import uuid4
+
+import pytest
+from flask import Flask
+from pytest_mock import MockerFixture
+from sqlalchemy import select
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+    get_current_file_access_scope,
+)
+from core.rag.datasource import retrieval_service as retrieval_service_module
+from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.query_type import QueryType
+from core.rag.models.document import Document
+from core.rag.rerank.rerank_type import RerankMode
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from enums.creator import CreatorUserRole
+from extensions.storage.storage_type import StorageType
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    DocumentSegment,
+    DocumentSegmentSummary,
+    SegmentAttachmentBinding,
+)
+from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.model import UploadFile
+
+
+@dataclass
+class _RecordingDataPostProcessor:
+    result: list[Document]
+    calls: list[tuple[str, list[Document], float | None, int | None, QueryType]] = field(default_factory=list)
+    rerank_runner: object = field(default_factory=object)
+
+    def invoke(
+        self,
+        *,
+        query: str,
+        documents: list[Document],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
+    ) -> list[Document]:
+        self.calls.append((query, documents, score_threshold, top_n, query_type))
+        return self.result
+
+
+def create_mock_document(
+    content: str,
+    doc_id: str,
+    score: float = 0.8,
+    provider: str = "dify",
+    additional_metadata: dict[str, Any] | None = None,
+) -> Document:
+    """
+    Create a mock Document object for testing.
+
+    This helper function standardizes document creation across tests,
+    ensuring consistent structure and reducing code duplication.
+
+    Args:
+        content: The text content of the document
+        doc_id: Unique identifier for the document chunk
+        score: Relevance score (0.0 to 1.0)
+        provider: Document provider ("dify" or "external")
+        additional_metadata: Optional extra metadata fields
+
+    Returns:
+        Document: A properly structured Document object
+
+    Example:
+        >>> doc = create_mock_document("Python is great", "doc1", score=0.95)
+        >>> assert doc.metadata["score"] == 0.95
+    """
+    metadata = {
+        "doc_id": doc_id,
+        "document_id": str(uuid4()),
+        "dataset_id": str(uuid4()),
+        "score": score,
+    }
+
+    # Merge additional metadata if provided
+    if additional_metadata:
+        metadata.update(additional_metadata)
+
+    return Document(
+        page_content=content,
+        metadata=metadata,
+        provider=provider,
+    )
+
+
+class _ImmediateFuture:
+    def __init__(self, exception: Exception | None = None) -> None:
+        self._exception = exception
+        self.cancel_called = False
+
+    def result(self) -> None:
+        if self._exception is not None:
+            raise self._exception
+
+    def cancel(self) -> None:
+        self.cancel_called = True
+
+
+class _ImmediateExecutor:
+    def __init__(self) -> None:
+        self.futures: list[_ImmediateFuture] = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def submit(self, fn, *args, **kwargs):
+        try:
+            fn(*args, **kwargs)
+            future = _ImmediateFuture()
+        except Exception as exc:  # pragma: no cover - only for defensive parity with Future semantics
+            future = _ImmediateFuture(exc)
+        self.futures.append(future)
+        return future
+
+
+def _dataset(*, dataset_id: str = "dataset-id", tenant_id: str = "tenant-id") -> Dataset:
+    return Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Dataset",
+        description="",
+        created_by="user-id",
+        is_multimodal=False,
+        chunk_structure=IndexStructureType.PARENT_CHILD_INDEX,
+    )
+
+
+def _dataset_document(*, document_id: str, doc_form: str) -> DatasetDocument:
+    return DatasetDocument(
+        id=document_id,
+        tenant_id="tenant-id",
+        dataset_id="dataset-id",
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch",
+        name=document_id,
+        created_from=DocumentCreatedFrom.API,
+        created_by="user-id",
+        doc_form=doc_form,
+    )
+
+
+def _segment(*, segment_id: str, document_id: str, index_node_id: str) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id="tenant-id",
+        dataset_id="dataset-id",
+        document_id=document_id,
+        position=1,
+        content=f"content-{segment_id}",
+        word_count=1,
+        tokens=1,
+        created_by="user-id",
+        index_node_id=index_node_id,
+        status=SegmentStatus.COMPLETED,
+    )
+    segment.id = segment_id
+    return segment
+
+
+def _upload_file(
+    *,
+    file_id: str,
+    tenant_id: str = "tenant-id",
+    name: str | None = None,
+    extension: str = "png",
+    mime_type: str | None = None,
+    size: int = 42,
+) -> UploadFile:
+    upload = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"files/{file_id}",
+        name=name or file_id,
+        size=size,
+        extension=extension,
+        mime_type=mime_type or f"image/{extension}",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-id",
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    upload.id = file_id
+    return upload
+
+
+@dataclass(eq=False, repr=False)
+class _SimpleRetrievalChildChunk:
+    id: str
+    content: str
+    score: float
+    position: int
+
+
+class _SimpleRetrievalSegment:
+    def __init__(
+        self,
+        segment,
+        child_chunks: list[_SimpleRetrievalChildChunk] | None = None,
+        score: float | None = None,
+        files: list[dict[str, str | int]] | None = None,
+        summary: str | None = None,
+    ) -> None:
+        self.segment = segment
+        self.child_chunks = child_chunks
+        self.score = score
+        self.files = files
+        self.summary = summary
+
+
+class TestRetrievalServiceInternals:
+    @pytest.fixture
+    def internal_dataset(self) -> Dataset:
+        return _dataset()
+
+    @pytest.fixture
+    def internal_flask_app(self):
+        app = MagicMock()
+        app.app_context.return_value.__enter__ = Mock()
+        app.app_context.return_value.__exit__.return_value = False
+        return app
+
+    @pytest.fixture
+    def vector_engine(self, mocker: MockerFixture, sqlite_engine: Engine) -> Engine:
+        mocker.patch.object(
+            type(retrieval_service_module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine
+        )
+        return sqlite_engine
+
+    def test_retrieve_with_attachment_ids_only(self, monkeypatch: pytest.MonkeyPatch, internal_dataset):
+        with (
+            patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", return_value=internal_dataset),
+            patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve") as mock_retrieve,
+        ):
+            executor = _ImmediateExecutor()
+            monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+            monkeypatch.setattr(
+                retrieval_service_module.concurrent.futures,
+                "as_completed",
+                lambda futures, timeout=None: iter(futures),
+            )
+
+            def side_effect(
+                flask_app,
+                retrieval_method,
+                dataset,
+                all_documents,
+                exceptions,
+                query=None,
+                top_k=4,
+                score_threshold=0.0,
+                reranking_model=None,
+                reranking_mode="reranking_model",
+                weights=None,
+                document_ids_filter=None,
+                allowed_document_ids_filter=None,
+                attachment_id=None,
+            ):
+                all_documents.append(create_mock_document(f"content-{attachment_id}", attachment_id or "none", 0.9))
+
+            mock_retrieve.side_effect = side_effect
+
+            results = RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset_id=internal_dataset.id,
+                query="",
+                attachment_ids=["att-1", "att-2"],
+            )
+
+        assert len(results) == 2
+        assert {doc.metadata["doc_id"] for doc in results} == {"att-1", "att-2"}
+        assert mock_retrieve.call_count == 2
+
+    def test_retrieve_applies_one_top_k_after_merging_text_and_images(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset
+    ) -> None:
+        result_groups = {
+            "text": [
+                create_mock_document("text-a", "a", 0.4),
+                create_mock_document("text-b", "b", 0.3),
+                create_mock_document("text-c", "c", 0.2),
+                create_mock_document("text-d", "d", 0.1),
+            ],
+            "image-1": [
+                create_mock_document("image-1-a", "a", 0.5),
+                create_mock_document("image-1-b", "b", 0.6),
+                create_mock_document("image-1-c", "c", 0.7),
+                create_mock_document("image-1-d", "d", 0.8),
+            ],
+            "image-2": [
+                create_mock_document(
+                    "image-2-a",
+                    "a",
+                    0.9,
+                    additional_metadata={"_retrieval_allowed_document_ids": ("provider-owned",)},
+                ),
+                create_mock_document("image-2-b", "b", 0.85),
+                create_mock_document("image-2-c", "c", 0.75),
+                create_mock_document("image-2-d", "d", 0.65),
+            ],
+        }
+        produced_count = 0
+
+        monkeypatch.setattr(
+            RetrievalService,
+            "_get_dataset",
+            classmethod(lambda cls, dataset_id: internal_dataset),
+        )
+
+        def retrieve_modality(
+            self,
+            *,
+            all_documents: list[Document],
+            query: str | None = None,
+            attachment_id: str | None = None,
+            **kwargs,
+        ) -> None:
+            nonlocal produced_count
+            group = result_groups[attachment_id or "text"]
+            produced_count += len(group)
+            all_documents.extend(group)
+
+        monkeypatch.setattr(RetrievalService, "_retrieve", retrieve_modality)
+
+        app = Flask(__name__)
+        with app.app_context():
+            results = RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset_id=internal_dataset.id,
+                query="query",
+                attachment_ids=["image-1", "image-2"],
+                top_k=4,
+            )
+
+        assert produced_count == 12
+        assert [(document.metadata["doc_id"], document.metadata["score"]) for document in results] == [
+            ("a", 0.9),
+            ("b", 0.85),
+            ("d", 0.8),
+            ("c", 0.75),
+        ]
+        assert all("_retrieval_allowed_document_ids" not in document.metadata for document in results)
+
+    def test_retrieve_does_not_add_an_unfiltered_pool_for_legacy_attachment_metadata(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset: Dataset
+    ) -> None:
+        internal_dataset.is_multimodal = True
+        legacy_attachment = Document(
+            page_content="legacy attachment",
+            metadata={
+                "document_id": "deleted-owner-a",
+                "doc_id": "shared-file-f",
+                "doc_type": DocType.IMAGE,
+                "score": 0.8,
+            },
+        )
+        allowed_body = Document(
+            page_content="allowed body",
+            metadata={"document_id": "document-b", "doc_id": "node-b", "score": 0.7},
+        )
+        disallowed_body = Document(
+            page_content="disallowed body",
+            metadata={"document_id": "document-c", "doc_id": "node-c", "score": 0.9},
+        )
+        provider_documents = [legacy_attachment, allowed_body, disallowed_body]
+        observed_filters: list[tuple[str, ...] | None] = []
+
+        def retrieve_with_provider_filter(
+            self,
+            *,
+            all_documents: list[Document],
+            document_ids_filter: list[str] | None,
+            **_kwargs,
+        ) -> None:
+            filter_values = tuple(document_ids_filter) if document_ids_filter is not None else None
+            observed_filters.append(filter_values)
+            all_documents.extend(
+                document.model_copy(deep=True)
+                for document in provider_documents
+                if filter_values is None or document.metadata["document_id"] in filter_values
+            )
+
+        monkeypatch.setattr(RetrievalService, "_get_dataset", classmethod(lambda cls, dataset_id: internal_dataset))
+        monkeypatch.setattr(RetrievalService, "_retrieve", retrieve_with_provider_filter)
+        monkeypatch.setattr(
+            retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: _ImmediateExecutor()
+        )
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+
+        app = Flask(__name__)
+        with app.app_context():
+            results = RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset_id=internal_dataset.id,
+                query="query",
+                document_ids_filter=["document-b", "shared-file-f"],
+                allowed_document_ids_filter=("document-b",),
+                top_k=2,
+            )
+
+        assert observed_filters == [("document-b", "shared-file-f")]
+        assert {document.metadata["doc_id"] for document in results} == {"node-b"}
+        assert all(document.metadata["_retrieval_source_dataset_id"] == internal_dataset.id for document in results)
+        assert all(document.metadata["_retrieval_allowed_document_ids"] == ("document-b",) for document in results)
+
+    def test_retrieve_deduplicates_cross_modal_hits_by_provider_and_keeps_the_highest_score(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset
+    ) -> None:
+        result_groups = {
+            "text": [
+                create_mock_document("text-shared", "shared", 0.4),
+                create_mock_document("text-best", "text-best", 0.89),
+            ],
+            "image-1": [
+                create_mock_document("image-shared", "shared", 0.99),
+                create_mock_document("image-other", "image-other", 0.94),
+            ],
+            "image-2": [create_mock_document("external-shared", "shared", 0.97, provider="external")],
+        }
+
+        monkeypatch.setattr(
+            RetrievalService,
+            "_get_dataset",
+            classmethod(lambda cls, dataset_id: internal_dataset),
+        )
+
+        def retrieve_modality(
+            self,
+            *,
+            all_documents: list[Document],
+            query: str | None = None,
+            attachment_id: str | None = None,
+            **kwargs,
+        ) -> None:
+            all_documents.extend(result_groups[attachment_id or "text"])
+
+        monkeypatch.setattr(RetrievalService, "_retrieve", retrieve_modality)
+
+        app = Flask(__name__)
+        with app.app_context():
+            results = RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset_id=internal_dataset.id,
+                query="query",
+                attachment_ids=["image-1", "image-2"],
+                top_k=3,
+            )
+
+        assert [
+            (document.provider, document.metadata["doc_id"], document.metadata["score"]) for document in results
+        ] == [
+            ("dify", "shared", 0.99),
+            ("external", "shared", 0.97),
+            ("dify", "image-other", 0.94),
+            ("dify", "text-best", 0.89),
+        ]
+
+    def test_retrieve_preserves_query_candidates_until_persisted_eligibility(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset
+    ) -> None:
+        stale_high = create_mock_document("stale high", "stale", 0.99)
+        current_low = create_mock_document("current low", "current", 0.4)
+
+        monkeypatch.setattr(
+            RetrievalService,
+            "_get_dataset",
+            classmethod(lambda cls, dataset_id: internal_dataset),
+        )
+
+        def retrieve_query(self, *, all_documents: list[Document], **kwargs) -> None:
+            all_documents.extend([current_low, stale_high])
+
+        monkeypatch.setattr(RetrievalService, "_retrieve", retrieve_query)
+
+        app = Flask(__name__)
+        with app.app_context():
+            results = RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset_id=internal_dataset.id,
+                query="query",
+                top_k=1,
+            )
+
+        assert results == [stale_high, current_low]
+
+    def test_retrieve_propagates_unexpected_worker_failure(self, monkeypatch: pytest.MonkeyPatch, internal_dataset):
+        app = Flask(__name__)
+
+        monkeypatch.setattr(
+            RetrievalService,
+            "_get_dataset",
+            classmethod(lambda cls, dataset_id: internal_dataset),
+        )
+
+        def fail_retrieve(self, **kwargs):
+            raise RuntimeError("retrieval worker failed")
+
+        monkeypatch.setattr(RetrievalService, "_retrieve", fail_retrieve)
+
+        with app.app_context(), pytest.raises(RuntimeError, match="retrieval worker failed"):
+            RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset_id=internal_dataset.id,
+                query="query",
+            )
+
+    def test_get_dataset_queries_by_id(self, mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+        expected_dataset = _dataset(dataset_id="dataset-123")
+        sqlite_session.add(expected_dataset)
+        sqlite_session.commit()
+        mocker.patch.object(
+            type(retrieval_service_module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine
+        )
+
+        result = RetrievalService._get_dataset("dataset-123")
+
+        assert result is not None
+        assert result.id == expected_dataset.id
+        assert result.tenant_id == expected_dataset.tenant_id
+
+    @patch("core.rag.datasource.retrieval_service.Keyword")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_keyword_search_success(
+        self, mock_get_dataset, mock_keyword_class, internal_dataset, internal_flask_app, vector_engine
+    ):
+        mock_get_dataset.return_value = internal_dataset
+        keyword_instance = Mock()
+        keyword_instance.search.return_value = [create_mock_document("keyword-content", "kw-1", 0.91)]
+        mock_keyword_class.return_value = keyword_instance
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+        RetrievalService.keyword_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query='query "with quotes"',
+            top_k=5,
+            all_documents=all_documents,
+            exceptions=exceptions,
+        )
+
+        assert len(all_documents) == 1
+        assert exceptions == []
+        keyword_instance.search.assert_called_once()
+        used_session = keyword_instance.search.call_args.kwargs["session"]
+        assert isinstance(used_session, Session)
+        assert used_session.bind is vector_engine
+
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_keyword_search_appends_exception_when_dataset_missing(self, mock_get_dataset, internal_flask_app):
+        mock_get_dataset.return_value = None
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.keyword_search(
+            flask_app=internal_flask_app,
+            dataset_id="dataset-id",
+            query="query",
+            top_k=2,
+            all_documents=all_documents,
+            exceptions=exceptions,
+        )
+
+        assert all_documents == []
+        assert exceptions == ["dataset not found"]
+
+    @patch("core.rag.datasource.retrieval_service.Keyword")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_keyword_search_appends_exception_when_search_fails(
+        self, mock_get_dataset, mock_keyword_class, internal_dataset, internal_flask_app, vector_engine
+    ):
+        mock_get_dataset.return_value = internal_dataset
+        keyword_instance = Mock()
+        keyword_instance.search.side_effect = RuntimeError("keyword failed")
+        mock_keyword_class.return_value = keyword_instance
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+        RetrievalService.keyword_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=2,
+            all_documents=all_documents,
+            exceptions=exceptions,
+        )
+
+        assert all_documents == []
+        assert exceptions == ["keyword failed"]
+        used_session = keyword_instance.search.call_args.kwargs["session"]
+        assert isinstance(used_session, Session)
+        assert used_session.bind is vector_engine
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_embedding_search_text_without_reranking(
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
+    ):
+        internal_dataset.is_multimodal = False
+        mock_get_dataset.return_value = internal_dataset
+        vector_instance = Mock()
+
+        def search_after_route_session_close(*_args, **_kwargs):
+            route_session = mock_vector_class.resolve_vector_type.call_args.kwargs["session"]
+            assert route_session.get_transaction() is None
+            return [create_mock_document("vector-content", "vec-1", 0.7)]
+
+        vector_instance.search_by_vector.side_effect = search_after_route_session_close
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.embedding_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.5,
+            reranking_model=None,
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=exceptions,
+            document_ids_filter=["doc-1"],
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        assert len(all_documents) == 1
+        assert exceptions == []
+        route_session = mock_vector_class.resolve_vector_type.call_args.kwargs["session"]
+        assert isinstance(route_session, Session)
+        assert route_session.bind is vector_engine
+        assert route_session.get_transaction() is None
+        mock_vector_class.assert_called_once_with(
+            dataset=internal_dataset,
+            session=None,
+            vector_type="vector-type",
+        )
+        vector_instance.search_by_vector.assert_called_once()
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_embedding_search_image_non_multimodal_returns_early(
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
+    ):
+        internal_dataset.is_multimodal = False
+        mock_get_dataset.return_value = internal_dataset
+        vector_instance = Mock()
+        mock_vector_class.return_value = vector_instance
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.embedding_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="file-1",
+            top_k=4,
+            score_threshold=0.5,
+            reranking_model=None,
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=exceptions,
+            query_type=QueryType.IMAGE_QUERY,
+        )
+
+        assert all_documents == []
+        assert exceptions == []
+        mock_vector_class.resolve_vector_type.assert_not_called()
+        mock_vector_class.assert_not_called()
+        vector_instance.search_by_file.assert_not_called()
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_embedding_search_rejects_unowned_image_before_storage_or_vector_io(
+        self,
+        mock_get_dataset,
+        mock_vector_class,
+        internal_dataset,
+        internal_flask_app,
+        vector_engine,
+        sqlite_session: Session,
+    ):
+        internal_dataset.is_multimodal = True
+        mock_get_dataset.return_value = internal_dataset
+        upload_file = _upload_file(file_id="other-user-file", tenant_id=internal_dataset.tenant_id)
+        upload_file.created_by_role = CreatorUserRole.END_USER
+        upload_file.created_by = "other-user"
+        sqlite_session.add(upload_file)
+        sqlite_session.commit()
+        scope = FileAccessScope(
+            tenant_id=internal_dataset.tenant_id,
+            user_id="requesting-user",
+            user_from=UserFrom.END_USER,
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        with bind_file_access_scope(scope):
+            RetrievalService.embedding_search(
+                flask_app=internal_flask_app,
+                dataset_id=internal_dataset.id,
+                query=upload_file.id,
+                top_k=4,
+                score_threshold=0.5,
+                reranking_model=None,
+                all_documents=all_documents,
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                exceptions=exceptions,
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        assert all_documents == []
+        assert exceptions == ["Attachment file is not accessible"]
+        mock_vector_class.assert_not_called()
+
+    @patch("core.rag.datasource.retrieval_service.ModelManager.for_tenant")
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_embedding_search_image_multimodal_with_vision_reranking(
+        self,
+        mock_get_dataset,
+        mock_vector_class,
+        mock_processor_class,
+        mock_model_manager_class,
+        internal_dataset,
+        internal_flask_app,
+        vector_engine,
+        sqlite_session: Session,
+    ):
+        internal_dataset.is_multimodal = True
+        mock_get_dataset.return_value = internal_dataset
+        query_file = _upload_file(file_id="file-id", tenant_id=internal_dataset.tenant_id)
+        sqlite_session.add(query_file)
+        sqlite_session.commit()
+        original_docs = [create_mock_document("image-content", "img-doc", 0.73)]
+        reranked_docs = [create_mock_document("image-content-reranked", "img-doc", 0.97)]
+
+        vector_instance = Mock()
+
+        def search_by_file(**_kwargs):
+            route_session = mock_vector_class.resolve_vector_type.call_args.kwargs["session"]
+            assert route_session.get_transaction() is None
+            return original_docs
+
+        vector_instance.search_by_file.side_effect = search_by_file
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+
+        processor_instance = Mock()
+        processor_instance.invoke.return_value = reranked_docs
+        mock_processor_class.return_value = processor_instance
+
+        model_manager = Mock()
+        model_manager.check_model_support_vision.return_value = True
+        mock_model_manager_class.return_value = model_manager
+
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.embedding_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="file-id",
+            top_k=4,
+            score_threshold=0.5,
+            reranking_model={
+                "reranking_provider_name": "provider",
+                "reranking_model_name": "model",
+            },
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=exceptions,
+            query_type=QueryType.IMAGE_QUERY,
+        )
+
+        assert all_documents == reranked_docs
+        assert exceptions == []
+        mock_vector_class.assert_called_once_with(
+            dataset=internal_dataset,
+            session=None,
+            vector_type="vector-type",
+        )
+        vector_instance.search_by_file.assert_called_once_with(
+            file_id="file-id",
+            file_key=query_file.key,
+            top_k=4,
+            score_threshold=0.5,
+            filter={"group_id": [internal_dataset.id]},
+            document_ids_filter=None,
+        )
+        processor_instance.invoke.assert_called_once()
+        mock_model_manager_class.assert_called_once_with(tenant_id=internal_dataset.tenant_id)
+        model_manager.check_model_support_vision.assert_called_once()
+
+    @patch("core.rag.datasource.retrieval_service.ModelManager.for_tenant")
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_embedding_search_image_multimodal_without_vision_support(
+        self,
+        mock_get_dataset,
+        mock_vector_class,
+        mock_processor_class,
+        mock_model_manager_class,
+        internal_dataset,
+        internal_flask_app,
+        vector_engine,
+        sqlite_session: Session,
+    ):
+        internal_dataset.is_multimodal = True
+        mock_get_dataset.return_value = internal_dataset
+        query_file = _upload_file(file_id="file-id", tenant_id=internal_dataset.tenant_id)
+        sqlite_session.add(query_file)
+        sqlite_session.commit()
+        original_docs = [create_mock_document("image-content", "img-doc", 0.73)]
+
+        vector_instance = Mock()
+        vector_instance.search_by_file.return_value = original_docs
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+
+        processor_instance = Mock()
+        processor_instance.invoke.return_value = [create_mock_document("unused", "unused", 0.1)]
+        mock_processor_class.return_value = processor_instance
+
+        model_manager = Mock()
+        model_manager.check_model_support_vision.return_value = False
+        mock_model_manager_class.return_value = model_manager
+
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.embedding_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="file-id",
+            top_k=4,
+            score_threshold=0.5,
+            reranking_model={
+                "reranking_provider_name": "provider",
+                "reranking_model_name": "model",
+            },
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=exceptions,
+            query_type=QueryType.IMAGE_QUERY,
+        )
+
+        assert all_documents == original_docs
+        assert exceptions == []
+        mock_model_manager_class.assert_called_once_with(tenant_id=internal_dataset.tenant_id)
+        processor_instance.invoke.assert_not_called()
+
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_embedding_search_text_with_reranking_non_multimodal(
+        self,
+        mock_get_dataset,
+        mock_vector_class,
+        mock_processor_class,
+        internal_dataset,
+        internal_flask_app,
+        vector_engine,
+    ):
+        internal_dataset.is_multimodal = False
+        mock_get_dataset.return_value = internal_dataset
+        original_docs = [create_mock_document("vector-content", "vec-doc", 0.62)]
+        reranked_docs = [create_mock_document("vector-content-reranked", "vec-doc", 0.89)]
+
+        vector_instance = Mock()
+        vector_instance.search_by_vector.return_value = original_docs
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+
+        processor_instance = Mock()
+        processor_instance.invoke.return_value = reranked_docs
+        mock_processor_class.return_value = processor_instance
+
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.embedding_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.5,
+            reranking_model={
+                "reranking_provider_name": "provider",
+                "reranking_model_name": "model",
+            },
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=exceptions,
+            document_ids_filter=["document-1", "physical-attachment-1"],
+            allowed_document_ids_filter=("document-1",),
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        assert all_documents == reranked_docs
+        assert exceptions == []
+        assert mock_processor_class.call_args.kwargs["dataset_document_filters"] == {
+            internal_dataset.id: ("document-1",)
+        }
+        processor_instance.invoke.assert_called_once()
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_embedding_search_appends_exception_when_vector_fails(
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
+    ):
+        mock_get_dataset.return_value = internal_dataset
+        vector_instance = Mock()
+        vector_instance.search_by_vector.side_effect = RuntimeError("vector failed")
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.embedding_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.5,
+            reranking_model=None,
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            exceptions=exceptions,
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        assert all_documents == []
+        assert exceptions == ["vector failed"]
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_full_text_index_search_without_reranking(
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
+    ):
+        mock_get_dataset.return_value = internal_dataset
+        vector_instance = Mock()
+        vector_instance.search_by_full_text.return_value = [create_mock_document("fulltext", "ft-1", 0.68)]
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.full_text_index_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query='query "x"',
+            top_k=4,
+            score_threshold=0.4,
+            reranking_model=None,
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.FULL_TEXT_SEARCH,
+            exceptions=exceptions,
+        )
+
+        assert len(all_documents) == 1
+        assert exceptions == []
+        mock_vector_class.assert_called_once_with(
+            dataset=internal_dataset,
+            session=None,
+            vector_type="vector-type",
+        )
+        vector_instance.search_by_full_text.assert_called_once()
+
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_full_text_index_search_with_reranking(
+        self,
+        mock_get_dataset,
+        mock_vector_class,
+        mock_processor_class,
+        internal_dataset,
+        internal_flask_app,
+        vector_engine,
+    ):
+        mock_get_dataset.return_value = internal_dataset
+        original_docs = [create_mock_document("fulltext", "ft-1", 0.68)]
+        reranked_docs = [create_mock_document("fulltext-reranked", "ft-1", 0.9)]
+
+        vector_instance = Mock()
+        vector_instance.search_by_full_text.return_value = original_docs
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+
+        processor_instance = Mock()
+        processor_instance.invoke.return_value = reranked_docs
+        mock_processor_class.return_value = processor_instance
+
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.full_text_index_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.4,
+            reranking_model={
+                "reranking_provider_name": "provider",
+                "reranking_model_name": "model",
+            },
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.FULL_TEXT_SEARCH,
+            exceptions=exceptions,
+        )
+
+        assert all_documents == reranked_docs
+        assert exceptions == []
+        processor_instance.invoke.assert_called_once()
+
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_full_text_index_search_dataset_not_found(self, mock_get_dataset, internal_flask_app):
+        mock_get_dataset.return_value = None
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.full_text_index_search(
+            flask_app=internal_flask_app,
+            dataset_id="dataset-id",
+            query="query",
+            top_k=4,
+            score_threshold=0.4,
+            reranking_model=None,
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.FULL_TEXT_SEARCH,
+            exceptions=exceptions,
+        )
+
+        assert all_documents == []
+        assert exceptions == ["dataset not found"]
+
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_full_text_index_search_appends_exception_when_search_fails(
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
+    ):
+        mock_get_dataset.return_value = internal_dataset
+        vector_instance = Mock()
+        vector_instance.search_by_full_text.side_effect = RuntimeError("fulltext failed")
+        mock_vector_class.return_value = vector_instance
+        mock_vector_class.resolve_vector_type.return_value = "vector-type"
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.full_text_index_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.4,
+            reranking_model=None,
+            all_documents=all_documents,
+            retrieval_method=RetrievalMethod.FULL_TEXT_SEARCH,
+            exceptions=exceptions,
+        )
+
+        assert all_documents == []
+        assert exceptions == ["fulltext failed"]
+
+    def test_format_retrieval_documents_with_empty_input_returns_empty_list(self, unbound_session: Session):
+        assert RetrievalService.format_retrieval_documents(unbound_session, []) == []
+
+    def test_format_retrieval_documents_without_document_id_returns_empty_list(self, unbound_session: Session):
+        documents = [Document(page_content="content", metadata={"doc_id": "doc-1", "score": 0.4}, provider="dify")]
+
+        assert RetrievalService.format_retrieval_documents(unbound_session, documents) == []
+
+    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
+        dataset_doc_parent = _dataset_document(document_id="doc-parent", doc_form=IndexStructureType.PARENT_CHILD_INDEX)
+        dataset_doc_text = _dataset_document(document_id="doc-text", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        dataset_doc_parent_summary = _dataset_document(
+            document_id="doc-parent-summary", doc_form=IndexStructureType.PARENT_CHILD_INDEX
+        )
+
+        monkeypatch.setattr(retrieval_service_module, "RetrievalChildChunk", _SimpleRetrievalChildChunk)
+        monkeypatch.setattr(retrieval_service_module, "RetrievalSegments", _SimpleRetrievalSegment)
+
+        input_documents = [
+            Document(
+                page_content="child node content",
+                metadata={"document_id": "doc-parent", "doc_id": "child-node-1", "score": 0.7},
+                provider="dify",
+            ),
+            Document(
+                page_content="parent image",
+                metadata={
+                    "document_id": "doc-parent",
+                    "doc_id": "attach-node-1",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-id",
+                    "score": 0.8,
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="text index node",
+                metadata={"document_id": "doc-text", "doc_id": "index-node-1", "score": 0.6},
+                provider="dify",
+            ),
+            Document(
+                page_content="text image node",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "attach-text-1",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-id",
+                    "score": 0.65,
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="summary candidate 1",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "summary-node-1",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-summary",
+                    "score": "0.9",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="summary candidate 2",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "summary-node-2",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-summary",
+                    "score": "0.95",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="invalid score summary",
+                metadata={
+                    "document_id": "doc-parent-summary",
+                    "doc_id": "summary-parent-invalid",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-parent-summary",
+                    "score": "invalid",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="valid parent summary",
+                metadata={
+                    "document_id": "doc-parent-summary",
+                    "doc_id": "summary-parent-valid",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-parent-summary",
+                    "score": "0.4",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="deleted summary vector",
+                metadata={
+                    "document_id": "doc-text",
+                    "doc_id": "deleted-summary-node",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-deleted-summary",
+                    "score": "0.99",
+                },
+                provider="dify",
+            ),
+        ]
+
+        child_chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="doc-parent",
+            segment_id="segment-parent",
+            position=2,
+            content="child details",
+            word_count=2,
+            created_by="user-id",
+            index_node_id="child-node-1",
+        )
+        child_chunk.id = "child-chunk-1"
+        segment_parent = _segment(segment_id="segment-parent", document_id="doc-parent", index_node_id="parent-node")
+        segment_text = _segment(segment_id="segment-text", document_id="doc-text", index_node_id="index-node-1")
+        segment_summary = _segment(segment_id="segment-summary", document_id="doc-text", index_node_id="summary-node")
+        segment_parent_summary = _segment(
+            segment_id="segment-parent-summary",
+            document_id="doc-parent-summary",
+            index_node_id="summary-parent-node",
+        )
+        segment_deleted_summary = _segment(
+            segment_id="segment-deleted-summary",
+            document_id="doc-text",
+            index_node_id="deleted-summary-parent-node",
+        )
+        text_summary = DocumentSegmentSummary(
+            dataset_id="dataset-id",
+            document_id="doc-text",
+            chunk_id="segment-summary",
+            summary_content="summary for text",
+            summary_index_node_id="summary-node-2",
+            status=SummaryStatus.COMPLETED,
+            enabled=True,
+        )
+        parent_summary = DocumentSegmentSummary(
+            dataset_id="dataset-id",
+            document_id="doc-parent-summary",
+            chunk_id="segment-parent-summary",
+            summary_content="summary for parent",
+            summary_index_node_id="summary-parent-valid",
+            status=SummaryStatus.COMPLETED,
+            enabled=True,
+        )
+        sqlite_session.add_all(
+            [
+                _dataset(),
+                dataset_doc_parent,
+                dataset_doc_text,
+                dataset_doc_parent_summary,
+                child_chunk,
+                segment_parent,
+                segment_text,
+                segment_summary,
+                segment_parent_summary,
+                segment_deleted_summary,
+                text_summary,
+                parent_summary,
+            ]
+        )
+        sqlite_session.commit()
+        monkeypatch.setattr(
+            RetrievalService,
+            "get_segment_attachment_infos",
+            lambda attachment_ids, *, dataset_refs, session: [
+                {
+                    "tenant_id": "tenant-id",
+                    "dataset_id": "dataset-id",
+                    "document_id": "doc-parent",
+                    "attachment_id": "attach-node-1",
+                    "attachment_info": {
+                        "id": "attach-node-1",
+                        "name": "img-parent",
+                        "extension": ".png",
+                        "mime_type": "image/png",
+                        "source_url": "signed://parent",
+                        "size": 11,
+                    },
+                    "segment_id": "segment-parent",
+                },
+                {
+                    "tenant_id": "tenant-id",
+                    "dataset_id": "dataset-id",
+                    "document_id": "doc-text",
+                    "attachment_id": "attach-text-1",
+                    "attachment_info": {
+                        "id": "attach-text-1",
+                        "name": "img-text",
+                        "extension": ".png",
+                        "mime_type": "image/png",
+                        "source_url": "signed://text",
+                        "size": 22,
+                    },
+                    "segment_id": "segment-text",
+                },
+            ],
+        )
+
+        result = RetrievalService.format_retrieval_documents(sqlite_session, input_documents)
+
+        assert len(result) == 4
+        result_by_segment_id = {item.segment.id: item for item in result}
+        assert result_by_segment_id["segment-summary"].score == pytest.approx(0.95)
+        assert result_by_segment_id["segment-summary"].summary == "summary for text"
+        assert result_by_segment_id["segment-parent"].score == pytest.approx(0.8)
+        assert result_by_segment_id["segment-parent"].files is not None
+        assert len(result_by_segment_id["segment-parent"].child_chunks or []) == 1
+        assert result_by_segment_id["segment-text"].score == pytest.approx(0.65)
+        assert result_by_segment_id["segment-parent-summary"].score == pytest.approx(0.4)
+        assert result_by_segment_id["segment-parent-summary"].summary == "summary for parent"
+        assert result_by_segment_id["segment-parent-summary"].child_chunks == []
+        assert "segment-deleted-summary" not in result_by_segment_id
+
+    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(
+        self, mocker: MockerFixture, sqlite_session: Session
+    ):
+        documents = [Document(page_content="content", metadata={"document_id": "doc-1"}, provider="dify")]
+        sqlite_session.connection().invalidate()
+        rollback = mocker.spy(sqlite_session, "rollback")
+
+        with pytest.raises(SQLAlchemyError):
+            RetrievalService.format_retrieval_documents(sqlite_session, documents)
+
+        rollback.assert_called_once()
+
+    def test_format_retrieval_documents_keeps_shared_attachment_scores_in_the_query_source_dataset(
+        self, sqlite_session: Session
+    ) -> None:
+        dataset_a = _dataset(dataset_id="dataset-a")
+        dataset_b = _dataset(dataset_id="dataset-b")
+        document_a = _dataset_document(document_id="document-a", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        document_a.dataset_id = dataset_a.id
+        document_b = _dataset_document(document_id="document-b", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        document_b.dataset_id = dataset_b.id
+        segment_a = _segment(segment_id="segment-a", document_id=document_a.id, index_node_id="node-a")
+        segment_a.dataset_id = dataset_a.id
+        segment_b = _segment(segment_id="segment-b", document_id=document_b.id, index_node_id="node-b")
+        segment_b.dataset_id = dataset_b.id
+        upload = _upload_file(file_id="shared-attachment")
+        sqlite_session.add_all(
+            [
+                dataset_a,
+                dataset_b,
+                document_a,
+                document_b,
+                segment_a,
+                segment_b,
+                upload,
+                SegmentAttachmentBinding(
+                    tenant_id="tenant-id",
+                    dataset_id=dataset_a.id,
+                    document_id=document_a.id,
+                    segment_id=segment_a.id,
+                    attachment_id=upload.id,
+                ),
+                SegmentAttachmentBinding(
+                    tenant_id="tenant-id",
+                    dataset_id=dataset_b.id,
+                    document_id=document_b.id,
+                    segment_id=segment_b.id,
+                    attachment_id=upload.id,
+                ),
+            ]
+        )
+        sqlite_session.commit()
+
+        records = RetrievalService.format_retrieval_documents(
+            sqlite_session,
+            [
+                Document(
+                    page_content="shared image from A",
+                    metadata={
+                        "document_id": document_a.id,
+                        "doc_id": upload.id,
+                        "doc_type": DocType.IMAGE,
+                        "score": 0.9,
+                        "_retrieval_source_dataset_id": dataset_a.id,
+                    },
+                ),
+                Document(
+                    page_content="shared image from B",
+                    metadata={
+                        "document_id": document_b.id,
+                        "doc_id": upload.id,
+                        "doc_type": DocType.IMAGE,
+                        "score": 0.2,
+                        "_retrieval_source_dataset_id": dataset_b.id,
+                    },
+                ),
+            ],
+        )
+
+        by_segment = {record.segment.id: record for record in records}
+        assert by_segment[segment_a.id].score == pytest.approx(0.9)
+        assert by_segment[segment_b.id].score == pytest.approx(0.2)
+
+    def test_retrieve_internal_returns_early_without_query_or_attachment(self, internal_dataset, internal_flask_app):
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService()._retrieve(
+            flask_app=internal_flask_app,
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            dataset=internal_dataset,
+            all_documents=all_documents,
+            exceptions=exceptions,
+            query=None,
+            attachment_id=None,
+        )
+
+        assert all_documents == []
+        assert exceptions == []
+
+    def test_retrieve_internal_propagates_future_failure_and_cancels_pending_work(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
+    ):
+        executor = _ImmediateExecutor()
+        monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+
+        def embedding_search(*args, query: str, **kwargs):
+            if query == "query":
+                raise RuntimeError("future failed")
+
+        monkeypatch.setattr(RetrievalService, "embedding_search", embedding_search)
+
+        with pytest.raises(RuntimeError, match="future failed"):
+            RetrievalService()._retrieve(
+                flask_app=internal_flask_app,
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset=internal_dataset,
+                all_documents=[],
+                exceptions=[],
+                query="query",
+                attachment_id="file-1",
+            )
+
+        assert len(executor.futures) == 2
+        assert executor.futures[1].cancel_called
+
+    def test_retrieve_internal_raises_value_error_when_exceptions_exist(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
+    ):
+        executor = _ImmediateExecutor()
+        monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+
+        with patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search") as mock_keyword_search:
+            mock_keyword_search.side_effect = lambda *args, **kwargs: None
+            with pytest.raises(ValueError, match="keyword error"):
+                RetrievalService()._retrieve(
+                    flask_app=internal_flask_app,
+                    retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
+                    dataset=internal_dataset,
+                    all_documents=[],
+                    exceptions=["keyword error"],
+                    query="query",
+                )
+
+    def test_retrieve_internal_hybrid_weighted_attachment_flow(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app, vector_engine
+    ):
+        executor = _ImmediateExecutor()
+        monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
+        monkeypatch.setattr(
+            retrieval_service_module.concurrent.futures,
+            "as_completed",
+            lambda futures, timeout=None: iter(futures),
+        )
+
+        text_doc = create_mock_document("text", "text-doc", 0.81)
+        image_doc = create_mock_document("image", "image-doc", 0.72)
+        fulltext_doc = create_mock_document("full", "full-doc", 0.65)
+        processed_doc = create_mock_document("processed", "processed-doc", 0.99)
+
+        with (
+            patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search") as mock_embedding_search,
+            patch("core.rag.datasource.retrieval_service.RetrievalService.full_text_index_search") as mock_fulltext,
+            patch("core.rag.datasource.retrieval_service.DataPostProcessor") as mock_processor_class,
+        ):
+
+            def embedding_side_effect(
+                flask_app,
+                dataset_id,
+                query,
+                top_k,
+                score_threshold,
+                reranking_model,
+                all_documents,
+                retrieval_method,
+                exceptions,
+                document_ids_filter=None,
+                allowed_document_ids_filter=None,
+                query_type=QueryType.TEXT_QUERY,
+            ):
+                if query_type == QueryType.IMAGE_QUERY:
+                    all_documents.append(image_doc)
+                else:
+                    all_documents.append(text_doc)
+
+            mock_embedding_search.side_effect = embedding_side_effect
+
+            def fulltext_side_effect(
+                flask_app,
+                dataset_id,
+                query,
+                top_k,
+                score_threshold,
+                reranking_model,
+                all_documents,
+                retrieval_method,
+                exceptions,
+                document_ids_filter=None,
+                allowed_document_ids_filter=None,
+            ):
+                all_documents.append(fulltext_doc)
+
+            mock_fulltext.side_effect = fulltext_side_effect
+            processor_instance = _RecordingDataPostProcessor([processed_doc])
+            mock_processor_class.return_value = processor_instance
+
+            all_documents: list[Document] = []
+            RetrievalService()._retrieve(
+                flask_app=internal_flask_app,
+                retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+                dataset=internal_dataset,
+                all_documents=all_documents,
+                exceptions=[],
+                query="query",
+                attachment_id="file-1",
+                reranking_mode=RerankMode.WEIGHTED_SCORE,
+                top_k=2,
+            )
+
+        assert len(all_documents) == 4
+        assert any(doc.metadata["doc_id"] == "processed-doc" for doc in all_documents)
+        assert len(processor_instance.calls) == 1
+        assert processor_instance.calls[0][3] == 3
+
+    def test_get_segment_attachment_infos_returns_empty_when_upload_files_missing(self, sqlite_session: Session):
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+        )
+
+        assert result == []
+
+    def test_get_segment_attachment_infos_returns_empty_when_bindings_missing(self, sqlite_session: Session):
+        sqlite_session.add(_upload_file(file_id="upload-1", name="file-name"))
+        sqlite_session.commit()
+
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+        )
+
+        assert result == []
+
+    def test_get_segment_attachment_infos_success(self, sqlite_session: Session):
+        upload_file_1 = _upload_file(file_id="upload-1", name="file-1")
+        upload_file_2 = _upload_file(
+            file_id="upload-2", name="file-2", extension="jpg", mime_type="image/jpeg", size=99
+        )
+        binding = SegmentAttachmentBinding(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-1",
+            segment_id="segment-1",
+            attachment_id="upload-1",
+        )
+        sqlite_session.add_all([upload_file_1, upload_file_2, binding])
+        sqlite_session.commit()
+
+        result = RetrievalService.get_segment_attachment_infos(
+            ["upload-1", "upload-2"], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+        )
+
+        assert result == [
+            {
+                "tenant_id": "tenant-id",
+                "dataset_id": "dataset-id",
+                "document_id": "document-1",
+                "attachment_id": "upload-1",
+                "attachment_info": {
+                    "id": "upload-1",
+                    "name": "file-1",
+                    "extension": ".png",
+                    "mime_type": "image/png",
+                    "source_url": "",
+                    "size": 42,
+                },
+                "segment_id": "segment-1",
+            }
+        ]
+
+    def test_get_segment_attachment_infos_returns_every_current_owner_in_stable_order(
+        self, sqlite_session: Session
+    ) -> None:
+        upload_file = _upload_file(file_id="shared-upload", name="shared-file")
+        bindings = [
+            SegmentAttachmentBinding(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id="document-b",
+                segment_id="segment-b",
+                attachment_id=upload_file.id,
+            ),
+            SegmentAttachmentBinding(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id="document-a",
+                segment_id="segment-a",
+                attachment_id=upload_file.id,
+            ),
+            SegmentAttachmentBinding(
+                tenant_id="tenant-id",
+                dataset_id="other-dataset",
+                document_id="document-foreign",
+                segment_id="segment-foreign",
+                attachment_id=upload_file.id,
+            ),
+        ]
+        sqlite_session.add_all([upload_file, *bindings])
+        sqlite_session.commit()
+
+        result = RetrievalService.get_segment_attachment_infos(
+            [upload_file.id], dataset_refs=(("tenant-id", "dataset-id"),), session=sqlite_session
+        )
+
+        assert [item["segment_id"] for item in result] == ["segment-a", "segment-b"]
+        assert [item["attachment_id"] for item in result] == [upload_file.id, upload_file.id]
+        assert [item["attachment_info"]["id"] for item in result] == [upload_file.id, upload_file.id]
+        assert [item["document_id"] for item in result] == ["document-a", "document-b"]
+
+
+@pytest.mark.parametrize("sqlite_session", [(UploadFile, SegmentAttachmentBinding)], indirect=True)
+def test_segment_attachment_lookup_is_pure(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    dataset_id = str(uuid4())
+    upload_file_id = str(uuid4())
+    user_id = str(uuid4())
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="uploads/chart.png",
+        name="chart.png",
+        size=1024,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=user_id,
+        created_at=datetime.now(UTC),
+        used=False,
+    )
+    upload_file.id = upload_file_id
+    sqlite_session.add_all(
+        [
+            upload_file,
+            SegmentAttachmentBinding(
+                tenant_id=tenant_id,
+                dataset_id=dataset_id,
+                document_id=str(uuid4()),
+                segment_id=str(uuid4()),
+                attachment_id=upload_file_id,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    scope = FileAccessScope(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        result = RetrievalService.get_segment_attachment_infos(
+            [upload_file_id],
+            dataset_refs=((tenant_id, dataset_id),),
+            session=sqlite_session,
+        )
+        current_scope = get_current_file_access_scope()
+        scoped_stmt = DatabaseFileAccessController().apply_upload_file_filters(
+            select(UploadFile).where(UploadFile.id == upload_file_id)
+        )
+
+    assert result[0]["attachment_id"] == upload_file_id
+    assert current_scope is not None
+    assert upload_file_id not in current_scope.granted_upload_file_ids
+    whereclause = str(scoped_stmt.whereclause)
+    assert "upload_files.created_by_role" in whereclause
+    assert "upload_files.id IN" not in whereclause

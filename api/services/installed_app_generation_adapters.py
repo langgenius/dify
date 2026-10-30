@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 class _MoreLikeThisEventStream:
     def __init__(self, source: Generator[Mapping[str, object] | str]) -> None:
-        self._source: Generator[Mapping[str, object] | str] = source
-        self._events: GenerationStream = cast(GenerationStream, CompletionAppGenerator.convert_to_event_stream(source))
-        self._closed: bool = False
+        self._source = source
+        self._events = cast(GenerationStream, CompletionAppGenerator.convert_to_event_stream(source))
+        self._closed = False
 
     def __iter__(self) -> "_MoreLikeThisEventStream":
         return self
@@ -50,7 +50,6 @@ class _MoreLikeThisEventStream:
         try:
             self._events.close()
         finally:
-            # Closing an unstarted conversion generator does not reach its source.
             self._source.close()
 
 

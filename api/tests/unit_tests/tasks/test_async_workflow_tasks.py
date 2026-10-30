@@ -199,6 +199,7 @@ def _app() -> App:
 
 def _bind_task_session(monkeypatch: pytest.MonkeyPatch, session: Session) -> None:
     monkeypatch.setattr(async_workflow_tasks.session_factory, "create_session", lambda: nullcontext(session))
+    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_identity", lambda _user: object())
     monkeypatch.setattr(
         async_workflow_tasks,
         "_hold_workflow_execution",

@@ -81,6 +81,10 @@ class IndexingBackend(Protocol):
 
     def load(self, document: IndexingDocument, chunks: list[Document]) -> None: ...
 
+    def discard(self, document: IndexingDocument, chunks: list[Document]) -> None:
+        """Remove index entries that ``load`` may have written for a document deleted meanwhile."""
+        ...
+
 
 class DocumentIndexingService:
     """Coordinate committed phases; no caller session is held across execution."""
@@ -162,6 +166,11 @@ class DocumentIndexingService:
     ) -> None:
         document: IndexingDocument | None = None
         created_upload_file_ids: tuple[str, ...] = ()
+        # None: no index write has started, so a deletion leaves nothing behind.
+        # Set: load may have written these chunks; document cleanup snapshots segment
+        # node ids before deleting them and cannot see entries written after its snapshot,
+        # so whichever way this run stops, the entries are discarded if the document is gone.
+        loading: tuple[IndexingDocument, list[Document]] | None = None
         try:
             document = self._documents.get_indexing_document(ref)
             if document is None:
@@ -193,6 +202,7 @@ class DocumentIndexingService:
             started = self._clock()
             self._backend.check_paused(ref)
             lease.assert_owned()
+            loading = (document, chunks)
             self._backend.load(document, chunks)
             self._backend.check_paused(ref)
             lease.assert_owned()
@@ -203,10 +213,14 @@ class DocumentIndexingService:
             )
         except DocumentIsPausedError:
             self._cleanup_created_upload_files(document, created_upload_file_ids)
+            # The pause flag is checked before document existence, so a paused document
+            # deleted mid-write surfaces here rather than as a deletion.
+            self._discard_if_deleted(ref, loading)
             raise
         except DocumentIsDeletedPausedError:
             self._cleanup_created_upload_files(document, created_upload_file_ids)
             logger.info("Document deleted during indexing: %s", ref)
+            self._discard(ref, loading)
         except KnowledgeIndexingLeaseLostError:
             self._cleanup_created_upload_files(document, created_upload_file_ids)
             raise
@@ -214,7 +228,13 @@ class DocumentIndexingService:
             self._cleanup_created_upload_files(document, created_upload_file_ids)
             logger.exception("Document indexing failed: %s", ref)
             lease.assert_owned()
-            self._documents.fail_indexing(ref, self._backend.describe_error(error))
+            try:
+                self._documents.fail_indexing(ref, self._backend.describe_error(error))
+            finally:
+                # A concurrent deletion can make the failure transition itself
+                # raise.  It must not suppress compensation for vectors that the
+                # preceding load may already have published.
+                self._discard_if_deleted(ref, loading)
 
     def _reconcile_pending_upload_cleanup(
         self,
@@ -241,3 +261,28 @@ class DocumentIndexingService:
             self._backend.cleanup_created_upload_files(document, file_ids)
         except Exception:
             logger.exception("Failed to clean extraction files after document indexing stopped: %s", document.ref)
+
+    def _discard(self, ref: DocumentRef, loading: tuple[IndexingDocument, list[Document]] | None) -> None:
+        """Best-effort removal of entries ``load`` may have written; failures never mask the outcome."""
+        if loading is None:
+            return
+        try:
+            self._backend.discard(*loading)
+        except Exception:
+            logger.exception("Failed to discard index entries of document deleted during indexing: %s", ref)
+
+    def _discard_if_deleted(self, ref: DocumentRef, loading: tuple[IndexingDocument, list[Document]] | None) -> None:
+        """Discard written entries when indexing stopped for another reason and the document is gone."""
+        if loading is None:
+            return
+        try:
+            self._documents.get_indexing_document(ref)
+        except DocumentIsDeletedPausedError:
+            logger.info("Document deleted during indexing: %s", ref)
+            self._discard(ref, loading)
+        except DocumentIsPausedError:
+            return
+        except Exception:
+            logger.warning(
+                "Could not check whether document still exists after indexing stopped: %s", ref, exc_info=True
+            )

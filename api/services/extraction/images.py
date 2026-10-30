@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Callable
 from datetime import datetime
 from typing import Protocol
@@ -25,6 +26,14 @@ class ExtractionImageFileStore(Protocol):
         file: UploadFileRecord,
     ) -> None: ...
 
+    def get_by_key_in_session(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        key: str,
+    ) -> UploadFileRecord | None: ...
+
 
 class ExtractionImageWriter:
     """Publish one parser image and retain exact evidence for compensation."""
@@ -36,6 +45,7 @@ class ExtractionImageWriter:
         files: ExtractionImageFileStore,
         tenant_id: str,
         user_id: str,
+        source_file_id: str | None = None,
         storage_type: str,
         files_url: str,
         save_blob: Callable[[str, bytes], None],
@@ -46,6 +56,7 @@ class ExtractionImageWriter:
         self._files = files
         self._tenant_id = tenant_id
         self._user_id = user_id
+        self._source_file_id = source_file_id
         self._storage_type = storage_type
         self._files_url = files_url.rstrip("/")
         self._save_blob = save_blob
@@ -62,8 +73,26 @@ class ExtractionImageWriter:
         if not normalized_extension:
             raise ValueError("An extracted image requires a file extension")
 
+        content_hash = hashlib.sha256(image.content).hexdigest()
+        if self._source_file_id is not None and image.stable_identity is not None:
+            stable_identity = image.stable_identity.strip()
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", stable_identity):
+                raise ValueError("An extracted image stable identity contains unsupported characters")
+            file_key = (
+                f"image_files/{self._tenant_id}/{self._source_file_id}/"
+                f"{stable_identity}_{content_hash}.{normalized_extension}"
+            )
+            existing = self._files.get_by_key_in_session(
+                self._session,
+                tenant_id=self._tenant_id,
+                key=file_key,
+            )
+            if existing is not None:
+                return ImageReference(preview_url=f"{self._files_url}/files/{existing.id}/file-preview")
+        else:
+            file_key = f"image_files/{self._tenant_id}/{uuid4()}.{normalized_extension}"
+
         file_id = str(uuid4())
-        file_key = f"image_files/{self._tenant_id}/{uuid4()}.{normalized_extension}"
         now = self._clock()
         file = UploadFileRecord(
             id=file_id,
@@ -77,7 +106,7 @@ class ExtractionImageWriter:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=self._user_id,
             created_at=now,
-            hash=hashlib.sha256(image.content).hexdigest(),
+            hash=content_hash,
             source_url="",
             used=True,
             used_by=self._user_id,

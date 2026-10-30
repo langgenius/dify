@@ -44,9 +44,9 @@ export default function ResourceAccessTokenPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchInput
-          className="w-80"
+          className="w-80 max-w-full"
           placeholder={t(($) => $['resourceAccessToken.searchPlaceholder'], {
             ns: 'accountSettings',
           })}

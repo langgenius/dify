@@ -21,7 +21,7 @@ from repositories.knowledge.retrieval_source_repository import SQLAlchemyRetriev
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
-from services.api_token_service import ApiTokenCache
+from services.api_token_service import ApiTokenCache, get_effective_token_last_used_at
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
@@ -39,6 +39,7 @@ from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.datasets.model_configuration import KnowledgeModelConfigurationGateway
 from services.knowledge.datasets.task_gateway import dispatch_dataset_cleanup
+from services.knowledge.datasets.upgrades import KnowledgeUpgradeApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.documents.adapters import (
     CeleryDocumentTaskDispatcher,
@@ -92,6 +93,7 @@ from services.knowledge.segments.adapters import (
 )
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 from services.workflow_run_agg import WorkflowRunAgg
@@ -115,6 +117,7 @@ class KnowledgeServices:
     indexing_estimates: IndexingEstimateApplicationService
     segments: DatasetSegmentApplicationService
     pipeline_generator: PipelineGenerator
+    upgrades: KnowledgeUpgradeApplicationService
 
 
 def build_dataset_api_key_service(
@@ -124,6 +127,7 @@ def build_dataset_api_key_service(
         keys=DatasetApiKeyRepository(session_factory=database_client),
         cache=ApiTokenCache,
         access=dataset_access,
+        last_used_at=get_effective_token_last_used_at,
         rbac_enabled=lambda: dify_config.RBAC_ENABLED,
     )
 
@@ -290,6 +294,13 @@ def build_knowledge_services(
             presenter=DocumentResponsePresentationAdapter(),
         ),
         pipeline_generator=pipeline_generator,
+        upgrades=KnowledgeUpgradeApplicationService(
+            session_factory=database_client,
+            dataset_access=dataset_access,
+            datasets=dataset_operations,
+            rbac_enabled=dify_config.RBAC_ENABLED,
+            feature_enabled=lambda: get_knowledge_fs_features().enabled,
+        ),
         document_sync=DocumentSyncApplicationService(
             dataset_access=dataset_access,
             documents=documents,

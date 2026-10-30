@@ -2,7 +2,7 @@ import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider, skipToken } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -92,6 +92,11 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}))
+
+vi.mock('@/app/components/base/file-uploader/pdf-highlighter-adapter', () => ({
+  PdfLoader: ({ url }: { url: string }) => <div data-testid="pdf-loader" data-url={url} />,
+  PdfHighlighter: () => null,
 }))
 
 vi.mock('@/utils/download', () => ({
@@ -331,7 +336,7 @@ function PromptSkillAddProbe() {
         onClick={() =>
           actions.skills?.({
             skillSource: 'library',
-            onAdded: (item) => setAddedSkill('name' in item ? (item.name ?? '') : ''),
+            onAdded: ([item]) => setAddedSkill(item && 'name' in item ? (item.name ?? '') : ''),
           })
         }
       >
@@ -635,7 +640,16 @@ describe('AgentSkills', () => {
     expect(screen.queryByText('Tender Analyzer')).not.toBeInTheDocument()
   })
 
-  it('should upload a skill through the config endpoint and add it to the draft UI', async () => {
+  it('keeps the skill upload open until the uploaded skill reaches the draft', async () => {
+    let finishUpload!: () => void
+    const upload = new Promise<void>((resolve) => {
+      finishUpload = resolve
+    })
+    const uploadSkill = mocks.uploadSkillMutationFn.getMockImplementation()!
+    mocks.uploadSkillMutationFn.mockImplementationOnce(async (input) => {
+      await upload
+      return uploadSkill(input)
+    })
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
 
@@ -670,7 +684,14 @@ describe('AgentSkills', () => {
       )
     })
 
-    expect(screen.getByText('Invoice Helper')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'common.operation.close' }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    finishUpload()
+    expect(await screen.findByText('Invoice Helper')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([
       expect.objectContaining({
@@ -1841,6 +1862,189 @@ describe('AgentSkills', () => {
 
     view.unmount()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:skill-image')
+  })
+
+  it('should preview and download PDF skill members from one authenticated Blob', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-pdf')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const previewQueryFn = vi.fn(async () => ({
+      path: 'assets/guide.pdf',
+      binary: true,
+      truncated: false,
+      text: null,
+    }))
+    mocks.previewQueryOptions.mockImplementation(() => ({ queryFn: previewQueryFn }))
+    mocks.inspectQueryOptions.mockImplementation(({ input }) => ({
+      queryFn: async () => ({
+        id: input.params.name,
+        name: input.params.name,
+        description: 'Inspect skill',
+        source: 'config_skill_zip',
+        files: [
+          {
+            path: 'SKILL.md',
+            name: 'SKILL.md',
+            type: 'file',
+            previewable: true,
+            downloadable: true,
+          },
+          {
+            path: 'assets/guide.pdf',
+            name: 'guide.pdf',
+            type: 'file',
+            previewable: true,
+            downloadable: true,
+          },
+        ],
+        skill_md: { path: 'SKILL.md', size: 8, truncated: false, binary: false, text: '# Skill\n' },
+        warnings: [],
+      }),
+    }))
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByText('assets'))
+    await user.click(screen.getByText('guide.pdf').closest('button')!)
+
+    const loader = await screen.findByTestId('pdf-loader')
+    expect(loader).toHaveAttribute('data-url', 'blob:skill-pdf')
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('path=assets%2Fguide.pdf'),
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(previewQueryFn).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: /common\.operation\.download.*guide\.pdf/ }),
+    )
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'guide.pdf',
+    })
+    expect(mocks.fetch).toHaveBeenCalledOnce()
+    expect(screen.getByTestId('pdf-loader')).toBe(loader)
+  })
+
+  it('should not download a stale cached PDF while its content refreshes', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-pdf')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    let resolveContent!: (response: Response) => void
+    mocks.fetch.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveContent = resolve
+        }),
+    )
+    mocks.inspectQueryOptions.mockImplementation(({ input }) => ({
+      queryFn: async () => ({
+        id: input.params.name,
+        name: input.params.name,
+        description: 'Inspect skill',
+        source: 'config_skill_zip',
+        files: [
+          {
+            path: 'SKILL.md',
+            name: 'SKILL.md',
+            type: 'file',
+            previewable: true,
+            downloadable: true,
+          },
+          {
+            path: 'assets/guide.pdf',
+            name: 'guide.pdf',
+            type: 'file',
+            previewable: true,
+            downloadable: true,
+          },
+        ],
+        skill_md: { path: 'SKILL.md', size: 8, truncated: false, binary: false, text: '# Skill\n' },
+        warnings: [],
+      }),
+    }))
+    const view = renderAgentSkills()
+    view.queryClient.setQueryData(
+      [
+        'agent-v2',
+        'skill-file-content',
+        '/console/api/agent/agent-1/config/skills/Tender%20Analyzer/files/content?path=assets%2Fguide.pdf',
+      ],
+      new Blob(['stale pdf']),
+    )
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByText('assets'))
+    await user.click(screen.getByText('guide.pdf').closest('button')!)
+    await waitFor(() => expect(mocks.fetch).toHaveBeenCalledOnce())
+    await user.click(
+      screen.getByRole('button', { name: /common\.operation\.download.*guide\.pdf/ }),
+    )
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+
+    resolveContent(new Response('current pdf', { headers: { 'Content-Type': 'application/pdf' } }))
+
+    await waitFor(() => {
+      expect(mocks.downloadBlob).toHaveBeenCalledWith({
+        data: expect.any(Blob),
+        fileName: 'guide.pdf',
+      })
+    })
+    const [{ data }] = mocks.downloadBlob.mock.calls[0]! as [{ data: Blob }]
+    await expect(data.text()).resolves.toBe('current pdf')
+  })
+
+  it('should note a truncated SKILL.md and download the full file from the server', async () => {
+    const user = userEvent.setup()
+    mocks.inspectQueryOptions.mockImplementation(({ input }) => ({
+      queryFn: async () => ({
+        id: input.params.name,
+        name: input.params.name,
+        description: 'Inspect skill',
+        source: 'config_skill_zip',
+        files: [
+          {
+            path: 'SKILL.md',
+            name: 'SKILL.md',
+            type: 'file',
+            previewable: true,
+            downloadable: true,
+          },
+        ],
+        skill_md: {
+          path: 'SKILL.md',
+          size: 200_000,
+          truncated: true,
+          binary: false,
+          text: '# Skill\n',
+        },
+        warnings: [],
+      }),
+    }))
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.files.preview.truncated'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /common\.operation\.download.*SKILL\.md/ }))
+
+    await waitFor(() => {
+      expect(mocks.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('path=SKILL.md'),
+        expect.objectContaining({ credentials: 'include' }),
+      )
+    })
+    await waitFor(() => {
+      expect(mocks.downloadBlob).toHaveBeenCalledWith({
+        data: expect.any(Blob),
+        fileName: 'SKILL.md',
+      })
+    })
+    const [{ data }] = mocks.downloadBlob.mock.calls[0]! as [{ data: Blob }]
+    await expect(data.text()).resolves.toBe('downloaded skill file')
   })
 
   it('should download inspected SKILL.md content as markdown', async () => {

@@ -9,7 +9,7 @@ import tasks.clean_notion_document_task as task_module
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _dataset() -> Dataset:

@@ -1,6 +1,7 @@
 import json
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,7 +9,6 @@ from botocore.exceptions import ClientError
 from sqlalchemy.orm import Session
 
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
-from enums.creator import CreatorUserRole
 from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
     ClickZettaVolumeConfig,
     ClickZettaVolumeStorage,
@@ -18,23 +18,18 @@ from extensions.storage.storage_type import StorageType
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
-from models import WorkflowType
+from graphon.variables.types import SegmentType
 from models.enums import (
     ConversationFromSource,
+    CreatorUserRole,
     EndUserType,
     ExecutionOffLoadType,
     WorkflowRunTriggeredFrom,
 )
-from models.model import (
-    AppMode,
-    Conversation,
-    EndUser,
-    Message,
-    MessageFile,
-    UploadFile,
-)
+from models.model import AppMode, Conversation, EndUser, Message, MessageFile, UploadFile
 from models.tools import ToolFile
 from models.workflow import (
+    WorkflowDraftVariableFile,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
@@ -42,31 +37,8 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from services import app_storage_cleanup_service as cleanup
-from tests.unit_tests.model_factories import make_app
-
-
-@dataclass
-class _RecordingStorage:
-    deleted: list[str] = field(default_factory=list)
-
-    def delete(self, key: str) -> None:
-        self.deleted.append(key)
-
-    def scan(self, _prefix: str) -> list[str]:
-        return []
-
-
-@dataclass(frozen=True)
-class _ObsDeleteResponse:
-    status: int
-    errorCode: str
-
-
-class _DenyingObsClient:
-    def deleteObject(self, *, bucketName: str, objectKey: str) -> _ObsDeleteResponse:  # noqa: N802, N803
-        del bucketName, objectKey
-        return _ObsDeleteResponse(status=403, errorCode="AccessDenied")
 
 
 def _offload(
@@ -142,9 +114,7 @@ def deleted_keys(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 @pytest.mark.parametrize("legacy_owner", [False, True])
 def test_nested_offload_cleanup_preserves_retry_references(
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-    legacy_owner: bool,
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, deleted_keys: list[str], legacy_owner: bool
 ) -> None:
     sqlite_session.add(
         WorkflowRun(
@@ -152,7 +122,7 @@ def test_nested_offload_cleanup_preserves_retry_references(
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=WorkflowType.CHAT,
+            type=ModelWorkflowType.CHAT,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.SUCCEEDED,
@@ -173,13 +143,13 @@ def test_nested_offload_cleanup_preserves_retry_references(
     assert sqlite_session.get(UploadFile, file_id) is not None
     assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
-    recovery_storage = _RecordingStorage()
-    monkeypatch.setattr(cleanup, "storage", recovery_storage)
+    monkeypatch.setattr(cleanup.storage, "delete", deleted_keys.append)
+    cleanup.cleanup_app_storage("tenant-1", "app-1")
     cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
+    assert deleted_keys == ["nested.json"]
     assert sqlite_session.get(UploadFile, file_id) is None
     assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
-    assert recovery_storage.deleted == ["nested.json"]
 
 
 @pytest.mark.parametrize(
@@ -270,13 +240,10 @@ def test_cleanup_removes_owned_offloads_and_preserves_other_owners(sqlite_sessio
         assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
 
-def test_storage_failure_retains_references_for_retry(
-    sqlite_session: Session,
-    storage: MagicMock,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_storage_failure_retains_references_for_retry(sqlite_session: Session, storage: MagicMock) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     storage.delete.side_effect = RuntimeError("storage unavailable")
+    storage.exists.return_value = True
 
     with pytest.raises(RuntimeError, match="storage unavailable"):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
@@ -285,12 +252,10 @@ def test_storage_failure_retains_references_for_retry(
     assert sqlite_session.get(UploadFile, file_id) is not None
     assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
-    recovery_storage = _RecordingStorage()
-    monkeypatch.setattr(cleanup, "storage", recovery_storage)
+    storage.delete.side_effect = None
     cleanup.cleanup_app_storage("tenant-1", "app-1")
     sqlite_session.expire_all()
     assert sqlite_session.get(UploadFile, file_id) is None
-    assert recovery_storage.deleted == ["owned.json"]
 
 
 def test_missing_object_allows_redelivery(sqlite_session: Session, storage: MagicMock) -> None:
@@ -324,7 +289,8 @@ def test_obs_delete_failure_preserves_retry_references(
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     backend = HuaweiObsStorage.__new__(HuaweiObsStorage)
     backend.bucket_name = "bucket"
-    monkeypatch.setattr(backend, "client", _DenyingObsClient(), raising=False)
+    backend.client = MagicMock()
+    backend.client.deleteObject.return_value = SimpleNamespace(status=403, errorCode="AccessDenied")
     monkeypatch.setattr(cleanup, "storage", backend)
     with pytest.raises(RuntimeError, match="403"):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
@@ -333,23 +299,14 @@ def test_obs_delete_failure_preserves_retry_references(
     assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
 
-def test_clickzetta_failed_delete_preserves_retry_references(
+def test_clickzetta_failed_existence_check_preserves_retry_references(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     backend = ClickZettaVolumeStorage.__new__(ClickZettaVolumeStorage)
-    monkeypatch.setattr(
-        backend,
-        "_config",
-        ClickZettaVolumeConfig.model_construct(volume_type="user", dify_prefix="dify", permission_check=False),
-        raising=False,
-    )
-
-    def fail_execute(*_args: object, **_kwargs: object) -> None:
-        raise RuntimeError("backend unavailable")
-
-    monkeypatch.setattr(backend, "_execute_sql", fail_execute)
+    monkeypatch.setattr(backend, "_config", SimpleNamespace(volume_type="user", dify_prefix="dify"), raising=False)
+    monkeypatch.setattr(backend, "_execute_sql", MagicMock(side_effect=RuntimeError("backend unavailable")))
     monkeypatch.setattr(cleanup, "storage", backend)
     with pytest.raises(RuntimeError, match="backend unavailable"):
         cleanup.cleanup_app_storage("tenant-1", "app-1")
@@ -413,7 +370,7 @@ def test_pause_files_and_reasons_are_removed_only_after_storage_success(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,
@@ -472,7 +429,6 @@ def test_end_user_files_are_cleaned_before_owner_records(
             cleanup.cleanup_app_storage("tenant-1", "app-1")
     else:
         cleanup.cleanup_app_storage("tenant-1", "app-1")
-        cleanup.cleanup_app_uploads("tenant-1", "app-1")
     sqlite_session.expire_all()
     assert (sqlite_session.get(ToolFile, tool_id) is not None) == fails
     assert (sqlite_session.get(UploadFile, file_id) is not None) == fails
@@ -494,21 +450,20 @@ def test_shared_message_files_are_retained(sqlite_session: Session, storage: Mag
     assert upload is not None
     upload.created_by_role = CreatorUserRole.END_USER
     upload.created_by = user.id
-    sqlite_session.add(make_app(app_id="app-2", tenant_id="tenant-1"))
     conversation = Conversation(
-        app_id="app-2", mode=AppMode.CHAT, name="other app", inputs={}, from_source=ConversationFromSource.API
+        app_id="app-2", mode=AppMode.CHAT, name="other app", _inputs={}, from_source=ConversationFromSource.API
     )
     sqlite_session.add(conversation)
     sqlite_session.flush()
     message = Message(
         app_id="app-2",
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="q",
         message={},
-        message_unit_price=0,
+        message_unit_price=Decimal(0),
         answer="a",
-        answer_unit_price=0,
+        answer_unit_price=Decimal(0),
         currency="USD",
         from_source=ConversationFromSource.API,
     )
@@ -557,7 +512,7 @@ def test_conversation_owned_tools_are_cleaned_and_account_assets_retained(
     sqlite_session: Session, storage: MagicMock
 ) -> None:
     conversation = Conversation(
-        app_id="app-1", mode=AppMode.CHAT, name="owned", inputs={}, from_source=ConversationFromSource.CONSOLE
+        app_id="app-1", mode=AppMode.CHAT, name="owned", _inputs={}, from_source=ConversationFromSource.CONSOLE
     )
     sqlite_session.add(conversation)
     sqlite_session.flush()
@@ -607,6 +562,127 @@ def test_tool_with_conflicting_conversation_owner_is_retained(sqlite_session: Se
     cleanup.cleanup_app_storage("tenant-1", "app-1")
     storage.delete.assert_not_called()
     assert sqlite_session.get(ToolFile, tool.id) is not None
+
+
+@pytest.mark.parametrize("message_owner", ["app-1", "app-2", None])
+def test_message_reference_protection_for_tools_and_uploads(
+    sqlite_session: Session, deleted_keys: list[str], message_owner: str | None
+) -> None:
+    user = _end_user(sqlite_session)
+    tool = ToolFile(
+        tenant_id="tenant-1",
+        user_id=user.id,
+        conversation_id=None,
+        file_key="tools/reference.json",
+        mimetype="application/json",
+    )
+    sqlite_session.add(tool)
+    file_id, offload_id = _offload(sqlite_session, "app-2", "uploads/reference.json")
+    offload = sqlite_session.get(WorkflowNodeExecutionOffload, offload_id)
+    assert offload is not None
+    sqlite_session.delete(offload)
+    upload = sqlite_session.get(UploadFile, file_id)
+    assert upload is not None
+    upload.created_by_role = CreatorUserRole.END_USER
+    upload.created_by = user.id
+    message_id = "orphan-message"
+    if message_owner is not None:
+        message = Message(
+            app_id=message_owner,
+            conversation_id="conversation",
+            _inputs={},
+            query="q",
+            message={},
+            message_unit_price=Decimal(0),
+            answer="a",
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+        )
+        sqlite_session.add(message)
+        sqlite_session.flush()
+        message_id = message.id
+    tool_id = tool.id
+    for record_id, method in ((tool_id, FileTransferMethod.TOOL_FILE), (file_id, FileTransferMethod.LOCAL_FILE)):
+        sqlite_session.add(
+            MessageFile(
+                message_id=message_id,
+                type=FileType.DOCUMENT,
+                transfer_method=method,
+                upload_file_id=record_id,
+                created_by_role=CreatorUserRole.END_USER,
+                created_by=user.id,
+            )
+        )
+    sqlite_session.commit()
+    for _ in range(2):
+        cleanup.cleanup_app_storage("tenant-1", "app-1")
+    retained = message_owner != "app-1"
+    sqlite_session.expire_all()
+    assert (sqlite_session.get(ToolFile, tool_id) is not None) == retained
+    assert (sqlite_session.get(UploadFile, file_id) is not None) == retained
+    assert sorted(deleted_keys) == ([] if retained else ["tools/reference.json", "uploads/reference.json"])
+
+
+@pytest.mark.parametrize("reference", ["offload", "draft", "foreign_tenant"])
+def test_end_user_upload_reference_and_tenant_protection(
+    sqlite_session: Session, deleted_keys: list[str], reference: str
+) -> None:
+    user = _end_user(sqlite_session)
+    file_id, offload_id = _offload(sqlite_session, "app-2", "uploads/protected.json")
+    upload = sqlite_session.get(UploadFile, file_id)
+    assert upload is not None
+    upload.created_by_role = CreatorUserRole.END_USER
+    upload.created_by = user.id
+    if reference != "offload":
+        offload = sqlite_session.get(WorkflowNodeExecutionOffload, offload_id)
+        assert offload is not None
+        sqlite_session.delete(offload)
+    if reference == "draft":
+        sqlite_session.add(
+            WorkflowDraftVariableFile(
+                tenant_id="tenant-1",
+                app_id="app-2",
+                user_id="account-1",
+                upload_file_id=file_id,
+                size=1,
+                length=None,
+                value_type=SegmentType.STRING,
+            )
+        )
+    elif reference == "foreign_tenant":
+        upload.tenant_id = "tenant-2"
+    sqlite_session.commit()
+    for _ in range(2):
+        cleanup.cleanup_app_storage("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    assert deleted_keys == []
+
+
+def test_clickzetta_failed_delete_preserves_retry_references(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
+    backend = ClickZettaVolumeStorage.__new__(ClickZettaVolumeStorage)
+    monkeypatch.setattr(
+        backend,
+        "_config",
+        ClickZettaVolumeConfig.model_construct(volume_type="user", dify_prefix="dify", permission_check=False),
+        raising=False,
+    )
+
+    def fail_execute(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("backend unavailable")
+
+    monkeypatch.setattr(backend, "_execute_sql", fail_execute)
+    monkeypatch.setattr(cleanup, "storage", backend)
+    with pytest.raises(RuntimeError, match="backend unavailable"):
+        cleanup.cleanup_app_storage("tenant-1", "app-1")
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, file_id) is not None
+    assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
 
 def test_app_upload_cleanup_retains_snippet_owned_image(

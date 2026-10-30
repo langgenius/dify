@@ -6,8 +6,10 @@ from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.human_input_v2.shared import AccountId
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantPluginAutoUpgradeStrategy
 from models.model import DifySetup, TenantCreditPool
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 
 
 class InstallationStateRepository:
@@ -68,4 +70,7 @@ class InstallationStateRepository:
             has_membership = exists().where(TenantAccountJoin.account_id == account_id)
             account = session.scalar(select(Account).where(Account.id == account_id, ~has_membership))
             if account is not None:
+                SQLAlchemyContactRepository(session).delete_account_identity_after_failed_creation(
+                    AccountId(account_id)
+                )
                 session.delete(account)

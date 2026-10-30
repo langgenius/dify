@@ -11,6 +11,7 @@ from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Document, DocumentSegment
+from models.enums import IndexingStatus
 from repositories.knowledge.document_query_repository import get_document_dataset
 from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
 from services.knowledge.indexing.locks import (
@@ -60,7 +61,7 @@ def _remove_document_from_index(document_id: str, *, lease: KnowledgeIndexingLea
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
 
-        if document.indexing_status != "completed":
+        if document.indexing_status != IndexingStatus.COMPLETED:
             logger.info(click.style(f"Document is not completed, remove is not allowed: {document_id}", fg="red"))
             return
         if document.enabled and not document.archived:

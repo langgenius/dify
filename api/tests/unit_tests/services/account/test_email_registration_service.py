@@ -31,7 +31,7 @@ from services.entities.account_entities import (
 from services.errors.base import PersistenceCommitOutcomeUnknownError
 from services.workspace.contracts import CreatedWorkspace
 from services.workspace.gateways import RedisWorkspaceQuotaGuard, WorkspaceProvisioningEffectsGateway
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 @pytest.fixture
