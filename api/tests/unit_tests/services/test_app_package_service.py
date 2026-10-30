@@ -1292,9 +1292,7 @@ class TestPackageIconsCases:
             AppPackageService().read_package(_icon_archive())
 
     @staticmethod
-    def test_roster_export_embeds_agent_icon(
-        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ) -> None:
+    def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
         from models.agent_config_entities import AgentSoulConfig
         from models.model import App, AppMode
         from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
