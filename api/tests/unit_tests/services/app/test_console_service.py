@@ -555,20 +555,14 @@ class RosterPackageTransfers(PackageTransfers):
 
 
 @pytest.mark.parametrize(
-    ("transfers", "kind", "written"),
+    ("transfers", "kind"),
     [
-        (PackageTransfers(package=FakeAppPackage(dsl=_ROOT_DSL)), "dsl", ["read"]),
-        (
-            PackageTransfers(package=FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL])),
-            "dsl",
-            ["read"],
-        ),
-        (RosterPackageTransfers(), "agent", ["read"]),
+        (PackageTransfers(package=FakeAppPackage(dsl=_ROOT_DSL)), "dsl"),
+        (PackageTransfers(package=FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL])), "dsl"),
+        (RosterPackageTransfers(), "agent"),
     ],
 )
-def test_package_import_is_denied_by_its_content_before_any_write(
-    transfers: PackageTransfers, kind: str, written: list[str]
-) -> None:
+def test_package_import_is_denied_by_its_content_before_any_write(transfers: PackageTransfers, kind: str) -> None:
     access = DenyingAccess()
     service = ConsoleAppService(
         apps=cast(ConsoleApps, Apps()),
@@ -581,7 +575,7 @@ def test_package_import_is_denied_by_its_content_before_any_write(
     with pytest.raises(NoPermissionError, match="denied"):
         service.import_app(CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"))
     assert access.calls == [("require_import", kind)]
-    assert [call[0] for call in transfers.calls] == written
+    assert [call[0] for call in transfers.calls] == ["read"]
 
 
 def test_package_import_passes_the_roster_flags_to_the_root_only() -> None:
