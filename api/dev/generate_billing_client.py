@@ -447,7 +447,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
 
 
 def render_errors(service: Service) -> list[str]:
-    return f'''def is_error_reason(value: str) -> TypeIs[ErrorReason]:
+    return f'''def _is_error_reason(value: str) -> TypeIs[ErrorReason]:
     return value in get_args(ErrorReason.__value__)
 
 
@@ -474,7 +474,7 @@ class UpstreamInvalidResponseError(UpstreamError, BillingUpstreamInvalidResponse
 
 
 ERRORS = ServiceErrors(
-    is_reason=is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
+    is_reason=_is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
 )'''.splitlines()
 
 

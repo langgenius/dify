@@ -295,7 +295,7 @@ class VerifyEducationIdentityReply(BillingModel):
     status: Literal["eligible", "not_eligible"]
 
 
-def is_error_reason(value: str) -> TypeIs[ErrorReason]:
+def _is_error_reason(value: str) -> TypeIs[ErrorReason]:
     return value in get_args(ErrorReason.__value__)
 
 
@@ -322,7 +322,7 @@ class UpstreamInvalidResponseError(UpstreamError, BillingUpstreamInvalidResponse
 
 
 ERRORS = ServiceErrors(
-    is_reason=is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
+    is_reason=_is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
 )
 
 
