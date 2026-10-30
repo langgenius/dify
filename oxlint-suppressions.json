@@ -5789,11 +5789,6 @@
       "count": 6
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
   "web/app/components/workflow/panel/debug-and-preview/user-input.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1

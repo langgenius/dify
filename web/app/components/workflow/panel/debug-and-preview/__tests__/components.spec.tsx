@@ -21,9 +21,15 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import ChatWrapper from '../chat-wrapper'
+import ChatWrapperContent from '../chat-wrapper'
 import ConversationVariableModal from '../conversation-variable-modal'
+import { useTestConnections } from '../use-test-connections'
 import UserInput from '../user-input'
+
+function ChatWrapper(props: Omit<ComponentProps<typeof ChatWrapperContent>, 'connections'>) {
+  const connections = useTestConnections()
+  return <ChatWrapperContent {...props} connections={connections} />
+}
 
 type HandleRun = ReturnType<typeof useWorkflowRun>['handleRun']
 const handleRun = vi.fn<HandleRun>()

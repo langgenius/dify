@@ -8,26 +8,33 @@ import Badge from '@/app/components/base/badge'
 import { getServiceConnectionStatus } from './connection-status'
 
 type Props = Omit<ButtonProps, 'children' | 'variant'> & {
-  services: readonly RequiredConnectionService[]
+  services?: readonly RequiredConnectionService[]
+  warningCount?: number
 }
 
-export default function ConfigureConnectionsButton({ services, ...props }: Props) {
+export default function ConfigureConnectionsButton({
+  services = [],
+  warningCount,
+  ...props
+}: Props) {
   const { t } = useTranslation(['share'])
-  const warningCount = services.filter((service) => {
-    const selectedConnection = service.availableConnections.find(
-      (connection) => connection.id === service.selectedConnectionId,
-    )
-    const status = getServiceConnectionStatus(service, selectedConnection)
-    return status !== 'connected'
-  }).length
+  const count =
+    warningCount ??
+    services.filter((service) => {
+      const selectedConnection = service.availableConnections.find(
+        (connection) => connection.id === service.selectedConnectionId,
+      )
+      const status = getServiceConnectionStatus(service, selectedConnection)
+      return status !== 'connected'
+    }).length
 
   return (
     <Button variant="ghost" {...props}>
       <span className="i-ri-link size-4" aria-hidden="true" />
       {t(($) => $['connections.configure.title'], { ns: 'share' })}
-      {warningCount > 0 && (
+      {count > 0 && (
         <Badge as="span" size="xs" variant="dimm" className="border-text-warning text-text-warning">
-          {warningCount}
+          {count}
         </Badge>
       )}
     </Button>

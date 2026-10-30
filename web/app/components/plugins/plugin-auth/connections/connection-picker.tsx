@@ -114,9 +114,9 @@ const ConnectionPicker = ({
         />
       </PopoverTrigger>
       <PopoverContent
-        align="start"
-        sideOffset={8}
-        className="max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) overflow-y-auto bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        align="end"
+        sideOffset={4}
+        className="max-h-(--available-height) w-90 max-w-(--available-width) overflow-y-auto bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <PopoverTitle className="sr-only">
           {t(($) => $['auth.authorization'], { ns: 'plugin' })}
