@@ -8,7 +8,13 @@ from sqlalchemy.orm import sessionmaker
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
-from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration, emoji_icon_adapter
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import (
+    ToolProviderEntity,
+    ToolProviderIdentity,
+    WorkflowToolParameterConfiguration,
+    emoji_icon_adapter,
+)
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
@@ -18,8 +24,30 @@ from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.tools.tools_transform_service import ToolTransformService
+from services.workflow.tool_credentials import WorkflowToolEndUserAuthError, first_end_user_tool_node
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_workflow_tool(provider: WorkflowToolProvider, workflow: Workflow) -> WorkflowToolProviderController:
+    """Validate the loaded graph without opening another Session while holding the App lock."""
+    controller = WorkflowToolProviderController(
+        entity=ToolProviderEntity(
+            identity=ToolProviderIdentity(
+                author="",
+                name=provider.label,
+                label=I18nObject(en_US=provider.label, zh_Hans=provider.label),
+                description=I18nObject(en_US=provider.description, zh_Hans=provider.description),
+                icon=provider.icon,
+            ),
+            credentials_schema=[],
+            plugin_id=None,
+        ),
+        provider_id=provider.id,
+    )
+    # This controller is only used for validation and labels, which do not consume the author.
+    controller.tools = [WorkflowToolProviderController.build_tool(provider, workflow, author="")]
+    return controller
 
 
 class WorkflowToolManageService:
@@ -60,51 +88,42 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        # query the app and its published workflow in the same session
-        app: App | None = None
-        workflow: Workflow | None = None
+        # Serialize conversion with publication, which locks the same App row.
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            app = _session.scalar(select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1))
-            if app is not None:
-                workflow = app.workflow_with_session(session=_session)
+            app = _session.scalar(
+                select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).with_for_update()
+            )
+            if app is None:
+                raise ValueError(f"App {workflow_app_id} not found")
+            workflow = app.workflow_with_session(session=_session)
+            if workflow is None:
+                raise ValueError(f"Workflow not found for app {workflow_app_id}")
+            if node_id := first_end_user_tool_node(workflow.graph_dict):
+                raise WorkflowToolEndUserAuthError(node_id)
 
-        # if not found raise error
-        if app is None:
-            raise ValueError(f"App {workflow_app_id} not found")
-
-        # if not found raise error
-        if workflow is None:
-            raise ValueError(f"Workflow not found for app {workflow_app_id}")
-
-        # create workflow tool provider
-        workflow_tool_provider = WorkflowToolProvider(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            app_id=workflow_app_id,
-            name=name,
-            label=label,
-            icon=json.dumps(icon),
-            description=description,
-            parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
-            privacy_policy=privacy_policy,
-            version=workflow.version,
-        )
-        if import_id:
-            workflow_tool_provider.id = import_id
-        try:
-            WorkflowToolProviderController.from_db(workflow_tool_provider)
-        except Exception as e:
-            logger.warning(e, exc_info=True)
-            raise ValueError(str(e)) from e
-
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
+            workflow_tool_provider = WorkflowToolProvider(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                app_id=workflow_app_id,
+                name=name,
+                label=label,
+                icon=json.dumps(icon),
+                description=description,
+                parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
+                privacy_policy=privacy_policy,
+                version=workflow.version,
+            )
+            if import_id:
+                workflow_tool_provider.id = import_id
+            try:
+                controller = _validate_workflow_tool(workflow_tool_provider, workflow)
+            except Exception as e:
+                logger.warning(e, exc_info=True)
+                raise ValueError(str(e)) from e
             _session.add(workflow_tool_provider)
 
-        # keep the session open to make orm instances in the same session
         if labels is not None:
-            ToolLabelManager.update_tool_labels(
-                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
-            )
+            ToolLabelManager.update_tool_labels(controller, labels)
 
         return {"result": "success"}
 
@@ -168,25 +187,18 @@ class WorkflowToolManageService:
         if workflow_tool_provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        # query the app and its published workflow in the same session
-        app: App | None = None
-        workflow: Workflow | None = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(
-                select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
+                select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).with_for_update()
             )
-            if app is not None:
-                workflow = app.workflow_with_session(session=_session)
+            if app is None:
+                raise ValueError(f"App {workflow_tool_provider.app_id} not found")
+            workflow = app.workflow_with_session(session=_session)
+            if workflow is None:
+                raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
+            if node_id := first_end_user_tool_node(workflow.graph_dict):
+                raise WorkflowToolEndUserAuthError(node_id)
 
-        # if not found raise error
-        if app is None:
-            raise ValueError(f"App {workflow_tool_provider.app_id} not found")
-
-        # if not found raise error
-        if workflow is None:
-            raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
-
-        with sessionmaker(db.engine).begin() as _session:
             _session.add(workflow_tool_provider)
 
             # update workflow tool provider
@@ -200,13 +212,13 @@ class WorkflowToolManageService:
             workflow_tool_provider.updated_at = datetime.now()
 
             try:
-                WorkflowToolProviderController.from_db(workflow_tool_provider)
+                controller = _validate_workflow_tool(workflow_tool_provider, workflow)
             except Exception as e:
                 raise ValueError(str(e)) from e
 
             if labels is not None:
                 ToolLabelManager.update_tool_labels(
-                    ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
+                    controller,
                     labels,
                     session=_session,
                 )
