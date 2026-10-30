@@ -89,6 +89,8 @@ describe('WebApp document admission', () => {
     { 'X-Dify-Webapp-Client-Ip': '' },
     { 'X-Dify-Webapp-Client-Ip': '203.0.113.42, 198.51.100.1' },
     { 'X-Dify-Webapp-Client-Ip': 'unknown' },
+    { 'X-Dify-Webapp-Client-Ip': 'unproven-v2' },
+    { 'X-Dify-Webapp-Client-Ip': 'unproven-v1, 203.0.113.42' },
   ])('fails closed without trusted ingress proof %j', async (headers) => {
     const result = await gate(request('/chat/code', headers))
     expect(result?.status).toBe(503)
@@ -109,6 +111,125 @@ describe('WebApp document admission', () => {
       expect(await gate(request())).toBeUndefined()
     },
   )
+
+  describe('authenticated unproven client IP', () => {
+    const admissionHeaders = { 'X-Dify-Webapp-Admission': 'no-effective-ip-policy-v1' }
+    const unprovenRequest = (headers: Record<string, string> = {}) =>
+      request('/workflow/code', { 'X-Dify-Webapp-Client-Ip': 'unproven-v1', ...headers })
+
+    it.each(['public', 'private', 'private_all', 'sso_verified'])(
+      'renders %s only after Gateway confirms no effective IP policy',
+      async (accessMode) => {
+        fetchMock.mockResolvedValue(Response.json({ accessMode }, { headers: admissionHeaders }))
+        const result = await proxy(
+          unprovenRequest({
+            'X-Forwarded-For': '198.51.100.1',
+            'X-Real-IP': '198.51.100.2',
+            Forwarded: 'for=198.51.100.3',
+            'CF-Connecting-IP': '198.51.100.4',
+            Authorization: 'Bearer untrusted',
+            Cookie: 'session=not-forwarded',
+            [APP_UNAVAILABLE_IP_HEADER]: '198.51.100.5',
+          }),
+        )
+
+        expect(result.status).toBe(200)
+        expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+          new URL('http://gateway.internal:8080/api/webapp/access-mode?appCode=code'),
+          {
+            method: 'GET',
+            cache: 'no-store',
+            redirect: 'error',
+            headers: {
+              Accept: 'application/json',
+              'x-dify-webapp-client-ip': 'unproven-v1',
+              'x-dify-webapp-proxy-secret': 'unit-test-ingress-proof',
+            },
+            signal: expect.any(AbortSignal),
+          },
+        )
+        expect(result.headers.has('x-middleware-request-x-dify-webapp-proxy-secret')).toBe(false)
+        expect(result.headers.has('x-middleware-request-x-dify-webapp-client-ip')).toBe(false)
+        expect(result.headers.has(`x-middleware-request-${APP_UNAVAILABLE_IP_HEADER}`)).toBe(false)
+        expect(result.headers.has('x-dify-webapp-admission')).toBe(false)
+      },
+    )
+
+    it.each(['', 'wrong'])(
+      'rejects an unproven IP without matching ingress proof %j',
+      async (secret) => {
+        expect(
+          (await gate(unprovenRequest({ 'X-Dify-Webapp-Proxy-Secret': secret })))?.status,
+        ).toBe(503)
+        expect(fetchMock).not.toHaveBeenCalled()
+      },
+    )
+
+    it('rejects an unproven IP when the server secret is unset', async () => {
+      configuration.WEBAPP_ACCESS_PREFLIGHT_PROXY_SECRET = undefined
+      expect((await gate(unprovenRequest()))?.status).toBe(503)
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      undefined,
+      '',
+      'no-effective-ip-policy',
+      'no-effective-ip-policy-v2',
+      'no-effective-ip-policy-v1, other',
+    ])('fails closed on old or unsupported Gateway acknowledgement %j', async (acknowledgement) => {
+      fetchMock.mockResolvedValue(
+        Response.json(
+          { accessMode: 'public' },
+          {
+            headers:
+              acknowledgement === undefined ? {} : { 'X-Dify-Webapp-Admission': acknowledgement },
+          },
+        ),
+      )
+      const result = await gate(unprovenRequest())
+      expect(result?.status).toBe(503)
+      expect(result?.headers.get('cache-control')).toBe('no-store')
+    })
+
+    it('does not treat an acknowledged 404 as a proven application identity', async () => {
+      fetchMock.mockResolvedValue(
+        Response.json(
+          { code: 'app_not_found', status: 404, message: 'App not found.' },
+          { status: 404, headers: admissionHeaders },
+        ),
+      )
+      const result = await gate(unprovenRequest())
+      expect(result?.status).toBe(503)
+      expect(result?.headers.get('x-middleware-rewrite')).toBeNull()
+    })
+
+    it.each([401, 403, 429, 500, 502, 503])(
+      'does not let an acknowledgement override upstream failure %s',
+      async (status) => {
+        fetchMock.mockResolvedValue(
+          Response.json({ accessMode: 'public' }, { status, headers: admissionHeaders }),
+        )
+        expect((await gate(unprovenRequest()))?.status).toBe(503)
+      },
+    )
+
+    it.each([
+      () => Response.json({ accessMode: 'unsupported' }, { headers: admissionHeaders }),
+      () => Response.json({ unexpected: true }, { headers: admissionHeaders }),
+      () => new Response('<h1>ok</h1>', { headers: admissionHeaders }),
+      () =>
+        new Response('{', { headers: { ...admissionHeaders, 'content-type': 'application/json' } }),
+    ])('requires a valid payload after the acknowledgement', async (response) => {
+      fetchMock.mockResolvedValue(response())
+      expect((await gate(unprovenRequest()))?.status).toBe(503)
+    })
+
+    it('fails closed on a Gateway network failure', async () => {
+      fetchMock.mockRejectedValue(new DOMException('Timed out', 'TimeoutError'))
+      expect((await gate(unprovenRequest()))?.status).toBe(503)
+    })
+  })
 
   it('rewrites canonical missing/denied responses to one 404 without exposing application data', async () => {
     fetchMock.mockResolvedValue(
