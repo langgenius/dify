@@ -133,7 +133,7 @@ def reset_redis_mock(_patch_redis_clients: None) -> None:
     redis_mock.get.reset_mock()
     redis_mock.setex.reset_mock()
     redis_mock.setnx.reset_mock()
-    redis_mock.lock.reset_mock()
+    redis_mock.lock.reset_mock(return_value=True, side_effect=True)
     redis_mock.exists.reset_mock()
     redis_mock.set.reset_mock()
     redis_mock.expire.reset_mock()
