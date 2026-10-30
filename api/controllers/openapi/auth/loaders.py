@@ -93,8 +93,14 @@ def _canonical_uuid(raw: str, not_found: str) -> str:
 
 
 def _fetch_app(ctx: Context) -> App:
-    if PathParam.APP_ID not in ctx.view_args and PathParam.AGENT_ID in ctx.view_args:
+    if route_has_app(ctx):
+        return _fetch_app_by_id(ctx)
+    if PathParam.AGENT_ID in ctx.view_args:
         return _fetch_agent_app(ctx)
+    return _fetch_app_by_id(ctx)
+
+
+def _fetch_app_by_id(ctx: Context) -> App:
     app_id = _canonical_uuid(_path_param(ctx, PathParam.APP_ID), "app not found")
     app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
