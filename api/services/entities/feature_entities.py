@@ -1,6 +1,7 @@
 """Feature query results and policy values shared by their consumers."""
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,7 +14,7 @@ class FeatureResponseModel(BaseModel):
 
 class SubscriptionModel(FeatureResponseModel):
     plan: CloudPlan = CloudPlan.SANDBOX
-    interval: str = ""
+    interval: Literal["", "month", "year"] = ""
 
 
 class BillingModel(FeatureResponseModel):
@@ -176,7 +177,7 @@ class FeatureModel(FeatureResponseModel):
 class KnowledgeRateLimitModel(FeatureResponseModel):
     enabled: bool = False
     limit: int = 10
-    subscription_plan: str = ""
+    subscription_plan: Literal["", "sandbox", "professional", "team"] = ""
 
 
 class SystemFeatureModel(FeatureResponseModel):

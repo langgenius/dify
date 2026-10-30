@@ -23,12 +23,13 @@ import pytest
 import tenacity
 from werkzeug.exceptions import InternalServerError
 
-from enums import CloudPlan
+from services.billing_client import billing, transport
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
+from tests.helpers import billing_builders as builders
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
@@ -331,243 +332,122 @@ class TestBillingServiceSendRequest:
         assert retry_sleep.call_args_list == [call(2)] * 4
 
 
-class TestBillingServicePortalRequest:
-    def test_sends_get_request(self) -> None:
-        params = {"tenant_id": "tenant-1"}
-        with patch.object(
-            BillingService,
-            "_send_request",
-            return_value={"url": "https://example.com", "ignored": True},
-        ) as send_request:
-            result = BillingService._send_billing_portal_request("/test", params=params)
-
-        assert result == {"url": "https://example.com"}
-        send_request.assert_called_once_with("GET", "/test", params=params)
-
-    def test_invalid_response_shape_is_invalid_upstream_response(self) -> None:
-        with patch.object(BillingService, "_send_request", return_value={}):
-            with pytest.raises(BillingUpstreamInvalidResponseError):
-                BillingService._send_billing_portal_request("/test", params={})
-
-    @pytest.mark.parametrize(
-        "status_code",
-        [httpx.codes.BAD_REQUEST, httpx.codes.UNAUTHORIZED, httpx.codes.NOT_FOUND],
-    )
-    def test_terminal_http_response_is_invalid_upstream_response(self, status_code: int) -> None:
-        with patch.object(
-            BillingService,
-            "_send_request",
-            side_effect=_BillingHTTPStatusError("request failed", status_code),
-        ):
-            with pytest.raises(BillingUpstreamInvalidResponseError):
-                BillingService._send_billing_portal_request("/test", params={})
-
-    @pytest.mark.parametrize(
-        "status_code",
-        [httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS, httpx.codes.INTERNAL_SERVER_ERROR],
-    )
-    def test_retryable_http_response_is_unavailable(self, status_code: int) -> None:
-        with patch.object(
-            BillingService,
-            "_send_request",
-            side_effect=_BillingHTTPStatusError("request failed", status_code),
-        ):
-            with pytest.raises(BillingUpstreamUnavailableError):
-                BillingService._send_billing_portal_request("/test", params={})
-
-    def test_transport_failure_is_unavailable(self) -> None:
-        with patch.object(
-            BillingService,
-            "_send_request",
-            side_effect=httpx.RequestError("network error"),
-        ):
-            with pytest.raises(BillingUpstreamUnavailableError):
-                BillingService._send_billing_portal_request("/test", params={})
-
-    @pytest.mark.parametrize(
-        "decode_error",
-        [
-            json.JSONDecodeError("Expecting value", "", 0),
-            UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
-        ],
-    )
-    def test_invalid_payload_is_invalid_upstream_response(self, decode_error: Exception) -> None:
-        with patch.object(BillingService, "_send_request", side_effect=decode_error):
-            with pytest.raises(BillingUpstreamInvalidResponseError):
-                BillingService._send_billing_portal_request("/test", params={})
-
-    def test_unknown_error_is_not_reclassified(self) -> None:
-        with patch.object(BillingService, "_send_request", side_effect=RuntimeError("programming error")):
-            with pytest.raises(RuntimeError, match="programming error"):
-                BillingService._send_billing_portal_request("/test", params={})
-
-    def test_unknown_value_error_is_not_exposed_as_invalid_request(self) -> None:
-        original_error = ValueError("programming error")
-        with patch.object(BillingService, "_send_request", side_effect=original_error):
-            with pytest.raises(RuntimeError, match="Unexpected billing service value error") as exc_info:
-                BillingService._send_billing_portal_request("/test", params={})
-
-        assert exc_info.value.__cause__ is original_error
-
-
 class TestBillingServiceSubscriptionInfo:
-    """Unit tests for subscription tier and billing info retrieval.
+    """Subscription and usage reads delegate to the generated billing client."""
 
-    Tests cover:
-    - Billing information retrieval
-    - Knowledge base rate limits with default and custom values
-    - Payment link generation for subscriptions and model providers
-    - Invoice retrieval
-    """
+    def test_get_info_returns_the_generated_reply(self):
+        reply = builders.subscription_info("team", vector_space=builders.vector_space(size=1.5, limit=50))
 
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
+        with patch.object(billing, "subscription_get_subscription_info", return_value=reply) as get_info:
+            result = BillingService.get_info(TENANT_ID, exclude_vector_space=True)
 
-    def test_get_info_success(self, mock_send_request):
-        """Test successful retrieval of billing information."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {
-            "subscription": {"plan": "professional", "interval": "month", "education": False},
-            "members": {"size": 1, "limit": 50},
-            "apps": {"size": 1, "limit": 200},
-            "vector_space": {"size": 0.0, "limit": 20480},
-            "documents_upload_quota": {"size": 0, "limit": 1000},
-            "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-            "next_credit_reset_date": 1775952000,
-        }
-        mock_send_request.return_value = {
-            **expected_response,
-            "docs_processing": "top-priority",
-            "knowledge_rate_limit": {"limit": 1000},
-        }
+        assert result is reply
+        get_info.assert_called_once_with(tenant_id=TENANT_ID, exclude_vector_space=True)
 
-        # Act
-        result = BillingService.get_info(tenant_id)
+    @pytest.mark.parametrize("bypass_cache", [False, True])
+    def test_get_vector_space_forwards_bypass_cache(self, bypass_cache: bool):
+        reply = builders.vector_space(size=12.5, limit=50, usage_unknown=True)
 
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": tenant_id})
+        with patch.object(billing, "subscription_get_subscription_vector_space", return_value=reply) as get:
+            result = BillingService.get_vector_space(TENANT_ID, bypass_cache=bypass_cache)
 
-    def test_get_info_exclude_vector_space(self, mock_send_request):
-        """When requested, get_info asks billing to skip vector_space."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {
-            "subscription": {"plan": "professional", "interval": "month", "education": False},
-            "members": {"size": 1, "limit": 50},
-            "apps": {"size": 1, "limit": 200},
-            "documents_upload_quota": {"size": 0, "limit": 1000},
-            "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-        }
-        mock_send_request.return_value = expected_response
+        assert result is reply
+        get.assert_called_once_with(tenant_id=TENANT_ID, bypass_cache=bypass_cache)
 
-        # Act
-        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
+    def test_get_knowledge_rate_limit_returns_the_generated_reply(self):
+        reply = billing.GetKnowledgeRateLimitReply(subscription_plan="professional", limit=100)
 
-        # Assert
-        assert "vector_space" not in result
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/info",
-            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
+        with patch.object(billing, "subscription_get_knowledge_rate_limit", return_value=reply) as get:
+            result = BillingService.get_knowledge_rate_limit(TENANT_ID)
+
+        assert result is reply
+        get.assert_called_once_with(tenant_id=TENANT_ID)
+
+    def test_get_subscription_returns_the_portal_link(self):
+        reply = billing.GetSubscriptionPaymentLinkReply(url="https://payment.example.com/checkout")
+
+        with patch.object(billing, "subscription_get_subscription_payment_link", return_value=reply) as get:
+            result = BillingService.get_subscription("professional", "month", "user@example.com", TENANT_ID)
+
+        assert result == {"url": "https://payment.example.com/checkout"}
+        get.assert_called_once_with(
+            plan="professional", interval="month", prefilled_email="user@example.com", tenant_id=TENANT_ID
         )
 
-    def test_get_info_exclude_vector_space_normalizes_null_field(self, mock_send_request):
-        """When billing serializes skipped vector_space as null, get_info treats it as absent."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {
-            "subscription": {"plan": "professional", "interval": "month", "education": False},
-            "members": {"size": 1, "limit": 50},
-            "apps": {"size": 1, "limit": 200},
-            "vector_space": None,
-            "documents_upload_quota": {"size": 0, "limit": 1000},
-            "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
+    def test_get_invoices_returns_the_portal_link(self):
+        reply = billing.GetInvoicesReply(url="https://billing.example.com/invoices")
+
+        with patch.object(billing, "invoice_get_invoices", return_value=reply) as get:
+            result = BillingService.get_invoices("user@example.com", TENANT_ID)
+
+        assert result == {"url": "https://billing.example.com/invoices"}
+        get.assert_called_once_with(prefilled_email="user@example.com", tenant_id=TENANT_ID)
+
+    def test_get_model_provider_payment_link_returns_the_generated_reply(self):
+        reply = billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider")
+
+        with patch.object(billing, "model_provider_get_model_provider_payment_link", return_value=reply) as get:
+            # pyrefly: ignore [deprecated]
+            result = BillingService.get_model_provider_payment_link("anthropic", TENANT_ID, ACCOUNT_ID, "a@b.com")
+
+        assert result is reply
+        get.assert_called_once_with(
+            provider_name="anthropic", tenant_id=TENANT_ID, account_id=ACCOUNT_ID, prefilled_email="a@b.com"
+        )
+
+    def test_get_plan_bulk_chunks_requests_and_skips_failed_batches(self):
+        tenant_ids = [f"tenant-{i}" for i in range(450)]
+
+        def batch(*, body: billing.BatchGetSubscriptionPlanReq) -> billing.BatchGetSubscriptionPlanReply:
+            if body.tenant_ids[0] == "tenant-200":
+                raise BillingUpstreamUnavailableError("POST /subscription/plan/batch failed")
+            return billing.BatchGetSubscriptionPlanReply(
+                data={tenant_id: builders.plan_item("team", 1735689600) for tenant_id in body.tenant_ids}
+            )
+
+        with patch.object(billing, "subscription_batch_get_subscription_plan", side_effect=batch) as get:
+            result = BillingService.get_plan_bulk(tenant_ids)
+
+        assert [len(c.kwargs["body"].tenant_ids) for c in get.call_args_list] == [200, 200, 50]
+        assert set(result) == set(tenant_ids[:200] + tenant_ids[400:])
+        assert result["tenant-0"] == builders.plan_item("team", 1735689600)
+
+    def test_get_plan_bulk_skips_invalid_items_from_http_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        payload = {
+            "data": {
+                "valid": {"plan": "sandbox", "expiration_date": "-1"},
+                "missing_expiration": {"plan": "sandbox"},
+                "invalid_expiration": {"plan": "sandbox", "expiration_date": "invalid"},
+                "missing_plan": {"expiration_date": -1},
+                "invalid_item": "not-an-object",
+                "null_item": None,
+            }
         }
-        mock_send_request.return_value = expected_response
+        monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
 
-        # Act
-        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
+            plans = BillingService.get_plan_bulk(list(payload["data"]))
 
-        # Assert
-        assert "vector_space" not in result
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/info",
-            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
+        assert plans == {"valid": builders.plan_item("sandbox", -1)}
+
+    def test_get_expired_subscription_cleanup_whitelist_returns_tenant_ids(self):
+        reply = billing.ListSubscriptionCleanupWhitelistReply(
+            data=[
+                billing.SubscriptionCleanupWhitelist(
+                    id=f"wl-{tenant_id}",
+                    tenant_id=tenant_id,
+                    contact="ops@example.com",
+                    expired_at="2026-01-01T00:00:00Z",
+                    created_at="2025-01-01T00:00:00Z",
+                    updated_at="2025-01-01T00:00:00Z",
+                )
+                for tenant_id in ("tenant-a", "tenant-b")
+            ]
         )
 
-    def test_get_vector_space_success(self, mock_send_request):
-        """Test successful retrieval of vector-space usage and limit."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {"size": 5120.75, "limit": 20480}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_vector_space(tenant_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/vector-space",
-            params={"tenant_id": tenant_id},
-        )
-
-    def test_get_vector_space_preserves_unknown_usage(self, mock_send_request):
-        tenant_id = "tenant-123"
-        expected_response = {"size": 0.0, "limit": 50, "usage_unknown": True}
-        mock_send_request.return_value = expected_response
-
-        result = BillingService.get_vector_space(tenant_id)
-
-        assert result == expected_response
-
-    def test_get_info_preserves_unknown_vector_space_usage(self, mock_send_request):
-        tenant_id = "tenant-123"
-        expected_response = {
-            "subscription": {"plan": "sandbox", "interval": "", "education": False},
-            "members": {"size": 1, "limit": 1},
-            "apps": {"size": 1, "limit": 10},
-            "vector_space": {"size": 0.0, "limit": 50, "usage_unknown": True},
-            "documents_upload_quota": {"size": 1, "limit": 50},
-            "annotation_quota_limit": {"size": 0, "limit": 10},
-            "can_replace_logo": False,
-            "model_load_balancing_enabled": False,
-            "knowledge_pipeline_publish_enabled": False,
-        }
-        mock_send_request.return_value = expected_response
-
-        result = BillingService.get_info(tenant_id)
-
-        assert result["vector_space"]["usage_unknown"] is True
-
-    def test_get_vector_space_bypasses_cache(self, mock_send_request):
-        tenant_id = "tenant-123"
-        mock_send_request.return_value = {"size": 4096, "limit": 20480}
-
-        result = BillingService.get_vector_space(tenant_id, bypass_cache=True)
-
-        assert result == {"size": 4096, "limit": 20480}
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/vector-space",
-            params={"tenant_id": tenant_id, "bypass_cache": "true"},
-        )
+        with patch.object(billing, "subscription_list_subscription_cleanup_whitelist", return_value=reply):
+            assert BillingService.get_expired_subscription_cleanup_whitelist() == ["tenant-a", "tenant-b"]
 
     def test_invalidate_vector_space_cache_bypasses_cache(self):
         tenant_id = "tenant-123"
@@ -596,96 +476,6 @@ class TestBillingServiceSubscriptionInfo:
             "/quota/balance",
             params={"tenant_id": tenant_id, "feature_key": "credit_pool", "bucket": "trial"},
         )
-
-    def test_get_knowledge_rate_limit_with_defaults(self, mock_send_request):
-        """Test knowledge rate limit retrieval with default values."""
-        # Arrange
-        tenant_id = "tenant-456"
-        mock_send_request.return_value = {}
-
-        # Act
-        result = BillingService.get_knowledge_rate_limit(tenant_id)
-
-        # Assert
-        assert result["limit"] == 10  # Default limit
-        assert result["subscription_plan"] == CloudPlan.SANDBOX  # Default plan
-        mock_send_request.assert_called_once_with(
-            "GET", "/subscription/knowledge-rate-limit", params={"tenant_id": tenant_id}
-        )
-
-    def test_get_knowledge_rate_limit_with_custom_values(self, mock_send_request):
-        """Test knowledge rate limit retrieval with custom values."""
-        # Arrange
-        tenant_id = "tenant-789"
-        mock_send_request.return_value = {"limit": 100, "subscription_plan": CloudPlan.PROFESSIONAL}
-
-        # Act
-        result = BillingService.get_knowledge_rate_limit(tenant_id)
-
-        # Assert
-        assert result["limit"] == 100
-        assert result["subscription_plan"] == CloudPlan.PROFESSIONAL
-
-    def test_get_subscription_payment_link(self):
-        """Test subscription payment link generation."""
-        # Arrange
-        plan = "professional"
-        interval = "month"
-        email = "user@example.com"
-        tenant_id = "tenant-123"
-        expected_response = {"url": "https://payment.example.com/checkout"}
-        with patch.object(
-            BillingService, "_send_billing_portal_request", return_value=expected_response
-        ) as send_request:
-            result = BillingService.get_subscription(plan, interval, email, tenant_id)
-
-        # Assert
-        assert result == expected_response
-        send_request.assert_called_once_with(
-            "/subscription/payment-link",
-            params={"plan": plan, "interval": interval, "prefilled_email": email, "tenant_id": tenant_id},
-        )
-
-    def test_get_model_provider_payment_link(self, mock_send_request):
-        """Test model provider payment link generation."""
-        # Arrange
-        provider_name = "openai"
-        tenant_id = "tenant-123"
-        account_id = "account-456"
-        email = "user@example.com"
-        expected_response = {"payment_link": "https://payment.example.com/provider"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_model_provider_payment_link(provider_name, tenant_id, account_id, email)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/model-provider/payment-link",
-            params={
-                "provider_name": provider_name,
-                "tenant_id": tenant_id,
-                "account_id": account_id,
-                "prefilled_email": email,
-            },
-        )
-
-    def test_get_invoices(self):
-        """Test invoice retrieval."""
-        # Arrange
-        email = "user@example.com"
-        tenant_id = "tenant-123"
-        expected_response = {"url": "https://payment.example.com/invoices"}
-        with patch.object(
-            BillingService, "_send_billing_portal_request", return_value=expected_response
-        ) as send_request:
-            result = BillingService.get_invoices(email, tenant_id)
-
-        # Assert
-        assert result == expected_response
-        send_request.assert_called_once_with("/invoices", params={"prefilled_email": email, "tenant_id": tenant_id})
 
 
 class TestBillingServiceUsageCalculation:
@@ -1222,510 +1012,6 @@ class TestBillingServiceCacheManagement:
 
         # Assert
         mock_redis_client.delete.assert_called_once_with(expected_key)
-
-
-class TestBillingServiceEdgeCases:
-    """Unit tests for edge cases and error scenarios.
-
-    Tests cover:
-    - Empty responses from billing API
-    - Malformed JSON responses
-    - Boundary conditions for rate limits
-    - Multiple subscription tiers
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_get_info_empty_response(self, mock_send_request):
-        """Empty response from billing API should raise ValidationError due to missing required fields."""
-        from pydantic import ValidationError
-
-        tenant_id = "tenant-empty"
-        mock_send_request.return_value = {}
-
-        with pytest.raises(ValidationError):
-            BillingService.get_info(tenant_id)
-
-    def test_get_knowledge_rate_limit_all_subscription_tiers(self, mock_send_request):
-        """Test knowledge rate limit for all subscription tiers."""
-        # Test SANDBOX tier
-        mock_send_request.return_value = {"limit": 10, "subscription_plan": CloudPlan.SANDBOX}
-        result = BillingService.get_knowledge_rate_limit("tenant-sandbox")
-        assert result["subscription_plan"] == CloudPlan.SANDBOX
-        assert result["limit"] == 10
-
-        # Test PROFESSIONAL tier
-        mock_send_request.return_value = {"limit": 100, "subscription_plan": CloudPlan.PROFESSIONAL}
-        result = BillingService.get_knowledge_rate_limit("tenant-pro")
-        assert result["subscription_plan"] == CloudPlan.PROFESSIONAL
-        assert result["limit"] == 100
-
-        # Test TEAM tier
-        mock_send_request.return_value = {"limit": 500, "subscription_plan": CloudPlan.TEAM}
-        result = BillingService.get_knowledge_rate_limit("tenant-team")
-        assert result["subscription_plan"] == CloudPlan.TEAM
-        assert result["limit"] == 500
-
-    def test_get_subscription_with_empty_optional_params(self, mock_send_request):
-        """Test subscription payment link with empty optional parameters."""
-        # Arrange
-        plan = "professional"
-        interval = "year"
-        expected_response = {"url": "https://payment.example.com/checkout"}
-        mock_send_request.return_value = expected_response
-
-        # Act - empty email and tenant_id
-        result = BillingService.get_subscription(plan, interval, "", "")
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/payment-link",
-            params={"plan": plan, "interval": interval, "prefilled_email": "", "tenant_id": ""},
-        )
-
-    def test_get_invoices_with_empty_params(self, mock_send_request):
-        """Test invoice retrieval with empty parameters."""
-        # Arrange
-        expected_response = {"url": "https://payment.example.com/invoices"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_invoices("", "")
-
-        # Assert
-        assert result == expected_response
-
-
-class TestBillingServiceSubscriptionOperations:
-    """Unit tests for subscription operations in BillingService.
-
-    Tests cover:
-    - Bulk plan retrieval with chunking
-    - Expired subscription cleanup whitelist retrieval
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_get_plan_bulk_with_empty_list(self, mock_send_request):
-        """Test bulk plan retrieval with empty tenant list."""
-        # Arrange
-        tenant_ids = []
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert
-        assert result == {}
-        mock_send_request.assert_not_called()
-
-    def test_get_plan_bulk_with_chunking(self, mock_send_request):
-        """Test bulk plan retrieval with more than 200 tenants (chunking logic)."""
-        # Arrange - 250 tenants to test chunking (chunk_size = 200)
-        tenant_ids = [f"tenant-{i}" for i in range(250)]
-
-        # First chunk: tenants 0-199
-        first_chunk_response = {
-            "data": {f"tenant-{i}": {"plan": "sandbox", "expiration_date": 1735689600} for i in range(200)}
-        }
-
-        # Second chunk: tenants 200-249
-        second_chunk_response = {
-            "data": {f"tenant-{i}": {"plan": "professional", "expiration_date": 1767225600} for i in range(200, 250)}
-        }
-
-        mock_send_request.side_effect = [first_chunk_response, second_chunk_response]
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert
-        assert len(result) == 250
-        assert result["tenant-0"]["plan"] == "sandbox"
-        assert result["tenant-199"]["plan"] == "sandbox"
-        assert result["tenant-200"]["plan"] == "professional"
-        assert result["tenant-249"]["plan"] == "professional"
-        assert mock_send_request.call_count == 2
-
-        # Verify first chunk call
-        first_call = mock_send_request.call_args_list[0]
-        assert first_call[0][0] == "POST"
-        assert first_call[0][1] == "/subscription/plan/batch"
-        assert len(first_call[1]["json"]["tenant_ids"]) == 200
-
-        # Verify second chunk call
-        second_call = mock_send_request.call_args_list[1]
-        assert len(second_call[1]["json"]["tenant_ids"]) == 50
-
-    def test_get_plan_bulk_with_partial_batch_failure(self, mock_send_request):
-        """Test bulk plan retrieval when one batch fails but others succeed."""
-        # Arrange - 250 tenants, second batch will fail
-        tenant_ids = [f"tenant-{i}" for i in range(250)]
-
-        # First chunk succeeds
-        first_chunk_response = {
-            "data": {f"tenant-{i}": {"plan": "sandbox", "expiration_date": 1735689600} for i in range(200)}
-        }
-
-        # Second chunk fails - need to create a mock that raises when called
-        def side_effect_func[**P](*args: P.args, **kwargs: P.kwargs):
-            if mock_send_request.call_count == 1:
-                return first_chunk_response
-            else:
-                raise ValueError("API error")
-
-        mock_send_request.side_effect = side_effect_func
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert - should only have data from first batch
-        assert len(result) == 200
-        assert result["tenant-0"]["plan"] == "sandbox"
-        assert result["tenant-199"]["plan"] == "sandbox"
-        assert "tenant-200" not in result
-        assert mock_send_request.call_count == 2
-
-    def test_get_plan_bulk_with_all_batches_failing(self, mock_send_request):
-        """Test bulk plan retrieval when all batches fail."""
-        # Arrange
-        tenant_ids = [f"tenant-{i}" for i in range(250)]
-
-        # All chunks fail
-        def side_effect_func[**P](*args: P.args, **kwargs: P.kwargs):
-            raise ValueError("API error")
-
-        mock_send_request.side_effect = side_effect_func
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert - should return empty dict
-        assert result == {}
-        assert mock_send_request.call_count == 2
-
-    def test_get_plan_bulk_with_exactly_200_tenants(self, mock_send_request):
-        """Test bulk plan retrieval with exactly 200 tenants (boundary condition)."""
-        # Arrange
-        tenant_ids = [f"tenant-{i}" for i in range(200)]
-        mock_send_request.return_value = {
-            "data": {f"tenant-{i}": {"plan": "sandbox", "expiration_date": 1735689600} for i in range(200)}
-        }
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert
-        assert len(result) == 200
-        assert mock_send_request.call_count == 1
-
-    def test_get_plan_bulk_with_empty_data_response(self, mock_send_request):
-        """Test bulk plan retrieval with empty data in response."""
-        # Arrange
-        tenant_ids = ["tenant-1", "tenant-2"]
-        mock_send_request.return_value = {"data": {}}
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert
-        assert result == {}
-
-    def test_get_plan_bulk_converts_string_expiration_date_to_int(self, mock_send_request):
-        """Test bulk plan retrieval converts string expiration_date to int."""
-        # Arrange
-        tenant_ids = ["tenant-1"]
-        mock_send_request.return_value = {
-            "data": {
-                "tenant-1": {"plan": "sandbox", "expiration_date": "1735689600"},
-            }
-        }
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert
-        assert "tenant-1" in result
-        assert isinstance(result["tenant-1"]["expiration_date"], int)
-        assert result["tenant-1"]["expiration_date"] == 1735689600
-
-    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request, caplog: pytest.LogCaptureFixture):
-        """Test bulk plan retrieval when one tenant has invalid plan data (should skip that tenant)."""
-        # Arrange
-        tenant_ids = ["tenant-valid-1", "tenant-invalid", "tenant-valid-2"]
-
-        # Response with one invalid tenant plan (missing expiration_date) and two valid ones
-        mock_send_request.return_value = {
-            "data": {
-                "tenant-valid-1": {"plan": "sandbox", "expiration_date": 1735689600},
-                "tenant-invalid": {"plan": "professional"},  # Missing expiration_date field
-                "tenant-valid-2": {"plan": "team", "expiration_date": 1767225600},
-            }
-        }
-
-        # Act
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert - should only contain valid tenants
-        assert len(result) == 2
-        assert "tenant-valid-1" in result
-        assert "tenant-valid-2" in result
-        assert "tenant-invalid" not in result
-
-        # Verify valid tenants have correct data
-        assert result["tenant-valid-1"]["plan"] == "sandbox"
-        assert result["tenant-valid-1"]["expiration_date"] == 1735689600
-        assert result["tenant-valid-2"]["plan"] == "team"
-        assert result["tenant-valid-2"]["expiration_date"] == 1767225600
-
-        # Verify exception was logged for the invalid tenant
-        exception_records = [r for r in caplog.records if r.levelname == "ERROR"]
-        assert len(exception_records) == 1
-        formatted = exception_records[0].getMessage()
-        assert "get_plan_bulk: failed to validate subscription plan for tenant" in formatted
-        assert "tenant-invalid" in formatted
-
-    def test_get_expired_subscription_cleanup_whitelist_success(self, mock_send_request):
-        """Test successful retrieval of expired subscription cleanup whitelist."""
-        # Arrange
-        api_response = [
-            {
-                "created_at": "2025-10-16T01:56:17",
-                "tenant_id": "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6",
-                "contact": "example@dify.ai",
-                "id": "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe5",
-                "expired_at": "2026-01-01T01:56:17",
-                "updated_at": "2025-10-16T01:56:17",
-            },
-            {
-                "created_at": "2025-10-16T02:00:00",
-                "tenant_id": "tenant-2",
-                "contact": "test@example.com",
-                "id": "whitelist-id-2",
-                "expired_at": "2026-02-01T00:00:00",
-                "updated_at": "2025-10-16T02:00:00",
-            },
-            {
-                "created_at": "2025-10-16T03:00:00",
-                "tenant_id": "tenant-3",
-                "contact": "another@example.com",
-                "id": "whitelist-id-3",
-                "expired_at": "2026-03-01T00:00:00",
-                "updated_at": "2025-10-16T03:00:00",
-            },
-        ]
-        mock_send_request.return_value = {"data": api_response}
-
-        # Act
-        result = BillingService.get_expired_subscription_cleanup_whitelist()
-
-        # Assert - should return only tenant_ids
-        assert result == ["36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6", "tenant-2", "tenant-3"]
-        assert len(result) == 3
-        assert result[0] == "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6"
-        assert result[1] == "tenant-2"
-        assert result[2] == "tenant-3"
-        mock_send_request.assert_called_once_with("GET", "/subscription/cleanup/whitelist")
-
-    def test_get_expired_subscription_cleanup_whitelist_empty_list(self, mock_send_request):
-        """Test retrieval of empty cleanup whitelist."""
-        # Arrange
-        mock_send_request.return_value = {"data": []}
-
-        # Act
-        result = BillingService.get_expired_subscription_cleanup_whitelist()
-
-        # Assert
-        assert result == []
-        assert len(result) == 0
-
-
-class TestBillingServiceIntegrationScenarios:
-    """Integration-style tests simulating real-world usage scenarios.
-
-    These tests combine multiple service methods to test common workflows:
-    - Complete subscription upgrade flow
-    - Rate limit boundary testing
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_subscription_upgrade_workflow(self, mock_send_request):
-        """Test complete subscription upgrade workflow."""
-        # Arrange
-        tenant_id = "tenant-upgrade"
-
-        # Step 1: Get current billing info
-        mock_send_request.return_value = {
-            "subscription": {"plan": "sandbox", "interval": "", "education": False},
-            "members": {"size": 0, "limit": 1},
-            "apps": {"size": 0, "limit": 5},
-            "vector_space": {"size": 0.0, "limit": 50},
-            "documents_upload_quota": {"size": 0, "limit": 50},
-            "annotation_quota_limit": {"size": 0, "limit": 10},
-            "can_replace_logo": False,
-            "model_load_balancing_enabled": False,
-            "knowledge_pipeline_publish_enabled": False,
-        }
-        current_info = BillingService.get_info(tenant_id)
-        assert current_info["subscription"]["plan"] == "sandbox"
-
-        # Step 2: Get payment link for upgrade
-        mock_send_request.return_value = {"url": "https://payment.example.com/upgrade"}
-        payment_link = BillingService.get_subscription("professional", "month", "user@example.com", tenant_id)
-        assert "url" in payment_link
-
-        # Step 3: Verify new rate limits after upgrade
-        mock_send_request.return_value = {"limit": 100, "subscription_plan": CloudPlan.PROFESSIONAL}
-        rate_limit = BillingService.get_knowledge_rate_limit(tenant_id)
-        assert rate_limit["subscription_plan"] == CloudPlan.PROFESSIONAL
-        assert rate_limit["limit"] == 100
-
-
-class TestBillingServiceSubscriptionInfoDataType:
-    """Unit tests for data type coercion in BillingService.get_info
-
-    1. Verifies the get_info returns correct Python types for numeric fields
-    2. Ensure the compatibility regardless of what results the upstream billing API returns
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    @pytest.fixture
-    def normal_billing_response(self) -> dict:
-        return {
-            "subscription": {
-                "plan": "team",
-                "interval": "year",
-                "education": False,
-            },
-            "members": {"size": 10, "limit": 50},
-            "apps": {"size": 80, "limit": 200},
-            "vector_space": {"size": 5120.75, "limit": 20480},
-            "documents_upload_quota": {"size": 450, "limit": 1000},
-            "annotation_quota_limit": {"size": 1200, "limit": 5000},
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-            "next_credit_reset_date": 1745971200,
-        }
-
-    @pytest.fixture
-    def string_billing_response(self) -> dict:
-        return {
-            "subscription": {
-                "plan": "team",
-                "interval": "year",
-                "education": False,
-            },
-            "members": {"size": "10", "limit": "50"},
-            "apps": {"size": "80", "limit": "200"},
-            "vector_space": {"size": 5120.75, "limit": "20480"},
-            "documents_upload_quota": {"size": "450", "limit": "1000"},
-            "annotation_quota_limit": {"size": "1200", "limit": "5000"},
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-            "next_credit_reset_date": "1745971200",
-        }
-
-    @staticmethod
-    def _assert_billing_info_types(result: dict):
-        assert isinstance(result["subscription"]["plan"], str)
-        assert isinstance(result["subscription"]["interval"], str)
-        assert isinstance(result["subscription"]["education"], bool)
-
-        assert isinstance(result["members"]["size"], int)
-        assert isinstance(result["members"]["limit"], int)
-
-        assert isinstance(result["apps"]["size"], int)
-        assert isinstance(result["apps"]["limit"], int)
-
-        if "vector_space" in result:
-            assert isinstance(result["vector_space"]["size"], float)
-            assert isinstance(result["vector_space"]["limit"], int)
-            if "usage_unknown" in result["vector_space"]:
-                assert isinstance(result["vector_space"]["usage_unknown"], bool)
-
-        assert isinstance(result["documents_upload_quota"]["size"], int)
-        assert isinstance(result["documents_upload_quota"]["limit"], int)
-
-        assert isinstance(result["annotation_quota_limit"]["size"], int)
-        assert isinstance(result["annotation_quota_limit"]["limit"], int)
-
-        assert isinstance(result["can_replace_logo"], bool)
-        assert isinstance(result["model_load_balancing_enabled"], bool)
-        assert isinstance(result["knowledge_pipeline_publish_enabled"], bool)
-        if "next_credit_reset_date" in result:
-            assert isinstance(result["next_credit_reset_date"], int)
-
-    def test_get_info_with_normal_types(self, mock_send_request, normal_billing_response):
-        """When the billing API returns native numeric types, get_info should preserve them."""
-        mock_send_request.return_value = normal_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        self._assert_billing_info_types(result)
-        mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": "tenant-type-test"})
-
-    def test_get_info_with_string_types(self, mock_send_request, string_billing_response):
-        """When the billing API returns numeric values as strings, get_info should coerce them."""
-        mock_send_request.return_value = string_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        self._assert_billing_info_types(result)
-        mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": "tenant-type-test"})
-
-    def test_get_info_without_optional_fields(self, mock_send_request, string_billing_response):
-        """NotRequired fields can be absent without raising."""
-        del string_billing_response["next_credit_reset_date"]
-        del string_billing_response["vector_space"]
-        mock_send_request.return_value = string_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        assert "next_credit_reset_date" not in result
-        assert "vector_space" not in result
-        self._assert_billing_info_types(result)
-
-    def test_get_info_with_extra_fields(self, mock_send_request, string_billing_response):
-        """Undefined fields are silently stripped by validate_python."""
-        string_billing_response["new_feature"] = "something"
-        mock_send_request.return_value = string_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        # extra fields are dropped by TypeAdapter on TypedDict
-        assert "new_feature" not in result
-        self._assert_billing_info_types(result)
-
-    def test_get_info_missing_required_field_raises(self, mock_send_request, string_billing_response):
-        """Missing a required field should raise ValidationError."""
-        from pydantic import ValidationError
-
-        del string_billing_response["members"]
-        mock_send_request.return_value = string_billing_response
-
-        with pytest.raises(ValidationError):
-            BillingService.get_info("tenant-type-test")
 
 
 def test_pooled_billing_client_carries_bounded_timeout() -> None:

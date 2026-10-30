@@ -27,6 +27,7 @@ from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     WorkflowRunArchiver,
 )
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
+from tests.helpers import billing_builders as builders
 
 """SQLite and in-process coverage for workflow-run bundle archiving."""
 
@@ -333,9 +334,9 @@ class TestWorkflowRunArchiverSqliteCases:
             archiver = WorkflowRunArchiver(days=90)
 
             mock_bulk = {
-                "t1": {"plan": "professional"},
-                "t2": {"plan": "sandbox"},
-                "t3": {"plan": "team"},
+                "t1": builders.plan_item("professional"),
+                "t2": builders.plan_item("sandbox"),
+                "t3": builders.plan_item("team"),
             }
 
             with (

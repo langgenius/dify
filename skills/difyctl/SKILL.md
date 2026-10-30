@@ -32,3 +32,4 @@ Not logged in, or the server unreachable, gives the local commands plus one line
 - Read [`references/operations.md`](references/operations.md) before running any operation: flags, inputs, files, results, hints, errors and exit codes.
 - Read [`references/build-workflow.md`](references/build-workflow.md) when asked to create, change, test or publish a Workflow or Chatflow app.
 - Read [`references/plugins.md`](references/plugins.md) to find tools, models and knowledge bases before building, when a plugin, model, tool or credential is missing, or when the human asks to install or remove a plugin.
+- Read [`references/workspace-skills.md`](references/workspace-skills.md) to list, read, create, change, roll back or publish a workspace skill.

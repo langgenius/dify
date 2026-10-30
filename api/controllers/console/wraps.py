@@ -5,7 +5,6 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, Concatenate, Protocol, cast, overload
 
-import httpx
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
@@ -26,8 +25,9 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_service import BillingService
 from services.entities.feature_entities import LicenseStatus
+from services.errors.billing import BillingError
 from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
 from services.system_feature_service import SystemFeatureService
@@ -168,16 +168,10 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
     """
 
     try:
-        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-    except (
-        _BillingHTTPStatusError,
-        httpx.RequestError,
-        json.JSONDecodeError,
-        UnicodeDecodeError,
-        ValidationError,
-    ) as exc:
+        subscription = BillingService.get_info(tenant_id, exclude_vector_space=True).subscription
+    except BillingError as exc:
         raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
-    return billing_info["subscription"]["plan"] in (
+    return subscription.plan in (
         CloudPlan.PROFESSIONAL,
         CloudPlan.TEAM,
     )
