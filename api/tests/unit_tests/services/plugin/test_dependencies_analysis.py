@@ -23,7 +23,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.common_entities import I18nObject
 from core.tools.tool_manager import ToolManager
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
 

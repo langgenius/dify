@@ -558,7 +558,7 @@ def _seed_draft_app(factory: sessionmaker[Session], graph: str) -> tuple[str, st
                 type=WorkflowType.WORKFLOW,
                 version=Workflow.VERSION_DRAFT,
                 graph=graph,
-                features="{}",
+                _features="{}",
                 created_by=actor,
             )
         )
