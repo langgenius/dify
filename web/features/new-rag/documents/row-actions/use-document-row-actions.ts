@@ -11,6 +11,7 @@ import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -137,7 +138,10 @@ export function useRenameDocumentAction(document: LogicalDocument) {
         return true
       } catch (error) {
         if (getHttpErrorStatus(error) === 403) onWriteDenied()
-        else toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
+        else
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+          )
         return false
       } finally {
         finish()
@@ -186,8 +190,10 @@ export function useDownloadDocumentAction(
             : document.title,
       })
       return true
-    } catch {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }),
+      )
       return false
     } finally {
       finish()
@@ -228,7 +234,7 @@ export function useToggleDocumentAvailabilityAction(
       else if (getHttpErrorStatus(error) === 409) {
         invalidateDocuments()
         toast.warning(t(($) => $.taskActionFailed))
-      } else toast.error(t(($) => $.documentsErrorDescription))
+      } else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish()
@@ -278,7 +284,7 @@ export function useRemoveDocumentAction() {
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsErrorDescription))
+      else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish(action)

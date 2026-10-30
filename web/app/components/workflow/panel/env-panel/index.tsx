@@ -33,6 +33,7 @@ import {
   fetchModelParameterRulesForModel,
   mergeValidCompletionParams,
 } from '@/utils/completion-params'
+import { getErrorMessage } from '@/utils/error-message'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { fetchEnvironmentVariables } from './requests'
@@ -727,9 +728,9 @@ const EnvPanel = () => {
             committedEnv,
             newEnv,
           )
-        } catch {
+        } catch (error) {
           restoreCommittedEnvList()
-          toast.error(t(($) => $.error, { ns: 'common' }))
+          toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
           return
         }
 

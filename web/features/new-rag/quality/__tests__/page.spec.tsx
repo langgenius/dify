@@ -768,9 +768,12 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
-        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
-      }),
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith(
+        {
+          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+        },
+        { context: { silent: true } },
+      ),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
   })
@@ -990,14 +993,17 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.updateBadCase).toHaveBeenCalledWith({
-        body: {
-          expected_revision: 1,
-          status: 'dismissed',
-          tags: ['billing'],
+      expect(serviceMock.updateBadCase).toHaveBeenCalledWith(
+        {
+          body: {
+            expected_revision: 1,
+            status: 'dismissed',
+            tags: ['billing'],
+          },
+          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
         },
-        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
-      }),
+        { context: { silent: true } },
+      ),
     )
     await waitFor(() =>
       expect(screen.queryByText('Refund after activation')).not.toBeInTheDocument(),

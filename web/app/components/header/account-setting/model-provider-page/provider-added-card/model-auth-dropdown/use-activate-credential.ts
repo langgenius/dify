@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useUpdateModelList, useUpdateModelProviders } from '../../hooks'
 
 export function useActivateCredential(provider: ModelProvider) {
@@ -39,9 +40,12 @@ export function useActivateCredential(provider: ModelProvider) {
             updateModelProviders()
             supportedModelTypesRef.current.forEach((type) => updateModelList(type))
           },
-          onError: () => {
+          onError: (error) => {
             setOptimisticId(undefined)
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+            toast.error(
+              getErrorMessage(error) ??
+                t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            )
           },
         },
       )

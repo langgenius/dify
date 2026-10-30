@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useDocumentContext } from '../../context'
 
 type UseChildSegmentDataOptions = {
@@ -158,8 +159,11 @@ export const useChildSegmentData = (
               resetChildList()
             }
           },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(
+              getErrorMessage(error) ??
+                t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            )
           },
         },
       )

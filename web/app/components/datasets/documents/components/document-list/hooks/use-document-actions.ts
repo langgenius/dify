@@ -7,6 +7,7 @@ import { consoleQuery } from '@/service/console'
 import { useDocumentDownloadZip } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 
 type UseDocumentActionsOptions = {
   datasetId: string
@@ -94,7 +95,9 @@ export const useDocumentActions = ({
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           onUpdate()
         } else {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          toast.error(
+            getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
         }
       }
     },
@@ -113,7 +116,9 @@ export const useDocumentActions = ({
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate()
     } else {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     }
   }, [retryIndexDocuments, datasetId, selectedIds, onClearSelection, onUpdate, t])
 
@@ -124,7 +129,9 @@ export const useDocumentActions = ({
       requestDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }),
     )
     if (e || !blob) {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(e) ?? t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }),
+      )
       return
     }
 

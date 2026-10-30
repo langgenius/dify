@@ -32,7 +32,7 @@ afterEach(() => {
 it('shows only the business error for each failed rename, including a retry', async () => {
   const network = vi.fn(
     async () =>
-      new Response(JSON.stringify({ message: 'Backend tag error' }), {
+      new Response(JSON.stringify({ message: 'Tag name already exists' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       }),
@@ -54,7 +54,7 @@ it('shows only the business error for each failed rename, including a retry', as
     await user.type(input, 'Renamed')
     fireEvent.blur(input)
     await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(attempt))
-    expect(toast.error).toHaveBeenLastCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toast.error).toHaveBeenLastCalledWith('Tag name already exists')
     await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())
   }
   expect(network).toHaveBeenCalledTimes(2)

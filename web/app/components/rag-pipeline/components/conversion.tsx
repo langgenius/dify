@@ -20,6 +20,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
@@ -71,8 +72,11 @@ const Conversion = () => {
             toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
           }
         },
-        onError: () => {
-          toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }),
+          )
         },
       },
     )

@@ -169,7 +169,7 @@ describe('SnippetInfoMenu', () => {
       await user.click(screen.getByText('snippet.menu.exportSnippet'))
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('snippet.exportFailed')
+        expect(mockToastError).toHaveBeenCalledWith('export failed')
       })
     })
   })

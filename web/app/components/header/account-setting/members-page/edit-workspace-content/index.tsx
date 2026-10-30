@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type IEditWorkspaceContentProps = {
   inputRef: Ref<HTMLInputElement>
@@ -54,8 +55,10 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
         { context: { silent: true } },
       )
       location.assign(`${location.origin}`)
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       setIsSubmitting(false)
     }

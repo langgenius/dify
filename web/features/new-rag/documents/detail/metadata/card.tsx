@@ -13,6 +13,7 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
+import { getErrorMessage } from '@/utils/error-message'
 import { newKnowledgeDocumentsPath } from '../../../routes'
 import {
   documentMetadataDefaultValue,
@@ -168,13 +169,15 @@ function DocumentMetadataCardContent() {
         )
       return { document: logicalDocumentFromApi(response), name, type, value: defaultValue }
     },
-    onError: () => {
+    onError: (error) => {
       // A failed creation may still have reached the server. Refresh the catalog so a retry
       // reports the existing field instead of skipping creation for a field that may not exist.
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
       })
-      toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+      )
     },
     onSuccess: async (createdField) => {
       recordCreatedField(createdField)
@@ -201,8 +204,10 @@ function DocumentMetadataCardContent() {
         },
         { context: { silent: true } },
       ),
-    onError: () => {
-      toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
+    onError: (error) => {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+      )
     },
     onSuccess: async () => {
       await invalidateMetadataQueries()

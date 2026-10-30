@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { newKnowledgeSettingsReturnPath } from './routes'
 
 export type KnowledgeModelReadinessGuardResult =
@@ -55,8 +56,8 @@ export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
           setModelSetupDialogOpen(true)
           return { readiness, status: 'blocked' }
         })
-        .catch(() => {
-          toast.error(tCommon(($) => $['api.actionFailed']))
+        .catch((error) => {
+          toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
           return { status: 'unavailable' } as const
         })
     },

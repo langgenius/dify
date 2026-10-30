@@ -20,6 +20,7 @@ import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/c
 import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refresh'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
+import { getErrorMessage } from '@/utils/error-message'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
 const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
@@ -176,7 +177,7 @@ export function useAgentConfigureBuildDraftData({
           return await buildDraftQueryOptions.queryFn(context)
         } catch (error) {
           if (isNotFoundError(error)) setSoulSourceOverride('draft')
-          else toast.error(t(($) => $['api.actionFailed']))
+          else toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
           throw error
         }
       },
@@ -336,8 +337,8 @@ export function useAgentConfigureBuildDraftActions({
       await resetBuildChatSession()
       forceCheckoutBeforeNextBuildRunRef.current = true
       return true
-    } catch {
-      toast.error(tCommon(($) => $['api.actionFailed']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
       return false
     }
   }, [cancelBuildDraftRefresh, resetBuildChatSession, setSoulSourceOverride, tCommon])
@@ -409,8 +410,8 @@ export function useAgentConfigureBuildDraftActions({
       await exitBuildDraftMode(false)
       toast.success(tCommon(($) => $['api.actionSuccess']))
       return true
-    } catch {
-      toast.error(tCommon(($) => $['api.actionFailed']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
       return false
     }
   }

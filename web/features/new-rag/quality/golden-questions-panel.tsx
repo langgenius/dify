@@ -26,6 +26,7 @@ import Badge from '@/app/components/base/badge'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { GoldenQuestionDialog } from './golden-question-dialog'
 import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
@@ -289,8 +290,8 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       )
       setDeleteIds(undefined)
       return true
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       return false
     } finally {
       setDeleteSubmitting(false)

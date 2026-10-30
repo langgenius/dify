@@ -263,7 +263,7 @@ it('shows a detail error once without importing or navigating, and preserves the
   const { user } = await setup()
   await openCreate(user)
   await submit(user)
-  expect(await screen.findAllByText('app.newApp.appCreateFailed')).toHaveLength(1)
+  expect(await screen.findAllByText('Unavailable')).toHaveLength(1)
   await waitFor(() =>
     expect(
       screen.queryByRole('dialog', { name: /^explore.appCustomize.title/ }),

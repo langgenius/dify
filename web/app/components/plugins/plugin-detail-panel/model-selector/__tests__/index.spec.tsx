@@ -236,10 +236,13 @@ describe('Plugin model configuration', () => {
           completion_params: { temperature: 0.5, ...(isAdvancedMode ? { stop: ['END'] } : {}) },
         }),
       )
-      expect(requests.rules).toHaveBeenCalledExactlyOnceWith({
-        params: { provider: 'openai' },
-        query: { model: 'gpt-4' },
-      })
+      expect(requests.rules).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: { provider: 'openai' },
+          query: { model: 'gpt-4' },
+        },
+        { context: { silent: true } },
+      )
       expect(requests.warning).toHaveBeenCalledWith(
         expect.stringContaining('unsupported (unsupported)'),
       )

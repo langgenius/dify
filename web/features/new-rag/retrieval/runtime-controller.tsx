@@ -9,6 +9,7 @@ import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef } from 
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
 import { mergeResearchProgressEvent } from './history-utils'
@@ -459,9 +460,12 @@ export function RetrievalRuntimeController() {
           { history: 'push', shallow: false },
         )
         await refetchResearchTasks()
-      } catch {
+      } catch (error) {
         if (session.signal.aborted) return
-        toast.error(t(($) => $['retrievalTest.failedDescription'], { ns: 'knowledgeRetrieval' }))
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['retrievalTest.failedDescription'], { ns: 'knowledgeRetrieval' }),
+        )
       } finally {
         runInFlightRef.current = false
       }
@@ -494,8 +498,8 @@ export function RetrievalRuntimeController() {
           { context: { silent: true } },
         )
         await Promise.all([refetchResearchTasks(), refetchResearchPartials()])
-      } catch {
-        toast.error(t(($) => $.taskActionFailed))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? t(($) => $.taskActionFailed))
       }
     },
     [canQuery, knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, t],

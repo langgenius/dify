@@ -23,6 +23,7 @@ import { useParams } from '@/next/navigation'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { TransferMethod } from '@/types/app'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatFileSize } from '@/utils/format'
 import { isAbortError } from '@/utils/is-abort-error'
 import { useFileStore } from './store'
@@ -293,7 +294,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         .catch((error: unknown) => {
           if (!fileStore.getState().isActive) return
           if (!isAppAccessError(error) && !isAbortError(error))
-            toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
+            toast.error(
+              getFileUploadErrorMessage(
+                error,
+                getErrorMessage(error) ??
+                  t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }),
+                t,
+              ),
+            )
           handleRemoveFile(uploadingFile.id)
         })
     },

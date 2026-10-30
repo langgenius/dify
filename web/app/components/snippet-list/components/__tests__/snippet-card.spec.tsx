@@ -258,7 +258,7 @@ describe('SnippetCard', () => {
       await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('snippet.exportFailed')
+        expect(mockToastError).toHaveBeenCalledWith('export failed')
       })
       expect(mockDownloadBlob).not.toHaveBeenCalled()
     })

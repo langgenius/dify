@@ -6,6 +6,7 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 
 type UseDatasetCardActionsOptions = {
   dataset: DatasetCardItem
@@ -37,8 +38,8 @@ export const useDatasetCardActions = ({ dataset }: UseDatasetCardActionsOptions)
         })
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
-      } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
       }
     },
     [dataset, exportPipelineConfig, exporting, t],

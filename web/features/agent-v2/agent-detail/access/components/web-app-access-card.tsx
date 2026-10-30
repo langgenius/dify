@@ -23,6 +23,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { getAgentWebAppUrl } from '../../web-app-access'
 import { useWebAppAccessControl } from './use-web-app-access-control'
 
@@ -98,8 +99,8 @@ export function WebAppAccessCard({
               : agentDetail,
         )
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      onError: (error) => {
+        toast.error(getErrorMessage(error) ?? tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
       },
     }),
   )
@@ -123,8 +124,10 @@ export function WebAppAccessCard({
           },
         )
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.generatedUnsuccessfully']))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ?? tCommon(($) => $['actionMsg.generatedUnsuccessfully']),
+        )
       },
     }),
   )
@@ -200,8 +203,8 @@ export function WebAppAccessCard({
       void queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
       toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       return true
-    } catch {
-      toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
       return false
     }
   }

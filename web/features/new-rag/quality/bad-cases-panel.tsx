@@ -12,6 +12,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { newKnowledgeRetrievalTestPath } from '../routes'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { GoldenQuestionDialog } from './golden-question-dialog'
@@ -238,8 +239,8 @@ function BadCaseRow({
           : { trace: reference.trace_id },
       )
       router.push(`${newKnowledgeRetrievalTestPath(knowledgeSpaceId)}?${search.toString()}`)
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       setPending(false)
     }
   }
@@ -269,8 +270,8 @@ function BadCaseRow({
           type: 'infinite',
         }),
       })
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       setPending(false)
     }
   }

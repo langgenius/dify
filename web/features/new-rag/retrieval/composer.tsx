@@ -10,6 +10,7 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { QueryImageThumbnail } from './query-image-thumbnail'
 import {
@@ -70,8 +71,11 @@ export function RetrievalComposer() {
         uploaded.push({ file, uploadFileId: result.id })
       }
       commitUpload({ baseImages: images, selectionKey, uploaded })
-    } catch {
-      toast.error(t(($) => $['retrievalTest.imageUploadFailed'], { ns: 'knowledgeRetrieval' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $['retrievalTest.imageUploadFailed'], { ns: 'knowledgeRetrieval' }),
+      )
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''

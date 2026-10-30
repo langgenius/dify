@@ -18,6 +18,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { RenameDocumentForm } from './rename-document-form'
 
 type OperationsProps = {
@@ -147,7 +148,9 @@ const Operations = ({
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         onUpdate(operationName)
       } else {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        toast.error(
+          getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       }
     },
     [
@@ -190,7 +193,9 @@ const Operations = ({
       downloadDocument({ params: { dataset_id: datasetId, document_id: id } }),
     )
     if (e || !res?.url) {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(e) ?? t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }),
+      )
       return
     }
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).

@@ -19,6 +19,7 @@ import { DSLImportMode } from '@/models/app'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { List } from './list'
 
@@ -183,8 +184,8 @@ const AppsContent = () => {
             setShowDSLConfirmModal(true)
           },
         })
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
       }
     },
     [canCreateApp, currApp, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp, t],

@@ -255,10 +255,13 @@ it('resolves a historical KnowledgeFS asset through document revisions', async (
   )
   await openPopup(user)
   await user.click(screen.getByRole('button', { name: /linkToDataset/ }))
-  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith({
-    params: { control_space_id: 'space-1' },
-    query: { document_asset_id: 'asset-1', document_asset_version: 1 },
-  })
+  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith(
+    {
+      params: { control_space_id: 'space-1' },
+      query: { document_asset_id: 'asset-1', document_asset_version: 1 },
+    },
+    { context: { silent: true } },
+  )
   expect(navigationMock.push).toHaveBeenCalledWith(
     '/datasets/new/space-1/documents/logical-document-1?revision=2&chunk=node-1',
   )

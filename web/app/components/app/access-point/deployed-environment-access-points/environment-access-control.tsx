@@ -14,6 +14,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 const EMPTY_SUBJECTS: AccessControlSubjects = {
   groups: [],
@@ -83,8 +84,11 @@ function EnvironmentAccessControlContainer({
           queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
           void queryClient.invalidateQueries({ queryKey: subjectsQueryOptions.queryKey })
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),

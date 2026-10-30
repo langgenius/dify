@@ -15,6 +15,7 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 import { Popup } from './popup'
 
@@ -85,8 +86,11 @@ const Publisher = () => {
             input: { query: { type: 'customized' } },
           }),
         })
-      } catch {
-        toast.error(t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }))
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }),
+        )
       } finally {
         setIsPublishingAsCustomizedPipeline(false)
         hidePublishAsKnowledgePipelineModal()

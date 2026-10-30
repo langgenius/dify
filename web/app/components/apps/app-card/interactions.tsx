@@ -43,6 +43,7 @@ import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
+import { getErrorMessage } from '@/utils/error-message'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 
@@ -341,11 +342,14 @@ export function AppCardInteractions({
               isRbacEnabled,
             })
           },
-          onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
+          onError: (error) =>
+            toast.error(
+              getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+            ),
         },
       )
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
     return Promise.resolve()
   }

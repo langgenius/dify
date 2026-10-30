@@ -9,6 +9,7 @@ import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -207,8 +208,10 @@ export function useBulkDownloadAction() {
             ? file.name
             : 'knowledge-documents.zip',
       })
-    } catch {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       finish()
     }
@@ -262,7 +265,7 @@ export function useBulkAvailabilityAction() {
       invalidateDocuments()
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsErrorDescription))
+      else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
     } finally {
       finish()
     }
@@ -339,7 +342,7 @@ export function useBulkRemoveAction() {
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsErrorDescription))
+      else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish()

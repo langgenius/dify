@@ -38,6 +38,7 @@ import {
   useGetUserCanAccessApp,
 } from '@/service/access-control/use-app-access-control'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getBuiltInAccessUrls, getHiddenStartInputs } from '../shared/utils'
 import {
@@ -99,8 +100,11 @@ export function WebAppAccessPointCard({
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
@@ -108,8 +112,11 @@ export function WebAppAccessPointCard({
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
       context: { silent: true },
       onSuccess: () => setShowRegenerate(false),
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }),
+        )
         setShowRegenerate(false)
       },
     }),

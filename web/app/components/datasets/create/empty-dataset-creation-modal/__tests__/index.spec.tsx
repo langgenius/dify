@@ -118,7 +118,7 @@ it('keeps a failed draft available for retry without navigating or invalidating 
   await waitFor(() =>
     expect(mockNotify).toHaveBeenCalledWith({
       type: 'error',
-      message: 'datasetCreation.stepOne.modal.failed',
+      message: 'offline',
     }),
   )
   expect(field()).toHaveValue('Retry me')

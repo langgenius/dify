@@ -21,6 +21,7 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { createEmptyDataset } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 import s from './index.module.css'
 
 type EmptyDatasetCreationContentProps = {
@@ -61,8 +62,10 @@ const EmptyDatasetCreationContent = ({
       })
       onCreated()
       router.push(`/datasets/${dataset.id}/documents`)
-    } catch {
-      toast.error(t(($) => $['stepOne.modal.failed'], { ns: 'datasetCreation' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['stepOne.modal.failed'], { ns: 'datasetCreation' }),
+      )
     } finally {
       onPendingChange(false)
       setIsSubmitting(false)

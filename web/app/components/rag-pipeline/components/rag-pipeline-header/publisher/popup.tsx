@@ -43,6 +43,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
 
@@ -162,8 +163,11 @@ export function Popup({
             mutateDatasetRes?.()
           }
         }
-      } catch {
-        toast.error(t(($) => $['publishPipeline.error.message'], { ns: 'datasetPipeline' }))
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['publishPipeline.error.message'], { ns: 'datasetPipeline' }),
+        )
       } finally {
         if (startedPublishing) hidePublishing()
         if (confirmVisible) handleHideConfirm()

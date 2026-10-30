@@ -16,6 +16,7 @@ import { ExternalTraceRow } from '@/app/components/workflow/run/external-trace-r
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 export function AgentLogDetailPanel({
   agentId,
@@ -82,7 +83,9 @@ export function AgentLogDetailPanel({
         }),
       ])
     } catch (error) {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
       throw error
     }
   }

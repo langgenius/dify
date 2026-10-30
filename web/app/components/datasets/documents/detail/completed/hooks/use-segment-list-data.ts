@@ -14,6 +14,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { segmentImportStatus } from '@/types/dataset'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../../context'
 
@@ -213,8 +214,11 @@ export const useSegmentListData = (
             updateSegmentsInCache(targetIds, (seg) => ({ ...seg, enabled: enable }))
             refreshChunkListWithStatusChanged()
           },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(
+              getErrorMessage(error) ??
+                t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            )
           },
         },
       )
@@ -243,8 +247,11 @@ export const useSegmentListData = (
             resetList()
             if (!segId) clearSelection()
           },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(
+              getErrorMessage(error) ??
+                t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            )
           },
         },
       )

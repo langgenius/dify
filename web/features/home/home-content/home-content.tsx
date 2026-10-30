@@ -44,6 +44,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { HomeBanner } from '../banner/home-banner'
 import { HomeIntro } from '../home-intro'
@@ -388,8 +389,8 @@ export function HomeContent() {
           throw new Error('Template creation is not permitted')
         appMode = appDetail.mode
         importSource = getTemplateImportSource(appDetail)
-      } catch {
-        toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      } catch (error) {
+        toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
         isSubmittingHomeTourCreateRef.current = false
         abandonHomeTourCreate()
         return

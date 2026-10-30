@@ -21,6 +21,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { toIconInfo, toRetrievalConfig, toSummaryIndexSetting } from '../../../dataset-fields'
 import { checkShowMultiModalTip } from '../../utils'
@@ -235,8 +236,10 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
         await mutateDatasets()
         invalidDatasetList()
       }
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       setLoading(false)
     }

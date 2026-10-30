@@ -123,9 +123,12 @@ export const useOAuthClientState = ({
           showOAuthCreateModal(response.subscription_builder)
         })
       },
-      onError: () => {
+      onError: (error) => {
         setAuthorizationStatus(AuthorizationStatusEnum.Failed)
-        toast.error(t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }))
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
+        )
       },
     })
   }, [providerName, initiateOAuth, onOpenChange, showOAuthCreateModal, t])

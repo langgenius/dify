@@ -718,7 +718,7 @@ describe('AppCard', () => {
     await chooseAction(user, 'app.duplicate')
     const dialog = await screen.findByRole('dialog', { name: 'app.duplicateTitle' })
     await user.click(within(dialog).getByRole('button', { name: 'app.duplicate' }))
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Copy failed'))
     expect(mockPush).not.toHaveBeenCalled()
   })
 

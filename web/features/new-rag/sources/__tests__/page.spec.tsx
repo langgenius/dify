@@ -3058,12 +3058,15 @@ describe('SourcesPage', () => {
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.removeSource' }))
     await waitFor(() =>
-      expect(clientMock.deleteSource).toHaveBeenCalledWith({
-        body: { expectedRevision: 3 },
-        headers: { 'Idempotency-Key': expect.any(String) },
-        params: { control_space_id: 'space-1', source_id: 'source-1' },
-        query: { documents: 'keep' },
-      }),
+      expect(clientMock.deleteSource).toHaveBeenCalledWith(
+        {
+          body: { expectedRevision: 3 },
+          headers: { 'Idempotency-Key': expect.any(String) },
+          params: { control_space_id: 'space-1', source_id: 'source-1' },
+          query: { documents: 'keep' },
+        },
+        { context: { silent: true } },
+      ),
     )
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
   })

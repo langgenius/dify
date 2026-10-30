@@ -7,6 +7,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
 import { useEmbeddingStatus, usePauseIndexing, useResumeIndexing } from './hooks'
@@ -54,9 +55,14 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   const handleSuccess = useCallback(() => {
     toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [t])
-  const handleError = useCallback(() => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-  }, [t])
+  const handleError = useCallback(
+    (error: unknown) => {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
+    },
+    [t],
+  )
   const pauseMutation = usePauseIndexing({
     context: { silent: true },
     datasetId,
