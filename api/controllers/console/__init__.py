@@ -13,13 +13,13 @@ from controllers.common.errors import (
     InvalidArgumentError,
     NotFoundError,
     UnauthorizedError,
+    register_credential_refresh_error_handler,
     register_permission_error_handler,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from libs.external_api import ExternalApi
 from machinery.errors import ActiveWorkspaceRequiredError
-from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveDownloadNotReadyError,
     WorkflowRunArchiveDownloadTaskNotFoundError,
@@ -37,6 +37,7 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+register_credential_refresh_error_handler(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
@@ -63,13 +64,6 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
         "message": status.phrase,
         "status": status.value,
     }, status.value
-
-
-@api.errorhandler(CredentialRefreshUnavailableError)
-def _handle_credential_refresh_unavailable(error: CredentialRefreshUnavailableError):
-    got_request_exception.send(current_app, exception=error)
-    status = HTTPStatus.SERVICE_UNAVAILABLE
-    return {"code": "service_unavailable", "message": str(error), "status": status.value}, status.value
 
 
 @api.errorhandler(WorkflowRunArchiveInvalidMonthError)
@@ -104,7 +98,6 @@ def _handle_workflow_run_archive_download_not_ready_error(
 # must not shadow these Console-specific error mappings.
 for error_type in (
     ActiveWorkspaceRequiredError,
-    CredentialRefreshUnavailableError,
     WorkflowRunArchiveInvalidMonthError,
     WorkflowRunArchiveNotFoundError,
     WorkflowRunArchiveDownloadTaskNotFoundError,
@@ -117,11 +110,6 @@ api.document_error_handler(
     ActiveWorkspaceRequiredError,
     status=HTTPStatus.INTERNAL_SERVER_ERROR,
     code=ActiveWorkspaceRequiredError.error_code,
-)
-api.document_error_handler(
-    CredentialRefreshUnavailableError,
-    status=HTTPStatus.SERVICE_UNAVAILABLE,
-    code="service_unavailable",
 )
 api.document_error_handler(WorkflowRunArchiveInvalidMonthError, status=HTTPStatus.BAD_REQUEST, code="bad_request")
 api.document_error_handler(WorkflowRunArchiveNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")

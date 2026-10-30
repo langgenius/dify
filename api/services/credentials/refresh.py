@@ -9,6 +9,8 @@ def credential_needs_refresh(expires_at: int, *, now: float) -> bool:
 
 
 class CredentialRefreshUnavailableError(RuntimeError):
+    """Temporary coordination failure; preserve it until the caller chooses a retry response."""
+
     def __init__(self) -> None:
         super().__init__("Credential refresh is temporarily unavailable. Please retry.")
 

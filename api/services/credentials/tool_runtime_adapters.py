@@ -15,7 +15,6 @@ from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import ProviderConfigEncrypter, create_provider_encrypter
 from models.provider_ids import ToolProviderID
-from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.credentials.tool_runtime import (
     RefreshedToolCredential,
     ToolCredentialNotFoundError,
@@ -37,7 +36,7 @@ class ProviderToolCredentialRuntime:
     def resolve(
         self, *, service: ToolCredentialService, workspace_id: str, credential_id: str | None
     ) -> tuple[Mapping[str, object], CredentialType]:
-        """Translate application results and failures into the tool execution contract."""
+        """Map credential failures to tool errors, retaining temporary coordination failures."""
         try:
             resolved = service.resolve(workspace_id=workspace_id, credential_id=credential_id)
         except ToolCredentialNotFoundError as exc:
@@ -54,7 +53,7 @@ class ProviderToolCredentialRuntime:
                     "Authorize the provider or select a credential."
                 )
             raise ToolProviderCredentialValidationError(message) from exc
-        except (ToolCredentialRefreshError, CredentialRefreshUnavailableError) as exc:
+        except ToolCredentialRefreshError as exc:
             raise ToolProviderCredentialValidationError(str(exc)) from exc
         return resolved.credentials, CredentialType(resolved.credential_type)
 
