@@ -26,7 +26,7 @@ _UPLOAD_FILE_OK = {"id": "tool-file-1", "name": "policy.md", "mime_type": "text/
 
 # Fully populated so dump_response validates it; the tests are about the request
 # read, not about the response model.
-_IMPORTED_SKILL = {
+_IMPORTED_SKILL: dict[str, object] = {
     "id": "skill-1",
     "name": "finance-sop",
     "display_name": "Finance SOP",
