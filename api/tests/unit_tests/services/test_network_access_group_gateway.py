@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from enums import CloudPlan
-from services.billing_service import _BillingHTTPStatusError
+from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -16,6 +16,7 @@ from services.network_access_group_service import (
     NetworkAccessGroupInvalidResponseError,
     NetworkAccessGroupUpstreamError,
 )
+from tests.helpers import billing_builders as builders
 
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
 ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
@@ -449,7 +450,7 @@ def test_billing_entitlement_gateway_accepts_paid_plans(plan: CloudPlan) -> None
     gateway = BillingNetworkAccessGroupEntitlementGateway()
     with patch(
         "services.network_access_group_gateway.BillingService.get_info",
-        return_value={"subscription": {"plan": plan}},
+        return_value=builders.subscription_info(plan),
     ) as get_info:
         assert gateway.is_paid_plan(TENANT_ID) is True
 
@@ -460,30 +461,19 @@ def test_billing_entitlement_gateway_rejects_unpaid_plan() -> None:
     gateway = BillingNetworkAccessGroupEntitlementGateway()
     with patch(
         "services.network_access_group_gateway.BillingService.get_info",
-        return_value={"subscription": {"plan": CloudPlan.SANDBOX}},
+        return_value=builders.subscription_info("sandbox"),
     ):
         assert gateway.is_paid_plan(TENANT_ID) is False
 
 
-def test_billing_entitlement_gateway_maps_unavailable_billing_service() -> None:
+@pytest.mark.parametrize(
+    "error",
+    [BillingUpstreamUnavailableError("unavailable"), BillingUpstreamInvalidResponseError("invalid body")],
+)
+def test_billing_entitlement_gateway_maps_billing_upstream_errors(error: Exception) -> None:
     gateway = BillingNetworkAccessGroupEntitlementGateway()
     with (
-        patch(
-            "services.network_access_group_gateway.BillingService.get_info",
-            side_effect=httpx.ConnectError("unavailable"),
-        ),
-        pytest.raises(NetworkAccessGroupEntitlementUnavailableError),
-    ):
-        gateway.is_paid_plan(TENANT_ID)
-
-
-def test_billing_entitlement_gateway_maps_billing_http_status_error() -> None:
-    gateway = BillingNetworkAccessGroupEntitlementGateway()
-    with (
-        patch(
-            "services.network_access_group_gateway.BillingService.get_info",
-            side_effect=_BillingHTTPStatusError("unavailable", 503),
-        ),
+        patch("services.network_access_group_gateway.BillingService.get_info", side_effect=error),
         pytest.raises(NetworkAccessGroupEntitlementUnavailableError),
     ):
         gateway.is_paid_plan(TENANT_ID)
