@@ -54,18 +54,6 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
   const { state } = session
   const [retryError, setRetryError] = useState<HumanInputV2ErrorCategory>()
   const retryingForm = state.phase === 'loading-form' && retryError !== undefined
-  useDocumentTitle(
-    state.phase === 'success'
-      ? t(($) => $['humanInput.thanks'], { ns: 'share' })
-      : state.error === 'form-expired'
-        ? t(($) => $['humanInputV2.formExpired'], { ns: 'share' })
-        : state.error === 'already-submitted'
-          ? t(($) => $['humanInputV2.alreadySubmitted'], { ns: 'share' })
-          : state.phase === 'terminal' || state.phase === 'form-error'
-            ? t(($) => $['humanInputV2.formNotFound'], { ns: 'share' })
-            : t(($) => $['humanInputV2.otpLabel'], { ns: 'share' }),
-  )
-
   const errorCopy = (category?: HumanInputV2ErrorCategory) => {
     switch (category) {
       case 'not-found':
@@ -96,6 +84,14 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
         return t(($) => $['humanInputV2.unknownError'], { ns: 'share' })
     }
   }
+
+  useDocumentTitle(
+    state.phase === 'success'
+      ? t(($) => $['humanInput.thanks'], { ns: 'share' })
+      : state.phase === 'terminal' || state.phase === 'form-error' || retryingForm
+        ? errorCopy(state.error ?? retryError)
+        : t(($) => $['humanInputV2.otpLabel'], { ns: 'share' }),
+  )
 
   if (state.phase === 'loading-form' && !retryingForm)
     return <LoadingPlaceholder className="h-full" />

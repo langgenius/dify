@@ -262,7 +262,7 @@ const RecipientsContent = ({
   })
 
   return (
-    <div className="px-4 pt-2">
+    <div className="nokey px-4 pt-2">
       <div className="mb-1 flex min-h-6 items-center gap-0.5">
         <h3
           id={`${nodeId}-recipients-label`}
@@ -359,6 +359,11 @@ const RecipientsContent = ({
                   return (
                     <ComboboxChip
                       key={item.key}
+                      onKeyDown={(event) => {
+                        // The chip owns keys only while the chip itself is focused. Its
+                        // information button and portalled content own their own commands.
+                        if (event.target !== event.currentTarget) event.preventBaseUIHandler()
+                      }}
                       onFocus={() => {
                         setPreviewContact(item.contact)
                       }}

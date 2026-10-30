@@ -5201,7 +5201,6 @@ export default interface Resources {
     'humanInputV2.otpPlaceholder': 'Enter the 6-digit code'
     'humanInputV2.requestingCode': 'Sending a verification code…'
     'humanInputV2.resendCode': 'Resend code'
-    'humanInputV2.resendIn': 'Resend in {{seconds}}s'
     'humanInputV2.retry': 'Try again'
     'humanInputV2.sendCode': 'Send a new code'
     'humanInputV2.unavailable': 'This form is temporarily unavailable.'

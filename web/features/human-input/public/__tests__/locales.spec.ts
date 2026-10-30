@@ -20,7 +20,6 @@ const V2_KEYS = [
   'humanInputV2.otpPlaceholder',
   'humanInputV2.requestingCode',
   'humanInputV2.resendCode',
-  'humanInputV2.resendIn',
   'humanInputV2.retry',
   'humanInputV2.sendCode',
   'humanInputV2.unavailable',

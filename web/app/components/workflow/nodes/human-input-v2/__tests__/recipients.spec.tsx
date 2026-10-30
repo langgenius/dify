@@ -362,6 +362,100 @@ describe('recipient selection through generated queries', () => {
 })
 
 describe('recipient keyboard editing preserves existing behavior', () => {
+  it.each(['{Enter}', ' '])(
+    'opens a selected contact information button with %s without editing recipients',
+    async (key) => {
+      const user = userEvent.setup(),
+        observe = vi.fn()
+      renderContactOwner(
+        <Harness initial={[{ type: 'contact', contact_id: contact.id }]} observe={observe} />,
+      )
+      const info = await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ })
+      info.focus()
+      await user.keyboard(key)
+      const dialog = await screen.findByRole('dialog', { name: contact.name })
+      expect(within(dialog).getByText(contact.email)).toBeVisible()
+      expect(dialog).toHaveFocus()
+      await user.keyboard('{Delete}{Backspace}')
+      expect(observe).not.toHaveBeenCalled()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(info).toHaveFocus()
+      expect(observe).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['{Delete}', '{Backspace}'])(
+    '%s on a contact information button cannot remove its recipient',
+    async (key) => {
+      const user = userEvent.setup(),
+        observe = vi.fn()
+      renderContactOwner(
+        <Harness initial={[{ type: 'contact', contact_id: contact.id }]} observe={observe} />,
+      )
+      const info = await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ })
+      info.focus()
+      await user.keyboard(key)
+      expect(observe).not.toHaveBeenCalled()
+      expect(info).toHaveFocus()
+    },
+  )
+
+  it('keeps selected contact information keyboard accessible in readonly mode', async () => {
+    const user = userEvent.setup(),
+      observe = vi.fn()
+    renderContactOwner(
+      <Harness
+        initial={[{ type: 'contact', contact_id: contact.id }]}
+        observe={observe}
+        readonly
+      />,
+    )
+    const info = await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ })
+    info.focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: contact.name })).toBeVisible()
+    await user.keyboard('{Delete}{Backspace}{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(info).toHaveFocus()
+    expect(observe).not.toHaveBeenCalled()
+  })
+
+  it.each(['{Delete}', '{Backspace}'])(
+    'retains chip arrow navigation and %s removal outside information controls',
+    async (key) => {
+      const user = userEvent.setup(),
+        observe = vi.fn()
+      renderContactOwner(
+        <Harness
+          initial={[
+            { type: 'contact', contact_id: contact.id },
+            { type: 'initiator' },
+            { type: 'onetime_email', email: 'last@example.com' },
+          ]}
+          observe={observe}
+        />,
+      )
+      await screen.findByText(contact.name)
+      await user.click(field())
+      await user.keyboard('{Escape}{ArrowLeft}')
+      expect(screen.getByLabelText('last@example.com', { selector: 'div' })).toHaveFocus()
+      await user.keyboard('{ArrowLeft}')
+      expect(
+        screen.getByLabelText('workflow.nodes.humanInputV2.recipients.type.initiator', {
+          selector: 'div',
+        }),
+      ).toHaveFocus()
+      await user.keyboard('{ArrowRight}')
+      expect(screen.getByLabelText('last@example.com', { selector: 'div' })).toHaveFocus()
+      await user.keyboard(key)
+      expect(observe).toHaveBeenLastCalledWith([
+        { type: 'contact', contact_id: contact.id },
+        { type: 'initiator' },
+      ])
+    },
+  )
+
   it('does not clear configured recipients with Escape, whether the popup is open or closed', async () => {
     const user = userEvent.setup(),
       observe = vi.fn()
