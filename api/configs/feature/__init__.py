@@ -351,6 +351,17 @@ class PluginConfig(BaseSettings):
         description="Versioned hosted source to Tokener model mapping registry; empty registry cannot prepare",
         default="[]",
     )
+    TOKENER_LEGACY_MODEL_MAPPING_FILE: str = Field(
+        description="Optional absolute read-only JSON registry file appended to inline mappings at startup; max 4 MiB",
+        default="",
+    )
+    TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON: str = Field(
+        description=(
+            "Operator-only immutable source-unavailable evidence bound to mapping revision, exact plugin UID and "
+            "catalog digest; empty keeps strict source validation"
+        ),
+        default="[]",
+    )
     TOKENER_LEGACY_RETIRED_MODELS_JSON: str = Field(
         description=(
             "Exact retired source identities by immutable mapping revision; only skips migration readiness, "

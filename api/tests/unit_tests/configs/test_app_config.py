@@ -1,3 +1,5 @@
+import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast, override
@@ -11,6 +13,7 @@ from yarl import URL
 
 from configs.app_config import DifyConfig
 from configs.feature import OpsTraceConfig
+from configs.tokener_mapping_registry import TokenerMappingConfigurationError
 from enums import DeploymentEdition
 
 
@@ -235,6 +238,70 @@ def test_tokener_new_tenant_bootstrap_config_is_parsed() -> None:
     assert config.TOKENER_ENDPOINT_URL == "https://api-staging.tokener.dev/v1"
     assert config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL == 7
     assert config.TOKENER_BOOTSTRAP_RECOVERY_BATCH_SIZE == 50
+
+
+def test_tokener_mapping_file_disabled_preserves_inline_bytes_and_serialization() -> None:
+    raw = " intentionally not parsed until the existing consumer reads it "
+    config = _make_config(TOKENER_LEGACY_MODEL_MAPPING_JSON=raw)
+
+    assert config.TOKENER_LEGACY_MODEL_MAPPING_FILE == ""
+    assert raw == config.TOKENER_LEGACY_MODEL_MAPPING_JSON
+    assert config.model_dump()["TOKENER_LEGACY_MODEL_MAPPING_JSON"] == raw
+
+
+def test_tokener_mapping_file_load_is_snapshot_and_roundtrip_safe(tmp_path: Path) -> None:
+    source = tmp_path / "registry.json"
+    source.write_text('[{"revision":"file-v1"}]', encoding="utf-8")
+    inline = ' [ {"revision": "inline"} ] '
+    environment = dict(os.environ)
+    config = _make_config(TOKENER_LEGACY_MODEL_MAPPING_JSON=inline, TOKENER_LEGACY_MODEL_MAPPING_FILE=str(source))
+    expected = [{"revision": "inline"}, {"revision": "file-v1"}]
+    assert json.loads(config.TOKENER_LEGACY_MODEL_MAPPING_JSON) == expected
+
+    assert _IsolatedDifyConfig.model_validate(config) is config
+    assert json.loads(config.TOKENER_LEGACY_MODEL_MAPPING_JSON) == expected
+    dumped = config.model_dump()
+    assert dumped["TOKENER_LEGACY_MODEL_MAPPING_JSON"] == inline
+    # Unrelated legacy CORS/set fields are not round-trip input types. Exercise
+    # this configuration pair without changing those existing contracts.
+    mapping_fields = {"TOKENER_LEGACY_MODEL_MAPPING_JSON", "TOKENER_LEGACY_MODEL_MAPPING_FILE"}
+    inputs = config.model_dump(include=mapping_fields)
+    rebuilt = _make_config(**inputs)
+    assert json.loads(rebuilt.TOKENER_LEGACY_MODEL_MAPPING_JSON) == expected
+    rebuilt_json = _IsolatedDifyConfig.model_validate_json(config.model_dump_json(include=mapping_fields))
+    assert json.loads(rebuilt_json.TOKENER_LEGACY_MODEL_MAPPING_JSON) == expected
+    # A complete config can be reconstructed when derived/computed output
+    # fields are excluded, as required by the pre-existing CORS field aliases.
+    complete_inputs = config.model_dump(exclude_computed_fields=True)
+    complete = _make_config(**complete_inputs)
+    assert json.loads(complete.TOKENER_LEGACY_MODEL_MAPPING_JSON) == expected
+
+    source.write_text('[{"revision":"file-v2"}]', encoding="utf-8")
+    assert _IsolatedDifyConfig.model_validate(config) is config
+    assert json.loads(config.TOKENER_LEGACY_MODEL_MAPPING_JSON) == expected
+    assert json.loads(_make_config(**inputs).TOKENER_LEGACY_MODEL_MAPPING_JSON) == [
+        {"revision": "inline"},
+        {"revision": "file-v2"},
+    ]
+    assert dict(os.environ) == environment
+
+
+def test_tokener_mapping_file_startup_error_does_not_echo_settings(tmp_path: Path) -> None:
+    source = tmp_path / "private-path.json"
+    source.write_text("private-invalid-json", encoding="utf-8")
+    with pytest.raises(TokenerMappingConfigurationError) as error:
+        _make_config(SECRET_KEY="private-secret-value", TOKENER_LEGACY_MODEL_MAPPING_FILE=str(source))
+
+    assert "private" not in str(error.value)
+    assert not isinstance(error.value, ValidationError)
+
+
+def test_tokener_source_capability_config_is_operator_input_only() -> None:
+    config = _make_config()
+    assert config.TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON == "[]"
+    raw = ' [ {"operator_evidence": "not interpreted by configs"} ] '
+    configured = _make_config(TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON=raw)
+    assert raw == configured.TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON
 
 
 def test_http_timeout_defaults() -> None:

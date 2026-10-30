@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Any, override
 
-from pydantic import model_validator
+from pydantic import PrivateAttr, field_serializer, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
@@ -18,6 +18,7 @@ from .packaging import PackagingInfo
 from .remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName
 from .remote_settings_sources.apollo import ApolloSettingsSource
 from .remote_settings_sources.nacos import NacosSettingsSource
+from .tokener_mapping_registry import merge_mapping_registry_file
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,29 @@ class DifyConfig(
     # please consider to arrange it in the proper config group of existed or added
     # for better readability and maintainability.
     # Thanks for your concentration and consideration.
+
+    _tokener_mapping_file_loaded: bool = PrivateAttr(default=False)
+    _tokener_inline_registry: str = PrivateAttr(default="[]")
+
+    @model_validator(mode="after")
+    def load_tokener_mapping_registry_file(self) -> "DifyConfig":
+        """Resolve one startup snapshot without exporting it into process env."""
+        if self.TOKENER_LEGACY_MODEL_MAPPING_FILE and not self._tokener_mapping_file_loaded:
+            inline = self.TOKENER_LEGACY_MODEL_MAPPING_JSON
+            merged = merge_mapping_registry_file(inline, self.TOKENER_LEGACY_MODEL_MAPPING_FILE)
+            self._tokener_inline_registry = inline
+            self.TOKENER_LEGACY_MODEL_MAPPING_JSON = merged
+            self._tokener_mapping_file_loaded = True
+        return self
+
+    @field_serializer("TOKENER_LEGACY_MODEL_MAPPING_JSON")
+    def serialize_tokener_mapping_input(self, value: str) -> str:
+        """Dump source settings, so dump-to-rebuild never appends the file twice.
+
+        Runtime consumers read the effective field directly. An existing model
+        keeps its snapshot when revalidated; a rebuilt model reads the file anew.
+        """
+        return self._tokener_inline_registry if self._tokener_mapping_file_loaded else value
 
     @model_validator(mode="after")
     def validate_knowledge_fs_production_origin(self) -> "DifyConfig":

@@ -39,6 +39,36 @@ invocations retain their previous execution and settlement owners.
    `ENABLE_TOKENER_MIGRATION_RECOVERY_TASK` independently of admission. Start with
    both Core and Billing migration admission disabled and empty tenant allowlists.
 
+### Large mapping registries
+
+For registries approaching Linux's per-environment-string limit, optionally set
+`TOKENER_LEGACY_MODEL_MAPPING_FILE=/app/config/tokener-mappings.json` and mount
+that file read-only at the same absolute path on **every** Core API/worker/beat
+role. It must be a regular, non-symlink UTF-8 JSON array of objects; directories,
+FIFOs, invalid JSON/duplicate JSON keys, files changing during the read, and
+inputs/effective output larger than 4 MiB fail startup with a content-free error.
+Use a stable deployment-owned directory and a normal bind-mounted file, not a
+symlink-backed projection. No remote URL or file interpolation is supported.
+
+The effective in-memory registry is inline `TOKENER_LEGACY_MODEL_MAPPING_JSON`
+followed by file records. There is no override or deduplication: preserve old
+records in exactly one source and add new revisions in the other. Existing
+`mappings_for_revision` still validates all records and rejects duplicate source
+identities within any revision; no latest-revision fallback is added. With an
+empty file setting, the original inline bytes and behavior are unchanged.
+
+Files are loaded only during configuration construction, never per request, and
+are not copied to `os.environ`. Restart all consuming roles to load a new file;
+update the mounted file atomically **before** restarting, not during a running
+configuration read. An existing config retains its startup snapshot when
+revalidated. `model_dump()`/`model_dump_json()` intentionally serialize the
+original inline input plus file path, so reconstruction reads the current file
+once rather than appending a previously merged registry again. Runtime
+consumers continue reading `dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON`.
+For a complete configuration input dump, exclude derived/computed fields with
+`model_dump(exclude_computed_fields=True)`; unrelated legacy configuration
+serialization contracts are not changed by this file loader.
+
 Core admission: `TOKENER_LEGACY_MIGRATION_ENABLED` and
 `TOKENER_LEGACY_MIGRATION_ALLOWLIST`. Billing has its matching migration-enabled
 and tenant-allowlist settings; see the SaaS Billing runbook for exact variables.
