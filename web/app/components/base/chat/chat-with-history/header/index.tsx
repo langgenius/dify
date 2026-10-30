@@ -21,6 +21,7 @@ import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/input
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
+import MyAppsLink from '@/app/components/share/my-apps-link'
 import { useChatWithHistoryContext } from '../context'
 import Operation from './operation'
 
@@ -110,6 +111,7 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
           >
             <RiLayoutRight2Line aria-hidden="true" className="h-4.5 w-4.5" />
           </IconButton>
+          <MyAppsLink className="shrink-0" />
           <div className="me-1 shrink-0">
             <AppIcon size="large" icon={appData?.site} />
           </div>

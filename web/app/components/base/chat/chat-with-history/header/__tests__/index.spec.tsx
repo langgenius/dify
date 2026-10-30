@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConnectionsContext } from '@/app/components/share/connections/use-connections'
+import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import {
   AppSourceType,
   delConversation,
@@ -13,7 +14,7 @@ import {
 import { createChatConfigFixture } from '@/test/fixtures/chat'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { conversation, renderChatHistory } from '../../__tests__/chat-history-test-env'
-import { createChatConnections } from '../../__tests__/connection-fixture'
+import { chatConnectionEntry, createChatConnections } from '../../__tests__/connection-fixture'
 import Header from '../index'
 
 vi.mock('@/service/share', async (importOriginal) => ({
@@ -89,6 +90,22 @@ it('expands and persists the sidebar, removing the collapsed-header actions', as
   ).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'My Chat' })).not.toBeInTheDocument()
   expect(localStorage.getItem('webappSidebarCollapse')).toBe('expanded')
+})
+
+it('offers My apps while the sidebar is collapsed and hides the duplicate navigation after expansion', async () => {
+  const user = userEvent.setup()
+  renderChatHistory(
+    <WebAppEntryContext value={chatConnectionEntry}>
+      <Header />
+    </WebAppEntryContext>,
+  )
+
+  expect(screen.getByRole('link', { name: 'app.endUser.myApps' })).toHaveAttribute(
+    'href',
+    '/my-apps',
+  )
+  await user.click(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }))
+  expect(screen.queryByRole('link', { name: 'app.endUser.myApps' })).not.toBeInTheDocument()
 })
 
 it.each([false, true])('refreshes the pin action after saving pinned=%s', async (pinned) => {

@@ -131,6 +131,25 @@ async function operate(
 }
 
 describe('Conversation sidebar', () => {
+  it.each([false, true])(
+    'places My apps before application information in the mobile=%s sidebar',
+    (isMobile) => {
+      renderChatHistory(
+        <WebAppEntryContext value={chatConnectionEntry}>
+          <Sidebar />
+        </WebAppEntryContext>,
+        { sidebarCollapsed: false, ownerProps: { isMobile } },
+      )
+
+      const navigation = screen.getByRole('link', { name: 'app.endUser.myApps' })
+      expect(navigation).toHaveAttribute('href', '/my-apps')
+      expect(
+        navigation.compareDocumentPosition(screen.getByText('Test Chat')) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    },
+  )
+
   it('offers sign-in in place of the footer menu and blocks new chat while personal connections require login', async () => {
     const user = userEvent.setup()
     renderChatHistory(
@@ -147,6 +166,7 @@ describe('Conversation sidebar', () => {
     const start = screen.getByRole('button', { name: 'share.chat.newChat' })
     expect(start).toBeDisabled()
     expect(screen.getByRole('button', { name: 'share.auth.signIn' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'app.endUser.myApps' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
     expect(screen.getByText('share.chat.emptyConversation')).toBeVisible()
     await user.click(start)

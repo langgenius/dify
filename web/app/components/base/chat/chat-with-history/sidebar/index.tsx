@@ -21,6 +21,7 @@ import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
+import MyAppsLink from '@/app/components/share/my-apps-link'
 import SignIn from '@/app/components/share/sign-in'
 import TextGenerationMenu from '@/app/components/share/text-generation/text-generation-menu'
 import { useWebAppEntry } from '@/app/components/share/webapp-entry'
@@ -100,6 +101,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
           'rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg shadow-lg',
       )}
     >
+      <MyAppsLink className="w-full shrink-0" />
       <div className={cn('flex shrink-0 items-center gap-3 p-3 pe-2')}>
         <div className="shrink-0">
           <AppIcon size="large" icon={appData?.site} />
