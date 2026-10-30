@@ -6,16 +6,24 @@ from uuid import uuid4
 import pytest
 import sqlalchemy.orm
 
+from models import agent as agent_models
 from models.agent import Agent, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 
 
 def test_projection_is_published_and_output_contract_is_honest() -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Risk reviewer", description="EDITABLE DRAFT SECRET")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Risk reviewer",
+        description="EDITABLE DRAFT SECRET",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()),
         agent_id=agent.id,
@@ -47,7 +55,13 @@ def test_projection_is_published_and_output_contract_is_honest() -> None:
 def test_projection_rejects_cross_owner_snapshot() -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Reviewer")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Reviewer",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()), tenant_id=str(uuid4()), agent_id=agent.id, version=1, config_snapshot=AgentSoulConfig()
     )
@@ -59,7 +73,14 @@ def test_projection_rejects_cross_owner_snapshot() -> None:
 def test_public_roster_description_is_an_honest_capability_fallback(summary: None | str) -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Reviewer", description="Public report review")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Reviewer",
+        description="Public report review",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()),
         tenant_id=agent.tenant_id,
@@ -103,7 +124,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
     candidate = project_published_agent(agent=case.agent, snapshot=case.snapshot)
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
     payloads = []
     if phase.startswith("discovery"):
@@ -232,7 +253,13 @@ def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypa
     from services.dify_builder.agent import build, resources
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Risk reviewer")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Risk reviewer",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()),
         tenant_id=agent.tenant_id,
@@ -688,7 +715,7 @@ def test_catalog_public_version_matches_native_visible_history_with_hidden_revis
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch, origin: str
 ) -> None:
     from models.agent import AgentConfigRevision, AgentConfigRevisionOperation, AgentSource
-    from services.agent.roster_service import AgentRosterService
+    from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
     from services.dify_builder.agent import resources
     from services.dify_builder.native_testing.agent_catalog import AgentCatalogService, project_published_agent
     from tests.builder_agent_fixtures import make_case
@@ -742,25 +769,25 @@ def test_catalog_public_version_matches_native_visible_history_with_hidden_revis
     active = snapshots[3]
     case.agent.active_config_snapshot_id = active.id
     sqlite_session.commit()
-    versions = AgentRosterService(sqlite_session).list_agent_versions(
-        tenant_id=case.actor.tenant_id, agent_id=case.agent.id
-    )
-    native_active = next(version for version in versions if version["id"] == active.id)
-    assert native_active["display_version"] == 2
-    assert native_active["snapshot_version"] == 3
+    versions = SQLAlchemyAgentVersionRepository(
+        session_factory=sqlalchemy.orm.sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+    ).list_versions(tenant_id=case.actor.tenant_id, agent_id=case.agent.id)
+    native_active = next(version for version in versions if version.id == active.id)
+    assert native_active.display_version == 2
+    assert native_active.snapshot_version == 3
     assert len(versions) == 3
 
     candidate = AgentCatalogService(sqlite_session).list_candidates(
         tenant_id=case.actor.tenant_id, actor_id=case.actor.account_id, app_id=None, query=None
     )[0]
 
-    assert candidate.display_version == native_active["display_version"]
-    assert candidate.snapshot_version == native_active["snapshot_version"]
+    assert candidate.display_version == native_active.display_version
+    assert candidate.snapshot_version == native_active.snapshot_version
     # Display numbering must not change the confirmed snapshot binding/digest.
     assert candidate.resource_id == project_published_agent(agent=case.agent, snapshot=active).resource_id
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
     ref = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id).agents[0]
     assert f"Published version 2 (snapshot {active.id})" in ref.meta
@@ -773,7 +800,7 @@ def test_catalog_without_native_visible_version_labels_only_the_snapshot_revisio
     sqlite_session: sqlalchemy.orm.Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from models.agent import AgentSource
-    from services.agent.roster_service import AgentRosterService
+    from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
     from services.dify_builder.agent import resources
     from tests.builder_agent_fixtures import make_case
 
@@ -783,12 +810,14 @@ def test_catalog_without_native_visible_version_labels_only_the_snapshot_revisio
     sqlite_session.commit()
     # Direct roster eligibility is valid even without a user-facing version entry.
     assert (
-        AgentRosterService(sqlite_session).list_agent_versions(tenant_id=case.actor.tenant_id, agent_id=case.agent.id)
+        SQLAlchemyAgentVersionRepository(
+            session_factory=sqlalchemy.orm.sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+        ).list_versions(tenant_id=case.actor.tenant_id, agent_id=case.agent.id)
         == []
     )
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
 
     ref = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id).agents[0]
@@ -823,7 +852,7 @@ def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(
     sqlite_session.commit()
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
     inventory = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id)
     assert len(inventory.agents) == 100

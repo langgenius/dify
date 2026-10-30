@@ -335,7 +335,7 @@ def installed(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> tuple[F
 
     # models/datasets come from their own owners; this suite is about tools
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     forbidden = forbid_secret_and_business_calls(monkeypatch)
     return daemon, forbidden
 
@@ -536,14 +536,14 @@ def test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory(
     bind_database(monkeypatch, sqlite_engine)
     install_fake_daemon(monkeypatch, FakeToolDaemon(fail_all=True))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
 
     readiness = _readiness(account_id=ACCOUNT_A)
 
     assert readiness.get("time/current_time") == "ready"
 
 
-def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_models_keep_semantics_and_knowledge_inventory_receives_actor(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import resources
 
     class _DS:
@@ -553,7 +553,11 @@ def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch: pyte
     monkeypatch.setattr(
         resources, "_list_models", lambda _tenant_id: [_provider_models("anthropic", ["claude-opus-4-8"])]
     )
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [_DS("kb-1", "Company KB")])
+    monkeypatch.setattr(
+        resources,
+        "_list_datasets",
+        lambda _tenant_id, account_id=None: [_DS("kb-1", "Company KB")] if account_id else [],
+    )
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
 
     anonymous = resources.list_tenant_resources("t1")
@@ -563,4 +567,5 @@ def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch: pyte
     assert [ref.id for ref in acting.models] == ["anthropic/claude-opus-4-8"]
     assert acting.models[0].binding == {"provider": "anthropic", "name": "claude-opus-4-8"}
     assert acting.models[0].availability["runtime"] == "unverified"
-    assert acting.datasets == anonymous.datasets == [resources.ResourceRef(id="kb-1", label="Company KB")]
+    assert anonymous.datasets == []
+    assert acting.datasets == [resources.ResourceRef(id="kb-1", label="Company KB")]

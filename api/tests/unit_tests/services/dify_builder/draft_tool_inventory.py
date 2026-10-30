@@ -80,5 +80,5 @@ def draft_tools(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Draft
         ),
     )
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     return DraftToolInventory(daemon, queries, forbid_secret_and_business_calls(monkeypatch), sqlite_engine)

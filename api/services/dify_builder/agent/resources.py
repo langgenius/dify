@@ -23,9 +23,10 @@ from enum import Enum
 from typing import Any, Literal
 
 from pydantic import JsonValue
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.workflow.generator.tool_catalogue import (
     ToolCatalogueEntry,
     build_tool_catalogue,
@@ -35,7 +36,9 @@ from core.workflow.generator.tool_catalogue import (
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from models.dataset import Dataset
+from models.account import Account, AccountStatus, TenantAccountJoin
+from models.dataset import Dataset, DatasetPermission, Document
+from models.model import Tag, TagBinding
 from models.provider_ids import ToolProviderID
 from runtime_contracts.builder.execution import canonical_digest
 from services.dify_builder import trace_diagnostics as diagnostics
@@ -56,8 +59,8 @@ class ResourceRef:
     label: str
     meta: str = ""
     readiness: str = "ready"
-    # Tools only: the tool's own description and its provider's label,
-    # description and tags, used to rank tools against a request.
+    # Public resource description; tools also supply provider capability text
+    # used to rank them against a request.
     description: str = ""
     capability: str = ""
     # Verified public declaration facts, for draft annotation/native selection.
@@ -85,15 +88,160 @@ class TenantResources:
     agent_source_error: str | None = None
     model_source_error: str | None = None
     tool_source_error: str | None = None
+    dataset_source_error: str | None = None
 
 
 def _list_models(tenant_id: str) -> list[ProviderWithModelsResponse]:
     return ModelProviderService().get_models_by_model_type(tenant_id=tenant_id, model_type="llm")
 
 
-def _list_datasets(tenant_id: str) -> list[Any]:
+def _list_datasets(tenant_id: str, account_id: str | None = None) -> list[ResourceRef]:
+    """Actor-scoped discovery metadata, never retrieval or node-binding authority.
+
+    Read the native membership/access policies and precise RBAC permission keys.
+    Do not use the tenant-wide inventory as a public catalogue or infer use from
+    visibility. SQL closes before RBAC I/O; only authorized IDs reach document
+    counts/tags, and neither document contents nor stored retrieval config load.
+    """
+    from enums.account import TenantAccountRole
+    from services.enterprise.rbac_service import RBACService
+    from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessSnapshot, can_access_dataset
+
+    if not account_id:
+        return []
     with Session(db.engine) as session:
-        return list(session.scalars(select(Dataset).where(Dataset.tenant_id == tenant_id)).all())
+        role = session.scalar(
+            select(TenantAccountJoin.role)
+            .join(Account, Account.id == TenantAccountJoin.account_id)
+            .where(
+                TenantAccountJoin.tenant_id == tenant_id,
+                TenantAccountJoin.account_id == account_id,
+                Account.status == AccountStatus.ACTIVE,
+            )
+        )
+        if role is None:
+            return []
+        rows = session.execute(
+            select(
+                Dataset.id, Dataset.name, Dataset.description, Dataset.permission, Dataset.maintainer, Dataset.provider
+            )
+            .where(Dataset.tenant_id == tenant_id)
+            .order_by(Dataset.id)
+        ).all()
+        granted = (
+            set(
+                session.scalars(
+                    select(DatasetPermission.dataset_id).where(
+                        DatasetPermission.tenant_id == tenant_id,
+                        DatasetPermission.account_id == account_id,
+                        DatasetPermission.has_permission.is_(True),
+                    )
+                )
+            )
+            if not dify_config.RBAC_ENABLED
+            else set()
+        )
+    permissions: dict[str, list[str]] = {}
+    if dify_config.RBAC_ENABLED and rows:
+        scope = RBACService.DatasetAccess.whitelist_resources(tenant_id, account_id)
+        # Same whitelist/maintainer intersection as native DatasetService listing.
+        rows = [
+            row for row in rows if scope.unrestricted or row.id in scope.resource_ids or row.maintainer == account_id
+        ]
+        permissions = RBACService.DatasetPermissions.batch_get(tenant_id, account_id, [row.id for row in rows])
+        rows = [
+            row
+            for row in rows
+            # Native dataset listing and DatasetId RBAC checks preserve maintainer access.
+            if row.maintainer == account_id
+            or {"dataset.acl.preview", "dataset.preview", "dataset.full_access"}.intersection(
+                permissions.get(row.id, [])
+            )
+        ]
+    elif not dify_config.RBAC_ENABLED:
+        rows = [
+            row
+            for row in rows
+            if can_access_dataset(
+                DatasetAccessSnapshot(
+                    DatasetAccessRecord(row.id, tenant_id, row.maintainer, row.permission), row.id in granted
+                ),
+                actor_id=account_id,
+                workspace_role=str(role),
+            )
+            and (role != TenantAccountRole.DATASET_OPERATOR or row.id in granted)
+        ]
+    if not rows:
+        return []
+    ids = [row.id for row in rows]
+    with Session(db.engine) as session:
+        counts: dict[str, dict[str, int]] = {}
+        for dataset_id, status, count in session.execute(
+            select(Document.dataset_id, Document.indexing_status, func.count())
+            .where(
+                Document.tenant_id == tenant_id,
+                Document.dataset_id.in_(ids),
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
+            )
+            .group_by(Document.dataset_id, Document.indexing_status)
+        ):
+            counts.setdefault(dataset_id, {})[str(status)] = count
+        tags: dict[str, list[str]] = {}
+        for dataset_id, name in session.execute(
+            select(TagBinding.target_id, Tag.name)
+            .join(Tag, Tag.id == TagBinding.tag_id)
+            .where(
+                TagBinding.tenant_id == tenant_id,
+                Tag.tenant_id == tenant_id,
+                Tag.type == "knowledge",
+                TagBinding.target_id.in_(ids),
+            )
+            .order_by(TagBinding.target_id, Tag.name)
+        ):
+            tags.setdefault(dataset_id, []).append(name)
+    result = []
+    for row in rows:
+        statuses = counts.get(row.id, {})
+        total = sum(statuses.values())
+        state = (
+            "unknown"
+            if row.provider == "external"
+            else "empty"
+            if not total
+            else "indexed"
+            if set(statuses) == {"completed"}
+            else "indexing"
+            if set(statuses).intersection({"waiting", "parsing", "cleaning", "splitting", "indexing", "paused"})
+            else "unavailable"
+        )
+        can_use = not dify_config.RBAC_ENABLED or row.maintainer == account_id or bool(
+            {"dataset.acl.use", "dataset.use", "dataset.full_access"}.intersection(permissions.get(row.id, []))
+        )
+        tag_text = ", ".join(tags.get(row.id, [])[:20])[:360]
+        meta = (
+            "Discovery only; retrieval nodes are not generated or bound in this phase. "
+            f"Available documents: {total}; status: {state}; use permission: {'allowed' if can_use else 'not allowed'}."
+        )
+        if tag_text:
+            meta += f" Tags: {tag_text}."
+        result.append(
+            ResourceRef(
+                id=str(row.id),
+                label=str(row.name)[:255],
+                description=str(row.description or "")[:1000],
+                meta=meta,
+                readiness="ready" if can_use and state == "indexed" else "waiting_setup",
+                availability={
+                    "catalogue": "visible",
+                    "scope": "discovery_only",
+                    "use": "allowed" if can_use else "not_allowed",
+                    "documents": state,
+                    "runtime": "not_supported",
+                },
+            )
+        )
+    return result
 
 
 class _PartialToolInventoryError(Exception):
@@ -238,7 +386,8 @@ def list_tenant_resources(
 ) -> TenantResources:
     """``account_id`` is the acting member whose credential visibility decides
     tool readiness; ``None`` (no acting member) counts team-shared
-    credentials only. Models and datasets do not depend on it.
+    credentials only. Knowledge metadata requires an active acting member and
+    native access checks; models do not depend on it.
 
     With selected_agent_ids, resolve only those confirmed identities through the
     same current eligibility/access filters; discovery otherwise stays bounded.
@@ -285,7 +434,10 @@ def list_tenant_resources(
         return models
 
     def build_datasets():
-        return [ResourceRef(id=str(d.id), label=str(d.name)) for d in _list_datasets(tenant_id)]
+        return [
+            d if isinstance(d, ResourceRef) else ResourceRef(id=str(d.id), label=str(d.name))
+            for d in _list_datasets(tenant_id, account_id)
+        ]
 
     def build_tools():
         tools = _list_tools(tenant_id)
@@ -391,6 +543,7 @@ def list_tenant_resources(
         agent_source_error=agent_source_error,
         model_source_error=source_errors.get("models"),
         tool_source_error=source_errors.get("tools"),
+        dataset_source_error=source_errors.get("datasets"),
     )
 
 
