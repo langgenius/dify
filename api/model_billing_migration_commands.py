@@ -53,6 +53,54 @@ def status(tenant_id: UUID):
     click.echo(json.dumps(ModelBillingMigrationService.status(str(tenant_id)), sort_keys=True))
 
 
+@tokener_migration.command("prepare-free")
+@click.option("--tenant-id", type=click.UUID, required=True)
+@click.option("--batch-id", required=True)
+@click.option("--mapping-version", required=True)
+@click.option("--apply", is_flag=True, help="Prepare an eligible free workspace; does not grant money.")
+@with_appcontext
+def prepare_free(tenant_id: UUID, batch_id: str, mapping_version: str, apply: bool):
+    tenant = str(tenant_id)
+    if apply and not ModelBillingMigrationService.admitted(tenant):
+        raise click.ClickException("Migration admission is disabled or tenant is not allowlisted.")
+    inventory = migration_inventory(tenant, mapping_version, eligibility_policy_version="free-legacy-v1")
+    migration_id = str(uuid5(NAMESPACE_URL, f"dify.migration.free.v1:{tenant}:{batch_id}"))
+    payload = {
+        "api_version": 1,
+        "operation_id": str(uuid5(NAMESPACE_URL, f"dify.migration.prepare.v1:{migration_id}")),
+        "expected_revision": 0,
+        "migration_id": migration_id,
+        "batch_id": batch_id,
+        "eligibility_policy_version": "free-legacy-v1",
+        "model_mapping_version": mapping_version,
+        "inventory_hash": inventory["inventory_hash"],
+    }
+    if not apply:
+        click.echo(json.dumps({"dry_run": True, "request": payload, "inventory": inventory}, sort_keys=True))
+        return
+    _post(tenant, "prepare-migration", payload)
+    click.echo(json.dumps({"status": "accepted", "tenant_id": tenant, "migration_id": migration_id}))
+
+
+@tokener_migration.command("claim-free")
+@click.option("--tenant-id", type=click.UUID, required=True)
+@click.option("--apply", is_flag=True, help="Ask Billing to claim the configured one-time signup-equivalent grant.")
+@with_appcontext
+def claim_free(tenant_id: UUID, apply: bool):
+    tenant = str(tenant_id)
+    if apply and not ModelBillingMigrationService.admitted(tenant):
+        raise click.ClickException("Migration admission is disabled or tenant is not allowlisted.")
+    state = ModelBillingMigrationService.status(tenant)
+    payload = {"api_version": 1, "tenant_id": tenant, "migration_id": state["migration_id"]}
+    if not apply:
+        click.echo(json.dumps({"dry_run": True, "request": payload, "phase": state["phase"]}, sort_keys=True))
+        return
+    # Billing owns free eligibility, the configured amount and existing account
+    # timestamp. Operators cannot supply a synthetic invoice, amount or window.
+    _post(tenant, "claim-free-migration", payload)
+    click.echo(json.dumps({"status": "accepted", "tenant_id": tenant, "migration_id": state["migration_id"]}))
+
+
 @tokener_migration.command("resume")
 @click.option("--tenant-id", type=click.UUID, required=True)
 @click.option("--manual", is_flag=True, help="Explicit operator recovery after the initial 30-minute automatic limit.")
@@ -66,6 +114,8 @@ def resume(tenant_id: UUID, manual: bool, replan_unsent_operation_id: UUID | Non
     if replan_unsent_operation_id is not None and not manual:
         raise click.UsageError("--replan-unsent-operation-id requires --manual")
     state = ModelBillingMigrationService.status(str(tenant_id))
+    if replan_unsent_operation_id is not None and state.get("free_grant_manifest") is not None:
+        raise click.UsageError("One-time free migration has no paid allowance windows to replan")
     payload: dict[str, object] = {"api_version": 1, "migration_id": state["migration_id"], "manual": manual}
     if replan_unsent_operation_id is not None:
         payload.update(manual_replan=True, operation_id=str(replan_unsent_operation_id))

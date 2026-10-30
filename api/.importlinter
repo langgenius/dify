@@ -1305,3 +1305,32 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:model-billing-free-migration-application-boundary]
+name = Free migration application and store port are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.model_billing_free_migration_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-free-migration-controller-boundary]
+name = Migration control transport reaches persistence through application owners
+type = forbidden
+source_modules =
+    controllers.inner_api.model_billing_migration
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+# The composition root constructs the adapters; old paid use cases retain their owner.
+allow_indirect_imports = True
