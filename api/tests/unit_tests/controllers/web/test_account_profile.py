@@ -5,6 +5,7 @@ import pytest
 from flask import Flask
 
 from controllers.web import bp, login, wraps
+from machinery.context import AccountRequestContext
 from models.model import App, EndUser
 from services.account_errors import AccountNotFoundError
 
@@ -38,7 +39,9 @@ def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pyte
         "avatar": avatar,
         "avatar_url": "signed:file-id" if avatar == "file-id" else avatar,
     }
-    assert profile.get.call_args.args[0].account_id == "account-1"
+    context = profile.get.call_args.args[0]
+    assert isinstance(context, AccountRequestContext)
+    assert context.account_id == "account-1"
 
 
 def test_anonymous_profile_requires_account(profile_client):

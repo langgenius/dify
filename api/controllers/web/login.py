@@ -42,7 +42,7 @@ from libs.token import (
     extract_webapp_cookie_token,
     extract_webapp_passport,
 )
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from models.model import App, EndUser
 from services.account_errors import AccountNotFoundError
 from services.entities.account_login_entities import LoginMode
@@ -111,14 +111,13 @@ register_response_schema_models(
 class WebAccountProfileApi(WebApiResource):
     @web_ns.doc(description="Get the authenticated WebApp user's profile")
     @web_ns.response(HTTPStatus.OK, "Account profile", web_ns.models[WebAccountProfileResponse.__name__])
-    def get(self, app_model: App, end_user: EndUser):
+    def get(self, _app_model: App, end_user: EndUser):
         if not end_user.account_id:
             raise Unauthorized("Account login required.")
-        context = RequestContext(
+        context = AccountRequestContext(
             request_id=get_request_id(),
             trace_id=get_trace_id(),
             account_id=end_user.account_id,
-            active_workspace_id=app_model.tenant_id,
         )
         try:
             account = application_services().accounts.profile.get(context)
