@@ -93,7 +93,7 @@ class GeneratedPlanResponses:
 def generate_draft(monkeypatch: pytest.MonkeyPatch, responses: GeneratedPlanResponses) -> BuildNodesResult:
     config = ModelConfig.model_validate({"provider": "anthropic", "name": "x", "mode": "chat"})
     monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: config)  # noqa: ARG005
-    from tests.unit_tests.core.model_fixtures import make_model_instance
+    from tests.helpers.unit.core.model_fixtures import make_model_instance
 
     model = make_model_instance(provider=config.provider, model=config.name)
     monkeypatch.setattr(model, "invoke_llm", responses.respond)
@@ -201,7 +201,7 @@ def test_credential_query_failure_still_binds_verified_installation_with_a_verif
     assert draft_tools.forbidden == []
 
 
-def test_planner_and_gap_provider_requests_offer_installed_setup_tools(
+def test_abstract_plan_then_discovery_and_gap_offer_installed_setup_tools(
     draft_tools: DraftToolInventory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     requests = []
@@ -229,8 +229,10 @@ def test_planner_and_gap_provider_requests_offer_installed_setup_tools(
     assert plan is not None
     options = agent.discover_resources(plan.items, goal_text="Post a message to a Huddle channel", requirements={})
     agent.assess_capability_gap(plan.items, options, goal_text="Post a message to a Huddle channel", requirements={})
-    assert f"{AUTH_PROVIDER}/post" in requests[0][0]
-    assert "setup" in requests[0][0].lower()
+    assert f"{AUTH_PROVIDER}/post" not in "\n".join(requests[0])
+    assert f"{AUTH_PROVIDER}/post" in requests[1][1]
+    assert "setup" in requests[1][0].lower()
+    assert [option.id for option in options] == [f"{AUTH_PROVIDER}/post"]
     assert f"{AUTH_PROVIDER}/post" in requests[2][1]
     # The actual request to the gap LLM must not instruct it to invent a gap
     # merely because an installed declaration needs later credential setup.

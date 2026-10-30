@@ -36,6 +36,8 @@ from services.dify_builder import (
 )
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import graph_prompt, llm
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+from services.dify_builder.cognition_model_gateway import PolicyModelInstance
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
 _SEVERITIES = {"low", "medium", "high"}
@@ -134,7 +136,7 @@ def _degraded_checklist(errors: list[ChecklistError]) -> Diagnosis:
 
 
 def diagnose(
-    model: ModelInstance | None,
+    model: ModelInstance | PolicyModelInstance | None,
     failed_run: Run,
     graph: Graph,
     node_outputs: list[NodeOutput],
@@ -183,6 +185,8 @@ def diagnose(
     )
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:  # any LLM/provider failure degrades to a surfaced result, never crashes the advance
         diagnostics.report("deterministic_fallback", fallback_used=True)
         return _degraded_diagnosis(failed, safe_run.error)
@@ -193,7 +197,7 @@ def diagnose(
 
 
 def diagnose_checklist(
-    model: ModelInstance | None,
+    model: ModelInstance | PolicyModelInstance | None,
     errors: list[ChecklistError],
     graph: Graph,
     on_reasoning: Callable[[str], None] | None = None,
@@ -219,6 +223,8 @@ def diagnose_checklist(
     user = f"CHECKLIST ERRORS:\n{errs}\n\nGRAPH:\n{_graph_context(graph)}"
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:  # degrade to a surfaced result, never crash the advance
         diagnostics.report("deterministic_fallback", fallback_used=True)
         return _degraded_checklist(errors)
@@ -366,13 +372,15 @@ def _shape_risk(intents: list[MutationIntent], graph: Graph, llm_risk: Risk) -> 
 
 
 def _invoke_repair(
-    model: ModelInstance,
+    model: ModelInstance | PolicyModelInstance,
     system: str,
     user: str,
     on_reasoning: Callable[[str], None] | None,
 ) -> tuple[list[MutationIntent] | None, Risk]:
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:  # degrade to a surfaced result, never crash the advance
         diagnostics.report("deterministic_fallback", fallback_used=True)
         return None, _no_fix()[1]
@@ -380,7 +388,7 @@ def _invoke_repair(
 
 
 def propose_repair(
-    model: ModelInstance | None,
+    model: ModelInstance | PolicyModelInstance | None,
     diagnosis: Diagnosis,
     graph: Graph,
     on_reasoning: Callable[[str], None] | None = None,

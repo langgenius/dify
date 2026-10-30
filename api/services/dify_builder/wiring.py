@@ -28,6 +28,7 @@ from core.dify_builder.errors import (
 )
 from core.dify_builder.models import Action, Actor, ConversationItem
 from core.rbac import RBACPermission
+from extensions.application_services.dify_builder_cognition_policy import select_cognition_config
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.workflow_stream_fields import WorkflowStreamPayload
@@ -35,6 +36,7 @@ from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
 from runtime_contracts.builder.execution import canonical_digest
 from services.dify_builder import app_naming, progress_bus, session_lock
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_policy_service import check_app_permissions
@@ -177,7 +179,49 @@ def build_service() -> DifyBuilderService:
         real_call_consent=build_real_call_consent_service(),
         test_actions=_build_test_actions(),
         stream_read_scope_fn=app.app_context,
+        attachment_intake=build_attachment_intake(repo),
+        cognition_policy_fn=select_cognition_config,
     )
+
+
+def build_attachment_intake(repo):
+    """Compose the opt-in local parser over native authorized upload storage."""
+    from configs import dify_config
+    from extensions.ext_storage import storage
+    from services.dify_builder.attachment_extraction import MAX_FILE_BYTES, ExtractedContext, extract_local_context
+    from services.dify_builder.attachment_intake import BuilderAttachmentIntake
+
+    byte_limit = min(MAX_FILE_BYTES, dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024)
+
+    def extract(upload):
+        if upload.size > byte_limit:
+            return ExtractedContext("rejected", reason="byte_limit")
+        return extract_local_context(upload.extension, storage.load_stream(upload.key), max_bytes=byte_limit)
+
+    return BuilderAttachmentIntake(repo, extract)
+
+
+def build_app_metadata():
+    from services.dify_builder.app_metadata import NativeAppMetadata
+
+    return NativeAppMetadata(sessionmaker(bind=db.engine, expire_on_commit=False))
+
+
+def dispatch_pending_builder_material(repo, session_id: str, actor: Actor) -> str:
+    """Post-release handoff uses the ordinary advance queue, policy and App admission."""
+    intake = build_attachment_intake(repo)
+    session, context = repo.get_session(session_id)
+    if context.paused or not intake.pending(session, context, actor):
+        return ""
+    service = DifyBuilderService(
+        repo,
+        session_lock,
+        _enqueue,
+        authorize_app_fn=_authorize_app,
+        cognition_policy_fn=select_cognition_config,
+        attachment_intake=intake,
+    )
+    return service.dispatch_pending_material(session_id, actor)
 
 
 def _build_test_actions():
@@ -238,6 +282,8 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
     }
     if view.get("diagnostics"):
         projected["diagnostics"] = view["diagnostics"]
+    if view.get("attachments"):
+        projected["attachments"] = view["attachments"]
     if view.get("decision") is not None:
         projected["decision"] = view["decision"]
     if view.get("test_execution") is not None:
@@ -264,6 +310,13 @@ def session_view_to_dict(view: SessionView) -> dict[str, object]:
 
 
 def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
+    if isinstance(exc, CognitionPolicyDeniedError):
+        return {
+            "code": "model_unavailable",
+            "message": "Workspace Builder configuration requires administrator attention",
+            "reason_code": exc.reason,
+            "recoverable": True,
+        }, 400
     if isinstance(exc, BuilderExecutionPolicyError):
         reason = exc.reason_code
         if reason in {"native_owner_mismatch", "execution_owner_mismatch"}:
@@ -449,6 +502,11 @@ def _error_event(data: dict[str, Any], fallback: str) -> dict[str, object]:
         value = data.get(field)
         if value is not None:
             event[field] = value
+    reason = data.get("reason_code")
+    if isinstance(reason, str) and _REASON_CODE.fullmatch(reason):
+        event["reason_code"] = reason
+    if isinstance(data.get("recoverable"), bool):
+        event["recoverable"] = data["recoverable"]
     return event
 
 
