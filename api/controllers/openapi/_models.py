@@ -405,7 +405,7 @@ class _ChatQueryFields(BaseModel):
         return value
 
 
-class ChatRunPayload(RunPayloadBase, _ConversationFields, _ChatQueryFields):
+class ChatRunPayload(_ChatQueryFields, RunPayloadBase, _ConversationFields):
     model_config = ConfigDict(extra="forbid")
 
 
