@@ -44,9 +44,14 @@ from controllers.openapi._models import (
 from controllers.openapi._upload import UploadPart, UploadParts
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+    CheckWorkspaceRole,
     account_app_guards,
     workspace_write_guards,
 )
+from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
@@ -85,7 +90,13 @@ _PACKAGE_READ_GUARDS: Final = account_app_guards(
     agent_permission=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
 )
 _DSL_WRITE_GUARDS: Final = workspace_write_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, roles=EDITOR_ROLES)
-_PACKAGE_IMPORT_GUARDS: Final = workspace_write_guards(None, roles=EDITOR_ROLES)
+# No route RBAC: the service checks import rights by package content, as the console import does.
+_PACKAGE_IMPORT_GUARDS: Final = (
+    CheckSubject(allowed=(AccountSubject,)),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckWorkspaceRole(EDITOR_ROLES),
+)
 _PACKAGE_UPLOAD: Final = FolderUpload(
     payload=AppPackageImportPayload,
     max_entries=lambda: dify_config.AGENT_PACKAGE_MAX_ENTRIES,
