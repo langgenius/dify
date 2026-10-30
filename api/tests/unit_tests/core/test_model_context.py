@@ -59,6 +59,81 @@ def test_credit_usage_created_by_decorator_holds_context_while_generator_runs() 
     assert get_credit_usage_metadata() is None
 
 
+def test_credit_usage_created_by_decorator_restores_caller_context_between_yields() -> None:
+    seen: list[object] = []
+
+    @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
+    def generate() -> Generator[object]:
+        seen.append(get_credit_usage_metadata())
+        sent = yield "first"
+        seen.append(get_credit_usage_metadata())
+        seen.append(sent)
+        yield "second"
+
+    generator = generate()
+    assert get_credit_usage_metadata() is None
+
+    assert next(generator) == "first"
+    # a suspended generator must not leave its metadata in the caller's context
+    assert get_credit_usage_metadata() is None
+
+    assert generator.send("payload") == "second"
+    assert get_credit_usage_metadata() is None
+
+    assert seen == [
+        {"created_by": CreditUsageCreatedBy.AUDIO},
+        {"created_by": CreditUsageCreatedBy.AUDIO},
+        "payload",
+    ]
+    with pytest.raises(StopIteration):
+        next(generator)
+    assert get_credit_usage_metadata() is None
+
+
+def test_credit_usage_created_by_decorator_restores_context_after_early_close() -> None:
+    seen_on_close: list[object] = []
+
+    @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
+    def generate() -> Generator[object]:
+        try:
+            yield "first"
+            yield "second"
+        finally:
+            seen_on_close.append(get_credit_usage_metadata())
+
+    generator = generate()
+    assert next(generator) == "first"
+    assert get_credit_usage_metadata() is None
+
+    generator.close()
+
+    assert get_credit_usage_metadata() is None
+    assert seen_on_close == [{"created_by": CreditUsageCreatedBy.AUDIO}]
+
+
+def test_credit_usage_created_by_decorator_restores_context_after_throw() -> None:
+    seen: list[object] = []
+
+    @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
+    def generate() -> Generator[object]:
+        try:
+            yield "first"
+        except ValueError as exc:
+            seen.append((get_credit_usage_metadata(), str(exc)))
+            yield "handled"
+
+    generator = generate()
+    assert next(generator) == "first"
+    assert get_credit_usage_metadata() is None
+
+    assert generator.throw(ValueError("boom")) == "handled"
+    assert get_credit_usage_metadata() is None
+    assert seen == [({"created_by": CreditUsageCreatedBy.AUDIO}, "boom")]
+
+    generator.close()
+    assert get_credit_usage_metadata() is None
+
+
 def test_credit_usage_created_by_decorator_preserves_generator_return_value() -> None:
     @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
     def generate() -> Generator[object]:
