@@ -3,7 +3,7 @@ import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
+import { submitHumanInputForm as submitWebAppHumanInputForm } from '@/service/share'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
@@ -58,10 +58,6 @@ vi.mock('@/service/share', () => ({
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: vi.fn(),
-}))
-
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({

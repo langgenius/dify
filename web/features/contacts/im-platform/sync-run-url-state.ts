@@ -1,32 +1,20 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import type { ImSyncResultItem } from '@dify/contracts/api/console/workspaces/types.gen'
+import { parseAsString, parseAsStringEnum, useQueryState } from 'nuqs'
 
-const CONTACT_IM_SYNC_RUN_QUERY_PARAM = 'sync_run_id'
+type SyncResult = ImSyncResultItem['result']['type']
+export const useContactImSyncRunUrlState = () =>
+  useQueryState('sync_run_id', parseAsString.withOptions({ history: 'push' }))
 
-export const useContactImSyncRunUrlState = () => {
-  const pathname = usePathname()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const serializedSearchParams = searchParams.toString()
-  const [runId, setRunId] = useState<string | null>(() =>
-    searchParams.has(CONTACT_IM_SYNC_RUN_QUERY_PARAM) ? 'latest' : null,
+export const useContactImSyncResultUrlState = () =>
+  useQueryState(
+    'sync_result',
+    parseAsStringEnum<SyncResult>([
+      'added',
+      'not_matched',
+      'failed',
+      'removed',
+      'skipped',
+    ]).withDefault('added'),
   )
-
-  const updateRunId = useCallback(
-    (nextRunId: string | null) => {
-      const nextSearchParams = new URLSearchParams(serializedSearchParams)
-
-      if (nextRunId) nextSearchParams.set(CONTACT_IM_SYNC_RUN_QUERY_PARAM, 'latest')
-      else nextSearchParams.delete(CONTACT_IM_SYNC_RUN_QUERY_PARAM)
-
-      setRunId(nextRunId ? 'latest' : null)
-      const query = nextSearchParams.toString()
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
-    },
-    [pathname, router, serializedSearchParams],
-  )
-
-  return [runId, updateRunId] as const
-}

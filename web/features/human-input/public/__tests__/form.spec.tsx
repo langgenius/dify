@@ -1,237 +1,222 @@
 import type { HumanInputV2FormTransport } from '../types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useFileUploadContext } from '@/app/components/base/file-uploader/upload-context'
+import { createDeferred } from '@/test/deferred'
+import { createHumanInputV2Error } from '../errors'
 import HumanInputV2Form from '../form'
-import { createMockHumanInputV2FormTransport, HUMAN_INPUT_V2_MOCK_OTP } from '../mock-transport'
+import {
+  createHumanInputV2MockScenario,
+  createMockHumanInputV2FormTransport,
+  HUMAN_INPUT_V2_MOCK_OTP,
+} from './fixtures/mock-transport'
 
-const mockPresentation = vi.hoisted(() => ({
-  lastDefinition: undefined as unknown,
+vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
+vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-time', () => ({
+  default: () => null,
 }))
 
-vi.mock('@/features/human-input/form/loaded-form-content', () => ({
-  default: function MockLoadedFormContent({
-    definition,
-    isSubmitting,
-    actionsDisabled,
-    verificationContent,
-    onSubmit,
-  }: {
-    definition: unknown
-    isSubmitting: boolean
-    actionsDisabled: boolean
-    verificationContent: React.ReactNode
-    onSubmit: (inputs: Record<string, unknown>, action: string) => void
-  }) {
-    const { uploadStrategy } = useFileUploadContext()
-    mockPresentation.lastDefinition = definition
-    return (
-      <div>
-        {verificationContent}
-        <button
-          type="button"
-          onClick={() =>
-            uploadStrategy?.uploadLocal({
-              file: new File(['review'], 'review.txt', { type: 'text/plain' }),
-              onProgressCallback: vi.fn(),
-              onSuccessCallback: vi.fn(),
-              onErrorCallback: vi.fn(),
-            })
-          }
-        >
-          Upload local attachment
-        </button>
-        <button
-          type="button"
-          onClick={() => uploadStrategy?.uploadRemote('https://example.com/review.txt')}
-        >
-          Upload linked attachment
-        </button>
-        <button
-          type="button"
-          disabled={isSubmitting || actionsDisabled}
-          onClick={() => onSubmit({ response: 'approved' }, 'approve')}
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          disabled={isSubmitting || actionsDisabled}
-          onClick={() => onSubmit({ response: 'rejected' }, 'reject')}
-        >
-          Reject
-        </button>
-      </div>
-    )
-  },
-}))
+const createTransport = (overrides: Partial<HumanInputV2FormTransport> = {}) => {
+  const definition = createHumanInputV2MockScenario().definition
+  return {
+    ...createMockHumanInputV2FormTransport({
+      scenario: {
+        definition: {
+          ...definition,
+          formContent: 'Review notes:\n\n{{#$output.response#}}',
+          inputs: definition.inputs.slice(0, 1),
+        },
+        resendAfterSeconds: 0,
+      },
+    }),
+    ...overrides,
+  }
+}
 
-vi.mock('@/features/human-input/form/form-status-card', () => ({
-  default: ({
-    title,
-    subtitle,
-    submissionID,
-  }: {
-    title: React.ReactNode
-    subtitle?: React.ReactNode
-    submissionID?: string
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{subtitle}</div>
-      {submissionID && <div>{submissionID}</div>}
-    </div>
-  ),
-}))
-
-describe('HumanInputV2Form', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockPresentation.lastDefinition = undefined
-  })
-
-  it('loads the definition, requests one OTP, validates its shape, and submits one atomic payload', async () => {
-    const user = userEvent.setup()
-    const transport = createMockHumanInputV2FormTransport()
-    const getForm = vi.spyOn(transport, 'getForm')
-    const requestAccess = vi.spyOn(transport, 'requestAccess')
-    const submit = vi.spyOn(transport, 'submit')
-
-    render(<HumanInputV2Form token="form-token" transport={transport} />)
-
-    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
-    const otpInput = await screen.findByLabelText('share.humanInputV2.otpLabel')
-    const approve = screen.getByRole('button', { name: 'Approve' })
-    expect(getForm).toHaveBeenCalledWith('form-token')
-    expect(requestAccess).toHaveBeenCalledTimes(1)
-    expect(approve).toBeDisabled()
-    expect(otpInput).toHaveAttribute('autocomplete', 'one-time-code')
-
-    await user.type(otpInput, '24681')
-    expect(approve).toBeDisabled()
-    await user.type(otpInput, '0')
-    expect(approve).toBeEnabled()
-    await user.click(approve)
-
-    await waitFor(() =>
-      expect(submit).toHaveBeenCalledWith('form-token', {
-        inputs: { response: 'approved' },
+it('keeps incomplete approval available, identifies the invalid OTP, and submits the real form with Enter', async () => {
+  const user = userEvent.setup()
+  const transport = createTransport()
+  const submit = vi.spyOn(transport, 'submit')
+  render(<HumanInputV2Form token="form-token" transport={transport} />)
+  const otp = await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
+  const notes = screen.getByRole('textbox', { name: 'Review notes:' })
+  const approve = screen.getByRole('button', { name: 'Approve' })
+  expect(approve).toBeEnabled()
+  expect(otp.closest('form')).toBe(notes.closest('form'))
+  await user.type(otp, '123')
+  await user.click(approve)
+  expect(await screen.findByRole('alert')).toHaveTextContent('share.humanInputV2.invalidOtp')
+  expect(submit).not.toHaveBeenCalled()
+  expect(otp).toHaveAccessibleDescription(expect.stringContaining('share.humanInputV2.invalidOtp'))
+  await user.clear(otp)
+  await user.type(otp, HUMAN_INPUT_V2_MOCK_OTP)
+  await user.keyboard('{Enter}')
+  await waitFor(() =>
+    expect(submit).toHaveBeenCalledWith(
+      'form-token',
+      {
+        inputs: { response: 'Looks good' },
         action: 'approve',
         otp_code: HUMAN_INPUT_V2_MOCK_OTP,
         challenge_token: 'mock-challenge-1',
-      }),
-    )
-    expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
-    expect(screen.getByText('form-token')).toBeInTheDocument()
-    expect(screen.queryByLabelText('share.humanInputV2.otpLabel')).not.toBeInTheDocument()
-  })
-
-  it('allows invalid OTP correction while preserving the current challenge', async () => {
-    const user = userEvent.setup()
-    const transport = createMockHumanInputV2FormTransport()
-    const requestAccess = vi.spyOn(transport, 'requestAccess')
-
-    render(<HumanInputV2Form token="form-token" transport={transport} />)
-    const otpInput = await screen.findByLabelText('share.humanInputV2.otpLabel')
-    await user.type(otpInput, '000000')
-    await user.click(screen.getByRole('button', { name: 'Approve' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('share.humanInputV2.invalidOtp')
-    expect(requestAccess).toHaveBeenCalledTimes(1)
-    expect(otpInput).toHaveValue('000000')
-
-    await user.clear(otpInput)
-    await user.type(otpInput, HUMAN_INPUT_V2_MOCK_OTP)
-    await user.click(screen.getByRole('button', { name: 'Approve' }))
-    expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
-  })
-
-  it('locks every action while a submit is pending', async () => {
-    const user = userEvent.setup()
-    let resolveSubmit!: () => void
-    const submitPromise = new Promise<void>((resolve) => {
-      resolveSubmit = resolve
-    })
-    const baseTransport = createMockHumanInputV2FormTransport()
-    const submit = vi.fn<HumanInputV2FormTransport['submit']>().mockReturnValue(submitPromise)
-    const transport = { ...baseTransport, submit }
-
-    render(<HumanInputV2Form token="form-token" transport={transport} />)
-    const otpInput = await screen.findByLabelText('share.humanInputV2.otpLabel')
-    await user.type(otpInput, HUMAN_INPUT_V2_MOCK_OTP)
-    const approve = screen.getByRole('button', { name: 'Approve' })
-    const reject = screen.getByRole('button', { name: 'Reject' })
-    await user.click(approve)
-
-    expect(approve).toBeDisabled()
-    expect(reject).toBeDisabled()
-    await user.click(reject)
-    expect(submit).toHaveBeenCalledTimes(1)
-
-    await act(async () => resolveSubmit())
-  })
-
-  it.each([
-    ['not-found', 'share.humanInputV2.formNotFound'],
-    ['expired', 'share.humanInputV2.formExpired'],
-    ['submitted', 'share.humanInputV2.alreadySubmitted'],
-    ['rate-limited', 'share.humanInputV2.formRateLimited'],
-  ] as const)(
-    'renders the %s terminal form state without requesting access',
-    async (formState, copy) => {
-      const transport = createMockHumanInputV2FormTransport({ scenario: { formState } })
-      const requestAccess = vi.spyOn(transport, 'requestAccess')
-
-      render(<HumanInputV2Form token="form-token" transport={transport} />)
-
-      expect(await screen.findByText(copy)).toBeInTheDocument()
-      if (formState === 'expired' || formState === 'submitted') {
-        expect(screen.getByText('share.humanInput.sorry')).toBeInTheDocument()
-        expect(screen.getByText('form-token')).toBeInTheDocument()
-      }
-      expect(requestAccess).not.toHaveBeenCalled()
-      expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
-    },
+      },
+      { signal: expect.any(AbortSignal) },
+    ),
   )
+  expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toHaveFocus()
+})
 
-  it('renders and retries a recoverable unavailable definition state', async () => {
-    const baseTransport = createMockHumanInputV2FormTransport()
-    const getForm = vi
-      .fn<HumanInputV2FormTransport['getForm']>()
-      .mockRejectedValueOnce({ code: 'human_input_v2_unavailable' })
-      .mockImplementation(baseTransport.getForm)
-    const transport = { ...baseTransport, getForm }
-    const user = userEvent.setup()
+it('shows the clicked action as loading, preserves its focus, and prevents resend during submission', async () => {
+  const user = userEvent.setup()
+  let complete!: () => void
+  const submit = vi.fn<HumanInputV2FormTransport['submit']>(
+    () =>
+      new Promise<void>((resolve) => {
+        complete = resolve
+      }),
+  )
+  render(<HumanInputV2Form token="form-token" transport={createTransport({ submit })} />)
+  await user.type(
+    await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' }),
+    HUMAN_INPUT_V2_MOCK_OTP,
+  )
+  const reject = screen.getByRole('button', { name: 'Reject' })
+  await user.click(reject)
+  expect(reject).toHaveFocus()
+  expect(reject).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('button', { name: 'share.humanInputV2.resendCode' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  )
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  expect(submit).toHaveBeenCalledTimes(1)
+  await act(async () => complete())
+  expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toBeVisible()
+})
 
-    render(<HumanInputV2Form token="form-token" transport={transport} />)
-    expect(await screen.findByText('share.humanInputV2.unavailable')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'share.humanInputV2.retry' }))
+it('lets the user correct invalid proof in the real OTP and actions composition', async () => {
+  const user = userEvent.setup()
+  const transport = createTransport()
+  const requestAccess = vi.spyOn(transport, 'requestAccess')
+  render(<HumanInputV2Form token="form-token" transport={transport} />)
+  const otp = await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
+  await user.type(otp, '000000')
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('share.humanInputV2.invalidOtp')
+  await user.clear(otp)
+  await user.type(otp, HUMAN_INPUT_V2_MOCK_OTP)
+  await user.click(screen.getByRole('button', { name: 'Reject' }))
+  expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toBeVisible()
+  expect(requestAccess).toHaveBeenCalledTimes(1)
+})
 
-    expect(await screen.findByLabelText('share.humanInputV2.otpLabel')).toBeInTheDocument()
-    expect(getForm).toHaveBeenCalledTimes(2)
+it('accepts a pasted verification code containing a separator and submits all six digits', async () => {
+  const user = userEvent.setup()
+  const transport = createTransport()
+  const submit = vi.spyOn(transport, 'submit')
+  render(<HumanInputV2Form token="pasted-code" transport={transport} />)
+  const otp = await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
+  await user.click(otp)
+  await user.paste(`${HUMAN_INPUT_V2_MOCK_OTP.slice(0, 3)} ${HUMAN_INPUT_V2_MOCK_OTP.slice(3)}`)
+  expect(otp).toHaveValue(HUMAN_INPUT_V2_MOCK_OTP)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  await waitFor(() =>
+    expect(submit).toHaveBeenCalledWith(
+      'pasted-code',
+      expect.objectContaining({ otp_code: HUMAN_INPUT_V2_MOCK_OTP }),
+      { signal: expect.any(AbortSignal) },
+    ),
+  )
+  expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toBeVisible()
+})
+
+it('announces code delivery and keeps a network failure separate from invalid verification proof', async () => {
+  const user = userEvent.setup()
+  const transport = createTransport({
+    submit: vi
+      .fn<HumanInputV2FormTransport['submit']>()
+      .mockRejectedValue(createHumanInputV2Error('network')),
   })
+  render(<HumanInputV2Form token="network-failure" transport={transport} />)
+  const otp = await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
+  expect(screen.getByRole('status')).toHaveTextContent('share.humanInputV2.codeSent')
+  await user.type(otp, HUMAN_INPUT_V2_MOCK_OTP)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('share.humanInputV2.networkError')
+  expect(otp).not.toHaveAttribute('aria-invalid', 'true')
+  expect(otp).toHaveValue(HUMAN_INPUT_V2_MOCK_OTP)
+})
 
-  it('renders a neutral no-branding definition through shared presentation', async () => {
-    const transport = createMockHumanInputV2FormTransport()
+it.each([
+  ['not-found', 'share.humanInputV2.formNotFound'],
+  ['expired', 'share.humanInputV2.formExpired'],
+  ['submitted', 'share.humanInputV2.alreadySubmitted'],
+  ['rate-limited', 'share.humanInputV2.formRateLimited'],
+] as const)('does not request proof for a %s form', async (formState, text) => {
+  const transport = createMockHumanInputV2FormTransport({ scenario: { formState } })
+  const request = vi.spyOn(transport, 'requestAccess')
+  render(<HumanInputV2Form token="form-token" transport={transport} />)
+  expect(await screen.findByText(text)).toBeVisible()
+  expect(request).not.toHaveBeenCalled()
+})
 
-    render(<HumanInputV2Form token="form-token" transport={transport} />)
-    await screen.findByLabelText('share.humanInputV2.otpLabel')
+it('starts fresh and aborts the previous session when the keyed route changes token', async () => {
+  const transport = createTransport()
+  const getForm = vi.spyOn(transport, 'getForm')
+  const user = userEvent.setup()
+  const { rerender } = render(<HumanInputV2Form key="first" token="first" transport={transport} />)
+  await user.type(
+    await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' }),
+    HUMAN_INPUT_V2_MOCK_OTP,
+  )
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  await screen.findByRole('heading', { name: 'share.humanInput.thanks' })
+  rerender(<HumanInputV2Form key="second" token="second" transport={transport} />)
+  expect(await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })).toHaveValue(
+    '',
+  )
+  expect(getForm.mock.calls[0]?.[1]?.signal?.aborted).toBe(true)
+  expect(getForm).toHaveBeenLastCalledWith('second', { signal: expect.any(AbortSignal) })
+})
 
-    expect(mockPresentation.lastDefinition).not.toHaveProperty('branding')
-  })
+it('keeps Send code focused while loading and moves focus to the OTP input when it appears', async () => {
+  const user = userEvent.setup()
+  const access = createDeferred<Awaited<ReturnType<HumanInputV2FormTransport['requestAccess']>>>()
+  const requestAccess = vi
+    .fn<HumanInputV2FormTransport['requestAccess']>()
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockReturnValue(access.promise)
+  render(<HumanInputV2Form token="retry-code" transport={createTransport({ requestAccess })} />)
+  const send = await screen.findByRole('button', { name: 'share.humanInputV2.sendCode' })
+  await user.click(send)
+  expect(send).toHaveFocus()
+  expect(send).toHaveAttribute('aria-disabled', 'true')
+  await act(async () =>
+    access.resolve({ challengeToken: 'retried', expiresInSeconds: 600, resendAfterSeconds: 30 }),
+  )
+  expect(await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })).toHaveFocus()
+})
 
-  it('scopes attachment uploads to the displayed token and injected transport after navigation', async () => {
-    const user = userEvent.setup()
-    const transport = createMockHumanInputV2FormTransport()
-    const uploadLocalFile = vi.spyOn(transport, 'uploadLocalFile')
-    const uploadRemoteFile = vi.spyOn(transport, 'uploadRemoteFile')
-    const { rerender } = render(<HumanInputV2Form token="first-form" transport={transport} />)
-
-    await user.click(await screen.findByRole('button', { name: 'Upload local attachment' }))
-    expect(uploadLocalFile).toHaveBeenCalledWith('first-form', expect.any(File))
-
-    rerender(<HumanInputV2Form token="second-form" transport={transport} />)
-    await user.click(await screen.findByRole('button', { name: 'Upload linked attachment' }))
-    expect(uploadRemoteFile).toHaveBeenCalledWith('second-form', 'https://example.com/review.txt')
-  })
+it('keeps retry focus through another failure and restores focus to verification after recovery', async () => {
+  const user = userEvent.setup()
+  const base = createTransport()
+  const definition = await base.getForm('retry-form')
+  const failedRetry = createDeferred<typeof definition>()
+  const pending = createDeferred<typeof definition>()
+  const getForm = vi
+    .fn<HumanInputV2FormTransport['getForm']>()
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockReturnValueOnce(failedRetry.promise)
+    .mockReturnValue(pending.promise)
+  render(<HumanInputV2Form token="retry-form" transport={{ ...base, getForm }} />)
+  const retry = await screen.findByRole('button', { name: 'share.humanInputV2.retry' })
+  await user.click(retry)
+  expect(retry).toHaveFocus()
+  expect(retry).toHaveAttribute('aria-disabled', 'true')
+  await act(async () => failedRetry.reject(new Error('still offline')))
+  expect(retry).toHaveFocus()
+  expect(retry).not.toHaveAttribute('aria-disabled', 'true')
+  await user.click(retry)
+  expect(retry).toHaveFocus()
+  await act(async () => pending.resolve(definition))
+  expect(await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })).toHaveFocus()
 })

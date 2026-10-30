@@ -10,6 +10,7 @@ import {
   NODE_LAYOUT_VERTICAL_PADDING,
 } from '@/app/components/workflow/constants'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
+import { HUMAN_INPUT_TIMEOUT_HANDLE } from '@/app/components/workflow/nodes/human-input/shared/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -317,8 +318,8 @@ const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] 
 
     if (handleA && handleB) {
       const userActions = (humanInputNode.data as HumanInputSharedNodeType).user_actions || []
-      if (handleA === '__timeout') return 1
-      if (handleB === '__timeout') return -1
+      if (handleA === HUMAN_INPUT_TIMEOUT_HANDLE) return 1
+      if (handleB === HUMAN_INPUT_TIMEOUT_HANDLE) return -1
 
       const indexA = userActions.findIndex((action) => action.id === handleA)
       const indexB = userActions.findIndex((action) => action.id === handleB)

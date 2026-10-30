@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
 import type { UserActionButtonType } from '../../types'
-import { render as rtlRender, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render as rtlRender, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { createDeferred } from '@/test/deferred'
 import { withSelectorKey } from '@/test/i18n-mock'
-import FormContentPreview from '../form-content-preview'
+import FormContentPreview, { FormContentPreviewTrigger } from '../form-content-preview'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseStore = vi.hoisted(() => vi.fn())
@@ -97,9 +99,13 @@ vi.mock('../variable-in-markdown', () => ({
 
 const render = (ui: Parameters<typeof rtlRender>[0]) =>
   rtlRender(
-    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
-      {ui}
-    </EditorResourceScope>,
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}
+    >
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        {ui}
+      </EditorResourceScope>
+    </QueryClientProvider>,
   )
 
 describe('FormContentPreview', () => {
@@ -130,21 +136,30 @@ describe('FormContentPreview', () => {
       actions: [],
     })
     render(
-      <FormContentPreview
+      <FormContentPreviewTrigger
         nodeId="node-1"
         content="Unsaved local content"
         formInputs={[]}
         userActions={[]}
-        onClose={onClose}
       />,
     )
+    expect(mockPreview).not.toHaveBeenCalled()
+    const previewButton = screen.getByRole('button', {
+      name: 'nodes.humanInput.formContent.preview',
+    })
+    expect(previewButton).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.setup().click(previewButton)
+    expect(previewButton).toHaveAttribute('aria-pressed', 'true')
     expect(await screen.findByText('Resolved server preview')).toBeInTheDocument()
     expect(screen.queryByText('Unsaved local content')).not.toBeInTheDocument()
     expect(mockSyncDraft).toHaveBeenCalledOnce()
-    expect(mockPreview).toHaveBeenCalledWith({
-      params: { app_id: 'app-1', node_id: 'node-1' },
-      body: { inputs: {} },
-    })
+    expect(mockPreview).toHaveBeenCalledWith(
+      {
+        params: { app_id: 'app-1', node_id: 'node-1' },
+        body: { inputs: {} },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('shows a failed server preview and retries without displaying local content as a result', async () => {
@@ -153,18 +168,43 @@ describe('FormContentPreview', () => {
       .mockRejectedValueOnce(new Error('Server preview failed'))
       .mockResolvedValue({ form_content: 'Retried preview', inputs: [], actions: [] })
     render(
-      <FormContentPreview
+      <FormContentPreviewTrigger
         nodeId="node-1"
         content="Local draft"
         formInputs={[]}
         userActions={[]}
-        onClose={onClose}
       />,
     )
-    expect(await screen.findByText('Server preview failed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'nodes.humanInput.formContent.preview' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('error')
     expect(screen.queryByText('Local draft')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'operation.retry' }))
     expect(await screen.findByText('Retried preview')).toBeInTheDocument()
+  })
+
+  it('announces pending preview content without placing the Close action inside its status', async () => {
+    const user = userEvent.setup()
+    const response = createDeferred<{ form_content: string; inputs: []; actions: [] }>()
+    mockPreview.mockReturnValue(response.promise)
+    render(
+      <FormContentPreviewTrigger
+        nodeId="node-1"
+        content="Draft"
+        formInputs={[]}
+        userActions={[]}
+      />,
+    )
+    const status = screen.getByRole('status')
+    expect(status).toBeEmptyDOMElement()
+    await user.click(screen.getByRole('button', { name: 'nodes.humanInput.formContent.preview' }))
+    expect(status).toHaveTextContent('loading')
+    expect(within(status).queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'operation.close' })).toBeEnabled()
+    await act(async () =>
+      response.resolve({ form_content: 'Ready preview', inputs: [], actions: [] }),
+    )
+    expect(await screen.findByText('Ready preview')).toBeInTheDocument()
+    expect(status).toBeEmptyDOMElement()
   })
   it('uses historical props for a read-only V2 preview without fetching the current draft', () => {
     render(

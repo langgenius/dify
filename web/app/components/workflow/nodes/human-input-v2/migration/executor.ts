@@ -59,18 +59,8 @@ export const createHumanInputMigrationApi = (
         }),
       }
     } catch (error) {
-      const status =
-        error instanceof Response || error instanceof ORPCError ? error.status : undefined
-      if (status !== 400) throw error
-      const data: unknown =
-        error instanceof Response
-          ? await error
-              .clone()
-              .json()
-              .catch(() => undefined)
-          : error instanceof ORPCError
-            ? error.data
-            : undefined
+      if (!(error instanceof ORPCError) || error.status !== 400) throw error
+      const data: unknown = error.data
       const body = data && typeof data === 'object' && 'body' in data ? data.body : data
       const failure = zNodeDataMigrationFailureResponse.safeParse(body)
       if (!failure.success || !failure.data.blockers.length) throw error

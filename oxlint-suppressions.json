@@ -4990,11 +4990,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/single-run-form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1

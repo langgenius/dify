@@ -4,8 +4,9 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { UnsubmittedHumanInputContentProps } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
@@ -176,7 +177,12 @@ const createFormMarkdownComponents = (compact: boolean): MarkdownProps['customCo
   components.ul = ({ children, node: _node, ...props }) => (
     <ul
       {...props}
-      style={{ ...props.style, margin: 0, paddingLeft: '1.5em', listStylePosition: 'outside' }}
+      style={{
+        ...props.style,
+        margin: 0,
+        paddingInlineStart: '1.5em',
+        listStylePosition: 'outside',
+      }}
     >
       {children}
     </ul>
@@ -184,7 +190,12 @@ const createFormMarkdownComponents = (compact: boolean): MarkdownProps['customCo
   components.ol = ({ children, node: _node, ...props }) => (
     <ol
       {...props}
-      style={{ ...props.style, margin: 0, paddingLeft: '1.5em', listStylePosition: 'outside' }}
+      style={{
+        ...props.style,
+        margin: 0,
+        paddingInlineStart: '1.5em',
+        listStylePosition: 'outside',
+      }}
     >
       {children}
     </ol>
@@ -218,7 +229,11 @@ const FormBody = ({
   const [inputs, setInputs] = useState<Record<string, HumanInputFieldValue>>(() =>
     initializeInputs(renderedFormInputs, definition.resolvedDefaultValues),
   )
-  const [pending, setPending] = useState(false)
+  const { t } = useTranslation(['common'])
+  const labelPrefixId = useId()
+  const [pendingAction, setPendingAction] = useState<string>()
+  const [attempted, setAttempted] = useState(false)
+  const [submissionError, setSubmissionError] = useState(false)
   const compact = layout === 'workflow'
   const contentList = useMemo(() => {
     const contentCounts = new Map<string, number>()
@@ -232,8 +247,14 @@ const FormBody = ({
   const changeInput = (name: string, value: HumanInputFieldValue) => {
     setInputs((prev) => ({ ...prev, [name]: value }))
   }
+  const hasInvalidInput = compact ? hasInvalidSelectOrFileInput : hasInvalidRequiredHumanInput
+  const busy = isSubmitting || pendingAction !== undefined
   const submit = async (actionID: string) => {
-    setPending(true)
+    if (busy || actionsDisabled) return
+    setAttempted(true)
+    if (hasInvalidInput(renderedFormInputs, inputs)) return
+    setPendingAction(actionID)
+    setSubmissionError(false)
     try {
       await onSubmit(
         getProcessedHumanInputFormInputs(
@@ -242,17 +263,27 @@ const FormBody = ({
         ) || {},
         actionID,
       )
+    } catch {
+      setSubmissionError(true)
     } finally {
-      setPending(false)
+      setPendingAction(undefined)
     }
   }
-  const hasInvalidInput = compact ? hasInvalidSelectOrFileInput : hasInvalidRequiredHumanInput
-  const disabled =
-    actionsDisabled || isSubmitting || pending || hasInvalidInput(renderedFormInputs, inputs)
 
   return (
-    <div className={compact ? 'flex flex-col gap-2' : 'flex flex-col gap-3'}>
-      {contentList.map(({ key, content }) => {
+    <form
+      noValidate
+      data-layout={layout}
+      className="flex flex-col gap-3 data-[layout=workflow]:gap-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const submitter = event.nativeEvent.submitter
+        const actionID =
+          submitter instanceof HTMLButtonElement ? submitter.value : definition.actions[0]?.id
+        if (actionID) void submit(actionID)
+      }}
+    >
+      {contentList.map(({ key, content }, occurrenceIndex) => {
         const match = /\{\{#\$output\.([^#]+)#\}\}/.exec(content)
         if (!match) {
           return (
@@ -268,42 +299,77 @@ const FormBody = ({
         const field = definition.inputs.find((item) => item.output_variable_name === match[1])
         if (!field) return null
         const value = inputs[field.output_variable_name]
-        return isParagraphFormInput(field) ? (
-          <Textarea
-            key={key}
-            aria-label={field.output_variable_name}
-            data-testid="content-item-textarea"
-            size={compact ? 'medium' : 'large'}
-            className={
-              compact ? 'block h-20' : 'block h-28 text-[15px] leading-6 tracking-[-0.005em]'
-            }
-            value={typeof value === 'string' ? value : ''}
-            onValueChange={(nextValue) => changeInput(field.output_variable_name, nextValue)}
-          />
-        ) : (
-          <HumanInputFieldRenderer
-            key={key}
-            field={field}
-            value={value}
-            onChange={(nextValue) => changeInput(field.output_variable_name, nextValue)}
-          />
+        const previous = contentList
+          .slice(
+            0,
+            contentList.findIndex((item) => item.key === key),
+          )
+          .filter((item) => !/\{\{#\$output\./.test(item.content))
+          .at(-1)?.content
+        const precedingLine = previous
+          ?.trim()
+          .split('\n')
+          .at(-1)
+          ?.replace(/^[#>*\s]+|[*`_]/g, '')
+          .trim()
+        const label =
+          (precedingLine && !/^[!|]/.test(precedingLine) ? precedingLine : undefined) ||
+          field.output_variable_name.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2')
+        const labelID = `${labelPrefixId}-${field.output_variable_name}-${occurrenceIndex}`
+        const invalid = attempted && hasInvalidInput([field], inputs)
+        return (
+          <Field key={key} name={field.output_variable_name} invalid={invalid}>
+            <FieldLabel id={labelID}>{label}</FieldLabel>
+            {isParagraphFormInput(field) ? (
+              <Textarea
+                aria-labelledby={labelID}
+                data-testid="content-item-textarea"
+                size={compact ? 'medium' : 'large'}
+                data-layout={layout}
+                className="block h-28 text-[15px] leading-6 tracking-[-0.005em] data-[layout=workflow]:h-20"
+                value={typeof value === 'string' ? value : ''}
+                onValueChange={(nextValue) => changeInput(field.output_variable_name, nextValue)}
+              />
+            ) : (
+              <HumanInputFieldRenderer
+                field={field}
+                label={label}
+                value={value}
+                onChange={(nextValue) => changeInput(field.output_variable_name, nextValue)}
+              />
+            )}
+            {invalid && (
+              <FieldError match>
+                {t(($) => $['errorMsg.fieldRequired'], { field: label, ns: 'common' })}
+              </FieldError>
+            )}
+          </Field>
         )
       })}
       {verificationContent}
+      {submissionError && (
+        <p role="alert" className="system-sm-regular text-text-destructive">
+          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
       <div className="flex flex-wrap gap-1 py-1">
         {definition.actions.map((action) => (
           <Button
             key={action.id}
             size={compact ? 'small' : 'medium'}
-            disabled={disabled}
+            type="submit"
+            name="action"
+            value={action.id}
+            disabled={actionsDisabled || busy}
+            loading={pendingAction === action.id}
+            focusableWhenDisabled
             variant={getButtonStyle(action.button_style)}
-            onClick={() => submit(action.id)}
           >
             {action.title}
           </Button>
         ))}
       </div>
-    </div>
+    </form>
   )
 }
 
@@ -327,7 +393,12 @@ export const WorkflowHumanInputForm = ({
       isSubmitting={false}
       actionsDisabled={!formData.form_token}
       onSubmit={async (inputs, action) => {
-        if (formData.form_token) await onSubmit?.(formData.form_token, { inputs, action })
+        if (formData.form_token)
+          await onSubmit?.(formData.form_token, {
+            inputs,
+            action,
+            form_version: formData.form_version,
+          })
       }}
     />
     {(showEmailTip || showDebugModeTip) && (
@@ -350,6 +421,7 @@ const LoadedFormContent = ({
   verificationContent,
   onSubmit,
 }: LoadedFormContentProps) => {
+  const { t } = useTranslation(['workflow'])
   const branding = definition.branding
   const removeWebappBrand = branding?.customConfig?.remove_webapp_brand === true
   const replaceWebappLogo =
@@ -360,10 +432,13 @@ const LoadedFormContent = ({
   return (
     <div className="size-full [scrollbar-gutter:stable_both-edges] overflow-y-auto">
       <div className="mx-auto w-full max-w-180 px-4 py-4 sm:px-6">
+        {!branding && !/^#\s/m.test(definition.formContent) && (
+          <h1 className="sr-only">{t(($) => $['blocks.human-input'], { ns: 'workflow' })}</h1>
+        )}
         {branding && (
           <div className="flex w-full items-center gap-3 py-3">
             <AppIcon size="small" icon={branding.site} />
-            <div className="grow system-xl-semibold text-text-primary">{branding.site.title}</div>
+            <h1 className="grow system-xl-semibold text-text-primary">{branding.site.title}</h1>
           </div>
         )}
         <div className="relative rounded-[20px] bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:border-t before:border-divider-subtle">

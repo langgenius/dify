@@ -1,14 +1,18 @@
+import type { HumanInputV2Challenge, HumanInputV2ErrorCategory } from './types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type OtpVerificationProps = {
   otpCode: string
   requesting: boolean
-  error?: string
-  secondsUntilResend: number
-  secondsUntilExpiry: number
-  hasChallenge: boolean
+  submitting: boolean
+  error?: { category: HumanInputV2ErrorCategory; message: string }
+  challenge?: HumanInputV2Challenge
+  now?: () => number
+  focusOnMount?: boolean
   onOtpChange: (value: string) => void
   onRetry: () => void
   onResend: () => void
@@ -17,48 +21,83 @@ type OtpVerificationProps = {
 const OtpVerification = ({
   otpCode,
   requesting,
+  submitting,
   error,
-  secondsUntilResend,
-  secondsUntilExpiry,
-  hasChallenge,
+  challenge,
+  now = Date.now,
+  focusOnMount = false,
   onOtpChange,
   onRetry,
   onResend,
 }: OtpVerificationProps) => {
   const { t } = useTranslation(['share'])
+  const resendLabelId = useId()
+  const codeRef = useRef<HTMLInputElement>(null)
+  const focusCodeRef = useRef(focusOnMount)
+  useEffect(() => {
+    if (challenge && focusCodeRef.current) {
+      codeRef.current?.focus()
+      focusCodeRef.current = false
+    }
+  }, [challenge])
+  const [clock, setClock] = useState(now)
+  useEffect(() => {
+    if (!challenge) return
+    const update = () => setClock(now())
+    const timer = window.setInterval(update, 1000)
+    window.addEventListener('focus', update)
+    document.addEventListener('visibilitychange', update)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', update)
+      document.removeEventListener('visibilitychange', update)
+    }
+  }, [challenge, now])
+  const secondsUntilResend = challenge
+    ? Math.max(0, Math.ceil((challenge.resendAt - clock) / 1000))
+    : 0
+  const secondsUntilExpiry = challenge
+    ? Math.max(0, Math.ceil((challenge.expiresAt - clock) / 1000))
+    : 0
+  const invalidCode = error?.category === 'invalid-otp'
 
   return (
     <div className="my-3 rounded-xl border border-divider-subtle bg-background-section p-3">
-      <label htmlFor="human-input-v2-otp" className="system-sm-semibold text-text-primary">
-        {t(($) => $['humanInputV2.otpLabel'], { ns: 'share' })}
-      </label>
-      <div className="mt-1 system-xs-regular text-text-secondary">
-        {requesting
-          ? t(($) => $['humanInputV2.requestingCode'], { ns: 'share' })
-          : hasChallenge
-            ? t(($) => $['humanInputV2.codeSent'], { ns: 'share' })
-            : t(($) => $['humanInputV2.codeRequired'], { ns: 'share' })}
-      </div>
-      {hasChallenge && (
-        <Input
-          id="human-input-v2-otp"
-          className="mt-3"
-          value={otpCode}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          aria-invalid={Boolean(error)}
-          placeholder={t(($) => $['humanInputV2.otpPlaceholder'], { ns: 'share' })}
-          onChange={(event) => onOtpChange(event.target.value)}
-        />
-      )}
-      {error && (
-        <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {error}
-        </div>
+      <Field name="otp_code" invalid={invalidCode}>
+        <FieldLabel>{t(($) => $['humanInputV2.otpLabel'], { ns: 'share' })}</FieldLabel>
+        <FieldDescription role="status">
+          {requesting
+            ? t(($) => $['humanInputV2.requestingCode'], { ns: 'share' })
+            : challenge
+              ? t(($) => $['humanInputV2.codeSent'], { ns: 'share' })
+              : t(($) => $['humanInputV2.codeRequired'], { ns: 'share' })}
+        </FieldDescription>
+        {challenge && (
+          <Input
+            ref={codeRef}
+            value={otpCode}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]{6}"
+            required
+            readOnly={submitting}
+            placeholder={t(($) => $['humanInputV2.otpPlaceholder'], { ns: 'share' })}
+            onChange={(event) => onOtpChange(event.target.value)}
+          />
+        )}
+        {invalidCode && (
+          <FieldError match role="alert">
+            {error.message}
+          </FieldError>
+        )}
+      </Field>
+      {error && !invalidCode && (
+        <p role="alert" className="system-sm-regular text-text-destructive">
+          {error.message}
+        </p>
       )}
       <div className="mt-3 flex items-center justify-between gap-3">
-        {hasChallenge ? (
+        {challenge ? (
           <>
             <div className="system-xs-regular text-text-tertiary">
               {t(($) => $['humanInputV2.codeExpiresIn'], {
@@ -69,19 +108,28 @@ const OtpVerification = ({
             <Button
               size="small"
               variant="ghost"
-              disabled={requesting || secondsUntilResend > 0}
+              loading={requesting}
+              disabled={submitting || secondsUntilResend > 0}
+              focusableWhenDisabled
+              aria-labelledby={resendLabelId}
               onClick={onResend}
             >
-              {secondsUntilResend > 0
-                ? t(($) => $['humanInputV2.resendIn'], {
-                    ns: 'share',
-                    seconds: secondsUntilResend,
-                  })
-                : t(($) => $['humanInputV2.resendCode'], { ns: 'share' })}
+              <span id={resendLabelId}>
+                {t(($) => $['humanInputV2.resendCode'], { ns: 'share' })}
+              </span>
+              {secondsUntilResend > 0 && <span aria-hidden>({secondsUntilResend})</span>}
             </Button>
           </>
         ) : (
-          <Button size="small" disabled={requesting} onClick={onRetry}>
+          <Button
+            size="small"
+            loading={requesting}
+            disabled={submitting}
+            onClick={() => {
+              focusCodeRef.current = true
+              onRetry()
+            }}
+          >
             {t(($) => $['humanInputV2.sendCode'], { ns: 'share' })}
           </Button>
         )}

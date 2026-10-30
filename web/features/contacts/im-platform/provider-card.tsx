@@ -9,7 +9,6 @@ import { ContactImProvider } from './types'
 type ContactImProviderCardBaseProps = {
   description: string
   provider: ContactImProviderDefinition
-  unavailableReason?: string
 }
 
 type ContactImAvailableProviderCardProps = ContactImProviderCardBaseProps & {
@@ -35,26 +34,27 @@ export type ContactImProviderCardProps =
   | ContactImConfiguredProviderCardProps
 
 export function ContactImProviderCard(props: ContactImProviderCardProps) {
-  const { description, provider, unavailableReason } = props
+  const { description, provider } = props
 
   return (
     <div
       role="group"
       aria-label={provider.displayName}
-      className="flex min-h-16 w-full items-center gap-3 rounded-[15px] bg-third-party-model-bg-default py-3 ps-3 pe-4 inset-ring-[0.5px] inset-ring-components-panel-border"
+      className="rounded-3.75 flex min-h-16 w-full items-center gap-3 bg-third-party-model-bg-default py-3 ps-3 pe-4 inset-ring-[0.5px] inset-ring-components-panel-border"
     >
-      <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-divider-regular bg-components-panel-on-panel-item-bg backdrop-blur-[4px]">
+      <div className="rounded-2.5 flex size-10 shrink-0 items-center justify-center overflow-hidden border border-divider-regular bg-components-panel-on-panel-item-bg backdrop-blur-xs">
         {provider.provider === ContactImProvider.Email ? (
           <span aria-hidden className="i-ri-mail-send-fill size-6 text-text-accent" />
         ) : (
-          <ContactChannelIcon provider={provider.provider} className="size-8" />
+          <ContactChannelIcon
+            provider={provider.provider === 'ding_talk' ? 'dingtalk' : provider.provider}
+            className="size-8"
+          />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="system-md-semibold text-text-primary">{provider.displayName}</div>
-        <div className="system-xs-regular text-text-tertiary">
-          {unavailableReason ?? description}
-        </div>
+        <div className="system-xs-regular text-text-tertiary">{description}</div>
       </div>
       {props.mode === 'configured' ? (
         <div className="flex shrink-0 items-center gap-2">

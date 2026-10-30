@@ -11,6 +11,7 @@ import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData as WorkflowHumanInputFormData } from '@/types/workflow'
 import { form as webFormContract } from '@dify/contracts/api/web/orpc.gen'
+import { zWebAppHumanInputV2SubmitPayload } from '@dify/contracts/api/web/zod.gen'
 import { createORPCClient } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
@@ -769,8 +770,8 @@ export const submitHumanInputForm = (
   if (formVersion === '2') {
     return webAppHumanInputFormClient.submit({
       params: { form_token: token },
-      body: data,
+      body: zWebAppHumanInputV2SubmitPayload.parse(data),
     })
   }
-  return post(`/form/human_input/${token}`, { body: data })
+  return post(`/form/human_input/${token}`, { body: { inputs: data.inputs, action: data.action } })
 }

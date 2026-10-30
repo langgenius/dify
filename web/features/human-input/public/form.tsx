@@ -1,7 +1,7 @@
 'use client'
 import type { HumanInputV2ErrorCategory, HumanInputV2FormTransport } from './types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   FileUploadContext,
@@ -10,8 +10,9 @@ import {
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import FormStatusCard from '@/features/human-input/form/form-status-card'
 import LoadedFormContent from '@/features/human-input/form/loaded-form-content'
+import useDocumentTitle from '@/hooks/use-document-title'
 import OtpVerification from './otp-verification'
-import { defaultHumanInputV2FormTransport } from './transport-selector'
+import { realHumanInputV2FormTransport } from './real-transport'
 import { createHumanInputV2UploadStrategy } from './upload'
 import { useHumanInputV2FormSession } from './use-form-session'
 
@@ -36,7 +37,7 @@ const getBrandingOptions = (
 
 const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInputV2FormProps) => {
   const { t } = useTranslation(['share'])
-  const transport = injectedTransport ?? defaultHumanInputV2FormTransport
+  const transport = injectedTransport ?? realHumanInputV2FormTransport
   const inheritedUploadContext = useFileUploadContext()
   const uploadContext = useMemo(
     () => ({
@@ -51,6 +52,19 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
     now,
   })
   const { state } = session
+  const [retryError, setRetryError] = useState<HumanInputV2ErrorCategory>()
+  const retryingForm = state.phase === 'loading-form' && retryError !== undefined
+  useDocumentTitle(
+    state.phase === 'success'
+      ? t(($) => $['humanInput.thanks'], { ns: 'share' })
+      : state.error === 'form-expired'
+        ? t(($) => $['humanInputV2.formExpired'], { ns: 'share' })
+        : state.error === 'already-submitted'
+          ? t(($) => $['humanInputV2.alreadySubmitted'], { ns: 'share' })
+          : state.phase === 'terminal' || state.phase === 'form-error'
+            ? t(($) => $['humanInputV2.formNotFound'], { ns: 'share' })
+            : t(($) => $['humanInputV2.otpLabel'], { ns: 'share' }),
+  )
 
   const errorCopy = (category?: HumanInputV2ErrorCategory) => {
     switch (category) {
@@ -83,7 +97,8 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
     }
   }
 
-  if (state.phase === 'loading-form') return <LoadingPlaceholder className="h-full" />
+  if (state.phase === 'loading-form' && !retryingForm)
+    return <LoadingPlaceholder className="h-full" />
 
   if (state.phase === 'success') {
     return (
@@ -97,7 +112,7 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
     )
   }
 
-  if (state.phase === 'terminal' || state.phase === 'form-error') {
+  if (state.phase === 'terminal' || state.phase === 'form-error' || retryingForm) {
     const isResolvedRequest = state.error === 'form-expired' || state.error === 'already-submitted'
 
     return (
@@ -110,13 +125,20 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
         title={
           isResolvedRequest
             ? t(($) => $['humanInput.sorry'], { ns: 'share' })
-            : errorCopy(state.error)
+            : errorCopy(state.error ?? retryError)
         }
         subtitle={
           isResolvedRequest ? (
             errorCopy(state.error)
-          ) : state.phase === 'form-error' ? (
-            <Button size="small" onClick={session.retryForm}>
+          ) : state.phase === 'form-error' || retryingForm ? (
+            <Button
+              size="small"
+              loading={retryingForm}
+              onClick={() => {
+                setRetryError(state.error)
+                session.retryForm()
+              }}
+            >
               {t(($) => $['humanInputV2.retry'], { ns: 'share' })}
             </Button>
           ) : undefined
@@ -129,7 +151,9 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
 
   if (!state.definition) return <LoadingPlaceholder className="h-full" />
 
-  const verificationError = state.error ? errorCopy(state.error) : undefined
+  const verificationError = state.error
+    ? { category: state.error, message: errorCopy(state.error) }
+    : undefined
 
   return (
     <FileUploadContext value={uploadContext}>
@@ -137,16 +161,16 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
         key={token}
         definition={state.definition}
         isSubmitting={state.phase === 'submitting'}
-        actionsDisabled={!session.canSubmit}
         onSubmit={session.submit}
         verificationContent={
           <OtpVerification
+            focusOnMount={retryError !== undefined}
             otpCode={state.otpCode}
             requesting={state.phase === 'requesting-otp'}
             error={verificationError}
-            secondsUntilResend={session.secondsUntilResend}
-            secondsUntilExpiry={session.secondsUntilExpiry}
-            hasChallenge={Boolean(state.challenge)}
+            challenge={state.challenge}
+            submitting={state.phase === 'submitting'}
+            now={now}
             onOtpChange={session.setOtpCode}
             onRetry={session.retryAccess}
             onResend={session.resendAccess}
