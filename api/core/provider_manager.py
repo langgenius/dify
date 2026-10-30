@@ -112,8 +112,7 @@ class _ProviderModelCacheEntry:
     encrypted_config: str | None
 
     @classmethod
-    def from_record(cls, record: ProviderModel) -> _ProviderModelCacheEntry:
-        credential = record.__dict__.get("credential")
+    def from_record(cls, record: ProviderModel, credential: ProviderModelCredential | None) -> _ProviderModelCacheEntry:
         return cls(
             id=record.id,
             provider_name=record.provider_name,
@@ -440,33 +439,57 @@ def _get_cached_or_load_records[T: _CacheEntry](
     return records
 
 
-def _attach_active_credentials(
+def _load_active_credentials[T: ProviderCredential | ProviderModelCredential](
     *,
     session: Any,
     records: Sequence[Provider | ProviderModel],
-    credential_model_cls: type[ProviderCredential | ProviderModelCredential],
-) -> None:
-    credential_ids = [record.credential_id for record in records if getattr(record, "credential_id", None)]
+    credential_model_cls: type[T],
+) -> dict[str, T]:
+    """Load the credentials referenced by ``records`` through the caller's session.
+
+    Precondition: ``session`` is open and ``credential_model_cls`` matches the record type.
+    Postcondition: the result maps each credential ID that still exists to its row.
+    """
+    credential_ids = [record.credential_id for record in records if record.credential_id]
     if not credential_ids:
-        return
+        return {}
 
     credentials = session.scalars(select(credential_model_cls).where(credential_model_cls.id.in_(credential_ids))).all()
-    credential_by_id = {credential.id: credential for credential in credentials}
-    for record in records:
-        if getattr(record, "credential_id", None):
-            record.__dict__["credential"] = credential_by_id.get(record.credential_id)
+    return {credential.id: credential for credential in credentials}
+
+
+def _attach_provider_credentials(*, session: Any, providers: Sequence[Provider]) -> None:
+    """Attach active credentials so ``providers`` can be read after ``session`` closes.
+
+    Precondition: ``session`` is open.
+    Postcondition: every provider with a ``credential_id`` has its row attached, or None when the row is missing.
+    """
+    credentials = _load_active_credentials(
+        session=session,
+        records=providers,
+        credential_model_cls=ProviderCredential,
+    )
+    for provider in providers:
+        if provider.credential_id:
+            provider.attach_credential(credentials.get(provider.credential_id))
 
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
         stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
-        _attach_active_credentials(
+        credentials = _load_active_credentials(
             session=session,
             records=provider_models,
             credential_model_cls=ProviderModelCredential,
         )
-        return [_ProviderModelCacheEntry.from_record(provider_model) for provider_model in provider_models]
+        return [
+            _ProviderModelCacheEntry.from_record(
+                provider_model,
+                credentials.get(provider_model.credential_id) if provider_model.credential_id else None,
+            )
+            for provider_model in provider_models
+        ]
 
 
 def _load_preferred_model_provider_cache_entries(tenant_id: str) -> list[_TenantPreferredModelProviderCacheEntry]:
@@ -982,11 +1005,7 @@ class ProviderManager:
         with session_factory.create_session() as session:
             stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
             providers = list(session.scalars(stmt))
-            _attach_active_credentials(
-                session=session,
-                records=providers,
-                credential_model_cls=ProviderCredential,
-            )
+            _attach_provider_credentials(session=session, providers=providers)
             for provider in providers:
                 # Use provider name with prefix after the data migration
                 provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
@@ -1235,6 +1254,7 @@ class ProviderManager:
                                 existed_provider_record.is_valid = True
                                 db.session.commit()
 
+                            _attach_provider_credentials(session=db.session, providers=[existed_provider_record])
                             provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict

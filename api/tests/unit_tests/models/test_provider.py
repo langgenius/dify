@@ -260,6 +260,59 @@ class TestProviderModel:
         # Act & Assert
         assert provider.token_is_set is False
 
+    def test_provider_credential_reads_attached_value(self) -> None:
+        """Test credential accessors read the attached row without database access."""
+        # Arrange
+        provider = Provider(
+            tenant_id=str(uuid4()),
+            provider_name="openai",
+            credential_id=str(uuid4()),
+        )
+        credential = ProviderCredential(
+            tenant_id=provider.tenant_id,
+            provider_name="openai",
+            credential_name="primary",
+            encrypted_config='{"api_key": "secret"}',
+        )
+
+        # Act
+        provider.attach_credential(credential)
+
+        # Assert
+        assert provider.credential is credential
+        assert provider.credential_name == "primary"
+        assert provider.encrypted_config == '{"api_key": "secret"}'
+        assert provider.token_is_set is True
+
+    def test_provider_credential_missing_row_reads_as_unset(self) -> None:
+        """Test a credential row deleted before loading reads as unset."""
+        # Arrange
+        provider = Provider(
+            tenant_id=str(uuid4()),
+            provider_name="openai",
+            credential_id=str(uuid4()),
+        )
+
+        # Act
+        provider.attach_credential(None)
+
+        # Assert
+        assert provider.credential is None
+        assert provider.token_is_set is False
+
+    def test_provider_credential_raises_when_not_attached(self) -> None:
+        """Test an unloaded credential fails instead of reading as unset."""
+        # Arrange
+        provider = Provider(
+            tenant_id=str(uuid4()),
+            provider_name="openai",
+            credential_id=str(uuid4()),
+        )
+
+        # Act & Assert
+        with pytest.raises(RuntimeError, match="was not attached"):
+            _ = provider.token_is_set
+
     def test_provider_is_enabled_false_when_not_valid(self) -> None:
         """Test is_enabled returns False when provider is not valid."""
         # Arrange
