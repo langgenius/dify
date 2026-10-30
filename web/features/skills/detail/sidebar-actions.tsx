@@ -199,11 +199,13 @@ export function SkillDetailSidebarActions({
   canDelete,
   canEdit,
   detail,
+  onBeforeExport,
   onRename,
 }: {
   canDelete: boolean
   canEdit: boolean
   detail: SkillDetailResponse
+  onBeforeExport: () => Promise<boolean>
   onRename: () => void
 }) {
   const { t } = useTranslation(['skill'])
@@ -215,8 +217,12 @@ export function SkillDetailSidebarActions({
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
   const exportMutation = useMutation({
-    mutationFn: () => fetchSkillArchiveBlob(detail.id),
+    mutationFn: async () => {
+      if (!(await onBeforeExport())) return null
+      return fetchSkillArchiveBlob(detail.id)
+    },
     onSuccess: (blob) => {
+      if (!blob) return
       downloadBlob({ data: blob, fileName: `${detail.name}.zip` })
     },
     onError: () => {
