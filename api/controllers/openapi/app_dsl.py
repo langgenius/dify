@@ -424,9 +424,10 @@ class AppDslExportApi(Resource):
 class AppPackageExportApi(Resource):
     """Download an app as a ``.ifpkg`` package (a zip), from its draft or one published version.
 
-    By default roster Agent nodes export as references and only inline Agents are packaged, linked to
-    their workspace skills. Pass ``preserve_agent_bindings=false`` to package every Agent with a copy of
-    each workspace skill, to move the app to another workspace.
+    By default roster Agent nodes export as references and only inline Agents are packaged. Pass
+    ``preserve_agent_bindings=false`` to package every Agent, to move the app to another workspace. Each
+    workspace skill is written as a link plus a copy; the import's ``preserve_agent_bindings`` chooses which
+    it uses.
     """
 
     @endpoint(
