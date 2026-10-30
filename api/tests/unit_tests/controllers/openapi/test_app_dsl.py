@@ -11,7 +11,7 @@ import yaml
 from flask import Flask, Response, request
 from flask_restx import Resource
 from pydantic import ValidationError
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, NotFound
@@ -59,6 +59,7 @@ from machinery.context import AppRequestContext, RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import WorkflowAgentBindingType
 from models.model import App, AppMode
+from models.skill import AgentSkillBinding, Skill
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
@@ -84,9 +85,11 @@ from tests.helpers.unit.model_factories import make_account, make_app, make_tena
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 from tests.unit_tests.services.test_app_package_service import (
     _add_roster_node,
+    _bind_second_workspace_skill,
     _bindings_by_node,
     _bundle_any_app,
     _package_storage,
+    _skill_section,
     _source,
 )
 
@@ -1076,6 +1079,31 @@ def _draft(session: Session, app_id: str) -> Workflow:
     ).one()
 
 
+def _owner_context(session: Session, tenant_id: str) -> RequestContext:
+    """A request from the owner of the workspace that ``tenant_id`` names."""
+    tenant = make_tenant(tenant_id=tenant_id)
+    account = make_account(tenant=tenant)
+    session.add_all(
+        [
+            tenant,
+            account,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, current=True, role=TenantAccountRole.OWNER),
+        ]
+    )
+    session.commit()
+    return RequestContext("request-1", None, account.id, tenant.id)
+
+
+def _export_folder(source: App) -> tuple[bytes, UploadParts]:
+    """Export ``source`` keeping its links, as the archive and as the unpacked folder's parts."""
+    with AppPackageService().export_app(
+        may_bundle=_bundle_any_app, app_model=source, preserve_agent_bindings=True
+    ) as exported:
+        content = exported.archive.read()
+    with zipfile.ZipFile(BytesIO(content)) as archive:
+        return content, {name: _part(archive.read(name), name) for name in archive.namelist()}
+
+
 @pytest.mark.usefixtures("app_query_services", "credentials")
 def test_package_import_round_trips_an_unpacked_export_onto_its_app(
     app: Flask,
@@ -1083,8 +1111,8 @@ def test_package_import_round_trips_an_unpacked_export_onto_its_app(
     sqlite_session: Session,
     sqlite_engine: Engine,
 ) -> None:
-    """Export an App with inline Agents, a skill, a roster node and a Workflow Tool through the real
-    package service, unzip it into folder parts, and import them over the same App through the real
+    """Export an App with inline Agents, a skill, a workspace skill, a roster node and a Workflow Tool through
+    the real package service, unzip it into folder parts, and import them over the same App through the real
     console import. Only the storage backend, dependency analysis and the credential check are stubbed.
     """
     storage = _package_storage(monkeypatch, sqlite_engine)
@@ -1094,30 +1122,13 @@ def test_package_import_round_trips_an_unpacked_export_onto_its_app(
     source = _source(sqlite_session, storage, app_id=_OVERWRITTEN_APP_ID)
     _add_roster_node(sqlite_session, source)
     _add_workflow_tool(sqlite_session, source)
-    tenant = make_tenant(tenant_id=source.tenant_id)
-    account = make_account(tenant=tenant)
-    sqlite_session.add_all(
-        [
-            tenant,
-            account,
-            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, current=True, role=TenantAccountRole.OWNER),
-        ]
-    )
-    sqlite_session.commit()
+    context = _owner_context(sqlite_session, source.tenant_id)
     source_graph = _draft(sqlite_session, source.id).graph_dict
     draft_hash = current_draft_token(source.tenant_id, source.id)
-    with (
-        AppPackageService().export_app(
-            may_bundle=_bundle_any_app, app_model=source, preserve_agent_bindings=True
-        ) as exported,
-        zipfile.ZipFile(exported.archive) as archive,
-    ):
-        folder = {name: _part(archive.read(name), name) for name in archive.namelist()}
+    exported, folder = _export_folder(source)
 
     response, status = _import_package(
-        app,
-        AppPackageImportPayload(package=folder, app_id=source.id, draft_hash=draft_hash),
-        context=RequestContext("request-1", None, account.id, tenant.id),
+        app, AppPackageImportPayload(package=folder, app_id=source.id, draft_hash=draft_hash), context=context
     )
 
     assert {"w_000001.ifpkg", "s_000003.zip"} <= folder.keys()
@@ -1137,3 +1148,52 @@ def test_package_import_round_trips_an_unpacked_export_onto_its_app(
     )
     assert {rows["node-1"].binding_type, rows["node-2"].binding_type} == {WorkflowAgentBindingType.INLINE_AGENT}
     assert sqlite_session.scalar(select(func.count()).select_from(WorkflowToolProvider)) == 1
+    # The inline Agent stays linked to the same workspace skill rather than holding a copy of it.
+    skill_links = sqlite_session.scalars(
+        select(AgentSkillBinding.skill_id).where(AgentSkillBinding.agent_id == rows["node-1"].agent_id)
+    ).all()
+    assert skill_links == ["source-workspace-skill"]
+    reexported, _folder = _export_folder(source)
+    assert _skill_section(reexported) == _skill_section(exported)
+    assert _skill_section(reexported)[2] == ["research"]
+
+
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_package_import_refuses_links_to_missing_skills_before_any_write(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+) -> None:
+    storage = _package_storage(monkeypatch, sqlite_engine)
+    source = _source(sqlite_session, storage, app_id=_OVERWRITTEN_APP_ID)
+    _bind_second_workspace_skill(sqlite_session, storage)
+    _add_workflow_tool(sqlite_session, source)
+    context = _owner_context(sqlite_session, source.tenant_id)
+    source_graph = _draft(sqlite_session, source.id).graph_dict
+    _exported, folder = _export_folder(source)
+    sqlite_session.execute(delete(Skill))
+    sqlite_session.commit()
+    apps = sqlite_session.scalar(select(func.count()).select_from(App))
+
+    with pytest.raises(AppPackageInvalid) as exc_info:
+        _import_package(app, AppPackageImportPayload(package=folder, app_id=source.id), context=context)
+
+    assert storage.saved == []
+    assert sqlite_session.scalar(select(func.count()).select_from(App)) == apps
+    sqlite_session.expire_all()
+    assert _draft(sqlite_session, source.id).graph_dict == source_graph
+    body = OpenApiErrorFormatter().finalize(exc_info.value, {"message": exc_info.value.description}, 400)
+    assert (body["status"], body["code"]) == (400, OpenApiErrorCode.APP_PACKAGE_INVALID)
+    assert body["hint"] == (
+        "Import each missing skill into the Skill Hub first, "
+        "or export the app with preserve_agent_bindings=false to bundle a copy."
+    )
+    assert body["details"] == [
+        {
+            "type": "workspace_skill_not_found",
+            "loc": ["workspace_skills", name],
+            "msg": f'Workspace Skill "{name}" is not in this workspace.',
+        }
+        for name in ("second", "workspace")
+    ]

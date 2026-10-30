@@ -434,19 +434,23 @@ _PACKAGED_TOOL = PackagedWorkflowTool(
 class FakeAppPackage:
     dsl: str
     workflow_tools: list[PackagedWorkflowTool] = field(default_factory=list)
+    skill_checks: list[str] = field(default_factory=list)
 
     @property
     def has_resources(self) -> bool:
         return False
+
+    def require_workspace_skills(self, *, tenant_id: str) -> None:
+        self.skill_checks.append(tenant_id)
 
     def materialize_icons(self, *, data: dict[str, object], tenant_id: str, account_id: str) -> None:
         del data, tenant_id, account_id
         pytest.fail("Unexpected icon materialization")
 
     def materialize_agents(
-        self, *, tenant_id: str, account_id: str
+        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool = False
     ) -> tuple[dict[str, object], list[DslImportWarning]]:
-        del tenant_id, account_id
+        del tenant_id, account_id, link_workspace_skills
         pytest.fail("Unexpected Agent materialization")
 
     def open_workflow_tool(self, tool: PackagedWorkflowTool) -> AppImportPackage:
@@ -526,9 +530,11 @@ def _refuse(dsl: str) -> str:
 
 
 def test_package_import_keeps_todays_flags_by_default() -> None:
-    service, transfers = _package_import(FakeAppPackage(dsl=_ROOT_DSL))
+    package = FakeAppPackage(dsl=_ROOT_DSL)
+    service, transfers = _package_import(package)
     service.import_app(CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"))
     assert transfers.calls == [("read", False), ("import", _ROOT_DSL, False)]
+    assert package.skill_checks == []
 
 
 @dataclass
@@ -579,10 +585,12 @@ def test_package_import_is_denied_by_its_content_before_any_write(
 
 
 def test_package_import_passes_the_roster_flags_to_the_root_only() -> None:
-    service, transfers = _package_import(FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL]))
+    package = FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL])
+    service, transfers = _package_import(package)
     service.import_app(
         CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"), preserve_agent_bindings=True
     )
+    assert package.skill_checks == [CONTEXT.active_workspace_id]
     assert transfers.calls == [
         ("read", True),
         ("plan",),
