@@ -22744,6 +22744,19 @@ The archived document is not editable.
 | ---- | ---- | ----------- | -------- |
 | ArchivedDocumentImmutableError |  | The archived document is not editable. |  |
 
+#### AttachmentInfoDict
+
+Published attachment metadata; MIME type may be null for legacy uploads.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+| source_url | string |  | Yes |
+
 #### AudioBinaryResponse
 
 | Name | Type | Description | Required |
@@ -33914,7 +33927,7 @@ Immutable authoritative presentation snapshot for one v2 form.
 | document_name | string |  | No |
 | document_revision | integer |  | No |
 | document_version | integer |  | No |
-| files | [ object ] |  | No |
+| files | [ [AttachmentInfoDict](#attachmentinfodict) ] |  | No |
 | hit_count | integer |  | No |
 | index_node_hash | string |  | No |
 | knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
