@@ -63,7 +63,7 @@ const openPicker = async (user: ReturnType<typeof userEvent.setup>) => {
       name: 'workflow.nodes.humanInputV2.recipients.addContact',
     }),
   )
-  return screen.findByRole('grid')
+  return screen.findByRole('listbox')
 }
 const field = () => screen.getByRole('combobox')
 beforeEach(resetContactApi)
@@ -74,8 +74,8 @@ describe('recipient selection through generated queries', () => {
       observe = vi.fn()
     renderContactOwner(<Harness observe={observe} />)
     await openPicker(user)
-    await screen.findByRole('gridcell', { name: /Evan Zhang/ })
-    await user.click(screen.getByRole('gridcell', { name: /Evan Zhang/ }))
+    await screen.findByRole('option', { name: /Evan Zhang/ })
+    await user.click(screen.getByRole('option', { name: /Evan Zhang/ }))
     expect(observe).toHaveBeenLastCalledWith([{ type: 'contact', contact_id: contact.id }])
     await user.click(await screen.findByRole('button', { name: /recipients.remove.*Evan Zhang/ }))
     expect(observe).toHaveBeenLastCalledWith([])
@@ -110,7 +110,7 @@ describe('recipient selection through generated queries', () => {
     const user = userEvent.setup()
     renderContactOwner(<Harness />)
     await openPicker(user)
-    await screen.findByRole('gridcell', { name: /Evan Zhang/ })
+    await screen.findByRole('option', { name: /Evan Zhang/ })
     await user.click(
       screen.getByRole('radio', {
         name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
@@ -119,7 +119,7 @@ describe('recipient selection through generated queries', () => {
     expect(contactApi.options).toHaveBeenCalledTimes(1)
     const more = screen.getByRole('button', { name: 'workflow.common.loadMore' })
     await user.click(more)
-    expect(await screen.findByRole('gridcell', { name: /Evan Zhang/ })).toBeVisible()
+    expect(await screen.findByRole('option', { name: /Evan Zhang/ })).toBeVisible()
     await waitFor(() => expect(more).toHaveAttribute('aria-disabled', 'true'))
     expect(more).toHaveFocus()
     expect(contactApi.options).toHaveBeenCalledTimes(2)
@@ -135,8 +135,8 @@ describe('recipient selection through generated queries', () => {
     }))
     renderContactOwner(<Harness />)
     await user.type(await screen.findByRole('combobox'), 'amanda')
-    expect(await screen.findByRole('gridcell', { name: /Amanda Lin/ })).toBeVisible()
-    expect(screen.queryByRole('gridcell', { name: /Evan Zhang/ })).not.toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: /Amanda Lin/ })).toBeVisible()
+    expect(screen.queryByRole('option', { name: /Evan Zhang/ })).not.toBeInTheDocument()
     expect(
       contactApi.options.mock.calls.every(
         ([input]) => !input.query.keyword || input.query.keyword === 'amanda',
@@ -150,7 +150,7 @@ describe('recipient selection through generated queries', () => {
     renderContactOwner(<Harness />)
     await openPicker(user)
     await user.click(await screen.findByRole('button', { name: 'common.operation.retry' }))
-    expect(await screen.findByRole('gridcell', { name: /Evan Zhang/ })).toBeVisible()
+    expect(await screen.findByRole('option', { name: /Evan Zhang/ })).toBeVisible()
   })
 
   it.each(['one@example.com', 'one@example.com, two@example.com'])(
@@ -214,13 +214,54 @@ describe('recipient selection through generated queries', () => {
     ])
   })
 
-  it('shows contact details through an explicit keyboard/touch action', async () => {
+  it('opens highlighted contact details by keyboard and returns focus to the input', async () => {
     const user = userEvent.setup()
-    renderContactOwner(<Harness initial={[{ type: 'contact', contact_id: contact.id }]} />)
-    const info = await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ })
-    await user.click(info)
+    renderContactOwner(<Harness />)
+    await openPicker(user)
+    await screen.findByRole('option', { name: /Evan Zhang/ })
+    await user.keyboard('{ArrowDown}')
+    await user.tab()
+    expect(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSourceLabel',
+      }),
+    ).toHaveFocus()
+    await user.tab()
+    const info = screen.getByRole('button', { name: 'contacts.details.title' })
+    expect(info).toHaveFocus()
+    expect(info).toHaveAccessibleDescription(/Evan Zhang/)
+    await user.keyboard('{Enter}')
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(contact.email)).toBeVisible()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(field()).toHaveFocus())
+  })
+
+  it('allows keyboard access to source filters without entering the result list', async () => {
+    const user = userEvent.setup()
+    renderContactOwner(<Harness />)
+    const source = await screen.findByRole('button', {
+      name: 'workflow.nodes.humanInputV2.recipients.contactSourceLabel',
+    })
+    source.focus()
+    await user.keyboard('{Enter}')
+    const all = await screen.findByRole('radio', {
+      name: 'workflow.nodes.humanInputV2.recipients.contactSource.all',
+    })
+    all.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(
+      screen.getByRole('radio', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    ).toHaveAttribute('aria-checked', 'true')
+    await user.keyboard('{Escape}')
+    await openPicker(user)
+    expect(
+      screen.getByRole('radio', {
+        name: 'workflow.nodes.humanInputV2.recipients.contactSource.workspace',
+      }),
+    ).toHaveAttribute('aria-checked', 'true')
   })
 
   it('keeps configured contact chips neutral while lookup is pending or fails', async () => {
@@ -260,7 +301,7 @@ describe('recipient selection through generated queries', () => {
       const user = userEvent.setup()
       renderContactOwner(<Harness />, role)
       await openPicker(user)
-      await screen.findByRole('gridcell', { name: 'QA workspace' })
+      await screen.findByRole('option', { name: 'QA workspace' })
       if (role === 'owner') await waitFor(() => expect(contactApi.contacts).toHaveBeenCalled())
       else expect(contactApi.contacts).not.toHaveBeenCalled()
     },
@@ -324,7 +365,7 @@ describe('recipient keyboard editing preserves existing behavior', () => {
       observe = vi.fn()
     renderContactOwner(<Harness observe={observe} />)
     await user.type(await screen.findByRole('combobox'), 'Evan')
-    await screen.findByRole('gridcell', { name: /Evan Zhang/ })
+    await screen.findByRole('option', { name: /Evan Zhang/ })
     await user.keyboard('{Enter}')
     expect(observe).toHaveBeenLastCalledWith([{ type: 'contact', contact_id: contact.id }])
   })
@@ -334,9 +375,9 @@ describe('recipient keyboard editing preserves existing behavior', () => {
       observe = vi.fn()
     renderContactOwner(<Harness observe={observe} />)
     await openPicker(user)
-    await screen.findByRole('gridcell', { name: /Evan Zhang/ })
+    await screen.findByRole('option', { name: /Evan Zhang/ })
     await user.type(field(), 'Amanda')
-    expect(screen.queryByRole('gridcell', { name: /Evan Zhang/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Evan Zhang/ })).not.toBeInTheDocument()
     await user.keyboard('{Enter}')
     expect(observe).not.toHaveBeenCalled()
     expect(
@@ -363,11 +404,19 @@ describe('recipient keyboard editing preserves existing behavior', () => {
     )
     await waitFor(() => expect(contactApi.batch).toHaveBeenCalled())
     await openPicker(user)
-    const row = await screen.findByRole('gridcell', { name: /Amanda Lin/ })
+    const row = await screen.findByRole('option', { name: /Amanda Lin/ })
     expect(row).toHaveAttribute('aria-disabled', 'true')
-    await user.click(screen.getByRole('button', { name: /recipients.contactInfo.*Amanda Lin/ }))
+    await user.keyboard('{ArrowDown}')
+    await waitFor(() => expect(field()).toHaveAttribute('aria-activedescendant', row.id))
+    await user.tab()
+    await user.tab()
+    const info = screen.getByRole('button', { name: 'contacts.details.title' })
+    expect(info).toHaveFocus()
+    expect(info).toHaveAccessibleDescription(/Amanda Lin/)
+    await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: organizationContact.name })
     await user.click(
-      await screen.findByRole('button', {
+      within(dialog).getByRole('button', {
         name: 'workflow.nodes.humanInputV2.recipients.useThisInstead',
       }),
     )
