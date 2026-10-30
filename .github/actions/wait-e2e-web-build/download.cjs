@@ -4,6 +4,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { setTimeout: delay } = require('node:timers/promises')
 const { promisify } = require('node:util')
+const { setTimeout: delay } = require('node:timers/promises')
 const waitForBuild = require('./wait.cjs')
 
 const execFileAsync = promisify(execFile)
@@ -11,6 +12,7 @@ const execFileAsync = promisify(execFile)
 async function downloadWebBuild({
   env = process.env,
   execute = execFileAsync,
+  sleep = delay,
   webDir = path.resolve(__dirname, '../../../web'),
   sleep = delay,
 } = {}) {
@@ -36,12 +38,21 @@ async function downloadWebBuild({
       maxBuffer: 32 * 1024 * 1024,
     })
   const api = async (endpoint, paginate = false) => {
-    const { stdout } = await run('gh', [
-      'api',
-      endpoint,
-      ...(paginate ? ['--paginate', '--slurp'] : []),
-    ])
-    return JSON.parse(stdout)
+    const retryDelays = [2000, 5000, 10000]
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const { stdout } = await run('gh', [
+          'api',
+          endpoint,
+          ...(paginate ? ['--paginate', '--slurp'] : []),
+        ])
+        return JSON.parse(stdout)
+      } catch (error) {
+        if (attempt >= retryDelays.length || !/\bHTTP (?:429|5\d\d)\b/.test(error.stderr || '')) throw error
+        console.warn(`GitHub API temporarily unavailable; retrying in ${retryDelays[attempt]}ms`)
+        await sleep(retryDelays[attempt])
+      }
+    }
   }
   // An artifact can be listed for the run before its own endpoint and download are
   // readable (seen as a 404 right after upload), so retry those reads briefly.
