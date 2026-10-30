@@ -452,7 +452,7 @@ class FakeAppPackage:
         pytest.fail("Unexpected icon materialization")
 
     def materialize_agents(
-        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool = False
+        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool
     ) -> tuple[dict[str, object], list[DslImportWarning]]:
         del tenant_id, account_id, link_workspace_skills
         pytest.fail("Unexpected Agent materialization")
