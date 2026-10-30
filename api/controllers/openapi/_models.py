@@ -455,6 +455,15 @@ class AgentRunPayload(RunInputs, _ConversationFields, _ChatQueryFields):
 
     model_config = ConfigDict(extra="forbid")
 
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Variables declared by the Agent. The exact shape is per Agent: read `input_schema` from "
+            "describe.agent. A file variable takes a Dify file mapping (remote url or upload id) here, "
+            "or a local path in `files`, not both."
+        ),
+    )
+
 
 class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):
     """A chat run against an advanced-chat (chatflow) app, which can also pin a workflow version."""

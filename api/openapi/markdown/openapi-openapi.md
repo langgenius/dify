@@ -2479,7 +2479,7 @@ A run of an Agent, addressed by `agent_id`; the workspace comes from the path.
 | auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
 | conversation_id | string | Continue an existing conversation | No |
 | files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
-| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| inputs | object | Variables declared by the Agent. The exact shape is per Agent: read `input_schema` from describe.agent. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | User message | Yes |
 
 #### AgentServiceApi
