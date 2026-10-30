@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, call, patch
@@ -452,7 +452,7 @@ class TestDeleteDraftVariablesBatchTransactionScope:
         open_sessions: list[Session] = []
 
         @contextmanager
-        def tracked_session() -> Iterator[Session]:
+        def tracked_session() -> Generator[Session]:
             with sqlite_session_factory() as session:
                 open_sessions.append(session)
                 try:
